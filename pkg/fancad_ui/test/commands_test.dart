@@ -142,6 +142,22 @@ void main() {
       expect(result.message, contains('collinear'));
     });
 
+    test('divide places interior points along a line', () async {
+      final id = await drawLine(0, 0, 12, 0);
+
+      final result = await run('draw.divide', {
+        'target': id,
+        'segments': 3,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 3);
+      final points = document.entities.whereType<PointEntity>().toList();
+      expect(points, hasLength(2));
+      expect(points[0].position.x, closeTo(4, 1e-9));
+      expect(points[1].position.x, closeTo(8, 1e-9));
+    });
+
     test('new geometry lands on the current layer', () async {
       await run('layer.new', {'name': 'WALLS'});
       await drawLine(0, 0, 1, 0);

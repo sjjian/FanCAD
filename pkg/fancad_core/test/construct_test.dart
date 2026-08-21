@@ -461,6 +461,20 @@ void main() {
     });
   });
 
+  group('divideLine', () {
+    test('places interior points only', () {
+      final points = Construct.divideLine(line(0, 0, 12, 0), 3);
+
+      expect(points, hasLength(2));
+      expect(points[0].x, closeTo(4, 1e-9));
+      expect(points[1].x, closeTo(8, 1e-9));
+    });
+
+    test('returns nothing for fewer than two segments', () {
+      expect(Construct.divideLine(line(0, 0, 10, 0), 1), isEmpty);
+    });
+  });
+
   group('lengthenLine', () {
     test('sets a new total length on the picked end', () {
       final longer = Construct.lengthenLine(

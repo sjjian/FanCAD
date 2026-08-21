@@ -22,6 +22,7 @@ class DrawCommands {
     _arc(),
     _polygon(),
     _point(),
+    _divide(),
     _text(),
     _hatch(),
   ];
@@ -520,6 +521,78 @@ class DrawCommands {
           props: EntityProps(layer: context.document.currentLayer),
           position: at,
         ),
+      ]);
+    },
+  );
+
+  static CommandDescriptor _divide() => CommandDescriptor(
+    id: 'draw.divide',
+    title: 'Divide',
+    category: _category,
+    aliases: const ['div', 'divide'],
+    description:
+        'Places point markers that split a line into equal segments. The '
+        'endpoints are left alone; only the interior divisions are created.',
+    params: const [
+      ParamSpec(
+        name: 'target',
+        type: ParamType.entity,
+        description: 'The line to divide',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'segments',
+        type: ParamType.integer,
+        description: 'Number of equal segments, at least 2',
+        min: 2,
+      ),
+    ],
+    handler: (context) async {
+      final supplied = context.args.integer('target');
+      final int targetId;
+      if (supplied != null) {
+        targetId = supplied;
+      } else {
+        context.selection.clear();
+        final picked = await context.input.selection(
+          'DIVIDE  Select a line:',
+          useExistingSelection: false,
+          single: true,
+        );
+        if (picked.isEmpty) return const CommandResult.cancelled();
+        targetId = picked.first;
+      }
+
+      final target = context.document.entity(targetId);
+      if (target is! LineEntity) {
+        return const CommandResult.failed(
+          'Divide currently supports lines only.',
+        );
+      }
+
+      final segments = context.args.integer('segments') ??
+          await context.input.integer(
+            'DIVIDE  Enter the number of segments:',
+            defaultValue: 2,
+          );
+      if (segments < 2) {
+        return const CommandResult.failed(
+          'A division needs at least two segments.',
+        );
+      }
+
+      final points = Construct.divideLine(target, segments);
+      if (points.isEmpty) {
+        return const CommandResult.failed('Nothing to place.');
+      }
+      final layer = context.document.currentLayer;
+      return _commit(context, 'Divide', [
+        for (final at in points)
+          PointEntity(
+            id: 0,
+            props: EntityProps(layer: layer),
+            position: at,
+          ),
       ]);
     },
   );

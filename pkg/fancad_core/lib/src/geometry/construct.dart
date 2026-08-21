@@ -594,6 +594,19 @@ class Construct {
     );
   }
 
+  /// Interior points that split [line] into [segments] equal pieces.
+  ///
+  /// DIVIDE places markers between the ends, not on them: 4 segments means
+  /// three points. Endpoints are already geometry; repeating them as nodes
+  /// just clutters the drawing.
+  static List<Vec2> divideLine(LineEntity line, int segments) {
+    if (segments < 2) return const [];
+    return [
+      for (var i = 1; i < segments; i++)
+        line.start.lerp(line.end, i / segments),
+    ];
+  }
+
   /// Lengthens or shortens [line] by moving the endpoint nearer [pick].
   ///
   /// [total] sets the finished length. [delta] is added to the current length
