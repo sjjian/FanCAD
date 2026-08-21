@@ -161,6 +161,7 @@ class _DocumentViewState extends State<DocumentView> {
           showGrid: tab.showGrid,
           onSceneBuilt: tab.noteScene,
           onContextMenu: _openContextMenu,
+          onDoubleClick: (_) => widget.workspace.run('view.zoomExtents'),
           onlyLayers: tab.isolatedLayers,
         ),
       ),

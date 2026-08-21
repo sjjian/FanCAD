@@ -70,6 +70,33 @@ void main() {
     expect(controller.viewport.scale, closeTo(1, 1e-9));
   });
 
+  testWidgets('a primary double-click reports the gesture', (tester) async {
+    var clicks = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 800,
+          height: 600,
+          child: CadCanvas(
+            document: CadDocument(),
+            controller: controller,
+            onDoubleClick: (_) => clicks++,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final location = tester.getCenter(find.byType(CadCanvas));
+    final pointer = TestPointer(1, PointerDeviceKind.mouse);
+    await tester.sendEventToBinding(pointer.hover(location));
+    await tester.sendEventToBinding(pointer.down(location));
+    await tester.sendEventToBinding(pointer.up());
+    await tester.sendEventToBinding(pointer.down(location));
+    await tester.sendEventToBinding(pointer.up());
+    await tester.pump();
+    expect(clicks, 1);
+  });
+
   testWidgets('a right-click without a drag opens the context menu', (
     tester,
   ) async {

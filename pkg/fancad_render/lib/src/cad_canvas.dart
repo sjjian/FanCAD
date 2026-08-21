@@ -45,6 +45,7 @@ class CadCanvas extends StatefulWidget {
     this.background = const Color(0xFF1B1D21),
     this.onSceneBuilt,
     this.onContextMenu,
+    this.onDoubleClick,
     this.showGrid = true,
     this.onlyLayers,
     super.key,
@@ -63,6 +64,9 @@ class CadCanvas extends StatefulWidget {
 
   /// A right-click that did not become a pan. The shell owns the menu.
   final void Function(Offset localPosition)? onContextMenu;
+
+  /// A primary-button double-click. The shell uses this to zoom extents.
+  final void Function(Offset localPosition)? onDoubleClick;
 
   final bool showGrid;
 
@@ -99,6 +103,13 @@ class CadCanvasState extends State<CadCanvas> {
   /// is a context-menu click — otherwise a two-finger tap on a Mac never
   /// gets to open a menu.
   static const _panSlop = 4.0;
+
+  DateTime? _lastPrimaryUpAt;
+  Offset? _lastPrimaryUpPos;
+  bool _primaryDown = false;
+
+  static const _doubleClickWindow = Duration(milliseconds: 400);
+  static const _doubleClickSlop = 6.0;
 
   /// Trackpad two-finger / pinch gesture. On macOS these arrive as
   /// [PointerPanZoomEvent]s, not [PointerScrollEvent]s — which is why a
@@ -235,6 +246,14 @@ class CadCanvasState extends State<CadCanvas> {
       _panIsSecondary = event.buttons & kSecondaryMouseButton != 0;
       return;
     }
+    if (event.buttons & kPrimaryMouseButton != 0 && _isDoubleClick(event)) {
+      _lastPrimaryUpAt = null;
+      _lastPrimaryUpPos = null;
+      _primaryDown = false;
+      widget.onDoubleClick?.call(event.localPosition);
+      return;
+    }
+    _primaryDown = event.buttons & kPrimaryMouseButton != 0;
     widget.inputHandler?.onPointerDown(_toWorld(event.localPosition), event);
   }
 
@@ -264,7 +283,20 @@ class CadCanvasState extends State<CadCanvas> {
       if (openMenu) widget.onContextMenu?.call(menuAt);
       return;
     }
+    if (_primaryDown) {
+      _lastPrimaryUpAt = DateTime.now();
+      _lastPrimaryUpPos = event.localPosition;
+      _primaryDown = false;
+    }
     widget.inputHandler?.onPointerUp(_toWorld(event.localPosition), event);
+  }
+
+  bool _isDoubleClick(PointerDownEvent event) {
+    final at = _lastPrimaryUpAt;
+    final pos = _lastPrimaryUpPos;
+    if (at == null || pos == null) return false;
+    return DateTime.now().difference(at) <= _doubleClickWindow &&
+        (event.localPosition - pos).distance <= _doubleClickSlop;
   }
 
   void _endPan() {
