@@ -90,6 +90,10 @@ class _DocumentViewState extends State<DocumentView> {
           ),
           const PopupMenuItem(value: 'view.zoomIn', child: Text('Zoom In')),
           const PopupMenuItem(value: 'view.zoomOut', child: Text('Zoom Out')),
+          const PopupMenuItem(
+            value: 'view.zoomWindow',
+            child: Text('Zoom Window'),
+          ),
           const PopupMenuDivider(),
           if (selected)
             const PopupMenuItem(value: 'edit.erase', child: Text('Erase'))
