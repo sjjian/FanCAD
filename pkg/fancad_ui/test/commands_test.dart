@@ -233,6 +233,32 @@ void main() {
       expect(document.entityCount, 6);
     });
 
+    test('polar array copies around a centre', () async {
+      final id = await drawLine(10, 0, 12, 0);
+
+      final result = await run('edit.polarArray', {
+        'ids': [id],
+        'center': [0, 0],
+        'count': 4,
+        'fillAngle': 360,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 4);
+      final rotated = document.entities.whereType<LineEntity>().where(
+        (line) => line.id != id,
+      );
+      expect(
+        rotated.any(
+          (line) =>
+              line.start.x.abs() < 1e-9 &&
+              (line.start.y - 10).abs() < 1e-9 &&
+              (line.end.y - 12).abs() < 1e-9,
+        ),
+        isTrue,
+      );
+    });
+
     test('erase removes the selection', () async {
       final id = await drawLine(0, 0, 10, 0);
 
