@@ -1,0 +1,25 @@
+---
+description: FanCAD 通用协作准则
+alwaysApply: true
+---
+
+# Git 提交粒度
+
+一次提交只做一件事：一个功能、一次优化、或一个缺陷修复。不要把互不相关的改动揉进同一个 commit。
+
+- 新功能、重构、修 bug、改文档、改构建脚本，分开提交
+- 为修 bug 顺手改的格式化、重命名、无关清理，单独成提交或先还原
+- 提交说明写清「为什么」，用 `add` / `update` / `fix` 对应功能、增强、修复
+- 未明确要求时不要提交；要求提交时按上述粒度拆开，不要合成一个大包
+
+```text
+# ❌ BAD — 多件事捆在一起
+Fix file dialog, vendor LibreDWG, and restyle the title bar
+
+# ✅ GOOD — 一件事一次提交
+fix: open drawings with a modal dialog on hidden title bars
+
+add: compile LibreDWG 0.13.3 as a static library from the submodule
+
+update: tighten trackpad zoom so the cursor stays the anchor
+```
