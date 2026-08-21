@@ -18,6 +18,7 @@ class DrawCommands {
     _rectangle(),
     _circle(),
     _circleDiameter(),
+    _circle3p(),
     _arc(),
     _polygon(),
     _point(),
@@ -299,6 +300,66 @@ class DrawCommands {
           radius: radius,
         ),
       ]);
+    },
+  );
+
+  static CommandDescriptor _circle3p() => CommandDescriptor(
+    id: 'draw.circle3p',
+    title: 'Circle (3 Points)',
+    category: _category,
+    aliases: const ['c3p'],
+    description:
+        'Draws the unique circle that passes through three specified points.',
+    params: const [
+      ParamSpec.point('first', description: 'First point on the circle'),
+      ParamSpec.point('second', description: 'Second point on the circle'),
+      ParamSpec.point('third', description: 'Third point on the circle'),
+    ],
+    handler: (context) async {
+      final first = await context.resolvePoint(
+        'first',
+        'CIRCLE  Specify first point on circle:',
+      );
+      context.input
+        ..setMarkers([first])
+        ..setPreview((cursor) => [OverlayLine(first, cursor)]);
+      final second = await context.resolvePoint(
+        'second',
+        'CIRCLE  Specify second point on circle:',
+        basePoint: first,
+      );
+
+      context.input
+        ..setMarkers([first, second])
+        ..setPreview((cursor) {
+          final circle = Construct.circleThrough(first, second, cursor);
+          if (circle == null) return [OverlayLine(first, second)];
+          return [
+            OverlayArc(center: circle.center, radius: circle.radius),
+            OverlayLine(first, second, dashed: true),
+          ];
+        });
+      final third = await context.resolvePoint(
+        'third',
+        'CIRCLE  Specify third point on circle:',
+        basePoint: second,
+      );
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+
+      final circle = Construct.circleThrough(
+        first,
+        second,
+        third,
+        props: EntityProps(layer: context.document.currentLayer),
+      );
+      if (circle == null) {
+        return const CommandResult.failed(
+          'The three points are collinear, so they do not define a circle.',
+        );
+      }
+      return _commit(context, 'Circle', [circle]);
     },
   );
 

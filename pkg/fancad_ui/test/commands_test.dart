@@ -105,6 +105,31 @@ void main() {
       expect(polyline.closed, isTrue);
     });
 
+    test('circle through three points uses the circumcircle', () async {
+      final result = await run('draw.circle3p', {
+        'first': [1, 0],
+        'second': [0, 1],
+        'third': [-1, 0],
+      });
+
+      expect(result.status, CommandStatus.ok);
+      final circle = document.entities.first as CircleEntity;
+      expect(circle.center.x, closeTo(0, 1e-9));
+      expect(circle.center.y, closeTo(0, 1e-9));
+      expect(circle.radius, closeTo(1, 1e-9));
+    });
+
+    test('circle through three collinear points is refused', () async {
+      final result = await run('draw.circle3p', {
+        'first': [0, 0],
+        'second': [5, 0],
+        'third': [10, 0],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entityCount, 0);
+    });
+
     test('arc through three collinear points falls back to a line', () async {
       final result = await run('draw.arc', {
         'start': [0, 0],

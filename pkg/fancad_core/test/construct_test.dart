@@ -56,6 +56,32 @@ void main() {
     });
   });
 
+  group('circleThrough', () {
+    test('finds the circumcircle of three points', () {
+      final circle = Construct.circleThrough(
+        const Vec2(1, 0),
+        const Vec2(0, 1),
+        const Vec2(-1, 0),
+      );
+
+      expect(circle, isNotNull);
+      expect(circle!.center.x, closeTo(0, 1e-9));
+      expect(circle.center.y, closeTo(0, 1e-9));
+      expect(circle.radius, closeTo(1, 1e-9));
+    });
+
+    test('returns null for collinear points', () {
+      expect(
+        Construct.circleThrough(
+          const Vec2(0, 0),
+          const Vec2(1, 1),
+          const Vec2(2, 2),
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('polygon', () {
     test('inscribes vertices on the circle', () {
       final hexagon = Construct.polygon(

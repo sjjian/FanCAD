@@ -63,6 +63,27 @@ class Construct {
     );
   }
 
+  /// The unique circle through three points, or null when they are collinear.
+  ///
+  /// CIRCLE 3P is this construction: the circumcentre is already the arc-through
+  /// result, and dropping the sweep leaves the full circle.
+  static CircleEntity? circleThrough(
+    Vec2 first,
+    Vec2 second,
+    Vec2 third, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    final arc = arcThrough(first, second, third);
+    if (arc == null) return null;
+    return CircleEntity(
+      id: id,
+      props: props,
+      center: arc.center,
+      radius: arc.radius,
+    );
+  }
+
   /// A closed rectangular polyline through two opposite corners.
   static PolylineEntity? rectangle(
     Vec2 first,
