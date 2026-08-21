@@ -318,6 +318,10 @@ class _WorkbenchState extends ConsumerState<Workbench> {
           workspace.setOrtho(!workspace.snapEngine.tracking.ortho),
       const SingleActivator(LogicalKeyboardKey.f10): () =>
           workspace.setPolar(!workspace.snapEngine.tracking.polar),
+      const SingleActivator(LogicalKeyboardKey.f7): () {
+        final tab = workspace.active;
+        tab?.setShowGrid(!tab.showGrid);
+      },
     };
   }
 }
