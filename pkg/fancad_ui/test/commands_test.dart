@@ -325,6 +325,33 @@ void main() {
       expect((document.entity(vertical)! as LineEntity).start.y, closeTo(2, 1e-9));
     });
 
+    test('break splits a line at a point', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.break', {
+        'target': id,
+        'first': [4, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      expect((document.entity(id)! as LineEntity).end.x, closeTo(4, 1e-9));
+    });
+
+    test('break removes the portion between two points', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.break', {
+        'target': id,
+        'first': [2, 0],
+        'second': [8, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      expect((document.entity(id)! as LineEntity).end.x, closeTo(2, 1e-9));
+    });
+
     test('extend lengthens a line to a boundary', () async {
       final target = await drawLine(0, 0, 5, 0);
       final boundary = await drawLine(10, -5, 10, 5);

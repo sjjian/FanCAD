@@ -417,6 +417,50 @@ void main() {
     });
   });
 
+  group('breakLine', () {
+    test('splits a line at one interior point', () {
+      final pieces = Construct.breakLine(
+        line(0, 0, 10, 0),
+        const Vec2(4, 0),
+      );
+
+      expect(pieces, isNotNull);
+      expect(pieces, hasLength(2));
+      expect(pieces![0].end.x, closeTo(4, 1e-9));
+      expect(pieces[1].start.x, closeTo(4, 1e-9));
+      expect(pieces[1].end.x, closeTo(10, 1e-9));
+    });
+
+    test('removes the span between two points', () {
+      final pieces = Construct.breakLine(
+        line(0, 0, 10, 0),
+        const Vec2(2, 0),
+        const Vec2(8, 0),
+      );
+
+      expect(pieces, hasLength(2));
+      expect(pieces![0].end.x, closeTo(2, 1e-9));
+      expect(pieces[1].start.x, closeTo(8, 1e-9));
+    });
+
+    test('erases the line when both ends are the break points', () {
+      final pieces = Construct.breakLine(
+        line(0, 0, 10, 0),
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+      );
+
+      expect(pieces, isEmpty);
+    });
+
+    test('returns null when a single point is an endpoint', () {
+      expect(
+        Construct.breakLine(line(0, 0, 10, 0), const Vec2(0, 0)),
+        isNull,
+      );
+    });
+  });
+
   group('measurements', () {
     test('reports the length of each supported type', () {
       expect(Construct.lengthOf(line(0, 0, 3, 4)), closeTo(5, 1e-9));

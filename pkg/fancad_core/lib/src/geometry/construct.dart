@@ -505,6 +505,61 @@ class Construct {
     );
   }
 
+  /// Breaks [line] at [first], or removes the span between [first] and [second].
+  ///
+  /// One point splits the line in two. Two points drop the middle and leave
+  /// the outer remnants (either of which may vanish if a point is an endpoint).
+  /// Returns null when the break would not change the line; an empty list when
+  /// the whole line is removed.
+  static List<LineEntity>? breakLine(
+    LineEntity line,
+    Vec2 first, [
+    Vec2? second,
+  ]) {
+    final along = line.end - line.start;
+    final lengthSquared = along.lengthSquared;
+    if (lengthSquared < 1e-20) return null;
+
+    double param(Vec2 point) =>
+        ((point - line.start).dot(along) / lengthSquared).clamp(0.0, 1.0);
+
+    var t1 = param(first);
+    var t2 = second == null ? t1 : param(second);
+    if (t1 > t2) {
+      final swap = t1;
+      t1 = t2;
+      t2 = swap;
+    }
+
+    final pieces = <LineEntity>[];
+    if (t1 > 1e-9) {
+      pieces.add(
+        LineEntity(
+          id: line.id,
+          props: line.props,
+          start: line.start,
+          end: line.start + along * t1,
+        ),
+      );
+    }
+    if (t2 < 1 - 1e-9) {
+      pieces.add(
+        LineEntity(
+          id: pieces.isEmpty ? line.id : 0,
+          props: line.props,
+          start: line.start + along * t2,
+          end: line.end,
+        ),
+      );
+    }
+    if (pieces.length == 1 &&
+        pieces.first.start.distanceTo(line.start) < 1e-12 &&
+        pieces.first.end.distanceTo(line.end) < 1e-12) {
+      return null;
+    }
+    return pieces;
+  }
+
   /// Direction from the corner along the side of [line] that [pick] sits on.
   static Vec2? _filletKeepDir(LineEntity line, Vec2 corner, Vec2 pick) {
     final along = line.end - line.start;

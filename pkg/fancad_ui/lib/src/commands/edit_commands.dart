@@ -25,6 +25,7 @@ class EditCommands {
     _extend(),
     _fillet(),
     _chamfer(),
+    _break(),
     _explode(),
     _join(),
     _undo(),
@@ -797,6 +798,111 @@ class EditCommands {
                   '${dist2.toStringAsFixed(4)}.',
         data: {
           'ids': [result.first.id, result.second.id, ...committed.change.added],
+        },
+        transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _break() => CommandDescriptor(
+    id: 'edit.break',
+    title: 'Break',
+    category: _category,
+    aliases: const ['br', 'break'],
+    description:
+        'Splits a line at a point, or removes the portion between two points. '
+        'Omit the second point to only split.',
+    params: const [
+      ParamSpec(
+        name: 'target',
+        type: ParamType.entity,
+        description: 'The line to break',
+        required: false,
+      ),
+      ParamSpec.point('first', description: 'First break point'),
+      ParamSpec(
+        name: 'second',
+        type: ParamType.point,
+        description: 'Second break point; omit to split at the first',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final supplied = context.args.integer('target');
+      final int targetId;
+      if (supplied != null) {
+        targetId = supplied;
+      } else {
+        context.selection.clear();
+        final picked = await context.input.selection(
+          'BREAK  Select a line:',
+          useExistingSelection: false,
+          single: true,
+        );
+        if (picked.isEmpty) return const CommandResult.cancelled();
+        targetId = picked.first;
+      }
+
+      final target = context.document.entity(targetId);
+      if (target is! LineEntity) {
+        return const CommandResult.failed(
+          'Break currently supports lines only.',
+        );
+      }
+
+      final first = await context.resolvePoint(
+        'first',
+        'BREAK  Specify first break point:',
+      );
+      context.input
+        ..setMarkers([first])
+        ..setPreview((cursor) => [OverlayLine(first, cursor)]);
+      final second = context.args.point('second') ??
+          (context.input.isInteractive
+              ? await context.input.pointOrNull(
+                  'BREAK  Specify second break point (Escape to split):',
+                )
+              : null);
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+
+      final pieces = Construct.breakLine(target, first, second);
+      if (pieces == null) {
+        return const CommandResult.failed(
+          'The break point is at an end of the line, so nothing changed.',
+        );
+      }
+
+      final committed = context.edit('Break', (transaction) {
+        if (pieces.isEmpty) {
+          transaction.erase(targetId);
+          return;
+        }
+        transaction.modify(pieces.first);
+        if (pieces.length > 1) transaction.add(pieces[1]);
+      });
+      if (committed == null) {
+        return const CommandResult.failed(
+          'Nothing was broken; the line may be on a locked layer.',
+        );
+      }
+      context.selection.replace([
+        if (pieces.isNotEmpty) pieces.first.id,
+        ...committed.change.added,
+      ]);
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: pieces.isEmpty
+            ? 'Break: the line was removed.'
+            : pieces.length == 1
+            ? 'Break: one remnant remains.'
+            : 'Break: the line was split.',
+        data: {
+          'ids': [
+            if (pieces.isNotEmpty) pieces.first.id,
+            ...committed.change.added,
+          ],
         },
         transaction: committed,
       );
