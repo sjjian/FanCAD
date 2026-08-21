@@ -320,7 +320,9 @@ class StatusBar extends StatelessWidget {
             label: 'GRID',
             isOn: tab?.showGrid ?? false,
             tooltip: 'Reference grid (F7)',
-            onPressed: () => tab?.setShowGrid(!tab.showGrid),
+            onPressed: () {
+              if (tab != null) workspace.setShowGrid(!tab.showGrid);
+            },
           ),
           const Spacer(),
           if (tab != null) ...[

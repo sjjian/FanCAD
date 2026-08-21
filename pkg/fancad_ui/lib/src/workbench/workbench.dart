@@ -320,7 +320,7 @@ class _WorkbenchState extends ConsumerState<Workbench> {
           workspace.setPolar(!workspace.snapEngine.tracking.polar),
       const SingleActivator(LogicalKeyboardKey.f7): () {
         final tab = workspace.active;
-        tab?.setShowGrid(!tab.showGrid);
+        if (tab != null) workspace.setShowGrid(!tab.showGrid);
       },
     };
   }

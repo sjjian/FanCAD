@@ -107,8 +107,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   List<DocumentTab> get tabs => List.unmodifiable(_tabs);
   int get activeIndex => _activeIndex;
 
-  DocumentTab? get active =>
-      _activeIndex >= 0 && _activeIndex < _tabs.length
+  DocumentTab? get active => _activeIndex >= 0 && _activeIndex < _tabs.length
       ? _tabs[_activeIndex]
       : null;
 
@@ -292,7 +291,8 @@ class Workspace extends ChangeNotifier implements CommandServices {
     }
     // File commands that create or replace the document must not leave a
     // leftover blank tab behind if the user cancels the picker.
-    final tab = active ??
+    final tab =
+        active ??
         (_isHostFileCommand(descriptor.id)
             ? DocumentTab(
                 session: DocumentSession(
@@ -436,9 +436,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   Set<SnapMode> _restoreSnapModes() {
     final saved = settings.getStringList(SettingsKeys.snapModes);
     if (saved.isEmpty) return {...SnapMode.defaults};
-    return {
-      for (final name in saved) ?SnapMode.parse(name),
-    };
+    return {for (final name in saved) ?SnapMode.parse(name)};
   }
 
   void toggleSnapMode(SnapMode mode) {
@@ -466,10 +464,14 @@ class Workspace extends ChangeNotifier implements CommandServices {
     notifyListeners();
   }
 
+  void setShowGrid(bool value) {
+    settings.set(SettingsKeys.showGrid, value);
+    active?.setShowGrid(value);
+    notifyListeners();
+  }
+
   void setPolarIncrement(double radians) {
-    snapEngine.tracking = snapEngine.tracking.copyWith(
-      polarIncrement: radians,
-    );
+    snapEngine.tracking = snapEngine.tracking.copyWith(polarIncrement: radians);
     settings.set(SettingsKeys.polarIncrement, radians);
     notifyListeners();
   }
