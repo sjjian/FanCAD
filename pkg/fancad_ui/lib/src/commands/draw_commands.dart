@@ -23,6 +23,7 @@ class DrawCommands {
     _polygon(),
     _point(),
     _divide(),
+    _measure(),
     _text(),
     _hatch(),
   ];
@@ -587,6 +588,82 @@ class DrawCommands {
       }
       final layer = context.document.currentLayer;
       return _commit(context, 'Divide', [
+        for (final at in points)
+          PointEntity(
+            id: 0,
+            props: EntityProps(layer: layer),
+            position: at,
+          ),
+      ]);
+    },
+  );
+
+  static CommandDescriptor _measure() => CommandDescriptor(
+    id: 'draw.measure',
+    title: 'Measure',
+    category: _category,
+    aliases: const ['me', 'measure'],
+    description:
+        'Places point markers at a fixed spacing along a line, starting from '
+        'the end nearer the pick. Endpoints are not marked.',
+    params: const [
+      ParamSpec(
+        name: 'target',
+        type: ParamType.entity,
+        description: 'The line to measure',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'spacing',
+        type: ParamType.distance,
+        description: 'Distance between markers',
+        min: 1e-9,
+      ),
+      ParamSpec(
+        name: 'pick',
+        type: ParamType.point,
+        description: 'A point nearer the end to start from',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final supplied = context.args.integer('target');
+      final int targetId;
+      if (supplied != null) {
+        targetId = supplied;
+      } else {
+        context.selection.clear();
+        final picked = await context.input.selection(
+          'MEASURE  Select a line:',
+          useExistingSelection: false,
+          single: true,
+        );
+        if (picked.isEmpty) return const CommandResult.cancelled();
+        targetId = picked.first;
+      }
+
+      final target = context.document.entity(targetId);
+      if (target is! LineEntity) {
+        return const CommandResult.failed(
+          'Measure currently supports lines only.',
+        );
+      }
+
+      final pick = context.args.point('pick') ?? target.start;
+      final spacing = context.args.number('spacing') ??
+          await context.input.number('MEASURE  Specify segment length:');
+      if (spacing <= 0) {
+        return const CommandResult.failed('The spacing must be positive.');
+      }
+
+      final points = Construct.measureLine(target, spacing, pick);
+      if (points.isEmpty) {
+        return const CommandResult.failed(
+          'The line is shorter than the spacing, so nothing was placed.',
+        );
+      }
+      final layer = context.document.currentLayer;
+      return _commit(context, 'Measure', [
         for (final at in points)
           PointEntity(
             id: 0,

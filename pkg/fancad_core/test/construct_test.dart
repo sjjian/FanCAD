@@ -475,6 +475,40 @@ void main() {
     });
   });
 
+  group('measureLine', () {
+    test('spaces points from the nearer end', () {
+      final points = Construct.measureLine(
+        line(0, 0, 10, 0),
+        3,
+        const Vec2(0, 0),
+      );
+
+      expect(points, hasLength(3));
+      expect(points[0].x, closeTo(3, 1e-9));
+      expect(points[1].x, closeTo(6, 1e-9));
+      expect(points[2].x, closeTo(9, 1e-9));
+    });
+
+    test('starts from the opposite end when that is nearer the pick', () {
+      final points = Construct.measureLine(
+        line(0, 0, 10, 0),
+        4,
+        const Vec2(10, 0),
+      );
+
+      expect(points, hasLength(2));
+      expect(points[0].x, closeTo(6, 1e-9));
+      expect(points[1].x, closeTo(2, 1e-9));
+    });
+
+    test('skips a line shorter than the spacing', () {
+      expect(
+        Construct.measureLine(line(0, 0, 10, 0), 10, const Vec2(0, 0)),
+        isEmpty,
+      );
+    });
+  });
+
   group('lengthenLine', () {
     test('sets a new total length on the picked end', () {
       final longer = Construct.lengthenLine(

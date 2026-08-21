@@ -607,6 +607,24 @@ class Construct {
     ];
   }
 
+  /// Points spaced [spacing] apart along [line], starting from the end nearer [pick].
+  ///
+  /// MEASURE never marks the endpoints: the first node is one interval in, and
+  /// a leftover shorter than [spacing] at the far end is left unmarked.
+  static List<Vec2> measureLine(LineEntity line, double spacing, Vec2 pick) {
+    if (spacing <= 0 || !spacing.isFinite) return const [];
+    final fromStart =
+        pick.distanceSquaredTo(line.start) <= pick.distanceSquaredTo(line.end);
+    final origin = fromStart ? line.start : line.end;
+    final dest = fromStart ? line.end : line.start;
+    final length = origin.distanceTo(dest);
+    if (length <= spacing) return const [];
+    return [
+      for (var i = 1; i * spacing < length - 1e-12; i++)
+        origin.lerp(dest, i * spacing / length),
+    ];
+  }
+
   /// Lengthens or shortens [line] by moving the endpoint nearer [pick].
   ///
   /// [total] sets the finished length. [delta] is added to the current length

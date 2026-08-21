@@ -158,6 +158,19 @@ void main() {
       expect(points[1].position.x, closeTo(8, 1e-9));
     });
 
+    test('measure places points at a fixed spacing', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('draw.measure', {
+        'target': id,
+        'spacing': 3,
+        'pick': [0, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entities.whereType<PointEntity>(), hasLength(3));
+    });
+
     test('new geometry lands on the current layer', () async {
       await run('layer.new', {'name': 'WALLS'});
       await drawLine(0, 0, 1, 0);
