@@ -338,9 +338,17 @@ class StatusBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: FanCadTokens.space4),
-            Text(
-              '${tab.document.entityCount} objects',
-              style: tokens.labelStyle,
+            Tooltip(
+              message: 'Select all',
+              child: InkWell(
+                onTap: tab.document.entityCount == 0
+                    ? null
+                    : () => workspace.run('select.all'),
+                child: Text(
+                  '${tab.document.entityCount} objects',
+                  style: tokens.labelStyle,
+                ),
+              ),
             ),
             const SizedBox(width: FanCadTokens.space4),
             // The zoom and draw-call readout is here because it is the fastest
