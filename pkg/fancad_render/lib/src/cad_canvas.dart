@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'overlay.dart';
 import 'palette.dart';
@@ -76,19 +77,22 @@ class CadCanvasState extends State<CadCanvas> {
     cache: _tessellation,
   );
   final TessellationCache _tessellation = TessellationCache();
-  final ScenePainter _scenePainter = ScenePainter(
-    paragraphs: ParagraphCache(),
-  );
+  final ScenePainter _scenePainter = ScenePainter(paragraphs: ParagraphCache());
   late final OverlayPainter _overlayPainter = OverlayPainter(
     theme: widget.overlayTheme,
   );
 
   final _SceneHolder _holder = _SceneHolder();
 
-  /// Set while the middle mouse button is held, which is the pan gesture every
-  /// CAD user already has in their fingers.
+  /// Set while a mouse-button pan is in flight (middle, right, or space+left).
   int? _panPointer;
   Offset _lastPanPosition = Offset.zero;
+
+  /// Trackpad two-finger / pinch gesture. On macOS these arrive as
+  /// [PointerPanZoomEvent]s, not [PointerScrollEvent]s — which is why a
+  /// wheel-only handler looks like "the canvas cannot zoom".
+  int? _trackpadPointer;
+  double _lastTrackpadScale = 1;
 
   @override
   void initState() {
@@ -151,14 +155,20 @@ class CadCanvasState extends State<CadCanvas> {
         }
 
         return Listener(
+          behavior: HitTestBehavior.opaque,
           onPointerDown: _handlePointerDown,
           onPointerMove: _handlePointerMove,
           onPointerUp: _handlePointerUp,
           onPointerHover: _handlePointerHover,
           onPointerSignal: _handlePointerSignal,
-          onPointerCancel: (_) => _endPan(),
+          onPointerPanZoomStart: _handlePanZoomStart,
+          onPointerPanZoomUpdate: _handlePanZoomUpdate,
+          onPointerPanZoomEnd: _handlePanZoomEnd,
+          onPointerCancel: (_) => _endAllGestures(),
           child: MouseRegion(
-            cursor: SystemMouseCursors.precise,
+            cursor: _panPointer != null || _trackpadPointer != null
+                ? SystemMouseCursors.grabbing
+                : SystemMouseCursors.precise,
             onExit: (_) => widget.inputHandler?.onPointerExit(),
             child: ColoredBox(
               color: widget.background,
@@ -205,7 +215,7 @@ class CadCanvasState extends State<CadCanvas> {
   }
 
   void _handlePointerDown(PointerDownEvent event) {
-    if (event.buttons & kMiddleMouseButton != 0) {
+    if (_isPanButton(event)) {
       _panPointer = event.pointer;
       _lastPanPosition = event.localPosition;
       widget.controller.beginInteraction();
@@ -241,6 +251,34 @@ class CadCanvasState extends State<CadCanvas> {
     widget.controller.endInteraction();
   }
 
+  void _endTrackpad() {
+    if (_trackpadPointer == null) return;
+    _trackpadPointer = null;
+    _lastTrackpadScale = 1;
+    widget.controller.endInteraction();
+  }
+
+  void _endAllGestures() {
+    _endPan();
+    _endTrackpad();
+  }
+
+  /// Middle button is the CAD default; right-drag and space+left cover a
+  /// Mac trackpad, which has no middle button.
+  bool _isPanButton(PointerEvent event) {
+    if (event.buttons & kMiddleMouseButton != 0) return true;
+    if (event.buttons & kSecondaryMouseButton != 0) return true;
+    return event.buttons & kPrimaryMouseButton != 0 && _spaceHeld;
+  }
+
+  bool get _spaceHeld => HardwareKeyboard.instance.logicalKeysPressed.contains(
+    LogicalKeyboardKey.space,
+  );
+
+  bool get _zoomModifierHeld =>
+      HardwareKeyboard.instance.isMetaPressed ||
+      HardwareKeyboard.instance.isControlPressed;
+
   void _handlePointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) return;
     // A notch of the wheel is one zoom step, anchored at the cursor. The
@@ -248,10 +286,39 @@ class CadCanvasState extends State<CadCanvas> {
     // scale.
     final steps = -event.scrollDelta.dy / 120;
     if (steps == 0) return;
-    widget.controller.zoomBy(
-      _zoomStep(steps),
-      event.localPosition,
-    );
+    widget.controller.zoomBy(_zoomStep(steps), event.localPosition);
+  }
+
+  void _handlePanZoomStart(PointerPanZoomStartEvent event) {
+    _trackpadPointer = event.pointer;
+    _lastTrackpadScale = 1;
+    widget.controller.beginInteraction();
+  }
+
+  void _handlePanZoomUpdate(PointerPanZoomUpdateEvent event) {
+    if (_trackpadPointer != event.pointer) return;
+    final scale = event.scale;
+    if (scale > 0 && scale != _lastTrackpadScale) {
+      widget.controller.zoomBy(scale / _lastTrackpadScale, event.localPosition);
+      _lastTrackpadScale = scale;
+    }
+    final delta = event.localPanDelta;
+    if (delta == Offset.zero) return;
+    // Two-finger drag pans. Cmd/Ctrl + scroll still zooms, matching a
+    // mouse wheel, for people who never pinch.
+    if (_zoomModifierHeld && scale == _lastTrackpadScale) {
+      final steps = -delta.dy / 40;
+      if (steps != 0) {
+        widget.controller.zoomBy(_zoomStep(steps), event.localPosition);
+      }
+      return;
+    }
+    widget.controller.panBy(delta);
+  }
+
+  void _handlePanZoomEnd(PointerPanZoomEndEvent event) {
+    if (_trackpadPointer != event.pointer) return;
+    _endTrackpad();
   }
 
   static double _zoomStep(double steps) {

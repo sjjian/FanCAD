@@ -197,9 +197,9 @@ class _WorkbenchState extends ConsumerState<Workbench> {
                     if (paletteOpen)
                       CommandPalette(
                         workspace: workspace,
-                        onDismiss: () => ref
-                            .read(paletteOpenProvider.notifier)
-                            .state = false,
+                        onDismiss: () =>
+                            ref.read(paletteOpenProvider.notifier).state =
+                                false,
                       ),
                     Positioned(
                       right: FanCadTokens.space4,
@@ -221,9 +221,7 @@ class _WorkbenchState extends ConsumerState<Workbench> {
     final tab = workspace.active;
     if (tab == null) {
       return EmptyWorkspace(
-        recentFiles: workspace.settings.getStringList(
-          SettingsKeys.recentFiles,
-        ),
+        recentFiles: workspace.settings.getStringList(SettingsKeys.recentFiles),
         onOpenRecent: (path) =>
             workspace.run('file.open', args: {'path': path}),
         onOpen: () => workspace.run('file.open'),
@@ -257,8 +255,12 @@ class _WorkbenchState extends ConsumerState<Workbench> {
   };
 
   Map<ShortcutActivator, VoidCallback> _shortcuts(Workspace workspace) => {
-    const SingleActivator(LogicalKeyboardKey.keyP, control: true, shift: true):
-        () => ref.read(paletteOpenProvider.notifier).update((open) => !open),
+    const SingleActivator(
+      LogicalKeyboardKey.keyP,
+      control: true,
+      shift: true,
+    ): () =>
+        ref.read(paletteOpenProvider.notifier).update((open) => !open),
     const SingleActivator(LogicalKeyboardKey.keyB, control: true): ref
         .read(sidebarProvider.notifier)
         .toggle,
@@ -268,20 +270,61 @@ class _WorkbenchState extends ConsumerState<Workbench> {
         workspace.run('file.open'),
     const SingleActivator(LogicalKeyboardKey.keyS, control: true): () =>
         workspace.run('file.save'),
-    const SingleActivator(LogicalKeyboardKey.keyS, control: true, shift: true):
-        () => workspace.run('file.saveAs'),
+    const SingleActivator(
+      LogicalKeyboardKey.keyS,
+      control: true,
+      shift: true,
+    ): () =>
+        workspace.run('file.saveAs'),
     const SingleActivator(LogicalKeyboardKey.keyW, control: true): () =>
         workspace.run('file.close'),
     const SingleActivator(LogicalKeyboardKey.keyZ, control: true): () =>
         workspace.run('edit.undo'),
-    const SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true):
-        () => workspace.run('edit.redo'),
+    const SingleActivator(
+      LogicalKeyboardKey.keyZ,
+      control: true,
+      shift: true,
+    ): () =>
+        workspace.run('edit.redo'),
     const SingleActivator(LogicalKeyboardKey.keyA, control: true): () =>
         workspace.run('select.all'),
-    const SingleActivator(LogicalKeyboardKey.keyA, control: true, shift: true):
-        () => workspace.run('select.none'),
-    const SingleActivator(LogicalKeyboardKey.keyE, control: true, shift: true):
-        () => workspace.run('view.zoomExtents'),
+    const SingleActivator(
+      LogicalKeyboardKey.keyA,
+      control: true,
+      shift: true,
+    ): () =>
+        workspace.run('select.none'),
+    const SingleActivator(
+      LogicalKeyboardKey.keyE,
+      control: true,
+      shift: true,
+    ): () =>
+        workspace.run('view.zoomExtents'),
+    const SingleActivator(
+      LogicalKeyboardKey.keyE,
+      meta: true,
+      shift: true,
+    ): () =>
+        workspace.run('view.zoomExtents'),
+    const SingleActivator(LogicalKeyboardKey.equal, control: true): () =>
+        workspace.run('view.zoomIn'),
+    const SingleActivator(LogicalKeyboardKey.equal, meta: true): () =>
+        workspace.run('view.zoomIn'),
+    const SingleActivator(LogicalKeyboardKey.minus, control: true): () =>
+        workspace.run('view.zoomOut'),
+    const SingleActivator(LogicalKeyboardKey.minus, meta: true): () =>
+        workspace.run('view.zoomOut'),
+    const SingleActivator(LogicalKeyboardKey.numpadAdd, control: true): () =>
+        workspace.run('view.zoomIn'),
+    const SingleActivator(LogicalKeyboardKey.numpadAdd, meta: true): () =>
+        workspace.run('view.zoomIn'),
+    const SingleActivator(
+      LogicalKeyboardKey.numpadSubtract,
+      control: true,
+    ): () =>
+        workspace.run('view.zoomOut'),
+    const SingleActivator(LogicalKeyboardKey.numpadSubtract, meta: true): () =>
+        workspace.run('view.zoomOut'),
   };
 }
 
@@ -370,9 +413,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
         const PanelHeader(title: 'Commands'),
         Container(
           height: 28,
-          padding: const EdgeInsets.symmetric(
-            horizontal: FanCadTokens.space3,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
           decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: tokens.border)),
           ),
@@ -463,9 +504,7 @@ class _Notices extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      notice.isError
-                          ? Icons.error_outline
-                          : Icons.info_outline,
+                      notice.isError ? Icons.error_outline : Icons.info_outline,
                       size: 14,
                       color: notice.isError ? tokens.danger : tokens.accent,
                     ),
