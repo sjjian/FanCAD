@@ -380,6 +380,111 @@ class Construct {
     return null;
   }
 
+  /// Rounds the corner between two lines, or trims them to a sharp join.
+  ///
+  /// [pick1] and [pick2] choose which side of the intersection to keep on each
+  /// line, which is what makes an X yield one of four possible fillets rather
+  /// than an arbitrary one. A [radius] of zero is FILLET with R=0: the lines
+  /// meet at the corner and no arc is created.
+  static FilletResult? filletLines(
+    LineEntity first,
+    LineEntity second,
+    double radius,
+    Vec2 pick1,
+    Vec2 pick2, {
+    EntityProps? arcProps,
+  }) {
+    if (radius < 0 || !radius.isFinite) return null;
+    final corner = Intersect.lineLine(
+      first.start,
+      first.end,
+      second.start,
+      second.end,
+    );
+    if (corner == null) return null;
+
+    final keep1 = _filletKeepDir(first, corner, pick1);
+    final keep2 = _filletKeepDir(second, corner, pick2);
+    if (keep1 == null || keep2 == null) return null;
+
+    final bisector = keep1 + keep2;
+    if (bisector.lengthSquared < 1e-16) return null;
+
+    final alpha = math.acos(keep1.dot(keep2).clamp(-1.0, 1.0));
+    if (alpha < 1e-9) return null;
+
+    if (radius == 0) {
+      return FilletResult(
+        first: _filletArm(first, corner, keep1, corner),
+        second: _filletArm(second, corner, keep2, corner),
+      );
+    }
+
+    final half = alpha / 2;
+    final offset = radius / math.tan(half);
+    if (!offset.isFinite || offset < 0) return null;
+
+    final tangent1 = corner + keep1 * offset;
+    final tangent2 = corner + keep2 * offset;
+    final center = corner + bisector.normalized() * (radius / math.sin(half));
+
+    // The arc must face the corner: the shorter sweep whose interior points
+    // toward the intersection, not the long way around the circle.
+    final startAngle = (tangent1 - center).angle;
+    final endAngle = (tangent2 - center).angle;
+    final viaAngle = (corner - center).angle;
+    final forward =
+        angularSweep(startAngle, viaAngle) <=
+        angularSweep(startAngle, endAngle);
+
+    return FilletResult(
+      first: _filletArm(first, corner, keep1, tangent1),
+      second: _filletArm(second, corner, keep2, tangent2),
+      arc: ArcEntity(
+        id: 0,
+        props: arcProps ?? first.props,
+        center: center,
+        radius: radius,
+        startAngle: forward ? startAngle : endAngle,
+        endAngle: forward ? endAngle : startAngle,
+      ),
+    );
+  }
+
+  /// Direction from the corner along the side of [line] that [pick] sits on.
+  static Vec2? _filletKeepDir(LineEntity line, Vec2 corner, Vec2 pick) {
+    final along = line.end - line.start;
+    final denom = along.lengthSquared;
+    if (denom < 1e-20) return null;
+    final projected = line.start + along * ((pick - line.start).dot(along) / denom);
+    var dir = projected - corner;
+    if (dir.lengthSquared < 1e-20) {
+      final startLen = line.start.distanceSquaredTo(corner);
+      final endLen = line.end.distanceSquaredTo(corner);
+      dir = startLen >= endLen ? line.start - corner : line.end - corner;
+    }
+    if (dir.lengthSquared < 1e-20) return null;
+    return dir.normalized();
+  }
+
+  /// The remnant of [line] from [tangent] out along [keepDir].
+  static LineEntity _filletArm(
+    LineEntity line,
+    Vec2 corner,
+    Vec2 keepDir,
+    Vec2 tangent,
+  ) {
+    final startDot = (line.start - corner).dot(keepDir);
+    final endDot = (line.end - corner).dot(keepDir);
+    final far = startDot >= endDot ? line.start : line.end;
+    return LineEntity(
+      id: line.id,
+      props: line.props,
+      start: tangent,
+      end: far.distanceTo(tangent) < 1e-12 ? tangent + keepDir : far,
+    );
+  }
+
   /// A copy of [line] spanning the parameter range `[from, to]`.
   static LineEntity resizedLine(LineEntity line, double from, double to) {
     final direction = line.end - line.start;
@@ -502,4 +607,17 @@ class Construct {
     }
     return sum / 2;
   }
+}
+
+/// The two trimmed lines and optional joining arc produced by [Construct.filletLines].
+class FilletResult {
+  const FilletResult({
+    required this.first,
+    required this.second,
+    this.arc,
+  });
+
+  final LineEntity first;
+  final LineEntity second;
+  final ArcEntity? arc;
 }

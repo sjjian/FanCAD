@@ -23,6 +23,7 @@ class EditCommands {
     _offset(),
     _trim(),
     _extend(),
+    _fillet(),
     _explode(),
     _join(),
     _undo(),
@@ -513,6 +514,139 @@ class EditCommands {
       ParamSpec.point('pick', description: 'A point on the line'),
     ],
     handler: (context) => _trimOrExtend(context, extend: true),
+  );
+
+  static CommandDescriptor _fillet() => CommandDescriptor(
+    id: 'edit.fillet',
+    title: 'Fillet',
+    category: _category,
+    aliases: const ['f', 'fillet'],
+    icon: 'fillet',
+    description:
+        'Rounds the corner between two lines with an arc of a given radius. '
+        'A radius of zero trims or extends the lines to a sharp corner.',
+    params: const [
+      ParamSpec(
+        name: 'radius',
+        type: ParamType.distance,
+        description: 'Fillet radius; 0 for a sharp corner',
+        required: false,
+        min: 0,
+      ),
+      ParamSpec(
+        name: 'first',
+        type: ParamType.entity,
+        description: 'First line',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'second',
+        type: ParamType.entity,
+        description: 'Second line',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'pick1',
+        type: ParamType.point,
+        description: 'Point on the first line that marks the side to keep',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'pick2',
+        type: ParamType.point,
+        description: 'Point on the second line that marks the side to keep',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final radius = context.args.number('radius') ??
+          await context.input.number(
+            'FILLET  Specify fillet radius:',
+            defaultValue: 0,
+          );
+      if (radius < 0) {
+        return const CommandResult.failed('The radius cannot be negative.');
+      }
+
+      final firstId = context.args.integer('first');
+      final secondId = context.args.integer('second');
+      final int id1;
+      final int id2;
+      if (firstId != null && secondId != null) {
+        id1 = firstId;
+        id2 = secondId;
+      } else {
+        context.selection.clear();
+        final firstPick = await context.input.selection(
+          'FILLET  Select first line:',
+          useExistingSelection: false,
+          single: true,
+        );
+        if (firstPick.isEmpty) return const CommandResult.cancelled();
+        id1 = firstPick.first;
+        final secondPick = await context.input.selection(
+          'FILLET  Select second line:',
+          useExistingSelection: false,
+          single: true,
+        );
+        if (secondPick.isEmpty) return const CommandResult.cancelled();
+        id2 = secondPick.first;
+      }
+
+      final first = context.document.entity(id1);
+      final second = context.document.entity(id2);
+      if (first is! LineEntity || second is! LineEntity) {
+        return const CommandResult.failed(
+          'Fillet currently supports lines only.',
+        );
+      }
+      if (id1 == id2) {
+        return const CommandResult.failed('Select two different lines.');
+      }
+
+      final pick1 = context.args.point('pick1') ?? first.midpoint;
+      final pick2 = context.args.point('pick2') ?? second.midpoint;
+      final result = Construct.filletLines(
+        first,
+        second,
+        radius,
+        pick1,
+        pick2,
+        arcProps: EntityProps(layer: context.document.currentLayer),
+      );
+      if (result == null) {
+        return const CommandResult.failed(
+          'The two lines are parallel or do not form a filletable corner.',
+        );
+      }
+
+      final committed = context.edit('Fillet', (transaction) {
+        transaction
+          ..modify(result.first)
+          ..modify(result.second);
+        if (result.arc != null) transaction.add(result.arc!);
+      });
+      if (committed == null) {
+        return const CommandResult.failed(
+          'Nothing was filleted; the lines may be on a locked layer.',
+        );
+      }
+      context.selection.replace([
+        result.first.id,
+        result.second.id,
+        ...committed.change.added,
+      ]);
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: result.arc == null
+            ? 'Fillet: lines meet at a sharp corner.'
+            : 'Fillet: radius ${radius.toStringAsFixed(4)}.',
+        data: {
+          'ids': [result.first.id, result.second.id, ...committed.change.added],
+        },
+        transaction: committed,
+      );
+    },
   );
 
   static CommandDescriptor _explode() => CommandDescriptor(

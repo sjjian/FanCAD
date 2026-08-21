@@ -280,6 +280,90 @@ void main() {
     });
   });
 
+  group('filletLines', () {
+    test('rounds an L-corner with a quarter-circle', () {
+      final result = Construct.filletLines(
+        line(0, 10, 0, 0),
+        line(0, 0, 10, 0),
+        2,
+        const Vec2(0, 5),
+        const Vec2(5, 0),
+      );
+
+      expect(result, isNotNull);
+      expect(result!.first.start.x, closeTo(0, 1e-9));
+      expect(result.first.start.y, closeTo(2, 1e-9));
+      expect(result.first.end, const Vec2(0, 10));
+      expect(result.second.start.x, closeTo(2, 1e-9));
+      expect(result.second.start.y, closeTo(0, 1e-9));
+      expect(result.second.end, const Vec2(10, 0));
+      expect(result.arc, isNotNull);
+      expect(result.arc!.center.x, closeTo(2, 1e-9));
+      expect(result.arc!.center.y, closeTo(2, 1e-9));
+      expect(result.arc!.radius, closeTo(2, 1e-9));
+      expect(result.arc!.sweep, closeTo(math.pi / 2, 1e-9));
+    });
+
+    test('extends short arms to the tangent points', () {
+      final result = Construct.filletLines(
+        line(0, 10, 0, 5),
+        line(5, 0, 10, 0),
+        2,
+        const Vec2(0, 8),
+        const Vec2(8, 0),
+      );
+
+      expect(result, isNotNull);
+      expect(result!.first.start.y, closeTo(2, 1e-9));
+      expect(result.second.start.x, closeTo(2, 1e-9));
+      expect(result.arc!.center.x, closeTo(2, 1e-9));
+    });
+
+    test('a zero radius trims to a sharp corner', () {
+      final result = Construct.filletLines(
+        line(0, 10, 0, 2),
+        line(2, 0, 10, 0),
+        0,
+        const Vec2(0, 6),
+        const Vec2(6, 0),
+      );
+
+      expect(result, isNotNull);
+      expect(result!.arc, isNull);
+      expect(result.first.start, const Vec2(0, 0));
+      expect(result.second.start, const Vec2(0, 0));
+    });
+
+    test('pick points choose which quadrant of a crossing', () {
+      final result = Construct.filletLines(
+        line(-10, 0, 10, 0),
+        line(0, -10, 0, 10),
+        2,
+        const Vec2(5, 0),
+        const Vec2(0, 5),
+      );
+
+      expect(result, isNotNull);
+      expect(result!.arc!.center.x, closeTo(2, 1e-9));
+      expect(result.arc!.center.y, closeTo(2, 1e-9));
+      expect(result.first.end.x, closeTo(10, 1e-9));
+      expect(result.second.end.y, closeTo(10, 1e-9));
+    });
+
+    test('returns null for parallel lines', () {
+      expect(
+        Construct.filletLines(
+          line(0, 0, 10, 0),
+          line(0, 2, 10, 2),
+          1,
+          const Vec2(5, 0),
+          const Vec2(5, 2),
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('measurements', () {
     test('reports the length of each supported type', () {
       expect(Construct.lengthOf(line(0, 0, 3, 4)), closeTo(5, 1e-9));

@@ -271,6 +271,42 @@ void main() {
       expect((document.entity(target)! as LineEntity).end.x, closeTo(4, 1e-9));
     });
 
+    test('fillet rounds two lines and adds an arc', () async {
+      final vertical = await drawLine(0, 10, 0, 0);
+      final horizontal = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.fillet', {
+        'radius': 2,
+        'first': vertical,
+        'second': horizontal,
+        'pick1': [0, 5],
+        'pick2': [5, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 3);
+      final trimmed = document.entity(vertical)! as LineEntity;
+      expect(trimmed.start.y, closeTo(2, 1e-9));
+      expect(document.entities.whereType<ArcEntity>(), hasLength(1));
+    });
+
+    test('fillet with zero radius makes a sharp corner', () async {
+      final vertical = await drawLine(0, 10, 0, 2);
+      final horizontal = await drawLine(2, 0, 10, 0);
+
+      final result = await run('edit.fillet', {
+        'radius': 0,
+        'first': vertical,
+        'second': horizontal,
+        'pick1': [0, 6],
+        'pick2': [6, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      expect((document.entity(vertical)! as LineEntity).start, const Vec2(0, 0));
+    });
+
     test('extend lengthens a line to a boundary', () async {
       final target = await drawLine(0, 0, 5, 0);
       final boundary = await drawLine(10, -5, 10, 5);
