@@ -1,3 +1,4 @@
+import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -288,15 +289,10 @@ class StatusBar extends StatelessWidget {
           const SizedBox(width: FanCadTokens.space3),
           SizedBox(
             width: 190,
-            child: Text(
-              cursor == null
-                  ? '—'
-                  : '${cursor.x.toStringAsFixed(3)}, '
-                        '${cursor.y.toStringAsFixed(3)}',
-              style: tokens.monoStyle.copyWith(
-                fontSize: 11,
-                color: tokens.textMuted,
-              ),
+            child: _CoordinateReadout(
+              cursor: cursor,
+              tokens: tokens,
+              onCopy: (text) => workspace.notify('Copied $text'),
             ),
           ),
           StatusToggle(
@@ -390,6 +386,44 @@ class _CurrentLayerIndicator extends StatelessWidget {
           const SizedBox(width: FanCadTokens.space2),
           Text(name, style: tokens.labelStyle.copyWith(color: tokens.text)),
         ],
+      ),
+    );
+  }
+}
+
+/// The live cursor, clickable so a measured point can leave the window.
+class _CoordinateReadout extends StatelessWidget {
+  const _CoordinateReadout({
+    required this.cursor,
+    required this.tokens,
+    required this.onCopy,
+  });
+
+  final Vec2? cursor;
+  final FanCadTokens tokens;
+  final ValueChanged<String> onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = cursor == null
+        ? null
+        : '${cursor!.x.toStringAsFixed(3)}, ${cursor!.y.toStringAsFixed(3)}';
+    return Tooltip(
+      message: text == null ? 'Cursor' : 'Copy $text',
+      child: InkWell(
+        onTap: text == null
+            ? null
+            : () {
+                Clipboard.setData(ClipboardData(text: text));
+                onCopy(text);
+              },
+        child: Text(
+          text ?? '—',
+          style: tokens.monoStyle.copyWith(
+            fontSize: 11,
+            color: tokens.textMuted,
+          ),
+        ),
       ),
     );
   }
