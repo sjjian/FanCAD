@@ -312,6 +312,12 @@ class _WorkbenchState extends ConsumerState<Workbench> {
         LogicalKeyboardKey.numpadSubtract,
         () => workspace.run('view.zoomOut'),
       ),
+      const SingleActivator(LogicalKeyboardKey.f3): () =>
+          workspace.setSnapEnabled(!workspace.snapEngine.enabled),
+      const SingleActivator(LogicalKeyboardKey.f8): () =>
+          workspace.setOrtho(!workspace.snapEngine.tracking.ortho),
+      const SingleActivator(LogicalKeyboardKey.f10): () =>
+          workspace.setPolar(!workspace.snapEngine.tracking.polar),
     };
   }
 }

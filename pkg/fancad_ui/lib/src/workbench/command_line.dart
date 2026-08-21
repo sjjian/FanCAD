@@ -301,19 +301,19 @@ class StatusBar extends StatelessWidget {
           StatusToggle(
             label: 'SNAP',
             isOn: snap.enabled,
-            tooltip: 'Object snapping',
+            tooltip: 'Object snapping (F3)',
             onPressed: () => workspace.setSnapEnabled(!snap.enabled),
           ),
           StatusToggle(
             label: 'ORTHO',
             isOn: snap.tracking.ortho,
-            tooltip: 'Constrain to horizontal and vertical',
+            tooltip: 'Constrain to horizontal and vertical (F8)',
             onPressed: () => workspace.setOrtho(!snap.tracking.ortho),
           ),
           StatusToggle(
             label: 'POLAR',
             isOn: snap.tracking.polar,
-            tooltip: 'Polar angle tracking',
+            tooltip: 'Polar angle tracking (F10)',
             onPressed: () => workspace.setPolar(!snap.tracking.polar),
           ),
           StatusToggle(
@@ -324,10 +324,7 @@ class StatusBar extends StatelessWidget {
           ),
           const Spacer(),
           if (tab != null) ...[
-            Text(
-              '${tab.selection.length} selected',
-              style: tokens.labelStyle,
-            ),
+            Text('${tab.selection.length} selected', style: tokens.labelStyle),
             const SizedBox(width: FanCadTokens.space4),
             Text(
               '${tab.document.entityCount} objects',
