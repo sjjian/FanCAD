@@ -369,23 +369,26 @@ class _CurrentLayerIndicator extends StatelessWidget {
     final name = tab.document.currentLayer;
     final layer = tab.document.layer(name);
     return Tooltip(
-      message: 'Current layer',
-      child: Row(
-        children: [
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(
-              color: layer == null
-                  ? tokens.textFaint
-                  : (tokens.isDark ? AciPalette.dark : AciPalette.light)
-                        .colorOf(layer.color),
-              borderRadius: BorderRadius.circular(2),
+      message: 'Show the Layers panel',
+      child: InkWell(
+        onTap: () => workspace.revealPanel('layers'),
+        child: Row(
+          children: [
+            Container(
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(
+                color: layer == null
+                    ? tokens.textFaint
+                    : (tokens.isDark ? AciPalette.dark : AciPalette.light)
+                          .colorOf(layer.color),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          const SizedBox(width: FanCadTokens.space2),
-          Text(name, style: tokens.labelStyle.copyWith(color: tokens.text)),
-        ],
+            const SizedBox(width: FanCadTokens.space2),
+            Text(name, style: tokens.labelStyle.copyWith(color: tokens.text)),
+          ],
+        ),
       ),
     );
   }
