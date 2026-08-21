@@ -378,6 +378,32 @@ void main() {
       expect((document.entity(id)! as LineEntity).end.x, closeTo(2, 1e-9));
     });
 
+    test('lengthen sets the total length from the picked end', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.lengthen', {
+        'target': id,
+        'pick': [10, 0],
+        'total': 16,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as LineEntity).end.x, closeTo(16, 1e-9));
+    });
+
+    test('lengthen accepts a signed delta', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.lengthen', {
+        'target': id,
+        'pick': [0, 0],
+        'delta': -2,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as LineEntity).start.x, closeTo(2, 1e-9));
+    });
+
     test('extend lengthens a line to a boundary', () async {
       final target = await drawLine(0, 0, 5, 0);
       final boundary = await drawLine(10, -5, 10, 5);

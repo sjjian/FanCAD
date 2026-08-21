@@ -461,6 +461,42 @@ void main() {
     });
   });
 
+  group('lengthenLine', () {
+    test('sets a new total length on the picked end', () {
+      final longer = Construct.lengthenLine(
+        line(0, 0, 10, 0),
+        const Vec2(10, 0),
+        total: 15,
+      );
+
+      expect(longer, isNotNull);
+      expect(longer!.start, const Vec2(0, 0));
+      expect(longer.end.x, closeTo(15, 1e-9));
+    });
+
+    test('a negative delta shortens the nearer end', () {
+      final shorter = Construct.lengthenLine(
+        line(0, 0, 10, 0),
+        const Vec2(0, 0),
+        delta: -3,
+      );
+
+      expect(shorter!.start.x, closeTo(3, 1e-9));
+      expect(shorter.end, const Vec2(10, 0));
+    });
+
+    test('refuses a non-positive result', () {
+      expect(
+        Construct.lengthenLine(
+          line(0, 0, 10, 0),
+          const Vec2(10, 0),
+          total: 0,
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('measurements', () {
     test('reports the length of each supported type', () {
       expect(Construct.lengthOf(line(0, 0, 3, 4)), closeTo(5, 1e-9));

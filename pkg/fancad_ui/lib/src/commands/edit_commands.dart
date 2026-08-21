@@ -27,6 +27,7 @@ class EditCommands {
     _fillet(),
     _chamfer(),
     _break(),
+    _lengthen(),
     _explode(),
     _join(),
     _undo(),
@@ -1035,6 +1036,130 @@ class EditCommands {
             ...committed.change.added,
           ],
         },
+        transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _lengthen() => CommandDescriptor(
+    id: 'edit.lengthen',
+    title: 'Lengthen',
+    category: _category,
+    aliases: const ['len', 'lengthen'],
+    description:
+        'Changes the length of a line by moving the endpoint you pick. Supply '
+        'a total length, or a signed delta to add to the current length.',
+    params: const [
+      ParamSpec(
+        name: 'target',
+        type: ParamType.entity,
+        description: 'The line to lengthen',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'pick',
+        type: ParamType.point,
+        description: 'A point nearer the end that should move',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'total',
+        type: ParamType.distance,
+        description: 'Finished length',
+        required: false,
+        min: 1e-9,
+      ),
+      ParamSpec(
+        name: 'delta',
+        type: ParamType.distance,
+        description: 'Length to add; negative shortens',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final supplied = context.args.integer('target');
+      final int targetId;
+      if (supplied != null) {
+        targetId = supplied;
+      } else {
+        context.selection.clear();
+        final picked = await context.input.selection(
+          'LENGTHEN  Select a line:',
+          useExistingSelection: false,
+          single: true,
+        );
+        if (picked.isEmpty) return const CommandResult.cancelled();
+        targetId = picked.first;
+      }
+
+      final target = context.document.entity(targetId);
+      if (target is! LineEntity) {
+        return const CommandResult.failed(
+          'Lengthen currently supports lines only.',
+        );
+      }
+
+      final pick = context.args.point('pick') ??
+          await context.input.point(
+            'LENGTHEN  Specify a point nearer the end to change:',
+          );
+
+      var total = context.args.number('total');
+      final delta = context.args.number('delta');
+      if (total == null && delta == null) {
+        context.input
+          ..setMarkers([
+            pick.distanceSquaredTo(target.start) <=
+                    pick.distanceSquaredTo(target.end)
+                ? target.end
+                : target.start,
+          ])
+          ..setPreview((cursor) {
+            final length = (pick.distanceSquaredTo(target.start) <=
+                    pick.distanceSquaredTo(target.end)
+                ? target.end.distanceTo(cursor)
+                : target.start.distanceTo(cursor));
+            final preview = Construct.lengthenLine(target, pick, total: length);
+            if (preview == null) return const <OverlayShape>[];
+            return [OverlayLine(preview.start, preview.end, dashed: false)];
+          });
+        total = await context.input.number(
+          'LENGTHEN  Specify total length:',
+          defaultValue: target.length,
+        );
+        context.input
+          ..setPreview(null)
+          ..setMarkers(const []);
+      }
+
+      final result = Construct.lengthenLine(
+        target,
+        pick,
+        total: total,
+        delta: delta,
+      );
+      if (result == null) {
+        return const CommandResult.failed(
+          'The resulting length must be positive.',
+        );
+      }
+      if (result.start.distanceTo(target.start) < 1e-12 &&
+          result.end.distanceTo(target.end) < 1e-12) {
+        return const CommandResult.cancelled('The length is unchanged.');
+      }
+
+      final committed = context.edit('Lengthen', (transaction) {
+        transaction.modify(result);
+      });
+      if (committed == null) {
+        return const CommandResult.failed(
+          'Nothing was lengthened; the line may be on a locked layer.',
+        );
+      }
+      context.selection.replace([targetId]);
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Lengthen: ${result.length.toStringAsFixed(4)}.',
         transaction: committed,
       );
     },

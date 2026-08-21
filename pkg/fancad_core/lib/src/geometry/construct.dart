@@ -594,6 +594,29 @@ class Construct {
     );
   }
 
+  /// Lengthens or shortens [line] by moving the endpoint nearer [pick].
+  ///
+  /// [total] sets the finished length. [delta] is added to the current length
+  /// when [total] is omitted. The far end stays put, which is how LENGTHEN
+  /// feels when you click the end you want to drag.
+  static LineEntity? lengthenLine(
+    LineEntity line,
+    Vec2 pick, {
+    double? delta,
+    double? total,
+  }) {
+    final current = line.length;
+    if (current < 1e-12) return null;
+    final target = total ?? (current + (delta ?? 0));
+    if (target <= 1e-12 || !target.isFinite) return null;
+    final scale = target / current;
+    final moveStart =
+        pick.distanceSquaredTo(line.start) <= pick.distanceSquaredTo(line.end);
+    return moveStart
+        ? resizedLine(line, 1 - scale, 1)
+        : resizedLine(line, 0, scale);
+  }
+
   /// A copy of [line] spanning the parameter range `[from, to]`.
   static LineEntity resizedLine(LineEntity line, double from, double to) {
     final direction = line.end - line.start;
