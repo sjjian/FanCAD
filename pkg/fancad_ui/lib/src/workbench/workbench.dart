@@ -254,78 +254,66 @@ class _WorkbenchState extends ConsumerState<Workbench> {
     _ => const SizedBox.shrink(),
   };
 
-  Map<ShortcutActivator, VoidCallback> _shortcuts(Workspace workspace) => {
-    const SingleActivator(
-      LogicalKeyboardKey.keyP,
-      control: true,
-      shift: true,
-    ): () =>
-        ref.read(paletteOpenProvider.notifier).update((open) => !open),
-    const SingleActivator(LogicalKeyboardKey.keyB, control: true): ref
-        .read(sidebarProvider.notifier)
-        .toggle,
-    const SingleActivator(LogicalKeyboardKey.keyN, control: true): () =>
-        workspace.run('file.new'),
-    const SingleActivator(LogicalKeyboardKey.keyO, control: true): () =>
-        workspace.run('file.open'),
-    const SingleActivator(LogicalKeyboardKey.keyS, control: true): () =>
-        workspace.run('file.save'),
-    const SingleActivator(
-      LogicalKeyboardKey.keyS,
-      control: true,
-      shift: true,
-    ): () =>
-        workspace.run('file.saveAs'),
-    const SingleActivator(LogicalKeyboardKey.keyW, control: true): () =>
-        workspace.run('file.close'),
-    const SingleActivator(LogicalKeyboardKey.keyZ, control: true): () =>
-        workspace.run('edit.undo'),
-    const SingleActivator(
-      LogicalKeyboardKey.keyZ,
-      control: true,
-      shift: true,
-    ): () =>
-        workspace.run('edit.redo'),
-    const SingleActivator(LogicalKeyboardKey.keyA, control: true): () =>
-        workspace.run('select.all'),
-    const SingleActivator(
-      LogicalKeyboardKey.keyA,
-      control: true,
-      shift: true,
-    ): () =>
-        workspace.run('select.none'),
-    const SingleActivator(
-      LogicalKeyboardKey.keyE,
-      control: true,
-      shift: true,
-    ): () =>
-        workspace.run('view.zoomExtents'),
-    const SingleActivator(
-      LogicalKeyboardKey.keyE,
-      meta: true,
-      shift: true,
-    ): () =>
-        workspace.run('view.zoomExtents'),
-    const SingleActivator(LogicalKeyboardKey.equal, control: true): () =>
-        workspace.run('view.zoomIn'),
-    const SingleActivator(LogicalKeyboardKey.equal, meta: true): () =>
-        workspace.run('view.zoomIn'),
-    const SingleActivator(LogicalKeyboardKey.minus, control: true): () =>
-        workspace.run('view.zoomOut'),
-    const SingleActivator(LogicalKeyboardKey.minus, meta: true): () =>
-        workspace.run('view.zoomOut'),
-    const SingleActivator(LogicalKeyboardKey.numpadAdd, control: true): () =>
-        workspace.run('view.zoomIn'),
-    const SingleActivator(LogicalKeyboardKey.numpadAdd, meta: true): () =>
-        workspace.run('view.zoomIn'),
-    const SingleActivator(
-      LogicalKeyboardKey.numpadSubtract,
-      control: true,
-    ): () =>
-        workspace.run('view.zoomOut'),
-    const SingleActivator(LogicalKeyboardKey.numpadSubtract, meta: true): () =>
-        workspace.run('view.zoomOut'),
-  };
+  Map<ShortcutActivator, VoidCallback> _shortcuts(Workspace workspace) {
+    // Control and Meta are both bound because Flutter treats them as
+    // different keys: Ctrl+S on Windows/Linux, ⌘S on a Mac.
+    Map<ShortcutActivator, VoidCallback> chord(
+      LogicalKeyboardKey key,
+      VoidCallback run, {
+      bool shift = false,
+    }) => {
+      SingleActivator(key, control: true, shift: shift): run,
+      SingleActivator(key, meta: true, shift: shift): run,
+    };
+
+    return {
+      ...chord(
+        LogicalKeyboardKey.keyP,
+        () => ref.read(paletteOpenProvider.notifier).update((open) => !open),
+        shift: true,
+      ),
+      ...chord(
+        LogicalKeyboardKey.keyB,
+        ref.read(sidebarProvider.notifier).toggle,
+      ),
+      ...chord(LogicalKeyboardKey.keyN, () => workspace.run('file.new')),
+      ...chord(LogicalKeyboardKey.keyO, () => workspace.run('file.open')),
+      ...chord(LogicalKeyboardKey.keyS, () => workspace.run('file.save')),
+      ...chord(
+        LogicalKeyboardKey.keyS,
+        () => workspace.run('file.saveAs'),
+        shift: true,
+      ),
+      ...chord(LogicalKeyboardKey.keyW, () => workspace.run('file.close')),
+      ...chord(LogicalKeyboardKey.keyZ, () => workspace.run('edit.undo')),
+      ...chord(
+        LogicalKeyboardKey.keyZ,
+        () => workspace.run('edit.redo'),
+        shift: true,
+      ),
+      ...chord(LogicalKeyboardKey.keyA, () => workspace.run('select.all')),
+      ...chord(
+        LogicalKeyboardKey.keyA,
+        () => workspace.run('select.none'),
+        shift: true,
+      ),
+      ...chord(
+        LogicalKeyboardKey.keyE,
+        () => workspace.run('view.zoomExtents'),
+        shift: true,
+      ),
+      ...chord(LogicalKeyboardKey.equal, () => workspace.run('view.zoomIn')),
+      ...chord(LogicalKeyboardKey.minus, () => workspace.run('view.zoomOut')),
+      ...chord(
+        LogicalKeyboardKey.numpadAdd,
+        () => workspace.run('view.zoomIn'),
+      ),
+      ...chord(
+        LogicalKeyboardKey.numpadSubtract,
+        () => workspace.run('view.zoomOut'),
+      ),
+    };
+  }
 }
 
 /// The vertical strip of view switchers on the left.
