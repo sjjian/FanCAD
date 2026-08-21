@@ -312,6 +312,7 @@ class _WorkbenchState extends ConsumerState<Workbench> {
         LogicalKeyboardKey.numpadSubtract,
         () => workspace.run('view.zoomOut'),
       ),
+      const SingleActivator(LogicalKeyboardKey.f2): _commandFocus.requestFocus,
       const SingleActivator(LogicalKeyboardKey.home): () =>
           workspace.run('view.zoomExtents'),
       const SingleActivator(LogicalKeyboardKey.f3): () =>
