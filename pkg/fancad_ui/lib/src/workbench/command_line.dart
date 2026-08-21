@@ -323,7 +323,20 @@ class StatusBar extends StatelessWidget {
           ),
           const Spacer(),
           if (tab != null) ...[
-            Text('${tab.selection.length} selected', style: tokens.labelStyle),
+            Tooltip(
+              message: tab.selection.isEmpty
+                  ? 'Nothing selected'
+                  : 'Zoom to selection',
+              child: InkWell(
+                onTap: tab.selection.isEmpty
+                    ? null
+                    : () => workspace.run('view.zoomSelected'),
+                child: Text(
+                  '${tab.selection.length} selected',
+                  style: tokens.labelStyle,
+                ),
+              ),
+            ),
             const SizedBox(width: FanCadTokens.space4),
             Text(
               '${tab.document.entityCount} objects',
