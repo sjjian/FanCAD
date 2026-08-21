@@ -143,6 +143,7 @@ class SettingsKeys {
   static const String showGrid = 'viewport.showGrid';
   static const String recentFiles = 'files.recent';
   static const String useImportCache = 'files.useImportCache';
+  static const String snapEnabled = 'draft.snapEnabled';
   static const String snapModes = 'draft.snapModes';
   static const String orthoMode = 'draft.ortho';
   static const String polarMode = 'draft.polar';

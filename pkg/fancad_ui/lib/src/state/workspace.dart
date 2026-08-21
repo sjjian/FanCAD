@@ -67,6 +67,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
     CommandLineController? commandLine,
   }) : commandLine = commandLine ?? CommandLineController() {
     snapEngine = SnapEngine(
+      enabled: settings.getBool(SettingsKeys.snapEnabled, fallback: true),
       modes: _restoreSnapModes(),
       tracking: TrackingSettings(
         ortho: settings.getBool(SettingsKeys.orthoMode),
@@ -449,6 +450,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   void setSnapEnabled(bool value) {
     snapEngine.enabled = value;
+    settings.set(SettingsKeys.snapEnabled, value);
     notifyListeners();
   }
 
