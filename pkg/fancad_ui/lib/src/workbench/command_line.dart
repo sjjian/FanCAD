@@ -345,9 +345,15 @@ class StatusBar extends StatelessWidget {
             const SizedBox(width: FanCadTokens.space4),
             // The zoom and draw-call readout is here because it is the fastest
             // way to tell a slow drawing from a slow renderer.
-            Text(
-              '1:${(1 / tab.viewport.viewport.scale).toStringAsFixed(2)}',
-              style: tokens.labelStyle,
+            Tooltip(
+              message: 'Zoom extents',
+              child: InkWell(
+                onTap: () => workspace.run('view.zoomExtents'),
+                child: Text(
+                  '1:${(1 / tab.viewport.viewport.scale).toStringAsFixed(2)}',
+                  style: tokens.labelStyle,
+                ),
+              ),
             ),
             if (scene != null) ...[
               const SizedBox(width: FanCadTokens.space4),
