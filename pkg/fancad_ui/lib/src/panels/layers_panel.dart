@@ -1,0 +1,319 @@
+import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_render/fancad_render.dart';
+import 'package:flutter/material.dart';
+
+import '../state/workspace.dart';
+import '../theme/tokens.dart';
+import '../workbench/shell_widgets.dart';
+
+/// The layer manager.
+///
+/// Every mutation here goes through a command rather than touching the document,
+/// which is why toggling a layer off is undoable and why the same toggle is
+/// available to a plugin and to the AI. A panel that wrote directly to the model
+/// would be the one place the "single write path" rule leaked.
+class LayersPanel extends StatefulWidget {
+  const LayersPanel({super.key, required this.workspace});
+
+  final Workspace workspace;
+
+  @override
+  State<LayersPanel> createState() => _LayersPanelState();
+}
+
+class _LayersPanelState extends State<LayersPanel> {
+  String _filter = '';
+  final TextEditingController _filterController = TextEditingController();
+
+  @override
+  void dispose() {
+    _filterController.dispose();
+    super.dispose();
+  }
+
+  Workspace get _workspace => widget.workspace;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final tab = _workspace.active;
+    if (tab == null) {
+      // The header stays even with nothing to list, so a closed workspace looks
+      // empty rather than broken.
+      return const Column(
+        children: [
+          PanelHeader(title: 'Layers'),
+          Expanded(child: _Empty(message: 'Open a drawing to see its layers.')),
+        ],
+      );
+    }
+
+    final counts = <String, int>{};
+    for (final entity in tab.document.entities) {
+      counts.update(entity.props.layer, (n) => n + 1, ifAbsent: () => 1);
+    }
+    final layers = tab.document.layers.values.toList()
+      ..sort((a, b) => _compareLayerNames(a.name, b.name));
+    final visible = _filter.isEmpty
+        ? layers
+        : [
+            for (final layer in layers)
+              if (layer.name.toLowerCase().contains(_filter)) layer,
+          ];
+    final palette = tokens.isDark ? AciPalette.dark : AciPalette.light;
+
+    return Column(
+      children: [
+        PanelHeader(
+          title: 'Layers',
+          actions: [
+            ShellIconButton(
+              icon: Icons.add,
+              tooltip: 'New layer',
+              iconSize: 15,
+              onPressed: () => _workspace.run(
+                'layer.new',
+                args: {'name': _uniqueLayerName(tab.document)},
+              ),
+            ),
+            ShellIconButton(
+              icon: Icons.visibility_outlined,
+              tooltip: 'Show all layers',
+              iconSize: 15,
+              onPressed: () => _workspace.run('layer.showAll'),
+            ),
+          ],
+        ),
+        Container(
+          height: 28,
+          padding: const EdgeInsets.symmetric(
+            horizontal: FanCadTokens.space3,
+          ),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: tokens.border)),
+          ),
+          child: ShellTextField(
+            controller: _filterController,
+            hintText: 'Filter layers',
+            style: tokens.bodyStyle,
+            prefix: Padding(
+              padding: const EdgeInsets.only(right: FanCadTokens.space2),
+              child: Icon(Icons.search, size: 13, color: tokens.textFaint),
+            ),
+            onChanged: (value) =>
+                setState(() => _filter = value.trim().toLowerCase()),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: visible.length,
+            itemExtent: FanCadTokens.rowHeight,
+            itemBuilder: (context, index) {
+              final layer = visible[index];
+              return _LayerRow(
+                layer: layer,
+                color: palette.colorOf(layer.color),
+                count: counts[layer.name] ?? 0,
+                isCurrent: layer.name == tab.document.currentLayer,
+                onSetCurrent: () => _workspace.run(
+                  'layer.setCurrent',
+                  args: {'name': layer.name},
+                ),
+                onToggleVisible: () => _workspace.run(
+                  'layer.toggleVisible',
+                  args: {'name': layer.name},
+                ),
+                onToggleLock: () => _workspace.run(
+                  'layer.toggleLock',
+                  args: {'name': layer.name},
+                ),
+                onIsolate: () => _workspace.run(
+                  'layer.isolate',
+                  args: {'name': layer.name},
+                ),
+                onSelect: () => _workspace.run(
+                  'select.byLayer',
+                  args: {'layer': layer.name},
+                ),
+                onDelete: layer.name == '0'
+                    ? null
+                    : () => _workspace.run(
+                        'layer.delete',
+                        args: {'name': layer.name},
+                      ),
+              );
+            },
+          ),
+        ),
+        Container(
+          height: 22,
+          padding: const EdgeInsets.symmetric(
+            horizontal: FanCadTokens.space3,
+          ),
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: tokens.border)),
+          ),
+          child: Text(
+            '${layers.length} layers · current "${tab.document.currentLayer}"',
+            style: tokens.labelStyle,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Sorts numerically where names are numeric, which is what makes a drawing
+  /// with layers 1, 2 and 10 list in that order instead of 1, 10, 2.
+  static int _compareLayerNames(String a, String b) {
+    final numberA = int.tryParse(a);
+    final numberB = int.tryParse(b);
+    if (numberA != null && numberB != null) return numberA.compareTo(numberB);
+    return a.toLowerCase().compareTo(b.toLowerCase());
+  }
+
+  static String _uniqueLayerName(CadDocument document) {
+    var index = 1;
+    while (document.layer('Layer$index') != null) {
+      index++;
+    }
+    return 'Layer$index';
+  }
+}
+
+class _LayerRow extends StatefulWidget {
+  const _LayerRow({
+    required this.layer,
+    required this.color,
+    required this.count,
+    required this.isCurrent,
+    required this.onSetCurrent,
+    required this.onToggleVisible,
+    required this.onToggleLock,
+    required this.onIsolate,
+    required this.onSelect,
+    required this.onDelete,
+  });
+
+  final LayerDef layer;
+  final Color color;
+  final int count;
+  final bool isCurrent;
+  final VoidCallback onSetCurrent;
+  final VoidCallback onToggleVisible;
+  final VoidCallback onToggleLock;
+  final VoidCallback onIsolate;
+  final VoidCallback onSelect;
+  final VoidCallback? onDelete;
+
+  @override
+  State<_LayerRow> createState() => _LayerRowState();
+}
+
+class _LayerRowState extends State<_LayerRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final layer = widget.layer;
+    final dimmed = !layer.isEffectivelyVisible;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: ShellRow(
+        isSelected: widget.isCurrent,
+        onTap: widget.onSetCurrent,
+        onDoubleTap: widget.onIsolate,
+        padding: const EdgeInsets.only(left: FanCadTokens.space2, right: 2),
+        child: Row(
+          children: [
+            ShellIconButton(
+              icon: layer.visible
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              tooltip: layer.visible ? 'Turn layer off' : 'Turn layer on',
+              size: 20,
+              iconSize: 14,
+              isActive: layer.visible,
+              onPressed: widget.onToggleVisible,
+            ),
+            ShellIconButton(
+              icon: layer.locked ? Icons.lock_outline : Icons.lock_open,
+              tooltip: layer.locked ? 'Unlock layer' : 'Lock layer',
+              size: 20,
+              iconSize: 13,
+              isActive: layer.locked,
+              onPressed: widget.onToggleLock,
+            ),
+            const SizedBox(width: FanCadTokens.space1),
+            Container(
+              width: 11,
+              height: 11,
+              decoration: BoxDecoration(
+                color: widget.color.withValues(alpha: dimmed ? 0.35 : 1),
+                border: Border.all(color: tokens.border),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: FanCadTokens.space2),
+            Expanded(
+              child: Text(
+                layer.name,
+                style: tokens.bodyStyle.copyWith(
+                  color: dimmed ? tokens.textFaint : tokens.text,
+                  fontWeight: widget.isCurrent
+                      ? FontWeight.w600
+                      : FontWeight.w400,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Row actions appear on hover so that a list of forty layers is not
+            // a wall of icons.
+            if (_hovered) ...[
+              ShellIconButton(
+                icon: Icons.highlight_alt,
+                tooltip: 'Select objects on this layer',
+                size: 20,
+                iconSize: 13,
+                onPressed: widget.onSelect,
+              ),
+              ShellIconButton(
+                icon: Icons.delete_outline,
+                tooltip: 'Delete layer',
+                size: 20,
+                iconSize: 13,
+                enabled: widget.onDelete != null,
+                onPressed: widget.onDelete,
+              ),
+            ] else
+              Padding(
+                padding: const EdgeInsets.only(right: FanCadTokens.space2),
+                child: Text('${widget.count}', style: tokens.labelStyle),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Empty extends StatelessWidget {
+  const _Empty({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(FanCadTokens.space4),
+      child: Text(
+        message,
+        style: context.tokens.labelStyle,
+        textAlign: TextAlign.center,
+      ),
+    ),
+  );
+}

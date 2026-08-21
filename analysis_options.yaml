@@ -1,0 +1,25 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    # A CAD kernel does arithmetic on values that came from a binary file and
+    # from JavaScript. Implicit casts and raw types are exactly how a bad
+    # double ends up silently becoming geometry.
+    strict-casts: true
+    strict-raw-types: true
+    strict-inference: true
+  errors:
+    todo: ignore
+
+linter:
+  rules:
+    - avoid_slow_async_io
+    - cancel_subscriptions
+    - close_sinks
+    - directives_ordering
+    - prefer_final_locals
+    - prefer_relative_imports
+    - throw_in_finally
+    - unawaited_futures
+    - unnecessary_parenthesis
+    - use_string_buffers

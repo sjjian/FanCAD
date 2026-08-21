@@ -1,0 +1,18 @@
+name: fancad_ai
+description: "The AI layer: provider abstraction, the agent loop, document context building and change approval."
+version: 0.1.0
+publish_to: 'none'
+resolution: workspace
+
+environment:
+  sdk: ^3.10.3
+
+dependencies:
+  fancad_core:
+    path: ../fancad_core
+  http: ^1.2.2
+  meta: ^1.16.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^6.0.0

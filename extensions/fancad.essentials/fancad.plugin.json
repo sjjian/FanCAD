@@ -1,0 +1,138 @@
+{
+  "id": "fancad.essentials",
+  "name": "FanCAD Essentials",
+  "version": "0.1.0",
+  "publisher": "fancad",
+  "description": "Drafting helpers written in JavaScript against the public plugin API. Bundled as a proof that the API is complete enough to build real commands with.",
+  "main": "main.js",
+  "engines": { "fancad": "^0.1.0" },
+  "activationEvents": [
+    "onCommand:essentials.grid",
+    "onCommand:essentials.centerMark",
+    "onCommand:essentials.boundingBox",
+    "onCommand:essentials.report",
+    "onCommand:essentials.dividePolyline"
+  ],
+  "permissions": ["document.read", "document.write", "commands"],
+  "contributes": {
+    "commands": [
+      {
+        "id": "essentials.grid",
+        "title": "Draw Grid",
+        "category": "Essentials",
+        "description": "Draws a rectangular grid of construction lines. Give the lower-left corner, the spacing, and how many cells in each direction.",
+        "aliases": ["JSGRID"],
+        "risk": "edit",
+        "params": [
+          {
+            "name": "origin",
+            "type": "point",
+            "required": true,
+            "description": "Lower-left corner of the grid",
+            "prompt": "Grid origin:"
+          },
+          {
+            "name": "spacing",
+            "type": "number",
+            "required": true,
+            "description": "Distance between grid lines, in drawing units",
+            "min": 0,
+            "prompt": "Spacing:"
+          },
+          {
+            "name": "columns",
+            "type": "integer",
+            "required": false,
+            "default": 10,
+            "description": "Number of cells across. Defaults to 10."
+          },
+          {
+            "name": "rows",
+            "type": "integer",
+            "required": false,
+            "default": 10,
+            "description": "Number of cells up. Defaults to 10."
+          },
+          {
+            "name": "layer",
+            "type": "layer",
+            "required": false,
+            "description": "Layer for the grid lines. Defaults to the current layer."
+          }
+        ]
+      },
+      {
+        "id": "essentials.centerMark",
+        "title": "Center Marks",
+        "category": "Essentials",
+        "description": "Draws crosshair center marks on every selected circle and arc. With nothing selected, marks every circle in the drawing.",
+        "aliases": ["CM"],
+        "params": [
+          {
+            "name": "ids",
+            "type": "selection",
+            "required": false,
+            "description": "Circles and arcs to mark. Defaults to all of them."
+          },
+          {
+            "name": "oversize",
+            "type": "number",
+            "required": false,
+            "default": 1.25,
+            "description": "How far the marks extend past the radius, as a multiplier."
+          }
+        ]
+      },
+      {
+        "id": "essentials.boundingBox",
+        "title": "Bounding Box",
+        "category": "Essentials",
+        "description": "Draws a closed rectangle around the selection, or around the whole drawing when nothing is selected.",
+        "params": [
+          {
+            "name": "ids",
+            "type": "selection",
+            "required": false,
+            "description": "Entities to enclose. Defaults to everything."
+          },
+          {
+            "name": "margin",
+            "type": "number",
+            "required": false,
+            "default": 0,
+            "description": "Extra clearance around the box, in drawing units."
+          }
+        ]
+      },
+      {
+        "id": "essentials.report",
+        "title": "Drawing Report",
+        "category": "Essentials",
+        "description": "Summarises the drawing: entity counts by type, per-layer totals, extents and total line length. Read-only.",
+        "risk": "readOnly",
+        "params": []
+      },
+      {
+        "id": "essentials.dividePolyline",
+        "title": "Divide Polyline",
+        "category": "Essentials",
+        "description": "Places points at equal intervals along a polyline or line, the way AutoCAD's DIVIDE does.",
+        "params": [
+          {
+            "name": "target",
+            "type": "entity",
+            "required": true,
+            "description": "The line or polyline to divide"
+          },
+          {
+            "name": "segments",
+            "type": "integer",
+            "required": true,
+            "description": "Number of equal segments, at least 2",
+            "min": 2
+          }
+        ]
+      }
+    ]
+  }
+}

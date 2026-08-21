@@ -1,0 +1,56 @@
+{
+  "id": "fancad.re-editor",
+  "name": "Re-Editor",
+  "version": "0.1.0",
+  "publisher": "fancad",
+  "description": "A small extension source editor. Used by the AI authoring loop to open, inspect and rewrite plugin files without leaving FanCAD.",
+  "main": "main.js",
+  "engines": { "fancad": "^0.1.0" },
+  "activationEvents": [
+    "onCommand:reEditor.open",
+    "onCommand:reEditor.list"
+  ],
+  "permissions": ["commands", "ui"],
+  "contributes": {
+    "commands": [
+      {
+        "id": "reEditor.open",
+        "title": "Edit Extension File",
+        "category": "Re-Editor",
+        "description": "Opens one file from an extension in the built-in editor. The AI authoring loop uses this after writing a plugin so a person can review the generated source.",
+        "aliases": ["REEDIT"],
+        "risk": "readOnly",
+        "params": [
+          {
+            "name": "id",
+            "type": "text",
+            "required": true,
+            "description": "Extension id"
+          },
+          {
+            "name": "path",
+            "type": "text",
+            "required": false,
+            "default": "main.js",
+            "description": "Relative path inside the extension folder"
+          }
+        ]
+      },
+      {
+        "id": "reEditor.list",
+        "title": "List Extension Files",
+        "category": "Re-Editor",
+        "description": "Lists the files of an extension that the editor can open.",
+        "risk": "readOnly",
+        "params": [
+          {
+            "name": "id",
+            "type": "text",
+            "required": true,
+            "description": "Extension id"
+          }
+        ]
+      }
+    ]
+  }
+}

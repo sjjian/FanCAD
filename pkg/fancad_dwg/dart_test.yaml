@@ -1,0 +1,5 @@
+tags:
+  # Requires a build in which LibreDWG was found and linked. Skipped by
+  # default so a checkout without the library still has a green test run.
+  native:
+    skip: "Run with --tags native in a build that links LibreDWG"

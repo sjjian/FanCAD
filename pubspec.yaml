@@ -1,0 +1,56 @@
+name: fancad
+description: "FanCAD - an AI-native, plugin-everything 2D CAD application."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.10.3
+
+workspace:
+  - pkg/fancad_core
+  - pkg/fancad_dwg
+  - pkg/fancad_render
+  - pkg/fancad_ui
+  - pkg/fancad_plugin_host
+  - pkg/fancad_ai
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  fancad_core:
+    path: pkg/fancad_core
+  fancad_dwg:
+    path: pkg/fancad_dwg
+  fancad_render:
+    path: pkg/fancad_render
+  fancad_ui:
+    path: pkg/fancad_ui
+  fancad_plugin_host:
+    path: pkg/fancad_plugin_host
+  fancad_ai:
+    path: pkg/fancad_ai
+
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.6.1
+  window_manager: ^0.4.3
+  path: ^1.9.0
+  path_provider: ^2.1.5
+  file_selector: ^1.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+hooks:
+  user_defines:
+    fancad_dwg:
+      # Optional. Leave empty to compile the LibreDWG submodule in
+      # pkg/fancad_dwg/native/third_party/libredwg.
+      libredwg_root: ''
+
+flutter:
+  uses-material-design: true
+  assets:
+    - extensions/

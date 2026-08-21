@@ -1,0 +1,33 @@
+/// The FanCAD application shell: theme, state, built-in commands and workbench.
+library;
+
+export 'src/commands/builtins.dart';
+export 'src/commands/draw_commands.dart';
+export 'src/commands/edit_commands.dart';
+export 'src/commands/file_commands.dart';
+export 'src/commands/plugin_commands.dart';
+export 'src/commands/pro_commands.dart';
+export 'src/commands/query_commands.dart';
+export 'src/commands/view_commands.dart';
+export 'src/panels/ai_panel.dart';
+export 'src/panels/extensions_panel.dart';
+export 'src/panels/layers_panel.dart';
+export 'src/panels/plugin_editor_panel.dart';
+export 'src/panels/properties_panel.dart';
+export 'src/state/ai_controller.dart';
+export 'src/state/document_tab.dart';
+export 'src/state/plugin_bootstrap.dart';
+export 'src/state/plugin_delegate.dart';
+export 'src/state/providers.dart';
+export 'src/state/settings.dart';
+export 'src/state/workspace.dart';
+export 'src/theme/theme.dart';
+export 'src/theme/tokens.dart';
+export 'src/workbench/command_line.dart';
+export 'src/workbench/command_line_model.dart';
+export 'src/workbench/command_palette.dart';
+export 'src/workbench/document_view.dart';
+export 'src/workbench/interactive_input.dart';
+export 'src/workbench/shell_widgets.dart';
+export 'src/workbench/title_bar.dart';
+export 'src/workbench/workbench.dart';

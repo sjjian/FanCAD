@@ -1,0 +1,633 @@
+import 'dart:math' as math;
+
+import 'package:fancad_core/fancad_core.dart';
+
+/// The drawing commands.
+///
+/// Every one of these is written as a straight-line script against
+/// [CommandInput]. That is the whole trick: the same twenty lines are the
+/// interactive LINE command, the scriptable `draw.line` plugin API, and the
+/// `draw_line` tool the language model calls, with no branch anywhere for which
+/// caller it is serving.
+class DrawCommands {
+  const DrawCommands._();
+
+  static List<CommandDescriptor> all() => [
+    _line(),
+    _polyline(),
+    _rectangle(),
+    _circle(),
+    _circleDiameter(),
+    _arc(),
+    _polygon(),
+    _point(),
+    _text(),
+    _hatch(),
+  ];
+
+  static const String _category = 'Draw';
+
+  static CommandDescriptor _line() => CommandDescriptor(
+    id: 'draw.line',
+    title: 'Line',
+    category: _category,
+    aliases: const ['l', 'line'],
+    icon: 'line',
+    description:
+        'Draws one or more connected straight line segments. Supply start and '
+        'end to draw a single segment non-interactively.',
+    params: const [
+      ParamSpec.point('start', description: 'Start of the first segment'),
+      ParamSpec.point('end', description: 'End of the first segment'),
+    ],
+    handler: (context) async {
+      final layer = context.document.currentLayer;
+      final points = <Vec2>[];
+
+      // The first point has no rubber band to draw, so the preview only
+      // becomes interesting from the second prompt onwards.
+      final first = await context.input.pointOrNull(
+        'LINE  Specify first point:',
+      );
+      if (first == null) return const CommandResult.cancelled();
+      points.add(first);
+
+      final created = <CadEntity>[];
+      while (true) {
+        context.input
+          ..setMarkers(List.of(points))
+          ..setPreview(
+            (cursor) => [
+              if (points.length > 1) OverlayPolyline(List.of(points)),
+              OverlayLine(points.last, cursor),
+            ],
+          );
+        final next = await context.input.pointOrNull(
+          'LINE  Specify next point (Escape to finish):',
+        );
+        if (next == null) break;
+        if (next.distanceTo(points.last) > 1e-12) {
+          created.add(
+            LineEntity(
+              id: 0,
+              props: EntityProps(layer: layer),
+              start: points.last,
+              end: next,
+            ),
+          );
+        }
+        points.add(next);
+        // A non-interactive caller supplied exactly two points and has no way
+        // to answer a third prompt, so one segment is the whole command.
+        if (!context.input.isInteractive) break;
+      }
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+
+      if (created.isEmpty) return const CommandResult.cancelled();
+      return _commit(context, 'Line', created);
+    },
+  );
+
+  static CommandDescriptor _polyline() => CommandDescriptor(
+    id: 'draw.polyline',
+    title: 'Polyline',
+    category: _category,
+    aliases: const ['pl', 'pline', 'polyline'],
+    icon: 'polyline',
+    description:
+        'Draws a connected sequence of segments as one polyline entity. Pass a '
+        'points array to create it non-interactively.',
+    params: const [
+      ParamSpec(
+        name: 'points',
+        type: ParamType.json,
+        description: 'Array of [x, y] vertices',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'closed',
+        type: ParamType.boolean,
+        description: 'Whether to close the polyline back to its first vertex',
+        required: false,
+        defaultValue: false,
+      ),
+    ],
+    handler: (context) async {
+      final layer = context.document.currentLayer;
+      final supplied = _pointList(context.args['points']);
+      if (supplied.length >= 2) {
+        return _commit(context, 'Polyline', [
+          PolylineEntity.fromPoints(
+            id: 0,
+            props: EntityProps(layer: layer),
+            points: supplied,
+            closed: context.args.boolean('closed') ?? false,
+          ),
+        ]);
+      }
+
+      final points = <Vec2>[];
+      while (true) {
+        context.input
+          ..setMarkers(List.of(points))
+          ..setPreview(
+            points.isEmpty
+                ? null
+                : (cursor) => [
+                    OverlayPolyline(List.of(points)),
+                    OverlayLine(points.last, cursor),
+                    if (points.length >= 2)
+                      OverlayLine(points.first, cursor, dashed: true),
+                  ],
+          );
+        final next = await context.input.pointOrNull(
+          points.isEmpty
+              ? 'PLINE  Specify start point:'
+              : 'PLINE  Specify next point (Escape to finish):',
+        );
+        if (next == null) break;
+        points.add(next);
+      }
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+
+      if (points.length < 2) return const CommandResult.cancelled();
+      return _commit(context, 'Polyline', [
+        PolylineEntity.fromPoints(
+          id: 0,
+          props: EntityProps(layer: layer),
+          points: points,
+        ),
+      ]);
+    },
+  );
+
+  static CommandDescriptor _rectangle() => CommandDescriptor(
+    id: 'draw.rectangle',
+    title: 'Rectangle',
+    category: _category,
+    aliases: const ['rec', 'rectang', 'rectangle'],
+    icon: 'rectangle',
+    description: 'Draws an axis-aligned rectangle as a closed polyline.',
+    params: const [
+      ParamSpec.point('corner1', description: 'First corner'),
+      ParamSpec.point('corner2', description: 'Opposite corner'),
+    ],
+    handler: (context) async {
+      final first = await context.resolvePoint(
+        'corner1',
+        'RECTANG  Specify first corner:',
+      );
+      context.input.setPreview((cursor) => [OverlayRect(first, cursor)]);
+      final second = await context.resolvePoint(
+        'corner2',
+        'RECTANG  Specify opposite corner:',
+        basePoint: first,
+      );
+      context.input.setPreview(null);
+
+      final rectangle = Construct.rectangle(
+        first,
+        second,
+        props: EntityProps(layer: context.document.currentLayer),
+      );
+      if (rectangle == null) {
+        return const CommandResult.failed('The rectangle has no area.');
+      }
+      return _commit(context, 'Rectangle', [rectangle]);
+    },
+  );
+
+  static CommandDescriptor _circle() => CommandDescriptor(
+    id: 'draw.circle',
+    title: 'Circle',
+    category: _category,
+    aliases: const ['c', 'circle'],
+    icon: 'circle',
+    description: 'Draws a circle from a centre point and a radius.',
+    params: const [
+      ParamSpec.point('center', description: 'Centre of the circle'),
+      ParamSpec(
+        name: 'radius',
+        type: ParamType.distance,
+        description: 'Radius in drawing units',
+      ),
+    ],
+    handler: (context) async {
+      final center = await context.resolvePoint(
+        'center',
+        'CIRCLE  Specify center point:',
+      );
+      context.input
+        ..setMarkers([center])
+        ..setPreview(
+          (cursor) => [
+            OverlayArc(center: center, radius: center.distanceTo(cursor)),
+            OverlayLine(center, cursor),
+          ],
+        );
+      final radius = context.args.number('radius') ??
+          await context.input.distance(
+            'CIRCLE  Specify radius:',
+            basePoint: center,
+          );
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+
+      if (radius <= 0) {
+        return const CommandResult.failed('The radius must be positive.');
+      }
+      return _commit(context, 'Circle', [
+        CircleEntity(
+          id: 0,
+          props: EntityProps(layer: context.document.currentLayer),
+          center: center,
+          radius: radius,
+        ),
+      ]);
+    },
+  );
+
+  static CommandDescriptor _circleDiameter() => CommandDescriptor(
+    id: 'draw.circle2p',
+    title: 'Circle (2 Points)',
+    category: _category,
+    description: 'Draws a circle whose diameter is the segment between two '
+        'points.',
+    params: const [
+      ParamSpec.point('first', description: 'One end of the diameter'),
+      ParamSpec.point('second', description: 'The other end of the diameter'),
+    ],
+    handler: (context) async {
+      final first = await context.resolvePoint(
+        'first',
+        'CIRCLE  Specify first end of diameter:',
+      );
+      context.input
+        ..setMarkers([first])
+        ..setPreview(
+          (cursor) => [
+            OverlayArc(
+              center: first.lerp(cursor, 0.5),
+              radius: first.distanceTo(cursor) / 2,
+            ),
+            OverlayLine(first, cursor),
+          ],
+        );
+      final second = await context.resolvePoint(
+        'second',
+        'CIRCLE  Specify second end of diameter:',
+        basePoint: first,
+      );
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+
+      final radius = first.distanceTo(second) / 2;
+      if (radius <= 0) {
+        return const CommandResult.failed('The two points coincide.');
+      }
+      return _commit(context, 'Circle', [
+        CircleEntity(
+          id: 0,
+          props: EntityProps(layer: context.document.currentLayer),
+          center: first.lerp(second, 0.5),
+          radius: radius,
+        ),
+      ]);
+    },
+  );
+
+  static CommandDescriptor _arc() => CommandDescriptor(
+    id: 'draw.arc',
+    title: 'Arc',
+    category: _category,
+    aliases: const ['a', 'arc'],
+    icon: 'arc',
+    description:
+        'Draws a circular arc through three points: start, a point on the arc, '
+        'and end.',
+    params: const [
+      ParamSpec.point('start', description: 'Start of the arc'),
+      ParamSpec.point('via', description: 'A point the arc passes through'),
+      ParamSpec.point('end', description: 'End of the arc'),
+    ],
+    handler: (context) async {
+      final props = EntityProps(layer: context.document.currentLayer);
+      final start = await context.resolvePoint(
+        'start',
+        'ARC  Specify start point:',
+      );
+      context.input
+        ..setMarkers([start])
+        ..setPreview((cursor) => [OverlayLine(start, cursor)]);
+      final via = await context.resolvePoint(
+        'via',
+        'ARC  Specify a second point on the arc:',
+        basePoint: start,
+      );
+
+      context.input
+        ..setMarkers([start, via])
+        ..setPreview((cursor) {
+          final arc = Construct.arcThrough(start, via, cursor);
+          if (arc == null) return [OverlayLine(start, cursor)];
+          return [
+            OverlayArc(
+              center: arc.center,
+              radius: arc.radius,
+              startAngle: arc.startAngle,
+              sweep: arc.sweep,
+            ),
+          ];
+        });
+      final end = await context.resolvePoint(
+        'end',
+        'ARC  Specify end point:',
+        basePoint: via,
+      );
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+
+      final arc = Construct.arcThrough(start, via, end, props: props);
+      if (arc == null) {
+        // Three collinear points describe a straight line. Producing the line
+        // is more useful than refusing, and it is what the user drew.
+        return _commit(context, 'Line', [
+          LineEntity(id: 0, props: props, start: start, end: end),
+        ], message: 'The three points were collinear, so a line was drawn.');
+      }
+      return _commit(context, 'Arc', [arc]);
+    },
+  );
+
+  static CommandDescriptor _polygon() => CommandDescriptor(
+    id: 'draw.polygon',
+    title: 'Polygon',
+    category: _category,
+    aliases: const ['pol', 'polygon'],
+    description: 'Draws a regular polygon inscribed in a circle.',
+    params: const [
+      ParamSpec(
+        name: 'sides',
+        type: ParamType.integer,
+        description: 'Number of sides, at least 3',
+        min: 3,
+        max: 1024,
+      ),
+      ParamSpec.point('center', description: 'Centre of the polygon'),
+      ParamSpec(
+        name: 'radius',
+        type: ParamType.distance,
+        description: 'Distance from the centre to each vertex',
+      ),
+    ],
+    handler: (context) async {
+      final sides = context.args.integer('sides') ??
+          await context.input.integer(
+            'POLYGON  Enter number of sides:',
+            defaultValue: 6,
+          );
+      if (sides < 3) {
+        return const CommandResult.failed('A polygon needs at least 3 sides.');
+      }
+      final center = await context.resolvePoint(
+        'center',
+        'POLYGON  Specify center:',
+      );
+      context.input
+        ..setMarkers([center])
+        ..setPreview((cursor) {
+          final radius = center.distanceTo(cursor);
+          final polygon = Construct.polygon(
+            center: center,
+            radius: radius,
+            sides: sides,
+            startAngle: (cursor - center).angle,
+          );
+          return [
+            OverlayPolyline(
+              [
+                for (var i = 0; i < polygon.vertexCount; i++)
+                  polygon.vertexAt(i),
+              ],
+              closed: true,
+            ),
+            OverlayArc(center: center, radius: radius),
+          ];
+        });
+      final radius = context.args.number('radius') ??
+          await context.input.distance(
+            'POLYGON  Specify radius:',
+            basePoint: center,
+          );
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+
+      if (radius <= 0) {
+        return const CommandResult.failed('The radius must be positive.');
+      }
+      return _commit(context, 'Polygon', [
+        Construct.polygon(
+          center: center,
+          radius: radius,
+          sides: sides,
+          props: EntityProps(layer: context.document.currentLayer),
+        ),
+      ]);
+    },
+  );
+
+  static CommandDescriptor _point() => CommandDescriptor(
+    id: 'draw.point',
+    title: 'Point',
+    category: _category,
+    aliases: const ['po', 'point'],
+    description: 'Places a point marker.',
+    params: const [ParamSpec.point('at', description: 'Where to place it')],
+    handler: (context) async {
+      final at = await context.resolvePoint('at', 'POINT  Specify a location:');
+      return _commit(context, 'Point', [
+        PointEntity(
+          id: 0,
+          props: EntityProps(layer: context.document.currentLayer),
+          position: at,
+        ),
+      ]);
+    },
+  );
+
+  static CommandDescriptor _text() => CommandDescriptor(
+    id: 'draw.text',
+    title: 'Text',
+    category: _category,
+    aliases: const ['t', 'text', 'dtext'],
+    icon: 'text',
+    description: 'Places a single line of text.',
+    params: const [
+      ParamSpec(
+        name: 'content',
+        type: ParamType.text,
+        description: 'The text to place',
+      ),
+      ParamSpec.point('at', description: 'Insertion point'),
+      ParamSpec(
+        name: 'height',
+        type: ParamType.distance,
+        description: 'Cap height in drawing units',
+        required: false,
+        defaultValue: 2.5,
+      ),
+      ParamSpec(
+        name: 'rotation',
+        type: ParamType.angle,
+        description: 'Rotation in degrees',
+        required: false,
+        defaultValue: 0,
+      ),
+    ],
+    handler: (context) async {
+      final content = await context.resolveText(
+        'content',
+        'TEXT  Enter the text:',
+      );
+      if (content.isEmpty) {
+        return const CommandResult.cancelled('No text was entered.');
+      }
+      final height = context.args.number('height') ??
+          await context.input.number(
+            'TEXT  Specify height:',
+            defaultValue: 2.5,
+          );
+      final rotationDegrees = context.args.number('rotation') ?? 0;
+      final rotation = rotationDegrees * math.pi / 180;
+
+      context.input.setPreview((cursor) {
+        final box = TextGeometry(
+          text: content,
+          origin: cursor,
+          height: height,
+          rotation: rotation,
+          styleName: 'Standard',
+        ).estimatedBounds();
+        return box.isEmpty ? const [] : [OverlayRect(box.min, box.max)];
+      });
+      final at = await context.resolvePoint(
+        'at',
+        'TEXT  Specify insertion point:',
+      );
+      context.input.setPreview(null);
+
+      return _commit(context, 'Text', [
+        TextEntity(
+          id: 0,
+          props: EntityProps(layer: context.document.currentLayer),
+          position: at,
+          content: content,
+          height: height,
+          rotation: rotation,
+        ),
+      ]);
+    },
+  );
+
+  static CommandDescriptor _hatch() => CommandDescriptor(
+    id: 'draw.hatch',
+    title: 'Hatch',
+    category: _category,
+    aliases: const ['h', 'hatch'],
+    description:
+        'Fills the area enclosed by selected closed polylines or circles.',
+    params: const [
+      ParamSpec.selection('ids', description: 'Closed boundaries to fill'),
+      ParamSpec(
+        name: 'pattern',
+        type: ParamType.text,
+        description: 'Pattern name, or SOLID for a solid fill',
+        required: false,
+        defaultValue: 'SOLID',
+      ),
+    ],
+    handler: (context) async {
+      final ids = await context.resolveSelection(
+        'ids',
+        'HATCH  Select closed boundaries:',
+      );
+      if (ids.isEmpty) return const CommandResult.cancelled();
+
+      final pattern = context.args.text('pattern') ?? 'SOLID';
+      final loops = <HatchLoop>[];
+      for (final id in ids) {
+        final entity = context.document.entity(id);
+        if (entity == null) continue;
+        // Only genuinely closed geometry can bound a fill; hatching an open
+        // polyline silently produces nonsense, so it is refused per entity.
+        final sink = PolylineSink();
+        entity.emit(
+          context.document.emitContext(tolerance: 0.05),
+          sink,
+        );
+        for (var i = 0; i < sink.polylines.length; i++) {
+          if (!sink.closedFlags[i]) continue;
+          if (sink.polylines[i].length < 6) continue;
+          loops.add(HatchLoop(vertices: sink.polylines[i]));
+        }
+      }
+      if (loops.isEmpty) {
+        return const CommandResult.failed(
+          'None of the selected objects form a closed boundary.',
+        );
+      }
+      return _commit(context, 'Hatch', [
+        HatchEntity(
+          id: 0,
+          props: EntityProps(layer: context.document.currentLayer),
+          loops: loops,
+          patternName: pattern.toUpperCase(),
+          solid: pattern.toUpperCase() == 'SOLID',
+        ),
+      ]);
+    },
+  );
+
+  /// Adds [entities] in one transaction and reports what happened.
+  ///
+  /// Returning the transaction on the result is what lets an AI turn be
+  /// summarised and undone as a unit, and what lets the UI select what was just
+  /// drawn without guessing at ids.
+  static CommandResult _commit(
+    CommandContext context,
+    String label,
+    List<CadEntity> entities, {
+    String? message,
+  }) {
+    if (entities.isEmpty) return const CommandResult.cancelled();
+    final committed = context.edit(label, (transaction) {
+      transaction.addAll(entities);
+    });
+    if (committed == null) {
+      return const CommandResult.failed('Nothing was created.');
+    }
+    context.selection.replace(committed.change.added);
+    return CommandResult(
+      status: CommandStatus.ok,
+      message: message ??
+          '$label: ${committed.change.added.length} object(s) created.',
+      data: {'ids': committed.change.added},
+      transaction: committed,
+    );
+  }
+
+  static List<Vec2> _pointList(Object? value) {
+    if (value is! List) return const [];
+    return [
+      for (final item in value) ?CommandArgs.parsePoint(item),
+    ];
+  }
+}

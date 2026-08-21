@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch makes the running job pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.38.4
+
+jobs:
+  analyze:
+    name: Analyze and unit test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - run: flutter --version
+      - run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib pkg test
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test the pure-Dart packages
+        run: |
+          dart test pkg/fancad_core
+          dart test pkg/fancad_dwg
+          dart test pkg/fancad_ai
+
+      - name: Test the Flutter packages
+        run: flutter test
+
+  desktop:
+    name: Build ${{ matrix.name }}
+    strategy:
+      # One platform failing to build is worth knowing about on its own, so let
+      # the others finish.
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macOS
+            build: flutter build macos --debug
+          - os: windows-latest
+            name: Windows
+            build: flutter build windows --debug
+          - os: ubuntu-latest
+            name: Linux
+            build: flutter build linux --debug
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install Linux build dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgtk-3-dev
+
+      - run: flutter pub get
+
+      # The DWG backend is optional by design: the build hook falls back to a
+      # shim that reports no backend, so CI proves the application still builds
+      # and runs when LibreDWG is absent. The libredwg job below covers the
+      # other half.
+      - name: Build
+        run: ${{ matrix.build }}
+
+  libredwg:
+    name: Build with the LibreDWG backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgtk-3-dev cmake
+
+      - run: flutter pub get
+
+      - name: Confirm the LibreDWG submodule backend is linked
+        run: dart test pkg/fancad_dwg --tags native --run-skipped

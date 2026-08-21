@@ -1,0 +1,20 @@
+name: fancad_render
+description: "Viewport rendering: batched tessellation, spatial culling and the CAD canvas widget."
+version: 0.1.0
+publish_to: 'none'
+resolution: workspace
+
+environment:
+  sdk: ^3.10.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  fancad_core:
+    path: ../fancad_core
+  meta: ^1.16.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
