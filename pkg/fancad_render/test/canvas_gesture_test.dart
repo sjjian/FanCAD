@@ -70,6 +70,41 @@ void main() {
     expect(controller.viewport.scale, closeTo(1, 1e-9));
   });
 
+  testWidgets('a right-click without a drag opens the context menu', (
+    tester,
+  ) async {
+    Offset? menuAt;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 800,
+          height: 600,
+          child: CadCanvas(
+            document: CadDocument(),
+            controller: controller,
+            onContextMenu: (at) => menuAt = at,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final location = tester.getCenter(find.byType(CadCanvas));
+    final before = controller.viewport.center;
+
+    final pointer = TestPointer(
+      1,
+      PointerDeviceKind.mouse,
+      null,
+      kSecondaryMouseButton,
+    );
+    await tester.sendEventToBinding(pointer.down(location));
+    await tester.sendEventToBinding(pointer.up());
+    await tester.pump();
+
+    expect(menuAt, isNotNull);
+    expect(controller.viewport.center.x, closeTo(before.x, 1e-9));
+  });
+
   testWidgets('a right-button drag pans the view', (tester) async {
     final location = await pumpCanvas(tester);
     final before = controller.viewport.center;

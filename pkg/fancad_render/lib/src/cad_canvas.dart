@@ -44,6 +44,7 @@ class CadCanvas extends StatefulWidget {
     this.overlayTheme = const OverlayTheme(),
     this.background = const Color(0xFF1B1D21),
     this.onSceneBuilt,
+    this.onContextMenu,
     this.showGrid = true,
     this.onlyLayers,
     super.key,
@@ -59,6 +60,9 @@ class CadCanvas extends StatefulWidget {
 
   /// Called after each scene build, for the status bar's frame statistics.
   final void Function(RenderScene scene)? onSceneBuilt;
+
+  /// A right-click that did not become a pan. The shell owns the menu.
+  final void Function(Offset localPosition)? onContextMenu;
 
   final bool showGrid;
 
@@ -87,6 +91,14 @@ class CadCanvasState extends State<CadCanvas> {
   /// Set while a mouse-button pan is in flight (middle, right, or space+left).
   int? _panPointer;
   Offset _lastPanPosition = Offset.zero;
+  Offset _panStart = Offset.zero;
+  bool _panDragging = false;
+  bool _panIsSecondary = false;
+
+  /// Pixels before a right-button press becomes a pan. Below this, release
+  /// is a context-menu click — otherwise a two-finger tap on a Mac never
+  /// gets to open a menu.
+  static const _panSlop = 4.0;
 
   /// Trackpad two-finger / pinch gesture. On macOS these arrive as
   /// [PointerPanZoomEvent]s, not [PointerScrollEvent]s — which is why a
@@ -166,7 +178,7 @@ class CadCanvasState extends State<CadCanvas> {
           onPointerPanZoomEnd: _handlePanZoomEnd,
           onPointerCancel: (_) => _endAllGestures(),
           child: MouseRegion(
-            cursor: _panPointer != null || _trackpadPointer != null
+            cursor: _panDragging || _trackpadPointer != null
                 ? SystemMouseCursors.grabbing
                 : SystemMouseCursors.precise,
             onExit: (_) => widget.inputHandler?.onPointerExit(),
@@ -218,7 +230,9 @@ class CadCanvasState extends State<CadCanvas> {
     if (_isPanButton(event)) {
       _panPointer = event.pointer;
       _lastPanPosition = event.localPosition;
-      widget.controller.beginInteraction();
+      _panStart = event.localPosition;
+      _panDragging = false;
+      _panIsSecondary = event.buttons & kSecondaryMouseButton != 0;
       return;
     }
     widget.inputHandler?.onPointerDown(_toWorld(event.localPosition), event);
@@ -226,6 +240,11 @@ class CadCanvasState extends State<CadCanvas> {
 
   void _handlePointerMove(PointerMoveEvent event) {
     if (_panPointer == event.pointer) {
+      if (!_panDragging) {
+        if ((event.localPosition - _panStart).distance < _panSlop) return;
+        _panDragging = true;
+        widget.controller.beginInteraction();
+      }
       widget.controller.panBy(event.localPosition - _lastPanPosition);
       _lastPanPosition = event.localPosition;
       return;
@@ -239,7 +258,10 @@ class CadCanvasState extends State<CadCanvas> {
 
   void _handlePointerUp(PointerUpEvent event) {
     if (_panPointer == event.pointer) {
+      final openMenu = _panIsSecondary && !_panDragging;
+      final menuAt = event.localPosition;
       _endPan();
+      if (openMenu) widget.onContextMenu?.call(menuAt);
       return;
     }
     widget.inputHandler?.onPointerUp(_toWorld(event.localPosition), event);
@@ -247,8 +269,11 @@ class CadCanvasState extends State<CadCanvas> {
 
   void _endPan() {
     if (_panPointer == null) return;
+    final wasDragging = _panDragging;
     _panPointer = null;
-    widget.controller.endInteraction();
+    _panDragging = false;
+    _panIsSecondary = false;
+    if (wasDragging) widget.controller.endInteraction();
   }
 
   void _endTrackpad() {

@@ -65,6 +65,59 @@ class _DocumentViewState extends State<DocumentView> {
         _canvasKey.currentState?.applyDocumentChange(change);
   }
 
+  /// A click, not a drag. Deferred a frame so the pointer-up does not
+  /// dismiss the menu as soon as it opens.
+  void _openContextMenu(Offset local) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final box = context.findRenderObject();
+      if (box is! RenderBox) return;
+      final global = box.localToGlobal(local);
+      final tab = widget.tab;
+      final selected = tab.selection.isNotEmpty;
+      showMenu<String>(
+        context: context,
+        position: RelativeRect.fromLTRB(
+          global.dx,
+          global.dy,
+          global.dx + 1,
+          global.dy + 1,
+        ),
+        items: [
+          const PopupMenuItem(
+            value: 'view.zoomExtents',
+            child: Text('Zoom Extents'),
+          ),
+          const PopupMenuItem(value: 'view.zoomIn', child: Text('Zoom In')),
+          const PopupMenuItem(value: 'view.zoomOut', child: Text('Zoom Out')),
+          const PopupMenuDivider(),
+          if (selected)
+            const PopupMenuItem(value: 'edit.erase', child: Text('Erase'))
+          else
+            const PopupMenuItem(value: 'select.all', child: Text('Select All')),
+          if (selected)
+            const PopupMenuItem(
+              value: 'select.none',
+              child: Text('Deselect All'),
+            ),
+          const PopupMenuDivider(),
+          PopupMenuItem(
+            value: 'edit.undo',
+            enabled: tab.history.canUndo,
+            child: const Text('Undo'),
+          ),
+          PopupMenuItem(
+            value: 'edit.redo',
+            enabled: tab.history.canRedo,
+            child: const Text('Redo'),
+          ),
+        ],
+      ).then((id) {
+        if (id != null && mounted) widget.workspace.run(id);
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -107,6 +160,7 @@ class _DocumentViewState extends State<DocumentView> {
           palette: tokens.isDark ? AciPalette.dark : AciPalette.light,
           showGrid: tab.showGrid,
           onSceneBuilt: tab.noteScene,
+          onContextMenu: _openContextMenu,
           onlyLayers: tab.isolatedLayers,
         ),
       ),
