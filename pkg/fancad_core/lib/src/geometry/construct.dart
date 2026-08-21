@@ -451,6 +451,60 @@ class Construct {
     );
   }
 
+  /// Cuts a straight chamfer between two lines.
+  ///
+  /// [dist1] and [dist2] are the distances from the intersection back along
+  /// each kept arm. Both zero is CHAMFER with D=0: a sharp corner and no cut.
+  static ChamferResult? chamferLines(
+    LineEntity first,
+    LineEntity second,
+    double dist1,
+    double dist2,
+    Vec2 pick1,
+    Vec2 pick2, {
+    EntityProps? cutProps,
+  }) {
+    if (dist1 < 0 || dist2 < 0 || !dist1.isFinite || !dist2.isFinite) {
+      return null;
+    }
+    final corner = Intersect.lineLine(
+      first.start,
+      first.end,
+      second.start,
+      second.end,
+    );
+    if (corner == null) return null;
+
+    final keep1 = _filletKeepDir(first, corner, pick1);
+    final keep2 = _filletKeepDir(second, corner, pick2);
+    if (keep1 == null || keep2 == null) return null;
+
+    final bisector = keep1 + keep2;
+    if (bisector.lengthSquared < 1e-16) return null;
+    final alpha = math.acos(keep1.dot(keep2).clamp(-1.0, 1.0));
+    if (alpha < 1e-9) return null;
+
+    if (dist1 == 0 && dist2 == 0) {
+      return ChamferResult(
+        first: _filletArm(first, corner, keep1, corner),
+        second: _filletArm(second, corner, keep2, corner),
+      );
+    }
+
+    final tangent1 = corner + keep1 * dist1;
+    final tangent2 = corner + keep2 * dist2;
+    return ChamferResult(
+      first: _filletArm(first, corner, keep1, tangent1),
+      second: _filletArm(second, corner, keep2, tangent2),
+      cut: LineEntity(
+        id: 0,
+        props: cutProps ?? first.props,
+        start: tangent1,
+        end: tangent2,
+      ),
+    );
+  }
+
   /// Direction from the corner along the side of [line] that [pick] sits on.
   static Vec2? _filletKeepDir(LineEntity line, Vec2 corner, Vec2 pick) {
     final along = line.end - line.start;
@@ -620,4 +674,17 @@ class FilletResult {
   final LineEntity first;
   final LineEntity second;
   final ArcEntity? arc;
+}
+
+/// The two trimmed lines and optional cut produced by [Construct.chamferLines].
+class ChamferResult {
+  const ChamferResult({
+    required this.first,
+    required this.second,
+    this.cut,
+  });
+
+  final LineEntity first;
+  final LineEntity second;
+  final LineEntity? cut;
 }

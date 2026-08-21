@@ -307,6 +307,24 @@ void main() {
       expect((document.entity(vertical)! as LineEntity).start, const Vec2(0, 0));
     });
 
+    test('chamfer bevels two lines and adds the cut', () async {
+      final vertical = await drawLine(0, 10, 0, 0);
+      final horizontal = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.chamfer', {
+        'dist1': 2,
+        'dist2': 2,
+        'first': vertical,
+        'second': horizontal,
+        'pick1': [0, 5],
+        'pick2': [5, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 3);
+      expect((document.entity(vertical)! as LineEntity).start.y, closeTo(2, 1e-9));
+    });
+
     test('extend lengthens a line to a boundary', () async {
       final target = await drawLine(0, 0, 5, 0);
       final boundary = await drawLine(10, -5, 10, 5);

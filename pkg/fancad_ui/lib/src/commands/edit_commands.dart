@@ -24,6 +24,7 @@ class EditCommands {
     _trim(),
     _extend(),
     _fillet(),
+    _chamfer(),
     _explode(),
     _join(),
     _undo(),
@@ -641,6 +642,159 @@ class EditCommands {
         message: result.arc == null
             ? 'Fillet: lines meet at a sharp corner.'
             : 'Fillet: radius ${radius.toStringAsFixed(4)}.',
+        data: {
+          'ids': [result.first.id, result.second.id, ...committed.change.added],
+        },
+        transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _chamfer() => CommandDescriptor(
+    id: 'edit.chamfer',
+    title: 'Chamfer',
+    category: _category,
+    aliases: const ['cha', 'chamfer'],
+    icon: 'chamfer',
+    description:
+        'Cuts a straight bevel between two lines. The two distances are '
+        'measured from the intersection back along each line; omit the second '
+        'to use the same length on both. Both zero makes a sharp corner.',
+    params: const [
+      ParamSpec(
+        name: 'dist1',
+        type: ParamType.distance,
+        description: 'Distance along the first line',
+        required: false,
+        min: 0,
+      ),
+      ParamSpec(
+        name: 'dist2',
+        type: ParamType.distance,
+        description: 'Distance along the second line; defaults to dist1',
+        required: false,
+        min: 0,
+      ),
+      ParamSpec(
+        name: 'first',
+        type: ParamType.entity,
+        description: 'First line',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'second',
+        type: ParamType.entity,
+        description: 'Second line',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'pick1',
+        type: ParamType.point,
+        description: 'Point on the first line that marks the side to keep',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'pick2',
+        type: ParamType.point,
+        description: 'Point on the second line that marks the side to keep',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final dist1 = context.args.number('dist1') ??
+          await context.input.number(
+            'CHAMFER  Specify first chamfer distance:',
+            defaultValue: 0,
+          );
+      if (dist1 < 0) {
+        return const CommandResult.failed('Distances cannot be negative.');
+      }
+      final dist2 = context.args.number('dist2') ??
+          (context.input.isInteractive
+              ? await context.input.number(
+                  'CHAMFER  Specify second chamfer distance:',
+                  defaultValue: dist1,
+                )
+              : dist1);
+      if (dist2 < 0) {
+        return const CommandResult.failed('Distances cannot be negative.');
+      }
+
+      final firstId = context.args.integer('first');
+      final secondId = context.args.integer('second');
+      final int id1;
+      final int id2;
+      if (firstId != null && secondId != null) {
+        id1 = firstId;
+        id2 = secondId;
+      } else {
+        context.selection.clear();
+        final firstPick = await context.input.selection(
+          'CHAMFER  Select first line:',
+          useExistingSelection: false,
+          single: true,
+        );
+        if (firstPick.isEmpty) return const CommandResult.cancelled();
+        id1 = firstPick.first;
+        final secondPick = await context.input.selection(
+          'CHAMFER  Select second line:',
+          useExistingSelection: false,
+          single: true,
+        );
+        if (secondPick.isEmpty) return const CommandResult.cancelled();
+        id2 = secondPick.first;
+      }
+
+      final first = context.document.entity(id1);
+      final second = context.document.entity(id2);
+      if (first is! LineEntity || second is! LineEntity) {
+        return const CommandResult.failed(
+          'Chamfer currently supports lines only.',
+        );
+      }
+      if (id1 == id2) {
+        return const CommandResult.failed('Select two different lines.');
+      }
+
+      final pick1 = context.args.point('pick1') ?? first.midpoint;
+      final pick2 = context.args.point('pick2') ?? second.midpoint;
+      final result = Construct.chamferLines(
+        first,
+        second,
+        dist1,
+        dist2,
+        pick1,
+        pick2,
+        cutProps: EntityProps(layer: context.document.currentLayer),
+      );
+      if (result == null) {
+        return const CommandResult.failed(
+          'The two lines are parallel or do not form a chamferable corner.',
+        );
+      }
+
+      final committed = context.edit('Chamfer', (transaction) {
+        transaction
+          ..modify(result.first)
+          ..modify(result.second);
+        if (result.cut != null) transaction.add(result.cut!);
+      });
+      if (committed == null) {
+        return const CommandResult.failed(
+          'Nothing was chamfered; the lines may be on a locked layer.',
+        );
+      }
+      context.selection.replace([
+        result.first.id,
+        result.second.id,
+        ...committed.change.added,
+      ]);
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: result.cut == null
+            ? 'Chamfer: lines meet at a sharp corner.'
+            : 'Chamfer: ${dist1.toStringAsFixed(4)} x '
+                  '${dist2.toStringAsFixed(4)}.',
         data: {
           'ids': [result.first.id, result.second.id, ...committed.change.added],
         },

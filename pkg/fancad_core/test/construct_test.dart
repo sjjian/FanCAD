@@ -364,6 +364,59 @@ void main() {
     });
   });
 
+  group('chamferLines', () {
+    test('cuts an equal bevel on an L-corner', () {
+      final result = Construct.chamferLines(
+        line(0, 10, 0, 0),
+        line(0, 0, 10, 0),
+        2,
+        2,
+        const Vec2(0, 5),
+        const Vec2(5, 0),
+      );
+
+      expect(result, isNotNull);
+      expect(result!.first.start, const Vec2(0, 2));
+      expect(result.first.end, const Vec2(0, 10));
+      expect(result.second.start, const Vec2(2, 0));
+      expect(result.second.end, const Vec2(10, 0));
+      expect(result.cut, isNotNull);
+      expect(result.cut!.start, const Vec2(0, 2));
+      expect(result.cut!.end, const Vec2(2, 0));
+    });
+
+    test('allows unequal distances', () {
+      final result = Construct.chamferLines(
+        line(0, 10, 0, 0),
+        line(0, 0, 10, 0),
+        3,
+        1,
+        const Vec2(0, 5),
+        const Vec2(5, 0),
+      );
+
+      expect(result!.first.start, const Vec2(0, 3));
+      expect(result.second.start, const Vec2(1, 0));
+      expect(result.cut!.end, const Vec2(1, 0));
+    });
+
+    test('zero distances make a sharp corner', () {
+      final result = Construct.chamferLines(
+        line(0, 10, 0, 2),
+        line(2, 0, 10, 0),
+        0,
+        0,
+        const Vec2(0, 6),
+        const Vec2(6, 0),
+      );
+
+      expect(result, isNotNull);
+      expect(result!.cut, isNull);
+      expect(result.first.start, const Vec2(0, 0));
+      expect(result.second.start, const Vec2(0, 0));
+    });
+  });
+
   group('measurements', () {
     test('reports the length of each supported type', () {
       expect(Construct.lengthOf(line(0, 0, 3, 4)), closeTo(5, 1e-9));
