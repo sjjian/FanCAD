@@ -97,9 +97,10 @@ class _CommandLinePaneState extends State<CommandLinePane> {
         _setText(recalled);
         return KeyEventResult.handled;
       case LogicalKeyboardKey.space:
-        // Space finishes a selection prompt, matching AutoCAD, but only when
-        // the user has not started typing a value.
-        if (_input.text.isEmpty && _model.isAwaitingInput) {
+        // Empty space finishes a prompt or repeats the last command, which
+        // is the AutoCAD muscle memory. Space inside typed text stays a
+        // character so aliases like "zoom window" still work.
+        if (_input.text.isEmpty) {
           _submit('');
           return KeyEventResult.handled;
         }
