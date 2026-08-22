@@ -508,6 +508,50 @@ void main() {
       expect(dim.displayText, '5.00');
     });
 
+    test('linear dimension can take its origins from a line', () async {
+      final line = await drawLine(0, 0, 10, 4);
+
+      final result = await run('draw.dimLinear', {
+        'target': line,
+        'dimLine': [5, 8],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entities.whereType<DimensionEntity>().single;
+      expect(dim.measurement, closeTo(10, 1e-9));
+      expect(dim.definitionPoints[0], const Vec2(0, 0));
+      expect(dim.definitionPoints[1], const Vec2(10, 4));
+    });
+
+    test('aligned dimension can take its origins from a line', () async {
+      final line = await drawLine(0, 0, 3, 4);
+
+      final result = await run('draw.dimAligned', {
+        'target': line,
+        'dimLine': [1, 2],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entities.whereType<DimensionEntity>().single;
+      expect(dim.measurement, closeTo(5, 1e-9));
+    });
+
+    test('linear dimension from an object refuses a circle', () async {
+      final created = await run('draw.circle', {
+        'center': [0, 0],
+        'radius': 5,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.dimLinear', {
+        'target': id,
+        'dimLine': [0, 8],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entities.whereType<DimensionEntity>(), isEmpty);
+    });
+
     test('radius dimension labels a circle with R', () async {
       final created = await run('draw.circle', {
         'center': [0, 0],

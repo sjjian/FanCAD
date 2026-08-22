@@ -1461,25 +1461,42 @@ class DrawCommands {
     description:
         'Places a horizontal or vertical dimension. The dimension-line pick '
         'chooses the axis: above or below the origins measures width; left '
-        'or right measures height.',
+        'or right measures height. A line can stand in for the two origins.',
     params: const [
-      ParamSpec.point('first', description: 'First extension-line origin'),
-      ParamSpec.point('second', description: 'Second extension-line origin'),
+      ParamSpec(
+        name: 'target',
+        type: ParamType.entity,
+        description: 'Line whose endpoints become the two origins',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'first',
+        type: ParamType.point,
+        description: 'First extension-line origin',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'second',
+        type: ParamType.point,
+        description: 'Second extension-line origin',
+        required: false,
+      ),
       ParamSpec.point(
         'dimLine',
         description: 'A point on the dimension line',
       ),
     ],
     handler: (context) async {
-      final first = await context.resolvePoint(
-        'first',
-        'DIMLINEAR  Specify first extension line origin:',
+      final origins = await _resolveDimOrigins(
+        context,
+        command: 'DIMLINEAR',
+        needs: 'a line',
       );
-      final second = await context.resolvePoint(
-        'second',
-        'DIMLINEAR  Specify second extension line origin:',
-        basePoint: first,
-      );
+      if (origins.error != null) {
+        return CommandResult.failed(origins.error!);
+      }
+      final first = origins.first;
+      final second = origins.second;
       context.input.setPreview(
         (cursor) => _dimLinearOverlay(first, second, cursor),
       );
@@ -1529,25 +1546,43 @@ class DrawCommands {
     icon: 'dimension',
     description:
         'Places a dimension parallel to the two origins. The text is the '
-        'true distance, not the horizontal or vertical component.',
+        'true distance, not the horizontal or vertical component. A line '
+        'can stand in for the two origins.',
     params: const [
-      ParamSpec.point('first', description: 'First extension-line origin'),
-      ParamSpec.point('second', description: 'Second extension-line origin'),
+      ParamSpec(
+        name: 'target',
+        type: ParamType.entity,
+        description: 'Line whose endpoints become the two origins',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'first',
+        type: ParamType.point,
+        description: 'First extension-line origin',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'second',
+        type: ParamType.point,
+        description: 'Second extension-line origin',
+        required: false,
+      ),
       ParamSpec.point(
         'dimLine',
         description: 'A point on the dimension line',
       ),
     ],
     handler: (context) async {
-      final first = await context.resolvePoint(
-        'first',
-        'DIMALIGNED  Specify first extension line origin:',
+      final origins = await _resolveDimOrigins(
+        context,
+        command: 'DIMALIGNED',
+        needs: 'a line',
       );
-      final second = await context.resolvePoint(
-        'second',
-        'DIMALIGNED  Specify second extension line origin:',
-        basePoint: first,
-      );
+      if (origins.error != null) {
+        return CommandResult.failed(origins.error!);
+      }
+      final first = origins.first;
+      final second = origins.second;
       context.input.setPreview(
         (cursor) => _dimAlignedOverlay(first, second, cursor),
       );
@@ -1590,6 +1625,36 @@ class DrawCommands {
       OverlayLine(second, b),
       OverlayLine(a, b),
     ];
+  }
+
+  /// Two extension-line origins: a line's endpoints, or two picked points.
+  static Future<({Vec2 first, Vec2 second, String? error})> _resolveDimOrigins(
+    CommandContext context, {
+    required String command,
+    required String needs,
+  }) async {
+    final targetId = context.args.integer('target');
+    if (targetId != null) {
+      final target = context.document.entity(targetId);
+      if (target is! LineEntity) {
+        return (
+          first: const Vec2.zero(),
+          second: const Vec2.zero(),
+          error: '$command from an object needs $needs.',
+        );
+      }
+      return (first: target.start, second: target.end, error: null);
+    }
+    final first = await context.resolvePoint(
+      'first',
+      '$command  Specify first extension line origin:',
+    );
+    final second = await context.resolvePoint(
+      'second',
+      '$command  Specify second extension line origin:',
+      basePoint: first,
+    );
+    return (first: first, second: second, error: null);
   }
 
   static CommandDescriptor _dimRadius() => CommandDescriptor(
