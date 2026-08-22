@@ -51,10 +51,13 @@ class DocumentSession {
 
   String get title {
     if (_title != null) return _title!;
-    final path = filePath;
-    if (path == null) return 'Drawing$id';
+    final path = filePath?.trim();
+    if (path == null || path.isEmpty) return 'Drawing$id';
     final separator = path.contains(r'\') ? r'\' : '/';
-    return path.split(separator).last;
+    final name = path.split(separator).last;
+    // A trailing slash, or a path that is only whitespace, must not leave
+    // the tab strip with an empty label.
+    return name.isEmpty ? 'Drawing$id' : name;
   }
 
   set title(String value) => _title = value;

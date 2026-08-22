@@ -76,6 +76,19 @@ void main() {
       );
       expect(named.title, 'plan.dxf');
       expect(untitled.toString(), contains('Sheet'));
+
+      final blank = DocumentSession(
+        id: '2',
+        document: CadDocument(),
+        filePath: '   ',
+      );
+      expect(blank.title, 'Drawing2');
+      final folder = DocumentSession(
+        id: '3',
+        document: CadDocument(),
+        filePath: r'C:\work\',
+      );
+      expect(folder.title, 'Drawing3');
     });
 
     test('an edit marks the session dirty and markSaved clears it', () {
