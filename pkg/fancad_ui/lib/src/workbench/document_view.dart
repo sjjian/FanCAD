@@ -75,6 +75,9 @@ class _DocumentViewState extends State<DocumentView> {
       final global = box.localToGlobal(local);
       final tab = widget.tab;
       final selected = tab.selection.isNotEmpty;
+      final hasHidden = tab.document.activeEntities.any(
+        (entity) => !entity.props.visible,
+      );
       showMenu<String>(
         context: context,
         position: RelativeRect.fromLTRB(
@@ -109,6 +112,21 @@ class _DocumentViewState extends State<DocumentView> {
               value: 'select.none',
               child: Text('Deselect All'),
             ),
+          if (selected)
+            const PopupMenuItem(
+              value: 'view.isolateObjects',
+              child: Text('Isolate'),
+            ),
+          if (selected)
+            const PopupMenuItem(
+              value: 'view.hideObjects',
+              child: Text('Hide'),
+            ),
+          PopupMenuItem(
+            value: 'view.unisolateObjects',
+            enabled: hasHidden,
+            child: const Text('Unisolate'),
+          ),
           const PopupMenuDivider(),
           PopupMenuItem(
             value: 'edit.undo',

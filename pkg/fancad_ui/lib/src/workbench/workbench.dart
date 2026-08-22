@@ -302,6 +302,21 @@ class _WorkbenchState extends ConsumerState<Workbench> {
         () => workspace.run('view.zoomExtents'),
         shift: true,
       ),
+      ...chord(
+        LogicalKeyboardKey.keyI,
+        () => workspace.run('view.isolateObjects'),
+        shift: true,
+      ),
+      ...chord(
+        LogicalKeyboardKey.keyH,
+        () => workspace.run('view.hideObjects'),
+        shift: true,
+      ),
+      ...chord(
+        LogicalKeyboardKey.keyU,
+        () => workspace.run('view.unisolateObjects'),
+        shift: true,
+      ),
       ...chord(LogicalKeyboardKey.equal, () => workspace.run('view.zoomIn')),
       ...chord(LogicalKeyboardKey.minus, () => workspace.run('view.zoomOut')),
       ...chord(
