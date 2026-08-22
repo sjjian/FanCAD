@@ -252,6 +252,34 @@ void main() {
     expect(style.textStyle, 'Standard');
   });
 
+  test('a dimension keeps its style and definition points through DXF', () {
+    final original = CadDocument()
+      ..putDimStyle(const DimStyleDef(name: 'ARCH', decimalPlaces: 0))
+      ..currentDimStyle = 'ARCH';
+    original.addEntity(
+      Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(5, 4),
+        styleName: 'ARCH',
+      )!,
+    );
+
+    final dxf = const DxfWriter().writeString(original);
+    expect(dxf, contains(r'$DIMSTYLE'));
+    expect(dxf, contains('DIMENSION'));
+
+    final restored = const DxfReader().readString(dxf);
+    expect(restored.currentDimStyle, 'ARCH');
+    final dim = restored.entities.whereType<DimensionEntity>().single;
+    expect(dim.styleName, 'ARCH');
+    expect(dim.measurement, closeTo(10, 1e-9));
+    expect(dim.definitionPoints, hasLength(3));
+    expect(dim.definitionPoints[0], const Vec2(0, 0));
+    expect(dim.definitionPoints[1], const Vec2(10, 0));
+    expect(dim.definitionPoints[2], const Vec2(5, 4));
+  });
+
   test('a stress drawing of 10k entities encodes and decodes as DXF', () {
     final original = SampleDrawings.stressTest(count: 2000);
     final dxf = const DxfWriter().writeString(original);

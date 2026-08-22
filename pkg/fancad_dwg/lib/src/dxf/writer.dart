@@ -28,6 +28,8 @@ class DxfWriter {
     pair(70, int.tryParse(document.headerVariables[r'$INSUNITS'] ?? '0') ?? 0);
     pair(9, r'$CLAYER');
     pair(8, document.currentLayer);
+    pair(9, r'$DIMSTYLE');
+    pair(2, document.currentDimStyle);
     pair(0, 'ENDSEC');
 
     pair(0, 'SECTION');
@@ -295,18 +297,15 @@ class DxfWriter {
         pair(0, 'DIMENSION');
         _common(pair, entity, paperSpace: paperSpace);
         if (entity.blockName.isNotEmpty) pair(2, entity.blockName);
+        pair(3, entity.styleName);
         pair(10, entity.textPosition.x);
         pair(20, entity.textPosition.y);
         pair(70, entity.dimensionType);
         pair(1, entity.overrideText);
         pair(42, entity.measurement);
-        if (entity.definitionPoints.isNotEmpty) {
-          pair(13, entity.definitionPoints[0].x);
-          pair(23, entity.definitionPoints[0].y);
-        }
-        if (entity.definitionPoints.length > 1) {
-          pair(14, entity.definitionPoints[1].x);
-          pair(24, entity.definitionPoints[1].y);
+        for (var i = 0; i < entity.definitionPoints.length && i < 3; i++) {
+          pair(13 + i, entity.definitionPoints[i].x);
+          pair(23 + i, entity.definitionPoints[i].y);
         }
       case SolidEntity(:final corners):
         pair(0, 'SOLID');

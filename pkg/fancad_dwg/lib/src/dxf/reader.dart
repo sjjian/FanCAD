@@ -43,6 +43,10 @@ class DxfReader {
       if (type == 'SECTION') {
         final name = scan.next();
         section = name?.code == 2 ? name!.value : '';
+        if (section == 'HEADER') {
+          _readHeader(document, scan);
+          section = '';
+        }
         continue;
       }
       if (type == 'ENDSEC' || type == 'EOF') {
@@ -66,9 +70,6 @@ class DxfReader {
       }
       if (type == 'ENDBLK') {
         currentBlock = null;
-        continue;
-      }
-      if (section == 'HEADER') {
         continue;
       }
       if (type == 'LAYOUT' && section == 'OBJECTS') {
@@ -215,6 +216,29 @@ class DxfReader {
       layer: values[8] ?? '0',
       frozenLayers: frozen,
     );
+  }
+
+  static void _readHeader(CadDocument document, _Scan scan) {
+    String? name;
+    while (true) {
+      final pair = scan.next();
+      if (pair == null) return;
+      if (pair.code == 0) {
+        scan.push(pair);
+        return;
+      }
+      if (pair.code == 9) {
+        name = pair.value;
+        continue;
+      }
+      if (name == r'$CLAYER' && pair.code == 8) {
+        document.currentLayer = pair.value;
+      } else if (name == r'$DIMSTYLE' && (pair.code == 2 || pair.code == 7)) {
+        document.currentDimStyle = pair.value;
+      } else if (name != null && name.startsWith(r'$')) {
+        document.setHeaderVariable(name, pair.value);
+      }
+    }
   }
 
   static DimStyleDef _dimStyle(Map<int, String> v) {
@@ -403,9 +427,14 @@ class DxfReader {
           props: props,
           blockName: v[2] ?? '',
           textPosition: Vec2(n(10), n(20)),
-          definitionPoints: [Vec2(n(13), n(23)), Vec2(n(14), n(24))],
+          definitionPoints: [
+            if (v.containsKey(13) || v.containsKey(23)) Vec2(n(13), n(23)),
+            if (v.containsKey(14) || v.containsKey(24)) Vec2(n(14), n(24)),
+            if (v.containsKey(15) || v.containsKey(25)) Vec2(n(15), n(25)),
+          ],
           measurement: n(42),
           overrideText: v[1] ?? '',
+          styleName: v[3] ?? 'Standard',
           dimensionType: int.tryParse(v[70] ?? '0') ?? 0,
         );
       case 'SPLINE':
