@@ -314,6 +314,43 @@ void main() {
     expect(dim.definitionPoints[2], const Vec2(5, 4));
   });
 
+  test('text styles survive DXF', () {
+    final original = CadDocument()
+      ..putTextStyle(
+        const TextStyleDef(
+          name: 'TITLE',
+          fontFamily: 'Arial',
+          height: 3.5,
+          widthFactor: 0.8,
+          obliqueAngle: 0.2,
+          backwards: true,
+        ),
+      )
+      ..addEntity(
+        const TextEntity(
+          id: 0,
+          position: Vec2(1, 2),
+          content: 'A',
+          styleName: 'TITLE',
+        ),
+      );
+
+    final restored = const DxfReader().readString(
+      const DxfWriter().writeString(original),
+    );
+    final style = restored.textStyles['TITLE'];
+    expect(style, isNotNull);
+    expect(style!.fontFamily, 'Arial');
+    expect(style.height, closeTo(3.5, 1e-12));
+    expect(style.widthFactor, closeTo(0.8, 1e-12));
+    expect(style.obliqueAngle, closeTo(0.2, 1e-12));
+    expect(style.backwards, isTrue);
+    expect(
+      restored.entities.whereType<TextEntity>().single.styleName,
+      'TITLE',
+    );
+  });
+
   test('entity and layer line weights survive DXF', () {
     final original = CadDocument()
       ..putLayer(const LayerDef(name: 'THICK', lineWeight: 50))

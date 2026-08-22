@@ -62,6 +62,11 @@ class DxfReader {
         document.putLayer(_layer(scan.collectMap()));
         continue;
       }
+      if (type == 'STYLE' && section == 'TABLES') {
+        final style = _textStyle(scan.collectMap());
+        if (style != null) document.putTextStyle(style);
+        continue;
+      }
       if (type == 'DIMSTYLE' && section == 'TABLES') {
         document.putDimStyle(_dimStyle(scan.collectMap()));
         continue;
@@ -244,6 +249,22 @@ class DxfReader {
         document.setHeaderVariable(name, pair.value);
       }
     }
+  }
+
+  static TextStyleDef? _textStyle(Map<int, String> v) {
+    final name = v[2] ?? '';
+    if (name.isEmpty) return null;
+    final generation = int.tryParse(v[71] ?? v[70] ?? '0') ?? 0;
+    return TextStyleDef(
+      name: name,
+      fontFamily: (v[3] == null || v[3]!.isEmpty) ? 'txt' : v[3]!,
+      bigFontFamily: v[4] ?? '',
+      height: double.tryParse(v[40] ?? '') ?? 0,
+      widthFactor: double.tryParse(v[41] ?? '') ?? 1,
+      obliqueAngle: (double.tryParse(v[50] ?? '') ?? 0) * math.pi / 180,
+      backwards: generation & 2 != 0,
+      upsideDown: generation & 4 != 0,
+    );
   }
 
   static DimStyleDef _dimStyle(Map<int, String> v) {

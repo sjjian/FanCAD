@@ -36,6 +36,7 @@ class DxfWriter {
     pair(2, 'TABLES');
     _lineTypes(pair, document);
     _layers(pair, document);
+    _textStyles(pair, document);
     _dimStyles(pair, document);
     pair(0, 'ENDSEC');
 
@@ -152,6 +153,29 @@ class DxfWriter {
       if (layer.lineWeight != LineWeight.byDefault) {
         pair(370, layer.lineWeight);
       }
+    }
+    pair(0, 'ENDTAB');
+  }
+
+  void _textStyles(void Function(int, Object) pair, CadDocument document) {
+    pair(0, 'TABLE');
+    pair(2, 'STYLE');
+    pair(70, document.textStyles.length);
+    for (final style in document.textStyles.values) {
+      pair(0, 'STYLE');
+      pair(2, style.name);
+      pair(70, 0);
+      pair(40, style.height);
+      pair(41, style.widthFactor == 0 ? 1 : style.widthFactor);
+      if (style.obliqueAngle != 0) {
+        pair(50, style.obliqueAngle * 180 / math.pi);
+      }
+      var generation = 0;
+      if (style.backwards) generation |= 2;
+      if (style.upsideDown) generation |= 4;
+      if (generation != 0) pair(71, generation);
+      pair(3, style.fontFamily);
+      if (style.bigFontFamily.isNotEmpty) pair(4, style.bigFontFamily);
     }
     pair(0, 'ENDTAB');
   }
