@@ -23,6 +23,7 @@ class DrawCommands {
     _polygon(),
     _ellipse(),
     _xline(),
+    _ray(),
     _point(),
     _divide(),
     _measure(),
@@ -643,6 +644,52 @@ class DrawCommands {
       }
       return _commit(context, 'Xline', [
         XLineEntity(
+          id: 0,
+          props: EntityProps(layer: context.document.currentLayer),
+          origin: origin,
+          direction: direction,
+        ),
+      ]);
+    },
+  );
+
+  static CommandDescriptor _ray() => CommandDescriptor(
+    id: 'draw.ray',
+    title: 'Ray',
+    category: _category,
+    aliases: const ['ray'],
+    description:
+        'Draws a semi-infinite ray from a start point through a second point. '
+        'Unlike XLINE, it has a beginning.',
+    params: const [
+      ParamSpec.point('origin', description: 'Start of the ray'),
+      ParamSpec.point('through', description: 'A point the ray passes through'),
+    ],
+    handler: (context) async {
+      final origin = await context.resolvePoint(
+        'origin',
+        'RAY  Specify start point:',
+      );
+      context.input
+        ..setMarkers([origin])
+        ..setPreview((cursor) => [OverlayLine(origin, cursor, dashed: false)]);
+      final through = await context.resolvePoint(
+        'through',
+        'RAY  Specify through point:',
+        basePoint: origin,
+      );
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+
+      final direction = through - origin;
+      if (direction.lengthSquared < 1e-20) {
+        return const CommandResult.failed(
+          'The two points coincide, so the ray has no direction.',
+        );
+      }
+      return _commit(context, 'Ray', [
+        RayEntity(
           id: 0,
           props: EntityProps(layer: context.document.currentLayer),
           origin: origin,

@@ -177,6 +177,18 @@ void main() {
       expect(document.entityCount, 0);
     });
 
+    test('ray stores a half-line from the origin through a point', () async {
+      final result = await run('draw.ray', {
+        'origin': [1, 2],
+        'through': [4, 6],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final ray = document.entities.first as RayEntity;
+      expect(ray.origin, const Vec2(1, 2));
+      expect(ray.direction, const Vec2(3, 4));
+    });
+
     test('divide places interior points along a line', () async {
       final id = await drawLine(0, 0, 12, 0);
 
