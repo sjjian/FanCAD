@@ -367,6 +367,77 @@ void main() {
     });
   });
 
+  group('paper space', () {
+    test('a layout viewport draws the model onto the sheet', () {
+      final document = CadDocument();
+      document.addEntity(
+        LineEntity(
+          id: 0,
+          start: const Vec2(0, 0),
+          end: const Vec2(80, 0),
+        ),
+        blockName: document.modelSpaceBlockName,
+      );
+      document.addLayout(
+        Layout(
+          name: 'Layout1',
+          blockName: '*Paper_Space',
+          tabOrder: 1,
+          viewports: const [
+            PaperViewport(
+              paperBounds: Bounds2(10, 10, 200, 150),
+              modelCenter: Vec2(40, 0),
+              scale: 1,
+            ),
+          ],
+        ),
+      );
+      expect(document.setActiveLayout('Layout1'), isTrue);
+
+      final scene = newBuilder().build(
+        document,
+        CadViewport.fit(document.extents, size),
+      );
+
+      expect(scene.entityCount, greaterThan(0));
+      expect(scene.lineBatches, isNotEmpty);
+      expect(document.extents.width, closeTo(297, 1e-9));
+      expect(document.extents.height, closeTo(210, 1e-9));
+    });
+
+    test('model space does not composite paper viewports', () {
+      final document = CadDocument();
+      document.addEntity(
+        LineEntity(
+          id: 0,
+          start: const Vec2(0, 0),
+          end: const Vec2(80, 0),
+        ),
+      );
+      document.addLayout(
+        Layout(
+          name: 'Layout1',
+          blockName: '*Paper_Space',
+          tabOrder: 1,
+          viewports: const [
+            PaperViewport(
+              paperBounds: Bounds2(10, 10, 200, 150),
+              modelCenter: Vec2(40, 0),
+            ),
+          ],
+        ),
+      );
+
+      final scene = newBuilder().build(
+        document,
+        CadViewport.fit(document.extents, size),
+      );
+
+      expect(document.activeLayout.isModelSpace, isTrue);
+      expect(scene.entityCount, 1);
+    });
+  });
+
   group('AciPalette', () {
     test('index 7 follows the background', () {
       expect(AciPalette.dark.indexed(7).computeLuminance(), greaterThan(0.5));

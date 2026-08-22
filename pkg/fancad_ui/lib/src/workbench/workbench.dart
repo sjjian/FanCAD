@@ -18,6 +18,7 @@ import '../theme/tokens.dart';
 import 'command_line.dart';
 import 'command_palette.dart';
 import 'document_view.dart';
+import 'layout_bar.dart';
 import 'shell_widgets.dart';
 import 'title_bar.dart';
 
@@ -175,6 +176,7 @@ class _WorkbenchState extends ConsumerState<Workbench> {
                             children: [
                               DocumentTabStrip(workspace: workspace),
                               Expanded(child: _canvasArea(workspace)),
+                              LayoutTabStrip(workspace: workspace),
                               SizedBox(
                                 height: commandPane.height,
                                 child: CommandLinePane(

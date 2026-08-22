@@ -546,7 +546,16 @@ class CadDocument implements BlockLookup, StyleResolver {
   );
 
   /// The extents of the active layout.
-  Bounds2 get extents => indexFor(currentBlockName).bounds;
+  ///
+  /// A paper tab is a sheet, so the camera frames the paper even when the
+  /// layout block itself is empty. Viewports sit on that sheet and are already
+  /// inside the paper rectangle.
+  Bounds2 get extents {
+    final drawn = indexFor(currentBlockName).bounds;
+    if (activeLayout.isModelSpace) return drawn;
+    final sheet = Bounds2(0, 0, activeLayout.paperWidth, activeLayout.paperHeight);
+    return drawn.isEmpty ? sheet : sheet.union(drawn);
+  }
 
   // -------------------------------------------------------------------------
   // BlockLookup

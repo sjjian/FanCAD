@@ -2588,6 +2588,25 @@ void main() {
     });
   });
 
+  group('layouts', () {
+    test('set layout switches to a paper tab and frames the sheet', () async {
+      document.addLayout(
+        const Layout(
+          name: 'Layout1',
+          blockName: '*Paper_Space',
+          tabOrder: 1,
+        ),
+      );
+
+      final result = await run('layout.set', {'name': 'Layout1'});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayoutName, 'Layout1');
+      expect(document.activeLayout.isModelSpace, isFalse);
+      expect(document.extents.width, closeTo(297, 1e-9));
+    });
+  });
+
   group('registry contract', () {
     test('every alias resolves to its command', () {
       for (final descriptor in workspace.commands.all) {

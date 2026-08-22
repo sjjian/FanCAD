@@ -28,6 +28,7 @@ export 'src/workbench/command_line_model.dart';
 export 'src/workbench/command_palette.dart';
 export 'src/workbench/document_view.dart';
 export 'src/workbench/interactive_input.dart';
+export 'src/workbench/layout_bar.dart';
 export 'src/workbench/shell_widgets.dart';
 export 'src/workbench/title_bar.dart';
 export 'src/workbench/workbench.dart';

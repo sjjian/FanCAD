@@ -156,46 +156,47 @@ class SceneBuilder {
     var drawn = 0;
     var culled = 0;
 
-    for (final id in document.indexFor(block).search(visible)) {
-      final entity = document.entity(id);
-      if (entity == null || !entity.props.visible) continue;
-      if (!document.isLayerVisible(entity.props.layer)) continue;
-      if (onlyLayers != null && !onlyLayers.contains(entity.props.layer)) {
-        continue;
-      }
+    final paper = _emitBlock(
+      document: document,
+      sink: sink,
+      blockName: block,
+      context: context,
+      query: visible,
+      onlyLayers: onlyLayers,
+      bucket: bucket,
+      minimumWorldSize: minimumWorldSize,
+    );
+    drawn += paper.drawn;
+    culled += paper.culled;
 
-      final bounds = document.boundsOfEntity(entity);
-      if (bounds.isNotEmpty && !bounds.intersects(visible)) {
-        culled++;
-        continue;
-      }
-      if (bounds.isNotEmpty &&
-          !_isPointLike(entity) &&
-          bounds.width < minimumWorldSize &&
-          bounds.height < minimumWorldSize) {
-        // Collapse rather than drop: a field of tiny blocks should still read
-        // as a grey mass, not as blank paper.
-        sink.point(
-          bounds.center.x,
-          bounds.center.y,
-          document.resolve(entity.props, ResolvedStyle.fallback),
+    final layout = document.activeLayout;
+    if (!layout.isModelSpace) {
+      for (final viewportWindow in layout.viewports) {
+        if (!viewportWindow.isOn) continue;
+        if (!viewportWindow.paperBounds.intersects(visible)) continue;
+        final scale = viewportWindow.scale.abs();
+        final vpContext = document.emitContext(
+          tolerance: scale < 1e-12 ? tolerance : tolerance / scale,
+          clip: viewportWindow.modelWindow,
+          transform: viewportWindow.modelToPaper(),
         );
-        drawn++;
-        continue;
-      }
-
-      if (TessellationCache.isWorthCaching(entity)) {
-        sink.replay(
-          cache.obtain(
-            entity,
-            bucket,
-            (recorder) => entity.emit(context, recorder),
-          ),
+        final model = _emitBlock(
+          document: document,
+          sink: sink,
+          blockName: document.modelSpaceBlockName,
+          context: vpContext,
+          query: viewportWindow.modelWindow,
+          onlyLayers: onlyLayers,
+          bucket: bucket,
+          minimumWorldSize: scale < 1e-12
+              ? minimumWorldSize
+              : minimumWorldSize / scale,
+          worldClip: viewportWindow.paperBounds,
         );
-      } else {
-        entity.emit(context, sink);
+        drawn += model.drawn;
+        culled += model.culled;
+        _emitViewportFrame(sink, viewportWindow.paperBounds);
       }
-      drawn++;
     }
 
     stopwatch.stop();
@@ -224,6 +225,88 @@ class SceneBuilder {
       entity.kind == EntityKind.point ||
       entity.kind == EntityKind.text ||
       entity.kind == EntityKind.mtext;
+
+  ({int drawn, int culled}) _emitBlock({
+    required CadDocument document,
+    required BatchingSink sink,
+    required String blockName,
+    required EmitContext context,
+    required Bounds2 query,
+    required Set<String>? onlyLayers,
+    required int bucket,
+    required double minimumWorldSize,
+    Bounds2? worldClip,
+  }) {
+    var drawn = 0;
+    var culled = 0;
+    final previousClip = sink.worldClip;
+    if (worldClip != null) sink.worldClip = worldClip;
+    for (final id in document.indexFor(blockName).search(query)) {
+      final entity = document.entity(id);
+      if (entity == null || !entity.props.visible) continue;
+      if (!document.isLayerVisible(entity.props.layer)) continue;
+      if (onlyLayers != null && !onlyLayers.contains(entity.props.layer)) {
+        continue;
+      }
+
+      final bounds = document.boundsOfEntity(entity);
+      if (bounds.isNotEmpty && !bounds.intersects(query)) {
+        culled++;
+        continue;
+      }
+      if (bounds.isNotEmpty &&
+          !_isPointLike(entity) &&
+          bounds.width < minimumWorldSize &&
+          bounds.height < minimumWorldSize) {
+        // Collapse rather than drop: a field of tiny blocks should still read
+        // as a grey mass, not as blank paper.
+        final center = context.apply(bounds.center);
+        sink.point(
+          center.x,
+          center.y,
+          document.resolve(entity.props, ResolvedStyle.fallback),
+        );
+        drawn++;
+        continue;
+      }
+
+      // Cached tessellation is in the entity's own space. A paper viewport
+      // applies a transform, so replaying the cache would put model geometry
+      // on the sheet at the wrong coordinates.
+      if (context.transform.isIdentity &&
+          TessellationCache.isWorthCaching(entity)) {
+        sink.replay(
+          cache.obtain(
+            entity,
+            bucket,
+            (recorder) => entity.emit(context, recorder),
+          ),
+        );
+      } else {
+        entity.emit(context, sink);
+      }
+      drawn++;
+    }
+    sink.worldClip = previousClip;
+    return (drawn: drawn, culled: culled);
+  }
+
+  static void _emitViewportFrame(BatchingSink sink, Bounds2 paper) {
+    sink.polyline(
+      Float64List.fromList([
+        paper.minX,
+        paper.minY,
+        paper.maxX,
+        paper.minY,
+        paper.maxX,
+        paper.maxY,
+        paper.minX,
+        paper.maxY,
+      ]),
+      ResolvedStyle.fallback,
+      closed: true,
+    );
+  }
 }
 
 /// Converts world-space primitives into screen-space draw batches.
@@ -252,6 +335,10 @@ class BatchingSink implements GeometrySink {
   /// preview of a pending change.
   final ui.Color? colorOverride;
   final double? strokeWidthOverride;
+
+  /// World-space clip used when drawing a paper-space viewport. Geometry that
+  /// leaves the window is cut so it does not spill onto the sheet.
+  Bounds2? worldClip;
 
   final Map<BatchKey, LineBatch> lineBatches = {};
   final Map<BatchKey, PointBatch> pointBatches = {};
@@ -341,6 +428,11 @@ class BatchingSink implements GeometrySink {
   @override
   void polyline(Float64List xy, ResolvedStyle style, {bool closed = false}) {
     if (xy.length < 4) return;
+    final clip = worldClip;
+    if (clip != null) {
+      _polylineClipped(xy, style, closed: closed, clip: clip);
+      return;
+    }
     final projected = _project(xy);
     final batch = _lineBatch(_keyFor(style));
     final before = batch.segmentCount;
@@ -429,6 +521,89 @@ class BatchingSink implements GeometrySink {
     }
   }
 
+  void _polylineClipped(
+    Float64List xy,
+    ResolvedStyle style, {
+    required bool closed,
+    required Bounds2 clip,
+  }) {
+    final previous = worldClip;
+    worldClip = null;
+    void segment(double x0, double y0, double x1, double y1) {
+      final cut = _clipSegment(x0, y0, x1, y1, clip);
+      if (cut == null) return;
+      polyline(
+        Float64List.fromList([cut.$1, cut.$2, cut.$3, cut.$4]),
+        style,
+      );
+    }
+
+    final count = xy.length ~/ 2;
+    for (var i = 0; i + 1 < count; i++) {
+      segment(xy[i * 2], xy[i * 2 + 1], xy[(i + 1) * 2], xy[(i + 1) * 2 + 1]);
+    }
+    if (closed && count > 2) {
+      segment(xy[(count - 1) * 2], xy[(count - 1) * 2 + 1], xy[0], xy[1]);
+    }
+    worldClip = previous;
+  }
+
+  /// Cohen–Sutherland clip of one segment against [box], or null if rejected.
+  static (double, double, double, double)? _clipSegment(
+    double x0,
+    double y0,
+    double x1,
+    double y1,
+    Bounds2 box,
+  ) {
+    var c0 = _outCode(x0, y0, box);
+    var c1 = _outCode(x1, y1, box);
+    while (true) {
+      if ((c0 | c1) == 0) return (x0, y0, x1, y1);
+      if ((c0 & c1) != 0) return null;
+      final code = c0 != 0 ? c0 : c1;
+      late final double x;
+      late final double y;
+      if (code & 8 != 0) {
+        x = x0 + (x1 - x0) * (box.maxY - y0) / (y1 - y0);
+        y = box.maxY;
+      } else if (code & 4 != 0) {
+        x = x0 + (x1 - x0) * (box.minY - y0) / (y1 - y0);
+        y = box.minY;
+      } else if (code & 2 != 0) {
+        y = y0 + (y1 - y0) * (box.maxX - x0) / (x1 - x0);
+        x = box.maxX;
+      } else {
+        y = y0 + (y1 - y0) * (box.minX - x0) / (x1 - x0);
+        x = box.minX;
+      }
+      if (code == c0) {
+        x0 = x;
+        y0 = y;
+        c0 = _outCode(x0, y0, box);
+      } else {
+        x1 = x;
+        y1 = y;
+        c1 = _outCode(x1, y1, box);
+      }
+    }
+  }
+
+  static int _outCode(double x, double y, Bounds2 box) {
+    var code = 0;
+    if (x < box.minX) {
+      code |= 1;
+    } else if (x > box.maxX) {
+      code |= 2;
+    }
+    if (y < box.minY) {
+      code |= 4;
+    } else if (y > box.maxY) {
+      code |= 8;
+    }
+    return code;
+  }
+
   @override
   void fill(
     Float64List xy,
@@ -436,6 +611,17 @@ class BatchingSink implements GeometrySink {
     List<Float64List> holes = const [],
   }) {
     if (xy.length < 6) return;
+    final clip = worldClip;
+    if (clip != null) {
+      var inside = false;
+      for (var i = 0; i + 1 < xy.length; i += 2) {
+        if (clip.containsPoint(xy[i], xy[i + 1])) {
+          inside = true;
+          break;
+        }
+      }
+      if (!inside) return;
+    }
     final key = _keyFor(style);
     final batch = fillBatches.putIfAbsent(key, () => FillBatch(key));
     batch.addRing(_project(xy));
@@ -446,6 +632,8 @@ class BatchingSink implements GeometrySink {
 
   @override
   void point(double x, double y, ResolvedStyle style) {
+    final clip = worldClip;
+    if (clip != null && !clip.containsPoint(x, y)) return;
     // Point markers get a minimum size so they stay visible and clickable.
     final key = _keyFor(style, extraWidth: 2);
     final batch = pointBatches.putIfAbsent(key, () => PointBatch(key));
@@ -456,6 +644,11 @@ class BatchingSink implements GeometrySink {
   @override
   void text(TextGeometry geometry, ResolvedStyle style) {
     if (geometry.text.isEmpty) return;
+    final clip = worldClip;
+    if (clip != null &&
+        !clip.containsPoint(geometry.origin.x, geometry.origin.y)) {
+      return;
+    }
     final pixelHeight = geometry.height * viewport.scale;
     final color = _colorFor(style);
     if (pixelHeight < SceneBuilder.minimumTextPixels) {
