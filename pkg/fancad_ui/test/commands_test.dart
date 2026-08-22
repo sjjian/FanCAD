@@ -876,6 +876,25 @@ void main() {
       expect(polyline.vertexAt(2).y, closeTo(15, 1e-9));
     });
 
+    test('lengthen extends an arc from the picked end', () async {
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [0, 10],
+        'end': [-10, 0],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.lengthen', {
+        'target': id,
+        'pick': [-10, 0],
+        'total': 15 * 3.141592653589793,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final arc = document.entity(id)! as ArcEntity;
+      expect(arc.sweep, closeTo(1.5 * 3.141592653589793, 1e-6));
+    });
+
     test('lengthen accepts a signed delta', () async {
       final id = await drawLine(0, 0, 10, 0);
 

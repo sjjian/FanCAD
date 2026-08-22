@@ -1316,6 +1316,46 @@ void main() {
     });
   });
 
+  group('lengthenArc', () {
+    const quarter = ArcEntity(
+      id: 1,
+      center: Vec2(0, 0),
+      radius: 10,
+      startAngle: 0,
+      endAngle: math.pi / 2,
+    );
+
+    test('extends the free end to a new total length', () {
+      final longer = Construct.lengthenArc(
+        quarter,
+        const Vec2(0, 10),
+        total: 10 * math.pi,
+      );
+
+      expect(longer, isNotNull);
+      expect(longer!.startAngle, closeTo(0, 1e-9));
+      expect(longer.endAngle, closeTo(math.pi, 1e-9));
+    });
+
+    test('a negative delta shortens the nearer end', () {
+      final shorter = Construct.lengthenArc(
+        quarter,
+        const Vec2(10, 0),
+        delta: -5,
+      );
+
+      expect(shorter!.endAngle, closeTo(math.pi / 2, 1e-9));
+      expect(shorter.sweep, closeTo((5 * math.pi - 5) / 10, 1e-9));
+    });
+
+    test('refuses a sweep that would close the circle', () {
+      expect(
+        Construct.lengthenArc(quarter, const Vec2(0, 10), total: 20 * math.pi),
+        isNull,
+      );
+    });
+  });
+
   group('stretch', () {
     const window = Bounds2(-1, -1, 1, 1);
     const delta = Vec2(0, 4);

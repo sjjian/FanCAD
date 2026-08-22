@@ -1826,6 +1826,34 @@ class Construct {
     );
   }
 
+  /// Changes the included length of [arc] from the nearer end.
+  ///
+  /// The far end stays put. The result must stay a proper open arc: a
+  /// non-positive length, or a sweep that would close the circle, is refused.
+  static ArcEntity? lengthenArc(
+    ArcEntity arc,
+    Vec2 pick, {
+    double? delta,
+    double? total,
+  }) {
+    if (arc.radius <= 0 || arc.sweep < 1e-12) return null;
+    final current = arc.radius * arc.sweep;
+    final target = total ?? (current + (delta ?? 0));
+    if (target <= 1e-12 || !target.isFinite) return null;
+    final newSweep = target / arc.radius;
+    if (newSweep >= math.pi * 2 - 1e-9) return null;
+    final fromStart = pick.distanceSquaredTo(arc.startPoint) <=
+        pick.distanceSquaredTo(arc.endPoint);
+    return ArcEntity(
+      id: arc.id,
+      props: arc.props,
+      center: arc.center,
+      radius: arc.radius,
+      startAngle: fromStart ? arc.endAngle - newSweep : arc.startAngle,
+      endAngle: fromStart ? arc.endAngle : arc.startAngle + newSweep,
+    );
+  }
+
   /// [points] run from the fixed end toward the moving end.
   static List<Vec2>? _trimChainToLength(List<Vec2> points, double target) {
     final out = <Vec2>[points.first];

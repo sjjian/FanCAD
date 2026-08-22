@@ -1530,14 +1530,14 @@ class EditCommands {
     category: _category,
     aliases: const ['len', 'lengthen'],
     description:
-        'Changes the length of a line or open straight polyline by moving the '
-        'end you pick. Supply a total length, or a signed delta to add to the '
-        'current length. Shortening a polyline walks back through vertices.',
+        'Changes the length of a line, open straight polyline or arc by moving '
+        'the end you pick. Supply a total length, or a signed delta to add to '
+        'the current length. An arc cannot be closed into a full circle.',
     params: const [
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line or polyline to lengthen',
+        description: 'The line, polyline or arc to lengthen',
         required: false,
       ),
       ParamSpec(
@@ -1568,7 +1568,7 @@ class EditCommands {
       } else {
         context.selection.clear();
         final picked = await context.input.selection(
-          'LENGTHEN  Select a line or polyline:',
+          'LENGTHEN  Select a line, polyline or arc:',
           useExistingSelection: false,
           single: true,
         );
@@ -1577,9 +1577,11 @@ class EditCommands {
       }
 
       final target = context.document.entity(targetId);
-      if (target is! LineEntity && target is! PolylineEntity) {
+      if (target is! LineEntity &&
+          target is! PolylineEntity &&
+          target is! ArcEntity) {
         return const CommandResult.failed(
-          'Lengthen supports lines and open straight polylines.',
+          'Lengthen supports lines, open straight polylines and arcs.',
         );
       }
       if (target is PolylineEntity && (target.closed || target.hasBulges)) {
@@ -2550,6 +2552,12 @@ class EditCommands {
         total: total,
         delta: delta,
       ),
+      ArcEntity() => Construct.lengthenArc(
+        target,
+        pick,
+        total: total,
+        delta: delta,
+      ),
       _ => null,
     };
   }
@@ -2565,6 +2573,10 @@ class EditCommands {
                 pick.distanceSquaredTo(target.vertexAt(target.vertexCount - 1))
             ? target.vertexAt(target.vertexCount - 1)
             : target.vertexAt(0),
+      ArcEntity(:final startPoint, :final endPoint) =>
+        pick.distanceSquaredTo(startPoint) <= pick.distanceSquaredTo(endPoint)
+            ? endPoint
+            : startPoint,
       _ => pick,
     };
   }
@@ -2577,6 +2589,15 @@ class EditCommands {
   ) {
     if (target is LineEntity) {
       return _lengthenAnchor(target, pick).distanceTo(cursor);
+    }
+    if (target is ArcEntity) {
+      final fromStart = pick.distanceSquaredTo(target.startPoint) <=
+          pick.distanceSquaredTo(target.endPoint);
+      final cursorAngle = (cursor - target.center).angle;
+      final sweep = fromStart
+          ? angularSweep(cursorAngle, target.endAngle)
+          : angularSweep(target.startAngle, cursorAngle);
+      return target.radius * sweep;
     }
     if (target is! PolylineEntity || target.vertexCount < 2) {
       return 0;
@@ -2603,6 +2624,14 @@ class EditCommands {
         OverlayPolyline([
           for (var i = 0; i < preview.vertexCount; i++) preview.vertexAt(i),
         ]),
+      ],
+      ArcEntity() => [
+        OverlayArc(
+          center: preview.center,
+          radius: preview.radius,
+          startAngle: preview.startAngle,
+          sweep: preview.sweep,
+        ),
       ],
       _ => const [],
     };
