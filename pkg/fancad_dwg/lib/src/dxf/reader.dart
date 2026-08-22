@@ -22,6 +22,8 @@ class DxfReader {
     final scan = _Scan(text);
     final document = CadDocument();
     final blockEntities = <String, List<int>>{};
+    final viewportsByBlock = <String, List<PaperViewport>>{};
+    final layoutRecords = <Map<int, String>>[];
     String section = '';
     String? currentBlock;
     var nextId = 1;
@@ -63,6 +65,19 @@ class DxfReader {
       if (section == 'HEADER') {
         continue;
       }
+      if (type == 'LAYOUT' && section == 'OBJECTS') {
+        layoutRecords.add(scan.collectMap());
+        continue;
+      }
+      if (type == 'VIEWPORT' &&
+          (section == 'ENTITIES' || section == 'BLOCKS')) {
+        final viewport = _decodeViewport(scan.collectPairs());
+        if (viewport != null) {
+          final owner = currentBlock ?? document.modelSpaceBlockName;
+          viewportsByBlock.putIfAbsent(owner, () => []).add(viewport);
+        }
+        continue;
+      }
       if (section == 'ENTITIES' || section == 'BLOCKS') {
         final entity = _decode(type, scan.collectPairs(), nextId++);
         if (entity != null) addEntity(entity);
@@ -87,7 +102,84 @@ class DxfReader {
       );
     }
     document.reindex();
+    _applyLayouts(document, layoutRecords, viewportsByBlock);
     return document;
+  }
+
+  static void _applyLayouts(
+    CadDocument document,
+    List<Map<int, String>> records,
+    Map<String, List<PaperViewport>> viewportsByBlock,
+  ) {
+    if (records.isNotEmpty) {
+      for (final values in records) {
+        final name = values[1] ?? 'Layout';
+        final blockName = values[2] ?? document.modelSpaceBlockName;
+        final isModel = name.toLowerCase() == 'model' ||
+            blockName == document.modelSpaceBlockName;
+        document.addLayout(
+          Layout(
+            name: name,
+            blockName: blockName,
+            isModelSpace: isModel,
+            tabOrder: int.tryParse(values[71] ?? '0') ?? 0,
+            paperWidth: double.tryParse(values[44] ?? '297') ?? 297,
+            paperHeight: double.tryParse(values[45] ?? '210') ?? 210,
+            viewports: viewportsByBlock[blockName] ?? const [],
+          ),
+        );
+      }
+      return;
+    }
+
+    var tab = 1;
+    for (final block in document.blocks.values) {
+      if (!block.isLayoutBlock) continue;
+      if (block.name == document.modelSpaceBlockName) continue;
+      if (!block.name.toUpperCase().contains('PAPER_SPACE')) continue;
+      document.addLayout(
+        Layout(
+          name: 'Layout$tab',
+          blockName: block.name,
+          tabOrder: tab,
+          viewports: viewportsByBlock[block.name] ?? const [],
+        ),
+      );
+      tab++;
+    }
+  }
+
+  static PaperViewport? _decodeViewport(List<(int, String)> pairs) {
+    final values = <int, String>{};
+    for (final (code, value) in pairs) {
+      values[code] = value;
+    }
+    double n(int code, [double fallback = 0]) =>
+        double.tryParse(values[code] ?? '') ?? fallback;
+    final id = int.tryParse(values[69] ?? '0') ?? 0;
+    if (id == 1) return null;
+    final width = n(40);
+    final height = n(41);
+    if (width <= 0 || height <= 0) return null;
+    final cx = n(10);
+    final cy = n(20);
+    final viewHeight = n(45);
+    final flags = int.tryParse(values[90] ?? '0') ?? 0;
+    final onOff = int.tryParse(values[68] ?? '1') ?? 1;
+    return PaperViewport(
+      paperBounds: Bounds2(
+        cx - width / 2,
+        cy - height / 2,
+        cx + width / 2,
+        cy + height / 2,
+      ),
+      modelCenter: Vec2(n(12), n(22)),
+      scale: viewHeight > 0 ? height / viewHeight : 1,
+      rotation: n(50) * math.pi / 180,
+      isOn: onOff > 0 && flags & 131072 == 0,
+      locked: flags & 16384 != 0,
+      layer: values[8] ?? '0',
+    );
   }
 
   static LayerDef _layer(Map<int, String> v) {

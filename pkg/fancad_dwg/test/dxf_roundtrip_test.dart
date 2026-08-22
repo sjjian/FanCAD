@@ -114,6 +114,67 @@ void main() {
     expect(insert.columnSpacing, closeTo(5, 1e-12));
   });
 
+  test('paper layouts and viewports survive DXF', () {
+    final original = CadDocument();
+    original.addEntity(
+      const LineEntity(
+        id: 0,
+        start: Vec2.zero(),
+        end: Vec2(80, 0),
+      ),
+    );
+    original.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+        viewports: [
+          PaperViewport(
+            paperBounds: Bounds2(20, 20, 220, 170),
+            modelCenter: Vec2(40, 0),
+            scale: 0.5,
+            locked: true,
+          ),
+        ],
+      ),
+    );
+    original.addEntity(
+      const LineEntity(
+        id: 0,
+        start: Vec2(10, 10),
+        end: Vec2(50, 10),
+      ),
+      blockName: '*Paper_Space',
+    );
+
+    final dxf = const DxfWriter().writeString(original);
+    expect(dxf, contains('LAYOUT'));
+    expect(dxf, contains('VIEWPORT'));
+    expect(dxf, contains('A3'));
+
+    final restored = const DxfReader().readString(dxf);
+    expect(restored.layouts.map((item) => item.name), containsAll(['Model', 'A3']));
+    final paper = restored.layouts.firstWhere((item) => item.name == 'A3');
+    expect(paper.paperWidth, closeTo(420, 1e-9));
+    expect(paper.paperHeight, closeTo(297, 1e-9));
+    expect(paper.viewports, hasLength(1));
+    expect(paper.viewports.single.scale, closeTo(0.5, 1e-9));
+    expect(paper.viewports.single.locked, isTrue);
+    expect(paper.viewports.single.paperBounds, const Bounds2(20, 20, 220, 170));
+
+    expect(
+      restored.entitiesOf(restored.modelSpaceBlockName),
+      hasLength(1),
+    );
+    expect(restored.entitiesOf('*Paper_Space'), hasLength(1));
+    expect(
+      const FidelityAuditor().compare(original, restored).isClean,
+      isTrue,
+    );
+  });
+
   test('a stress drawing of 10k entities encodes and decodes as DXF', () {
     final original = SampleDrawings.stressTest(count: 2000);
     final dxf = const DxfWriter().writeString(original);
