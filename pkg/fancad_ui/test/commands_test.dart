@@ -2749,6 +2749,72 @@ void main() {
       expect(document.activeLayout.viewports, isEmpty);
     });
 
+    test('vpscale changes the only viewport on the sheet', () async {
+      await run('layout.new');
+      await run('layout.mview', {
+        'corner1': [10, 10],
+        'corner2': [200, 150],
+        'scale': 1,
+      });
+
+      final result = await run('layout.vpscale', {'scale': 0.5});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayout.viewports.single.scale, closeTo(0.5, 1e-9));
+
+      await run('edit.undo');
+      expect(document.activeLayout.viewports.single.scale, closeTo(1, 1e-9));
+    });
+
+    test('vpscale fit frames the model again', () async {
+      await drawLine(0, 0, 80, 0);
+      await run('layout.new');
+      await run('layout.mview', {
+        'corner1': [10, 10],
+        'corner2': [200, 150],
+        'scale': 1,
+      });
+
+      final result = await run('layout.vpscale', {'fit': true});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(
+        document.activeLayout.viewports.single.scale,
+        closeTo(190 / 80, 1e-9),
+      );
+      expect(
+        document.activeLayout.viewports.single.modelCenter.x,
+        closeTo(40, 1e-9),
+      );
+    });
+
+    test('vpscale refuses a locked viewport', () async {
+      await run('layout.new');
+      final layout = document.activeLayout;
+      document.addLayout(
+        layout.copyWith(
+          viewports: const [
+            PaperViewport(
+              paperBounds: Bounds2(10, 10, 200, 150),
+              modelCenter: Vec2.zero(),
+              scale: 1,
+              locked: true,
+            ),
+          ],
+        ),
+      );
+
+      final result = await run('layout.vpscale', {'scale': 0.25});
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.activeLayout.viewports.single.scale, closeTo(1, 1e-9));
+    });
+
+    test('vpscale refuses the model tab', () async {
+      final result = await run('layout.vpscale', {'scale': 1});
+      expect(result.status, CommandStatus.failed);
+    });
+
     test('mview honours an explicit scale', () async {
       document.addLayout(
         const Layout(
