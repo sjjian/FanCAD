@@ -140,6 +140,50 @@ void main() {
     expect(svg, contains('height="60'));
   });
 
+  test('plot scale and offset place content on the sheet', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+        plotScale: 0.5,
+        plotOffsetX: 10,
+        plotOffsetY: 20,
+      ),
+    );
+    document.setActiveLayout('A3');
+
+    final svg = const Plotter().toSvg(document);
+    expect(svg, contains('width="420'));
+    expect(svg, contains('height="297'));
+    expect(svg, contains('translate(10.0 -20.0)'));
+    expect(svg, contains('scale(0.5)'));
+  });
+
+  test('plot fit scales the window onto the sheet', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A4',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 200,
+        paperHeight: 100,
+        plotWindow: Bounds2(0, 0, 20, 10),
+        plotFit: true,
+      ),
+    );
+    document.setActiveLayout('A4');
+
+    final svg = const Plotter().toSvg(document);
+    expect(svg, contains('width="200'));
+    expect(svg, contains('height="100'));
+    expect(svg, contains('scale(10.0)'));
+  });
+
   test('a double-click inside a paper viewport maximizes it', () {
     const layout = Layout(
       name: 'Layout1',

@@ -51,6 +51,9 @@ class ProCommands {
             'viewports': layout.viewports.length,
             'tabOrder': layout.tabOrder,
             'plotRotation': layout.plotRotation,
+            'plotScale': layout.plotScale,
+            'plotFit': layout.plotFit,
+            'plotOffset': [layout.plotOffsetX, layout.plotOffsetY],
             'current': layout.name == context.document.activeLayoutName,
             if (layout.plotWindow case final box?)
               'plotWindow': [box.minX, box.minY, box.maxX, box.maxY],
@@ -302,6 +305,10 @@ class ProCommands {
         paperHeight: source.paperHeight,
         plotRotation: source.plotRotation,
         plotWindow: source.plotWindow,
+        plotScale: source.plotScale,
+        plotFit: source.plotFit,
+        plotOffsetX: source.plotOffsetX,
+        plotOffsetY: source.plotOffsetY,
         viewports: [...source.viewports],
       );
       final paper = context.document.entitiesOf(source.blockName).toList();
@@ -614,8 +621,9 @@ class ProCommands {
     aliases: const ['pagesetup'],
     description:
         'Changes the paper size of a layout, in millimetres, the plot '
-        'rotation (0, 90, 180 or 270), and an optional plot window. '
-        'Omit the name to edit the current paper tab. Model has no sheet.',
+        'rotation (0, 90, 180 or 270), scale or fit-to-sheet, an offset, '
+        'and an optional plot window. Omit the name to edit the current '
+        'paper tab. Model has no sheet.',
     params: const [
       ParamSpec(
         name: 'name',
@@ -655,6 +663,24 @@ class ProCommands {
         name: 'window',
         type: ParamType.boolean,
         description: 'false clears a stored plot window',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'scale',
+        type: ParamType.distance,
+        description: 'Plot scale. 1 is 1:1. Ignored when fit is true.',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'fit',
+        type: ParamType.boolean,
+        description: 'Scale the window or extents to fill the sheet',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'offset',
+        type: ParamType.point,
+        description: 'Plot origin on the sheet, in millimetres',
         required: false,
       ),
     ],
@@ -699,10 +725,22 @@ class ProCommands {
       }
       final nextWindow = windowChange.$2;
       final clearWindow = context.args.boolean('window') == false;
+      final fit = context.args.boolean('fit') ?? layout.plotFit;
+      final scale = context.args.number('scale') ?? layout.plotScale;
+      if (!fit && scale <= 0) {
+        return const CommandResult.failed('Plot scale must be positive.');
+      }
+      final offset = context.args.point('offset');
+      final offsetX = offset?.x ?? layout.plotOffsetX;
+      final offsetY = offset?.y ?? layout.plotOffsetY;
       if (width == layout.paperWidth &&
           height == layout.paperHeight &&
           rotation == layout.plotRotation &&
-          _samePlotBox(nextWindow, layout.plotWindow)) {
+          _samePlotBox(nextWindow, layout.plotWindow) &&
+          fit == layout.plotFit &&
+          (scale - layout.plotScale).abs() < 1e-12 &&
+          (offsetX - layout.plotOffsetX).abs() < 1e-12 &&
+          (offsetY - layout.plotOffsetY).abs() < 1e-12) {
         return CommandResult.ok(
           message: '${layout.name} is already ${width} × ${height} mm'
               '${rotation == 0 ? '' : ', rotated $rotation°'}.',
@@ -720,6 +758,10 @@ class ProCommands {
         plotRotation: rotation,
         plotWindow: nextWindow,
         clearPlotWindow: clearWindow,
+        plotScale: scale,
+        plotFit: fit,
+        plotOffsetX: offsetX,
+        plotOffsetY: offsetY,
       );
       final committed = context.edit('Page Setup', (transaction) {
         transaction.putLayout(updated);
@@ -735,11 +777,15 @@ class ProCommands {
       return CommandResult(
         status: CommandStatus.ok,
         message: '${layout.name} is now ${width} × ${height} mm'
-            '${rotation == 0 ? '' : ', plot $rotation°'}.',
+            '${rotation == 0 ? '' : ', plot $rotation°'}'
+            '${fit ? ', fit' : (scale == 1 ? '' : ', scale $scale')}.',
         data: {
           'name': layout.name,
           'paper': [width, height],
           'rotation': rotation,
+          'scale': updated.plotScale,
+          'fit': updated.plotFit,
+          'offset': [updated.plotOffsetX, updated.plotOffsetY],
           if (updated.plotWindow case final box?)
             'plotWindow': [box.minX, box.minY, box.maxX, box.maxY],
         },

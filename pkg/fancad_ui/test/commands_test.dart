@@ -3070,6 +3070,30 @@ void main() {
       expect(document.activeLayout.plotWindow, isNull);
     });
 
+    test('page setup stores plot scale, fit and offset', () async {
+      await run('layout.new');
+      final result = await run('layout.pagesetup', {
+        'width': 297,
+        'height': 210,
+        'scale': 0.5,
+        'offset': [10, 20],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayout.plotScale, closeTo(0.5, 1e-9));
+      expect(document.activeLayout.plotOffsetX, closeTo(10, 1e-9));
+      expect(document.activeLayout.plotOffsetY, closeTo(20, 1e-9));
+      expect(document.activeLayout.plotFit, isFalse);
+
+      final fitted = await run('layout.pagesetup', {
+        'width': 297,
+        'height': 210,
+        'fit': true,
+      });
+      expect(fitted.status, CommandStatus.ok, reason: fitted.message);
+      expect(document.activeLayout.plotFit, isTrue);
+    });
+
     test('page setup refuses Model', () async {
       final result = await run('layout.pagesetup', {
         'name': 'Model',

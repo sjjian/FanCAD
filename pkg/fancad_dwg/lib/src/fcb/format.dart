@@ -67,6 +67,10 @@ class FcbSection {
 
   /// Dimension styles. Optional: a missing section leaves Standard in place.
   static const int dimStyles = 14;
+
+  /// Optional plot scale, fit and offset, one record per layout that
+  /// is not 1:1 at the origin.
+  static const int plotPlacement = 15;
 }
 
 /// Fixed record sizes, in bytes.
@@ -82,6 +86,7 @@ class FcbRecord {
   static const int viewport = 80;
   static const int plotWindow = 40;
   static const int dimStyle = 64;
+  static const int plotPlacement = 40;
 }
 
 /// Field offsets inside an entity record.
@@ -228,6 +233,23 @@ class FcbDimStyle {
   static const int extensionLineExtend = 40;
   static const int textGap = 48;
   static const int scale = 56;
+}
+
+/// Field offsets inside a plot-placement record.
+class FcbPlotPlacement {
+  const FcbPlotPlacement._();
+
+  static const int layoutIndex = 0;
+  static const int flags = 4;
+  static const int scale = 8;
+  static const int offsetX = 16;
+  static const int offsetY = 24;
+}
+
+class FcbPlotPlacementFlags {
+  const FcbPlotPlacementFlags._();
+
+  static const int fit = 1 << 0;
 }
 
 /// Entity type codes. These are wire values and must never be renumbered.

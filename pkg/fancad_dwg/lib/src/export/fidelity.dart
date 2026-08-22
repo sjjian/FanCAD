@@ -270,6 +270,12 @@ class FidelityAuditor {
     if (!_sameBox(source.plotWindow, target.plotWindow)) {
       issues.add('plot window changed');
     }
+    if ((source.plotScale - target.plotScale).abs() > 1e-6 ||
+        source.plotFit != target.plotFit ||
+        (source.plotOffsetX - target.plotOffsetX).abs() > 1e-6 ||
+        (source.plotOffsetY - target.plotOffsetY).abs() > 1e-6) {
+      issues.add('plot scale or offset changed');
+    }
     if (source.viewports.length != target.viewports.length) {
       issues.add(
         '${source.viewports.length} viewport(s) vs ${target.viewports.length}',

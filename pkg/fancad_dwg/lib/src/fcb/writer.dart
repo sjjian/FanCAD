@@ -222,6 +222,8 @@ class FcbWriter {
       FcbSection.headerVariables: _encodeHeaderVariables(document),
       if (_encodePlotWindows(document) case final plotWindows?)
         FcbSection.plotWindows: plotWindows,
+      if (_encodePlotPlacement(document) case final plotPlacement?)
+        FcbSection.plotPlacement: plotPlacement,
     };
 
     // Pools are encoded last: the entity and table encoders above are what
@@ -938,6 +940,43 @@ class FcbWriter {
       view.setFloat64(at + FcbPlotWindow.minY, box.minY, Endian.little);
       view.setFloat64(at + FcbPlotWindow.maxX, box.maxX, Endian.little);
       view.setFloat64(at + FcbPlotWindow.maxY, box.maxY, Endian.little);
+    }
+    return buffer;
+  }
+
+  Uint8List? _encodePlotPlacement(CadDocument document) {
+    final entries = <int>[];
+    for (var i = 0; i < document.layouts.length; i++) {
+      if (document.layouts[i].hasCustomPlotPlacement) entries.add(i);
+    }
+    if (entries.isEmpty) return null;
+    final buffer = Uint8List(8 + entries.length * FcbRecord.plotPlacement);
+    final view = ByteData.view(buffer.buffer);
+    view.setUint64(0, entries.length, Endian.little);
+    for (var i = 0; i < entries.length; i++) {
+      final layout = document.layouts[entries[i]];
+      final at = 8 + i * FcbRecord.plotPlacement;
+      view.setUint32(
+        at + FcbPlotPlacement.layoutIndex,
+        entries[i],
+        Endian.little,
+      );
+      view.setUint32(
+        at + FcbPlotPlacement.flags,
+        layout.plotFit ? FcbPlotPlacementFlags.fit : 0,
+        Endian.little,
+      );
+      view.setFloat64(at + FcbPlotPlacement.scale, layout.plotScale, Endian.little);
+      view.setFloat64(
+        at + FcbPlotPlacement.offsetX,
+        layout.plotOffsetX,
+        Endian.little,
+      );
+      view.setFloat64(
+        at + FcbPlotPlacement.offsetY,
+        layout.plotOffsetY,
+        Endian.little,
+      );
     }
     return buffer;
   }

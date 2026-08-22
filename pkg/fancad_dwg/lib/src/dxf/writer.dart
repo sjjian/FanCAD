@@ -88,6 +88,12 @@ class DxfWriter {
         pair(140, box.maxX);
         pair(141, box.maxY);
       }
+      if (layout.hasCustomPlotPlacement) {
+        pair(142, layout.plotScale);
+        pair(46, layout.plotOffsetX);
+        pair(47, layout.plotOffsetY);
+        if (layout.plotFit) pair(290, 1);
+      }
       pair(100, 'AcDbLayout');
       pair(1, layout.name);
       pair(2, layout.blockName);

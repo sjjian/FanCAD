@@ -138,6 +138,10 @@ class DxfReader {
             plotRotation:
                 (int.tryParse(values[75] ?? '0') ?? 0).clamp(0, 3) * 90,
             plotWindow: _plotWindow(values),
+            plotScale: double.tryParse(values[142] ?? '') ?? 1,
+            plotFit: (int.tryParse(values[290] ?? '0') ?? 0) != 0,
+            plotOffsetX: double.tryParse(values[46] ?? '') ?? 0,
+            plotOffsetY: double.tryParse(values[47] ?? '') ?? 0,
             viewports: viewportsByBlock[blockName] ?? const [],
           ),
         );

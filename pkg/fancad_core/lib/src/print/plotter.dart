@@ -45,6 +45,12 @@ class Plotter {
   }) {
     final target = layout ?? document.activeLayout;
     sink.plotRotation = target.plotRotation;
+    if (target.hasCustomPlotPlacement) {
+      sink.sheetWidth = target.paperWidth <= 0 ? 297 : target.paperWidth;
+      sink.sheetHeight = target.paperHeight <= 0 ? 210 : target.paperHeight;
+      sink.plotOffsetX = target.plotOffsetX;
+      sink.plotOffsetY = target.plotOffsetY;
+    }
     final box = window ??
         target.plotWindow ??
         (target.isModelSpace
@@ -91,12 +97,28 @@ class Plotter {
         sink.frame(viewport.paperBounds);
       }
     }
+    if (target.hasCustomPlotPlacement) {
+      final cw = padded.width <= 1e-12 ? 1.0 : padded.width;
+      final ch = padded.height <= 1e-12 ? 1.0 : padded.height;
+      final sheetW = sink.sheetWidth ?? 297;
+      final sheetH = sink.sheetHeight ?? 210;
+      var scale = target.plotFit
+          ? (sheetW / cw < sheetH / ch ? sheetW / cw : sheetH / ch)
+          : target.plotScale;
+      if (scale <= 0 || !scale.isFinite) scale = 1;
+      sink.plotScale = scale;
+    }
     return padded;
   }
 }
 
 abstract class _PlotSink implements GeometrySink {
   abstract int plotRotation;
+  abstract double plotScale;
+  abstract double plotOffsetX;
+  abstract double plotOffsetY;
+  abstract double? sheetWidth;
+  abstract double? sheetHeight;
   void clipTo(Bounds2? box);
   void frame(Bounds2 box);
 }
@@ -106,6 +128,16 @@ class _SvgSink implements _PlotSink {
 
   @override
   var plotRotation = 0;
+  @override
+  var plotScale = 1.0;
+  @override
+  var plotOffsetX = 0.0;
+  @override
+  var plotOffsetY = 0.0;
+  @override
+  double? sheetWidth;
+  @override
+  double? sheetHeight;
   final double strokeWidth;
   final StringBuffer _defs = StringBuffer();
   final StringBuffer _body = StringBuffer();
@@ -229,19 +261,33 @@ class _SvgSink implements _PlotSink {
       _body.writeln('</g>');
       _clipOpen = false;
     }
-    final width = box.width == 0 ? 297.0 : box.width;
-    final height = box.height == 0 ? 210.0 : box.height;
+    final useSheet = sheetWidth != null && sheetHeight != null;
+    final width = useSheet
+        ? sheetWidth!
+        : (box.width == 0 ? 297.0 : box.width);
+    final height = useSheet
+        ? sheetHeight!
+        : (box.height == 0 ? 210.0 : box.height);
     final rot = Layout.normalizePlotRotation(plotRotation);
     final swap = rot == 90 || rot == 270;
     final pageW = swap ? height : width;
     final pageH = swap ? width : height;
-    final cx = box.minX + width / 2;
-    final cy = -box.maxY + height / 2;
-    final viewX = swap ? cx - pageW / 2 : box.minX;
-    final viewY = swap ? cy - pageH / 2 : -box.maxY;
+    final originX = useSheet ? 0.0 : box.minX;
+    final originY = useSheet ? 0.0 : box.minY;
+    final cx = originX + width / 2;
+    final cy = -(originY + height) + height / 2;
+    final viewX = swap ? cx - pageW / 2 : originX;
+    final viewY = swap ? cy - pageH / 2 : -(originY + height);
+    var inner = '$_body';
+    if (useSheet) {
+      inner =
+          '<g transform="translate($plotOffsetX ${-plotOffsetY}) '
+          'scale($plotScale) translate(${-box.minX} ${box.minY})">\n'
+          '$inner</g>\n';
+    }
     final wrapped = rot == 0
-        ? '$_body'
-        : '<g transform="rotate(${-rot} $cx $cy)">\n$_body</g>\n';
+        ? inner
+        : '<g transform="rotate(${-rot} $cx $cy)">\n$inner</g>\n';
     final defs = _defs.isEmpty ? '' : '  <defs>\n$_defs  </defs>\n';
     return '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<svg xmlns="http://www.w3.org/2000/svg" '
@@ -290,6 +336,16 @@ class _PdfSink implements _PlotSink {
 
   @override
   var plotRotation = 0;
+  @override
+  var plotScale = 1.0;
+  @override
+  var plotOffsetX = 0.0;
+  @override
+  var plotOffsetY = 0.0;
+  @override
+  double? sheetWidth;
+  @override
+  double? sheetHeight;
   final double strokeWidth;
   final StringBuffer _ops = StringBuffer();
   var _clipped = false;
@@ -434,8 +490,13 @@ class _PdfSink implements _PlotSink {
       _clipped = false;
     }
     const mmToPt = 72.0 / 25.4;
-    final width = box.width == 0 ? 297.0 : box.width;
-    final height = box.height == 0 ? 210.0 : box.height;
+    final useSheet = sheetWidth != null && sheetHeight != null;
+    final width = useSheet
+        ? sheetWidth!
+        : (box.width == 0 ? 297.0 : box.width);
+    final height = useSheet
+        ? sheetHeight!
+        : (box.height == 0 ? 210.0 : box.height);
     final rot = Layout.normalizePlotRotation(plotRotation);
     final swap = rot == 90 || rot == 270;
     final pageW = swap ? height : width;
@@ -451,6 +512,16 @@ class _PdfSink implements _PlotSink {
         '${_pdfNum(twist.a)} ${_pdfNum(twist.b)} ${_pdfNum(twist.c)} '
         '${_pdfNum(twist.d)} ${_pdfNum(twist.e)} ${_pdfNum(twist.f)} cm',
       );
+    }
+    if (useSheet) {
+      content.writeln(
+        '1 0 0 1 ${_pdfNum(plotOffsetX)} ${_pdfNum(plotOffsetY)} cm',
+      );
+      if ((plotScale - 1).abs() > 1e-12) {
+        content.writeln(
+          '${_pdfNum(plotScale)} 0 0 ${_pdfNum(plotScale)} 0 0 cm',
+        );
+      }
     }
     content
       ..writeln('1 0 0 1 ${_pdfNum(-box.minX)} ${_pdfNum(-box.minY)} cm')

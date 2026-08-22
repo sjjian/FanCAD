@@ -132,6 +132,10 @@ void main() {
         paperHeight: 297,
         plotRotation: 270,
         plotWindow: Bounds2(8, 9, 88, 49),
+        plotScale: 0.25,
+        plotFit: true,
+        plotOffsetX: 2,
+        plotOffsetY: 3,
         viewports: [
           PaperViewport(
             paperBounds: Bounds2(20, 20, 220, 170),
@@ -166,6 +170,10 @@ void main() {
     expect(paper.paperHeight, closeTo(297, 1e-9));
     expect(paper.plotRotation, 270);
     expect(paper.plotWindow, const Bounds2(8, 9, 88, 49));
+    expect(paper.plotScale, closeTo(0.25, 1e-9));
+    expect(paper.plotFit, isTrue);
+    expect(paper.plotOffsetX, closeTo(2, 1e-9));
+    expect(paper.plotOffsetY, closeTo(3, 1e-9));
     expect(paper.viewports, hasLength(1));
     expect(paper.viewports.single.scale, closeTo(0.5, 1e-9));
     expect(paper.viewports.single.locked, isTrue);

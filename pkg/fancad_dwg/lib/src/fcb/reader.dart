@@ -175,6 +175,7 @@ class FcbReader {
     _applyLayouts(document, blockNames);
     _applyViewports(document);
     _applyPlotWindows(document);
+    _applyPlotPlacement(document);
     _applyHeaderVariables(document);
 
     document.reindex();
@@ -538,6 +539,40 @@ class FcbReader {
       );
       if (box.isEmpty) continue;
       document.addLayout(layouts[layoutIndex].copyWith(plotWindow: box));
+    }
+  }
+
+  void _applyPlotPlacement(CadDocument document) {
+    final section = _section(FcbSection.plotPlacement);
+    if (section == null) return;
+    final base = section.$1;
+    final count = _view.getUint64(base, Endian.little);
+    final layouts = List<Layout>.from(document.layouts);
+    for (var i = 0; i < count; i++) {
+      final at = base + 8 + i * FcbRecord.plotPlacement;
+      final layoutIndex = _view.getUint32(
+        at + FcbPlotPlacement.layoutIndex,
+        Endian.little,
+      );
+      if (layoutIndex >= layouts.length) continue;
+      final flags = _view.getUint32(at + FcbPlotPlacement.flags, Endian.little);
+      document.addLayout(
+        layouts[layoutIndex].copyWith(
+          plotFit: flags & FcbPlotPlacementFlags.fit != 0,
+          plotScale: _view.getFloat64(
+            at + FcbPlotPlacement.scale,
+            Endian.little,
+          ),
+          plotOffsetX: _view.getFloat64(
+            at + FcbPlotPlacement.offsetX,
+            Endian.little,
+          ),
+          plotOffsetY: _view.getFloat64(
+            at + FcbPlotPlacement.offsetY,
+            Endian.little,
+          ),
+        ),
+      );
     }
   }
 

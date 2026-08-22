@@ -74,6 +74,10 @@ class Layout {
     this.paperHeight = 210,
     this.plotRotation = 0,
     this.plotWindow,
+    this.plotScale = 1,
+    this.plotFit = false,
+    this.plotOffsetX = 0,
+    this.plotOffsetY = 0,
     this.viewports = const [],
   });
 
@@ -100,8 +104,24 @@ class Layout {
   /// Optional plot window. Null means the full sheet, or model extents.
   final Bounds2? plotWindow;
 
+  /// Drawing units per plotted millimetre. Ignored when [plotFit] is set.
+  final double plotScale;
+
+  /// Scale the plot window (or extents) to fill the sheet.
+  final bool plotFit;
+
+  /// Shift of the scaled content on the sheet, in millimetres.
+  final double plotOffsetX;
+  final double plotOffsetY;
+
   /// Windows into model space. Empty on the model tab itself.
   final List<PaperViewport> viewports;
+
+  bool get hasCustomPlotPlacement =>
+      plotFit ||
+      (plotScale - 1).abs() > 1e-12 ||
+      plotOffsetX.abs() > 1e-12 ||
+      plotOffsetY.abs() > 1e-12;
 
   /// Topmost viewport whose paper rectangle contains [x],[y], or null.
   int? viewportIndexAt(double x, double y) {
@@ -121,6 +141,10 @@ class Layout {
     int? plotRotation,
     Bounds2? plotWindow,
     bool clearPlotWindow = false,
+    double? plotScale,
+    bool? plotFit,
+    double? plotOffsetX,
+    double? plotOffsetY,
     List<PaperViewport>? viewports,
   }) => Layout(
     name: name ?? this.name,
@@ -131,6 +155,10 @@ class Layout {
     paperHeight: paperHeight ?? this.paperHeight,
     plotRotation: plotRotation ?? this.plotRotation,
     plotWindow: clearPlotWindow ? null : (plotWindow ?? this.plotWindow),
+    plotScale: plotScale ?? this.plotScale,
+    plotFit: plotFit ?? this.plotFit,
+    plotOffsetX: plotOffsetX ?? this.plotOffsetX,
+    plotOffsetY: plotOffsetY ?? this.plotOffsetY,
     viewports: viewports ?? this.viewports,
   );
 

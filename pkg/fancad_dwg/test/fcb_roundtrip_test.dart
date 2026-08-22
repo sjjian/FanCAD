@@ -126,6 +126,10 @@ void main() {
         tabOrder: 1,
         plotRotation: 90,
         plotWindow: Bounds2(5, 6, 55, 46),
+        plotScale: 0.5,
+        plotFit: true,
+        plotOffsetX: 3,
+        plotOffsetY: 4,
         viewports: [
           PaperViewport(
             paperBounds: Bounds2(10, 20, 210, 170),
@@ -150,6 +154,10 @@ void main() {
     final layout = restored.layouts.firstWhere((item) => item.name == 'Layout1');
     expect(layout.plotRotation, 90);
     expect(layout.plotWindow, const Bounds2(5, 6, 55, 46));
+    expect(layout.plotScale, closeTo(0.5, 1e-12));
+    expect(layout.plotFit, isTrue);
+    expect(layout.plotOffsetX, closeTo(3, 1e-12));
+    expect(layout.plotOffsetY, closeTo(4, 1e-12));
     expect(layout.viewports, hasLength(2));
 
     final first = layout.viewports[0];
