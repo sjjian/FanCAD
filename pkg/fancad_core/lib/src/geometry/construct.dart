@@ -1267,6 +1267,80 @@ class Construct {
     );
   }
 
+  /// Joins [entities] whose endpoints meet into one polyline.
+  ///
+  /// Lines and open polylines can mix; a piece is reversed when that is how
+  /// it touches the chain. Closed or unsupported objects return null, as do
+  /// selections that do not form a single connected path. A loop whose ends
+  /// meet is stored closed without a duplicate last vertex.
+  static PolylineEntity? joinEntities(
+    List<CadEntity> entities, {
+    double gap = 1e-6,
+    int id = 0,
+  }) {
+    if (entities.length < 2) return null;
+    final runs = <_JoinRun>[];
+    for (final entity in entities) {
+      final run = _JoinRun.from(entity);
+      if (run == null) return null;
+      runs.add(run);
+    }
+    var chain = runs.first;
+    final remaining = runs.sublist(1);
+    var progress = true;
+    while (remaining.isNotEmpty && progress) {
+      progress = false;
+      for (var i = 0; i < remaining.length; i++) {
+        final piece = remaining[i];
+        if (piece.start.distanceTo(chain.end) <= gap) {
+          chain = chain.appended(piece);
+        } else if (piece.end.distanceTo(chain.end) <= gap) {
+          chain = chain.appended(piece.reversed);
+        } else if (piece.end.distanceTo(chain.start) <= gap) {
+          chain = piece.appended(chain);
+        } else if (piece.start.distanceTo(chain.start) <= gap) {
+          chain = piece.reversed.appended(chain);
+        } else {
+          continue;
+        }
+        remaining.removeAt(i);
+        progress = true;
+        break;
+      }
+    }
+    if (remaining.isNotEmpty) return null;
+
+    var points = chain.points;
+    var bulges = chain.bulges;
+    final closed =
+        points.length > 2 && points.first.distanceTo(points.last) <= gap;
+    if (closed) {
+      points = points.sublist(0, points.length - 1);
+      bulges = bulges.sublist(0, points.length);
+    }
+
+    var width = 0.0;
+    for (final entity in entities) {
+      if (entity is PolylineEntity && entity.constantWidth != 0) {
+        width = entity.constantWidth;
+        break;
+      }
+    }
+    final vertices = Float64List(points.length * 3);
+    for (var i = 0; i < points.length; i++) {
+      vertices[i * 3] = points[i].x;
+      vertices[i * 3 + 1] = points[i].y;
+      vertices[i * 3 + 2] = i < bulges.length ? bulges[i] : 0;
+    }
+    return PolylineEntity(
+      id: id,
+      props: entities.first.props,
+      vertices: vertices,
+      closed: closed,
+      constantWidth: width,
+    );
+  }
+
   /// Interior points that split [line] into [segments] equal pieces.
   ///
   /// DIVIDE places markers between the ends, not on them: 4 segments means
@@ -1801,6 +1875,52 @@ class _PolyHit {
   final int segment;
   final double t;
   final Vec2 point;
+}
+
+/// A directed open chain used by [Construct.joinEntities].
+class _JoinRun {
+  const _JoinRun(this.points, this.bulges);
+
+  final List<Vec2> points;
+  final List<double> bulges;
+
+  Vec2 get start => points.first;
+  Vec2 get end => points.last;
+
+  static _JoinRun? from(CadEntity entity) {
+    switch (entity) {
+      case LineEntity(:final start, :final end):
+        if (start.distanceSquaredTo(end) < 1e-20) return null;
+        return _JoinRun([start, end], const [0, 0]);
+      case PolylineEntity() when !entity.closed && entity.vertexCount >= 2:
+        final count = entity.vertexCount;
+        return _JoinRun(
+          [for (var i = 0; i < count; i++) entity.vertexAt(i)],
+          [
+            for (var i = 0; i < count; i++)
+              i < count - 1 ? entity.bulgeAt(i) : 0,
+          ],
+        );
+      default:
+        return null;
+    }
+  }
+
+  _JoinRun get reversed {
+    final count = points.length;
+    return _JoinRun(
+      points.reversed.toList(),
+      [
+        for (var i = 0; i < count - 1; i++) -bulges[count - 2 - i],
+        0,
+      ],
+    );
+  }
+
+  _JoinRun appended(_JoinRun other) => _JoinRun(
+    [...points, ...other.points.skip(1)],
+    [...bulges.take(points.length - 1), ...other.bulges],
+  );
 }
 
 class FilletResult {

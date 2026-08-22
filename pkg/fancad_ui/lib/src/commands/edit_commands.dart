@@ -1683,40 +1683,38 @@ class EditCommands {
     category: _category,
     aliases: const ['j', 'join'],
     description:
-        'Joins selected lines whose endpoints meet into a single polyline.',
+        'Joins selected lines and open polylines whose endpoints meet into '
+        'a single polyline. A piece is reversed when that is how it touches '
+        'the chain; a loop whose ends meet is stored closed.',
     params: const [ParamSpec.selection('ids')],
     handler: (context) async {
       final ids = await context.resolveSelection(
         'ids',
-        'JOIN  Select lines to join:',
+        'JOIN  Select lines or polylines to join:',
       );
-      final lines = <LineEntity>[
+      final pieces = <CadEntity>[
         for (final id in ids)
-          if (context.document.entity(id) case final LineEntity line) line,
+          if (context.document.entity(id) case final CadEntity entity)
+            if (entity is LineEntity ||
+                (entity is PolylineEntity && !entity.closed))
+              entity,
       ];
-      if (lines.length < 2) {
-        return const CommandResult.failed('Select at least two lines to join.');
+      if (pieces.length < 2) {
+        return const CommandResult.failed(
+          'Select at least two lines or open polylines to join.',
+        );
       }
 
-      final chain = _chainLines(lines);
-      if (chain == null) {
+      final joined = Construct.joinEntities(pieces);
+      if (joined == null) {
         return const CommandResult.failed(
-          'The selected lines do not form a single connected chain.',
+          'The selected objects do not form a single connected chain.',
         );
       }
       final committed = context.edit('Join', (transaction) {
         transaction
-          ..add(
-            PolylineEntity.fromPoints(
-              id: 0,
-              props: lines.first.props,
-              points: chain,
-              closed:
-                  chain.length > 2 &&
-                  chain.first.distanceTo(chain.last) < 1e-9,
-            ),
-          )
-          ..eraseAll([for (final line in lines) line.id]);
+          ..add(joined)
+          ..eraseAll([for (final piece in pieces) piece.id]);
       });
       if (committed == null) {
         return const CommandResult.failed('Nothing was joined.');
@@ -1724,7 +1722,7 @@ class EditCommands {
       context.selection.replace(committed.change.added);
       return CommandResult(
         status: CommandStatus.ok,
-        message: 'Joined ${lines.length} lines into one polyline.',
+        message: 'Joined ${pieces.length} objects into one polyline.',
         transaction: committed,
       );
     },
@@ -2666,34 +2664,4 @@ class EditCommands {
     );
   }
 
-  /// Orders lines into a single connected chain of points, or null when they do
-  /// not form one.
-  static List<Vec2>? _chainLines(List<LineEntity> lines, {double gap = 1e-6}) {
-    final remaining = lines.toList();
-    final chain = <Vec2>[remaining.first.start, remaining.first.end];
-    remaining.removeAt(0);
-
-    var progress = true;
-    while (remaining.isNotEmpty && progress) {
-      progress = false;
-      for (var i = 0; i < remaining.length; i++) {
-        final line = remaining[i];
-        if (line.start.distanceTo(chain.last) <= gap) {
-          chain.add(line.end);
-        } else if (line.end.distanceTo(chain.last) <= gap) {
-          chain.add(line.start);
-        } else if (line.end.distanceTo(chain.first) <= gap) {
-          chain.insert(0, line.start);
-        } else if (line.start.distanceTo(chain.first) <= gap) {
-          chain.insert(0, line.end);
-        } else {
-          continue;
-        }
-        remaining.removeAt(i);
-        progress = true;
-        break;
-      }
-    }
-    return remaining.isEmpty ? chain : null;
-  }
 }

@@ -820,6 +820,56 @@ void main() {
     });
   });
 
+  group('joinEntities', () {
+    test('joins a line onto an open polyline', () {
+      final polyline = PolylineEntity.fromPoints(
+        id: 1,
+        points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10)],
+      );
+      final joined = Construct.joinEntities([
+        polyline,
+        line(10, 10, 20, 10),
+      ]);
+
+      expect(joined, isNotNull);
+      expect(joined!.vertexCount, 4);
+      expect(joined.vertexAt(3), const Vec2(20, 10));
+    });
+
+    test('reverses a piece that meets the other way around', () {
+      final joined = Construct.joinEntities([
+        line(0, 0, 10, 0),
+        line(20, 0, 10, 0),
+      ]);
+
+      expect(joined, isNotNull);
+      expect(joined!.vertexCount, 3);
+      expect(joined.vertexAt(2), const Vec2(20, 0));
+    });
+
+    test('closes a loop without duplicating the start', () {
+      final joined = Construct.joinEntities([
+        line(0, 0, 10, 0),
+        line(10, 0, 10, 10),
+        line(10, 10, 0, 0),
+      ]);
+
+      expect(joined, isNotNull);
+      expect(joined!.closed, isTrue);
+      expect(joined.vertexCount, 3);
+    });
+
+    test('refuses objects that do not form one chain', () {
+      expect(
+        Construct.joinEntities([
+          line(0, 0, 10, 0),
+          line(50, 50, 60, 50),
+        ]),
+        isNull,
+      );
+    });
+  });
+
   group('reverse', () {
     test('swaps the ends of a line', () {
       final reversed = Construct.reverse(line(0, 0, 10, 5)) as LineEntity;

@@ -838,6 +838,26 @@ void main() {
       expect((document.entities.first as PolylineEntity).vertexCount, 3);
     });
 
+    test('join merges a line onto an open polyline', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final polylineId = (created.data!['ids']! as List).first as int;
+      final lineId = await drawLine(10, 10, 20, 10);
+
+      final result = await run('edit.join', {
+        'ids': [polylineId, lineId],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 1);
+      expect((document.entities.first as PolylineEntity).vertexCount, 4);
+    });
+
     test('join refuses lines that do not touch', () async {
       final a = await drawLine(0, 0, 10, 0);
       final b = await drawLine(50, 50, 60, 50);
