@@ -270,6 +270,24 @@ void main() {
       expect(importer.canOpen('a.fcb'), isTrue);
     });
 
+    test('refuses a non-drawing path before the DWG worker runs', () async {
+      final importer = DrawingImporter(backend: _NoBackend());
+      expect(
+        () => importer.open('notes.txt'),
+        throwsA(
+          isA<ImportException>().having(
+            (error) => error.message,
+            'message',
+            contains('not a drawing'),
+          ),
+        ),
+      );
+      expect(
+        () => importer.open('a.dwg'),
+        throwsA(isA<ImportException>()),
+      );
+    });
+
     test('encodes and decodes FanCAD native files', () {
       final importer = DrawingImporter(backend: _NoBackend());
       final document = SampleDrawings.mechanicalPart();

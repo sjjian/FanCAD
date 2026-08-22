@@ -58,16 +58,23 @@ class DrawingImporter {
   /// resulting document graph would cost more to copy across the isolate
   /// boundary than it costs to build.
   Future<ImportResult> open(String path) async {
-    final extension = _extensionOf(path);
+    final target = path.trim();
+    if (!canOpen(target)) {
+      throw ImportException(
+        'This file is not a drawing FanCAD can open.',
+        path: target.isEmpty ? path : target,
+      );
+    }
+    final extension = _extensionOf(target);
     if (extension == 'fcb') {
-      final bytes = await File(path).readAsBytes();
+      final bytes = await File(target).readAsBytes();
       return decode(Uint8List.fromList(bytes));
     }
     if (extension == 'dxf') {
       // ASCII DXF is decoded in Dart. The native shim only understands DWG;
       // routing `.dxf` through it would fail the moment LibreDWG is linked.
       final watch = Stopwatch()..start();
-      final document = await const DxfReader().readFile(path);
+      final document = await const DxfReader().readFile(target);
       watch.stop();
       return ImportResult(
         document: document,
@@ -77,9 +84,9 @@ class DrawingImporter {
     }
     final cache = _cache;
     String? cacheKey;
-    if (cache != null && File(path).existsSync()) {
+    if (cache != null && File(target).existsSync()) {
       try {
-        cacheKey = FcbCache.keyFor(path, fcbVersion: fcbVersion);
+        cacheKey = FcbCache.keyFor(target, fcbVersion: fcbVersion);
         final cached = cache.read(cacheKey);
         if (cached != null) {
           final decoded = _decode(cached);
@@ -101,7 +108,7 @@ class DrawingImporter {
     }
 
     final parseWatch = Stopwatch()..start();
-    final fcb = await _readOnWorker(path);
+    final fcb = await _readOnWorker(target);
     parseWatch.stop();
 
     if (cache != null && cacheKey != null) {
