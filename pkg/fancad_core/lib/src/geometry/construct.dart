@@ -873,6 +873,125 @@ class Construct {
     return tryEnd(moveStart: false) ?? tryEnd(moveStart: true);
   }
 
+  /// Lengthens [arc] along the circle until an end meets one of [edges].
+  ///
+  /// The supporting circle is treated as infinite (the sweep may grow) but
+  /// each boundary is not: the hit must land on that edge. [pick] chooses
+  /// which end moves; omitted, the end angle is tried first and the start
+  /// is the fallback. A sweep that would close the circle is refused.
+  static ArcEntity? extendArc(
+    ArcEntity arc,
+    List<CadEntity> edges, [
+    Vec2? pick,
+  ]) {
+    if (arc.radius <= 0 || arc.sweep < 1e-12) return null;
+    if (arc.sweep >= math.pi * 2 - 1e-9) return null;
+
+    double? bestAfter;
+    double? bestBefore;
+    final room = math.pi * 2 - arc.sweep;
+
+    void consider(Vec2 hit) {
+      if ((hit.distanceTo(arc.center) - arc.radius).abs() > 1e-6) return;
+      final angle = (hit - arc.center).angle;
+      if (angularSweep(arc.startAngle, angle) <= arc.sweep + 1e-9) return;
+      final after = angularSweep(arc.endAngle, angle);
+      final before = angularSweep(angle, arc.startAngle);
+      if (after > 1e-9 && after < room - 1e-9) {
+        if (bestAfter == null || after < bestAfter!) bestAfter = after;
+      }
+      if (before > 1e-9 && before < room - 1e-9) {
+        if (bestBefore == null || before < bestBefore!) bestBefore = before;
+      }
+    }
+
+    for (final edge in edges) {
+      for (final hit in _circleHitsOnEdge(arc.center, arc.radius, edge)) {
+        consider(hit);
+      }
+    }
+
+    ArcEntity? growEnd() {
+      if (bestAfter == null) return null;
+      return ArcEntity(
+        id: arc.id,
+        props: arc.props,
+        center: arc.center,
+        radius: arc.radius,
+        startAngle: arc.startAngle,
+        endAngle: arc.endAngle + bestAfter!,
+      );
+    }
+
+    ArcEntity? growStart() {
+      if (bestBefore == null) return null;
+      return ArcEntity(
+        id: arc.id,
+        props: arc.props,
+        center: arc.center,
+        radius: arc.radius,
+        startAngle: arc.startAngle - bestBefore!,
+        endAngle: arc.endAngle,
+      );
+    }
+
+    if (pick != null) {
+      return _arcParam(arc, pick) <= 0.5 ? growStart() : growEnd();
+    }
+    return growEnd() ?? growStart();
+  }
+
+  /// Hits of the circle [center]/[radius] with [edge], for EXTEND.
+  static List<Vec2> _circleHitsOnEdge(
+    Vec2 center,
+    double radius,
+    CadEntity edge,
+  ) {
+    switch (edge) {
+      case LineEntity(:final start, :final end):
+        return [
+          for (final hit in Intersect.lineCircle(start, end, center, radius))
+            if (Intersect.distanceToSegment(hit, start, end) < 1e-6) hit,
+        ];
+      case CircleEntity():
+        return Intersect.circleCircle(
+          center,
+          radius,
+          edge.center,
+          edge.radius,
+        );
+      case ArcEntity():
+        return [
+          for (final hit in Intersect.circleCircle(
+            center,
+            radius,
+            edge.center,
+            edge.radius,
+          ))
+            if (angularSweep(edge.startAngle, (hit - edge.center).angle) <=
+                edge.sweep + 1e-9)
+              hit,
+        ];
+      case PolylineEntity() when !edge.hasBulges:
+        final count = edge.vertexCount;
+        final segments = edge.closed ? count : count - 1;
+        return [
+          for (var i = 0; i < segments; i++)
+            ..._circleHitsOnEdge(
+              center,
+              radius,
+              LineEntity(
+                id: 0,
+                start: edge.vertexAt(i),
+                end: edge.vertexAt((i + 1) % count),
+              ),
+            ),
+        ];
+      default:
+        return const [];
+    }
+  }
+
   /// Rounds the corner between two lines, or trims them to a sharp join.
   ///
   /// [pick1] and [pick2] choose which side of the intersection to keep on each

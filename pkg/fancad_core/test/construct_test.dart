@@ -572,6 +572,54 @@ void main() {
     });
   });
 
+  group('extendArc', () {
+    const quarter = ArcEntity(
+      id: 1,
+      center: Vec2(0, 0),
+      radius: 10,
+      startAngle: 0,
+      endAngle: math.pi / 2,
+    );
+
+    test('grows the end until it meets a boundary', () {
+      final extended = Construct.extendArc(quarter, [
+        line(-15, 0, -5, 0),
+      ]);
+
+      expect(extended, isNotNull);
+      expect(extended!.startAngle, closeTo(0, 1e-9));
+      expect(extended.endAngle, closeTo(math.pi, 1e-9));
+    });
+
+    test('grows the start when that end is nearer the pick', () {
+      final extended = Construct.extendArc(
+        quarter,
+        [line(-5, -10, 5, -10)],
+        const Vec2(10, 0),
+      );
+
+      expect(extended!.startAngle, closeTo(-math.pi / 2, 1e-9));
+      expect(extended.endAngle, closeTo(math.pi / 2, 1e-9));
+    });
+
+    test('stops at the nearest boundary in that direction', () {
+      final extended = Construct.extendArc(quarter, [
+        line(-15, 0, -5, 0),
+        line(-8, 20, -8, 5),
+      ]);
+
+      expect(extended!.startAngle, closeTo(0, 1e-9));
+      expect(extended.endAngle, closeTo(math.atan2(6, -8), 1e-9));
+    });
+
+    test('ignores a boundary the circle would miss', () {
+      expect(
+        Construct.extendArc(quarter, [line(-10, 20, -10, 15)]),
+        isNull,
+      );
+    });
+  });
+
   group('filletLines', () {
     test('rounds an L-corner with a quarter-circle', () {
       final result = Construct.filletLines(

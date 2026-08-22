@@ -930,15 +930,15 @@ class EditCommands {
     category: _category,
     aliases: const ['ex', 'extend'],
     description:
-        'Lengthens a line or open straight polyline until it meets the '
-        'selected boundary edges. On a polyline the pick chooses which end '
-        'moves.',
+        'Lengthens a line, open straight polyline or arc until it meets '
+        'the selected boundary edges. On a polyline or arc the pick chooses '
+        'which end moves.',
     params: const [
       ParamSpec.selection('edges', description: 'Boundary edges'),
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line or polyline to extend',
+        description: 'The line, polyline or arc to extend',
       ),
       ParamSpec.point('pick', description: 'A point nearer the end to move'),
     ],
@@ -2455,22 +2455,16 @@ class EditCommands {
       attempts++;
 
       final target = context.document.entity(targetId);
-      final supportsArc = !extend && target is ArcEntity;
       if (target is! LineEntity &&
           target is! PolylineEntity &&
-          !supportsArc) {
+          target is! ArcEntity) {
         context.input.write(
-          extend
-              ? 'EXTEND supports lines and open straight polylines; '
-                  '${target?.kind.name ?? 'that object'} was skipped.'
-              : 'TRIM supports lines, open straight polylines and arcs; '
-                  '${target?.kind.name ?? 'that object'} was skipped.',
+          '$verb supports lines, open straight polylines and arcs; '
+          '${target?.kind.name ?? 'that object'} was skipped.',
         );
         if (suppliedTarget != null) {
           return CommandResult.failed(
-            extend
-                ? 'EXTEND supports lines and open straight polylines.'
-                : 'TRIM supports lines, open straight polylines and arcs.',
+            '$verb supports lines, open straight polylines and arcs.',
           );
         }
         continue;
@@ -2491,13 +2485,16 @@ class EditCommands {
       final entity = target as CadEntity;
       final CadEntity? result;
       if (extend) {
-        result = entity is LineEntity
-            ? Construct.extendLine(entity, edges)
-            : Construct.extendPolyline(
-                entity as PolylineEntity,
-                edges,
-                suppliedPick,
-              );
+        result = switch (entity) {
+          LineEntity() => Construct.extendLine(entity, edges),
+          PolylineEntity() => Construct.extendPolyline(
+            entity,
+            edges,
+            suppliedPick,
+          ),
+          ArcEntity() => Construct.extendArc(entity, edges, suppliedPick),
+          _ => null,
+        };
       } else {
         final crossings = <Vec2>[
           for (final edge in edges) ...Construct.crossingsAlong(entity, edge),

@@ -943,6 +943,27 @@ void main() {
       expect((document.entity(target)! as LineEntity).end.x, closeTo(10, 1e-9));
     });
 
+    test('extend lengthens an arc to a boundary', () async {
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final target = (created.data!['ids']! as List).first as int;
+      final boundary = await drawLine(-15, 0, -5, 0);
+
+      final result = await run('edit.extend', {
+        'edges': [boundary],
+        'target': target,
+        'pick': [0, 10],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final arc = document.entity(target)! as ArcEntity;
+      expect(arc.startAngle, closeTo(0, 1e-6));
+      expect(arc.endAngle, closeTo(3.141592653589793, 1e-6));
+    });
+
     test('extend lengthens a polyline to a boundary', () async {
       final created = await run('draw.polyline', {
         'points': [
