@@ -799,6 +799,15 @@ class CadDocument implements BlockLookup, StyleResolver {
   bool isLayerVisible(String layer) =>
       _layers[layer]?.isEffectivelyVisible ?? true;
 
+  /// Whether [layer] should appear on a plot. Off and frozen layers are
+  /// omitted, and so is a layer whose Plot flag is cleared — it still draws
+  /// on screen.
+  bool isLayerPlottable(String layer) {
+    final def = _layers[layer];
+    if (def == null) return true;
+    return def.plottable && def.isEffectivelyVisible;
+  }
+
   /// Whether entities on [layer] can be edited.
   bool isLayerEditable(String layer) => _layers[layer]?.isEditable ?? true;
 

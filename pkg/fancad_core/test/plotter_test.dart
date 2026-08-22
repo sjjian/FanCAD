@@ -26,6 +26,21 @@ void main() {
     expect(svg, isNot(contains('M 0.0 0.0')));
   });
 
+  test('a non-plottable layer is omitted from SVG', () {
+    final document = CadDocument()
+      ..putLayer(const LayerDef(name: 'VIEWPORT-FRAME', plottable: false))
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(layer: 'VIEWPORT-FRAME'),
+          start: Vec2.zero(),
+          end: Vec2(8, 0),
+        ),
+      );
+    final svg = const Plotter().toSvg(document);
+    expect(svg, isNot(contains('<path')));
+  });
+
   test('a paper-space plot skips a hidden layer', () {
     final document = CadDocument()
       ..putLayer(const LayerDef(name: 'NOTES', visible: false));
