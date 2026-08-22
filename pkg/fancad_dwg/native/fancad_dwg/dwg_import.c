@@ -1088,6 +1088,77 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
   }
 }
 
+/* The interned layer name stored on a previously written layer record. */
+static uint32_t interned_layer_name(import_state *s, const Dwg_Object *obj) {
+  uint32_t idx;
+  const uint8_t *p;
+  if (!obj->tio.entity) return fcb_intern(s->b, "0");
+  idx = hmap_get(&s->layer_index, ref_handle(obj->tio.entity->layer), 0);
+  if (idx >= s->b->layer_count) return fcb_intern(s->b, "0");
+  p = s->b->layers.data + (size_t)idx * FCB_RECORD_LAYER;
+  return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
+         ((uint32_t)p[3] << 24);
+}
+
+/* VIEWPORT entities become paper windows on a layout, not drawable proxies. */
+static void import_paper_viewports(import_state *s,
+                                   const uint32_t *layout_blocks,
+                                   uint32_t layout_count) {
+  uint32_t i;
+  uint32_t j;
+  if (!layout_blocks || layout_count == 0) return;
+
+  for (i = 0; i < s->dwg->num_objects; i++) {
+    Dwg_Object *obj = &s->dwg->object[i];
+    Dwg_Entity_VIEWPORT *vp;
+    uint32_t owner;
+    uint32_t layout_index;
+    fcb_viewport rec;
+    double scale;
+
+    if (obj->fixedtype != DWG_TYPE_VIEWPORT) continue;
+    if (!obj->tio.entity || !obj->tio.entity->tio.VIEWPORT) continue;
+    vp = obj->tio.entity->tio.VIEWPORT;
+
+    /* Viewport 1 is paper space's own sheet window, not a model-space hole. */
+    if (vp->id == 1) continue;
+    if (vp->width <= 0.0 || vp->height <= 0.0) continue;
+
+    owner = hmap_get(&s->block_index, ref_handle(obj->tio.entity->ownerhandle),
+                     s->model_space_block);
+    if (owner >= s->block_count) owner = s->model_space_block;
+
+    layout_index = UINT32_MAX;
+    for (j = 0; j < layout_count; j++) {
+      if (layout_blocks[j] == owner) {
+        layout_index = j;
+        break;
+      }
+    }
+    /* Model space (layout 0) does not host paper viewports. */
+    if (layout_index == UINT32_MAX || layout_index == 0) continue;
+
+    scale = vp->VIEWSIZE > 0.0 ? vp->height / vp->VIEWSIZE : 1.0;
+
+    memset(&rec, 0, sizeof(rec));
+    rec.layout_index = layout_index;
+    if (vp->on_off > 0 && (vp->status_flag & 131072u) == 0) {
+      rec.flags |= FCB_VIEWPORT_ON;
+    }
+    if (vp->status_flag & 16384u) rec.flags |= FCB_VIEWPORT_LOCKED;
+    rec.paper_min_x = vp->center.x - vp->width * 0.5;
+    rec.paper_min_y = vp->center.y - vp->height * 0.5;
+    rec.paper_max_x = vp->center.x + vp->width * 0.5;
+    rec.paper_max_y = vp->center.y + vp->height * 0.5;
+    rec.model_center_x = vp->VIEWCTR.x;
+    rec.model_center_y = vp->VIEWCTR.y;
+    rec.scale = scale;
+    rec.rotation = vp->twist_angle;
+    rec.layer = interned_layer_name(s, obj);
+    fcb_add_viewport(s->b, &rec);
+  }
+}
+
 /* -------------------------------------------------------------------------
  * Driver
  * ------------------------------------------------------------------------- */
@@ -1101,6 +1172,7 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
   uint32_t *bucket_counts = NULL;
   uint32_t *bucket_cursors = NULL;
   uint32_t *ordered = NULL;
+  uint32_t *layout_blocks = NULL;
   uint32_t entity_total = 0;
   uint32_t status = FC_STATUS_OK;
   char message[256];
@@ -1157,7 +1229,8 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
     Dwg_Object *obj = &dwg.object[i];
     uint32_t owner;
     if (obj->supertype != DWG_SUPERTYPE_ENTITY || !obj->tio.entity) continue;
-    /* Vertices and sequence-end markers belong to their parent polyline. */
+    /* Vertices and sequence-end markers belong to their parent polyline.
+     * VIEWPORTs are paper windows, written after the layout table. */
     if (obj->fixedtype == DWG_TYPE_VERTEX_2D ||
         obj->fixedtype == DWG_TYPE_VERTEX_3D ||
         obj->fixedtype == DWG_TYPE_VERTEX_MESH ||
@@ -1165,7 +1238,8 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
         obj->fixedtype == DWG_TYPE_VERTEX_PFACE_FACE ||
         obj->fixedtype == DWG_TYPE_SEQEND ||
         obj->fixedtype == DWG_TYPE_ATTRIB ||
-        obj->fixedtype == DWG_TYPE_ATTDEF) {
+        obj->fixedtype == DWG_TYPE_ATTDEF ||
+        obj->fixedtype == DWG_TYPE_VIEWPORT) {
       continue;
     }
     owner = hmap_get(&state.block_index,
@@ -1200,7 +1274,8 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
         obj->fixedtype == DWG_TYPE_VERTEX_PFACE_FACE ||
         obj->fixedtype == DWG_TYPE_SEQEND ||
         obj->fixedtype == DWG_TYPE_ATTRIB ||
-        obj->fixedtype == DWG_TYPE_ATTDEF) {
+        obj->fixedtype == DWG_TYPE_ATTDEF ||
+        obj->fixedtype == DWG_TYPE_VIEWPORT) {
       continue;
     }
     owner = hmap_get(&state.block_index,
@@ -1250,14 +1325,29 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
   {
     uint32_t block;
     uint32_t tab = 0;
+    uint32_t paper_count = 0;
     fcb_layout model;
+    for (block = 0; block < state.block_count; block++) {
+      if (block == state.model_space_block) continue;
+      if (strncmp(state.block_names[block], "*Paper_Space", 12) == 0) {
+        paper_count++;
+      }
+    }
+    layout_blocks = (uint32_t *)calloc(paper_count + 1, sizeof(uint32_t));
+    if (!layout_blocks) {
+      status = FC_STATUS_OUT_OF_MEMORY;
+      goto cleanup;
+    }
+
     memset(&model, 0, sizeof(model));
     model.name = fcb_intern(b, "Model");
     model.block_index = state.model_space_block;
     model.flags = FCB_LAYOUT_MODEL_SPACE;
-    model.tab_order = tab++;
+    model.tab_order = tab;
     model.paper_width = 297.0;
     model.paper_height = 210.0;
+    layout_blocks[tab] = state.model_space_block;
+    tab++;
     fcb_add_layout(b, &model);
 
     for (block = 0; block < state.block_count; block++) {
@@ -1269,11 +1359,14 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
       snprintf(name, sizeof(name), "Layout%u", tab);
       layout.name = fcb_intern(b, name);
       layout.block_index = block;
-      layout.tab_order = tab++;
+      layout.tab_order = tab;
       layout.paper_width = 297.0;
       layout.paper_height = 210.0;
+      layout_blocks[tab] = block;
+      tab++;
       fcb_add_layout(b, &layout);
     }
+    import_paper_viewports(&state, layout_blocks, tab);
   }
 
   /* A handful of header variables that affect rendering. */
@@ -1311,6 +1404,7 @@ cleanup:
   free(bucket_counts);
   free(bucket_cursors);
   free(ordered);
+  free(layout_blocks);
   if (state.block_names) {
     for (i = 0; i < state.block_count; i++) free(state.block_names[i]);
     free(state.block_names);

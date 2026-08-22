@@ -159,6 +159,7 @@ void fcb_builder_init(fcb_builder *b) {
   bytes_init(&b->textstyles);
   bytes_init(&b->blocks);
   bytes_init(&b->layouts);
+  bytes_init(&b->viewports);
   bytes_init(&b->headervars);
   bytes_init(&b->diagnostics);
   /* Reserve index 0 for the empty string so a zeroed field reads as absent. */
@@ -175,6 +176,7 @@ void fcb_builder_dispose(fcb_builder *b) {
   bytes_dispose(&b->textstyles);
   bytes_dispose(&b->blocks);
   bytes_dispose(&b->layouts);
+  bytes_dispose(&b->viewports);
   bytes_dispose(&b->headervars);
   bytes_dispose(&b->diagnostics);
 }
@@ -323,6 +325,25 @@ void fcb_add_layout(fcb_builder *b, const fcb_layout *l) {
   b->layout_count++;
 }
 
+void fcb_add_viewport(fcb_builder *b, const fcb_viewport *v) {
+  uint8_t record[FCB_RECORD_VIEWPORT];
+  memset(record, 0, sizeof(record));
+  put_u32(record + 0, v->layout_index);
+  put_u32(record + 4, v->flags);
+  put_f64(record + 8, v->paper_min_x);
+  put_f64(record + 16, v->paper_min_y);
+  put_f64(record + 24, v->paper_max_x);
+  put_f64(record + 32, v->paper_max_y);
+  put_f64(record + 40, v->model_center_x);
+  put_f64(record + 48, v->model_center_y);
+  put_f64(record + 56, v->scale);
+  put_f64(record + 64, v->rotation);
+  put_u32(record + 72, v->layer);
+  put_u32(record + 76, v->reserved);
+  bytes_append(&b->viewports, record, sizeof(record));
+  b->viewport_count++;
+}
+
 void fcb_add_header_variable(fcb_builder *b, const char *key,
                              const char *value) {
   uint8_t record[8];
@@ -358,14 +379,14 @@ static int builder_failed(const fcb_builder *b) {
   return b->failed || b->strings.failed || b->strings.data.failed ||
          b->doubles.failed || b->ints.failed || b->entities.failed ||
          b->layers.failed || b->linetypes.failed || b->textstyles.failed ||
-         b->blocks.failed || b->layouts.failed || b->headervars.failed ||
-         b->diagnostics.failed;
+         b->blocks.failed || b->layouts.failed || b->viewports.failed ||
+         b->headervars.failed || b->diagnostics.failed;
 }
 
 int fcb_builder_finish(fcb_builder *b, uint8_t **out_data,
                        uint64_t *out_length) {
-  fcb_section sections[11];
-  uint8_t counts[11][8];
+  fcb_section sections[12];
+  uint8_t counts[12][8];
   size_t section_count = 0;
   size_t strings_size;
   uint8_t *strings_blob = NULL;
@@ -420,6 +441,7 @@ int fcb_builder_finish(fcb_builder *b, uint8_t **out_data,
   ADD_SECTION(FCB_SECTION_TEXTSTYLES, b->textstyle_count, b->textstyles);
   ADD_SECTION(FCB_SECTION_BLOCKS, b->block_count, b->blocks);
   ADD_SECTION(FCB_SECTION_LAYOUTS, b->layout_count, b->layouts);
+  ADD_SECTION(FCB_SECTION_VIEWPORTS, b->viewport_count, b->viewports);
   ADD_SECTION(FCB_SECTION_HEADERVARS, b->headervar_count, b->headervars);
 
 #undef ADD_SECTION

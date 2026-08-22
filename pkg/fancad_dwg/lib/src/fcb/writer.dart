@@ -217,6 +217,7 @@ class FcbWriter {
       FcbSection.textStyles: _encodeTextStyles(document),
       FcbSection.blocks: _encodeBlocks(document, blockNames, blockRanges),
       FcbSection.layouts: _encodeLayouts(document, blockIndex),
+      FcbSection.viewports: _encodeViewports(document),
       FcbSection.headerVariables: _encodeHeaderVariables(document),
     };
 
@@ -791,6 +792,71 @@ class FcbWriter {
         layout.paperHeight,
         Endian.little,
       );
+    }
+    return buffer;
+  }
+
+  Uint8List _encodeViewports(CadDocument document) {
+    final layouts = document.layouts;
+    var count = 0;
+    for (final layout in layouts) {
+      count += layout.viewports.length;
+    }
+    final buffer = Uint8List(8 + count * FcbRecord.viewport);
+    final view = ByteData.view(buffer.buffer);
+    view.setUint64(0, count, Endian.little);
+    var written = 0;
+    for (var i = 0; i < layouts.length; i++) {
+      for (final viewport in layouts[i].viewports) {
+        final at = 8 + written * FcbRecord.viewport;
+        var flags = 0;
+        if (viewport.isOn) flags |= FcbViewportFlags.on;
+        if (viewport.locked) flags |= FcbViewportFlags.locked;
+        view.setUint32(at + FcbViewport.layoutIndex, i, Endian.little);
+        view.setUint32(at + FcbViewport.flags, flags, Endian.little);
+        view.setFloat64(
+          at + FcbViewport.paperMinX,
+          viewport.paperBounds.minX,
+          Endian.little,
+        );
+        view.setFloat64(
+          at + FcbViewport.paperMinY,
+          viewport.paperBounds.minY,
+          Endian.little,
+        );
+        view.setFloat64(
+          at + FcbViewport.paperMaxX,
+          viewport.paperBounds.maxX,
+          Endian.little,
+        );
+        view.setFloat64(
+          at + FcbViewport.paperMaxY,
+          viewport.paperBounds.maxY,
+          Endian.little,
+        );
+        view.setFloat64(
+          at + FcbViewport.modelCenterX,
+          viewport.modelCenter.x,
+          Endian.little,
+        );
+        view.setFloat64(
+          at + FcbViewport.modelCenterY,
+          viewport.modelCenter.y,
+          Endian.little,
+        );
+        view.setFloat64(at + FcbViewport.scale, viewport.scale, Endian.little);
+        view.setFloat64(
+          at + FcbViewport.rotation,
+          viewport.rotation,
+          Endian.little,
+        );
+        view.setUint32(
+          at + FcbViewport.layer,
+          _strings.intern(viewport.layer),
+          Endian.little,
+        );
+        written++;
+      }
     }
     return buffer;
   }

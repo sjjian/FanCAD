@@ -1,7 +1,8 @@
 /* FanCAD Binary (FCB) writer.
  *
- * Mirrors pkg/fancad_dwg/lib/src/fcb/format.dart. Any change to the layout
- * must be made in both files and the format version bumped.
+ * Mirrors pkg/fancad_dwg/lib/src/fcb/format.dart. Incompatible layout
+ * changes must be made in both files and the format version bumped.
+ * New optional TOC sections (unknown kinds are skipped) do not.
  *
  * The builder is deliberately dependency-free: it knows nothing about DWG, so
  * it can be compiled and unit tested on its own, and a future importer for a
@@ -30,6 +31,7 @@
 #define FCB_SECTION_LAYOUTS 9
 #define FCB_SECTION_HEADERVARS 10
 #define FCB_SECTION_DIAGNOSTICS 11
+#define FCB_SECTION_VIEWPORTS 12
 
 /* Fixed record sizes. */
 #define FCB_RECORD_ENTITY 104
@@ -38,6 +40,7 @@
 #define FCB_RECORD_TEXTSTYLE 40
 #define FCB_RECORD_BLOCK 48
 #define FCB_RECORD_LAYOUT 32
+#define FCB_RECORD_VIEWPORT 80
 
 /* Entity type codes. Wire values: never renumber. */
 #define FCB_TYPE_UNKNOWN 0
@@ -81,6 +84,10 @@
 /* Layout flags. */
 #define FCB_LAYOUT_MODEL_SPACE (1u << 0)
 
+/* Paper-viewport flags. */
+#define FCB_VIEWPORT_ON (1u << 0)
+#define FCB_VIEWPORT_LOCKED (1u << 1)
+
 /* Colour kinds. */
 #define FCB_COLOR_BY_LAYER 0
 #define FCB_COLOR_BY_BLOCK 1
@@ -115,6 +122,7 @@ typedef struct {
   fcb_bytes textstyles;
   fcb_bytes blocks;
   fcb_bytes layouts;
+  fcb_bytes viewports;
   fcb_bytes headervars;
   fcb_bytes diagnostics;
   uint32_t entity_count;
@@ -123,6 +131,7 @@ typedef struct {
   uint32_t textstyle_count;
   uint32_t block_count;
   uint32_t layout_count;
+  uint32_t viewport_count;
   uint32_t headervar_count;
   int failed;
 } fcb_builder;
@@ -227,6 +236,19 @@ typedef struct {
 } fcb_layout;
 
 void fcb_add_layout(fcb_builder *b, const fcb_layout *layout);
+
+typedef struct {
+  uint32_t layout_index;
+  uint32_t flags;
+  double paper_min_x, paper_min_y, paper_max_x, paper_max_y;
+  double model_center_x, model_center_y;
+  double scale;
+  double rotation;
+  uint32_t layer;
+  uint32_t reserved;
+} fcb_viewport;
+
+void fcb_add_viewport(fcb_builder *b, const fcb_viewport *viewport);
 
 void fcb_add_header_variable(fcb_builder *b, const char *key,
                              const char *value);

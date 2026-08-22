@@ -117,6 +117,51 @@ void main() {
     });
   });
 
+  test('paper viewports survive a round trip', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'Layout1',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        viewports: [
+          PaperViewport(
+            paperBounds: Bounds2(10, 20, 210, 170),
+            modelCenter: Vec2(40, 5),
+            scale: 0.1,
+            rotation: 0.2,
+            locked: true,
+            layer: '0',
+          ),
+          PaperViewport(
+            paperBounds: Bounds2(220, 20, 290, 90),
+            modelCenter: Vec2.zero(),
+            scale: 1,
+            isOn: false,
+          ),
+        ],
+      ),
+    );
+
+    final restored = FcbReader(FcbWriter().write(document)).decode().document;
+    final layout = restored.layouts.firstWhere((item) => item.name == 'Layout1');
+    expect(layout.viewports, hasLength(2));
+
+    final first = layout.viewports[0];
+    expect(first.paperBounds, const Bounds2(10, 20, 210, 170));
+    expect(first.modelCenter, const Vec2(40, 5));
+    expect(first.scale, closeTo(0.1, 1e-12));
+    expect(first.rotation, closeTo(0.2, 1e-12));
+    expect(first.isOn, isTrue);
+    expect(first.locked, isTrue);
+    expect(first.layer, '0');
+
+    final second = layout.viewports[1];
+    expect(second.paperBounds, const Bounds2(220, 20, 290, 90));
+    expect(second.isOn, isFalse);
+    expect(second.locked, isFalse);
+  });
+
   test('a large document round trips and stays within a sane size', () {
     final document = SampleDrawings.stressTest(count: 20000);
     final bytes = FcbWriter().write(document);

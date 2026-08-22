@@ -171,6 +171,7 @@ class FcbReader {
 
     _applyBlocks(document, blockNames, entities);
     _applyLayouts(document, blockNames);
+    _applyViewports(document);
     _applyHeaderVariables(document);
 
     document.reindex();
@@ -415,6 +416,54 @@ class FcbReader {
       orElse: () => document.layouts.first,
     );
     document.setActiveLayout(model.name);
+  }
+
+  void _applyViewports(CadDocument document) {
+    final section = _section(FcbSection.viewports);
+    if (section == null) return;
+    final layouts = List<Layout>.from(document.layouts);
+    if (layouts.isEmpty) return;
+    final buckets = List<List<PaperViewport>>.generate(
+      layouts.length,
+      (_) => <PaperViewport>[],
+    );
+    final base = section.$1;
+    final count = _view.getUint64(base, Endian.little);
+    for (var i = 0; i < count; i++) {
+      final at = base + 8 + i * FcbRecord.viewport;
+      final layoutIndex = _view.getUint32(
+        at + FcbViewport.layoutIndex,
+        Endian.little,
+      );
+      if (layoutIndex >= layouts.length) continue;
+      final flags = _view.getUint32(at + FcbViewport.flags, Endian.little);
+      final layer = _string(
+        _view.getUint32(at + FcbViewport.layer, Endian.little),
+      );
+      buckets[layoutIndex].add(
+        PaperViewport(
+          paperBounds: Bounds2(
+            _view.getFloat64(at + FcbViewport.paperMinX, Endian.little),
+            _view.getFloat64(at + FcbViewport.paperMinY, Endian.little),
+            _view.getFloat64(at + FcbViewport.paperMaxX, Endian.little),
+            _view.getFloat64(at + FcbViewport.paperMaxY, Endian.little),
+          ),
+          modelCenter: Vec2(
+            _view.getFloat64(at + FcbViewport.modelCenterX, Endian.little),
+            _view.getFloat64(at + FcbViewport.modelCenterY, Endian.little),
+          ),
+          scale: _view.getFloat64(at + FcbViewport.scale, Endian.little),
+          rotation: _view.getFloat64(at + FcbViewport.rotation, Endian.little),
+          isOn: flags & FcbViewportFlags.on != 0,
+          locked: flags & FcbViewportFlags.locked != 0,
+          layer: layer.isEmpty ? '0' : layer,
+        ),
+      );
+    }
+    for (var i = 0; i < layouts.length; i++) {
+      if (buckets[i].isEmpty) continue;
+      document.addLayout(layouts[i].copyWith(viewports: buckets[i]));
+    }
   }
 
   void _applyHeaderVariables(CadDocument document) {

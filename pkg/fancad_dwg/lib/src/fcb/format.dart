@@ -56,6 +56,11 @@ class FcbSection {
   static const int layouts = 9;
   static const int headerVariables = 10;
   static const int diagnostics = 11;
+
+  /// Paper-space windows. Optional: a missing section means every layout
+  /// has an empty viewport list. Adding this kind did not bump [fcbVersion]
+  /// because older readers skip unknown TOC entries.
+  static const int viewports = 12;
 }
 
 /// Fixed record sizes, in bytes.
@@ -68,6 +73,7 @@ class FcbRecord {
   static const int textStyle = 40;
   static const int block = 48;
   static const int layout = 32;
+  static const int viewport = 80;
 }
 
 /// Field offsets inside an entity record.
@@ -169,6 +175,23 @@ class FcbLayout {
   static const int paperHeight = 24;
 }
 
+/// Field offsets inside a paper-viewport record.
+class FcbViewport {
+  const FcbViewport._();
+
+  static const int layoutIndex = 0;
+  static const int flags = 4;
+  static const int paperMinX = 8;
+  static const int paperMinY = 16;
+  static const int paperMaxX = 24;
+  static const int paperMaxY = 32;
+  static const int modelCenterX = 40;
+  static const int modelCenterY = 48;
+  static const int scale = 56;
+  static const int rotation = 64;
+  static const int layer = 72;
+}
+
 /// Entity type codes. These are wire values and must never be renumbered.
 class FcbType {
   const FcbType._();
@@ -240,6 +263,14 @@ class FcbLayoutFlags {
   const FcbLayoutFlags._();
 
   static const int modelSpace = 1 << 0;
+}
+
+/// Paper-viewport flag bits.
+class FcbViewportFlags {
+  const FcbViewportFlags._();
+
+  static const int on = 1 << 0;
+  static const int locked = 1 << 1;
 }
 
 /// Colour kind codes used by the packed colour word.
