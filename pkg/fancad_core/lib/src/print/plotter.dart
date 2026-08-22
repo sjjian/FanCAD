@@ -75,6 +75,7 @@ class Plotter {
     } else {
       for (final entity in document.entitiesOf(target.blockName)) {
         if (!entity.props.visible) continue;
+        if (!document.isLayerVisible(entity.props.layer)) continue;
         entity.emit(context, sink);
       }
       for (final viewport in target.viewports) {
@@ -88,7 +89,7 @@ class Plotter {
             .indexFor(document.modelSpaceBlockName)
             .search(viewport.modelWindow)) {
           final entity = document.entity(id);
-          if (entity == null) continue;
+          if (entity == null || !entity.props.visible) continue;
           if (!document.isLayerVisible(entity.props.layer)) continue;
           if (viewport.hidesLayer(entity.props.layer)) continue;
           entity.emit(transformed, sink);

@@ -26,6 +26,56 @@ void main() {
     expect(svg, isNot(contains('M 0.0 0.0')));
   });
 
+  test('a paper-space plot skips a hidden layer', () {
+    final document = CadDocument()
+      ..putLayer(const LayerDef(name: 'NOTES', visible: false));
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+      ),
+    );
+    document.addEntity(
+      const LineEntity(
+        id: 0,
+        props: EntityProps(layer: 'NOTES'),
+        start: Vec2(10, 10),
+        end: Vec2(80, 10),
+      ),
+      blockName: '*Paper_Space',
+    );
+    final svg = const Plotter().toSvg(document, layout: document.layouts.last);
+    expect(svg, isNot(contains('<path')));
+  });
+
+  test('a viewport plot skips hidden model entities', () {
+    final document = CadDocument()
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(visible: false),
+          start: Vec2.zero(),
+          end: Vec2(8, 0),
+        ),
+      );
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        viewports: [
+          PaperViewport(
+            paperBounds: Bounds2(10, 10, 100, 80),
+            modelCenter: Vec2(4, 0),
+          ),
+        ],
+      ),
+    );
+    final svg = const Plotter().toSvg(document, layout: document.layouts.last);
+    expect(svg, isNot(contains('M 0.0 0.0')));
+  });
+
   test('a viewport plot omits layers frozen in that window', () {
     final document = CadDocument()..putLayer(const LayerDef(name: 'DIM'));
     document.addEntity(
