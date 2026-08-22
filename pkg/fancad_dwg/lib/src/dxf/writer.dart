@@ -75,11 +75,13 @@ class DxfWriter {
     pair(2, 'OBJECTS');
     for (final layout in document.layouts) {
       pair(0, 'LAYOUT');
+      pair(100, 'AcDbPlotSettings');
+      pair(44, layout.paperWidth);
+      pair(45, layout.paperHeight);
+      pair(100, 'AcDbLayout');
       pair(1, layout.name);
       pair(2, layout.blockName);
       pair(71, layout.tabOrder);
-      pair(44, layout.paperWidth);
-      pair(45, layout.paperHeight);
     }
     pair(0, 'ENDSEC');
     pair(0, 'EOF');

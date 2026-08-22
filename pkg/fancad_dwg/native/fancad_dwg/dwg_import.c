@@ -1100,6 +1100,184 @@ static uint32_t interned_layer_name(import_state *s, const Dwg_Object *obj) {
          ((uint32_t)p[3] << 24);
 }
 
+static int name_is_model(const char *name) {
+  const char *want = "model";
+  if (!name) return 0;
+  while (*name && *want) {
+    unsigned char a = (unsigned char)*name++;
+    unsigned char b = (unsigned char)*want++;
+    if (a >= 'A' && a <= 'Z') a = (unsigned char)(a + 32);
+    if (a != b) return 0;
+  }
+  return *name == 0 && *want == 0;
+}
+
+typedef struct {
+  char *name;
+  uint32_t block;
+  uint32_t tab_order;
+  uint32_t sequence;
+  int is_model;
+  double paper_width;
+  double paper_height;
+} layout_item;
+
+static int layout_item_cmp(const void *a, const void *b) {
+  const layout_item *la = (const layout_item *)a;
+  const layout_item *lb = (const layout_item *)b;
+  if (la->is_model != lb->is_model) return lb->is_model - la->is_model;
+  if (la->tab_order != lb->tab_order) {
+    return la->tab_order < lb->tab_order ? -1 : 1;
+  }
+  if (la->sequence == lb->sequence) return 0;
+  return la->sequence < lb->sequence ? -1 : 1;
+}
+
+static void layout_paper_size(const Dwg_Object_LAYOUT *lo, double *width,
+                              double *height) {
+  *width = lo->plotsettings.paper_width;
+  *height = lo->plotsettings.paper_height;
+  if (*width <= 0.0 || *height <= 0.0) {
+    *width = lo->LIMMAX.x - lo->LIMMIN.x;
+    *height = lo->LIMMAX.y - lo->LIMMIN.y;
+  }
+  if (*width <= 0.0 || *height <= 0.0) {
+    *width = 297.0;
+    *height = 210.0;
+  }
+}
+
+static void emit_layout_item(import_state *s, const layout_item *item) {
+  fcb_layout layout;
+  const char *name = item->name && item->name[0] ? item->name
+                                                 : (item->is_model ? "Model" : "Layout");
+  memset(&layout, 0, sizeof(layout));
+  layout.name = fcb_intern(s->b, name);
+  layout.block_index = item->block;
+  layout.tab_order = item->tab_order;
+  layout.paper_width = item->paper_width;
+  layout.paper_height = item->paper_height;
+  if (item->is_model) layout.flags |= FCB_LAYOUT_MODEL_SPACE;
+  fcb_add_layout(s->b, &layout);
+}
+
+/* LAYOUT objects carry the tab name and plotted sheet size. Drawings that
+ * predate them still get one tab per *Paper_Space* block. */
+static int import_layouts(import_state *s, uint32_t **layout_blocks_out,
+                          uint32_t *layout_count_out) {
+  uint32_t i;
+  uint32_t found = 0;
+  uint32_t count = 0;
+  uint32_t paper_count = 0;
+  int has_model = 0;
+  layout_item *items = NULL;
+  uint32_t *blocks = NULL;
+
+  *layout_blocks_out = NULL;
+  *layout_count_out = 0;
+
+  for (i = 0; i < s->dwg->num_objects; i++) {
+    if (s->dwg->object[i].supertype == DWG_SUPERTYPE_OBJECT &&
+        s->dwg->object[i].fixedtype == DWG_TYPE_LAYOUT) {
+      found++;
+    }
+  }
+
+  if (found > 0) {
+    items = (layout_item *)calloc(found + 1, sizeof(layout_item));
+    if (!items) return 0;
+    for (i = 0; i < s->dwg->num_objects; i++) {
+      Dwg_Object *obj = &s->dwg->object[i];
+      Dwg_Object_LAYOUT *lo;
+      Dwg_Object_Ref *block_ref;
+      uint32_t block;
+      char *name;
+      int owned;
+      layout_item *item;
+
+      if (obj->supertype != DWG_SUPERTYPE_OBJECT) continue;
+      if (obj->fixedtype != DWG_TYPE_LAYOUT) continue;
+      if (!obj->tio.object || !obj->tio.object->tio.LAYOUT) continue;
+      lo = obj->tio.object->tio.LAYOUT;
+
+      name = dyn_text(lo, "LAYOUT", "layout_name", &owned);
+      block_ref = lo->block_header;
+      block = hmap_get(&s->block_index, ref_handle(block_ref), 0xFFFFFFFFu);
+      item = &items[count];
+      item->is_model = name_is_model(name) || block == s->model_space_block;
+      if (block == 0xFFFFFFFFu) {
+        if (!item->is_model) {
+          dyn_text_free(name, owned);
+          continue;
+        }
+        block = s->model_space_block;
+      }
+      item->name = name && name[0] ? strdup(name) : NULL;
+      item->block = block;
+      item->tab_order = (uint32_t)lo->tab_order;
+      item->sequence = count;
+      layout_paper_size(lo, &item->paper_width, &item->paper_height);
+      if (item->is_model) has_model = 1;
+      count++;
+      dyn_text_free(name, owned);
+    }
+    if (!has_model && count < found + 1) {
+      items[count].name = strdup("Model");
+      items[count].block = s->model_space_block;
+      items[count].is_model = 1;
+      items[count].tab_order = 0;
+      items[count].sequence = 0;
+      items[count].paper_width = 297.0;
+      items[count].paper_height = 210.0;
+      count++;
+    }
+    qsort(items, count, sizeof(layout_item), layout_item_cmp);
+  } else {
+    for (i = 0; i < s->block_count; i++) {
+      if (i == s->model_space_block) continue;
+      if (strncmp(s->block_names[i], "*Paper_Space", 12) == 0) paper_count++;
+    }
+    items = (layout_item *)calloc(paper_count + 1, sizeof(layout_item));
+    if (!items) return 0;
+    items[0].name = strdup("Model");
+    items[0].block = s->model_space_block;
+    items[0].is_model = 1;
+    items[0].tab_order = 0;
+    items[0].paper_width = 297.0;
+    items[0].paper_height = 210.0;
+    count = 1;
+    for (i = 0; i < s->block_count; i++) {
+      char name[64];
+      if (i == s->model_space_block) continue;
+      if (strncmp(s->block_names[i], "*Paper_Space", 12) != 0) continue;
+      snprintf(name, sizeof(name), "Layout%u", count);
+      items[count].name = strdup(name);
+      items[count].block = i;
+      items[count].tab_order = count;
+      items[count].sequence = count;
+      items[count].paper_width = 297.0;
+      items[count].paper_height = 210.0;
+      count++;
+    }
+  }
+
+  blocks = (uint32_t *)calloc(count ? count : 1, sizeof(uint32_t));
+  if (!blocks) {
+    for (i = 0; i < count; i++) free(items[i].name);
+    free(items);
+    return 0;
+  }
+  for (i = 0; i < count; i++) {
+    emit_layout_item(s, &items[i]);
+    blocks[i] = items[i].block;
+    free(items[i].name);
+  }
+  free(items);
+  *layout_blocks_out = blocks;
+  *layout_count_out = count;
+  return 1;
+}
+
 /* VIEWPORT entities become paper windows on a layout, not drawable proxies. */
 static void import_paper_viewports(import_state *s,
                                    const uint32_t *layout_blocks,
@@ -1135,8 +1313,9 @@ static void import_paper_viewports(import_state *s,
         break;
       }
     }
-    /* Model space (layout 0) does not host paper viewports. */
-    if (layout_index == UINT32_MAX || layout_index == 0) continue;
+    /* Model space does not host paper viewports. */
+    if (owner == s->model_space_block) continue;
+    if (layout_index == UINT32_MAX) continue;
 
     scale = vp->VIEWSIZE > 0.0 ? vp->height / vp->VIEWSIZE : 1.0;
 
@@ -1321,52 +1500,13 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
     }
   }
 
-  /* Layouts: model space plus one tab per paper space block. */
   {
-    uint32_t block;
-    uint32_t tab = 0;
-    uint32_t paper_count = 0;
-    fcb_layout model;
-    for (block = 0; block < state.block_count; block++) {
-      if (block == state.model_space_block) continue;
-      if (strncmp(state.block_names[block], "*Paper_Space", 12) == 0) {
-        paper_count++;
-      }
-    }
-    layout_blocks = (uint32_t *)calloc(paper_count + 1, sizeof(uint32_t));
-    if (!layout_blocks) {
+    uint32_t layout_count = 0;
+    if (!import_layouts(&state, &layout_blocks, &layout_count)) {
       status = FC_STATUS_OUT_OF_MEMORY;
       goto cleanup;
     }
-
-    memset(&model, 0, sizeof(model));
-    model.name = fcb_intern(b, "Model");
-    model.block_index = state.model_space_block;
-    model.flags = FCB_LAYOUT_MODEL_SPACE;
-    model.tab_order = tab;
-    model.paper_width = 297.0;
-    model.paper_height = 210.0;
-    layout_blocks[tab] = state.model_space_block;
-    tab++;
-    fcb_add_layout(b, &model);
-
-    for (block = 0; block < state.block_count; block++) {
-      char name[64];
-      fcb_layout layout;
-      if (block == state.model_space_block) continue;
-      if (strncmp(state.block_names[block], "*Paper_Space", 12) != 0) continue;
-      memset(&layout, 0, sizeof(layout));
-      snprintf(name, sizeof(name), "Layout%u", tab);
-      layout.name = fcb_intern(b, name);
-      layout.block_index = block;
-      layout.tab_order = tab;
-      layout.paper_width = 297.0;
-      layout.paper_height = 210.0;
-      layout_blocks[tab] = block;
-      tab++;
-      fcb_add_layout(b, &layout);
-    }
-    import_paper_viewports(&state, layout_blocks, tab);
+    import_paper_viewports(&state, layout_blocks, layout_count);
   }
 
   /* A handful of header variables that affect rendering. */

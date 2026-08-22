@@ -71,6 +71,39 @@ void main() {
     expect(backend.nativeFcbVersion, fcbVersion);
   });
 
+  test('DWG import keeps layout names and paper size', () async {
+    final directory = Directory.systemTemp.createTempSync('fancad-layout');
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+      ),
+    );
+    document.addEntity(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+      blockName: '*Paper_Space',
+    );
+
+    final dxfPath = '${directory.path}/sheet.dxf';
+    final dwgPath = '${directory.path}/sheet.dwg';
+    await const DxfWriter().writeFile(dxfPath, document);
+    await backend.exportDwgFromDxf(dxfPath, dwgPath, targetVersion: 2000);
+
+    final opened = await DrawingImporter(backend: backend).open(dwgPath);
+    final paper = opened.document.layouts
+        .where((item) => item.name == 'A3')
+        .toList();
+    expect(paper, isNotEmpty, reason: 'LAYOUT.layout_name should survive DWG');
+    expect(paper.single.paperWidth, closeTo(420, 1));
+    expect(paper.single.paperHeight, closeTo(297, 1));
+  });
+
   test('a missing file fails cleanly rather than crashing', () {
     expect(
       () => backend.readToFcb('/definitely/not/a/drawing.dwg'),

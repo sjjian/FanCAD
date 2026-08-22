@@ -151,6 +151,8 @@ void main() {
 
     final dxf = const DxfWriter().writeString(original);
     expect(dxf, contains('LAYOUT'));
+    expect(dxf, contains('AcDbLayout'));
+    expect(dxf, contains('AcDbPlotSettings'));
     expect(dxf, contains('VIEWPORT'));
     expect(dxf, contains('A3'));
 
