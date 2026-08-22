@@ -207,8 +207,13 @@ class FileCommands {
       if (recent.isEmpty) {
         return const CommandResult.failed('There are no recent files.');
       }
-      final path = context.args.text('path') ??
-          await context.input.keyword('Open recent:', recent);
+      var path = context.args.text('path')?.trim();
+      if (path == null || path.isEmpty) {
+        path = (await context.input.keyword('Open recent:', recent)).trim();
+      }
+      if (path.isEmpty) {
+        return const CommandResult.failed('No recent file was chosen.');
+      }
       final ok = await openFile(path);
       return ok
           ? CommandResult.ok(message: 'Opened $path')
