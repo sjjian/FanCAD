@@ -256,4 +256,20 @@ void main() {
       }
     });
   });
+
+  group('LineWeight', () {
+    test('parses millimetres, hundredths and sentinels', () {
+      expect(LineWeight.tryParse('0.25'), 25);
+      expect(LineWeight.tryParse('25'), 25);
+      expect(LineWeight.tryParse('0.25mm'), 25);
+      expect(LineWeight.tryParse('ByLayer'), LineWeight.byLayer);
+      expect(LineWeight.tryParse('hairline'), LineWeight.zero);
+    });
+
+    test('rejects a weight thicker than the DXF maximum', () {
+      expect(LineWeight.tryParse('300'), isNull);
+      expect(LineWeight.tryParse('5mm'), isNull);
+      expect(LineWeight.tryParse('nope'), isNull);
+    });
+  });
 }

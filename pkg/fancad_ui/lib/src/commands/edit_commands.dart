@@ -42,6 +42,7 @@ class EditCommands {
     _changeLayer(),
     _changeColor(),
     _changeLinetype(),
+    _changeLineweight(),
     _matchProp(),
   ];
 
@@ -1963,6 +1964,56 @@ class EditCommands {
     }
     return null;
   }
+
+  static CommandDescriptor _changeLineweight() => CommandDescriptor(
+    id: 'edit.changeLineweight',
+    title: 'Change Lineweight',
+    category: _category,
+    aliases: const ['lw', 'lweight', 'lineweight'],
+    description:
+        'Sets the lineweight of the selected objects. Accepts a millimetre '
+        'value (0.25), hundredths (25), ByLayer, ByBlock, Default or '
+        'hairline.',
+    params: const [
+      ParamSpec.selection('ids'),
+      ParamSpec(
+        name: 'weight',
+        type: ParamType.text,
+        description: 'Millimetres, hundredths, ByLayer, ByBlock or hairline',
+      ),
+    ],
+    handler: (context) async {
+      final ids = await context.resolveSelection(
+        'ids',
+        'LWEIGHT  Select objects:',
+      );
+      if (ids.isEmpty) return const CommandResult.cancelled();
+      final raw = await context.resolveText(
+        'weight',
+        'LWEIGHT  Enter weight (0.25 mm, 25, ByLayer):',
+      );
+      final weight = LineWeight.tryParse(raw);
+      if (weight == null) {
+        return CommandResult.failed(
+          '"$raw" is not a lineweight. Use 0.25, 25, ByLayer, ByBlock, '
+          'Default or hairline.',
+        );
+      }
+
+      final committed = context.edit('Change Lineweight', (transaction) {
+        transaction.setLineWeightOf(ids, weight);
+      });
+      if (committed == null) {
+        return const CommandResult.failed('Nothing changed.');
+      }
+      return CommandResult(
+        status: CommandStatus.ok,
+        message:
+            'Set lineweight on ${committed.change.modified.length} object(s).',
+        transaction: committed,
+      );
+    },
+  );
 
   static CommandDescriptor _matchProp() => CommandDescriptor(
     id: 'edit.matchProp',

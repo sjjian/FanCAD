@@ -419,6 +419,18 @@ void main() {
       );
     });
 
+    test('change lineweight stores hundredths of a millimetre', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.changeLineweight', {
+        'ids': [id],
+        'weight': '0.25',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entity(id)!.props.lineWeight, 25);
+    });
+
     test('change linetype installs a stock pattern and assigns it', () async {
       final id = await drawLine(0, 0, 10, 0);
 

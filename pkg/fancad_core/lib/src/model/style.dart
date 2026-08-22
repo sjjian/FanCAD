@@ -150,6 +150,28 @@ class LineWeight {
 
   /// Line weights are stored in hundredths of a millimetre.
   static double toMillimetres(int weight) => weight <= 0 ? 0 : weight / 100;
+
+  /// Parses a user or script value into a DXF lineweight.
+  ///
+  /// Keywords are `ByLayer`, `ByBlock`, `Default` and `hairline`. A number
+  /// at most 2.11 is millimetres; a larger integer is already hundredths
+  /// (`25` and `0.25` both mean 0.25 mm).
+  static int? tryParse(String raw) {
+    final lower = raw.trim().toLowerCase();
+    final hadMm = lower.contains('mm');
+    final text = lower.replaceAll('mm', '').trim();
+    if (text == 'bylayer') return byLayer;
+    if (text == 'byblock') return byBlock;
+    if (text == 'default' || text == 'bydefault') return byDefault;
+    if (text == 'hairline') return zero;
+    final value = double.tryParse(text);
+    if (value == null || !value.isFinite || value < 0) return null;
+    if (value == 0) return zero;
+    final asMillimetres = hadMm || text.contains('.') || value <= 2.11;
+    final hundredths = asMillimetres ? (value * 100).round() : value.round();
+    if (hundredths > 211) return null;
+    return hundredths;
+  }
 }
 
 /// How an entity's colour is determined.

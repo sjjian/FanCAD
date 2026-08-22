@@ -252,6 +252,19 @@ class Transaction {
     return count;
   }
 
+  /// Changes the lineweight of entities.
+  int setLineWeightOf(Iterable<int> ids, int lineWeight) {
+    var count = 0;
+    for (final id in ids.toList()) {
+      final entity = document.entity(id);
+      if (entity == null) continue;
+      if (setProps(id, entity.props.copyWith(lineWeight: lineWeight))) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   /// Changes the colour of entities.
   int setColorOf(Iterable<int> ids, CadColor color) {
     var count = 0;
