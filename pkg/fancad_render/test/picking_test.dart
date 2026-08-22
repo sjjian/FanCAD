@@ -156,4 +156,28 @@ void main() {
     expect(xy[2], closeTo(40, 1e-9));
     expect(xy[3], closeTo(14, 1e-9));
   });
+
+  test('picks a paper viewport by its frame, not its interior', () {
+    final document = paperWithModelLine();
+    final view = CadViewport.fit(document.extents, size);
+
+    expect(
+      const Picker().pickViewportFrame(document, view, const Vec2(10, 80)),
+      0,
+    );
+    expect(
+      const Picker().pickViewportFrame(document, view, const Vec2(105, 80)),
+      isNull,
+    );
+  });
+
+  test('shows grips on a selected paper viewport', () {
+    final document = paperWithModelLine();
+    final grips = const Picker().displayViewportGrips(document, [0]);
+
+    expect(grips, hasLength(9));
+    expect(grips[0].isViewportFrame, isTrue);
+    expect(grips[0].paperPoint, const Vec2(10, 10));
+    expect(grips[8].paperPoint, const Vec2(105, 80));
+  });
 }

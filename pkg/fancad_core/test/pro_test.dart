@@ -93,6 +93,25 @@ void main() {
     expect(text, contains('W n'));
   });
 
+  test('a paper viewport grip resizes the window and keeps the model view', () {
+    const viewport = PaperViewport(
+      paperBounds: Bounds2(10, 10, 200, 150),
+      modelCenter: Vec2(40, 0),
+      scale: 0.5,
+    );
+    expect(viewport.grips(), hasLength(9));
+    expect(viewport.grips()[8], const Vec2(105, 80));
+
+    final grown = viewport.withGrip(2, const Vec2(220, 170));
+    expect(grown.paperBounds, const Bounds2(10, 10, 220, 170));
+    expect(grown.modelCenter, const Vec2(40, 0));
+    expect(grown.scale, 0.5);
+
+    final moved = viewport.withGrip(8, const Vec2(115, 90));
+    expect(moved.paperBounds, const Bounds2(20, 20, 210, 160));
+    expect(moved.modelCenter, const Vec2(40, 0));
+  });
+
   test('a plot of a line is a well-formed SVG', () {
     final document = CadDocument();
     final session = DocumentSession(id: 't', document: document);

@@ -46,6 +46,52 @@ class PaperViewport {
   /// Inverse of [modelToPaper], or null when the viewport scale is zero.
   Mat3? paperToModel() => modelToPaper().inverted();
 
+  /// Corners, edge midpoints, then the centre — the grip order a stretch
+  /// on the sheet uses.
+  List<Vec2> grips() {
+    final box = paperBounds;
+    final mid = box.center;
+    return [
+      Vec2(box.minX, box.minY),
+      Vec2(box.maxX, box.minY),
+      Vec2(box.maxX, box.maxY),
+      Vec2(box.minX, box.maxY),
+      Vec2(mid.x, box.minY),
+      Vec2(box.maxX, mid.y),
+      Vec2(mid.x, box.maxY),
+      Vec2(box.minX, mid.y),
+      mid,
+    ];
+  }
+
+  /// Moves a [grips] point. The model view (centre and scale) stays put, so
+  /// resizing the window shows more or less of the same drawing.
+  PaperViewport withGrip(int index, Vec2 paper) {
+    final box = paperBounds;
+    final delta = paper - box.center;
+    final next = switch (index) {
+      0 => Bounds2.fromCorners(paper, Vec2(box.maxX, box.maxY)),
+      1 => Bounds2.fromCorners(Vec2(box.minX, paper.y), Vec2(paper.x, box.maxY)),
+      2 => Bounds2.fromCorners(Vec2(box.minX, box.minY), paper),
+      3 => Bounds2.fromCorners(Vec2(paper.x, box.minY), Vec2(box.maxX, paper.y)),
+      4 => Bounds2(box.minX, paper.y, box.maxX, box.maxY),
+      5 => Bounds2(box.minX, box.minY, paper.x, box.maxY),
+      6 => Bounds2(box.minX, box.minY, box.maxX, paper.y),
+      7 => Bounds2(paper.x, box.minY, box.maxX, box.maxY),
+      8 => Bounds2(
+        box.minX + delta.x,
+        box.minY + delta.y,
+        box.maxX + delta.x,
+        box.maxY + delta.y,
+      ),
+      _ => box,
+    };
+    if (next.width <= 1e-9 || next.height <= 1e-9 || next == box) {
+      return this;
+    }
+    return copyWith(paperBounds: next);
+  }
+
   /// The model-space window this viewport shows.
   Bounds2 get modelWindow {
     if (scale == 0) return const Bounds2.empty();

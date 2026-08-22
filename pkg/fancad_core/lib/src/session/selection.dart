@@ -9,6 +9,7 @@ class SelectionSet {
   SelectionSet();
 
   final Set<int> _ids = <int>{};
+  final Set<int> _viewports = <int>{};
   final StreamController<Set<int>> _controller =
       StreamController<Set<int>>.broadcast(sync: true);
 
@@ -19,9 +20,13 @@ class SelectionSet {
   Stream<Set<int>> get changes => _controller.stream;
 
   Set<int> get ids => Set.unmodifiable(_ids);
+
+  /// Indices into [Layout.viewports] of the active paper tab.
+  Set<int> get viewportIndices => Set.unmodifiable(_viewports);
+
   int get length => _ids.length;
-  bool get isEmpty => _ids.isEmpty;
-  bool get isNotEmpty => _ids.isNotEmpty;
+  bool get isEmpty => _ids.isEmpty && _viewports.isEmpty;
+  bool get isNotEmpty => !isEmpty;
   bool get isSingle => _ids.length == 1;
 
   /// The only selected id, or null when the selection is not a single entity.
@@ -30,15 +35,19 @@ class SelectionSet {
   bool contains(int id) => _ids.contains(id);
 
   bool add(int id) {
-    if (!_ids.add(id)) return false;
+    final cleared = _viewports.isNotEmpty;
+    _viewports.clear();
+    if (!_ids.add(id) && !cleared) return false;
     _notify();
     return true;
   }
 
   int addAll(Iterable<int> ids) {
+    final cleared = _viewports.isNotEmpty;
     final before = _ids.length;
+    _viewports.clear();
     _ids.addAll(ids);
-    if (_ids.length == before) return 0;
+    if (_ids.length == before && !cleared) return 0;
     _notify();
     return _ids.length - before;
   }
@@ -63,6 +72,7 @@ class SelectionSet {
   }
 
   bool toggle(int id) {
+    _viewports.clear();
     final added = _ids.contains(id) ? !_ids.remove(id) : _ids.add(id);
     _notify();
     return added;
@@ -70,17 +80,39 @@ class SelectionSet {
 
   void replace(Iterable<int> ids) {
     final next = ids.toSet();
-    if (next.length == _ids.length && _ids.containsAll(next)) return;
+    if (next.length == _ids.length &&
+        _ids.containsAll(next) &&
+        _viewports.isEmpty) {
+      return;
+    }
     _ids
       ..clear()
       ..addAll(next);
+    _viewports.clear();
     activeGrips.removeWhere((id, _) => !_ids.contains(id));
     _notify();
   }
 
-  void clear() {
-    if (_ids.isEmpty && activeGrips.isEmpty) return;
+  /// Selects paper-space viewport windows. Entity selection is cleared.
+  void selectViewports(Iterable<int> indices) {
+    final next = indices.toSet();
+    if (next.length == _viewports.length &&
+        _viewports.containsAll(next) &&
+        _ids.isEmpty) {
+      return;
+    }
     _ids.clear();
+    activeGrips.clear();
+    _viewports
+      ..clear()
+      ..addAll(next);
+    _notify();
+  }
+
+  void clear() {
+    if (_ids.isEmpty && activeGrips.isEmpty && _viewports.isEmpty) return;
+    _ids.clear();
+    _viewports.clear();
     activeGrips.clear();
     _notify();
   }
@@ -90,6 +122,16 @@ class SelectionSet {
     final stale = _ids.where((id) => !exists(id)).toList();
     if (stale.isEmpty) return;
     removeAll(stale);
+  }
+
+  /// Drops viewport indices that are no longer on the active layout.
+  void pruneViewports(int viewportCount) {
+    final stale = _viewports.where((index) => index < 0 || index >= viewportCount).toList();
+    if (stale.isEmpty) return;
+    for (final index in stale) {
+      _viewports.remove(index);
+    }
+    _notify();
   }
 
   void _notify() {

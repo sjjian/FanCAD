@@ -351,12 +351,24 @@ class ToolController extends ChangeNotifier
         grips.add(grip.paperPoint);
       }
     }
+    for (final grip in picker.displayViewportGrips(
+      document,
+      selection.viewportIndices,
+    )) {
+      grips.add(grip.paperPoint);
+    }
     if (tool != null) grips.addAll(tool.buildMarkers(this));
 
     final snapResult = _snap;
     final base = tool?.basePoint;
     final shapes = <OverlayShape>[
       ...?tool?.buildPreview(this),
+      for (final index in selection.viewportIndices)
+        if (index >= 0 && index < document.activeLayout.viewports.length)
+          OverlayPolyline(
+            _viewportCorners(document.activeLayout.viewports[index].paperBounds),
+            closed: true,
+          ),
       if (snapResult != null && snapResult.trackingAngle != null && base != null)
         OverlayTrackingLine(
           base,
@@ -664,3 +676,10 @@ class WindowPromptTool extends PromptTool<Bounds2> {
     return [OverlayRect(first, cursor)];
   }
 }
+
+List<Vec2> _viewportCorners(Bounds2 box) => [
+  Vec2(box.minX, box.minY),
+  Vec2(box.maxX, box.minY),
+  Vec2(box.maxX, box.maxY),
+  Vec2(box.minX, box.maxY),
+];

@@ -94,6 +94,7 @@ class DocumentSession {
     history.push(committed);
     if (source != ChangeSource.importer) _dirty = true;
     selection.prune((id) => document.entity(id) != null);
+    selection.pruneViewports(document.activeLayout.viewports.length);
     _emit(committed.change);
     if (!_transactions.isClosed) _transactions.add(committed);
     return committed;
@@ -115,6 +116,7 @@ class DocumentSession {
     if (change == null) return false;
     _dirty = true;
     selection.prune((id) => document.entity(id) != null);
+    selection.pruneViewports(document.activeLayout.viewports.length);
     _emit(change);
     return true;
   }
@@ -124,6 +126,7 @@ class DocumentSession {
     if (change == null) return false;
     _dirty = true;
     selection.prune((id) => document.entity(id) != null);
+    selection.pruneViewports(document.activeLayout.viewports.length);
     _emit(change);
     return true;
   }

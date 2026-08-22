@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
@@ -28,6 +29,7 @@ class GripHit {
     required this.gripIndex,
     required this.paperPoint,
     this.viewport,
+    this.viewportIndex,
   });
 
   final int entityId;
@@ -38,6 +40,11 @@ class GripHit {
 
   /// Set when this is a model-space grip seen through a paper window.
   final PaperViewport? viewport;
+
+  /// Set when this grip belongs to a paper viewport frame.
+  final int? viewportIndex;
+
+  bool get isViewportFrame => viewportIndex != null;
 }
 
 /// Finds entities under a point or inside a window.
@@ -312,6 +319,74 @@ class Picker {
     }
   }
 
+  /// The paper viewport whose frame is under [world], or null.
+  ///
+  /// The interior is left to model-space picking so a click inside the
+  /// window still selects a line. Only the border is a viewport hit.
+  int? pickViewportFrame(
+    CadDocument document,
+    CadViewport viewport,
+    Vec2 world, {
+    double radiusPixels = 6,
+  }) {
+    final layout = document.activeLayout;
+    if (layout.isModelSpace) return null;
+    final radius = viewport.pixelsToWorld(radiusPixels);
+    var best = radius;
+    int? found;
+    for (var i = 0; i < layout.viewports.length; i++) {
+      final window = layout.viewports[i];
+      if (!window.isOn) continue;
+      final distance = _distanceToRectEdge(world, window.paperBounds);
+      if (distance <= best) {
+        best = distance;
+        found = i;
+      }
+    }
+    return found;
+  }
+
+  /// Frame grips of selected paper viewports.
+  List<GripHit> displayViewportGrips(
+    CadDocument document,
+    Iterable<int> viewportIndices,
+  ) {
+    final layout = document.activeLayout;
+    if (layout.isModelSpace) return const [];
+    final result = <GripHit>[];
+    for (final index in viewportIndices) {
+      if (index < 0 || index >= layout.viewports.length) continue;
+      final window = layout.viewports[index];
+      if (!window.isOn) continue;
+      final local = window.grips();
+      for (var i = 0; i < local.length; i++) {
+        result.add(
+          GripHit(
+            entityId: -1,
+            gripIndex: i,
+            paperPoint: local[i],
+            viewportIndex: index,
+          ),
+        );
+      }
+    }
+    return result;
+  }
+
+  static double _distanceToRectEdge(Vec2 point, Bounds2 box) {
+    final clampedX = point.x.clamp(box.minX, box.maxX);
+    final clampedY = point.y.clamp(box.minY, box.maxY);
+    final dx = point.x - clampedX;
+    final dy = point.y - clampedY;
+    if (dx != 0 || dy != 0) {
+      return math.sqrt(dx * dx + dy * dy);
+    }
+    return math.min(
+      math.min(point.x - box.minX, box.maxX - point.x),
+      math.min(point.y - box.minY, box.maxY - point.y),
+    );
+  }
+
   /// Grips of [entityIds] in the coordinates of the current layout.
   ///
   /// Model-space grips are mapped through every on paper viewport that
@@ -392,11 +467,15 @@ class Picker {
     CadViewport viewport,
     Vec2 world, {
     double radiusPixels = 8,
+    Iterable<int> viewportIndices = const [],
   }) {
     final radius = viewport.pixelsToWorld(radiusPixels);
     var best = radius;
     GripHit? result;
-    for (final grip in displayGrips(document, entityIds)) {
+    for (final grip in [
+      ...displayGrips(document, entityIds),
+      ...displayViewportGrips(document, viewportIndices),
+    ]) {
       final distance = grip.paperPoint.distanceTo(world);
       if (distance < best) {
         best = distance;

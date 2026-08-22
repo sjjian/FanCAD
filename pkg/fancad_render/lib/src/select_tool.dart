@@ -26,6 +26,7 @@ class SelectionTool extends CadTool {
 
   /// Set while dragging a grip: which entity, which grip, and where it started.
   int? _gripEntity;
+  int? _gripLayoutViewport;
   int _gripIndex = -1;
   Vec2? _gripOrigin;
   Vec2? _gripTarget;
@@ -34,7 +35,8 @@ class SelectionTool extends CadTool {
   /// The grip under the cursor, drawn filled so the user knows it is live.
   int _hotGrip = -1;
 
-  bool get isEditingGrip => _gripEntity != null;
+  bool get isEditingGrip =>
+      _gripEntity != null || _gripLayoutViewport != null;
 
   @override
   String get promptText => isEditingGrip
@@ -61,6 +63,7 @@ class SelectionTool extends CadTool {
     _windowStart = null;
     _windowEnd = null;
     _gripEntity = null;
+    _gripLayoutViewport = null;
     _gripIndex = -1;
     _gripOrigin = null;
     _gripTarget = null;
@@ -74,6 +77,7 @@ class SelectionTool extends CadTool {
       host.selection.ids,
       host.viewport,
       point,
+      viewportIndices: host.selection.viewportIndices,
     );
     if (grip != null) {
       _hotGrip = _gripOrdinalOf(host, grip);
@@ -100,9 +104,11 @@ class SelectionTool extends CadTool {
       host.selection.ids,
       host.viewport,
       point,
+      viewportIndices: host.selection.viewportIndices,
     );
     if (grip != null && !isEditingGrip) {
-      _gripEntity = grip.entityId;
+      _gripEntity = grip.isViewportFrame ? null : grip.entityId;
+      _gripLayoutViewport = grip.viewportIndex;
       _gripIndex = grip.gripIndex;
       _gripOrigin = grip.paperPoint;
       _gripTarget = grip.paperPoint;
@@ -115,6 +121,17 @@ class SelectionTool extends CadTool {
     // as click-move-click as well as by dragging.
     if (isEditingGrip) {
       _commitGrip(host, point);
+      return true;
+    }
+
+    final frame = host.picker.pickViewportFrame(
+      host.document,
+      host.viewport,
+      point,
+    );
+    if (frame != null) {
+      host.selection.selectViewports([frame]);
+      host.prompt('Selected viewport');
       return true;
     }
 
@@ -185,14 +202,31 @@ class SelectionTool extends CadTool {
 
   void _commitGrip(ToolHost host, Vec2 point) {
     final id = _gripEntity;
+    final viewportIndex = _gripLayoutViewport;
     final index = _gripIndex;
     final modelPoint = _toEntityPoint(point);
     _gripEntity = null;
+    _gripLayoutViewport = null;
     _gripIndex = -1;
     _gripOrigin = null;
     _gripTarget = null;
     _gripViewport = null;
-    if (id == null || index < 0) return;
+    if (index < 0) return;
+    if (viewportIndex != null) {
+      final layout = host.document.activeLayout;
+      if (viewportIndex < 0 || viewportIndex >= layout.viewports.length) {
+        return;
+      }
+      final moved = layout.viewports[viewportIndex].withGrip(index, point);
+      host.session.edit('Stretch viewport', (transaction) {
+        final next = [...layout.viewports];
+        next[viewportIndex] = moved;
+        transaction.putLayout(layout.copyWith(viewports: next));
+      });
+      host.prompt(promptText);
+      return;
+    }
+    if (id == null) return;
     final entity = host.document.entity(id);
     if (entity == null) return;
     host.session.edit('Stretch', (transaction) {
@@ -205,6 +239,19 @@ class SelectionTool extends CadTool {
   bool onKey(ToolHost host, LogicalKeyboardKey key) {
     if (key == LogicalKeyboardKey.delete ||
         key == LogicalKeyboardKey.backspace) {
+      final viewports = host.selection.viewportIndices.toList()..sort();
+      if (viewports.isNotEmpty) {
+        final layout = host.document.activeLayout;
+        host.session.edit('Erase viewport', (transaction) {
+          final next = [...layout.viewports];
+          for (final index in viewports.reversed) {
+            if (index >= 0 && index < next.length) next.removeAt(index);
+          }
+          transaction.putLayout(layout.copyWith(viewports: next));
+        });
+        host.selection.clear();
+        return true;
+      }
       final ids = host.selection.ids.toList();
       if (ids.isEmpty) return false;
       final committed = host.session.edit('Erase', (transaction) {
@@ -238,8 +285,28 @@ class SelectionTool extends CadTool {
 
   @override
   List<OverlayShape> buildPreview(ToolHost host) {
-    final id = _gripEntity;
+    final viewportIndex = _gripLayoutViewport;
     final target = _gripTarget;
+    if (viewportIndex != null && target != null && _gripIndex >= 0) {
+      final layout = host.document.activeLayout;
+      if (viewportIndex >= 0 && viewportIndex < layout.viewports.length) {
+        final moved = layout.viewports[viewportIndex].withGrip(
+          _gripIndex,
+          target,
+        );
+        final box = moved.paperBounds;
+        return [
+          OverlayPolyline([
+            Vec2(box.minX, box.minY),
+            Vec2(box.maxX, box.minY),
+            Vec2(box.maxX, box.maxY),
+            Vec2(box.minX, box.maxY),
+          ], closed: true),
+        ];
+      }
+    }
+
+    final id = _gripEntity;
     if (id != null && target != null && _gripIndex >= 0) {
       // Show the entity as it would be after the stretch, so the user is
       // committing to something they have already seen.
@@ -276,6 +343,10 @@ class SelectionTool extends CadTool {
   }
 
   void _describeSelection(ToolHost host) {
+    if (host.selection.viewportIndices.isNotEmpty) {
+      host.prompt('Selected viewport');
+      return;
+    }
     final count = host.selection.length;
     if (count == 0) return;
     if (count == 1) {
@@ -298,11 +369,18 @@ class SelectionTool extends CadTool {
   /// Grips are drawn as one flat list, including one copy per paper window
   /// that shows a model-space entity, so the hot index is that list's index.
   int _gripOrdinalOf(ToolHost host, GripHit hit) {
-    final grips = host.picker.displayGrips(host.document, host.selection.ids);
+    final grips = [
+      ...host.picker.displayGrips(host.document, host.selection.ids),
+      ...host.picker.displayViewportGrips(
+        host.document,
+        host.selection.viewportIndices,
+      ),
+    ];
     for (var i = 0; i < grips.length; i++) {
       final grip = grips[i];
       if (grip.entityId == hit.entityId &&
           grip.gripIndex == hit.gripIndex &&
+          grip.viewportIndex == hit.viewportIndex &&
           identical(grip.viewport, hit.viewport)) {
         return i;
       }
