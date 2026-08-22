@@ -142,6 +142,19 @@ void main() {
       expect(result.message, contains('collinear'));
     });
 
+    test('ellipse creates a full ellipse from centre and axes', () async {
+      final result = await run('draw.ellipse', {
+        'center': [0, 0],
+        'axisEnd': [10, 0],
+        'otherRadius': 4,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final ellipse = document.entities.first as EllipseEntity;
+      expect(ellipse.center, const Vec2(0, 0));
+      expect(ellipse.ratio, closeTo(0.4, 1e-9));
+    });
+
     test('divide places interior points along a line', () async {
       final id = await drawLine(0, 0, 12, 0);
 

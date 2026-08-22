@@ -82,6 +82,43 @@ void main() {
     });
   });
 
+  group('ellipse', () {
+    test('stores the shorter radius as a ratio', () {
+      final ellipse = Construct.ellipse(
+        center: const Vec2(0, 0),
+        axisEnd: const Vec2(10, 0),
+        otherRadius: 4,
+      );
+
+      expect(ellipse, isNotNull);
+      expect(ellipse!.majorAxis.x, closeTo(10, 1e-9));
+      expect(ellipse.ratio, closeTo(0.4, 1e-9));
+    });
+
+    test('swaps axes when the other radius is longer', () {
+      final ellipse = Construct.ellipse(
+        center: const Vec2(0, 0),
+        axisEnd: const Vec2(6, 0),
+        otherRadius: 10,
+      );
+
+      expect(ellipse, isNotNull);
+      expect(ellipse!.majorAxis.length, closeTo(10, 1e-9));
+      expect(ellipse.ratio, closeTo(0.6, 1e-9));
+    });
+
+    test('returns null for a degenerate axis', () {
+      expect(
+        Construct.ellipse(
+          center: const Vec2(1, 1),
+          axisEnd: const Vec2(1, 1),
+          otherRadius: 5,
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('polygon', () {
     test('inscribes vertices on the circle', () {
       final hexagon = Construct.polygon(

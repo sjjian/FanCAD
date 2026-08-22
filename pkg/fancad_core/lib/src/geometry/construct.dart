@@ -84,6 +84,37 @@ class Construct {
     );
   }
 
+  /// An axis-aligned-or-rotated ellipse from a centre, one axis end, and the
+  /// other semi-axis length.
+  ///
+  /// If the second radius is longer than the first axis, the two swap so the
+  /// stored [EllipseEntity.ratio] stays at most 1, which is how DWG records it.
+  static EllipseEntity? ellipse({
+    required Vec2 center,
+    required Vec2 axisEnd,
+    required double otherRadius,
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    var major = axisEnd - center;
+    final majorLength = major.length;
+    if (majorLength < 1e-12 || otherRadius <= 0 || !otherRadius.isFinite) {
+      return null;
+    }
+    var ratio = otherRadius / majorLength;
+    if (ratio > 1) {
+      major = major.normalized().perpendicular * otherRadius;
+      ratio = majorLength / otherRadius;
+    }
+    return EllipseEntity(
+      id: id,
+      props: props,
+      center: center,
+      majorAxis: major,
+      ratio: ratio,
+    );
+  }
+
   /// A closed rectangular polyline through two opposite corners.
   static PolylineEntity? rectangle(
     Vec2 first,
