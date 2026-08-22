@@ -106,12 +106,21 @@ class FileCommands {
     icon: 'save',
     defaultKeybinding: 'ctrl+s',
     aiExposure: AiExposure.hidden,
-    description: 'Saves the active drawing.',
+    description:
+        'Saves the active drawing, asking for a path when it has never been saved.',
     handler: (context) async {
-      final path = await saveActive(null);
-      return path == null
-          ? const CommandResult.cancelled()
-          : CommandResult.ok(message: 'Saved to $path');
+      var path = context.session.filePath;
+      if (path == null || path.isEmpty) {
+        final chosen = await saveFileDialog(
+          suggestedName: context.session.title,
+        );
+        if (chosen == null) return const CommandResult.cancelled();
+        path = chosen;
+      }
+      final written = await saveActive(path);
+      return written == null
+          ? const CommandResult.failed('The file was not written.')
+          : CommandResult.ok(message: 'Saved to $written');
     },
   );
 
