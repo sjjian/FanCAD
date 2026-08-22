@@ -271,6 +271,23 @@ void main() {
       expect(moved.end, const Vec2(10, 5));
     });
 
+    test('stretch moves vertices inside the crossing window', () async {
+      final id = await drawLine(-8, 0, 0, 0);
+
+      final result = await run('edit.stretch', {
+        'corner1': [-1, -1],
+        'corner2': [1, 1],
+        'from': [0, 0],
+        'to': [0, 4],
+        'ids': [id],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final stretched = document.entity(id)! as LineEntity;
+      expect(stretched.start, const Vec2(-8, 0));
+      expect(stretched.end, const Vec2(0, 4));
+    });
+
     test('copy leaves the original in place', () async {
       final id = await drawLine(0, 0, 10, 0);
 

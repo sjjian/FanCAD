@@ -3,7 +3,9 @@ import 'dart:typed_data';
 
 import '../model/entity.dart';
 import '../model/style.dart';
+import 'bounds.dart';
 import 'intersect.dart';
+import 'matrix.dart';
 import 'vector.dart';
 
 /// The analytic constructions behind the editing commands.
@@ -802,6 +804,162 @@ class Construct {
     return moveStart
         ? resizedLine(line, 1 - scale, 1)
         : resizedLine(line, 0, scale);
+  }
+
+  /// Moves the vertices of [entity] that sit inside [window] by [delta].
+  ///
+  /// That is the AutoCAD STRETCH contract: a crossing window names the grips
+  /// that travel, and everything else stays anchored. An object whose defining
+  /// points are all inside the window translates as a rigid body. Circles,
+  /// ellipses and inserts only move when their centre (or insertion point) is
+  /// captured — stretching a radius grip is a different edit.
+  ///
+  /// Returns null when the window misses every stretchable point, so the
+  /// command can skip the entity instead of writing a no-op patch.
+  static CadEntity? stretch(CadEntity entity, Bounds2 window, Vec2 delta) {
+    if (delta.lengthSquared < 1e-20) return null;
+    final translation = Mat3.translation(delta.x, delta.y);
+
+    switch (entity) {
+      case LineEntity(:final start, :final end):
+        final moveStart = _inWindow(window, start);
+        final moveEnd = _inWindow(window, end);
+        if (!moveStart && !moveEnd) return null;
+        if (moveStart && moveEnd) return entity.transformed(translation);
+        return LineEntity(
+          id: entity.id,
+          props: entity.props,
+          start: moveStart ? start + delta : start,
+          end: moveEnd ? end + delta : end,
+        );
+      case PolylineEntity():
+        return _stretchPolyline(entity, window, delta);
+      case SplineEntity():
+        return _stretchSpline(entity, window, delta);
+      case CircleEntity(:final center):
+      case EllipseEntity(:final center):
+        return _inWindow(window, center)
+            ? entity.transformed(translation)
+            : null;
+      case ArcEntity(:final center, :final startPoint, :final endPoint):
+        if (_inWindow(window, center)) {
+          return entity.transformed(translation);
+        }
+        var result = entity;
+        var changed = false;
+        if (_inWindow(window, startPoint)) {
+          result = result.withGrip(0, startPoint + delta) as ArcEntity;
+          changed = true;
+        }
+        if (_inWindow(window, endPoint)) {
+          result = result.withGrip(2, endPoint + delta) as ArcEntity;
+          changed = true;
+        }
+        return changed ? result : null;
+      case PointEntity(:final position):
+      case TextEntity(:final position):
+      case MTextEntity(:final position):
+      case InsertEntity(:final position):
+        return _inWindow(window, position)
+            ? entity.transformed(translation)
+            : null;
+      case RayEntity(:final origin):
+      case XLineEntity(:final origin):
+      case ImageEntity(:final origin):
+        return _inWindow(window, origin)
+            ? entity.transformed(translation)
+            : null;
+      case SolidEntity():
+      case LeaderEntity():
+        return _stretchIndependentGrips(entity, window, delta);
+      default:
+        return window.containsBox(entity.computeBounds())
+            ? entity.transformed(translation)
+            : null;
+    }
+  }
+
+  static bool _inWindow(Bounds2 window, Vec2 point) =>
+      window.containsPoint(point.x, point.y);
+
+  static PolylineEntity? _stretchPolyline(
+    PolylineEntity entity,
+    Bounds2 window,
+    Vec2 delta,
+  ) {
+    var any = false;
+    final out = Float64List.fromList(entity.vertices);
+    for (var i = 0; i < entity.vertexCount; i++) {
+      final x = out[i * 3];
+      final y = out[i * 3 + 1];
+      if (!window.containsPoint(x, y)) continue;
+      any = true;
+      out[i * 3] = x + delta.x;
+      out[i * 3 + 1] = y + delta.y;
+    }
+    if (!any) return null;
+    return PolylineEntity(
+      id: entity.id,
+      props: entity.props,
+      vertices: out,
+      closed: entity.closed,
+      constantWidth: entity.constantWidth,
+    );
+  }
+
+  static SplineEntity? _stretchSpline(
+    SplineEntity entity,
+    Bounds2 window,
+    Vec2 delta,
+  ) {
+    var any = false;
+    final controls = Float64List.fromList(entity.controlPoints);
+    for (var i = 0; i < entity.controlPointCount; i++) {
+      final x = controls[i * 2];
+      final y = controls[i * 2 + 1];
+      if (!window.containsPoint(x, y)) continue;
+      any = true;
+      controls[i * 2] = x + delta.x;
+      controls[i * 2 + 1] = y + delta.y;
+    }
+    Float64List? fits = entity.fitPoints;
+    if (fits != null) {
+      final out = Float64List.fromList(fits);
+      for (var i = 0; i < out.length; i += 2) {
+        if (!window.containsPoint(out[i], out[i + 1])) continue;
+        any = true;
+        out[i] += delta.x;
+        out[i + 1] += delta.y;
+      }
+      fits = out;
+    }
+    if (!any) return null;
+    return SplineEntity(
+      id: entity.id,
+      props: entity.props,
+      controlPoints: controls,
+      knots: entity.knots,
+      weights: entity.weights,
+      degree: entity.degree,
+      closed: entity.closed,
+      fitPoints: fits,
+    );
+  }
+
+  static CadEntity? _stretchIndependentGrips(
+    CadEntity entity,
+    Bounds2 window,
+    Vec2 delta,
+  ) {
+    final grips = entity.grips();
+    var result = entity;
+    var changed = false;
+    for (var i = 0; i < grips.length; i++) {
+      if (!_inWindow(window, grips[i])) continue;
+      result = result.withGrip(i, grips[i] + delta);
+      changed = true;
+    }
+    return changed ? result : null;
   }
 
   /// A copy of [line] spanning the parameter range `[from, to]`.

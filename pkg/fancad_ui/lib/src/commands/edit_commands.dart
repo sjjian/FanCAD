@@ -16,6 +16,7 @@ class EditCommands {
     _erase(),
     _move(),
     _copy(),
+    _stretch(),
     _rotate(),
     _scale(),
     _mirror(),
@@ -116,6 +117,115 @@ class EditCommands {
       copy: true,
       matrix: (from, to) => Mat3.translation(to.x - from.x, to.y - from.y),
     ),
+  );
+
+  static CommandDescriptor _stretch() => CommandDescriptor(
+    id: 'edit.stretch',
+    title: 'Stretch',
+    category: _category,
+    aliases: const ['s', 'stretch'],
+    icon: 'stretch',
+    description:
+        'Moves vertices inside a crossing window and leaves the rest '
+        'anchored. Objects wholly captured by the window move as a body.',
+    params: const [
+      ParamSpec.point(
+        'corner1',
+        description: 'First corner of the stretch window',
+      ),
+      ParamSpec.point('corner2', description: 'Opposite corner'),
+      ParamSpec.point('from', description: 'Base point of the displacement'),
+      ParamSpec.point('to', description: 'Second point of the displacement'),
+      ParamSpec(
+        name: 'ids',
+        type: ParamType.selection,
+        required: false,
+        description:
+            'Objects to stretch; omitted uses whatever the window hits',
+      ),
+    ],
+    handler: (context) async {
+      final first = await context.resolvePoint(
+        'corner1',
+        'STRETCH  Specify first corner of crossing window:',
+      );
+      context.input.setPreview(
+        (cursor) => [OverlayRect(first, cursor, crossing: true)],
+      );
+      final second = await context.resolvePoint(
+        'corner2',
+        'STRETCH  Specify opposite corner:',
+        basePoint: first,
+      );
+      context.input.setPreview(null);
+      final window = Bounds2.fromCorners(first, second);
+      if (window.isEmpty || (window.width == 0 && window.height == 0)) {
+        return const CommandResult.failed('The stretch window is empty.');
+      }
+
+      final provided = context.args.ids('ids');
+      final ids = <int>[
+        if (provided != null && provided.isNotEmpty)
+          ...provided
+        else if (context.selection.isNotEmpty)
+          ...context.selection.ids
+        else
+          ...context.document.queryVisible(window),
+      ];
+
+      final from = await context.resolvePoint(
+        'from',
+        'STRETCH  Specify base point:',
+      );
+      context.input.setPreview((cursor) {
+        final delta = cursor - from;
+        final shapes = <OverlayShape>[
+          OverlayLine(from, cursor),
+          OverlayRect(first, second, crossing: true),
+        ];
+        for (final id in ids) {
+          final entity = context.document.entity(id);
+          if (entity == null) continue;
+          final stretched = Construct.stretch(entity, window, delta);
+          if (stretched != null) {
+            shapes.addAll(_outline(context.document, stretched));
+          }
+        }
+        return shapes;
+      });
+      final to = await context.resolvePoint(
+        'to',
+        'STRETCH  Specify second point:',
+        basePoint: from,
+      );
+      context.input.setPreview(null);
+
+      final delta = to - from;
+      if (delta.lengthSquared < 1e-20) {
+        return const CommandResult.cancelled('The displacement is zero.');
+      }
+
+      final committed = context.edit('Stretch', (transaction) {
+        for (final id in ids) {
+          final entity = context.document.entity(id);
+          if (entity == null) continue;
+          final stretched = Construct.stretch(entity, window, delta);
+          if (stretched != null) transaction.modify(stretched);
+        }
+      });
+      if (committed == null) {
+        return const CommandResult.failed(
+          'Nothing in the window had a vertex to stretch.',
+        );
+      }
+      return CommandResult(
+        status: CommandStatus.ok,
+        message:
+            'Stretched ${committed.change.modified.length} object(s).',
+        data: {'ids': committed.change.modified},
+        transaction: committed,
+      );
+    },
   );
 
   static CommandDescriptor _rotate() => CommandDescriptor(

@@ -687,6 +687,60 @@ void main() {
     });
   });
 
+  group('stretch', () {
+    const window = Bounds2(-1, -1, 1, 1);
+    const delta = Vec2(0, 4);
+
+    test('moves only the endpoint inside the window', () {
+      final stretched = Construct.stretch(line(-8, 0, 0, 0), window, delta);
+
+      expect(stretched, isA<LineEntity>());
+      final result = stretched! as LineEntity;
+      expect(result.start, const Vec2(-8, 0));
+      expect(result.end, const Vec2(0, 4));
+    });
+
+    test('translates a line whose both ends are captured', () {
+      final stretched =
+          Construct.stretch(line(0, 0, 0.5, 0), window, delta)! as LineEntity;
+
+      expect(stretched.start, const Vec2(0, 4));
+      expect(stretched.end, const Vec2(0.5, 4));
+    });
+
+    test('ignores a line that only crosses the window', () {
+      expect(
+        Construct.stretch(line(-8, 0, 8, 0), window, delta),
+        isNull,
+      );
+    });
+
+    test('moves a polyline vertex without dragging the rest', () {
+      final polyline = PolylineEntity.fromPoints(
+        id: 1,
+        points: const [Vec2(-4, 0), Vec2(0, 0), Vec2(4, 0)],
+      );
+
+      final stretched =
+          Construct.stretch(polyline, window, delta)! as PolylineEntity;
+
+      expect(stretched.vertexAt(0), const Vec2(-4, 0));
+      expect(stretched.vertexAt(1), const Vec2(0, 4));
+      expect(stretched.vertexAt(2), const Vec2(4, 0));
+    });
+
+    test('moves a circle only when the centre is in the window', () {
+      const inside = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+      const outside = CircleEntity(id: 2, center: Vec2(8, 0), radius: 5);
+
+      expect(
+        (Construct.stretch(inside, window, delta)! as CircleEntity).center,
+        const Vec2(0, 4),
+      );
+      expect(Construct.stretch(outside, window, delta), isNull);
+    });
+  });
+
   group('measurements', () {
     test('reports the length of each supported type', () {
       expect(Construct.lengthOf(line(0, 0, 3, 4)), closeTo(5, 1e-9));
