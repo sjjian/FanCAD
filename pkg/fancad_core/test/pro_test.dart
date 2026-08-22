@@ -93,6 +93,41 @@ void main() {
     expect(text, contains('W n'));
   });
 
+  test('a double-click inside a paper viewport maximizes it', () {
+    const layout = Layout(
+      name: 'Layout1',
+      blockName: '*Paper_Space',
+      tabOrder: 1,
+      viewports: [
+        PaperViewport(
+          paperBounds: Bounds2(10, 10, 200, 150),
+          modelCenter: Vec2(40, 0),
+          scale: 0.5,
+        ),
+      ],
+    );
+    expect(
+      canvasDoubleClick(layout: layout, point: const Vec2(20, 20)).id,
+      'layout.vpmax',
+    );
+    expect(
+      canvasDoubleClick(layout: layout, point: const Vec2(20, 20)).args['index'],
+      0,
+    );
+    expect(
+      canvasDoubleClick(layout: layout, point: const Vec2(0, 0)).id,
+      'view.zoomExtents',
+    );
+    expect(
+      canvasDoubleClick(
+        layout: const Layout(name: 'Model', blockName: '*Model_Space', isModelSpace: true),
+        point: const Vec2.zero(),
+        isMaximized: true,
+      ).id,
+      'layout.vpmin',
+    );
+  });
+
   test('a paper viewport grip resizes the window and keeps the model view', () {
     const viewport = PaperViewport(
       paperBounds: Bounds2(10, 10, 200, 150),

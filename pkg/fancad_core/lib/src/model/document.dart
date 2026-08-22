@@ -87,6 +87,14 @@ class Layout {
   /// Windows into model space. Empty on the model tab itself.
   final List<PaperViewport> viewports;
 
+  /// Topmost viewport whose paper rectangle contains [x],[y], or null.
+  int? viewportIndexAt(double x, double y) {
+    for (var i = viewports.length - 1; i >= 0; i--) {
+      if (viewports[i].paperBounds.containsPoint(x, y)) return i;
+    }
+    return null;
+  }
+
   Layout copyWith({
     String? name,
     String? blockName,

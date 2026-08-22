@@ -20,6 +20,7 @@ export 'src/geometry/matrix.dart';
 export 'src/geometry/vector.dart';
 export 'src/hatch/generator.dart';
 export 'src/hatch/pattern.dart';
+export 'src/layout/double_click.dart';
 export 'src/layout/paper_viewport.dart';
 export 'src/model/document.dart';
 export 'src/model/entity.dart';

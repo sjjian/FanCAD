@@ -1,3 +1,4 @@
+import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -63,6 +64,18 @@ class _DocumentViewState extends State<DocumentView> {
   void _bind(DocumentTab tab) {
     tab.onGeometryInvalidated = (change) =>
         _canvasKey.currentState?.applyDocumentChange(change);
+  }
+
+  /// Paper viewport interiors run VPMAX; a maximized model view runs VPMIN;
+  /// everything else is zoom extents.
+  void _onDoubleClick(Offset local) {
+    final tab = widget.tab;
+    final action = canvasDoubleClick(
+      layout: tab.document.activeLayout,
+      point: tab.viewport.viewport.toWorld(local),
+      isMaximized: tab.session.maximizedLayoutName != null,
+    );
+    widget.workspace.run(action.id, args: action.args);
   }
 
   /// A click, not a drag. Deferred a frame so the pointer-up does not
@@ -188,7 +201,7 @@ class _DocumentViewState extends State<DocumentView> {
           showGrid: tab.showGrid,
           onSceneBuilt: tab.noteScene,
           onContextMenu: _openContextMenu,
-          onDoubleClick: (_) => widget.workspace.run('view.zoomExtents'),
+          onDoubleClick: _onDoubleClick,
           onlyLayers: tab.isolatedLayers,
         ),
       ),
