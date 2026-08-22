@@ -177,6 +177,36 @@ void main() {
     );
   });
 
+  test('an xref block keeps its path through DXF', () {
+    final original = CadDocument();
+    final foreign = CadDocument()
+      ..addEntity(
+        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+      );
+    final session = DocumentSession(id: 't', document: original);
+    session.edit('Attach xref', (transaction) {
+      const XrefResolver().attach(
+        host: original,
+        foreign: foreign,
+        path: r'C:\parts\bracket.dxf',
+        at: const Vec2(5, 6),
+        transaction: transaction,
+      );
+    });
+
+    final dxf = const DxfWriter().writeString(original);
+    expect(dxf, contains(r'C:\parts\bracket.dxf'));
+    expect(dxf, contains('INSERT'));
+
+    final restored = const DxfReader().readString(dxf);
+    expect(restored.blocks['BRACKET']!.isXref, isTrue);
+    expect(restored.blocks['BRACKET']!.xrefPath, r'C:\parts\bracket.dxf');
+    expect(restored.blocks['BRACKET']!.entityIds, hasLength(1));
+    final insert = restored.activeEntities.whereType<InsertEntity>().single;
+    expect(insert.blockName, 'BRACKET');
+    expect(insert.position, const Vec2(5, 6));
+  });
+
   test('a stress drawing of 10k entities encodes and decodes as DXF', () {
     final original = SampleDrawings.stressTest(count: 2000);
     final dxf = const DxfWriter().writeString(original);

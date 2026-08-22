@@ -22,6 +22,7 @@ class DxfReader {
     final scan = _Scan(text);
     final document = CadDocument();
     final blockEntities = <String, List<int>>{};
+    final blockDefs = <String, Map<int, String>>{};
     final viewportsByBlock = <String, List<PaperViewport>>{};
     final layoutRecords = <Map<int, String>>[];
     String section = '';
@@ -56,6 +57,7 @@ class DxfReader {
         final values = scan.collectMap();
         currentBlock = values[2] ?? document.modelSpaceBlockName;
         blockEntities.putIfAbsent(currentBlock, () => []);
+        blockDefs[currentBlock] = values;
         continue;
       }
       if (type == 'ENDBLK') {
@@ -90,6 +92,8 @@ class DxfReader {
       ];
     }
     for (final entry in blockEntities.entries) {
+      final values = blockDefs[entry.key] ?? const {};
+      final path = values[1] ?? '';
       document.putBlock(
         BlockRecord(
           name: entry.key,
@@ -98,6 +102,8 @@ class DxfReader {
               entry.key.toUpperCase().contains('PAPER_SPACE') ||
               entry.key == document.modelSpaceBlockName,
           isAnonymous: entry.key.startsWith('*'),
+          xrefPath: path,
+          description: path.isEmpty ? '' : 'Xref $path',
         ),
       );
     }

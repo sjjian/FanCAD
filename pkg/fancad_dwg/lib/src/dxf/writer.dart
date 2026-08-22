@@ -40,11 +40,10 @@ class DxfWriter {
     for (final block in document.blocks.values) {
       pair(0, 'BLOCK');
       pair(2, block.name);
-      pair(70, block.isAnonymous
-          ? 1
-          : block.isLayoutBlock
-              ? 0
-              : 0);
+      var flags = 0;
+      if (block.isAnonymous) flags |= 1;
+      if (block.isXref) flags |= 4;
+      pair(70, flags);
       pair(10, block.basePoint.x);
       pair(20, block.basePoint.y);
       pair(30, 0);
