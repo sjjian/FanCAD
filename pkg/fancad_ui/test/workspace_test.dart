@@ -158,4 +158,24 @@ void main() {
     );
     expect(await ws.submitCommandLine(''), isNull);
   });
+
+  test('close on an empty workspace does not invent a drawing', () async {
+    final ws = workspace();
+    registerBuiltinCommands(
+      ws.commands,
+      fileCommands: FileCommands(
+        openFile: (_) async => false,
+        newDocument: ws.newDocument,
+        closeActive: ({bool force = false}) =>
+            ws.closeTab(ws.activeIndex, force: force),
+        saveActive: (path) async => path,
+        recentFiles: () => const [],
+      ),
+    );
+
+    final result = await ws.run('file.close');
+    expect(result.status, CommandStatus.failed);
+    expect(result.message, contains('no drawing to close'));
+    expect(ws.tabs, isEmpty);
+  });
 }
