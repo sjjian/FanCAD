@@ -1595,6 +1595,20 @@ void main() {
       expect(workspace.active!.selection.ids, [painted]);
     });
 
+    test('select by linetype matches the stored linetype only', () async {
+      await drawLine(0, 0, 1, 0);
+      final dashed = await drawLine(0, 1, 1, 1);
+      await run('edit.changeLinetype', {
+        'ids': [dashed],
+        'linetype': 'DASHED',
+      });
+
+      final result = await run('select.byLinetype', {'linetype': 'dashed'});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(workspace.active!.selection.ids, [dashed]);
+    });
+
     test('summary reports counts and extents', () async {
       await drawLine(0, 0, 10, 0);
       await run('draw.circle', {'center': [0, 0], 'radius': 5});

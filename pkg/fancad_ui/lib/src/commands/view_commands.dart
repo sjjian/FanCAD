@@ -21,6 +21,7 @@ class ViewCommands {
     _selectSimilar(),
     _selectByLayer(),
     _selectByColor(),
+    _selectByLinetype(),
     _isolateObjects(),
     _hideObjects(),
     _unisolateObjects(),
@@ -312,6 +313,44 @@ class ViewCommands {
     if (parsed == null || parsed < 1 || parsed > 255) return null;
     return CadColor.indexed(parsed);
   }
+
+  static CommandDescriptor _selectByLinetype() => CommandDescriptor(
+    id: 'select.byLinetype',
+    title: 'Select by Linetype',
+    category: _select,
+    aliases: const ['sellt'],
+    description:
+        'Selects every object whose stored linetype matches a name, ByLayer '
+        'or ByBlock. Layer-inherited DASHED is not the same as DASHED.',
+    params: const [
+      ParamSpec(
+        name: 'linetype',
+        type: ParamType.text,
+        description: 'Linetype name, ByLayer or ByBlock',
+      ),
+    ],
+    handler: (context) async {
+      final raw = await context.resolveText(
+        'linetype',
+        'Enter a linetype (DASHED, ByLayer, …):',
+      );
+      final name = raw.trim();
+      if (name.isEmpty) {
+        return const CommandResult.failed('Enter a linetype name.');
+      }
+      final needle = name.toLowerCase();
+      final ids = [
+        for (final entity in context.document.activeEntities)
+          if (entity.props.lineType.toLowerCase() == needle &&
+              context.document.isSelectable(entity))
+            entity.id,
+      ];
+      context.selection.replace(ids);
+      return CommandResult.ok(
+        message: '${ids.length} object(s) selected with linetype $name.',
+      );
+    },
+  );
 
   static CommandDescriptor _isolateObjects() => CommandDescriptor(
     id: 'view.isolateObjects',
