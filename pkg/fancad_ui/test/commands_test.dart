@@ -83,6 +83,45 @@ void main() {
       expect(polyline.vertexCount, 4);
     });
 
+    test('hatch fills a closed rectangle with a scaled pattern', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [20, 10],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.hatch', {
+        'ids': [id],
+        'pattern': 'ANSI31',
+        'scale': 2,
+        'angle': 90,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final hatch = document.entities.whereType<HatchEntity>().single;
+      expect(hatch.patternName, 'ANSI31');
+      expect(hatch.solid, isFalse);
+      expect(hatch.patternScale, closeTo(2, 1e-9));
+      expect(hatch.patternAngle, closeTo(math.pi / 2, 1e-9));
+    });
+
+    test('hatch refuses a non-positive scale', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.hatch', {
+        'ids': [id],
+        'pattern': 'ANSI31',
+        'scale': 0,
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entities.whereType<HatchEntity>(), isEmpty);
+    });
+
     test('rectangle refuses a degenerate corner pair', () async {
       final result = await run('draw.rectangle', {
         'corner1': [5, 5],

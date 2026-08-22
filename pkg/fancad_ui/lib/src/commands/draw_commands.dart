@@ -1409,6 +1409,20 @@ class DrawCommands {
         required: false,
         defaultValue: 'SOLID',
       ),
+      ParamSpec(
+        name: 'scale',
+        type: ParamType.distance,
+        description: 'Pattern scale',
+        required: false,
+        defaultValue: 1,
+      ),
+      ParamSpec(
+        name: 'angle',
+        type: ParamType.angle,
+        description: 'Pattern rotation in degrees',
+        required: false,
+        defaultValue: 0,
+      ),
     ],
     handler: (context) async {
       final ids = await context.resolveSelection(
@@ -1418,6 +1432,11 @@ class DrawCommands {
       if (ids.isEmpty) return const CommandResult.cancelled();
 
       final pattern = context.args.text('pattern') ?? 'SOLID';
+      final scale = context.args.number('scale') ?? 1;
+      if (scale <= 0) {
+        return const CommandResult.failed('Hatch scale must be positive.');
+      }
+      final angle = (context.args.number('angle') ?? 0) * math.pi / 180;
       final loops = <HatchLoop>[];
       for (final id in ids) {
         final entity = context.document.entity(id);
@@ -1447,6 +1466,8 @@ class DrawCommands {
           loops: loops,
           patternName: pattern.toUpperCase(),
           solid: pattern.toUpperCase() == 'SOLID',
+          patternScale: scale,
+          patternAngle: angle,
         ),
       ]);
     },
