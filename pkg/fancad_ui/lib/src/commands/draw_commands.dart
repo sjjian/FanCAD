@@ -35,6 +35,7 @@ class DrawCommands {
     _hatch(),
     _dimLinear(),
     _dimAligned(),
+    _dimContinue(),
     _dimRadius(),
     _dimDiameter(),
     _dimAngular(),
@@ -1987,6 +1988,162 @@ class DrawCommands {
       );
     }
     return _commit(context, 'Angular Dimension', [entity]);
+  }
+
+  static CommandDescriptor _dimContinue() => CommandDescriptor(
+    id: 'draw.dimContinue',
+    title: 'Continue Dimension',
+    category: _category,
+    aliases: const ['dco', 'dimcontinue'],
+    icon: 'dimension',
+    description:
+        'Places the next linear or aligned dimension from the previous '
+        'second origin, on the same dimension line. Chain several next '
+        'points to walk a row of features.',
+    params: const [
+      ParamSpec(
+        name: 'base',
+        type: ParamType.entity,
+        description: 'Linear or aligned dimension to continue',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'next',
+        type: ParamType.point,
+        description: 'Next extension-line origin',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'points',
+        type: ParamType.json,
+        description: 'Array of next [x, y] origins to chain',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final base = await _resolveContinuedDimension(context);
+      if (base == null) {
+        return const CommandResult.failed(
+          'DIMCONTINUE needs a linear or aligned dimension.',
+        );
+      }
+
+      final supplied = [
+        ..._pointList(context.args['points']),
+        if (context.args.point('next') case final next?) next,
+      ];
+      final layer = EntityProps(layer: context.document.currentLayer);
+      if (supplied.isNotEmpty) {
+        final created = <CadEntity>[];
+        var current = base;
+        for (final origin in supplied) {
+          final next = Construct.continueDimension(
+            current,
+            origin,
+            props: layer,
+          );
+          if (next == null) {
+            if (created.isEmpty) {
+              return const CommandResult.failed(
+                'The next origin does not continue that dimension.',
+              );
+            }
+            break;
+          }
+          created.add(next);
+          current = next;
+        }
+        return _commit(context, 'Continue Dimension', created);
+      }
+
+      final created = <CadEntity>[];
+      var current = base;
+      while (true) {
+        context.input
+          ..setMarkers([current.definitionPoints[1]])
+          ..setPreview((cursor) => _dimContinueOverlay(current, cursor));
+        final origin = await context.input.pointOrNull(
+          'DIMCONTINUE  Specify next extension line origin:',
+        );
+        if (origin == null) break;
+        final next = Construct.continueDimension(
+          current,
+          origin,
+          props: layer,
+        );
+        if (next == null) {
+          if (created.isEmpty) {
+            context.input
+              ..setPreview(null)
+              ..setMarkers(const []);
+            return const CommandResult.failed(
+              'The next origin does not continue that dimension.',
+            );
+          }
+          break;
+        }
+        created.add(next);
+        current = next;
+        if (!context.input.isInteractive) break;
+      }
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+      if (created.isEmpty) return const CommandResult.cancelled();
+      return _commit(context, 'Continue Dimension', created);
+    },
+  );
+
+  static Future<DimensionEntity?> _resolveContinuedDimension(
+    CommandContext context,
+  ) async {
+    final supplied = context.args.integer('base');
+    if (supplied != null) {
+      return _continuableDimension(context.document.entity(supplied));
+    }
+    for (final id in context.selection.ids) {
+      final dim = _continuableDimension(context.document.entity(id));
+      if (dim != null) return dim;
+    }
+    if (context.input.isInteractive) {
+      context.selection.clear();
+      final picked = await context.input.selection(
+        'DIMCONTINUE  Select a linear or aligned dimension:',
+        useExistingSelection: false,
+        single: true,
+      );
+      if (picked.isEmpty) return null;
+      return _continuableDimension(context.document.entity(picked.first));
+    }
+    DimensionEntity? last;
+    for (final entity in context.document.entities) {
+      final dim = _continuableDimension(entity);
+      if (dim != null) last = dim;
+    }
+    return last;
+  }
+
+  static DimensionEntity? _continuableDimension(CadEntity? entity) {
+    if (entity is! DimensionEntity) return null;
+    final type = entity.dimensionType & 0x0F;
+    if (type > 1 || entity.definitionPoints.length < 2) return null;
+    return entity;
+  }
+
+  static List<OverlayShape> _dimContinueOverlay(
+    DimensionEntity base,
+    Vec2 cursor,
+  ) {
+    final next = Construct.continueDimension(base, cursor);
+    if (next == null || next.definitionPoints.length < 2) return const [];
+    final first = next.definitionPoints[0];
+    final second = next.definitionPoints[1];
+    final dimLine = next.definitionPoints.length > 2
+        ? next.definitionPoints[2]
+        : next.textPosition;
+    return (base.dimensionType & 0x0F) == 1
+        ? _dimAlignedOverlay(first, second, dimLine)
+        : _dimLinearOverlay(first, second, dimLine);
   }
 
   static List<OverlayShape> _dimAngularFromLinesOverlay(

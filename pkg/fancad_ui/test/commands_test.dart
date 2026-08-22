@@ -176,6 +176,71 @@ void main() {
       expect(dim.displayText, '10.00');
     });
 
+    test('continue dimension chains from the previous second origin', () async {
+      final created = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [10, 0],
+        'dimLine': [5, 4],
+      });
+      final base = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.dimContinue', {
+        'base': base,
+        'next': [16, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entities.whereType<DimensionEntity>(), hasLength(2));
+      final continued = document.entity(
+        (result.data!['ids']! as List).first as int,
+      )! as DimensionEntity;
+      expect(continued.measurement, closeTo(6, 1e-9));
+      expect(continued.definitionPoints[0], const Vec2(10, 0));
+      expect(continued.textPosition.y, closeTo(4, 1e-9));
+    });
+
+    test('continue dimension walks several origins in one command', () async {
+      final created = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [8, 0],
+        'dimLine': [4, 3],
+      });
+      final base = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.dimContinue', {
+        'base': base,
+        'points': [
+          [12, 0],
+          [20, 0],
+        ],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((result.data!['ids']! as List), hasLength(2));
+      expect(document.entities.whereType<DimensionEntity>(), hasLength(3));
+    });
+
+    test('continue dimension refuses a radius dimension', () async {
+      final circle = await run('draw.circle', {
+        'center': [0, 0],
+        'radius': 5,
+      });
+      final circleId = (circle.data!['ids']! as List).first as int;
+      final radial = await run('draw.dimRadius', {
+        'target': circleId,
+        'dimLine': [8, 0],
+      });
+      final base = (radial.data!['ids']! as List).first as int;
+
+      final result = await run('draw.dimContinue', {
+        'base': base,
+        'next': [12, 0],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entities.whereType<DimensionEntity>(), hasLength(1));
+    });
+
     test('dimension text override replaces the measured value', () async {
       final created = await run('draw.dimLinear', {
         'first': [0, 0],

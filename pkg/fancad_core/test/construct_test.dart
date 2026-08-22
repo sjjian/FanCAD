@@ -145,6 +145,57 @@ void main() {
     });
   });
 
+  group('continueDimension', () {
+    test('walks a horizontal chain on the same dimension line', () {
+      final first = Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(5, 4),
+      )!;
+      final next = Construct.continueDimension(first, const Vec2(18, 0));
+
+      expect(next, isNotNull);
+      expect(next!.measurement, closeTo(8, 1e-9));
+      expect(next.definitionPoints[0], const Vec2(10, 0));
+      expect(next.definitionPoints[1], const Vec2(18, 0));
+      expect(next.textPosition.y, closeTo(4, 1e-9));
+    });
+
+    test('keeps a width chain from flipping to height', () {
+      // The previous dim-line pick sits left of the new midpoint, which
+      // would make a fresh DIMLINEAR read height. Continue must not.
+      final first = Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(5, 4),
+      )!;
+      final next = Construct.continueDimension(first, const Vec2(24, 0));
+
+      expect(next, isNotNull);
+      expect(next!.measurement, closeTo(14, 1e-9));
+    });
+
+    test('continues an aligned dimension along the same offset', () {
+      final first = Construct.alignedDimension(
+        const Vec2(0, 0),
+        const Vec2(3, 4),
+        const Vec2(-2, 2),
+      )!;
+      final next = Construct.continueDimension(first, const Vec2(6, 8));
+
+      expect(next, isNotNull);
+      expect(next!.measurement, closeTo(5, 1e-9));
+      expect(next.dimensionType, 1);
+      expect(next.definitionPoints[0], const Vec2(3, 4));
+    });
+
+    test('refuses a radius dimension', () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+      final radial = Construct.radiusDimension(circle, const Vec2(8, 0))!;
+      expect(Construct.continueDimension(radial, const Vec2(12, 0)), isNull);
+    });
+  });
+
   group('radiusDimension', () {
     test('reads the radius of a circle and prefixes R', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);

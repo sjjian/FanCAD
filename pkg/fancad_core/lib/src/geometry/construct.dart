@@ -147,6 +147,44 @@ class Construct {
     );
   }
 
+  /// The next linear or aligned dimension in a DIMCONTINUE chain.
+  ///
+  /// The new first origin is the previous second origin, so a run of hole
+  /// centres shares one dimension line. Linear chains keep the previous axis
+  /// (width stays width) even when the old dim-line pick would sit beside
+  /// the new midpoint and flip the measurement.
+  static DimensionEntity? continueDimension(
+    DimensionEntity previous,
+    Vec2 nextOrigin, {
+    int id = 0,
+    EntityProps? props,
+  }) {
+    final points = previous.definitionPoints;
+    if (points.length < 2) return null;
+    final first = points[1];
+    if (first.distanceTo(nextOrigin) < 1e-9) return null;
+    final resolved = props ?? previous.props;
+    final type = previous.dimensionType & 0x0F;
+    if (type == 1) {
+      final dimLine = points.length > 2 ? points[2] : previous.textPosition;
+      return alignedDimension(
+        first,
+        nextOrigin,
+        dimLine,
+        id: id,
+        props: resolved,
+      );
+    }
+    if (type != 0 || points.length < 3) return null;
+    final mid = points[0].lerp(points[1], 0.5);
+    final horizontal =
+        (points[2] - mid).y.abs() >= (points[2] - mid).x.abs();
+    final dimLine = horizontal
+        ? Vec2((first.x + nextOrigin.x) / 2, points[2].y)
+        : Vec2(points[2].x, (first.y + nextOrigin.y) / 2);
+    return linearDimension(first, nextOrigin, dimLine, id: id, props: resolved);
+  }
+
   /// A radius dimension for a circle or arc.
   ///
   /// [dimLine] is the arrow tip and the text seat; it does not have to lie
