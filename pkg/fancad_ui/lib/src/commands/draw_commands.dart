@@ -15,6 +15,7 @@ class DrawCommands {
   static List<CommandDescriptor> all() => [
     _line(),
     _polyline(),
+    _spline(),
     _rectangle(),
     _circle(),
     _circleDiameter(),
@@ -170,6 +171,88 @@ class DrawCommands {
       ]);
     },
   );
+
+  static CommandDescriptor _spline() => CommandDescriptor(
+    id: 'draw.spline',
+    title: 'Spline',
+    category: _category,
+    aliases: const ['spl', 'spline'],
+    description:
+        'Draws a clamped B-spline from control points. The curve passes '
+        'through the first and last points and is pulled toward the ones in '
+        'between. Pass a points array to create it non-interactively.',
+    params: const [
+      ParamSpec(
+        name: 'points',
+        type: ParamType.json,
+        description: 'Array of [x, y] control points',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final layer = context.document.currentLayer;
+      final supplied = _pointList(context.args['points']);
+      if (supplied.length >= 2) {
+        final spline = Construct.splineFromControls(
+          supplied,
+          props: EntityProps(layer: layer),
+        );
+        if (spline == null) {
+          return const CommandResult.failed('Need at least two control points.');
+        }
+        return _commit(context, 'Spline', [spline]);
+      }
+
+      final points = <Vec2>[];
+      while (true) {
+        context.input
+          ..setMarkers(List.of(points))
+          ..setPreview(
+            points.isEmpty
+                ? null
+                : (cursor) => _splineOverlay([...points, cursor]),
+          );
+        final next = await context.input.pointOrNull(
+          points.isEmpty
+              ? 'SPLINE  Specify first point:'
+              : 'SPLINE  Specify next control point (Escape to finish):',
+        );
+        if (next == null) break;
+        points.add(next);
+      }
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+
+      if (points.length < 2) return const CommandResult.cancelled();
+      final spline = Construct.splineFromControls(
+        points,
+        props: EntityProps(layer: layer),
+      );
+      if (spline == null) {
+        return const CommandResult.failed('Need at least two control points.');
+      }
+      return _commit(context, 'Spline', [spline]);
+    },
+  );
+
+  static List<OverlayShape> _splineOverlay(List<Vec2> points) {
+    final spline = Construct.splineFromControls(points);
+    if (spline == null) return [OverlayPolyline(List.of(points))];
+    final sampled = Flatten.bspline(
+      controlPoints: spline.controlPoints,
+      knots: spline.knots,
+      degree: spline.degree,
+      tolerance: 0.2,
+    );
+    return [
+      OverlayPolyline(List.of(points), dashed: true),
+      OverlayPolyline([
+        for (var i = 0; i + 1 < sampled.length; i += 2)
+          Vec2(sampled[i], sampled[i + 1]),
+      ]),
+    ];
+  }
 
   static CommandDescriptor _rectangle() => CommandDescriptor(
     id: 'draw.rectangle',

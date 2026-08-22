@@ -119,6 +119,44 @@ void main() {
     });
   });
 
+  group('splineFromControls', () {
+    test('four points become a cubic Bezier span', () {
+      final spline = Construct.splineFromControls(const [
+        Vec2(0, 0),
+        Vec2(1, 2),
+        Vec2(3, 2),
+        Vec2(4, 0),
+      ]);
+
+      expect(spline, isNotNull);
+      expect(spline!.degree, 3);
+      expect(spline.controlPointCount, 4);
+      expect(spline.knots, [0, 0, 0, 0, 1, 1, 1, 1]);
+    });
+
+    test('five points insert one interior knot', () {
+      final spline = Construct.splineFromControls(const [
+        Vec2(0, 0),
+        Vec2(1, 1),
+        Vec2(2, 0),
+        Vec2(3, 1),
+        Vec2(4, 0),
+      ]);
+
+      expect(spline!.knots, [0, 0, 0, 0, 0.5, 1, 1, 1, 1]);
+    });
+
+    test('two points drop to a degree-1 span', () {
+      final spline = Construct.splineFromControls(const [
+        Vec2(0, 0),
+        Vec2(10, 0),
+      ]);
+
+      expect(spline!.degree, 1);
+      expect(spline.knots, [0, 0, 1, 1]);
+    });
+  });
+
   group('polygon', () {
     test('inscribes vertices on the circle', () {
       final hexagon = Construct.polygon(

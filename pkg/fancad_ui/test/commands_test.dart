@@ -142,6 +142,22 @@ void main() {
       expect(result.message, contains('collinear'));
     });
 
+    test('spline accepts a control-point array', () async {
+      final result = await run('draw.spline', {
+        'points': [
+          [0, 0],
+          [1, 2],
+          [3, 2],
+          [4, 0],
+        ],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final spline = document.entities.first as SplineEntity;
+      expect(spline.controlPointCount, 4);
+      expect(spline.degree, 3);
+    });
+
     test('ellipse creates a full ellipse from centre and axes', () async {
       final result = await run('draw.ellipse', {
         'center': [0, 0],

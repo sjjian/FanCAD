@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import '../model/entity.dart';
 import '../model/style.dart';
@@ -82,6 +83,49 @@ class Construct {
       center: arc.center,
       radius: arc.radius,
     );
+  }
+
+  /// A clamped uniform B-spline through the given control points.
+  ///
+  /// Degree is 3 when there are at least four points, otherwise it drops so
+  /// the knot vector stays valid. This is the control-point form of SPLINE,
+  /// not an interpolating fit — the curve is pulled toward the clicks, and
+  /// only guaranteed to pass through the first and last.
+  static SplineEntity? splineFromControls(
+    List<Vec2> points, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    if (points.length < 2) return null;
+    final degree = math.min(3, points.length - 1);
+    final controlPoints = Float64List(points.length * 2);
+    for (var i = 0; i < points.length; i++) {
+      controlPoints[i * 2] = points[i].x;
+      controlPoints[i * 2 + 1] = points[i].y;
+    }
+    return SplineEntity(
+      id: id,
+      props: props,
+      controlPoints: controlPoints,
+      knots: _clampedUniformKnots(points.length, degree),
+      degree: degree,
+      fitPoints: Float64List.fromList(controlPoints),
+    );
+  }
+
+  /// Open clamped uniform knots: `count + degree + 1` values, 0 at the start
+  /// and 1 at the end, equally spaced in between.
+  static List<double> _clampedUniformKnots(int count, int degree) {
+    final knots = List<double>.filled(count + degree + 1, 0);
+    for (var i = 0; i <= degree; i++) {
+      knots[i] = 0;
+      knots[knots.length - 1 - i] = 1;
+    }
+    final interior = count - degree - 1;
+    for (var i = 1; i <= interior; i++) {
+      knots[degree + i] = i / (interior + 1);
+    }
+    return knots;
   }
 
   /// An axis-aligned-or-rotated ellipse from a centre, one axis end, and the
