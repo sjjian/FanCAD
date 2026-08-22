@@ -47,25 +47,26 @@ class SaveStrategy {
   final bool canWriteDxf;
 
   SavePlan plan(String path) {
-    final extension = _extension(path);
+    final target = path.trim();
+    final extension = _extension(target);
     switch (extension) {
       case 'dxf':
         return SavePlan(
-          targetPath: path,
+          targetPath: target,
           format: SaveFormat.dxf,
           reason: canWriteDxf ? '' : 'DXF writer unavailable',
         );
       case 'fcb':
-        return SavePlan(targetPath: path, format: SaveFormat.fcb);
+        return SavePlan(targetPath: target, format: SaveFormat.fcb);
       case 'dwg':
         if (canWriteDwg) {
           return SavePlan(
-            targetPath: path,
+            targetPath: target,
             format: SaveFormat.dwg,
             dwgVersion: 2000,
           );
         }
-        final dxf = '${_withoutExtension(path)}.dxf';
+        final dxf = '${_withoutExtension(target)}.dxf';
         return SavePlan(
           targetPath: dxf,
           format: SaveFormat.dxf,
@@ -73,7 +74,7 @@ class SaveStrategy {
           reason: 'This build cannot write DWG; saving DXF instead.',
         );
       default:
-        final fcb = '${_withoutExtension(path)}.fcb';
+        final fcb = '${_withoutExtension(target)}.fcb';
         return SavePlan(
           targetPath: fcb,
           format: SaveFormat.fcb,
@@ -83,14 +84,25 @@ class SaveStrategy {
     }
   }
 
+  /// Extension of the last path segment, so a dotted parent folder is ignored.
   static String _extension(String path) {
-    final dot = path.lastIndexOf('.');
-    if (dot < 0 || dot == path.length - 1) return '';
-    return path.substring(dot + 1).toLowerCase();
+    final name = _fileName(path);
+    final dot = name.lastIndexOf('.');
+    if (dot < 0 || dot == name.length - 1) return '';
+    return name.substring(dot + 1).toLowerCase();
   }
 
   static String _withoutExtension(String path) {
-    final dot = path.lastIndexOf('.');
-    return dot < 0 ? path : path.substring(0, dot);
+    final name = _fileName(path);
+    final dot = name.lastIndexOf('.');
+    if (dot < 0 || dot == name.length - 1) return path;
+    return '${path.substring(0, path.length - name.length)}${name.substring(0, dot)}';
+  }
+
+  static String _fileName(String path) {
+    final slash = path.lastIndexOf('/');
+    final back = path.lastIndexOf(r'\');
+    final sep = slash > back ? slash : back;
+    return sep < 0 ? path : path.substring(sep + 1);
   }
 }

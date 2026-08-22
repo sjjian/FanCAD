@@ -44,6 +44,19 @@ void main() {
     expect(none.targetPath, '/tmp/untitled.fcb');
     expect(none.format, SaveFormat.fcb);
 
+    // A parent folder with a dot must not steal the file name.
+    final dottedDir = strategy.plan('/tmp/project.v2/untitled');
+    expect(dottedDir.targetPath, '/tmp/project.v2/untitled.fcb');
+    expect(dottedDir.format, SaveFormat.fcb);
+
+    const blocked = SaveStrategy();
+    final dwgInDotted = blocked.plan(r'C:\proj.v2\sheet.dwg');
+    expect(dwgInDotted.targetPath, r'C:\proj.v2\sheet.dxf');
+
+    final padded = strategy.plan('  /tmp/part.dxf  ');
+    expect(padded.format, SaveFormat.dxf);
+    expect(padded.targetPath, '/tmp/part.dxf');
+
     const outcome = SaveOutcome(
       plan: SavePlan(
         targetPath: '/tmp/untitled.fcb',
