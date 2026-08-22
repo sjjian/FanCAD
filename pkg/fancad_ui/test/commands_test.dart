@@ -344,6 +344,23 @@ void main() {
       expect(points[1].position.y, closeTo(2, 1e-9));
     });
 
+    test('measure places points around a circle', () async {
+      final created = await run('draw.circle', {
+        'center': [0, 0],
+        'radius': 5,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.measure', {
+        'target': id,
+        'spacing': 5,
+        'pick': [5, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entities.whereType<PointEntity>(), hasLength(6));
+    });
+
     test('new geometry lands on the current layer', () async {
       await run('layer.new', {'name': 'WALLS'});
       await drawLine(0, 0, 1, 0);

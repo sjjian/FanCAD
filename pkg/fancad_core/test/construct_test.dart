@@ -1130,6 +1130,34 @@ void main() {
     });
   });
 
+  group('measureArc', () {
+    test('spaces points from the start of a quarter circle', () {
+      const arc = ArcEntity(
+        id: 1,
+        center: Vec2(0, 0),
+        radius: 10,
+        startAngle: 0,
+        endAngle: math.pi / 2,
+      );
+      final points = Construct.measureArc(arc, 5, const Vec2(10, 0));
+
+      expect(points, hasLength(3));
+      expect(points.first.x, closeTo(10 * math.cos(0.5), 1e-9));
+      expect(points.first.y, closeTo(10 * math.sin(0.5), 1e-9));
+    });
+  });
+
+  group('measureCircle', () {
+    test('spaces points around the circumference from the pick', () {
+      const circle = CircleEntity(id: 1, center: Vec2(0, 0), radius: 5);
+      final points = Construct.measureCircle(circle, 5, const Vec2(5, 0));
+
+      expect(points, hasLength(6));
+      expect(points.first.x, closeTo(5 * math.cos(1), 1e-9));
+      expect(points.first.y, closeTo(5 * math.sin(1), 1e-9));
+    });
+  });
+
   group('lengthenLine', () {
     test('sets a new total length on the picked end', () {
       final longer = Construct.lengthenLine(

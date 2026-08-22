@@ -1083,14 +1083,14 @@ class DrawCommands {
     category: _category,
     aliases: const ['me', 'measure'],
     description:
-        'Places point markers at a fixed spacing along a line or straight '
-        'polyline, starting from the end nearer the pick. Endpoints are not '
-        'marked; a leftover shorter than the spacing is left alone.',
+        'Places point markers at a fixed spacing along a line, straight '
+        'polyline, arc or circle. Open objects start from the nearer end; a '
+        'circle starts at the pick. Endpoints are not marked.',
     params: const [
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line or polyline to measure',
+        description: 'The object to measure',
         required: false,
       ),
       ParamSpec(
@@ -1114,7 +1114,7 @@ class DrawCommands {
       } else {
         context.selection.clear();
         final picked = await context.input.selection(
-          'MEASURE  Select a line or polyline:',
+          'MEASURE  Select object to measure:',
           useExistingSelection: false,
           single: true,
         );
@@ -1123,9 +1123,12 @@ class DrawCommands {
       }
 
       final target = context.document.entity(targetId);
-      if (target is! LineEntity && target is! PolylineEntity) {
+      if (target is! LineEntity &&
+          target is! PolylineEntity &&
+          target is! ArcEntity &&
+          target is! CircleEntity) {
         return const CommandResult.failed(
-          'Measure supports lines and straight polylines.',
+          'Measure supports lines, straight polylines, arcs and circles.',
         );
       }
       if (target is PolylineEntity && target.hasBulges) {
@@ -1135,18 +1138,26 @@ class DrawCommands {
       }
 
       final pick = context.args.point('pick') ??
-          (target is LineEntity
-              ? target.start
-              : (target as PolylineEntity).vertexAt(0));
+          switch (target) {
+            LineEntity(:final start) => start,
+            PolylineEntity() => target.vertexAt(0),
+            ArcEntity(:final startPoint) => startPoint,
+            CircleEntity(:final center) => center,
+            _ => const Vec2(0, 0),
+          };
       final spacing = context.args.number('spacing') ??
           await context.input.number('MEASURE  Specify segment length:');
       if (spacing <= 0) {
         return const CommandResult.failed('The spacing must be positive.');
       }
 
-      final points = target is LineEntity
-          ? Construct.measureLine(target, spacing, pick)
-          : Construct.measurePolyline(target as PolylineEntity, spacing, pick);
+      final points = switch (target) {
+        LineEntity() => Construct.measureLine(target, spacing, pick),
+        PolylineEntity() => Construct.measurePolyline(target, spacing, pick),
+        ArcEntity() => Construct.measureArc(target, spacing, pick),
+        CircleEntity() => Construct.measureCircle(target, spacing, pick),
+        _ => const <Vec2>[],
+      };
       if (points.isEmpty) {
         return const CommandResult.failed(
           'The object is shorter than the spacing, so nothing was placed.',

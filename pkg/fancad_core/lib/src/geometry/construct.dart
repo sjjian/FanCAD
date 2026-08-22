@@ -1641,6 +1641,55 @@ class Construct {
     ];
   }
 
+  /// Points spaced [spacing] apart along [arc], from the nearer end.
+  ///
+  /// The ends stay unmarked. Walking backward from the end uses the same
+  /// leftover rule as [measureLine].
+  static List<Vec2> measureArc(ArcEntity arc, double spacing, Vec2 pick) {
+    if (spacing <= 0 || !spacing.isFinite || arc.radius <= 0) {
+      return const [];
+    }
+    final length = arc.radius * arc.sweep;
+    if (length <= spacing) return const [];
+    final fromStart = pick.distanceSquaredTo(arc.startPoint) <=
+        pick.distanceSquaredTo(arc.endPoint);
+    return [
+      for (var i = 1; i * spacing < length - 1e-12; i++)
+        arc.center +
+            Vec2.polar(
+              fromStart
+                  ? arc.startAngle + i * spacing / arc.radius
+                  : arc.endAngle - i * spacing / arc.radius,
+              arc.radius,
+            ),
+    ];
+  }
+
+  /// Points spaced [spacing] apart around [circle], starting at [pick].
+  ///
+  /// The starting location itself is not marked. A leftover shorter than
+  /// [spacing] at the far end of the loop is left alone, so a spacing that
+  /// divides the circumference exactly does not land on the start.
+  static List<Vec2> measureCircle(
+    CircleEntity circle,
+    double spacing,
+    Vec2 pick,
+  ) {
+    if (spacing <= 0 || !spacing.isFinite || circle.radius <= 0) {
+      return const [];
+    }
+    final length = 2 * math.pi * circle.radius;
+    if (length <= spacing) return const [];
+    final startAngle = pick.distanceSquaredTo(circle.center) < 1e-20
+        ? 0.0
+        : (pick - circle.center).angle;
+    return [
+      for (var i = 1; i * spacing < length - 1e-12; i++)
+        circle.center +
+            Vec2.polar(startAngle + i * spacing / circle.radius, circle.radius),
+    ];
+  }
+
   /// Lengthens or shortens [line] by moving the endpoint nearer [pick].
   ///
   /// [total] sets the finished length. [delta] is added to the current length
