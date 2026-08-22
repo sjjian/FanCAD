@@ -3056,6 +3056,42 @@ void main() {
       expect(result.status, CommandStatus.failed);
       expect(document.blocks['GONE']!.entityIds, hasLength(1));
     });
+
+    test('detach removes the insert and the xref block', () async {
+      final dir = Directory.systemTemp.createTempSync('fancad_xref');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final path = '${dir.path}/part.dxf';
+      File(path).writeAsStringSync(
+        const DxfWriter().writeString(
+          CadDocument()
+            ..addEntity(
+              const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+            ),
+        ),
+      );
+      await run('xref.attach', {
+        'path': path,
+        'at': [3, 4],
+      });
+
+      final result = await run('xref.detach');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.blocks.containsKey('PART'), isFalse);
+      expect(document.activeEntities.whereType<InsertEntity>(), isEmpty);
+
+      await run('edit.undo');
+      expect(document.blocks['PART']!.isXref, isTrue);
+      expect(
+        document.activeEntities.whereType<InsertEntity>().single.position,
+        const Vec2(3, 4),
+      );
+    });
+
+    test('detach refuses when there is no xref', () async {
+      final result = await run('xref.detach');
+      expect(result.status, CommandStatus.failed);
+    });
   });
 
   group('registry contract', () {

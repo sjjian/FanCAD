@@ -67,6 +67,30 @@ class XrefResolver {
     return name;
   }
 
+  /// Erases every insert of [name] and drops the xref block.
+  bool detach({
+    required CadDocument host,
+    required String name,
+    required Transaction transaction,
+  }) {
+    final needle = name.toLowerCase();
+    BlockRecord? block;
+    for (final item in host.blocks.values) {
+      if (item.isXref && item.name.toLowerCase() == needle) {
+        block = item;
+        break;
+      }
+    }
+    if (block == null) return false;
+    final key = block.name.toUpperCase();
+    for (final entity in host.entities.toList()) {
+      if (entity is InsertEntity && entity.blockName.toUpperCase() == key) {
+        transaction.erase(entity.id);
+      }
+    }
+    return transaction.removeBlock(block.name);
+  }
+
   static String _nameFromPath(String path) {
     final separator = path.contains(r'\') ? r'\' : '/';
     final base = path.split(separator).last;

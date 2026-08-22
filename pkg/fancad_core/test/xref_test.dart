@@ -69,4 +69,41 @@ void main() {
     final line = host.entity(host.blocks['PART']!.entityIds.single)! as LineEntity;
     expect(line.end.x, closeTo(20, 1e-9));
   });
+
+  test('detaching an xref removes the insert and the block', () {
+    final host = CadDocument();
+    final foreign = CadDocument()
+      ..addEntity(
+        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+      );
+    final session = DocumentSession(id: 't', document: host);
+
+    session.edit('Attach xref', (transaction) {
+      const XrefResolver().attach(
+        host: host,
+        foreign: foreign,
+        path: '/tmp/part.dxf',
+        at: const Vec2(3, 4),
+        transaction: transaction,
+      );
+    });
+
+    session.edit('Detach xref', (transaction) {
+      expect(
+        const XrefResolver().detach(
+          host: host,
+          name: 'PART',
+          transaction: transaction,
+        ),
+        isTrue,
+      );
+    });
+
+    expect(host.blocks.containsKey('PART'), isFalse);
+    expect(host.activeEntities.whereType<InsertEntity>(), isEmpty);
+
+    expect(session.undo(), isTrue);
+    expect(host.blocks['PART']!.isXref, isTrue);
+    expect(host.activeEntities.whereType<InsertEntity>().single.position, const Vec2(3, 4));
+  });
 }

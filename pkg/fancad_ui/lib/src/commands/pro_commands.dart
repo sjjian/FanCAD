@@ -23,6 +23,7 @@ class ProCommands {
     _plotPdf(),
     _xrefAttach(),
     _xrefReload(),
+    _xrefDetach(),
     _audit(),
   ];
 
@@ -948,7 +949,7 @@ class ProCommands {
       ),
     ],
     handler: (context) async {
-      final targets = _xrefsToReload(context);
+      final targets = _xrefsFromContext(context);
       if (targets.isEmpty) {
         return const CommandResult.failed('No xref was selected.');
       }
@@ -1003,7 +1004,57 @@ class ProCommands {
     },
   );
 
-  static List<BlockRecord> _xrefsToReload(CommandContext context) {
+  static CommandDescriptor _xrefDetach() => CommandDescriptor(
+    id: 'xref.detach',
+    title: 'Detach Xref',
+    category: _category,
+    aliases: const ['xrefdetach'],
+    risk: CommandRisk.destructive,
+    description:
+        'Removes an external reference and every insert that shows it. '
+        'Omit the name to detach the selected xref, or the only xref in '
+        'the drawing.',
+    params: const [
+      ParamSpec(
+        name: 'name',
+        type: ParamType.text,
+        required: false,
+        description: 'Xref block to detach. Defaults to the selection.',
+      ),
+    ],
+    handler: (context) async {
+      final targets = _xrefsFromContext(context);
+      if (targets.isEmpty) {
+        return const CommandResult.failed('No xref was selected.');
+      }
+
+      final names = [for (final block in targets) block.name];
+      final committed = context.edit('Detach xref', (transaction) {
+        for (final block in targets) {
+          const XrefResolver().detach(
+            host: context.document,
+            name: block.name,
+            transaction: transaction,
+          );
+        }
+      });
+      if (committed == null) {
+        return const CommandResult.failed('The xref was not detached.');
+      }
+      context.selection.clear();
+      context.services.invalidate();
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: names.length == 1
+            ? 'Detached ${names.single}.'
+            : 'Detached ${names.length} xrefs.',
+        data: {'blocks': names},
+        transaction: committed,
+      );
+    },
+  );
+
+  static List<BlockRecord> _xrefsFromContext(CommandContext context) {
     final requested = context.args.text('name')?.trim() ?? '';
     if (requested.isNotEmpty) {
       final block = _xrefNamed(context.document, requested);
