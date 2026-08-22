@@ -314,6 +314,29 @@ void main() {
     expect(dim.definitionPoints[2], const Vec2(5, 4));
   });
 
+  test('unknown entities are not written as a point at the origin', () {
+    final original = CadDocument();
+    original
+      ..addEntity(
+        const UnknownEntity(
+          id: 0,
+          originalType: 'ACAD_PROXY',
+          proxyBounds: Bounds2(10, 10, 20, 20),
+        ),
+      )
+      ..addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(5, 0)),
+      );
+
+    final dxf = const DxfWriter().writeString(original);
+    expect(dxf, contains('LINE'));
+    expect(dxf, isNot(contains('\nPOINT\n')));
+
+    final restored = const DxfReader().readString(dxf);
+    expect(restored.entities.whereType<PointEntity>(), isEmpty);
+    expect(restored.entities.whereType<LineEntity>(), hasLength(1));
+  });
+
   test('a stress drawing of 10k entities encodes and decodes as DXF', () {
     final original = SampleDrawings.stressTest(count: 2000);
     final dxf = const DxfWriter().writeString(original);

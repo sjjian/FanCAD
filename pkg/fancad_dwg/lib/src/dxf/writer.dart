@@ -387,11 +387,10 @@ class DxfWriter {
         pair(22, entity.vVector.y);
         pair(32, 0);
         pair(1, entity.reference);
-      default:
-        pair(0, 'POINT');
-        _common(pair, entity, paperSpace: paperSpace);
-        pair(10, 0);
-        pair(20, 0);
+      case UnknownEntity():
+        // ASCII DXF cannot carry the original DWG payload. A POINT at the
+        // origin would move every unsupported object onto 0,0.
+        break;
     }
   }
 
