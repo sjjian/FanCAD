@@ -32,6 +32,7 @@ class DrawCommands {
     _measure(),
     _text(),
     _hatch(),
+    _dimLinear(),
   ];
 
   static const String _category = 'Draw';
@@ -1299,6 +1300,75 @@ class DrawCommands {
       ]);
     },
   );
+
+  static CommandDescriptor _dimLinear() => CommandDescriptor(
+    id: 'draw.dimLinear',
+    title: 'Linear Dimension',
+    category: _category,
+    aliases: const ['dli', 'dimlinear', 'dim'],
+    icon: 'dimension',
+    description:
+        'Places a horizontal or vertical dimension. The dimension-line pick '
+        'chooses the axis: above or below the origins measures width; left '
+        'or right measures height.',
+    params: const [
+      ParamSpec.point('first', description: 'First extension-line origin'),
+      ParamSpec.point('second', description: 'Second extension-line origin'),
+      ParamSpec.point(
+        'dimLine',
+        description: 'A point on the dimension line',
+      ),
+    ],
+    handler: (context) async {
+      final first = await context.resolvePoint(
+        'first',
+        'DIMLINEAR  Specify first extension line origin:',
+      );
+      final second = await context.resolvePoint(
+        'second',
+        'DIMLINEAR  Specify second extension line origin:',
+        basePoint: first,
+      );
+      context.input.setPreview(
+        (cursor) => _dimLinearOverlay(first, second, cursor),
+      );
+      final dimLine = await context.resolvePoint(
+        'dimLine',
+        'DIMLINEAR  Specify dimension line location:',
+        basePoint: first.lerp(second, 0.5),
+      );
+      context.input.setPreview(null);
+      final entity = Construct.linearDimension(
+        first,
+        second,
+        dimLine,
+        props: EntityProps(layer: context.document.currentLayer),
+      );
+      if (entity == null) {
+        return const CommandResult.failed(
+          'The measurement is zero. Place the dimension line so it shows a '
+          'horizontal or vertical length.',
+        );
+      }
+      return _commit(context, 'Linear Dimension', [entity]);
+    },
+  );
+
+  static List<OverlayShape> _dimLinearOverlay(
+    Vec2 first,
+    Vec2 second,
+    Vec2 cursor,
+  ) {
+    final mid = first.lerp(second, 0.5);
+    final horizontal = (cursor - mid).y.abs() >= (cursor - mid).x.abs();
+    final a = horizontal ? Vec2(first.x, cursor.y) : Vec2(cursor.x, first.y);
+    final b = horizontal ? Vec2(second.x, cursor.y) : Vec2(cursor.x, second.y);
+    return [
+      OverlayLine(first, a),
+      OverlayLine(second, b),
+      OverlayLine(a, b),
+    ];
+  }
 
   /// Adds [entities] in one transaction and reports what happened.
   ///

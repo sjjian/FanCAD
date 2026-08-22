@@ -1369,6 +1369,24 @@ final class DimensionEntity extends CadEntity {
   /// DXF group code 70, low 4 bits identify the dimension family.
   final int dimensionType;
 
+  /// Length shown on a linear or aligned dimension.
+  ///
+  /// Type 0 with a third definition point is DIMLINEAR: the pick that placed
+  /// the dimension line chooses horizontal vs vertical, so the text is |Δx|
+  /// or |Δy|, not the slanted distance between the origins.
+  static double measuredLength(List<Vec2> points, int dimensionType) {
+    if (points.length < 2) return 0;
+    if ((dimensionType & 0x0F) == 0 && points.length >= 3) {
+      final mid = points[0].lerp(points[1], 0.5);
+      final horizontal =
+          (points[2] - mid).y.abs() >= (points[2] - mid).x.abs();
+      return horizontal
+          ? (points[1].x - points[0].x).abs()
+          : (points[1].y - points[0].y).abs();
+    }
+    return points[0].distanceTo(points[1]);
+  }
+
   bool get hasRenderedBlock => blockName.isNotEmpty;
 
   String get displayText => overrideText.isEmpty
@@ -1459,15 +1477,14 @@ final class DimensionEntity extends CadEntity {
     if (index < 0 || index >= definitionPoints.length) return this;
     final points = [...definitionPoints];
     points[index] = target;
+    final length = measuredLength(points, dimensionType);
     return DimensionEntity(
       id: id,
       props: props,
       blockName: '',
       definitionPoints: points,
       textPosition: textPosition,
-      measurement: points.length >= 2
-          ? points[0].distanceTo(points[1])
-          : measurement,
+      measurement: length > 1e-12 ? length : measurement,
       overrideText: overrideText,
       styleName: styleName,
       dimensionType: dimensionType,

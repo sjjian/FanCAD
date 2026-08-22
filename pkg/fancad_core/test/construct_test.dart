@@ -83,6 +83,43 @@ void main() {
     });
   });
 
+  group('linearDimension', () {
+    test('measures width when the dim line is above the origins', () {
+      final dim = Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 4),
+        const Vec2(5, 8),
+      );
+
+      expect(dim, isNotNull);
+      expect(dim!.measurement, closeTo(10, 1e-9));
+      expect(dim.textPosition.y, closeTo(8, 1e-9));
+    });
+
+    test('measures height when the dim line is beside the origins', () {
+      final dim = Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 4),
+        const Vec2(14, 2),
+      );
+
+      expect(dim, isNotNull);
+      expect(dim!.measurement, closeTo(4, 1e-9));
+      expect(dim.textPosition.x, closeTo(14, 1e-9));
+    });
+
+    test('returns null when the chosen axis has no length', () {
+      expect(
+        Construct.linearDimension(
+          const Vec2(3, 0),
+          const Vec2(3, 8),
+          const Vec2(3, 12),
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('circleTangentRadius', () {
     test('sits in the picked quadrant of two crossing lines', () {
       final circle = Construct.circleTangentRadius(

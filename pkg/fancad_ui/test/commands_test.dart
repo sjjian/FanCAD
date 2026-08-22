@@ -163,6 +163,19 @@ void main() {
       expect(result.message, contains('collinear'));
     });
 
+    test('linear dimension measures the axis the dim line implies', () async {
+      final result = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [10, 4],
+        'dimLine': [5, 8],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entities.first as DimensionEntity;
+      expect(dim.measurement, closeTo(10, 1e-9));
+      expect(dim.displayText, '10.00');
+    });
+
     test('donut creates a wide circular polyline', () async {
       final result = await run('draw.donut', {
         'inside': 6,

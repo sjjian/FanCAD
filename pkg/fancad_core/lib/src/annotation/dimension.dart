@@ -49,11 +49,27 @@ class DimensionGraphics {
     final p1 = points[0];
     final p2 = points[1];
     final dimLine = points.length > 2 ? points[2] : entity.textPosition;
-    final direction = (p2 - p1);
+    // Type 0 with a dim-line pick is DIMLINEAR: the dimension line is
+    // horizontal or vertical, not parallel to the two origins.
+    if ((entity.dimensionType & 0x0F) == 0 && points.length >= 3) {
+      final mid = p1.lerp(p2, 0.5);
+      final horizontal =
+          (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
+      final a = horizontal ? Vec2(p1.x, dimLine.y) : Vec2(dimLine.x, p1.y);
+      final b = horizontal ? Vec2(p2.x, dimLine.y) : Vec2(dimLine.x, p2.y);
+      if (a.distanceTo(b) < 1e-9) return;
+      final unit = (b - a).normalized();
+      _line(context, sink, style, p1, a);
+      _line(context, sink, style, p2, b);
+      _line(context, sink, style, a, b);
+      _arrow(context, sink, style, a, unit);
+      _arrow(context, sink, style, b, -unit);
+      return;
+    }
+    final direction = p2 - p1;
     if (direction.length < 1e-9) return;
     final unit = direction.normalized();
     final normal = unit.perpendicular;
-    // Project the dimension line offset from the definition points.
     var offset = (dimLine - p1).dot(normal);
     if (offset.abs() < 1e-6) offset = (p2 - p1).length * 0.15;
     final a = p1 + normal * offset;

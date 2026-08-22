@@ -88,6 +88,35 @@ class Construct {
     );
   }
 
+  /// A horizontal or vertical dimension between [first] and [second].
+  ///
+  /// [dimLine] chooses the family: a pick farther above or below the midpoint
+  /// measures |Δx|; a pick farther left or right measures |Δy|. That is
+  /// DIMLINEAR, not the slanted distance — aligned dimensions are a
+  /// different command.
+  static DimensionEntity? linearDimension(
+    Vec2 first,
+    Vec2 second,
+    Vec2 dimLine, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    final points = [first, second, dimLine];
+    final measurement = DimensionEntity.measuredLength(points, 0);
+    if (measurement < 1e-9) return null;
+    final mid = first.lerp(second, 0.5);
+    final horizontal = (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
+    final a = horizontal ? Vec2(first.x, dimLine.y) : Vec2(dimLine.x, first.y);
+    final b = horizontal ? Vec2(second.x, dimLine.y) : Vec2(dimLine.x, second.y);
+    return DimensionEntity(
+      id: id,
+      props: props,
+      definitionPoints: points,
+      textPosition: a.lerp(b, 0.5),
+      measurement: measurement,
+    );
+  }
+
   /// A circle of [radius] tangent to [first] and [second].
   ///
   /// The construction is the offset-and-intersect one: shift each object by
