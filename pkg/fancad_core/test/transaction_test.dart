@@ -237,6 +237,44 @@ void main() {
       expect(session.selection.contains(id), isFalse);
     });
 
+    test('adding a paper viewport is invertible', () {
+      final document = newDocument()
+        ..addLayout(
+          const Layout(
+            name: 'Layout1',
+            blockName: '*Paper_Space',
+            tabOrder: 1,
+          ),
+        );
+      const viewport = PaperViewport(
+        paperBounds: Bounds2(10, 10, 110, 90),
+        modelCenter: Vec2(40, 0),
+        scale: 0.5,
+      );
+      final session = DocumentSession(id: '1', document: document);
+      final paper = document.layouts.firstWhere((item) => item.name == 'Layout1');
+
+      expect(
+        session.edit('MVIEW', (transaction) {
+          transaction.putLayout(paper.copyWith(viewports: [viewport]));
+        }),
+        isNotNull,
+      );
+      final added = document.layouts
+          .firstWhere((item) => item.name == 'Layout1')
+          .viewports
+          .single;
+      expect(added.paperBounds, viewport.paperBounds);
+      expect(added.modelCenter, viewport.modelCenter);
+      expect(added.scale, viewport.scale);
+
+      expect(session.undo(), isTrue);
+      expect(
+        document.layouts.firstWhere((item) => item.name == 'Layout1').viewports,
+        isEmpty,
+      );
+    });
+
     test('a throwing edit leaves the document untouched', () {
       final session = DocumentSession(id: '1', document: newDocument());
       session.edit('seed', (t) {

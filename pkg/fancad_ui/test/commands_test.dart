@@ -2605,6 +2605,63 @@ void main() {
       expect(document.activeLayout.isModelSpace, isFalse);
       expect(document.extents.width, closeTo(297, 1e-9));
     });
+
+    test('mview refuses the model tab', () async {
+      final result = await run('layout.mview', {
+        'corner1': [10, 10],
+        'corner2': [200, 150],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.activeLayout.viewports, isEmpty);
+    });
+
+    test('mview cuts a window that frames the model', () async {
+      await drawLine(0, 0, 80, 0);
+      document.addLayout(
+        const Layout(
+          name: 'Layout1',
+          blockName: '*Paper_Space',
+          tabOrder: 1,
+        ),
+      );
+      await run('layout.set', {'name': 'Layout1'});
+
+      final result = await run('layout.mview', {
+        'corner1': [10, 10],
+        'corner2': [200, 150],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayout.viewports, hasLength(1));
+      final viewport = document.activeLayout.viewports.single;
+      expect(viewport.paperBounds, const Bounds2(10, 10, 200, 150));
+      expect(viewport.modelCenter.x, closeTo(40, 1e-9));
+      expect(viewport.scale, closeTo(190 / 80, 1e-9));
+
+      await run('edit.undo');
+      expect(document.activeLayout.viewports, isEmpty);
+    });
+
+    test('mview honours an explicit scale', () async {
+      document.addLayout(
+        const Layout(
+          name: 'Layout1',
+          blockName: '*Paper_Space',
+          tabOrder: 1,
+        ),
+      );
+      await run('layout.set', {'name': 'Layout1'});
+
+      final result = await run('layout.mview', {
+        'corner1': [0, 0],
+        'corner2': [100, 80],
+        'scale': 0.1,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayout.viewports.single.scale, closeTo(0.1, 1e-12));
+    });
   });
 
   group('registry contract', () {
