@@ -754,6 +754,29 @@ void main() {
       expect(result.message, contains('12.5000'));
     });
 
+    test('angle measures the interior angle at a vertex', () async {
+      final result = await run('query.angle', {
+        'vertex': [0, 0],
+        'first': [10, 0],
+        'second': [0, 10],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(result.data!['angle'], closeTo(90, 1e-9));
+      expect(result.data!['signed'], closeTo(90, 1e-9));
+    });
+
+    test('angle reports a clockwise turn as negative signed', () async {
+      final result = await run('query.angle', {
+        'vertex': [0, 0],
+        'first': [10, 0],
+        'second': [0, -10],
+      });
+
+      expect(result.data!['angle'], closeTo(90, 1e-9));
+      expect(result.data!['signed'], closeTo(-90, 1e-9));
+    });
+
     test('distance reports length and angle', () async {
       final result = await run('query.distance', {
         'from': [0, 0],
