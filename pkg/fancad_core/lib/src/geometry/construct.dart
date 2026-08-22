@@ -630,6 +630,54 @@ class Construct {
     return _openPolyline(polyline, trimmed.reversed.toList(), polyline.id);
   }
 
+  /// Shortens [arc] back to where it meets [crossings].
+  ///
+  /// Same contract as [trimLine]: the interval containing [pick] is discarded,
+  /// and a middle cut keeps the longer remnant.
+  static ArcEntity? trimArc(
+    ArcEntity arc,
+    List<Vec2> crossings,
+    Vec2 pick,
+  ) {
+    if (crossings.isEmpty || arc.radius <= 0 || arc.sweep < 1e-12) {
+      return null;
+    }
+    final cuts = <double>[0];
+    for (final crossing in crossings) {
+      if ((crossing.distanceTo(arc.center) - arc.radius).abs() > 1e-3) {
+        continue;
+      }
+      final t = _arcParam(arc, crossing);
+      if (t > 1e-9 && t < 1 - 1e-9) cuts.add(t);
+    }
+    cuts.add(1);
+    cuts.sort();
+    final unique = <double>[];
+    for (final cut in cuts) {
+      if (unique.isEmpty || (cut - unique.last).abs() > 1e-9) {
+        unique.add(cut);
+      }
+    }
+    if (unique.length <= 2) return null;
+
+    final pickT = _arcParam(arc, pick);
+    for (var i = 0; i + 1 < unique.length; i++) {
+      if (pickT < unique[i] || pickT > unique[i + 1]) continue;
+      final keepBefore = unique[i] > 1e-9;
+      final keepAfter = unique[i + 1] < 1 - 1e-9;
+      if (!keepBefore && !keepAfter) return null;
+      if (keepBefore && keepAfter) {
+        return unique[i] >= 1 - unique[i + 1]
+            ? _arcSpan(arc, 0, unique[i], arc.id)
+            : _arcSpan(arc, unique[i + 1], 1, arc.id);
+      }
+      return keepBefore
+          ? _arcSpan(arc, 0, unique[i], arc.id)
+          : _arcSpan(arc, unique[i + 1], 1, arc.id);
+    }
+    return null;
+  }
+
   /// Every crossing of [target] with [edge], for TRIM.
   static List<Vec2> crossingsAlong(CadEntity target, CadEntity edge) {
     return switch (target) {
@@ -647,8 +695,73 @@ class Construct {
             edge,
           ),
       ],
+      ArcEntity() => _crossingsOnArc(target, edge),
       _ => const [],
     };
+  }
+
+  static List<Vec2> _crossingsOnArc(ArcEntity arc, CadEntity edge) {
+    bool onArc(Vec2 hit) {
+      if ((hit.distanceTo(arc.center) - arc.radius).abs() > 1e-6) {
+        return false;
+      }
+      return angularSweep(arc.startAngle, (hit - arc.center).angle) <=
+          arc.sweep + 1e-9;
+    }
+
+    switch (edge) {
+      case LineEntity(:final start, :final end):
+        return [
+          for (final hit in Intersect.lineCircle(
+            start,
+            end,
+            arc.center,
+            arc.radius,
+          ))
+            if (Intersect.distanceToSegment(hit, start, end) < 1e-6 &&
+                onArc(hit))
+              hit,
+        ];
+      case CircleEntity(:final center, :final radius):
+        return [
+          for (final hit in Intersect.circleCircle(
+            arc.center,
+            arc.radius,
+            center,
+            radius,
+          ))
+            if (onArc(hit)) hit,
+        ];
+      case ArcEntity():
+        return [
+          for (final hit in Intersect.circleCircle(
+            arc.center,
+            arc.radius,
+            edge.center,
+            edge.radius,
+          ))
+            if (onArc(hit) &&
+                angularSweep(edge.startAngle, (hit - edge.center).angle) <=
+                    edge.sweep + 1e-9)
+              hit,
+        ];
+      case PolylineEntity():
+        final count = edge.vertexCount;
+        final segments = edge.closed ? count : count - 1;
+        return [
+          for (var i = 0; i < segments; i++)
+            ..._crossingsOnArc(
+              arc,
+              LineEntity(
+                id: 0,
+                start: edge.vertexAt(i),
+                end: edge.vertexAt((i + 1) % count),
+              ),
+            ),
+        ];
+      default:
+        return const [];
+    }
   }
 
   /// Lengthens [line] until it meets one of [edges].

@@ -435,6 +435,46 @@ void main() {
     });
   });
 
+  group('trimArc', () {
+    final semicircle = ArcEntity(
+      id: 1,
+      center: const Vec2(0, 0),
+      radius: 10,
+      startAngle: 0,
+      endAngle: math.pi,
+    );
+
+    test('removes the picked end back to the crossing', () {
+      final trimmed = Construct.trimArc(
+        semicircle,
+        const [Vec2(0, 10)],
+        const Vec2(8, 6),
+      );
+
+      expect(trimmed, isNotNull);
+      expect(trimmed!.startAngle, closeTo(math.pi / 2, 1e-9));
+      expect(trimmed.endAngle, closeTo(math.pi, 1e-9));
+    });
+
+    test('removes the other end when the pick is on it', () {
+      final trimmed = Construct.trimArc(
+        semicircle,
+        const [Vec2(0, 10)],
+        const Vec2(-8, 6),
+      );
+
+      expect(trimmed!.startAngle, closeTo(0, 1e-9));
+      expect(trimmed.endAngle, closeTo(math.pi / 2, 1e-9));
+    });
+
+    test('returns null when there is nothing to cut against', () {
+      expect(
+        Construct.trimArc(semicircle, const [], const Vec2(0, 10)),
+        isNull,
+      );
+    });
+  });
+
   group('extendLine', () {
     test('lengthens forward to meet a boundary segment', () {
       final extended = Construct.extendLine(line(0, 0, 5, 0), [

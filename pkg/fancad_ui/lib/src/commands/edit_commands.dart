@@ -906,15 +906,15 @@ class EditCommands {
     aliases: const ['tr', 'trim'],
     icon: 'trim',
     description:
-        'Shortens a line or open straight polyline back to where it crosses '
-        'the selected cutting edges. The part containing the pick point is '
-        'removed.',
+        'Shortens a line, open straight polyline or arc back to where it '
+        'crosses the selected cutting edges. The part containing the pick '
+        'point is removed.',
     params: const [
       ParamSpec.selection('edges', description: 'Cutting edges'),
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line or polyline to trim',
+        description: 'The line, polyline or arc to trim',
       ),
       ParamSpec.point(
         'pick',
@@ -2455,14 +2455,22 @@ class EditCommands {
       attempts++;
 
       final target = context.document.entity(targetId);
-      if (target is! LineEntity && target is! PolylineEntity) {
+      final supportsArc = !extend && target is ArcEntity;
+      if (target is! LineEntity &&
+          target is! PolylineEntity &&
+          !supportsArc) {
         context.input.write(
-          '$verb supports lines and open straight polylines; '
-          '${target?.kind.name ?? 'that object'} was skipped.',
+          extend
+              ? 'EXTEND supports lines and open straight polylines; '
+                  '${target?.kind.name ?? 'that object'} was skipped.'
+              : 'TRIM supports lines, open straight polylines and arcs; '
+                  '${target?.kind.name ?? 'that object'} was skipped.',
         );
         if (suppliedTarget != null) {
           return CommandResult.failed(
-            '$verb supports lines and open straight polylines.',
+            extend
+                ? 'EXTEND supports lines and open straight polylines.'
+                : 'TRIM supports lines, open straight polylines and arcs.',
           );
         }
         continue;
@@ -2497,14 +2505,20 @@ class EditCommands {
         // Without a pick point there is no way to know which side to discard,
         // so the middle of the object is the least surprising guess.
         final pick = suppliedPick ??
-            (entity is LineEntity
-                ? entity.midpoint
-                : Construct.dividePolyline(entity as PolylineEntity, 2)
-                    .firstOrNull ??
-                    (entity as PolylineEntity).vertexAt(0));
-        result = entity is LineEntity
-            ? Construct.trimLine(entity, crossings, pick)
-            : Construct.trimPolyline(entity as PolylineEntity, crossings, pick);
+            switch (entity) {
+              LineEntity(:final midpoint) => midpoint,
+              ArcEntity(:final midPoint) => midPoint,
+              PolylineEntity() =>
+                Construct.dividePolyline(entity, 2).firstOrNull ??
+                    entity.vertexAt(0),
+              _ => const Vec2(0, 0),
+            };
+        result = switch (entity) {
+          LineEntity() => Construct.trimLine(entity, crossings, pick),
+          PolylineEntity() => Construct.trimPolyline(entity, crossings, pick),
+          ArcEntity() => Construct.trimArc(entity, crossings, pick),
+          _ => null,
+        };
       }
       if (result == null) {
         context.input.write(
