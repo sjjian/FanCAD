@@ -1,4 +1,6 @@
+import '../geometry/vector.dart';
 import '../model/document.dart';
+import '../model/entity.dart';
 import '../txn/transaction.dart';
 
 /// How an external drawing is brought into this one.
@@ -14,12 +16,15 @@ class XrefResolver {
   ///
   /// Existing entities of that name are replaced so a reload is the same
   /// operation as a first attach. Ids are remapped so they cannot collide
-  /// with anything already in [host].
+  /// with anything already in [host]. A first attach also places one
+  /// [InsertEntity] in model space so the reference is visible; a reload
+  /// keeps the inserts that already point at the block.
   String attach({
     required CadDocument host,
     required CadDocument foreign,
     required String path,
     String? blockName,
+    Vec2 at = const Vec2.zero(),
     required Transaction transaction,
   }) {
     final name = blockName ?? _nameFromPath(path);
@@ -46,6 +51,19 @@ class XrefResolver {
         description: 'Xref $path',
       ),
     );
+
+    final key = name.toUpperCase();
+    final model = host.modelSpaceBlockName;
+    final hasInsert = host.entitiesOf(model).any(
+      (entity) =>
+          entity is InsertEntity && entity.blockName.toUpperCase() == key,
+    );
+    if (!hasInsert) {
+      transaction.add(
+        InsertEntity(id: 0, blockName: name, position: at),
+        blockName: model,
+      );
+    }
     return name;
   }
 

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:fancad_core/fancad_core.dart';
@@ -2919,6 +2920,30 @@ void main() {
 
       expect(result.status, CommandStatus.ok, reason: result.message);
       expect(document.activeLayout.viewports.single.scale, closeTo(0.1, 1e-12));
+    });
+  });
+
+  group('xrefs', () {
+    test('attach places an insert in model space', () async {
+      final dir = Directory.systemTemp.createTempSync('fancad_xref');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final path = '${dir.path}/bracket.dxf';
+      final foreign = CadDocument()
+        ..addEntity(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+        );
+      File(path).writeAsStringSync(const DxfWriter().writeString(foreign));
+
+      final result = await run('xref.attach', {
+        'path': path,
+        'at': [5, 6],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.blocks['BRACKET']!.isXref, isTrue);
+      final insert = document.activeEntities.whereType<InsertEntity>().single;
+      expect(insert.blockName, 'BRACKET');
+      expect(insert.position, const Vec2(5, 6));
     });
   });
 
