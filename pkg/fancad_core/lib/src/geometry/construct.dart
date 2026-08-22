@@ -1544,6 +1544,34 @@ class Construct {
     ];
   }
 
+  /// Interior points that split [arc] into [segments] equal pieces.
+  ///
+  /// The ends stay unmarked, same as [divideLine]: they are already the
+  /// arc's start and end.
+  static List<Vec2> divideArc(ArcEntity arc, int segments) {
+    if (segments < 2 || arc.radius <= 0 || arc.sweep < 1e-12) {
+      return const [];
+    }
+    return [
+      for (var i = 1; i < segments; i++)
+        arc.center +
+            Vec2.polar(arc.startAngle + arc.sweep * i / segments, arc.radius),
+    ];
+  }
+
+  /// Points equally spaced around [circle], starting at angle zero.
+  ///
+  /// A circle has no leftover end, so [segments] markers are placed, matching
+  /// a closed polyline.
+  static List<Vec2> divideCircle(CircleEntity circle, int segments) {
+    if (segments < 2 || circle.radius <= 0) return const [];
+    return [
+      for (var i = 0; i < segments; i++)
+        circle.center +
+            Vec2.polar(2 * math.pi * i / segments, circle.radius),
+    ];
+  }
+
   /// Walks [polyline] from its start by [distance] along straight segments.
   static Vec2 _pointAlongPolyline(PolylineEntity polyline, double distance) {
     if (distance <= 1e-12) return polyline.vertexAt(0);

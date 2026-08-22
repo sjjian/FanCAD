@@ -996,14 +996,14 @@ class DrawCommands {
     category: _category,
     aliases: const ['div', 'divide'],
     description:
-        'Places point markers that split a line or straight polyline into '
-        'equal segments. Open objects leave the endpoints unmarked; a closed '
-        'polyline places a marker at every interval around the loop.',
+        'Places point markers that split a line, straight polyline, arc or '
+        'circle into equal segments. Open objects leave the endpoints unmarked; '
+        'a circle or closed polyline places a marker at every interval.',
     params: const [
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line or polyline to divide',
+        description: 'The object to divide',
         required: false,
       ),
       ParamSpec(
@@ -1021,7 +1021,7 @@ class DrawCommands {
       } else {
         context.selection.clear();
         final picked = await context.input.selection(
-          'DIVIDE  Select a line or polyline:',
+          'DIVIDE  Select object to divide:',
           useExistingSelection: false,
           single: true,
         );
@@ -1030,9 +1030,12 @@ class DrawCommands {
       }
 
       final target = context.document.entity(targetId);
-      if (target is! LineEntity && target is! PolylineEntity) {
+      if (target is! LineEntity &&
+          target is! PolylineEntity &&
+          target is! ArcEntity &&
+          target is! CircleEntity) {
         return const CommandResult.failed(
-          'Divide supports lines and straight polylines.',
+          'Divide supports lines, straight polylines, arcs and circles.',
         );
       }
       if (target is PolylineEntity && target.hasBulges) {
@@ -1052,9 +1055,13 @@ class DrawCommands {
         );
       }
 
-      final points = target is LineEntity
-          ? Construct.divideLine(target, segments)
-          : Construct.dividePolyline(target as PolylineEntity, segments);
+      final points = switch (target) {
+        LineEntity() => Construct.divideLine(target, segments),
+        PolylineEntity() => Construct.dividePolyline(target, segments),
+        ArcEntity() => Construct.divideArc(target, segments),
+        CircleEntity() => Construct.divideCircle(target, segments),
+        _ => const <Vec2>[],
+      };
       if (points.isEmpty) {
         return const CommandResult.failed('Nothing to place.');
       }

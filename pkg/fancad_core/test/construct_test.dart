@@ -1030,6 +1030,37 @@ void main() {
     });
   });
 
+  group('divideArc', () {
+    test('places interior points along a quarter circle', () {
+      const arc = ArcEntity(
+        id: 1,
+        center: Vec2(0, 0),
+        radius: 10,
+        startAngle: 0,
+        endAngle: math.pi / 2,
+      );
+
+      final points = Construct.divideArc(arc, 2);
+
+      expect(points, hasLength(1));
+      expect(points.first.x, closeTo(10 * math.cos(math.pi / 4), 1e-9));
+      expect(points.first.y, closeTo(10 * math.sin(math.pi / 4), 1e-9));
+    });
+  });
+
+  group('divideCircle', () {
+    test('places a point at every equal angle', () {
+      const circle = CircleEntity(id: 1, center: Vec2(0, 0), radius: 5);
+      final points = Construct.divideCircle(circle, 4);
+
+      expect(points, hasLength(4));
+      expect(points[0], const Vec2(5, 0));
+      expect(points[1].x, closeTo(0, 1e-9));
+      expect(points[1].y, closeTo(5, 1e-9));
+      expect(points[2].x, closeTo(-5, 1e-9));
+    });
+  });
+
   group('measureLine', () {
     test('spaces points from the nearer end', () {
       final points = Construct.measureLine(

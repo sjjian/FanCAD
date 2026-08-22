@@ -274,6 +274,41 @@ void main() {
       expect(points[1].position, const Vec2(10, 0));
     });
 
+    test('divide places points around a circle', () async {
+      final created = await run('draw.circle', {
+        'center': [0, 0],
+        'radius': 5,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.divide', {
+        'target': id,
+        'segments': 4,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entities.whereType<PointEntity>(), hasLength(4));
+    });
+
+    test('divide places an interior point on an arc', () async {
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [0, 10],
+        'end': [-10, 0],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.divide', {
+        'target': id,
+        'segments': 2,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final points = document.entities.whereType<PointEntity>().toList();
+      expect(points, hasLength(1));
+      expect(points.first.position.y, closeTo(10, 1e-6));
+    });
+
     test('measure places points at a fixed spacing', () async {
       final id = await drawLine(0, 0, 10, 0);
 
