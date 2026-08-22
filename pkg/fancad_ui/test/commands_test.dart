@@ -176,6 +176,48 @@ void main() {
       expect(dim.displayText, '10.00');
     });
 
+    test('dimension text override replaces the measured value', () async {
+      final created = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [10, 0],
+        'dimLine': [5, 4],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.dimensionText', {
+        'ids': [id],
+        'text': 'TYP <>',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entity(id)! as DimensionEntity;
+      expect(dim.overrideText, 'TYP <>');
+      expect(dim.displayText, 'TYP 10.00');
+    });
+
+    test('dimension text empty restores the measurement', () async {
+      final created = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [8, 0],
+        'dimLine': [4, 3],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+      await run('edit.dimensionText', {
+        'ids': [id],
+        'text': 'see detail',
+      });
+
+      final result = await run('edit.dimensionText', {
+        'ids': [id],
+        'text': '',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entity(id)! as DimensionEntity;
+      expect(dim.overrideText, isEmpty);
+      expect(dim.displayText, '8.00');
+    });
+
     test('aligned dimension measures the slanted distance', () async {
       final result = await run('draw.dimAligned', {
         'first': [0, 0],
