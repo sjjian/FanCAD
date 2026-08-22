@@ -1626,6 +1626,20 @@ void main() {
       expect(workspace.active!.selection.ids, [dashed]);
     });
 
+    test('select by lineweight matches the stored weight only', () async {
+      await drawLine(0, 0, 1, 0);
+      final thick = await drawLine(0, 1, 1, 1);
+      await run('edit.changeLineweight', {
+        'ids': [thick],
+        'weight': '0.25',
+      });
+
+      final result = await run('select.byLineweight', {'weight': '25'});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(workspace.active!.selection.ids, [thick]);
+    });
+
     test('summary reports counts and extents', () async {
       await drawLine(0, 0, 10, 0);
       await run('draw.circle', {'center': [0, 0], 'radius': 5});
