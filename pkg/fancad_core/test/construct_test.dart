@@ -682,6 +682,46 @@ void main() {
     });
   });
 
+  group('chamferPolyline', () {
+    test('bevels every corner of a square', () {
+      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final chamfered = Construct.chamferPolyline(square, dist1: 2);
+
+      expect(chamfered, isNotNull);
+      expect(chamfered!.vertexCount, 8);
+      expect(chamfered.closed, isTrue);
+      expect(
+        [
+          for (var i = 0; i < chamfered.vertexCount; i++) chamfered.vertexAt(i),
+        ],
+        isNot(contains(const Vec2(0, 0))),
+      );
+      expect(
+        [
+          for (var i = 0; i < chamfered.vertexCount; i++) chamfered.vertexAt(i),
+        ],
+        isNot(contains(const Vec2(10, 10))),
+      );
+    });
+
+    test('skips a corner whose sides are shorter than the distance', () {
+      final polyline = PolylineEntity.fromPoints(
+        id: 1,
+        points: const [
+          Vec2(0, 0),
+          Vec2(10, 0),
+          Vec2(10, 10),
+          Vec2(11, 10),
+        ],
+      );
+      final chamfered = Construct.chamferPolyline(polyline, dist1: 2);
+
+      expect(chamfered, isNotNull);
+      expect(chamfered!.vertexCount, 5);
+      expect(chamfered.vertexAt(3), const Vec2(10, 10));
+    });
+  });
+
   group('breakLine', () {
     test('splits a line at one interior point', () {
       final pieces = Construct.breakLine(

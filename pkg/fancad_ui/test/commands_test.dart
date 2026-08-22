@@ -664,6 +664,24 @@ void main() {
       expect(polyline.vertexAt(1).x, closeTo(2, 1e-9));
     });
 
+    test('chamfer all bevels every polyline vertex', () async {
+      final drawn = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      final id = (drawn.data!['ids']! as List).first as int;
+
+      final result = await run('edit.chamfer', {
+        'dist1': 2,
+        'first': id,
+        'all': true,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(id)! as PolylineEntity;
+      expect(polyline.vertexCount, 8);
+    });
+
     test('chamfer bevels two lines and adds the cut', () async {
       final vertical = await drawLine(0, 10, 0, 0);
       final horizontal = await drawLine(0, 0, 10, 0);

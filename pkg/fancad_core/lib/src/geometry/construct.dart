@@ -928,6 +928,44 @@ class Construct {
     );
   }
 
+  /// Bevels every straight corner of [polyline] with the same distances.
+  ///
+  /// That is AutoCAD CHAMFER's Polyline option: each eligible vertex is
+  /// replaced in turn. A corner that is already an arc, or whose adjoining
+  /// segments are shorter than the distances, is skipped so the rest can
+  /// still cut. Returns null when nothing changed.
+  static PolylineEntity? chamferPolyline(
+    PolylineEntity polyline, {
+    required double dist1,
+    double? dist2,
+  }) {
+    final second = dist2 ?? dist1;
+    if (dist1 <= 0 || second <= 0 || !dist1.isFinite || !second.isFinite) {
+      return null;
+    }
+    final count = polyline.vertexCount;
+    if (count < 3) return null;
+    final firstIndex = polyline.closed ? 0 : 1;
+    final lastIndex = polyline.closed ? count : count - 1;
+    final corners = [
+      for (var i = firstIndex; i < lastIndex; i++) polyline.vertexAt(i),
+    ];
+    var current = polyline;
+    var changed = false;
+    for (final corner in corners) {
+      final next = chamferPolylineVertex(
+        current,
+        corner,
+        dist1: dist1,
+        dist2: second,
+      );
+      if (next == null) continue;
+      current = next;
+      changed = true;
+    }
+    return changed ? current : null;
+  }
+
   /// Breaks [line] at [first], or removes the span between [first] and [second].
   ///
   /// One point splits the line in two. Two points drop the middle and leave

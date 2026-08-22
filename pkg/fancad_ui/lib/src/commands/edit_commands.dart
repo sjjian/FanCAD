@@ -1160,9 +1160,10 @@ class EditCommands {
     aliases: const ['cha', 'chamfer'],
     icon: 'chamfer',
     description:
-        'Cuts a straight bevel between two lines, or at the picked vertex of '
-        'a polyline. The two distances are measured from the corner back along '
-        'each segment; omit the second to use the same length on both.',
+        'Cuts a straight bevel between two lines, or at vertices of a '
+        'polyline. Pass all=true to chamfer every straight corner. The two '
+        'distances are measured from the corner back along each segment; omit '
+        'the second to use the same length on both.',
     params: const [
       ParamSpec(
         name: 'dist1',
@@ -1170,6 +1171,12 @@ class EditCommands {
         description: 'Distance along the first line',
         required: false,
         min: 0,
+      ),
+      ParamSpec(
+        name: 'all',
+        type: ParamType.boolean,
+        description: 'Bevel every straight vertex of a polyline',
+        required: false,
       ),
       ParamSpec(
         name: 'dist2',
@@ -1328,25 +1335,49 @@ class EditCommands {
         'A polyline chamfer needs positive distances.',
       );
     }
-    final pick = context.args.point('pick1') ??
-        context.args.point('pick') ??
-        await context.input.point(
-          'CHAMFER  Specify a vertex to bevel:',
-        );
-    final result = Construct.chamferPolylineVertex(
-      polyline,
-      pick,
-      dist1: dist1,
-      dist2: dist2,
-    );
-    if (result == null) {
-      return const CommandResult.failed(
-        'That vertex cannot be chamfered; the distances may be longer than '
-        'the adjoining segments, or the corner may already be an arc.',
+    final chamferAll = context.args.boolean('all') ??
+        (context.args.point('pick1') == null &&
+            context.args.point('pick') == null &&
+            context.input.isInteractive &&
+            await context.input.keyword(
+                  'CHAMFER  Chamfer [Vertex/All]:',
+                  const ['Vertex', 'All'],
+                  defaultOption: 'Vertex',
+                ) ==
+                'All');
+    final PolylineEntity? result;
+    if (chamferAll) {
+      result = Construct.chamferPolyline(
+        polyline,
+        dist1: dist1,
+        dist2: dist2,
+      );
+    } else {
+      final pick = context.args.point('pick1') ??
+          context.args.point('pick') ??
+          await context.input.point(
+            'CHAMFER  Specify a vertex to bevel:',
+          );
+      result = Construct.chamferPolylineVertex(
+        polyline,
+        pick,
+        dist1: dist1,
+        dist2: dist2,
       );
     }
+    if (result == null) {
+      return CommandResult.failed(
+        chamferAll
+            ? 'No polyline vertex could be chamfered; the distances may be '
+                'longer than the adjoining segments.'
+            : 'That vertex cannot be chamfered; the distances may be longer '
+                'than the adjoining segments, or the corner may already be '
+                'an arc.',
+      );
+    }
+    final chamfered = result;
     final committed = context.edit('Chamfer', (transaction) {
-      transaction.modify(result);
+      transaction.modify(chamfered);
     });
     if (committed == null) {
       return const CommandResult.failed(
@@ -1356,9 +1387,11 @@ class EditCommands {
     context.selection.replace([polyline.id]);
     return CommandResult(
       status: CommandStatus.ok,
-      message:
-          'Chamfer: polyline vertex, ${dist1.toStringAsFixed(4)} x '
-          '${dist2.toStringAsFixed(4)}.',
+      message: chamferAll
+          ? 'Chamfer: polyline, ${dist1.toStringAsFixed(4)} x '
+              '${dist2.toStringAsFixed(4)}.'
+          : 'Chamfer: polyline vertex, ${dist1.toStringAsFixed(4)} x '
+              '${dist2.toStringAsFixed(4)}.',
       data: {'ids': [polyline.id]},
       transaction: committed,
     );
