@@ -296,6 +296,11 @@ class Workspace extends ChangeNotifier implements CommandServices {
       commandLine.cancelPending('Superseded by $idOrAlias');
       active?.tools.cancel();
     }
+    if (active == null && _needsOpenDocument(descriptor.id)) {
+      const message = 'There is no drawing to save.';
+      commandLine.writeError(message);
+      return const CommandResult.failed(message);
+    }
     // File commands that create or replace the document must not leave a
     // leftover blank tab behind if the user cancels the picker.
     final tab =
@@ -346,6 +351,12 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   static bool _isHostFileCommand(String id) =>
       id == 'file.open' || id == 'file.openRecent' || id == 'file.new';
+
+  /// Save has nowhere to write when the last tab is already gone. Inventing a
+  /// blank drawing just so the picker can be cancelled would leave that tab
+  /// behind — the same leftover the host-file path exists to avoid.
+  static bool _needsOpenDocument(String id) =>
+      id == 'file.save' || id == 'file.saveAs';
 
   /// Cancels whatever is running, as Escape does.
   ///
