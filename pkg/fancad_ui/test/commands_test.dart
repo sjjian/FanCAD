@@ -833,6 +833,30 @@ void main() {
       expect((document.entity(target)! as LineEntity).end.x, closeTo(10, 1e-9));
     });
 
+    test('extend lengthens a polyline to a boundary', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 5],
+        ],
+      });
+      final target = (created.data!['ids']! as List).first as int;
+      final boundary = await drawLine(5, 10, 15, 10);
+
+      final result = await run('edit.extend', {
+        'edges': [boundary],
+        'target': target,
+        'pick': [10, 5],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(
+        (document.entity(target)! as PolylineEntity).vertexAt(2).y,
+        closeTo(10, 1e-9),
+      );
+    });
+
     test('explode turns a polyline into its segments', () async {
       final created = await run('draw.polyline', {
         'points': [

@@ -699,6 +699,17 @@ class Construct {
               consider(hit);
             }
           }
+        case PolylineEntity() when !edge.hasBulges:
+          final count = edge.vertexCount;
+          final segments = edge.closed ? count : count - 1;
+          for (var i = 0; i < segments; i++) {
+            final start = edge.vertexAt(i);
+            final end = edge.vertexAt((i + 1) % count);
+            final hit = Intersect.lineLine(line.start, line.end, start, end);
+            if (hit == null) continue;
+            if (Intersect.distanceToSegment(hit, start, end) > 1e-6) continue;
+            consider(hit);
+          }
         default:
           continue;
       }
@@ -709,6 +720,44 @@ class Construct {
     if (bestAfter != null) return resizedLine(line, 0, bestAfter!);
     if (bestBefore != null) return resizedLine(line, bestBefore!, 1);
     return null;
+  }
+
+  /// Lengthens an open straight [polyline] until an end meets one of [edges].
+  ///
+  /// [pick] chooses which end moves; omitted, the last vertex is tried first
+  /// and the first vertex is the fallback. Only the free end travels — the
+  /// inward vertex of that last segment stays put.
+  static PolylineEntity? extendPolyline(
+    PolylineEntity polyline,
+    List<CadEntity> edges, [
+    Vec2? pick,
+  ]) {
+    if (polyline.closed || polyline.hasBulges || polyline.vertexCount < 2) {
+      return null;
+    }
+    final count = polyline.vertexCount;
+    final start = polyline.vertexAt(0);
+    final end = polyline.vertexAt(count - 1);
+    final fromStart = pick != null &&
+        pick.distanceSquaredTo(start) <= pick.distanceSquaredTo(end);
+
+    PolylineEntity? tryEnd({required bool moveStart}) {
+      final inward = moveStart
+          ? polyline.vertexAt(1)
+          : polyline.vertexAt(count - 2);
+      final free = moveStart ? start : end;
+      final arm = LineEntity(id: 0, start: inward, end: free);
+      final extended = extendLine(arm, edges);
+      if (extended == null) return null;
+      if (extended.start.distanceTo(inward) > 1e-6) return null;
+      if (extended.end.distanceTo(free) < 1e-9) return null;
+      return polyline.withGrip(moveStart ? 0 : count - 1, extended.end);
+    }
+
+    if (pick != null) {
+      return tryEnd(moveStart: fromStart);
+    }
+    return tryEnd(moveStart: false) ?? tryEnd(moveStart: true);
   }
 
   /// Rounds the corner between two lines, or trims them to a sharp join.

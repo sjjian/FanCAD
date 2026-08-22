@@ -479,6 +479,57 @@ void main() {
 
       expect(extended!.end.x, closeTo(6, 1e-9));
     });
+
+    test('extends to a polyline boundary', () {
+      final wall = PolylineEntity.fromPoints(
+        id: 2,
+        points: const [Vec2(10, -5), Vec2(10, 5)],
+      );
+      final extended = Construct.extendLine(line(0, 0, 5, 0), [wall]);
+
+      expect(extended!.end.x, closeTo(10, 1e-9));
+    });
+  });
+
+  group('extendPolyline', () {
+    test('grows the last segment to meet a boundary', () {
+      final elbow = PolylineEntity.fromPoints(
+        id: 1,
+        points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 5)],
+      );
+      final extended = Construct.extendPolyline(elbow, [
+        line(5, 10, 15, 10),
+      ]);
+
+      expect(extended, isNotNull);
+      expect(extended!.vertexAt(2).y, closeTo(10, 1e-9));
+      expect(extended.vertexAt(1), const Vec2(10, 0));
+    });
+
+    test('grows the first segment when that end is nearer the pick', () {
+      final elbow = PolylineEntity.fromPoints(
+        id: 1,
+        points: const [Vec2(5, 0), Vec2(10, 0), Vec2(10, 10)],
+      );
+      final extended = Construct.extendPolyline(
+        elbow,
+        [line(0, -5, 0, 5)],
+        const Vec2(5, 0),
+      );
+
+      expect(extended!.vertexAt(0).x, closeTo(0, 1e-9));
+      expect(extended.vertexAt(2), const Vec2(10, 10));
+    });
+
+    test('refuses a closed polyline', () {
+      expect(
+        Construct.extendPolyline(
+          Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!,
+          [line(20, -5, 20, 5)],
+        ),
+        isNull,
+      );
+    });
   });
 
   group('filletLines', () {

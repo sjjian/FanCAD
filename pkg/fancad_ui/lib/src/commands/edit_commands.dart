@@ -929,15 +929,18 @@ class EditCommands {
     title: 'Extend',
     category: _category,
     aliases: const ['ex', 'extend'],
-    description: 'Lengthens a line until it meets the selected boundary edges.',
+    description:
+        'Lengthens a line or open straight polyline until it meets the '
+        'selected boundary edges. On a polyline the pick chooses which end '
+        'moves.',
     params: const [
       ParamSpec.selection('edges', description: 'Boundary edges'),
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line to extend',
+        description: 'The line or polyline to extend',
       ),
-      ParamSpec.point('pick', description: 'A point on the line'),
+      ParamSpec.point('pick', description: 'A point nearer the end to move'),
     ],
     handler: (context) => _trimOrExtend(context, extend: true),
   );
@@ -2438,50 +2441,41 @@ class EditCommands {
       attempts++;
 
       final target = context.document.entity(targetId);
-      if (extend && target is! LineEntity) {
+      if (target is! LineEntity && target is! PolylineEntity) {
         context.input.write(
-          'EXTEND currently supports lines only; '
+          '$verb supports lines and open straight polylines; '
           '${target?.kind.name ?? 'that object'} was skipped.',
         );
         if (suppliedTarget != null) {
-          return const CommandResult.failed(
-            'EXTEND currently supports lines only.',
+          return CommandResult.failed(
+            '$verb supports lines and open straight polylines.',
           );
         }
         continue;
       }
-      if (!extend &&
-          target is! LineEntity &&
-          target is! PolylineEntity) {
-        context.input.write(
-          'TRIM supports lines and open straight polylines; '
-          '${target?.kind.name ?? 'that object'} was skipped.',
-        );
-        if (suppliedTarget != null) {
-          return const CommandResult.failed(
-            'TRIM supports lines and open straight polylines.',
-          );
-        }
-        continue;
-      }
-      if (!extend &&
-          target is PolylineEntity &&
+      if (target is PolylineEntity &&
           (target.closed || target.hasBulges)) {
         context.input.write(
-          'TRIM cannot change a closed or bulged polyline.',
+          '$verb cannot change a closed or bulged polyline.',
         );
         if (suppliedTarget != null) {
-          return const CommandResult.failed(
-            'TRIM cannot change a closed or bulged polyline.',
+          return CommandResult.failed(
+            '$verb cannot change a closed or bulged polyline.',
           );
         }
         continue;
       }
 
-      final entity = target!;
+      final entity = target as CadEntity;
       final CadEntity? result;
       if (extend) {
-        result = Construct.extendLine(entity as LineEntity, edges);
+        result = entity is LineEntity
+            ? Construct.extendLine(entity, edges)
+            : Construct.extendPolyline(
+                entity as PolylineEntity,
+                edges,
+                suppliedPick,
+              );
       } else {
         final crossings = <Vec2>[
           for (final edge in edges) ...Construct.crossingsAlong(entity, edge),
