@@ -283,6 +283,42 @@ void main() {
     });
   });
 
+  group('explodeDimension', () {
+    test('breaks a linear dimension into extensions, a dim line and text', () {
+      final dim = Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(5, 4),
+      )!;
+      final pieces = Construct.explodeDimension(dim);
+
+      expect(pieces.whereType<LineEntity>(), hasLength(3));
+      expect(pieces.whereType<SolidEntity>(), hasLength(2));
+      final text = pieces.whereType<TextEntity>().single;
+      expect(text.content, '10.00');
+      expect(text.position, dim.textPosition);
+    });
+
+    test('hides text when the override is a single space', () {
+      final dim = Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(5, 4),
+      )!;
+      final hidden = DimensionEntity(
+        id: dim.id,
+        props: dim.props,
+        definitionPoints: dim.definitionPoints,
+        textPosition: dim.textPosition,
+        measurement: dim.measurement,
+        overrideText: ' ',
+        dimensionType: dim.dimensionType,
+      );
+      final pieces = Construct.explodeDimension(hidden);
+      expect(pieces.whereType<TextEntity>(), isEmpty);
+    });
+  });
+
   group('circleTangentRadius', () {
     test('sits in the picked quadrant of two crossing lines', () {
       final circle = Construct.circleTangentRadius(

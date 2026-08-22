@@ -1748,8 +1748,9 @@ class EditCommands {
     category: _category,
     aliases: const ['x', 'explode'],
     description:
-        'Breaks polylines into their segments and block references into copies '
-        'of their contents.',
+        'Breaks polylines into their segments, block references into copies '
+        'of their contents, and dimensions into the lines, arrows and text '
+        'they draw.',
     params: const [ParamSpec.selection('ids')],
     handler: (context) async {
       final ids = await context.resolveSelection(
@@ -2932,6 +2933,18 @@ class EditCommands {
             closed: true,
           ),
         ];
+      case DimensionEntity(:final blockName):
+        if (blockName.isNotEmpty) {
+          final ids = document.entityIdsOf(blockName);
+          if (ids != null && ids.isNotEmpty) {
+            return [
+              for (final id in ids)
+                if (document.entity(id) case final member?)
+                  member.withId(0),
+            ];
+          }
+        }
+        return Construct.explodeDimension(entity);
       default:
         return const [];
     }

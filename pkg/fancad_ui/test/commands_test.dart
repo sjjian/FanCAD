@@ -1413,6 +1413,23 @@ void main() {
       expect(document.entities.every((each) => each is LineEntity), isTrue);
     });
 
+    test('explode turns a dimension into lines, arrows and text', () async {
+      final created = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [10, 0],
+        'dimLine': [5, 4],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.explode', {'ids': [id]});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entity(id), isNull);
+      expect(document.entities.whereType<LineEntity>(), isNotEmpty);
+      expect(document.entities.whereType<TextEntity>().single.content, '10.00');
+      expect(document.entities.whereType<SolidEntity>(), hasLength(2));
+    });
+
     test('join merges connected lines into one polyline', () async {
       final a = await drawLine(0, 0, 10, 0);
       final b = await drawLine(10, 0, 10, 10);

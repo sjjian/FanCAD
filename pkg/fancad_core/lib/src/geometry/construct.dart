@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../model/entity.dart';
+import '../model/geometry_sink.dart';
 import '../model/style.dart';
 import 'bounds.dart';
 import 'flatten.dart';
@@ -327,6 +328,149 @@ class Construct {
       id: id,
       props: props,
     );
+  }
+
+  /// The lines, arrows and text a dimension draws, as editable entities.
+  ///
+  /// EXPLODE has to produce the same picture the fallback renderer does, so
+  /// a dimension that never had an anonymous block still comes apart into
+  /// geometry a user can move independently.
+  static List<CadEntity> explodeDimension(DimensionEntity entity) {
+    final props = entity.props;
+    final pieces = <CadEntity>[];
+    final points = entity.definitionPoints;
+    if (points.length >= 2) {
+      switch (entity.dimensionType & 0x0F) {
+        case 2:
+          pieces.addAll(_explodeAngularDim(entity, props));
+        case 3:
+          pieces.addAll(_explodeRadialDim(entity, props, diameter: true));
+        case 4:
+          pieces.addAll(_explodeRadialDim(entity, props, diameter: false));
+        default:
+          pieces.addAll(_explodeLinearDim(entity, props));
+      }
+    }
+    if (entity.overrideText != ' ') {
+      pieces.add(
+        TextEntity(
+          id: 0,
+          props: props,
+          position: entity.textPosition,
+          content: entity.displayText,
+          height: 2.5,
+          styleName: entity.styleName,
+          hAlign: TextHAlign.center,
+          vAlign: TextVAlign.middle,
+        ),
+      );
+    }
+    return pieces;
+  }
+
+  static List<CadEntity> _explodeLinearDim(
+    DimensionEntity entity,
+    EntityProps props,
+  ) {
+    final points = entity.definitionPoints;
+    final p1 = points[0];
+    final p2 = points[1];
+    final dimLine = points.length > 2 ? points[2] : entity.textPosition;
+    late final Vec2 a;
+    late final Vec2 b;
+    late final Vec2 unit;
+    if ((entity.dimensionType & 0x0F) == 0 && points.length >= 3) {
+      final mid = p1.lerp(p2, 0.5);
+      final horizontal =
+          (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
+      a = horizontal ? Vec2(p1.x, dimLine.y) : Vec2(dimLine.x, p1.y);
+      b = horizontal ? Vec2(p2.x, dimLine.y) : Vec2(dimLine.x, p2.y);
+      if (a.distanceTo(b) < 1e-9) return const [];
+      unit = (b - a).normalized();
+    } else {
+      final direction = p2 - p1;
+      if (direction.length < 1e-9) return const [];
+      unit = direction.normalized();
+      final normal = unit.perpendicular;
+      var offset = (dimLine - p1).dot(normal);
+      if (offset.abs() < 1e-6) offset = direction.length * 0.15;
+      a = p1 + normal * offset;
+      b = p2 + normal * offset;
+    }
+    return [
+      LineEntity(id: 0, props: props, start: p1, end: a),
+      LineEntity(id: 0, props: props, start: p2, end: b),
+      LineEntity(id: 0, props: props, start: a, end: b),
+      ..._dimArrows(a, unit, props),
+      ..._dimArrows(b, -unit, props),
+    ];
+  }
+
+  static List<CadEntity> _explodeRadialDim(
+    DimensionEntity entity,
+    EntityProps props, {
+    required bool diameter,
+  }) {
+    final center = entity.definitionPoints[0];
+    final chord = entity.definitionPoints[1];
+    final delta = chord - center;
+    if (delta.length < 1e-9) return const [];
+    final unit = delta.normalized();
+    return [
+      LineEntity(id: 0, props: props, start: center, end: chord),
+      if (diameter)
+        LineEntity(
+          id: 0,
+          props: props,
+          start: center,
+          end: center - delta,
+        ),
+      ..._dimArrows(chord, -unit, props),
+    ];
+  }
+
+  static List<CadEntity> _explodeAngularDim(
+    DimensionEntity entity,
+    EntityProps props,
+  ) {
+    final points = entity.definitionPoints;
+    if (points.length < 3) return _explodeLinearDim(entity, props);
+    final vertex = points[0];
+    final a = points[1];
+    final b = points[2];
+    final radius = vertex.distanceTo(entity.textPosition);
+    final start = (a - vertex).angle;
+    final end = (b - vertex).angle;
+    return [
+      LineEntity(id: 0, props: props, start: vertex, end: a),
+      LineEntity(id: 0, props: props, start: vertex, end: b),
+      if (radius > 1e-9)
+        ArcEntity(
+          id: 0,
+          props: props,
+          center: vertex,
+          radius: radius,
+          startAngle: start,
+          endAngle: start + angularSweep(start, end),
+        ),
+    ];
+  }
+
+  static List<CadEntity> _dimArrows(Vec2 tip, Vec2 direction, EntityProps props) {
+    if (direction.length < 1e-9) return const [];
+    final unit = direction.normalized();
+    const size = 2.5;
+    return [
+      SolidEntity(
+        id: 0,
+        props: props,
+        corners: [
+          tip,
+          tip - unit * size + unit.perpendicular * (size * 0.35),
+          tip - unit * size - unit.perpendicular * (size * 0.35),
+        ],
+      ),
+    ];
   }
 
   static (Vec2, double)? _radialSource(CadEntity entity) {
