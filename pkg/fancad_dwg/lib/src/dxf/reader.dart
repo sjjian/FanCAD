@@ -205,6 +205,19 @@ class DxfReader {
           scale: Vec2(n(41, 1), n(42, 1)),
           rotation: n(50) * math.pi / 180,
         );
+      case 'MINSERT':
+        return InsertEntity(
+          id: id,
+          props: props,
+          blockName: v[2] ?? '',
+          position: Vec2(n(10), n(20)),
+          scale: Vec2(n(41, 1), n(42, 1)),
+          rotation: n(50) * math.pi / 180,
+          columnCount: int.tryParse(v[70] ?? '1') ?? 1,
+          rowCount: int.tryParse(v[71] ?? '1') ?? 1,
+          columnSpacing: n(44),
+          rowSpacing: n(45),
+        );
       case 'ELLIPSE':
         return EllipseEntity(
           id: id,
@@ -252,9 +265,84 @@ class DxfReader {
           overrideText: v[1] ?? '',
           dimensionType: int.tryParse(v[70] ?? '0') ?? 0,
         );
+      case 'SPLINE':
+        return _spline(id, props, pairs, v);
+      case 'LEADER':
+        if (xs.isEmpty) return null;
+        final vertices = Float64List(xs.length * 2);
+        for (var i = 0; i < xs.length; i++) {
+          vertices[i * 2] = xs[i];
+          vertices[i * 2 + 1] = i < ys.length ? ys[i] : 0;
+        }
+        return LeaderEntity(
+          id: id,
+          props: props,
+          vertices: vertices,
+          hasArrowHead: (int.tryParse(v[71] ?? '1') ?? 1) != 0,
+          styleName: v[3] ?? 'Standard',
+        );
+      case 'IMAGE':
+        return ImageEntity(
+          id: id,
+          props: props,
+          reference: v[1] ?? '',
+          origin: Vec2(n(10), n(20)),
+          uVector: Vec2(n(11, 1), n(21)),
+          vVector: Vec2(n(12), n(22, 1)),
+        );
       default:
         return null;
     }
+  }
+
+  static SplineEntity _spline(
+    int id,
+    EntityProps props,
+    List<(int, String)> pairs,
+    Map<int, String> v,
+  ) {
+    final knots = <double>[];
+    final weights = <double>[];
+    final controls = <double>[];
+    final fits = <double>[];
+    double? controlX;
+    double? fitX;
+    for (final (code, value) in pairs) {
+      final number = double.tryParse(value) ?? 0;
+      switch (code) {
+        case 10:
+          controlX = number;
+        case 20:
+          if (controlX != null) {
+            controls.add(controlX);
+            controls.add(number);
+            controlX = null;
+          }
+        case 40:
+          knots.add(number);
+        case 41:
+          weights.add(number);
+        case 11:
+          fitX = number;
+        case 21:
+          if (fitX != null) {
+            fits.add(fitX);
+            fits.add(number);
+            fitX = null;
+          }
+      }
+    }
+    final flags = int.tryParse(v[70] ?? '0') ?? 0;
+    return SplineEntity(
+      id: id,
+      props: props,
+      controlPoints: Float64List.fromList(controls),
+      knots: knots,
+      weights: weights,
+      degree: int.tryParse(v[71] ?? '3') ?? 3,
+      closed: flags & 1 != 0,
+      fitPoints: fits.isEmpty ? null : Float64List.fromList(fits),
+    );
   }
 }
 

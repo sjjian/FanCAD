@@ -153,7 +153,7 @@ class DxfWriter {
         pair(71, entity.attachment);
         pair(7, entity.styleName);
       case InsertEntity():
-        pair(0, 'INSERT');
+        pair(0, entity.isArray ? 'MINSERT' : 'INSERT');
         _common(pair, entity);
         pair(2, entity.blockName);
         pair(10, entity.position.x);
@@ -162,6 +162,12 @@ class DxfWriter {
         pair(42, entity.scale.y);
         if (entity.rotation != 0) {
           pair(50, entity.rotation * 180 / math.pi);
+        }
+        if (entity.isArray) {
+          pair(70, entity.columnCount);
+          pair(71, entity.rowCount);
+          pair(44, entity.columnSpacing);
+          pair(45, entity.rowSpacing);
         }
       case EllipseEntity():
         pair(0, 'ELLIPSE');
@@ -226,6 +232,60 @@ class DxfWriter {
         pair(20, origin.y);
         pair(11, direction.x);
         pair(21, direction.y);
+      case SplineEntity():
+        pair(0, 'SPLINE');
+        _common(pair, entity);
+        var flags = 8; // planar
+        if (entity.closed) flags |= 1;
+        if (entity.weights.isNotEmpty) flags |= 4;
+        pair(70, flags);
+        pair(71, entity.degree);
+        pair(72, entity.knots.length);
+        pair(73, entity.controlPointCount);
+        final fit = entity.fitPoints;
+        if (fit != null && fit.length >= 2) {
+          pair(74, fit.length ~/ 2);
+        }
+        for (final knot in entity.knots) {
+          pair(40, knot);
+        }
+        for (var i = 0; i < entity.controlPointCount; i++) {
+          pair(10, entity.controlPoints[i * 2]);
+          pair(20, entity.controlPoints[i * 2 + 1]);
+          pair(30, 0);
+          if (i < entity.weights.length) pair(41, entity.weights[i]);
+        }
+        if (fit != null) {
+          for (var i = 0; i < fit.length ~/ 2; i++) {
+            pair(11, fit[i * 2]);
+            pair(21, fit[i * 2 + 1]);
+            pair(31, 0);
+          }
+        }
+      case LeaderEntity():
+        pair(0, 'LEADER');
+        _common(pair, entity);
+        pair(3, entity.styleName);
+        pair(71, entity.hasArrowHead ? 1 : 0);
+        pair(76, entity.vertices.length ~/ 2);
+        for (var i = 0; i < entity.vertices.length ~/ 2; i++) {
+          pair(10, entity.vertices[i * 2]);
+          pair(20, entity.vertices[i * 2 + 1]);
+          pair(30, 0);
+        }
+      case ImageEntity():
+        pair(0, 'IMAGE');
+        _common(pair, entity);
+        pair(10, entity.origin.x);
+        pair(20, entity.origin.y);
+        pair(30, 0);
+        pair(11, entity.uVector.x);
+        pair(21, entity.uVector.y);
+        pair(31, 0);
+        pair(12, entity.vVector.x);
+        pair(22, entity.vVector.y);
+        pair(32, 0);
+        pair(1, entity.reference);
       default:
         pair(0, 'POINT');
         _common(pair, entity);
