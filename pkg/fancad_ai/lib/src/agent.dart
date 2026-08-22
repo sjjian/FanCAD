@@ -78,6 +78,14 @@ class AgentLoop {
 
   /// Runs one user message to completion.
   Future<AgentTurn> run(String userMessage) async {
+    if (userMessage.trim().isEmpty) {
+      return AgentTurn(
+        reply: '',
+        toolCalls: const [],
+        cancelled: false,
+        error: 'The message was empty.',
+      );
+    }
     final convo = conversation ?? Conversation();
     convo.addUser(userMessage);
 

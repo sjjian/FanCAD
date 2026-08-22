@@ -86,6 +86,27 @@ void main() {
     expect(session.document.entities, isEmpty);
   });
 
+  test('an empty message does not call the model', () async {
+    final provider = ScriptedLlmProvider([
+      const LlmCompletion(text: 'should not run'),
+    ]);
+    final conversation = Conversation();
+    final agent = AgentLoop(
+      provider: provider,
+      registry: registry,
+      execute: execute,
+      document: session.document,
+      conversation: conversation,
+    );
+
+    final turn = await agent.run('   ');
+    expect(turn.isOk, isFalse);
+    expect(turn.error, contains('empty'));
+    expect(provider.remaining, 1);
+    expect(conversation.visible, isEmpty);
+    expect(conversation.llmMessages, isEmpty);
+  });
+
   test('a read-only tool runs without asking', () async {
     final agent = AgentLoop(
       provider: ScriptedLlmProvider([
