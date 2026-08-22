@@ -842,6 +842,41 @@ void main() {
     });
   });
 
+  group('measurePolyline', () {
+    final elbow = PolylineEntity.fromPoints(
+      id: 1,
+      points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10)],
+    );
+
+    test('spaces points from the nearer end around the corner', () {
+      final points = Construct.measurePolyline(elbow, 6, const Vec2(0, 0));
+
+      expect(points, hasLength(3));
+      expect(points[0].x, closeTo(6, 1e-9));
+      expect(points[1].x, closeTo(10, 1e-9));
+      expect(points[1].y, closeTo(2, 1e-9));
+      expect(points[2].y, closeTo(8, 1e-9));
+    });
+
+    test('starts from the opposite end when that is nearer the pick', () {
+      final points = Construct.measurePolyline(elbow, 6, const Vec2(10, 10));
+
+      expect(points, hasLength(3));
+      expect(points[0].y, closeTo(4, 1e-9));
+      expect(points[1].x, closeTo(8, 1e-9));
+      expect(points[2].x, closeTo(2, 1e-9));
+    });
+
+    test('walks a closed polyline from the start vertex', () {
+      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final points = Construct.measurePolyline(square, 15, const Vec2(0, 0));
+
+      expect(points, hasLength(2));
+      expect(points[0], const Vec2(10, 5));
+      expect(points[1], const Vec2(0, 10));
+    });
+  });
+
   group('lengthenLine', () {
     test('sets a new total length on the picked end', () {
       final longer = Construct.lengthenLine(

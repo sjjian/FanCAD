@@ -1273,6 +1273,38 @@ class Construct {
     ];
   }
 
+  /// Points spaced [spacing] apart along [polyline], starting from the nearer end.
+  ///
+  /// Open polylines match [measureLine]: the first node is one interval in from
+  /// the end nearer [pick], and a leftover shorter than [spacing] is unmarked.
+  /// A closed loop always walks forward from the start vertex.
+  static List<Vec2> measurePolyline(
+    PolylineEntity polyline,
+    double spacing,
+    Vec2 pick,
+  ) {
+    if (spacing <= 0 ||
+        !spacing.isFinite ||
+        polyline.hasBulges ||
+        polyline.vertexCount < 2) {
+      return const [];
+    }
+    final length = _polylineLength(polyline);
+    if (length <= spacing) return const [];
+    final fromStart = polyline.closed ||
+        pick.distanceSquaredTo(polyline.vertexAt(0)) <=
+            pick.distanceSquaredTo(
+              polyline.vertexAt(polyline.vertexCount - 1),
+            );
+    return [
+      for (var i = 1; i * spacing < length - 1e-12; i++)
+        _pointAlongPolyline(
+          polyline,
+          fromStart ? i * spacing : length - i * spacing,
+        ),
+    ];
+  }
+
   /// Lengthens or shortens [line] by moving the endpoint nearer [pick].
   ///
   /// [total] sets the finished length. [delta] is added to the current length

@@ -1076,13 +1076,14 @@ class DrawCommands {
     category: _category,
     aliases: const ['me', 'measure'],
     description:
-        'Places point markers at a fixed spacing along a line, starting from '
-        'the end nearer the pick. Endpoints are not marked.',
+        'Places point markers at a fixed spacing along a line or straight '
+        'polyline, starting from the end nearer the pick. Endpoints are not '
+        'marked; a leftover shorter than the spacing is left alone.',
     params: const [
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line to measure',
+        description: 'The line or polyline to measure',
         required: false,
       ),
       ParamSpec(
@@ -1106,7 +1107,7 @@ class DrawCommands {
       } else {
         context.selection.clear();
         final picked = await context.input.selection(
-          'MEASURE  Select a line:',
+          'MEASURE  Select a line or polyline:',
           useExistingSelection: false,
           single: true,
         );
@@ -1115,23 +1116,33 @@ class DrawCommands {
       }
 
       final target = context.document.entity(targetId);
-      if (target is! LineEntity) {
+      if (target is! LineEntity && target is! PolylineEntity) {
         return const CommandResult.failed(
-          'Measure currently supports lines only.',
+          'Measure supports lines and straight polylines.',
+        );
+      }
+      if (target is PolylineEntity && target.hasBulges) {
+        return const CommandResult.failed(
+          'Measure cannot follow a bulged polyline.',
         );
       }
 
-      final pick = context.args.point('pick') ?? target.start;
+      final pick = context.args.point('pick') ??
+          (target is LineEntity
+              ? target.start
+              : (target as PolylineEntity).vertexAt(0));
       final spacing = context.args.number('spacing') ??
           await context.input.number('MEASURE  Specify segment length:');
       if (spacing <= 0) {
         return const CommandResult.failed('The spacing must be positive.');
       }
 
-      final points = Construct.measureLine(target, spacing, pick);
+      final points = target is LineEntity
+          ? Construct.measureLine(target, spacing, pick)
+          : Construct.measurePolyline(target as PolylineEntity, spacing, pick);
       if (points.isEmpty) {
         return const CommandResult.failed(
-          'The line is shorter than the spacing, so nothing was placed.',
+          'The object is shorter than the spacing, so nothing was placed.',
         );
       }
       final layer = context.document.currentLayer;

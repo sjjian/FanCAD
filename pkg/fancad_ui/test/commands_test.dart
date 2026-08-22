@@ -287,6 +287,28 @@ void main() {
       expect(document.entities.whereType<PointEntity>(), hasLength(3));
     });
 
+    test('measure places points along a polyline', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.measure', {
+        'target': id,
+        'spacing': 6,
+        'pick': [0, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final points = document.entities.whereType<PointEntity>().toList();
+      expect(points, hasLength(3));
+      expect(points[1].position.y, closeTo(2, 1e-9));
+    });
+
     test('new geometry lands on the current layer', () async {
       await run('layer.new', {'name': 'WALLS'});
       await drawLine(0, 0, 1, 0);
