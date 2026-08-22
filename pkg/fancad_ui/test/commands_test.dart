@@ -754,6 +754,20 @@ void main() {
   });
 
   group('layers', () {
+    test('purge deletes unused layers and keeps ones that are occupied', () async {
+      await run('layer.new', {'name': 'UNUSED'});
+      await run('layer.new', {'name': 'USED'});
+      await drawLine(0, 0, 1, 0);
+
+      final result = await run('layer.purge');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.layer('UNUSED'), isNull);
+      expect(document.layer('USED'), isNotNull);
+      expect(document.layer('0'), isNotNull);
+      expect(document.currentLayer, 'USED');
+    });
+
     test('new layer becomes current and is undoable', () async {
       final result = await run('layer.new', {'name': 'DIMS', 'color': '1'});
 
