@@ -1547,7 +1547,26 @@ final class LeaderEntity extends CadEntity {
   @override
   void emit(EmitContext context, GeometrySink sink) {
     if (vertices.length < 4) return;
-    sink.polyline(context.applyBuffer(vertices), context.styleFor(props));
+    final style = context.styleFor(props);
+    final xy = context.applyBuffer(vertices);
+    sink.polyline(xy, style);
+    if (!hasArrowHead) return;
+    final tip = Vec2(xy[0], xy[1]);
+    final next = Vec2(xy[2], xy[3]);
+    final dir = next - tip;
+    final length = dir.length;
+    if (length < 1e-9) return;
+    final unit = dir / length;
+    final scale =
+        context.transform.isIdentity ? 1.0 : context.transform.meanScale;
+    final size = math.min(2.5 * scale, length * 0.4);
+    if (size < 1e-9) return;
+    final left = tip + unit * size + unit.perpendicular * (size * 0.35);
+    final right = tip + unit * size - unit.perpendicular * (size * 0.35);
+    sink.fill(
+      Float64List.fromList([tip.x, tip.y, left.x, left.y, right.x, right.y]),
+      style,
+    );
   }
 
   @override

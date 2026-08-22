@@ -319,6 +319,70 @@ void main() {
     });
   });
 
+  group('leader', () {
+    test('stores the vertices with the first point as the arrow tip', () {
+      final created = Construct.leader(const [
+        Vec2(0, 0),
+        Vec2(10, 5),
+        Vec2(14, 5),
+      ]);
+
+      expect(created, isNotNull);
+      expect(created, hasLength(1));
+      final leader = created!.single as LeaderEntity;
+      expect(leader.hasArrowHead, isTrue);
+      expect(leader.grips(), const [
+        Vec2(0, 0),
+        Vec2(10, 5),
+        Vec2(14, 5),
+      ]);
+    });
+
+    test('adds a horizontal landing and text when the last span is slanted', () {
+      final created = Construct.leader(
+        const [Vec2(0, 0), Vec2(10, 8)],
+        annotation: 'NOTE',
+      );
+
+      expect(created, isNotNull);
+      final leader = created!.whereType<LeaderEntity>().single;
+      expect(leader.grips(), const [
+        Vec2(0, 0),
+        Vec2(10, 8),
+        Vec2(12.5, 8),
+      ]);
+      final text = created.whereType<TextEntity>().single;
+      expect(text.content, 'NOTE');
+      expect(text.hAlign, TextHAlign.left);
+      expect(text.vAlign, TextVAlign.middle);
+      expect(text.position.x, closeTo(12.5 + 2.5 * 0.15, 1e-9));
+      expect(text.position.y, closeTo(8, 1e-9));
+    });
+
+    test('keeps an already-level last span as the landing', () {
+      final created = Construct.leader(
+        const [Vec2(20, 4), Vec2(8, 10), Vec2(2, 10)],
+        annotation: 'SEE DETAIL',
+      );
+
+      expect(created, isNotNull);
+      final leader = created!.whereType<LeaderEntity>().single;
+      expect(leader.grips(), const [
+        Vec2(20, 4),
+        Vec2(8, 10),
+        Vec2(2, 10),
+      ]);
+      final text = created.whereType<TextEntity>().single;
+      expect(text.hAlign, TextHAlign.right);
+      expect(text.position.x, closeTo(2 - 2.5 * 0.15, 1e-9));
+    });
+
+    test('returns null for fewer than two distinct points', () {
+      expect(Construct.leader(const [Vec2(1, 1)]), isNull);
+      expect(Construct.leader(const [Vec2(1, 1), Vec2(1, 1)]), isNull);
+    });
+  });
+
   group('circleTangentRadius', () {
     test('sits in the picked quadrant of two crossing lines', () {
       final circle = Construct.circleTangentRadius(

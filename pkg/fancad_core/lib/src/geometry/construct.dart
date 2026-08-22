@@ -330,6 +330,69 @@ class Construct {
     );
   }
 
+  /// A leader from [points], optionally with a TEXT annotation.
+  ///
+  /// The first vertex is the arrow tip. When [annotation] is not empty and the
+  /// last span is not already horizontal, a short landing is appended so the
+  /// note sits level with the hook, the same way AutoCAD's LEADER does.
+  static List<CadEntity>? leader(
+    List<Vec2> points, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+    String annotation = '',
+    double textHeight = 2.5,
+    bool hasArrowHead = true,
+  }) {
+    if (points.length < 2 || textHeight <= 0) return null;
+    final verts = <Vec2>[points.first];
+    for (final point in points.skip(1)) {
+      if (point.distanceTo(verts.last) > 1e-12) verts.add(point);
+    }
+    if (verts.length < 2) return null;
+
+    if (annotation.isNotEmpty) {
+      final last = verts.last;
+      final prev = verts[verts.length - 2];
+      if ((last.y - prev.y).abs() > 1e-9) {
+        final goingLeft = last.x + 1e-12 < prev.x;
+        verts.add(last + Vec2(goingLeft ? -textHeight : textHeight, 0));
+      }
+    }
+
+    final vertices = Float64List(verts.length * 2);
+    for (var i = 0; i < verts.length; i++) {
+      vertices[i * 2] = verts[i].x;
+      vertices[i * 2 + 1] = verts[i].y;
+    }
+
+    final created = <CadEntity>[
+      LeaderEntity(
+        id: id,
+        props: props,
+        vertices: vertices,
+        hasArrowHead: hasArrowHead,
+      ),
+    ];
+    if (annotation.isNotEmpty) {
+      final last = verts.last;
+      final prev = verts[verts.length - 2];
+      final goingLeft = last.x + 1e-12 < prev.x;
+      created.add(
+        TextEntity(
+          id: 0,
+          props: props,
+          position: last +
+              Vec2(goingLeft ? -textHeight * 0.15 : textHeight * 0.15, 0),
+          content: annotation,
+          height: textHeight,
+          hAlign: goingLeft ? TextHAlign.right : TextHAlign.left,
+          vAlign: TextVAlign.middle,
+        ),
+      );
+    }
+    return created;
+  }
+
   /// The lines, arrows and text a dimension draws, as editable entities.
   ///
   /// EXPLODE has to produce the same picture the fallback renderer does, so

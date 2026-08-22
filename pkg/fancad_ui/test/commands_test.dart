@@ -252,6 +252,54 @@ void main() {
       expect((document.entity(id)! as DimensionEntity).displayText, '6.00 mm');
     });
 
+    test('leader draws an arrowed polyline from the supplied points', () async {
+      final result = await run('draw.leader', {
+        'points': [
+          [0, 0],
+          [10, 4],
+          [14, 4],
+        ],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 1);
+      final leader = document.entities.first as LeaderEntity;
+      expect(leader.hasArrowHead, isTrue);
+      expect(leader.grips(), const [
+        Vec2(0, 0),
+        Vec2(10, 4),
+        Vec2(14, 4),
+      ]);
+    });
+
+    test('leader annotation sits on a landing past the last vertex', () async {
+      final result = await run('draw.leader', {
+        'points': [
+          [0, 0],
+          [8, 6],
+        ],
+        'text': 'HOLE',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      expect(document.entities.whereType<LeaderEntity>(), hasLength(1));
+      final text = document.entities.whereType<TextEntity>().single;
+      expect(text.content, 'HOLE');
+      expect(text.hAlign, TextHAlign.left);
+    });
+
+    test('leader refuses a single point', () async {
+      final result = await run('draw.leader', {
+        'points': [
+          [3, 3],
+        ],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entityCount, 0);
+    });
+
     test('aligned dimension measures the slanted distance', () async {
       final result = await run('draw.dimAligned', {
         'first': [0, 0],

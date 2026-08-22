@@ -31,6 +31,7 @@ class DrawCommands {
     _divide(),
     _measure(),
     _text(),
+    _leader(),
     _hatch(),
     _dimLinear(),
     _dimAligned(),
@@ -1284,6 +1285,107 @@ class DrawCommands {
           rotation: rotation,
         ),
       ]);
+    },
+  );
+
+  static CommandDescriptor _leader() => CommandDescriptor(
+    id: 'draw.leader',
+    title: 'Leader',
+    category: _category,
+    aliases: const ['le', 'leader', 'qleader'],
+    icon: 'leader',
+    description:
+        'Draws a leader from an arrow tip through one or more vertices. '
+        'Optional annotation text sits on a horizontal landing at the last '
+        'point, the same way AutoCAD LEADER places a callout.',
+    params: const [
+      ParamSpec(
+        name: 'points',
+        type: ParamType.json,
+        description: 'Array of [x, y] vertices, first is the arrow tip',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'text',
+        type: ParamType.text,
+        description:
+            'Annotation placed at the landing; empty is the leader only',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'height',
+        type: ParamType.distance,
+        description: 'Annotation height in drawing units',
+        required: false,
+        defaultValue: 2.5,
+      ),
+      ParamSpec(
+        name: 'arrow',
+        type: ParamType.boolean,
+        description: 'Whether the first vertex draws an arrowhead',
+        required: false,
+        defaultValue: true,
+      ),
+    ],
+    handler: (context) async {
+      final layer = context.document.currentLayer;
+      var points = _pointList(context.args['points']);
+      if (points.length < 2) {
+        points = [];
+        while (true) {
+          context.input
+            ..setMarkers(List.of(points))
+            ..setPreview(
+              points.isEmpty
+                  ? null
+                  : (cursor) => [
+                      OverlayPolyline(List.of(points)),
+                      OverlayLine(points.last, cursor),
+                    ],
+            );
+          final next = await context.input.pointOrNull(
+            points.isEmpty
+                ? 'LEADER  Specify first leader point:'
+                : 'LEADER  Specify next point (Escape to finish):',
+          );
+          if (next == null) break;
+          if (points.isEmpty || next.distanceTo(points.last) > 1e-12) {
+            points.add(next);
+          }
+          if (!context.input.isInteractive && points.length >= 2) break;
+        }
+        context.input
+          ..setPreview(null)
+          ..setMarkers(const []);
+      }
+
+      if (points.length < 2) {
+        return const CommandResult.failed(
+          'A leader needs at least two points.',
+        );
+      }
+
+      final annotation = context.args.text('text') ??
+          (context.input.isInteractive
+              ? await context.input.text(
+                  'LEADER  Enter annotation text <none>:',
+                  defaultValue: '',
+                )
+              : '');
+      final height = context.args.number('height') ?? 2.5;
+      final created = Construct.leader(
+        points,
+        props: EntityProps(layer: layer),
+        annotation: annotation,
+        textHeight: height,
+        hasArrowHead: context.args.boolean('arrow') ?? true,
+      );
+      if (created == null) {
+        return const CommandResult.failed(
+          'A leader needs at least two distinct points.',
+        );
+      }
+      return _commit(context, 'Leader', created);
     },
   );
 
