@@ -47,6 +47,24 @@ void main() {
     expect(ws.activeIndex, -1);
   });
 
+  test('closing a tab to the left keeps the same drawing active', () {
+    final ws = workspace();
+    ws.newDocument(title: 'A');
+    final second = ws.newDocument(title: 'B');
+    final third = ws.newDocument(title: 'C');
+    ws.activateTab(second);
+    expect(ws.active, same(second));
+
+    expect(ws.closeTab(0), isTrue);
+    expect(ws.tabs, [same(second), same(third)]);
+    expect(ws.active, same(second));
+    expect(ws.activeIndex, 0);
+
+    expect(ws.closeTab(1), isTrue);
+    expect(ws.tabs, [same(second)]);
+    expect(ws.active, same(second));
+  });
+
   test('an already-open path is activated and a missing file becomes a notice',
       () async {
     final ws = workspace();

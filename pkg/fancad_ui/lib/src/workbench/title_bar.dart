@@ -209,7 +209,11 @@ class DocumentTabStrip extends StatelessWidget {
                 tab: tabs[index],
                 isActive: index == workspace.activeIndex,
                 onTap: () => workspace.activate(index),
-                onClose: () => workspace.run('file.close'),
+                onClose: () {
+                  if (workspace.closeTab(index)) return;
+                  workspace.activate(index);
+                  workspace.run('file.close');
+                },
               ),
             ),
           ),

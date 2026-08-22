@@ -258,6 +258,12 @@ class Workspace extends ChangeNotifier implements CommandServices {
     tab.dispose();
     if (_tabs.isEmpty) {
       _activeIndex = -1;
+    } else if (index < _activeIndex) {
+      // A tab to the left disappeared; the active document did not move, so
+      // its index has to follow it. Leaving the number alone would activate
+      // whatever slid into this slot — usually the neighbour, not the drawing
+      // the user was still looking at.
+      _activeIndex -= 1;
     } else if (_activeIndex >= _tabs.length) {
       _activeIndex = _tabs.length - 1;
     }
