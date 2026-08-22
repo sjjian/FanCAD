@@ -42,6 +42,11 @@ void main() {
     expect(cleared.showCrosshair, isFalse);
     expect(cleared.cursor, const Vec2(3, 1));
 
+    final leftCanvas = cleared.copyWith(clearCursor: true);
+    expect(leftCanvas.cursor, isNull);
+    expect(leftCanvas.selectedIds, [4]);
+    expect(leftCanvas.isEmpty, isFalse);
+
     expect(const OverlayTheme().gripSize, 7);
     expect(const OverlayTheme().snapSize, 9);
   });

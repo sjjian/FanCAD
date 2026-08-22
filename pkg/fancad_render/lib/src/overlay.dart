@@ -60,6 +60,7 @@ class OverlayModel {
     SnapMarker? snap,
     bool clearSnap = false,
     Vec2? cursor,
+    bool clearCursor = false,
     bool? showCrosshair,
   }) => OverlayModel(
     selectedIds: selectedIds ?? this.selectedIds,
@@ -68,7 +69,7 @@ class OverlayModel {
     hotGripIndex: hotGripIndex ?? this.hotGripIndex,
     shapes: shapes ?? this.shapes,
     snap: clearSnap ? null : (snap ?? this.snap),
-    cursor: cursor ?? this.cursor,
+    cursor: clearCursor ? null : (cursor ?? this.cursor),
     showCrosshair: showCrosshair ?? this.showCrosshair,
   );
 }
