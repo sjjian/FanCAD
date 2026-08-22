@@ -1632,11 +1632,17 @@ class DrawCommands {
     aliases: const ['dimangular', 'dimang'],
     icon: 'dimension',
     description:
-        'Places an angular dimension. Pick two lines and their intersection '
-        'is the vertex; the last pick sits on the dimension arc and chooses '
-        'which sector is labelled. Three points still work when a vertex is '
-        'supplied: vertex, then a point on each ray.',
+        'Places an angular dimension. Pick an arc and its centre is the '
+        'vertex; pick two lines and their intersection is the vertex; the '
+        'last pick sits on the dimension arc and chooses which sector is '
+        'labelled. Three points still work when a vertex is supplied.',
     params: const [
+      ParamSpec(
+        name: 'arc',
+        type: ParamType.entity,
+        description: 'Arc whose sweep is dimensioned',
+        required: false,
+      ),
       ParamSpec(
         name: 'firstLine',
         type: ParamType.entity,
@@ -1675,7 +1681,7 @@ class DrawCommands {
     handler: (context) async {
       if (context.args.point('vertex') == null &&
           context.args.point('first') == null) {
-        return _dimAngularFromLines(context);
+        return _dimAngularFromObjects(context);
       }
       final vertex = await context.resolvePoint(
         'vertex',
@@ -1756,25 +1762,33 @@ class DrawCommands {
     ];
   }
 
-  static Future<CommandResult> _dimAngularFromLines(
+  static Future<CommandResult> _dimAngularFromObjects(
     CommandContext context,
   ) async {
+    final arcId = context.args.integer('arc');
+    if (arcId != null) {
+      return _dimAngularFromArc(context, arcId);
+    }
     final firstId = context.args.integer('firstLine');
     final secondId = context.args.integer('secondLine');
     final int id1;
-    final int id2;
+    final int? id2;
     if (firstId != null && secondId != null) {
       id1 = firstId;
       id2 = secondId;
     } else {
       context.selection.clear();
       final firstPick = await context.input.selection(
-        'DIMANGULAR  Select first line:',
+        'DIMANGULAR  Select arc or first line:',
         useExistingSelection: false,
         single: true,
       );
       if (firstPick.isEmpty) return const CommandResult.cancelled();
       id1 = firstPick.first;
+      final firstEntity = context.document.entity(id1);
+      if (firstEntity is ArcEntity) {
+        return _dimAngularFromArc(context, id1);
+      }
       final secondPick = await context.input.selection(
         'DIMANGULAR  Select second line:',
         useExistingSelection: false,
@@ -1782,6 +1796,9 @@ class DrawCommands {
       );
       if (secondPick.isEmpty) return const CommandResult.cancelled();
       id2 = secondPick.first;
+    }
+    if (id2 == null) {
+      return const CommandResult.failed('Select two lines or one arc.');
     }
     final first = context.document.entity(id1);
     final second = context.document.entity(id2);
@@ -1824,6 +1841,47 @@ class DrawCommands {
     if (entity == null) {
       return const CommandResult.failed(
         'The two lines do not form an angle at that location.',
+      );
+    }
+    return _commit(context, 'Angular Dimension', [entity]);
+  }
+
+  static Future<CommandResult> _dimAngularFromArc(
+    CommandContext context,
+    int arcId,
+  ) async {
+    final target = context.document.entity(arcId);
+    if (target is! ArcEntity) {
+      return const CommandResult.failed(
+        'Angular dimension from one object needs an arc.',
+      );
+    }
+    context.input
+      ..setMarkers([target.center, target.startPoint, target.endPoint])
+      ..setPreview(
+        (cursor) => _dimAngularOverlay(
+          target.center,
+          target.startPoint,
+          target.endPoint,
+          cursor,
+        ),
+      );
+    final dimLine = await context.resolvePoint(
+      'dimLine',
+      'DIMANGULAR  Specify dimension arc location:',
+      basePoint: target.center,
+    );
+    context.input
+      ..setPreview(null)
+      ..setMarkers(const []);
+    final entity = Construct.angularDimensionFromArc(
+      target,
+      dimLine,
+      props: EntityProps(layer: context.document.currentLayer),
+    );
+    if (entity == null) {
+      return const CommandResult.failed(
+        'The arc does not form an angle that can be labelled.',
       );
     }
     return _commit(context, 'Angular Dimension', [entity]);

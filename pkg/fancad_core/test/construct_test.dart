@@ -257,6 +257,30 @@ void main() {
         isNull,
       );
     });
+
+    test('from an arc labels the sweep or its complement', () {
+      final quarter = ArcEntity(
+        id: 1,
+        center: const Vec2(0, 0),
+        radius: 10,
+        startAngle: 0,
+        endAngle: math.pi / 2,
+      );
+      final interior = Construct.angularDimensionFromArc(
+        quarter,
+        const Vec2(4, 4),
+      );
+      expect(interior, isNotNull);
+      expect(interior!.measurement, closeTo(90, 1e-9));
+      expect(interior.definitionPoints.first, const Vec2(0, 0));
+
+      final exterior = Construct.angularDimensionFromArc(
+        quarter,
+        const Vec2(-4, -4),
+      );
+      expect(exterior, isNotNull);
+      expect(exterior!.measurement, closeTo(270, 1e-9));
+    });
   });
 
   group('circleTangentRadius', () {

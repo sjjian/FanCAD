@@ -305,6 +305,30 @@ class Construct {
     return null;
   }
 
+  /// An angular dimension of [arc].
+  ///
+  /// The centre is the vertex and the endpoints are the rays. [dimLine]
+  /// chooses the arc's own sweep or the complementary sector, so a quarter
+  /// circle can read 90° or 270°.
+  static DimensionEntity? angularDimensionFromArc(
+    ArcEntity arc,
+    Vec2 dimLine, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    if (arc.radius <= 0 || arc.sweep < 1e-9 || arc.sweep > 2 * math.pi - 1e-9) {
+      return null;
+    }
+    return angularDimension(
+      arc.center,
+      arc.startPoint,
+      arc.endPoint,
+      dimLine,
+      id: id,
+      props: props,
+    );
+  }
+
   static (Vec2, double)? _radialSource(CadEntity entity) {
     switch (entity) {
       case CircleEntity(:final center, :final radius):

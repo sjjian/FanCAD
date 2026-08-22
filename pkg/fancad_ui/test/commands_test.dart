@@ -298,6 +298,26 @@ void main() {
       expect(dim.displayText, '90.00°');
     });
 
+    test('angular dimension from an arc uses the centre as vertex', () async {
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [0, 10],
+        'end': [-10, 0],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.dimAngular', {
+        'arc': arcId,
+        'dimLine': [0, 6],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entities.whereType<DimensionEntity>().single;
+      expect(dim.definitionPoints.first, const Vec2(0, 0));
+      expect(dim.measurement, closeTo(180, 1e-6));
+      expect(dim.displayText, '180.00°');
+    });
+
     test('donut creates a wide circular polyline', () async {
       final result = await run('draw.donut', {
         'inside': 6,
