@@ -268,6 +268,65 @@ class DxfReader {
     );
   }
 
+  static HatchEntity? _hatch(
+    int id,
+    EntityProps props,
+    List<(int, String)> pairs,
+    Map<int, String> v,
+  ) {
+    final loops = <HatchLoop>[];
+    var isOuter = true;
+    var remaining = 0;
+    final xs = <double>[];
+    final ys = <double>[];
+
+    void flush() {
+      if (xs.length < 3) {
+        xs.clear();
+        ys.clear();
+        remaining = 0;
+        return;
+      }
+      final vertices = Float64List(xs.length * 2);
+      for (var i = 0; i < xs.length; i++) {
+        vertices[i * 2] = xs[i];
+        vertices[i * 2 + 1] = i < ys.length ? ys[i] : 0;
+      }
+      loops.add(HatchLoop(vertices: vertices, isOuter: isOuter));
+      xs.clear();
+      ys.clear();
+      remaining = 0;
+    }
+
+    for (final (code, value) in pairs) {
+      if (code == 92) {
+        isOuter = (int.tryParse(value) ?? 0) != 0;
+      } else if (code == 93) {
+        if (xs.isNotEmpty) flush();
+        remaining = int.tryParse(value) ?? 0;
+      } else if (code == 10 && remaining > 0) {
+        xs.add(double.tryParse(value) ?? 0);
+        ys.add(0);
+      } else if (code == 20 && ys.isNotEmpty && remaining > 0) {
+        ys[ys.length - 1] = double.tryParse(value) ?? 0;
+        if (xs.length >= remaining) flush();
+      }
+    }
+    if (xs.length >= 3) flush();
+    if (loops.isEmpty) return null;
+    double n(int code, [double fallback = 0]) =>
+        double.tryParse(v[code] ?? '') ?? fallback;
+    return HatchEntity(
+      id: id,
+      props: props,
+      loops: loops,
+      patternName: v[2] ?? 'SOLID',
+      solid: (int.tryParse(v[70] ?? '0') ?? 0) != 0,
+      patternScale: n(41, 1) <= 0 ? 1 : n(41, 1),
+      patternAngle: n(52) * math.pi / 180,
+    );
+  }
+
   static CadEntity? _decode(String type, List<(int, String)> pairs, int id) {
     final v = <int, String>{};
     final xs = <double>[];
@@ -352,6 +411,8 @@ class DxfReader {
           rotation: n(50) * math.pi / 180,
           styleName: v[7] ?? 'Standard',
         );
+      case 'HATCH':
+        return _hatch(id, props, pairs, v);
       case 'MTEXT':
         return MTextEntity(
           id: id,

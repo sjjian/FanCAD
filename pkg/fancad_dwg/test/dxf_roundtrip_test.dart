@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
@@ -250,6 +251,39 @@ void main() {
     expect(style.scale, closeTo(2, 1e-9));
     expect(style.decimalPlaces, 0);
     expect(style.textStyle, 'Standard');
+  });
+
+  test('a hatch keeps its pattern, scale and boundary through DXF', () {
+    final original = CadDocument();
+    original.addEntity(
+      HatchEntity(
+        id: 0,
+        loops: [
+          HatchLoop(
+            vertices: Float64List.fromList([0, 0, 20, 0, 20, 10, 0, 10]),
+          ),
+        ],
+        patternName: 'ANSI31',
+        solid: false,
+        patternScale: 2,
+        patternAngle: math.pi / 2,
+      ),
+    );
+
+    final dxf = const DxfWriter().writeString(original);
+    expect(dxf, contains('HATCH'));
+    expect(dxf, contains('ANSI31'));
+
+    final restored = const DxfReader().readString(dxf);
+    final hatch = restored.entities.whereType<HatchEntity>().single;
+    expect(hatch.patternName, 'ANSI31');
+    expect(hatch.solid, isFalse);
+    expect(hatch.patternScale, closeTo(2, 1e-9));
+    expect(hatch.patternAngle, closeTo(math.pi / 2, 1e-9));
+    expect(hatch.loops, hasLength(1));
+    expect(hatch.loops.single.pointCount, 4);
+    expect(hatch.loops.single.vertices[0], closeTo(0, 1e-9));
+    expect(hatch.loops.single.vertices[2], closeTo(20, 1e-9));
   });
 
   test('a dimension keeps its style and definition points through DXF', () {

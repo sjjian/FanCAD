@@ -284,6 +284,10 @@ class DxfWriter {
         _common(pair, entity, paperSpace: paperSpace);
         pair(2, entity.patternName);
         pair(70, entity.solid ? 1 : 0);
+        pair(41, entity.patternScale);
+        if (entity.patternAngle != 0) {
+          pair(52, entity.patternAngle * 180 / math.pi);
+        }
         pair(91, entity.loops.length);
         for (final loop in entity.loops) {
           pair(92, loop.isOuter ? 1 : 0);
