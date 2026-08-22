@@ -149,6 +149,9 @@ class DxfWriter {
       final index = aci.abs() == 0 ? 7 : aci.abs();
       pair(62, layer.visible ? aci : -index);
       pair(6, layer.lineType);
+      if (layer.lineWeight != LineWeight.byDefault) {
+        pair(370, layer.lineWeight);
+      }
     }
     pair(0, 'ENDTAB');
   }
@@ -435,6 +438,9 @@ class DxfWriter {
       pair(420, entity.props.color.value);
     }
     if (entity.props.lineType != 'ByLayer') pair(6, entity.props.lineType);
+    if (entity.props.lineWeight != LineWeight.byLayer) {
+      pair(370, entity.props.lineWeight);
+    }
   }
 
   static int _aci(CadColor color) =>

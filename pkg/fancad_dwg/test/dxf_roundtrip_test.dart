@@ -314,6 +314,28 @@ void main() {
     expect(dim.definitionPoints[2], const Vec2(5, 4));
   });
 
+  test('entity and layer line weights survive DXF', () {
+    final original = CadDocument()
+      ..putLayer(const LayerDef(name: 'THICK', lineWeight: 50))
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          start: Vec2.zero(),
+          end: Vec2(5, 0),
+          props: EntityProps(layer: 'THICK', lineWeight: 25),
+        ),
+      );
+
+    final restored = const DxfReader().readString(
+      const DxfWriter().writeString(original),
+    );
+    expect(restored.layers['THICK']?.lineWeight, 50);
+    expect(
+      restored.entities.whereType<LineEntity>().single.props.lineWeight,
+      25,
+    );
+  });
+
   test('a hidden layer stays off through DXF', () {
     final original = CadDocument()
       ..putLayer(

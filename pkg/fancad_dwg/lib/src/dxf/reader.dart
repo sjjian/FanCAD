@@ -298,6 +298,7 @@ class DxfReader {
       name: v[2] ?? '0',
       color: CadColor.indexed(raw.abs() == 0 ? 7 : raw.abs()),
       lineType: v[6] ?? 'Continuous',
+      lineWeight: int.tryParse(v[370] ?? '') ?? LineWeight.byDefault,
       visible: raw >= 0,
       frozen: flags & 1 != 0,
       locked: flags & 4 != 0,
@@ -389,6 +390,9 @@ class DxfReader {
               ? CadColor.indexed(int.tryParse(v[62]!) ?? 256)
               : const CadColor.byLayer(),
       lineType: v[6] ?? 'ByLayer',
+      lineWeight: v.containsKey(370)
+          ? int.tryParse(v[370]!) ?? LineWeight.byLayer
+          : LineWeight.byLayer,
     );
     double n(int code, [double fallback = 0]) =>
         double.tryParse(v[code] ?? '') ?? fallback;
