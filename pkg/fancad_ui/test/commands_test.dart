@@ -285,6 +285,31 @@ void main() {
       expect(spline.degree, 3);
     });
 
+    test('spline fit interpolates every supplied point', () async {
+      final result = await run('draw.spline', {
+        'method': 'fit',
+        'points': [
+          [0, 0],
+          [1, 2],
+          [3, 1],
+          [4, 0],
+        ],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final spline = document.entities.first as SplineEntity;
+      expect(spline.fitPointBuffer.length, 8);
+      expect(spline.fitPointBuffer[2], closeTo(1, 1e-9));
+      expect(spline.fitPointBuffer[3], closeTo(2, 1e-9));
+      final at = Flatten.bsplineEvaluate(
+        controlPoints: spline.controlPoints,
+        knots: spline.knots,
+        degree: spline.degree,
+        t: 0,
+      );
+      expect(at, const Vec2(0, 0));
+    });
+
     test('ellipse creates a full ellipse from centre and axes', () async {
       final result = await run('draw.ellipse', {
         'center': [0, 0],

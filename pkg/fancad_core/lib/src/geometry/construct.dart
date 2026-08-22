@@ -446,6 +446,125 @@ class Construct {
     );
   }
 
+  /// A clamped B-spline that interpolates [points].
+  ///
+  /// Chord-length parameters and an averaging knot vector keep the
+  /// interpolation matrix well-conditioned, so the curve actually passes
+  /// through every click instead of only being pulled toward them.
+  static SplineEntity? splineFromFit(
+    List<Vec2> points, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    if (points.length < 2) return null;
+    final degree = math.min(3, points.length - 1);
+    final params = _chordParams(points);
+    final knots = _averagingKnots(params, degree);
+    final matrix = [
+      for (var i = 0; i < points.length; i++)
+        Flatten.bsplineBasis(
+          knots: knots,
+          count: points.length,
+          degree: degree,
+          t: params[i],
+        ),
+    ];
+    final controls = _solveLinear(matrix, points);
+    if (controls == null) return null;
+    final controlPoints = Float64List(points.length * 2);
+    final fitPoints = Float64List(points.length * 2);
+    for (var i = 0; i < points.length; i++) {
+      controlPoints[i * 2] = controls[i].x;
+      controlPoints[i * 2 + 1] = controls[i].y;
+      fitPoints[i * 2] = points[i].x;
+      fitPoints[i * 2 + 1] = points[i].y;
+    }
+    return SplineEntity(
+      id: id,
+      props: props,
+      controlPoints: controlPoints,
+      knots: knots,
+      degree: degree,
+      fitPoints: fitPoints,
+    );
+  }
+
+  static List<double> _chordParams(List<Vec2> points) {
+    final n = points.length;
+    final params = List<double>.filled(n, 0);
+    var total = 0.0;
+    final chord = List<double>.filled(n, 0);
+    for (var i = 1; i < n; i++) {
+      chord[i] = math.max(points[i].distanceTo(points[i - 1]), 1e-12);
+      total += chord[i];
+    }
+    for (var i = 1; i < n; i++) {
+      params[i] = params[i - 1] + chord[i] / total;
+    }
+    params[n - 1] = 1;
+    return params;
+  }
+
+  /// Piegl/Tiller averaging knots so interpolation parameters sit inside
+  /// spans rather than on uniform knots that miss uneven clicks.
+  static List<double> _averagingKnots(List<double> params, int degree) {
+    final n = params.length;
+    final knots = List<double>.filled(n + degree + 1, 0);
+    for (var i = 0; i <= degree; i++) {
+      knots[i] = 0;
+      knots[knots.length - 1 - i] = 1;
+    }
+    for (var j = 1; j <= n - degree - 1; j++) {
+      var sum = 0.0;
+      for (var i = j; i <= j + degree - 1; i++) {
+        sum += params[i];
+      }
+      knots[j + degree] = sum / degree;
+    }
+    return knots;
+  }
+
+  /// Gauss-Jordan with two right-hand sides (x and y of each [rhs] point).
+  static List<Vec2>? _solveLinear(List<List<double>> matrix, List<Vec2> rhs) {
+    final n = rhs.length;
+    if (matrix.length != n) return null;
+    final work = List.generate(n, (i) {
+      if (matrix[i].length != n) return <double>[];
+      return [...matrix[i], rhs[i].x, rhs[i].y];
+    });
+    if (work.any((row) => row.length != n + 2)) return null;
+    for (var k = 0; k < n; k++) {
+      var pivot = k;
+      var best = work[k][k].abs();
+      for (var i = k + 1; i < n; i++) {
+        final value = work[i][k].abs();
+        if (value > best) {
+          best = value;
+          pivot = i;
+        }
+      }
+      if (best < 1e-12) return null;
+      if (pivot != k) {
+        final swap = work[k];
+        work[k] = work[pivot];
+        work[pivot] = swap;
+      }
+      final diag = work[k][k];
+      for (var j = k; j < n + 2; j++) {
+        work[k][j] /= diag;
+      }
+      for (var i = 0; i < n; i++) {
+        if (i == k) continue;
+        final factor = work[i][k];
+        if (factor.abs() < 1e-15) continue;
+        for (var j = k; j < n + 2; j++) {
+          work[i][j] -= factor * work[k][j];
+        }
+      }
+    }
+    return [for (var i = 0; i < n; i++) Vec2(work[i][n], work[i][n + 1])];
+  }
+
   /// Open clamped uniform knots: `count + degree + 1` values, 0 at the start
   /// and 1 at the end, equally spaced in between.
   static List<double> _clampedUniformKnots(int count, int degree) {

@@ -378,6 +378,58 @@ void main() {
     });
   });
 
+  group('splineFromFit', () {
+    test('passes through every fit point', () {
+      const fits = [
+        Vec2(0, 0),
+        Vec2(1, 2),
+        Vec2(3, 1),
+        Vec2(4, 0),
+        Vec2(6, 1),
+      ];
+      final spline = Construct.splineFromFit(fits);
+      expect(spline, isNotNull);
+      expect(spline!.degree, 3);
+      expect(spline.fitPointBuffer.length, 10);
+
+      final chords = [
+        for (var i = 1; i < fits.length; i++)
+          math.max(fits[i].distanceTo(fits[i - 1]), 1e-12),
+      ];
+      final total = chords.fold<double>(0, (sum, item) => sum + item);
+      var along = 0.0;
+      for (var i = 0; i < fits.length; i++) {
+        final t = i == 0
+            ? 0.0
+            : i == fits.length - 1
+            ? 1.0
+            : (along += chords[i - 1]) / total;
+        final at = Flatten.bsplineEvaluate(
+          controlPoints: spline.controlPoints,
+          knots: spline.knots,
+          degree: spline.degree,
+          t: t,
+        );
+        expect(at, isNotNull);
+        expect(at!.x, closeTo(fits[i].x, 1e-8));
+        expect(at.y, closeTo(fits[i].y, 1e-8));
+      }
+    });
+
+    test('control-point mode does not interpolate the middle click', () {
+      const fits = [Vec2(0, 0), Vec2(0, 4), Vec2(4, 4), Vec2(4, 0)];
+      final pulled = Construct.splineFromControls(fits)!;
+      final mid = Flatten.bsplineEvaluate(
+        controlPoints: pulled.controlPoints,
+        knots: pulled.knots,
+        degree: pulled.degree,
+        t: 1 / 3,
+      );
+      expect(mid, isNotNull);
+      expect((mid! - fits[1]).length, greaterThan(0.2));
+    });
+  });
+
   group('donut', () {
     test('stores a wide circular polyline on the average radius', () {
       final donut = Construct.donut(

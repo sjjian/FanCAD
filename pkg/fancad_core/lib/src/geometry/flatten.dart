@@ -260,6 +260,62 @@ class Flatten {
     return out;
   }
 
+  /// Basis weights `N_{0,p}(t) … N_{n-1,p}(t)` for one parameter.
+  ///
+  /// Used to invert a clamped spline so fit points become control points.
+  static List<double> bsplineBasis({
+    required List<double> knots,
+    required int count,
+    required int degree,
+    required double t,
+  }) {
+    final row = List<double>.filled(count, 0);
+    if (count <= degree || degree < 1 || knots.length != count + degree + 1) {
+      return row;
+    }
+    final tMin = knots[degree];
+    final tMax = knots[count];
+    if (!(tMax > tMin)) return row;
+    var u = t;
+    if (u >= tMax) u = tMax - 1e-12;
+    if (u < tMin) u = tMin;
+    final span = _findSpan(knots, count, degree, u);
+    final basis = _basisFunctions(knots, span, degree, u);
+    for (var i = 0; i <= degree; i++) {
+      final index = span - degree + i;
+      if (index >= 0 && index < count) row[index] = basis[i];
+    }
+    return row;
+  }
+
+  /// The curve point at parameter [t].
+  static Vec2? bsplineEvaluate({
+    required Float64List controlPoints,
+    required List<double> knots,
+    required int degree,
+    required double t,
+    List<double> weights = const [],
+  }) {
+    final n = controlPoints.length ~/ 2;
+    final row = bsplineBasis(
+      knots: knots,
+      count: n,
+      degree: degree,
+      t: t,
+    );
+    if (row.every((w) => w == 0)) return null;
+    var x = 0.0, y = 0.0, w = 0.0;
+    final rational = weights.length == n;
+    for (var i = 0; i < n; i++) {
+      final weight = (rational ? weights[i] : 1.0) * row[i];
+      x += controlPoints[i * 2] * weight;
+      y += controlPoints[i * 2 + 1] * weight;
+      w += weight;
+    }
+    if (w == 0) return null;
+    return Vec2(x / w, y / w);
+  }
+
   static int _findSpan(List<double> knots, int n, int degree, double t) {
     if (t >= knots[n]) return n - 1;
     var low = degree;

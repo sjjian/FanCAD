@@ -185,31 +185,55 @@ class DrawCommands {
     category: _category,
     aliases: const ['spl', 'spline'],
     description:
-        'Draws a clamped B-spline from control points. The curve passes '
-        'through the first and last points and is pulled toward the ones in '
-        'between. Pass a points array to create it non-interactively.',
+        'Draws a clamped B-spline. Control-point mode pulls the curve toward '
+        'the clicks and only guarantees the ends. Fit mode interpolates every '
+        'point. Pass a points array to create it non-interactively.',
     params: const [
+      ParamSpec(
+        name: 'method',
+        type: ParamType.text,
+        description: 'Control or Fit',
+        required: false,
+      ),
       ParamSpec(
         name: 'points',
         type: ParamType.json,
-        description: 'Array of [x, y] control points',
+        description: 'Array of [x, y] points',
         required: false,
       ),
     ],
     handler: (context) async {
       final layer = context.document.currentLayer;
       final supplied = _pointList(context.args['points']);
+      final useFit = _splineUsesFit(context.args.text('method'));
       if (supplied.length >= 2) {
-        final spline = Construct.splineFromControls(
-          supplied,
-          props: EntityProps(layer: layer),
-        );
+        final spline = useFit
+            ? Construct.splineFromFit(
+                supplied,
+                props: EntityProps(layer: layer),
+              )
+            : Construct.splineFromControls(
+                supplied,
+                props: EntityProps(layer: layer),
+              );
         if (spline == null) {
-          return const CommandResult.failed('Need at least two control points.');
+          return CommandResult.failed(
+            useFit
+                ? 'Need at least two fit points that can be interpolated.'
+                : 'Need at least two control points.',
+          );
         }
         return _commit(context, 'Spline', [spline]);
       }
 
+      final method = context.args.text('method') ??
+          await context.input.keyword(
+            'SPLINE  Enter method [Control/Fit]:',
+            const ['Control', 'Fit'],
+            defaultOption: 'Control',
+          );
+      final fit = _splineUsesFit(method);
+      final kind = fit ? 'fit' : 'control';
       final points = <Vec2>[];
       while (true) {
         context.input
@@ -217,12 +241,12 @@ class DrawCommands {
           ..setPreview(
             points.isEmpty
                 ? null
-                : (cursor) => _splineOverlay([...points, cursor]),
+                : (cursor) => _splineOverlay([...points, cursor], fit: fit),
           );
         final next = await context.input.pointOrNull(
           points.isEmpty
-              ? 'SPLINE  Specify first point:'
-              : 'SPLINE  Specify next control point (Escape to finish):',
+              ? 'SPLINE  Specify first $kind point:'
+              : 'SPLINE  Specify next $kind point (Escape to finish):',
         );
         if (next == null) break;
         points.add(next);
@@ -232,19 +256,36 @@ class DrawCommands {
         ..setMarkers(const []);
 
       if (points.length < 2) return const CommandResult.cancelled();
-      final spline = Construct.splineFromControls(
-        points,
-        props: EntityProps(layer: layer),
-      );
+      final spline = fit
+          ? Construct.splineFromFit(
+              points,
+              props: EntityProps(layer: layer),
+            )
+          : Construct.splineFromControls(
+              points,
+              props: EntityProps(layer: layer),
+            );
       if (spline == null) {
-        return const CommandResult.failed('Need at least two control points.');
+        return CommandResult.failed(
+          fit
+              ? 'Need at least two fit points that can be interpolated.'
+              : 'Need at least two control points.',
+        );
       }
       return _commit(context, 'Spline', [spline]);
     },
   );
 
-  static List<OverlayShape> _splineOverlay(List<Vec2> points) {
-    final spline = Construct.splineFromControls(points);
+  static bool _splineUsesFit(String? method) =>
+      (method ?? '').trim().toLowerCase() == 'fit';
+
+  static List<OverlayShape> _splineOverlay(
+    List<Vec2> points, {
+    bool fit = false,
+  }) {
+    final spline = fit
+        ? Construct.splineFromFit(points)
+        : Construct.splineFromControls(points);
     if (spline == null) return [OverlayPolyline(List.of(points))];
     final sampled = Flatten.bspline(
       controlPoints: spline.controlPoints,
