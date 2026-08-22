@@ -1421,6 +1421,37 @@ void main() {
       expect((document.entity(id)! as PolylineEntity).closed, isFalse);
     });
 
+    test('polyline width stores a constant stroke', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.polylineWidth', {
+        'ids': [id],
+        'width': 2,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as PolylineEntity).constantWidth, 2);
+    });
+
+    test('polyline width refuses a line', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.polylineWidth', {
+        'ids': [id],
+        'width': 2,
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entity(id), isA<LineEntity>());
+    });
+
     test('reverse swaps the ends of a line', () async {
       final id = await drawLine(0, 0, 10, 4);
 
