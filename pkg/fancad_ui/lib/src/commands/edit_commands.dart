@@ -31,6 +31,7 @@ class EditCommands {
     _explode(),
     _join(),
     _close(),
+    _open(),
     _reverse(),
     _undo(),
     _redo(),
@@ -1316,6 +1317,63 @@ class EditCommands {
       return CommandResult(
         status: CommandStatus.ok,
         message: 'Closed ${targets.length} polyline(s).',
+        transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _open() => CommandDescriptor(
+    id: 'edit.open',
+    title: 'Open Polyline',
+    category: _category,
+    aliases: const ['plopen'],
+    description:
+        'Opens the selected closed polylines by dropping the closing segment. '
+        'The vertices stay; only the loop is broken.',
+    params: const [ParamSpec.selection('ids')],
+    handler: (context) async {
+      final ids = await context.resolveSelection(
+        'ids',
+        'PEDIT  Select polylines to open:',
+      );
+      if (ids.isEmpty) return const CommandResult.cancelled();
+
+      final targets = <PolylineEntity>[];
+      for (final id in ids) {
+        final entity = context.document.entity(id);
+        if (entity is PolylineEntity &&
+            entity.closed &&
+            entity.vertexCount >= 2) {
+          targets.add(entity);
+        }
+      }
+      if (targets.isEmpty) {
+        return const CommandResult.failed(
+          'Select at least one closed polyline.',
+        );
+      }
+
+      final committed = context.edit('Open Polyline', (transaction) {
+        for (final polyline in targets) {
+          transaction.modify(
+            PolylineEntity(
+              id: polyline.id,
+              props: polyline.props,
+              vertices: polyline.vertices,
+              closed: false,
+              constantWidth: polyline.constantWidth,
+            ),
+          );
+        }
+      });
+      if (committed == null) {
+        return const CommandResult.failed(
+          'Nothing was opened; the polylines may be on a locked layer.',
+        );
+      }
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Opened ${targets.length} polyline(s).',
         transaction: committed,
       );
     },

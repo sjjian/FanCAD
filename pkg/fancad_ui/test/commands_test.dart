@@ -590,6 +590,19 @@ void main() {
       expect(result.status, CommandStatus.failed);
     });
 
+    test('open drops the closing segment of a polyline', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [4, 3],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.open', {'ids': [id]});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as PolylineEntity).closed, isFalse);
+    });
+
     test('reverse swaps the ends of a line', () async {
       final id = await drawLine(0, 0, 10, 4);
 
