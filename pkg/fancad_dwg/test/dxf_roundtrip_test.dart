@@ -314,6 +314,34 @@ void main() {
     expect(dim.definitionPoints[2], const Vec2(5, 4));
   });
 
+  test('a hidden layer stays off through DXF', () {
+    final original = CadDocument()
+      ..putLayer(
+        const LayerDef(
+          name: 'CONSTRUCTION',
+          color: CadColor.indexed(3),
+          visible: false,
+        ),
+      )
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          start: Vec2.zero(),
+          end: Vec2(4, 0),
+          props: EntityProps(layer: 'CONSTRUCTION'),
+        ),
+      );
+
+    final dxf = const DxfWriter().writeString(original);
+    expect(dxf, contains('\n-3\n'));
+
+    final restored = const DxfReader().readString(dxf);
+    final layer = restored.layers['CONSTRUCTION'];
+    expect(layer, isNotNull);
+    expect(layer!.visible, isFalse);
+    expect(layer.color.value, 3);
+  });
+
   test('line type dash patterns survive DXF', () {
     final original = CadDocument()
       ..putLineType(

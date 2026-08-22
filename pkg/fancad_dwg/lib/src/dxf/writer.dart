@@ -143,7 +143,11 @@ class DxfWriter {
       pair(0, 'LAYER');
       pair(2, layer.name);
       pair(70, (layer.frozen ? 1 : 0) | (layer.locked ? 4 : 0));
-      pair(62, _aci(layer.color));
+      final aci = _aci(layer.color);
+      // A negative colour is how DXF records an off layer. Writing the
+      // unsigned index would turn every hidden layer back on at the next open.
+      final index = aci.abs() == 0 ? 7 : aci.abs();
+      pair(62, layer.visible ? aci : -index);
       pair(6, layer.lineType);
     }
     pair(0, 'ENDTAB');

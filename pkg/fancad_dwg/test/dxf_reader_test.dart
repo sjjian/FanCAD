@@ -51,6 +51,7 @@ EOF
     final layer = document.layer('DIM')!;
     expect(layer.frozen, isTrue);
     expect(layer.locked, isTrue);
+    expect(layer.visible, isTrue);
     expect(layer.color.value, 1);
   });
 

@@ -293,10 +293,12 @@ class DxfReader {
 
   static LayerDef _layer(Map<int, String> v) {
     final flags = int.tryParse(v[70] ?? '0') ?? 0;
+    final raw = int.tryParse(v[62] ?? '7') ?? 7;
     return LayerDef(
       name: v[2] ?? '0',
-      color: CadColor.indexed(int.tryParse(v[62] ?? '7') ?? 7),
+      color: CadColor.indexed(raw.abs() == 0 ? 7 : raw.abs()),
       lineType: v[6] ?? 'Continuous',
+      visible: raw >= 0,
       frozen: flags & 1 != 0,
       locked: flags & 4 != 0,
     );
