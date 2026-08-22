@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_dwg/fancad_dwg.dart';
 import 'package:fancad_render/fancad_render.dart';
@@ -84,6 +86,27 @@ void main() {
     expect(await ws.openFile('   '), isNull);
     expect(ws.notices.last.message, contains('no file to open'));
     expect(ws.tabs, hasLength(2));
+  });
+
+  test('the same drawing reached via two paths stays one tab', () async {
+    final ws = workspace();
+    final dir = Directory.systemTemp.createTempSync('fancad-open-id');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final file = File('${dir.path}/part.dxf')
+      ..writeAsStringSync('0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n');
+
+    final first = await ws.openFile(file.path);
+    expect(first, isNotNull);
+    expect(ws.tabs, hasLength(1));
+
+    final dotted = await ws.openFile('${dir.path}/./part.dxf');
+    expect(dotted, same(first));
+    expect(ws.tabs, hasLength(1));
+
+    final link = Link('${dir.path}/alias.dxf')..createSync(file.path);
+    final viaLink = await ws.openFile(link.path);
+    expect(viaLink, same(first));
+    expect(ws.tabs, hasLength(1));
   });
 
   test('notices cap at 32 and approval without a listener is a decline',

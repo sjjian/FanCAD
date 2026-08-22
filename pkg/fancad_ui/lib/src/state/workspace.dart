@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_dwg/fancad_dwg.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 import '../workbench/command_line_model.dart';
 import '../workbench/interactive_input.dart';
@@ -155,9 +157,10 @@ class Workspace extends ChangeNotifier implements CommandServices {
       return null;
     }
     // An already-open file is activated rather than opened twice; two tabs onto
-    // one file with independent undo stacks is a data-loss trap.
+    // one file with independent undo stacks is a data-loss trap. Compare the
+    // resolved file, so a symlink or a `./` in the path is not a second tab.
     for (var i = 0; i < _tabs.length; i++) {
-      if (_tabs[i].filePath == target) {
+      if (_sameDrawingFile(_tabs[i].filePath, target)) {
         activate(i);
         return _tabs[i];
       }
@@ -165,21 +168,22 @@ class Workspace extends ChangeNotifier implements CommandServices {
     try {
       commandLine.write('Opening $target ...');
       final result = await importer.open(target);
+      final stored = _fileIdentity(target);
       final session = DocumentSession(
         id: '${_nextSessionId++}',
         document: result.document,
-        filePath: target,
+        filePath: stored,
       );
       final tab = _adopt(
         DocumentTab(
           session: session,
           snapEngine: snapEngine,
-          filePath: target,
+          filePath: stored,
           diagnostics: result.diagnostics,
         ),
       );
       tab.viewport.zoomToExtents(result.document);
-      settings.pushRecent(SettingsKeys.recentFiles, target);
+      settings.pushRecent(SettingsKeys.recentFiles, stored);
       commandLine.writeSuccess(
         'Opened ${result.entityCount} entities in '
         '${result.totalTime.inMilliseconds} ms'
@@ -225,13 +229,14 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
     try {
       final outcome = await importer.save(target, tab.document);
-      tab.markSaved(outcome.path);
-      settings.pushRecent(SettingsKeys.recentFiles, outcome.path);
+      final written = _fileIdentity(outcome.path);
+      tab.markSaved(written);
+      settings.pushRecent(SettingsKeys.recentFiles, written);
       if (outcome.usedFallback && outcome.plan.reason.isNotEmpty) {
         notify(outcome.plan.reason);
       }
       notifyListeners();
-      return outcome.path;
+      return written;
     } catch (error) {
       notify('Could not save $target: $error', isError: true);
       return null;
@@ -603,5 +608,24 @@ class Workspace extends ChangeNotifier implements CommandServices {
     _panelReveals.close();
     commandLine.dispose();
     super.dispose();
+  }
+
+  static bool _sameDrawingFile(String? existing, String incoming) {
+    if (existing == null || existing.isEmpty) return false;
+    if (existing == incoming) return true;
+    return _fileIdentity(existing) == _fileIdentity(incoming);
+  }
+
+  /// The on-disk identity of [path], so `/tmp/a.dxf` and a symlink to it match.
+  static String _fileIdentity(String path) {
+    final file = File(path);
+    try {
+      if (file.existsSync()) {
+        return file.resolveSymbolicLinksSync();
+      }
+    } on FileSystemException {
+      // Missing files and dangling links still need a stable comparison key.
+    }
+    return p.normalize(file.absolute.path);
   }
 }
