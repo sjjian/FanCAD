@@ -611,6 +611,37 @@ void main() {
     });
   });
 
+  group('chamferPolylineVertex', () {
+    test('replaces a square corner with a straight cut', () {
+      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final chamfered = Construct.chamferPolylineVertex(
+        square,
+        const Vec2(0, 0),
+        dist1: 2,
+      );
+
+      expect(chamfered, isNotNull);
+      expect(chamfered!.vertexCount, 5);
+      expect(chamfered.vertexAt(0).x, closeTo(0, 1e-9));
+      expect(chamfered.vertexAt(0).y, closeTo(2, 1e-9));
+      expect(chamfered.vertexAt(1).x, closeTo(2, 1e-9));
+      expect(chamfered.vertexAt(1).y, closeTo(0, 1e-9));
+      expect(chamfered.bulgeAt(0), 0);
+    });
+
+    test('refuses distances longer than the adjoining sides', () {
+      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(4, 4))!;
+      expect(
+        Construct.chamferPolylineVertex(
+          square,
+          const Vec2(0, 0),
+          dist1: 5,
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('breakLine', () {
     test('splits a line at one interior point', () {
       final pieces = Construct.breakLine(

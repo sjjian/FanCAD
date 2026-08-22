@@ -1132,9 +1132,9 @@ class EditCommands {
     aliases: const ['cha', 'chamfer'],
     icon: 'chamfer',
     description:
-        'Cuts a straight bevel between two lines. The two distances are '
-        'measured from the intersection back along each line; omit the second '
-        'to use the same length on both. Both zero makes a sharp corner.',
+        'Cuts a straight bevel between two lines, or at the picked vertex of '
+        'a polyline. The two distances are measured from the corner back along '
+        'each segment; omit the second to use the same length on both.',
     params: const [
       ParamSpec(
         name: 'dist1',
@@ -1198,19 +1198,26 @@ class EditCommands {
       final firstId = context.args.integer('first');
       final secondId = context.args.integer('second');
       final int id1;
-      final int id2;
+      final int? id2;
       if (firstId != null && secondId != null) {
         id1 = firstId;
         id2 = secondId;
+      } else if (firstId != null && secondId == null) {
+        id1 = firstId;
+        id2 = null;
       } else {
         context.selection.clear();
         final firstPick = await context.input.selection(
-          'CHAMFER  Select first line:',
+          'CHAMFER  Select first object:',
           useExistingSelection: false,
           single: true,
         );
         if (firstPick.isEmpty) return const CommandResult.cancelled();
         id1 = firstPick.first;
+        final firstEntity = context.document.entity(id1);
+        if (firstEntity is PolylineEntity) {
+          return _chamferPolyline(context, firstEntity, dist1, dist2);
+        }
         final secondPick = await context.input.selection(
           'CHAMFER  Select second line:',
           useExistingSelection: false,
@@ -1221,10 +1228,14 @@ class EditCommands {
       }
 
       final first = context.document.entity(id1);
-      final second = context.document.entity(id2);
+      if (first is PolylineEntity && (id2 == null || id2 == id1)) {
+        return _chamferPolyline(context, first, dist1, dist2);
+      }
+
+      final second = id2 == null ? null : context.document.entity(id2);
       if (first is! LineEntity || second is! LineEntity) {
         return const CommandResult.failed(
-          'Chamfer currently supports lines only.',
+          'Chamfer a polyline vertex, or two lines.',
         );
       }
       if (id1 == id2) {
@@ -1277,6 +1288,53 @@ class EditCommands {
       );
     },
   );
+
+  static Future<CommandResult> _chamferPolyline(
+    CommandContext context,
+    PolylineEntity polyline,
+    double dist1,
+    double dist2,
+  ) async {
+    if (dist1 <= 0 || dist2 <= 0) {
+      return const CommandResult.failed(
+        'A polyline chamfer needs positive distances.',
+      );
+    }
+    final pick = context.args.point('pick1') ??
+        context.args.point('pick') ??
+        await context.input.point(
+          'CHAMFER  Specify a vertex to bevel:',
+        );
+    final result = Construct.chamferPolylineVertex(
+      polyline,
+      pick,
+      dist1: dist1,
+      dist2: dist2,
+    );
+    if (result == null) {
+      return const CommandResult.failed(
+        'That vertex cannot be chamfered; the distances may be longer than '
+        'the adjoining segments, or the corner may already be an arc.',
+      );
+    }
+    final committed = context.edit('Chamfer', (transaction) {
+      transaction.modify(result);
+    });
+    if (committed == null) {
+      return const CommandResult.failed(
+        'Nothing was chamfered; the polyline may be on a locked layer.',
+      );
+    }
+    context.selection.replace([polyline.id]);
+    return CommandResult(
+      status: CommandStatus.ok,
+      message:
+          'Chamfer: polyline vertex, ${dist1.toStringAsFixed(4)} x '
+          '${dist2.toStringAsFixed(4)}.',
+      data: {'ids': [polyline.id]},
+      transaction: committed,
+    );
+  }
 
   static CommandDescriptor _break() => CommandDescriptor(
     id: 'edit.break',

@@ -809,6 +809,96 @@ class Construct {
     );
   }
 
+  /// Bevels the vertex of [polyline] nearest [pick].
+  ///
+  /// [dist1] is measured back along the incoming segment, [dist2] along the
+  /// outgoing one. Both must be positive and shorter than those segments.
+  static PolylineEntity? chamferPolylineVertex(
+    PolylineEntity polyline,
+    Vec2 pick, {
+    required double dist1,
+    double? dist2,
+  }) {
+    final second = dist2 ?? dist1;
+    if (dist1 <= 0 || second <= 0 || !dist1.isFinite || !second.isFinite) {
+      return null;
+    }
+    final count = polyline.vertexCount;
+    if (count < 3) return null;
+
+    var best = -1;
+    var bestDistance = double.infinity;
+    final firstIndex = polyline.closed ? 0 : 1;
+    final lastIndex = polyline.closed ? count : count - 1;
+    for (var i = firstIndex; i < lastIndex; i++) {
+      final prev = (i - 1 + count) % count;
+      if (polyline.bulgeAt(prev).abs() > 1e-9) continue;
+      if (polyline.bulgeAt(i).abs() > 1e-9) continue;
+      final distance = polyline.vertexAt(i).distanceSquaredTo(pick);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = i;
+      }
+    }
+    if (best < 0) return null;
+
+    final prevIndex = (best - 1 + count) % count;
+    final nextIndex = (best + 1) % count;
+    final prev = polyline.vertexAt(prevIndex);
+    final corner = polyline.vertexAt(best);
+    final next = polyline.vertexAt(nextIndex);
+    final incoming = LineEntity(id: 0, start: prev, end: corner);
+    final outgoing = LineEntity(id: 0, start: corner, end: next);
+    final chamfered = chamferLines(
+      incoming,
+      outgoing,
+      dist1,
+      second,
+      incoming.midpoint,
+      outgoing.midpoint,
+    );
+    if (chamfered?.cut == null) return null;
+
+    final tangent1 = chamfered!.first.start;
+    final tangent2 = chamfered.second.start;
+    if (Intersect.distanceToSegment(tangent1, prev, corner) > 1e-6) {
+      return null;
+    }
+    if (Intersect.distanceToSegment(tangent2, corner, next) > 1e-6) {
+      return null;
+    }
+    if (tangent1.distanceTo(prev) < 1e-9 ||
+        tangent1.distanceTo(corner) < 1e-9 ||
+        tangent2.distanceTo(next) < 1e-9 ||
+        tangent2.distanceTo(corner) < 1e-9) {
+      return null;
+    }
+
+    final out = Float64List((count + 1) * 3);
+    var write = 0;
+    for (var i = 0; i < count; i++) {
+      if (i == best) {
+        out[write++] = tangent1.x;
+        out[write++] = tangent1.y;
+        out[write++] = 0;
+        out[write++] = tangent2.x;
+        out[write++] = tangent2.y;
+        out[write++] = 0;
+      } else {
+        out[write++] = polyline.vertices[i * 3];
+        out[write++] = polyline.vertices[i * 3 + 1];
+        out[write++] = polyline.vertices[i * 3 + 2];
+      }
+    }
+    return PolylineEntity(
+      id: polyline.id,
+      props: polyline.props,
+      vertices: out,
+      closed: polyline.closed,
+      constantWidth: polyline.constantWidth,
+    );
+  }
+
   /// Breaks [line] at [first], or removes the span between [first] and [second].
   ///
   /// One point splits the line in two. Two points drop the middle and leave
