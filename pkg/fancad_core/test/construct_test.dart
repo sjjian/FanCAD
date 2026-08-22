@@ -1566,6 +1566,55 @@ void main() {
         isNull,
       );
     });
+
+    test('grows a bulge along its arc', () {
+      final quarter = PolylineEntity(
+        id: 1,
+        vertices: Float64List.fromList([
+          10,
+          0,
+          math.tan(math.pi / 8),
+          0,
+          10,
+          0,
+        ]),
+      );
+
+      final longer = Construct.lengthenPolyline(
+        quarter,
+        const Vec2(0, 10),
+        total: 10 * math.pi * 0.75,
+      );
+
+      expect(longer, isNotNull);
+      expect(longer!.vertexAt(1).x, closeTo(-10 * math.cos(math.pi / 4), 1e-9));
+      expect(longer.vertexAt(1).y, closeTo(10 * math.sin(math.pi / 4), 1e-9));
+      expect(longer.bulgeAt(0), closeTo(math.tan(3 * math.pi / 16), 1e-9));
+    });
+
+    test('shortens a bulge along its arc', () {
+      final quarter = PolylineEntity(
+        id: 1,
+        vertices: Float64List.fromList([
+          10,
+          0,
+          math.tan(math.pi / 8),
+          0,
+          10,
+          0,
+        ]),
+      );
+
+      final shorter = Construct.lengthenPolyline(
+        quarter,
+        const Vec2(0, 10),
+        total: 10 * math.pi / 4,
+      );
+
+      expect(shorter!.vertexAt(1).x, closeTo(10 * math.cos(math.pi / 4), 1e-9));
+      expect(shorter.vertexAt(1).y, closeTo(10 * math.sin(math.pi / 4), 1e-9));
+      expect(shorter.bulgeAt(0), closeTo(math.tan(math.pi / 16), 1e-9));
+    });
   });
 
   group('lengthenArc', () {

@@ -997,6 +997,29 @@ void main() {
       expect(polyline.vertexAt(2).y, closeTo(15, 1e-9));
     });
 
+    test('lengthen grows a joined bulge along its arc', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {'ids': [lineId, arcId]});
+      final id = document.entities.first.id;
+
+      final result = await run('edit.lengthen', {
+        'target': id,
+        'pick': [0, 10],
+        'delta': 5 * 3.141592653589793 / 2,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(id)! as PolylineEntity;
+      expect(polyline.vertexAt(2).x, closeTo(-7.0710678118654755, 1e-6));
+      expect(polyline.vertexAt(2).y, closeTo(7.0710678118654755, 1e-6));
+    });
+
     test('lengthen extends an arc from the picked end', () async {
       final created = await run('draw.arc', {
         'start': [10, 0],

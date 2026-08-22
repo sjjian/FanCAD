@@ -1747,6 +1747,28 @@ class Construct {
     return best;
   }
 
+  static List<_PolyVert> _polyVertsOf(PolylineEntity polyline) {
+    final count = polyline.vertexCount;
+    return [
+      for (var i = 0; i < count; i++)
+        _PolyVert(
+          polyline.vertexAt(i),
+          i < count - 1 ? polyline.bulgeAt(i) : 0,
+        ),
+    ];
+  }
+
+  static List<_PolyVert> _reversedPolyVerts(List<_PolyVert> verts) {
+    final count = verts.length;
+    return [
+      for (var i = 0; i < count; i++)
+        _PolyVert(
+          verts[count - 1 - i].point,
+          i < count - 1 ? -verts[count - 2 - i].bulge : 0,
+        ),
+    ];
+  }
+
   static PolylineEntity _openPolyVerts(
     PolylineEntity source,
     List<_PolyVert> verts,
@@ -2247,21 +2269,20 @@ class Construct {
         : resizedLine(line, 0, scale);
   }
 
-  /// Changes the length of an open straight [polyline] from the nearer end.
+  /// Changes the length of an open [polyline] from the nearer end.
   ///
   /// The opposite end stays put. Extending grows the last (or first) segment
-  /// along its own direction; shortening walks back through vertices and
-  /// drops those that fall past the new total. Closed or bulged polylines
-  /// return null — those need a different edit.
+  /// along its own path — a straight arm keeps its direction, a bulge grows
+  /// its sweep without closing the circle. Shortening walks back through
+  /// vertices and drops those that fall past the new total. Closed polylines
+  /// return null.
   static PolylineEntity? lengthenPolyline(
     PolylineEntity polyline,
     Vec2 pick, {
     double? delta,
     double? total,
   }) {
-    if (polyline.closed || polyline.hasBulges || polyline.vertexCount < 2) {
-      return null;
-    }
+    if (polyline.closed || polyline.vertexCount < 2) return null;
     final current = _polylineLength(polyline);
     if (current < 1e-12) return null;
     final target = total ?? (current + (delta ?? 0));
@@ -2271,15 +2292,13 @@ class Construct {
     final end = polyline.vertexAt(polyline.vertexCount - 1);
     final fromStart =
         pick.distanceSquaredTo(start) <= pick.distanceSquaredTo(end);
-    var chain = [
-      for (var i = 0; i < polyline.vertexCount; i++) polyline.vertexAt(i),
-    ];
-    if (fromStart) chain = chain.reversed.toList();
-    final trimmed = _trimChainToLength(chain, target);
+    var chain = _polyVertsOf(polyline);
+    if (fromStart) chain = _reversedPolyVerts(chain);
+    final trimmed = _trimChainToLengthVerts(chain, target);
     if (trimmed == null) return null;
-    return _openPolyline(
+    return _openPolyVerts(
       polyline,
-      fromStart ? trimmed.reversed.toList() : trimmed,
+      fromStart ? _reversedPolyVerts(trimmed) : trimmed,
       polyline.id,
     );
   }
@@ -2310,6 +2329,63 @@ class Construct {
       startAngle: fromStart ? arc.endAngle - newSweep : arc.startAngle,
       endAngle: fromStart ? arc.endAngle : arc.startAngle + newSweep,
     );
+  }
+
+  /// [verts] run from the fixed end toward the moving end.
+  static List<_PolyVert>? _trimChainToLengthVerts(
+    List<_PolyVert> verts,
+    double target,
+  ) {
+    if (verts.length < 2) return null;
+    final out = <_PolyVert>[_PolyVert(verts.first.point, 0)];
+    var accumulated = 0.0;
+    for (var i = 0; i < verts.length - 1; i++) {
+      final from = verts[i].point;
+      final to = verts[i + 1].point;
+      final bulge = verts[i].bulge;
+      final segment = _segmentLength(from, to, bulge);
+      if (segment < 1e-12) continue;
+      if (accumulated + segment >= target - 1e-12) {
+        final remain = (target - accumulated).clamp(0.0, segment);
+        final end = _pointAlongSegment(from, to, bulge, remain);
+        out.last.bulge = _partialBulge(bulge, 0, remain / segment);
+        if (end.distanceSquaredTo(out.last.point) > 1e-20) {
+          out.add(_PolyVert(end, 0));
+        }
+        return out.length >= 2 ? out : null;
+      }
+      accumulated += segment;
+      out.last.bulge = bulge;
+      out.add(_PolyVert(to, 0));
+    }
+    final extra = target - accumulated;
+    if (extra <= 1e-12) return out.length >= 2 ? out : null;
+    if (out.length < 2) return null;
+    final from = out[out.length - 2];
+    final to = out.last;
+    if (from.bulge.abs() < 1e-12) {
+      final direction = to.point - from.point;
+      if (direction.lengthSquared < 1e-20) return null;
+      out[out.length - 1] = _PolyVert(
+        to.point + direction.normalized() * extra,
+        0,
+      );
+      return out;
+    }
+    final def = Flatten.bulgeArc(from.point, to.point, from.bulge);
+    if (def == null) return null;
+    final signedSweep = 4 * math.atan(from.bulge);
+    final newLen = def.radius * signedSweep.abs() + extra;
+    final newSweepAbs = newLen / def.radius;
+    if (newSweepAbs >= math.pi * 2 - 1e-9) return null;
+    final newSweep = signedSweep >= 0 ? newSweepAbs : -newSweepAbs;
+    final startAngle = (from.point - def.center).angle;
+    from.bulge = math.tan(newSweep / 4);
+    out[out.length - 1] = _PolyVert(
+      def.center + Vec2.polar(startAngle + newSweep, def.radius),
+      0,
+    );
+    return out;
   }
 
   /// [points] run from the fixed end toward the moving end.

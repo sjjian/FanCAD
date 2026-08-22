@@ -1531,9 +1531,10 @@ class EditCommands {
     category: _category,
     aliases: const ['len', 'lengthen'],
     description:
-        'Changes the length of a line, open straight polyline or arc by moving '
-        'the end you pick. Supply a total length, or a signed delta to add to '
-        'the current length. An arc cannot be closed into a full circle.',
+        'Changes the length of a line, open polyline or arc by moving the '
+        'end you pick. A bulge grows or shrinks along its arc. Supply a '
+        'total length, or a signed delta to add to the current length. An '
+        'arc cannot be closed into a full circle.',
     params: const [
       ParamSpec(
         name: 'target',
@@ -1582,12 +1583,12 @@ class EditCommands {
           target is! PolylineEntity &&
           target is! ArcEntity) {
         return const CommandResult.failed(
-          'Lengthen supports lines, open straight polylines and arcs.',
+          'Lengthen supports lines, open polylines and arcs.',
         );
       }
-      if (target is PolylineEntity && (target.closed || target.hasBulges)) {
+      if (target is PolylineEntity && target.closed) {
         return const CommandResult.failed(
-          'Lengthen cannot change a closed or bulged polyline.',
+          'Lengthen cannot change a closed polyline.',
         );
       }
       final entity = target as CadEntity;
