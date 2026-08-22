@@ -850,6 +850,69 @@ void main() {
     });
   });
 
+  group('lengthenPolyline', () {
+    final elbow = PolylineEntity.fromPoints(
+      id: 1,
+      points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10)],
+    );
+
+    test('extends the last segment when the pick is at the free end', () {
+      final longer = Construct.lengthenPolyline(
+        elbow,
+        const Vec2(10, 10),
+        total: 25,
+      );
+
+      expect(longer, isNotNull);
+      expect(longer!.vertexCount, 3);
+      expect(longer.vertexAt(2).x, closeTo(10, 1e-9));
+      expect(longer.vertexAt(2).y, closeTo(15, 1e-9));
+    });
+
+    test('shortens the last segment without dropping vertices', () {
+      final shorter = Construct.lengthenPolyline(
+        elbow,
+        const Vec2(10, 10),
+        total: 15,
+      );
+
+      expect(shorter!.vertexAt(2).y, closeTo(5, 1e-9));
+    });
+
+    test('drops vertices when shortening past a corner', () {
+      final shorter = Construct.lengthenPolyline(
+        elbow,
+        const Vec2(10, 10),
+        total: 8,
+      );
+
+      expect(shorter!.vertexCount, 2);
+      expect(shorter.vertexAt(1).x, closeTo(8, 1e-9));
+    });
+
+    test('a negative delta shortens the nearer end', () {
+      final shorter = Construct.lengthenPolyline(
+        elbow,
+        const Vec2(0, 0),
+        delta: -3,
+      );
+
+      expect(shorter!.vertexAt(0).x, closeTo(3, 1e-9));
+      expect(shorter.vertexAt(2), const Vec2(10, 10));
+    });
+
+    test('refuses a closed polyline', () {
+      expect(
+        Construct.lengthenPolyline(
+          Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!,
+          const Vec2(0, 0),
+          total: 50,
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('stretch', () {
     const window = Bounds2(-1, -1, 1, 1);
     const delta = Vec2(0, 4);

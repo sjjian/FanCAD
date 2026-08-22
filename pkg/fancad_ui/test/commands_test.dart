@@ -683,6 +683,27 @@ void main() {
       expect((document.entity(id)! as LineEntity).end.x, closeTo(16, 1e-9));
     });
 
+    test('lengthen extends a polyline from the picked end', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.lengthen', {
+        'target': id,
+        'pick': [10, 10],
+        'total': 25,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(id)! as PolylineEntity;
+      expect(polyline.vertexAt(2).y, closeTo(15, 1e-9));
+    });
+
     test('lengthen accepts a signed delta', () async {
       final id = await drawLine(0, 0, 10, 0);
 

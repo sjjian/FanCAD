@@ -1254,6 +1254,67 @@ class Construct {
         : resizedLine(line, 0, scale);
   }
 
+  /// Changes the length of an open straight [polyline] from the nearer end.
+  ///
+  /// The opposite end stays put. Extending grows the last (or first) segment
+  /// along its own direction; shortening walks back through vertices and
+  /// drops those that fall past the new total. Closed or bulged polylines
+  /// return null — those need a different edit.
+  static PolylineEntity? lengthenPolyline(
+    PolylineEntity polyline,
+    Vec2 pick, {
+    double? delta,
+    double? total,
+  }) {
+    if (polyline.closed || polyline.hasBulges || polyline.vertexCount < 2) {
+      return null;
+    }
+    final current = _polylineLength(polyline);
+    if (current < 1e-12) return null;
+    final target = total ?? (current + (delta ?? 0));
+    if (target <= 1e-12 || !target.isFinite) return null;
+
+    final start = polyline.vertexAt(0);
+    final end = polyline.vertexAt(polyline.vertexCount - 1);
+    final fromStart =
+        pick.distanceSquaredTo(start) <= pick.distanceSquaredTo(end);
+    var chain = [
+      for (var i = 0; i < polyline.vertexCount; i++) polyline.vertexAt(i),
+    ];
+    if (fromStart) chain = chain.reversed.toList();
+    final trimmed = _trimChainToLength(chain, target);
+    if (trimmed == null) return null;
+    return _openPolyline(
+      polyline,
+      fromStart ? trimmed.reversed.toList() : trimmed,
+      polyline.id,
+    );
+  }
+
+  /// [points] run from the fixed end toward the moving end.
+  static List<Vec2>? _trimChainToLength(List<Vec2> points, double target) {
+    final out = <Vec2>[points.first];
+    var accumulated = 0.0;
+    for (var i = 0; i < points.length - 1; i++) {
+      final from = points[i];
+      final to = points[i + 1];
+      final segment = from.distanceTo(to);
+      if (segment < 1e-12) continue;
+      if (accumulated + segment >= target - 1e-12) {
+        final t = ((target - accumulated) / segment).clamp(0.0, 1.0);
+        final end = from + (to - from) * t;
+        if (end.distanceSquaredTo(out.last) > 1e-20) out.add(end);
+        return out.length >= 2 ? out : null;
+      }
+      accumulated += segment;
+      out.add(to);
+    }
+    var direction = out.last - out[out.length - 2];
+    if (direction.lengthSquared < 1e-20) return null;
+    out[out.length - 1] = out.last + direction.normalized() * (target - accumulated);
+    return out;
+  }
+
   /// Moves the vertices of [entity] that sit inside [window] by [delta].
   ///
   /// That is the AutoCAD STRETCH contract: a crossing window names the grips

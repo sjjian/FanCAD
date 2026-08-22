@@ -1453,13 +1453,14 @@ class EditCommands {
     category: _category,
     aliases: const ['len', 'lengthen'],
     description:
-        'Changes the length of a line by moving the endpoint you pick. Supply '
-        'a total length, or a signed delta to add to the current length.',
+        'Changes the length of a line or open straight polyline by moving the '
+        'end you pick. Supply a total length, or a signed delta to add to the '
+        'current length. Shortening a polyline walks back through vertices.',
     params: const [
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line to lengthen',
+        description: 'The line or polyline to lengthen',
         required: false,
       ),
       ParamSpec(
@@ -1490,7 +1491,7 @@ class EditCommands {
       } else {
         context.selection.clear();
         final picked = await context.input.selection(
-          'LENGTHEN  Select a line:',
+          'LENGTHEN  Select a line or polyline:',
           useExistingSelection: false,
           single: true,
         );
@@ -1499,47 +1500,48 @@ class EditCommands {
       }
 
       final target = context.document.entity(targetId);
-      if (target is! LineEntity) {
+      if (target is! LineEntity && target is! PolylineEntity) {
         return const CommandResult.failed(
-          'Lengthen currently supports lines only.',
+          'Lengthen supports lines and open straight polylines.',
         );
       }
+      if (target is PolylineEntity && (target.closed || target.hasBulges)) {
+        return const CommandResult.failed(
+          'Lengthen cannot change a closed or bulged polyline.',
+        );
+      }
+      final entity = target as CadEntity;
 
       final pick = context.args.point('pick') ??
           await context.input.point(
             'LENGTHEN  Specify a point nearer the end to change:',
           );
 
+      final currentLength = Construct.lengthOf(entity);
       var total = context.args.number('total');
       final delta = context.args.number('delta');
       if (total == null && delta == null) {
         context.input
-          ..setMarkers([
-            pick.distanceSquaredTo(target.start) <=
-                    pick.distanceSquaredTo(target.end)
-                ? target.end
-                : target.start,
-          ])
+          ..setMarkers([_lengthenAnchor(entity, pick)])
           ..setPreview((cursor) {
-            final length = (pick.distanceSquaredTo(target.start) <=
-                    pick.distanceSquaredTo(target.end)
-                ? target.end.distanceTo(cursor)
-                : target.start.distanceTo(cursor));
-            final preview = Construct.lengthenLine(target, pick, total: length);
-            if (preview == null) return const <OverlayShape>[];
-            return [OverlayLine(preview.start, preview.end, dashed: false)];
+            final preview = _lengthenEntity(
+              entity,
+              pick,
+              total: _lengthenPreviewTotal(entity, pick, cursor),
+            );
+            return _lengthenOverlay(preview);
           });
         total = await context.input.number(
           'LENGTHEN  Specify total length:',
-          defaultValue: target.length,
+          defaultValue: currentLength,
         );
         context.input
           ..setPreview(null)
           ..setMarkers(const []);
       }
 
-      final result = Construct.lengthenLine(
-        target,
+      final result = _lengthenEntity(
+        entity,
         pick,
         total: total,
         delta: delta,
@@ -1549,8 +1551,7 @@ class EditCommands {
           'The resulting length must be positive.',
         );
       }
-      if (result.start.distanceTo(target.start) < 1e-12 &&
-          result.end.distanceTo(target.end) < 1e-12) {
+      if ((Construct.lengthOf(result) - currentLength).abs() < 1e-12) {
         return const CommandResult.cancelled('The length is unchanged.');
       }
 
@@ -1559,13 +1560,13 @@ class EditCommands {
       });
       if (committed == null) {
         return const CommandResult.failed(
-          'Nothing was lengthened; the line may be on a locked layer.',
+          'Nothing was lengthened; the object may be on a locked layer.',
         );
       }
       context.selection.replace([targetId]);
       return CommandResult(
         status: CommandStatus.ok,
-        message: 'Lengthen: ${result.length.toStringAsFixed(4)}.',
+        message: 'Lengthen: ${Construct.lengthOf(result).toStringAsFixed(4)}.',
         transaction: committed,
       );
     },
@@ -2429,6 +2430,83 @@ class EditCommands {
   }
 
   /// The pieces an entity breaks into. Empty when it cannot be exploded.
+  static CadEntity? _lengthenEntity(
+    CadEntity target,
+    Vec2 pick, {
+    double? total,
+    double? delta,
+  }) {
+    return switch (target) {
+      LineEntity() => Construct.lengthenLine(
+        target,
+        pick,
+        total: total,
+        delta: delta,
+      ),
+      PolylineEntity() => Construct.lengthenPolyline(
+        target,
+        pick,
+        total: total,
+        delta: delta,
+      ),
+      _ => null,
+    };
+  }
+
+  static Vec2 _lengthenAnchor(CadEntity target, Vec2 pick) {
+    return switch (target) {
+      LineEntity(:final start, :final end) =>
+        pick.distanceSquaredTo(start) <= pick.distanceSquaredTo(end)
+            ? end
+            : start,
+      PolylineEntity() =>
+        pick.distanceSquaredTo(target.vertexAt(0)) <=
+                pick.distanceSquaredTo(target.vertexAt(target.vertexCount - 1))
+            ? target.vertexAt(target.vertexCount - 1)
+            : target.vertexAt(0),
+      _ => pick,
+    };
+  }
+
+  /// Total length implied by dragging the moving end toward [cursor].
+  static double _lengthenPreviewTotal(
+    CadEntity target,
+    Vec2 pick,
+    Vec2 cursor,
+  ) {
+    if (target is LineEntity) {
+      return _lengthenAnchor(target, pick).distanceTo(cursor);
+    }
+    if (target is! PolylineEntity || target.vertexCount < 2) {
+      return 0;
+    }
+    final start = target.vertexAt(0);
+    final end = target.vertexAt(target.vertexCount - 1);
+    final fromStart =
+        pick.distanceSquaredTo(start) <= pick.distanceSquaredTo(end);
+    final moving = fromStart ? start : end;
+    final inward = fromStart
+        ? target.vertexAt(1)
+        : target.vertexAt(target.vertexCount - 2);
+    return Construct.lengthOf(target) -
+        moving.distanceTo(inward) +
+        inward.distanceTo(cursor);
+  }
+
+  static List<OverlayShape> _lengthenOverlay(CadEntity? preview) {
+    return switch (preview) {
+      LineEntity(:final start, :final end) => [
+        OverlayLine(start, end, dashed: false),
+      ],
+      PolylineEntity() => [
+        OverlayPolyline([
+          for (var i = 0; i < preview.vertexCount; i++) preview.vertexAt(i),
+        ]),
+      ],
+      _ => const [],
+    };
+  }
+
   static List<CadEntity> _explodeEntity(
     CadDocument document,
     CadEntity entity,
