@@ -64,6 +64,37 @@ class Mat3 {
     center.y * (1 - sy),
   );
 
+  /// Maps [source1] onto [dest1].
+  ///
+  /// A second pair rotates about [dest1] so [source2] lies on the ray from
+  /// [dest1] through [dest2]. [scale] then matches the two segment lengths.
+  /// One pair is a translation; that is the ALIGN that only needs a move.
+  factory Mat3.align(
+    Vec2 source1,
+    Vec2 dest1, {
+    Vec2? source2,
+    Vec2? dest2,
+    bool scale = false,
+  }) {
+    final translated = Mat3.translation(
+      dest1.x - source1.x,
+      dest1.y - source1.y,
+    );
+    if (source2 == null || dest2 == null) return translated;
+    final from = source2 - source1;
+    final to = dest2 - dest1;
+    if (from.lengthSquared < 1e-20 || to.lengthSquared < 1e-20) {
+      return translated;
+    }
+    final rotated = Mat3.rotationAbout(
+      to.angle - from.angle,
+      dest1,
+    ).multiplied(translated);
+    if (!scale) return rotated;
+    final factor = to.length / from.length;
+    return Mat3.scalingAbout(factor, factor, dest1).multiplied(rotated);
+  }
+
   /// Mirror across the line through [origin] with direction [direction].
   factory Mat3.mirror(Vec2 origin, Vec2 direction) {
     final d = direction.normalized();

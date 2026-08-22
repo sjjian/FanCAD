@@ -301,6 +301,25 @@ void main() {
       expect((document.entity(id)! as LineEntity).start, const Vec2(0, 0));
     });
 
+    test('align rotates the selection to match two point pairs', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.align', {
+        'ids': [id],
+        'source1': [0, 0],
+        'dest1': [0, 0],
+        'source2': [10, 0],
+        'dest2': [0, 10],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final aligned = document.entity(id)! as LineEntity;
+      expect(aligned.start.x, closeTo(0, 1e-9));
+      expect(aligned.start.y, closeTo(0, 1e-9));
+      expect(aligned.end.x, closeTo(0, 1e-9));
+      expect(aligned.end.y, closeTo(10, 1e-9));
+    });
+
     test('rotate turns the selection about the base point', () async {
       final id = await drawLine(0, 0, 10, 0);
 

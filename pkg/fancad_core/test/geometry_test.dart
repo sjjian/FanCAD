@@ -21,6 +21,37 @@ void main() {
       expect(Mat3.scaling(-1, 1).determinant, lessThan(0));
     });
 
+    test('align with one pair is a translation', () {
+      final matrix = Mat3.align(const Vec2(1, 2), const Vec2(4, 6));
+      expect(matrix.transform(const Vec2(1, 2)), const Vec2(4, 6));
+      expect(matrix.transform(const Vec2(2, 2)), const Vec2(5, 6));
+    });
+
+    test('align with two pairs rotates about the first destination', () {
+      final matrix = Mat3.align(
+        const Vec2(0, 0),
+        const Vec2(0, 0),
+        source2: const Vec2(10, 0),
+        dest2: const Vec2(0, 10),
+      );
+      final moved = matrix.transform(const Vec2(10, 0));
+      expect(moved.x, closeTo(0, 1e-12));
+      expect(moved.y, closeTo(10, 1e-12));
+    });
+
+    test('align scale matches the two segment lengths', () {
+      final matrix = Mat3.align(
+        const Vec2(0, 0),
+        const Vec2(0, 0),
+        source2: const Vec2(10, 0),
+        dest2: const Vec2(0, 5),
+        scale: true,
+      );
+      final moved = matrix.transform(const Vec2(10, 0));
+      expect(moved.x, closeTo(0, 1e-12));
+      expect(moved.y, closeTo(5, 1e-12));
+    });
+
     test('inverse round trips a point', () {
       final matrix = Mat3.translation(4, -7)
           .multiplied(Mat3.rotation(0.4))
