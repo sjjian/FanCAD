@@ -218,6 +218,40 @@ void main() {
       expect(dim.displayText, '8.00');
     });
 
+    test('edit text changes a placed string', () async {
+      final created = await run('draw.text', {
+        'content': 'ROOM',
+        'at': [0, 0],
+        'height': 2.5,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.textContent', {
+        'ids': [id],
+        'text': 'HALL',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as TextEntity).content, 'HALL');
+    });
+
+    test('edit text overrides a dimension like DIMEDIT', () async {
+      final created = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [6, 0],
+        'dimLine': [3, 2],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.textContent', {
+        'ids': [id],
+        'text': '<> mm',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as DimensionEntity).displayText, '6.00 mm');
+    });
+
     test('aligned dimension measures the slanted distance', () async {
       final result = await run('draw.dimAligned', {
         'first': [0, 0],

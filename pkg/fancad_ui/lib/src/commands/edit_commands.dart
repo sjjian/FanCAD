@@ -45,6 +45,7 @@ class EditCommands {
     _changeLinetype(),
     _changeLineweight(),
     _dimensionText(),
+    _textContent(),
     _matchProp(),
   ];
 
@@ -2439,6 +2440,99 @@ class EditCommands {
       return CommandResult(
         status: CommandStatus.ok,
         message: 'Set text on ${committed.change.modified.length} dimension(s).',
+        transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _textContent() => CommandDescriptor(
+    id: 'edit.textContent',
+    title: 'Edit Text',
+    category: _category,
+    aliases: const ['ddedit', 'ted'],
+    description:
+        'Changes the content of selected text, mtext or dimensions. On a '
+        'dimension, empty restores the measured value and <> stands for '
+        'that value, same as DIMEDIT.',
+    params: const [
+      ParamSpec.selection('ids'),
+      ParamSpec(
+        name: 'text',
+        type: ParamType.text,
+        description: 'New content, or dimension override',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final ids = await context.resolveSelection(
+        'ids',
+        'DDEDIT  Select text, mtext or a dimension:',
+      );
+      if (ids.isEmpty) return const CommandResult.cancelled();
+      final targets = <CadEntity>[
+        for (final id in ids)
+          if (context.document.entity(id) case final CadEntity entity)
+            if (entity is TextEntity ||
+                entity is MTextEntity ||
+                entity is DimensionEntity)
+              entity,
+      ];
+      if (targets.isEmpty) {
+        return const CommandResult.failed(
+          'Select text, mtext or a dimension to edit.',
+        );
+      }
+
+      final current = switch (targets.first) {
+        TextEntity(:final content) => content,
+        MTextEntity(:final content) => content,
+        DimensionEntity(:final overrideText) => overrideText,
+        _ => '',
+      };
+      final text = context.args.has('text')
+          ? (context.args.text('text') ?? '')
+          : await context.input.text(
+              'DDEDIT  Enter new text:',
+              defaultValue: current,
+            );
+      final needsContent = targets.any(
+        (entity) => entity is TextEntity || entity is MTextEntity,
+      );
+      if (needsContent && text.isEmpty) {
+        return const CommandResult.failed('Text cannot be empty.');
+      }
+
+      final committed = context.edit('Edit Text', (transaction) {
+        for (final entity in targets) {
+          final updated = switch (entity) {
+            TextEntity() when entity.content != text => entity.withContent(text),
+            MTextEntity() when entity.content != text =>
+              entity.withContent(text),
+            DimensionEntity() when entity.overrideText != text =>
+              DimensionEntity(
+                id: entity.id,
+                props: entity.props,
+                definitionPoints: entity.definitionPoints,
+                textPosition: entity.textPosition,
+                measurement: entity.measurement,
+                overrideText: text,
+                styleName: entity.styleName,
+                dimensionType: entity.dimensionType,
+              ),
+            _ => null,
+          };
+          if (updated != null) transaction.modify(updated);
+        }
+      });
+      if (committed == null) {
+        return const CommandResult.failed(
+          'Nothing changed; the text is already that value, or the '
+          'objects are on a locked layer.',
+        );
+      }
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Edited ${committed.change.modified.length} text object(s).',
         transaction: committed,
       );
     },
