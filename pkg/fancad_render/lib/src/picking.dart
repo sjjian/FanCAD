@@ -21,6 +21,25 @@ class PickHit {
   final Vec2 point;
 }
 
+/// A grip as it appears on the current layout.
+class GripHit {
+  const GripHit({
+    required this.entityId,
+    required this.gripIndex,
+    required this.paperPoint,
+    this.viewport,
+  });
+
+  final int entityId;
+  final int gripIndex;
+
+  /// Grip location in the coordinates of the current layout.
+  final Vec2 paperPoint;
+
+  /// Set when this is a model-space grip seen through a paper window.
+  final PaperViewport? viewport;
+}
+
 /// Finds entities under a point or inside a window.
 ///
 /// Picking runs against flattened geometry rather than against the analytic
@@ -248,32 +267,81 @@ class Picker {
     return false;
   }
 
+  /// Grips of [entityIds] in the coordinates of the current layout.
+  ///
+  /// Model-space grips are mapped through every on paper viewport that
+  /// actually shows them, so a stretch on a layout tab aims at the square
+  /// the user can see rather than at the untransformed model point.
+  List<GripHit> displayGrips(
+    CadDocument document,
+    Iterable<int> entityIds,
+  ) {
+    final result = <GripHit>[];
+    final layout = document.activeLayout;
+    for (final id in entityIds) {
+      final entity = document.entity(id);
+      if (entity == null) continue;
+      final owner = document.ownerOf(id);
+      final local = entity.grips();
+      if (local.isEmpty) continue;
+
+      final onActiveSheet =
+          layout.isModelSpace || owner == layout.blockName;
+      if (onActiveSheet) {
+        for (var i = 0; i < local.length; i++) {
+          result.add(
+            GripHit(
+              entityId: id,
+              gripIndex: i,
+              paperPoint: local[i],
+            ),
+          );
+        }
+        continue;
+      }
+      if (owner != document.modelSpaceBlockName) continue;
+
+      for (final viewport in layout.viewports) {
+        if (!viewport.isOn) continue;
+        final toPaper = viewport.modelToPaper();
+        for (var i = 0; i < local.length; i++) {
+          final paper = toPaper.transform(local[i]);
+          if (!viewport.paperBounds.containsPoint(paper.x, paper.y)) {
+            continue;
+          }
+          result.add(
+            GripHit(
+              entityId: id,
+              gripIndex: i,
+              paperPoint: paper,
+              viewport: viewport,
+            ),
+          );
+        }
+      }
+    }
+    return result;
+  }
+
   /// The grip of [entity] nearest [world], or -1.
   int pickGrip(
+    CadDocument document,
     CadEntity entity,
     CadViewport viewport,
     Vec2 world, {
     double radiusPixels = 8,
-  }) {
-    final radius = viewport.pixelsToWorld(radiusPixels);
-    final grips = entity.grips();
-    var best = radius;
-    var bestIndex = -1;
-    for (var i = 0; i < grips.length; i++) {
-      final distance = grips[i].distanceTo(world);
-      if (distance < best) {
-        best = distance;
-        bestIndex = i;
-      }
-    }
-    return bestIndex;
-  }
+  }) =>
+      pickGripAmong(
+        document,
+        [entity.id],
+        viewport,
+        world,
+        radiusPixels: radiusPixels,
+      )?.gripIndex ??
+      -1;
 
   /// The grip nearest [world] across several entities.
-  ///
-  /// Returns the entity id and the grip index, which together are what an edit
-  /// needs in order to move it.
-  (int entityId, int gripIndex)? pickGripAmong(
+  GripHit? pickGripAmong(
     CadDocument document,
     Iterable<int> entityIds,
     CadViewport viewport,
@@ -282,17 +350,12 @@ class Picker {
   }) {
     final radius = viewport.pixelsToWorld(radiusPixels);
     var best = radius;
-    (int, int)? result;
-    for (final id in entityIds) {
-      final entity = document.entity(id);
-      if (entity == null) continue;
-      final grips = entity.grips();
-      for (var i = 0; i < grips.length; i++) {
-        final distance = grips[i].distanceTo(world);
-        if (distance < best) {
-          best = distance;
-          result = (id, i);
-        }
+    GripHit? result;
+    for (final grip in displayGrips(document, entityIds)) {
+      final distance = grip.paperPoint.distanceTo(world);
+      if (distance < best) {
+        best = distance;
+        result = grip;
       }
     }
     return result;

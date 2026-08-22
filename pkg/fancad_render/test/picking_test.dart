@@ -74,4 +74,52 @@ void main() {
     expect(ids, isNotEmpty);
     expect(document.entity(ids.first), isA<LineEntity>());
   });
+
+  test('maps model-space grips onto the paper viewport', () {
+    final document = paperWithModelLine();
+    final id = document.entities.first.id;
+    final grips = const Picker().displayGrips(document, [id]);
+
+    expect(grips, hasLength(3));
+    expect(grips[0].paperPoint.x, closeTo(65, 1e-9));
+    expect(grips[0].paperPoint.y, closeTo(80, 1e-9));
+    expect(grips[2].paperPoint.x, closeTo(145, 1e-9));
+    expect(grips[2].paperPoint.y, closeTo(80, 1e-9));
+    expect(grips[0].viewport, isNotNull);
+  });
+
+  test('picks a model-space grip through a paper viewport', () {
+    final document = paperWithModelLine();
+    final view = CadViewport.fit(document.extents, size);
+    final id = document.entities.first.id;
+
+    final hit = const Picker().pickGripAmong(
+      document,
+      [id],
+      view,
+      const Vec2(65, 80),
+    );
+
+    expect(hit, isNotNull);
+    expect(hit!.entityId, id);
+    expect(hit.gripIndex, 0);
+    final model = hit.viewport!.paperToModel()!.transform(const Vec2(65, 80));
+    expect(model.x, closeTo(0, 1e-9));
+    expect(model.y, closeTo(0, 1e-9));
+  });
+
+  test('does not pick a model grip beside the viewport', () {
+    final document = paperWithModelLine();
+    final view = CadViewport.fit(document.extents, size);
+    final id = document.entities.first.id;
+
+    final hit = const Picker().pickGripAmong(
+      document,
+      [id],
+      view,
+      const Vec2(0, 0),
+    );
+
+    expect(hit, isNull);
+  });
 }

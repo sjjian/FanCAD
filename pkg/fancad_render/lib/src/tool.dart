@@ -347,9 +347,8 @@ class ToolController extends ChangeNotifier
     // Grips are only useful up to the point where they stop being individually
     // clickable; past that they are a solid wall of blue squares.
     if (selected.length <= 64) {
-      for (final id in selected) {
-        final entity = document.entity(id);
-        if (entity != null) grips.addAll(entity.grips());
+      for (final grip in picker.displayGrips(document, selected)) {
+        grips.add(grip.paperPoint);
       }
     }
     if (tool != null) grips.addAll(tool.buildMarkers(this));

@@ -2,6 +2,7 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
+import 'picking.dart';
 import 'snap.dart';
 import 'tool.dart';
 
@@ -28,6 +29,7 @@ class SelectionTool extends CadTool {
   int _gripIndex = -1;
   Vec2? _gripOrigin;
   Vec2? _gripTarget;
+  PaperViewport? _gripViewport;
 
   /// The grip under the cursor, drawn filled so the user knows it is live.
   int _hotGrip = -1;
@@ -62,6 +64,7 @@ class SelectionTool extends CadTool {
     _gripIndex = -1;
     _gripOrigin = null;
     _gripTarget = null;
+    _gripViewport = null;
   }
 
   @override
@@ -73,7 +76,7 @@ class SelectionTool extends CadTool {
       point,
     );
     if (grip != null) {
-      _hotGrip = _gripOrdinalOf(host, grip.$1, grip.$2);
+      _hotGrip = _gripOrdinalOf(host, grip);
       _hovered = null;
       return;
     }
@@ -99,10 +102,11 @@ class SelectionTool extends CadTool {
       point,
     );
     if (grip != null && !isEditingGrip) {
-      _gripEntity = grip.$1;
-      _gripIndex = grip.$2;
-      _gripOrigin = host.document.entity(grip.$1)?.grips()[grip.$2];
-      _gripTarget = _gripOrigin;
+      _gripEntity = grip.entityId;
+      _gripIndex = grip.gripIndex;
+      _gripOrigin = grip.paperPoint;
+      _gripTarget = grip.paperPoint;
+      _gripViewport = grip.viewport;
       host.prompt(promptText);
       return true;
     }
@@ -182,15 +186,17 @@ class SelectionTool extends CadTool {
   void _commitGrip(ToolHost host, Vec2 point) {
     final id = _gripEntity;
     final index = _gripIndex;
+    final modelPoint = _toEntityPoint(point);
     _gripEntity = null;
     _gripIndex = -1;
     _gripOrigin = null;
     _gripTarget = null;
+    _gripViewport = null;
     if (id == null || index < 0) return;
     final entity = host.document.entity(id);
     if (entity == null) return;
     host.session.edit('Stretch', (transaction) {
-      transaction.moveGrip(id, index, point);
+      transaction.moveGrip(id, index, modelPoint);
     });
     host.prompt(promptText);
   }
@@ -239,10 +245,18 @@ class SelectionTool extends CadTool {
       // committing to something they have already seen.
       final entity = host.document.entity(id);
       if (entity != null) {
-        final moved = entity.withGrip(_gripIndex, target);
+        final moved = entity.withGrip(_gripIndex, _toEntityPoint(target));
         final sink = PolylineSink();
+        final through = _gripViewport;
+        final scale = through?.scale.abs() ?? 1;
         moved.emit(
-          host.document.emitContext(tolerance: host.viewport.tolerance),
+          host.document.emitContext(
+            tolerance: scale < 1e-12
+                ? host.viewport.tolerance
+                : host.viewport.tolerance / scale,
+            clip: through?.modelWindow,
+            transform: through?.modelToPaper() ?? const Mat3.identity(),
+          ),
           sink,
         );
         return [
@@ -276,15 +290,22 @@ class SelectionTool extends CadTool {
     host.prompt('$count objects selected');
   }
 
-  /// Grips are drawn as one flat list across the selection, so a per-entity
-  /// grip index has to be offset by everything selected before it.
-  int _gripOrdinalOf(ToolHost host, int entityId, int gripIndex) {
-    var ordinal = 0;
-    for (final id in host.selection.ids) {
-      final entity = host.document.entity(id);
-      if (entity == null) continue;
-      if (id == entityId) return ordinal + gripIndex;
-      ordinal += entity.grips().length;
+  Vec2 _toEntityPoint(Vec2 paper) {
+    final inverse = _gripViewport?.paperToModel();
+    return inverse?.transform(paper) ?? paper;
+  }
+
+  /// Grips are drawn as one flat list, including one copy per paper window
+  /// that shows a model-space entity, so the hot index is that list's index.
+  int _gripOrdinalOf(ToolHost host, GripHit hit) {
+    final grips = host.picker.displayGrips(host.document, host.selection.ids);
+    for (var i = 0; i < grips.length; i++) {
+      final grip = grips[i];
+      if (grip.entityId == hit.entityId &&
+          grip.gripIndex == hit.gripIndex &&
+          identical(grip.viewport, hit.viewport)) {
+        return i;
+      }
     }
     return -1;
   }
