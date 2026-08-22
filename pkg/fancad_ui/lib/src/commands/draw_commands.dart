@@ -34,6 +34,7 @@ class DrawCommands {
     _hatch(),
     _dimLinear(),
     _dimAligned(),
+    _dimRadius(),
   ];
 
   static const String _category = 'Draw';
@@ -1441,6 +1442,73 @@ class DrawCommands {
       OverlayLine(a, b),
     ];
   }
+
+  static CommandDescriptor _dimRadius() => CommandDescriptor(
+    id: 'draw.dimRadius',
+    title: 'Radius Dimension',
+    category: _category,
+    aliases: const ['dimradius', 'dimrad'],
+    icon: 'dimension',
+    description:
+        'Places a radius dimension on a circle or arc. The second pick is '
+        'the arrow tip; the text is the radius, prefixed with R.',
+    params: const [
+      ParamSpec(
+        name: 'target',
+        type: ParamType.entity,
+        description: 'Circle or arc to dimension',
+        required: false,
+      ),
+      ParamSpec.point(
+        'dimLine',
+        description: 'Arrow tip and text location',
+      ),
+    ],
+    handler: (context) async {
+      final supplied = context.args.integer('target');
+      final int targetId;
+      if (supplied != null) {
+        targetId = supplied;
+      } else {
+        context.selection.clear();
+        final picked = await context.input.selection(
+          'DIMRADIUS  Select arc or circle:',
+          useExistingSelection: false,
+          single: true,
+        );
+        if (picked.isEmpty) return const CommandResult.cancelled();
+        targetId = picked.first;
+      }
+      final target = context.document.entity(targetId);
+      if (target == null ||
+          (target is! CircleEntity && target is! ArcEntity)) {
+        return const CommandResult.failed(
+          'Radius dimension needs a circle or an arc.',
+        );
+      }
+      final center = target is CircleEntity
+          ? target.center
+          : (target as ArcEntity).center;
+      context.input.setPreview((cursor) => [OverlayLine(center, cursor)]);
+      final dimLine = await context.resolvePoint(
+        'dimLine',
+        'DIMRADIUS  Specify dimension line location:',
+        basePoint: center,
+      );
+      context.input.setPreview(null);
+      final entity = Construct.radiusDimension(
+        target,
+        dimLine,
+        props: EntityProps(layer: context.document.currentLayer),
+      );
+      if (entity == null) {
+        return const CommandResult.failed(
+          'The circle or arc has no radius to measure.',
+        );
+      }
+      return _commit(context, 'Radius Dimension', [entity]);
+    },
+  );
 
   /// Adds [entities] in one transaction and reports what happened.
   ///

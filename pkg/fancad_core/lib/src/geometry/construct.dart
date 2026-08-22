@@ -146,6 +146,47 @@ class Construct {
     );
   }
 
+  /// A radius dimension for a circle or arc.
+  ///
+  /// [dimLine] is the arrow tip and the text seat; it does not have to lie
+  /// on the circumference. The measured value is always the radius, and the
+  /// text is prefixed with `R` so it cannot be mistaken for a diameter.
+  static DimensionEntity? radiusDimension(
+    CadEntity target,
+    Vec2 dimLine, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    final source = _radialSource(target);
+    if (source == null) return null;
+    final (center, radius) = source;
+    if (radius < 1e-9) return null;
+    var chord = dimLine;
+    if (chord.distanceTo(center) < 1e-9) {
+      chord = center + Vec2(radius, 0);
+    }
+    return DimensionEntity(
+      id: id,
+      props: props,
+      definitionPoints: [center, chord],
+      textPosition: chord,
+      measurement: radius,
+      overrideText: 'R<>',
+      dimensionType: 4,
+    );
+  }
+
+  static (Vec2, double)? _radialSource(CadEntity entity) {
+    switch (entity) {
+      case CircleEntity(:final center, :final radius):
+        return (center, radius);
+      case ArcEntity(:final center, :final radius):
+        return (center, radius);
+      default:
+        return null;
+    }
+  }
+
   /// A circle of [radius] tangent to [first] and [second].
   ///
   /// The construction is the offset-and-intersect one: shift each object by

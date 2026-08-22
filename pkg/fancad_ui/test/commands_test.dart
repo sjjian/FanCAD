@@ -189,6 +189,24 @@ void main() {
       expect(dim.displayText, '5.00');
     });
 
+    test('radius dimension labels a circle with R', () async {
+      final created = await run('draw.circle', {
+        'center': [0, 0],
+        'radius': 5,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.dimRadius', {
+        'target': id,
+        'dimLine': [8, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entities.whereType<DimensionEntity>().single;
+      expect(dim.measurement, closeTo(5, 1e-9));
+      expect(dim.displayText, 'R5.00');
+    });
+
     test('donut creates a wide circular polyline', () async {
       final result = await run('draw.donut', {
         'inside': 6,

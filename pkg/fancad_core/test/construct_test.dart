@@ -145,6 +145,36 @@ void main() {
     });
   });
 
+  group('radiusDimension', () {
+    test('reads the radius of a circle and prefixes R', () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+      final dim = Construct.radiusDimension(circle, const Vec2(8, 0));
+
+      expect(dim, isNotNull);
+      expect(dim!.measurement, closeTo(5, 1e-9));
+      expect(dim.dimensionType, 4);
+      expect(dim.displayText, 'R5.00');
+    });
+
+    test('accepts an arc and refuses a line', () {
+      const arc = ArcEntity(
+        id: 1,
+        center: Vec2.zero(),
+        radius: 3,
+        startAngle: 0,
+        endAngle: 1,
+      );
+      expect(
+        Construct.radiusDimension(arc, const Vec2(3, 0)),
+        isNotNull,
+      );
+      expect(
+        Construct.radiusDimension(line(0, 0, 10, 0), const Vec2(5, 0)),
+        isNull,
+      );
+    });
+  });
+
   group('circleTangentRadius', () {
     test('sits in the picked quadrant of two crossing lines', () {
       final circle = Construct.circleTangentRadius(
