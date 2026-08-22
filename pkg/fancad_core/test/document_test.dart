@@ -152,6 +152,32 @@ void main() {
       expect(document.activeLayoutName, 'Model');
     });
 
+    test('extents ignore frozen layers and hidden entities', () {
+      final document = CadDocument()
+        ..putLayer(const LayerDef(name: 'FAR', frozen: true))
+        ..addEntity(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+        )
+        ..addEntity(
+          const LineEntity(
+            id: 0,
+            props: EntityProps(layer: 'FAR'),
+            start: Vec2.zero(),
+            end: Vec2(1000, 0),
+          ),
+        )
+        ..addEntity(
+          const LineEntity(
+            id: 0,
+            props: EntityProps(visible: false),
+            start: Vec2.zero(),
+            end: Vec2(0, 500),
+          ),
+        );
+      expect(document.extents.maxX, closeTo(10, 1e-9));
+      expect(document.extents.maxY, closeTo(0, 1e-9));
+    });
+
     test('queryVisible skips hidden entities and respects the index', () {
       final document = CadDocument();
       final visible = document.addEntity(

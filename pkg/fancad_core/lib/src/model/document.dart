@@ -675,11 +675,18 @@ class CadDocument implements BlockLookup, StyleResolver {
 
   /// The extents of the active layout.
   ///
-  /// A paper tab is a sheet, so the camera frames the paper even when the
-  /// layout block itself is empty. Viewports sit on that sheet and are already
-  /// inside the paper rectangle.
+  /// Hidden and frozen geometry is left out, so Zoom Extents frames what is
+  /// actually on screen. A paper tab is a sheet, so the camera frames the
+  /// paper even when the layout block itself is empty. Viewports sit on that
+  /// sheet and are already inside the paper rectangle.
   Bounds2 get extents {
-    final drawn = indexFor(currentBlockName).bounds;
+    var drawn = const Bounds2.empty();
+    for (final entity in activeEntities) {
+      if (!entity.props.visible || !isLayerVisible(entity.props.layer)) {
+        continue;
+      }
+      drawn = drawn.union(boundsOfEntity(entity));
+    }
     if (activeLayout.isModelSpace) return drawn;
     final sheet = Bounds2(0, 0, activeLayout.paperWidth, activeLayout.paperHeight);
     return drawn.isEmpty ? sheet : sheet.union(drawn);
