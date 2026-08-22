@@ -567,6 +567,29 @@ void main() {
       expect((document.entity(target)! as LineEntity).end.x, closeTo(4, 1e-9));
     });
 
+    test('trim shortens a polyline back to a cutting edge', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final target = (created.data!['ids']! as List).first as int;
+      final cutter = await drawLine(5, -5, 5, 5);
+
+      final result = await run('edit.trim', {
+        'edges': [cutter],
+        'target': target,
+        'pick': [8, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(target)! as PolylineEntity;
+      expect(polyline.vertexCount, 2);
+      expect(polyline.vertexAt(1).x, closeTo(5, 1e-9));
+    });
+
     test('fillet rounds two lines and adds an arc', () async {
       final vertical = await drawLine(0, 10, 0, 0);
       final horizontal = await drawLine(0, 0, 10, 0);

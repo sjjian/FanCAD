@@ -533,6 +533,124 @@ class Construct {
     return null;
   }
 
+  /// Shortens an open straight [polyline] back to where it meets [crossings].
+  ///
+  /// Same contract as [trimLine]: the interval containing [pick] is discarded.
+  /// Trimming a middle span keeps the longer remnant rather than splitting
+  /// the polyline in two. Closed or bulged polylines return null.
+  static PolylineEntity? trimPolyline(
+    PolylineEntity polyline,
+    List<Vec2> crossings,
+    Vec2 pick,
+  ) {
+    if (crossings.isEmpty ||
+        polyline.closed ||
+        polyline.hasBulges ||
+        polyline.vertexCount < 2) {
+      return null;
+    }
+    final length = _polylineLength(polyline);
+    if (length < 1e-12) return null;
+    final pickHit = _polylineHit(polyline, pick);
+    if (pickHit == null) return null;
+    final pickDistance = _polylineChainDistance(polyline, pickHit);
+
+    final cuts = <double>[0];
+    for (final crossing in crossings) {
+      final hit = _polylineHit(polyline, crossing);
+      if (hit == null) continue;
+      final distance = _polylineChainDistance(polyline, hit);
+      if (distance > 1e-9 && distance < length - 1e-9) {
+        cuts.add(distance);
+      }
+    }
+    cuts.add(length);
+    cuts.sort();
+    final unique = <double>[];
+    for (final cut in cuts) {
+      if (unique.isEmpty || (cut - unique.last).abs() > 1e-9) {
+        unique.add(cut);
+      }
+    }
+    if (unique.length <= 2) return null;
+
+    for (var i = 0; i + 1 < unique.length; i++) {
+      if (pickDistance < unique[i] || pickDistance > unique[i + 1]) continue;
+      final keepBefore = unique[i] > 1e-9;
+      final keepAfter = unique[i + 1] < length - 1e-9;
+      if (!keepBefore && !keepAfter) return null;
+      if (keepBefore && keepAfter) {
+        return unique[i] >= length - unique[i + 1]
+            ? _polylinePrefix(polyline, unique[i])
+            : _polylineSuffix(polyline, unique[i + 1]);
+      }
+      return keepBefore
+          ? _polylinePrefix(polyline, unique[i])
+          : _polylineSuffix(polyline, unique[i + 1]);
+    }
+    return null;
+  }
+
+  static double _polylineChainDistance(PolylineEntity polyline, _PolyHit hit) {
+    var distance = 0.0;
+    for (var i = 0; i < hit.segment; i++) {
+      distance += polyline
+          .vertexAt(i)
+          .distanceTo(polyline.vertexAt(i + 1));
+    }
+    final start = polyline.vertexAt(hit.segment);
+    final end = polyline.vertexAt(
+      (hit.segment + 1) % polyline.vertexCount,
+    );
+    return distance + start.distanceTo(end) * hit.t;
+  }
+
+  static PolylineEntity? _polylinePrefix(
+    PolylineEntity polyline,
+    double distance,
+  ) {
+    final points = [
+      for (var i = 0; i < polyline.vertexCount; i++) polyline.vertexAt(i),
+    ];
+    final trimmed = _trimChainToLength(points, distance);
+    if (trimmed == null || trimmed.length < 2) return null;
+    return _openPolyline(polyline, trimmed, polyline.id);
+  }
+
+  static PolylineEntity? _polylineSuffix(
+    PolylineEntity polyline,
+    double distance,
+  ) {
+    final length = _polylineLength(polyline);
+    final points = [
+      for (var i = polyline.vertexCount - 1; i >= 0; i--) polyline.vertexAt(i),
+    ];
+    final trimmed = _trimChainToLength(points, length - distance);
+    if (trimmed == null || trimmed.length < 2) return null;
+    return _openPolyline(polyline, trimmed.reversed.toList(), polyline.id);
+  }
+
+  /// Every crossing of [target] with [edge], for TRIM.
+  static List<Vec2> crossingsAlong(CadEntity target, CadEntity edge) {
+    return switch (target) {
+      LineEntity() => crossingsWith(target, edge),
+      PolylineEntity() => [
+        for (var i = 0;
+            i < (target.closed ? target.vertexCount : target.vertexCount - 1);
+            i++)
+          ...crossingsWith(
+            LineEntity(
+              id: 0,
+              start: target.vertexAt(i),
+              end: target.vertexAt((i + 1) % target.vertexCount),
+            ),
+            edge,
+          ),
+      ],
+      _ => const [],
+    };
+  }
+
   /// Lengthens [line] until it meets one of [edges].
   static LineEntity? extendLine(LineEntity line, List<CadEntity> edges) {
     final direction = line.end - line.start;

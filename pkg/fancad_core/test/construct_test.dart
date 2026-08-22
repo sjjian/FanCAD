@@ -394,6 +394,47 @@ void main() {
     });
   });
 
+  group('trimPolyline', () {
+    final elbow = PolylineEntity.fromPoints(
+      id: 1,
+      points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10)],
+    );
+
+    test('removes the picked tail back to the crossing', () {
+      final trimmed = Construct.trimPolyline(
+        elbow,
+        const [Vec2(5, 0)],
+        const Vec2(8, 0),
+      );
+
+      expect(trimmed, isNotNull);
+      expect(trimmed!.vertexCount, 2);
+      expect(trimmed.vertexAt(1).x, closeTo(5, 1e-9));
+    });
+
+    test('keeps the far side when the pick is on the start remnant', () {
+      final trimmed = Construct.trimPolyline(
+        elbow,
+        const [Vec2(5, 0)],
+        const Vec2(1, 0),
+      );
+
+      expect(trimmed!.vertexAt(0).x, closeTo(5, 1e-9));
+      expect(trimmed.vertexAt(trimmed.vertexCount - 1), const Vec2(10, 10));
+    });
+
+    test('trims past a corner to a crossing on the second segment', () {
+      final trimmed = Construct.trimPolyline(
+        elbow,
+        const [Vec2(10, 5)],
+        const Vec2(10, 8),
+      );
+
+      expect(trimmed!.vertexCount, 3);
+      expect(trimmed.vertexAt(2).y, closeTo(5, 1e-9));
+    });
+  });
+
   group('extendLine', () {
     test('lengthens forward to meet a boundary segment', () {
       final extended = Construct.extendLine(line(0, 0, 5, 0), [

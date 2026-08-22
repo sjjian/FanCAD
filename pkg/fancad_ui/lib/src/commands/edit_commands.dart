@@ -906,14 +906,15 @@ class EditCommands {
     aliases: const ['tr', 'trim'],
     icon: 'trim',
     description:
-        'Shortens a line back to where it crosses the selected cutting edges. '
-        'The part containing the pick point is removed.',
+        'Shortens a line or open straight polyline back to where it crosses '
+        'the selected cutting edges. The part containing the pick point is '
+        'removed.',
     params: const [
       ParamSpec.selection('edges', description: 'Cutting edges'),
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line to trim',
+        description: 'The line or polyline to trim',
       ),
       ParamSpec.point(
         'pick',
@@ -2437,30 +2438,65 @@ class EditCommands {
       attempts++;
 
       final target = context.document.entity(targetId);
-      if (target is! LineEntity) {
+      if (extend && target is! LineEntity) {
         context.input.write(
-          '$verb currently supports lines only; '
+          'EXTEND currently supports lines only; '
           '${target?.kind.name ?? 'that object'} was skipped.',
         );
         if (suppliedTarget != null) {
-          return CommandResult.failed(
-            '$verb currently supports lines only.',
+          return const CommandResult.failed(
+            'EXTEND currently supports lines only.',
+          );
+        }
+        continue;
+      }
+      if (!extend &&
+          target is! LineEntity &&
+          target is! PolylineEntity) {
+        context.input.write(
+          'TRIM supports lines and open straight polylines; '
+          '${target?.kind.name ?? 'that object'} was skipped.',
+        );
+        if (suppliedTarget != null) {
+          return const CommandResult.failed(
+            'TRIM supports lines and open straight polylines.',
+          );
+        }
+        continue;
+      }
+      if (!extend &&
+          target is PolylineEntity &&
+          (target.closed || target.hasBulges)) {
+        context.input.write(
+          'TRIM cannot change a closed or bulged polyline.',
+        );
+        if (suppliedTarget != null) {
+          return const CommandResult.failed(
+            'TRIM cannot change a closed or bulged polyline.',
           );
         }
         continue;
       }
 
+      final entity = target!;
       final CadEntity? result;
       if (extend) {
-        result = Construct.extendLine(target, edges);
+        result = Construct.extendLine(entity as LineEntity, edges);
       } else {
         final crossings = <Vec2>[
-          for (final edge in edges) ...Construct.crossingsWith(target, edge),
+          for (final edge in edges) ...Construct.crossingsAlong(entity, edge),
         ];
         // Without a pick point there is no way to know which side to discard,
-        // so the far end from the first cut is the least surprising guess.
-        final pick = suppliedPick ?? target.midpoint;
-        result = Construct.trimLine(target, crossings, pick);
+        // so the middle of the object is the least surprising guess.
+        final pick = suppliedPick ??
+            (entity is LineEntity
+                ? entity.midpoint
+                : Construct.dividePolyline(entity as PolylineEntity, 2)
+                    .firstOrNull ??
+                    (entity as PolylineEntity).vertexAt(0));
+        result = entity is LineEntity
+            ? Construct.trimLine(entity, crossings, pick)
+            : Construct.trimPolyline(entity as PolylineEntity, crossings, pick);
       }
       if (result == null) {
         context.input.write(
