@@ -32,6 +32,7 @@ class Conversation {
   final List<ChatMessage> visible = [];
 
   void addUser(String text) {
+    if (text.trim().isEmpty) return;
     llmMessages.add(LlmMessage.user(text));
     visible.add(ChatMessage(role: ChatRole.user, text: text));
   }

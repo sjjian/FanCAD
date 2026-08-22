@@ -31,6 +31,17 @@ void main() {
     ]);
   });
 
+  test('an empty user turn is skipped rather than sent to the model', () {
+    final conversation = Conversation();
+    conversation.addUser('   ');
+    conversation.addUser('');
+    expect(conversation.visible, isEmpty);
+    expect(conversation.llmMessages, isEmpty);
+    conversation.addUser('draw a line');
+    expect(conversation.visible.single.text, 'draw a line');
+    expect(conversation.llmMessages.single.role, LlmRole.user);
+  });
+
   test('clear empties both sides of the transcript', () {
     final conversation = Conversation();
     conversation.addUser('hi');
