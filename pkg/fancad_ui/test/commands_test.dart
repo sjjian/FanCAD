@@ -2364,6 +2364,39 @@ void main() {
       expect(result.message, contains('not an object type'));
     });
 
+    test('select by block keeps only inserts of that definition', () async {
+      final a = await drawLine(0, 0, 2, 0);
+      final created = await run('edit.block', {
+        'ids': [a],
+        'name': 'STUD',
+        'base': [0, 0],
+      });
+      final first = (created.data!['ids']! as List).first as int;
+      final extra = await run('edit.insert', {
+        'name': 'STUD',
+        'at': [10, 0],
+      });
+      final second = (extra.data!['ids']! as List).first as int;
+      final other = await drawLine(0, 4, 2, 4);
+      await run('edit.block', {
+        'ids': [other],
+        'name': 'PIN',
+        'base': [0, 4],
+      });
+
+      final result = await run('select.byBlock', {'name': 'stud'});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(workspace.active!.selection.ids.toSet(), {first, second});
+    });
+
+    test('select by block refuses an unknown name', () async {
+      final result = await run('select.byBlock', {'name': 'MISSING'});
+
+      expect(result.status, CommandStatus.failed);
+      expect(result.message, contains('no insertable block'));
+    });
+
     test('summary reports counts and extents', () async {
       await drawLine(0, 0, 10, 0);
       await run('draw.circle', {'center': [0, 0], 'radius': 5});
