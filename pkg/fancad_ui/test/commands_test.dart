@@ -381,6 +381,24 @@ void main() {
       );
     });
 
+    test('match properties copies layer and colour onto the target', () async {
+      final target = await drawLine(0, 5, 10, 5);
+      await run('layer.new', {'name': 'WALLS', 'color': '1'});
+      final source = await drawLine(0, 0, 10, 0);
+      await run('edit.changeColor', {'ids': [source], 'color': '1'});
+
+      final result = await run('edit.matchProp', {
+        'source': source,
+        'ids': [target],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final painted = document.entity(target)!;
+      expect(painted.props.layer, 'WALLS');
+      expect(painted.props.color, CadColor.indexed(1));
+      expect(document.entity(source)!.props.layer, 'WALLS');
+    });
+
     test('erase removes the selection', () async {
       final id = await drawLine(0, 0, 10, 0);
 
