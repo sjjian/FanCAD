@@ -463,6 +463,7 @@ class DxfReader {
           props: props,
           vertices: vertices,
           closed: (int.tryParse(v[70] ?? '0') ?? 0) & 1 != 0,
+          constantWidth: n(43),
         );
       case 'TEXT':
         return TextEntity(

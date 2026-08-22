@@ -6,6 +6,26 @@ import 'package:fancad_dwg/fancad_dwg.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('a constant-width polyline keeps its width through DXF', () {
+    final original = CadDocument()
+      ..addEntity(
+        PolylineEntity(
+          id: 0,
+          vertices: Float64List.fromList([0, 0, 0, 10, 0, 0]),
+          constantWidth: 2.5,
+        ),
+      );
+
+    final dxf = const DxfWriter().writeString(original);
+    expect(dxf, contains('\n43\n2.5\n'));
+
+    final restored = const DxfReader().readString(dxf);
+    expect(
+      restored.entities.whereType<PolylineEntity>().single.constantWidth,
+      closeTo(2.5, 1e-9),
+    );
+  });
+
   test('DXF round-trips lines, circles and polylines', () {
     final original = CadDocument();
     final session = DocumentSession(id: 't', document: original);

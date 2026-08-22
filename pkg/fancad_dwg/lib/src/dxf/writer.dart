@@ -274,6 +274,7 @@ class DxfWriter {
         _common(pair, entity, paperSpace: paperSpace);
         pair(90, entity.vertexCount);
         pair(70, entity.closed ? 1 : 0);
+        if (entity.constantWidth != 0) pair(43, entity.constantWidth);
         for (var i = 0; i < entity.vertexCount; i++) {
           final p = entity.vertexAt(i);
           pair(10, p.x);
