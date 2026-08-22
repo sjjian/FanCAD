@@ -930,9 +930,9 @@ class EditCommands {
     category: _category,
     aliases: const ['ex', 'extend'],
     description:
-        'Lengthens a line, open straight polyline or arc until it meets '
-        'the selected boundary edges. On a polyline or arc the pick chooses '
-        'which end moves.',
+        'Lengthens a line, open polyline or arc until it meets the '
+        'selected boundary edges. A bulge grows along its circle. On a '
+        'polyline or arc the pick chooses which end moves.',
     params: const [
       ParamSpec.selection('edges', description: 'Boundary edges'),
       ParamSpec(
@@ -2481,18 +2481,6 @@ class EditCommands {
         }
         continue;
       }
-      if (extend && target is PolylineEntity && target.hasBulges) {
-        context.input.write(
-          'EXTEND cannot yet grow a bulged polyline.',
-        );
-        if (suppliedTarget != null) {
-          return const CommandResult.failed(
-            'EXTEND cannot yet grow a bulged polyline.',
-          );
-        }
-        continue;
-      }
-
       final entity = target as CadEntity;
       final CadEntity? result;
       if (extend) {

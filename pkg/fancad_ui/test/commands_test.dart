@@ -1112,6 +1112,31 @@ void main() {
       expect(arc.endAngle, closeTo(3.141592653589793, 1e-6));
     });
 
+    test('extend grows a joined bulge to a boundary', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {'ids': [lineId, arcId]});
+      final target = document.entities.first.id;
+      final boundary = await drawLine(-15, 0, -5, 0);
+
+      final result = await run('edit.extend', {
+        'edges': [boundary],
+        'target': target,
+        'pick': [0, 10],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(target)! as PolylineEntity;
+      expect(polyline.vertexAt(2).x, closeTo(-10, 1e-6));
+      expect(polyline.vertexAt(2).y, closeTo(0, 1e-6));
+      expect(polyline.bulgeAt(1), closeTo(1, 1e-6));
+    });
+
     test('extend lengthens a polyline to a boundary', () async {
       final created = await run('draw.polyline', {
         'points': [

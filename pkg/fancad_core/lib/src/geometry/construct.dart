@@ -984,19 +984,18 @@ class Construct {
     return null;
   }
 
-  /// Lengthens an open straight [polyline] until an end meets one of [edges].
+  /// Lengthens an open [polyline] until an end meets one of [edges].
   ///
   /// [pick] chooses which end moves; omitted, the last vertex is tried first
   /// and the first vertex is the fallback. Only the free end travels — the
-  /// inward vertex of that last segment stays put.
+  /// inward vertex of that last segment stays put. A bulge grows along its
+  /// supporting circle without closing into a full loop.
   static PolylineEntity? extendPolyline(
     PolylineEntity polyline,
     List<CadEntity> edges, [
     Vec2? pick,
   ]) {
-    if (polyline.closed || polyline.hasBulges || polyline.vertexCount < 2) {
-      return null;
-    }
+    if (polyline.closed || polyline.vertexCount < 2) return null;
     final count = polyline.vertexCount;
     final start = polyline.vertexAt(0);
     final end = polyline.vertexAt(count - 1);
@@ -1008,18 +1007,73 @@ class Construct {
           ? polyline.vertexAt(1)
           : polyline.vertexAt(count - 2);
       final free = moveStart ? start : end;
-      final arm = LineEntity(id: 0, start: inward, end: free);
-      final extended = extendLine(arm, edges);
-      if (extended == null) return null;
-      if (extended.start.distanceTo(inward) > 1e-6) return null;
-      if (extended.end.distanceTo(free) < 1e-9) return null;
-      return polyline.withGrip(moveStart ? 0 : count - 1, extended.end);
+      final bulge = polyline.bulgeAt(moveStart ? 0 : count - 2);
+      if (bulge.abs() < 1e-12) {
+        final arm = LineEntity(id: 0, start: inward, end: free);
+        final extended = extendLine(arm, edges);
+        if (extended == null) return null;
+        if (extended.start.distanceTo(inward) > 1e-6) return null;
+        if (extended.end.distanceTo(free) < 1e-9) return null;
+        return polyline.withGrip(moveStart ? 0 : count - 1, extended.end);
+      }
+      final segStart = moveStart ? free : inward;
+      final segEnd = moveStart ? inward : free;
+      final def = Flatten.bulgeArc(segStart, segEnd, bulge);
+      if (def == null) return null;
+      final grown = extendArc(
+        ArcEntity(
+          id: 0,
+          center: def.center,
+          radius: def.radius,
+          startAngle: def.startAngle,
+          endAngle: def.endAngle,
+        ),
+        edges,
+        free,
+      );
+      if (grown == null) return null;
+      final newFree =
+          free.distanceSquaredTo(grown.startPoint) <=
+              free.distanceSquaredTo(grown.endPoint)
+          ? grown.startPoint
+          : grown.endPoint;
+      if (newFree.distanceTo(free) < 1e-9) return null;
+      final newBulge =
+          (bulge >= 0 ? 1.0 : -1.0) * math.tan(grown.sweep / 4);
+      return _polylineWithMovedEnd(polyline, moveStart, newFree, newBulge);
     }
 
     if (pick != null) {
       return tryEnd(moveStart: fromStart);
     }
     return tryEnd(moveStart: false) ?? tryEnd(moveStart: true);
+  }
+
+  static PolylineEntity _polylineWithMovedEnd(
+    PolylineEntity source,
+    bool moveStart,
+    Vec2 newFree,
+    double newBulge,
+  ) {
+    final count = source.vertexCount;
+    final vertices = Float64List(count * 3);
+    for (var i = 0; i < count; i++) {
+      final point = (moveStart && i == 0) || (!moveStart && i == count - 1)
+          ? newFree
+          : source.vertexAt(i);
+      vertices[i * 3] = point.x;
+      vertices[i * 3 + 1] = point.y;
+      final bulgeIndex = moveStart ? 0 : count - 2;
+      vertices[i * 3 + 2] = i == bulgeIndex
+          ? newBulge
+          : (i < count - 1 ? source.bulgeAt(i) : 0);
+    }
+    return PolylineEntity(
+      id: source.id,
+      props: source.props,
+      vertices: vertices,
+      constantWidth: source.constantWidth,
+    );
   }
 
   /// Lengthens [arc] along the circle until an end meets one of [edges].

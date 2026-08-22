@@ -645,6 +645,29 @@ void main() {
         isNull,
       );
     });
+
+    test('grows a bulge along its circle to a boundary', () {
+      final quarter = PolylineEntity(
+        id: 1,
+        vertices: Float64List.fromList([
+          10,
+          0,
+          math.tan(math.pi / 8),
+          0,
+          10,
+          0,
+        ]),
+      );
+
+      final extended = Construct.extendPolyline(quarter, [
+        line(-15, 0, -5, 0),
+      ]);
+
+      expect(extended, isNotNull);
+      expect(extended!.vertexAt(1).x, closeTo(-10, 1e-9));
+      expect(extended.vertexAt(1).y, closeTo(0, 1e-9));
+      expect(extended.bulgeAt(0), closeTo(1, 1e-9));
+    });
   });
 
   group('extendArc', () {
