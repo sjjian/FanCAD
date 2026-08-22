@@ -53,6 +53,17 @@ void main() {
       endParam: 0,
     );
     expect(ellipse.isFullEllipse, isTrue);
+    const fromDefaults = EllipseEntity(
+      id: 2,
+      center: Vec2.zero(),
+      majorAxis: Vec2(10, 0),
+      ratio: 0.5,
+    );
+    expect(fromDefaults.endParam, math.pi * 2);
+    expect(fromDefaults.isFullEllipse, isTrue);
+    final defaultSink = PolylineSink();
+    fromDefaults.emit(context, defaultSink);
+    expect(defaultSink.closedFlags.single, isTrue);
     expect(ellipse.grips(), const [
       Vec2.zero(),
       Vec2(10, 0),

@@ -782,9 +782,15 @@ final class EllipseEntity extends CadEntity {
   final double startParam;
   final double endParam;
 
-  bool get isFullEllipse =>
-      (angularSweep(startParam, endParam) - math.pi * 2).abs() < 1e-9 ||
-      startParam == endParam;
+  /// DWG treats equal parameters as a full ellipse. `endParam` defaults to
+  /// `2π`, which [normalizeAngle] wraps to 0, so the comparison has to be
+  /// on the circle rather than on the raw numbers.
+  bool get isFullEllipse {
+    const eps = 1e-9;
+    final delta =
+        (normalizeAngle(endParam) - normalizeAngle(startParam)).abs();
+    return delta < eps || (math.pi * 2 - delta).abs() < eps;
+  }
 
   @override
   EntityKind get kind => EntityKind.ellipse;
