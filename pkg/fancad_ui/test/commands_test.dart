@@ -590,6 +590,19 @@ void main() {
       expect(result.status, CommandStatus.failed);
     });
 
+    test('convert turns a line into a two-vertex polyline', () async {
+      final id = await drawLine(0, 0, 8, 2);
+
+      final result = await run('edit.toPolyline', {'ids': [id]});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entity(id), isNull);
+      final polyline = document.entities.first as PolylineEntity;
+      expect(polyline.vertexCount, 2);
+      expect(polyline.vertexAt(0), const Vec2(0, 0));
+      expect(polyline.vertexAt(1), const Vec2(8, 2));
+    });
+
     test('open drops the closing segment of a polyline', () async {
       final created = await run('draw.rectangle', {
         'corner1': [0, 0],
