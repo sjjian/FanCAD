@@ -1872,6 +1872,41 @@ void main() {
       expect(document.activeEntities.whereType<InsertEntity>(), hasLength(1));
     });
 
+    test('purge blocks removes a definition with no remaining insert', () async {
+      final a = await drawLine(0, 0, 4, 0);
+      final created = await run('edit.block', {
+        'ids': [a],
+        'name': 'SCRAP',
+        'base': [0, 0],
+      });
+      final insertId = (created.data!['ids']! as List).first as int;
+      await run('edit.explode', {
+        'ids': [insertId],
+      });
+      expect(document.blocks.containsKey('SCRAP'), isTrue);
+
+      final result = await run('block.purge');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.blocks.containsKey('SCRAP'), isFalse);
+      expect(document.insertableBlocks, isEmpty);
+    });
+
+    test('purge blocks keeps a definition that still has an insert', () async {
+      final a = await drawLine(0, 0, 4, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'KEEP',
+        'base': [0, 0],
+      });
+
+      final result = await run('block.purge');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(result.message, contains('No unused'));
+      expect(document.blocks.containsKey('KEEP'), isTrue);
+    });
+
     test('join merges connected lines into one polyline', () async {
       final a = await drawLine(0, 0, 10, 0);
       final b = await drawLine(10, 0, 10, 10);

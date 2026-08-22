@@ -35,6 +35,7 @@ class EditCommands {
     _block(),
     _insert(),
     _minsert(),
+    _purgeBlocks(),
     _join(),
     _close(),
     _open(),
@@ -2166,6 +2167,54 @@ class EditCommands {
     if (supplied != null) return supplied;
     final value = await context.input.number(prompt, defaultValue: 1);
     return value.round();
+  }
+
+  static CommandDescriptor _purgeBlocks() => CommandDescriptor(
+    id: 'block.purge',
+    title: 'Purge Unused Blocks',
+    category: _category,
+    aliases: const ['purgeblock', 'purgeblocks'],
+    description:
+        'Deletes named block definitions that no insert references. Nested '
+        'unused definitions are removed in the same pass, so a block that '
+        'only existed inside another unused block is cleared too. Xrefs '
+        'and layout blocks are left alone.',
+    handler: (context) async {
+      if (_unusedBlockNames(context.document).isEmpty) {
+        return const CommandResult.ok(message: 'No unused blocks to purge.');
+      }
+      final purged = <String>[];
+      final committed = context.edit('Purge Blocks', (transaction) {
+        while (true) {
+          final unused = _unusedBlockNames(context.document);
+          if (unused.isEmpty) break;
+          for (final name in unused) {
+            if (transaction.removeBlock(name)) purged.add(name);
+          }
+        }
+      });
+      if (committed == null || purged.isEmpty) {
+        return const CommandResult.failed('Nothing was purged.');
+      }
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Purged ${purged.length} unused block(s).',
+        data: {'names': purged},
+        transaction: committed,
+      );
+    },
+  );
+
+  static List<String> _unusedBlockNames(CadDocument document) {
+    final referenced = {
+      for (final entity in document.entities)
+        if (entity is InsertEntity) entity.blockName.toUpperCase(),
+    };
+    return [
+      for (final block in document.insertableBlocks)
+        if (!block.isXref && !referenced.contains(block.name.toUpperCase()))
+          block.name,
+    ]..sort();
   }
 
   static CommandDescriptor _join() => CommandDescriptor(
