@@ -743,6 +743,18 @@ void main() {
 
       expect(extended!.end.x, closeTo(10, 1e-9));
     });
+
+    test('extends to a bulged polyline as its arc, not the chord', () {
+      final wall = PolylineEntity(
+        id: 2,
+        vertices: Float64List.fromList([10, 0, 1, -10, 0, 0]),
+      );
+      final extended = Construct.extendLine(line(0, 0, 0, 5), [wall]);
+
+      expect(extended, isNotNull);
+      expect(extended!.end.y, closeTo(10, 1e-9));
+      expect(extended.end.x, closeTo(0, 1e-9));
+    });
   });
 
   group('extendPolyline', () {

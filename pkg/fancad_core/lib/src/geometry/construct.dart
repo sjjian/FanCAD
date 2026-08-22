@@ -1144,16 +1144,36 @@ class Construct {
               consider(hit);
             }
           }
-        case PolylineEntity() when !edge.hasBulges:
-          final count = edge.vertexCount;
-          final segments = edge.closed ? count : count - 1;
-          for (var i = 0; i < segments; i++) {
-            final start = edge.vertexAt(i);
-            final end = edge.vertexAt((i + 1) % count);
-            final hit = Intersect.lineLine(line.start, line.end, start, end);
-            if (hit == null) continue;
-            if (Intersect.distanceToSegment(hit, start, end) > 1e-6) continue;
-            consider(hit);
+        case PolylineEntity():
+          for (final arm in _polylineArms(edge)) {
+            switch (arm) {
+              case LineEntity(:final start, :final end):
+                final hit = Intersect.lineLine(
+                  line.start,
+                  line.end,
+                  start,
+                  end,
+                );
+                if (hit == null) continue;
+                if (Intersect.distanceToSegment(hit, start, end) > 1e-6) {
+                  continue;
+                }
+                consider(hit);
+              case ArcEntity(:final center, :final radius):
+                for (final hit in Intersect.lineCircle(
+                  line.start,
+                  line.end,
+                  center,
+                  radius,
+                )) {
+                  final angle = (hit - center).angle;
+                  if (angularSweep(arm.startAngle, angle) <= arm.sweep) {
+                    consider(hit);
+                  }
+                }
+              default:
+                continue;
+            }
           }
         default:
           continue;
@@ -1358,23 +1378,41 @@ class Construct {
                 edge.sweep + 1e-9)
               hit,
         ];
-      case PolylineEntity() when !edge.hasBulges:
-        final count = edge.vertexCount;
-        final segments = edge.closed ? count : count - 1;
+      case PolylineEntity():
         return [
-          for (var i = 0; i < segments; i++)
-            ..._circleHitsOnEdge(
-              center,
-              radius,
-              LineEntity(
-                id: 0,
-                start: edge.vertexAt(i),
-                end: edge.vertexAt((i + 1) % count),
-              ),
-            ),
+          for (final arm in _polylineArms(edge))
+            ..._circleHitsOnEdge(center, radius, arm),
         ];
       default:
         return const [];
+    }
+  }
+
+  /// Each segment of [edge] as a line or the arc its bulge expands to.
+  static Iterable<CadEntity> _polylineArms(PolylineEntity edge) sync* {
+    final count = edge.vertexCount;
+    if (count < 2) return;
+    final segments = edge.closed ? count : count - 1;
+    for (var i = 0; i < segments; i++) {
+      final start = edge.vertexAt(i);
+      final end = edge.vertexAt((i + 1) % count);
+      final bulge = edge.bulgeAt(i);
+      if (bulge.abs() < 1e-12) {
+        yield LineEntity(id: 0, start: start, end: end);
+        continue;
+      }
+      final def = Flatten.bulgeArc(start, end, bulge);
+      if (def == null) {
+        yield LineEntity(id: 0, start: start, end: end);
+        continue;
+      }
+      yield ArcEntity(
+        id: 0,
+        center: def.center,
+        radius: def.radius,
+        startAngle: def.startAngle,
+        endAngle: def.endAngle,
+      );
     }
   }
 
