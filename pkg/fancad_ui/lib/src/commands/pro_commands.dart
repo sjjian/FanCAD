@@ -16,6 +16,7 @@ class ProCommands {
     _pageSetup(),
     _mview(),
     _vpScale(),
+    _vpLock(),
     _plot(),
     _plotPdf(),
     _xrefAttach(),
@@ -533,6 +534,76 @@ class ProCommands {
         status: CommandStatus.ok,
         message: 'Viewport scale is $scale.',
         data: {'index': index, 'scale': scale},
+        transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _vpLock() => CommandDescriptor(
+    id: 'layout.vplock',
+    title: 'Viewport Lock',
+    category: _category,
+    aliases: const ['vplock', 'mviewlock'],
+    description:
+        'Locks or unlocks a paper viewport so VPSCALE cannot change the '
+        'view. Omit locked to toggle. The window frame can still move.',
+    params: const [
+      ParamSpec(
+        name: 'locked',
+        type: ParamType.boolean,
+        description: 'Omit to toggle',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'index',
+        type: ParamType.integer,
+        description: 'Viewport index on the current layout, from 0',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'point',
+        type: ParamType.point,
+        description: 'A point on the viewport to lock',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final layout = context.document.activeLayout;
+      if (layout.isModelSpace) {
+        return const CommandResult.failed(
+          'VPLOCK only works on a paper layout.',
+        );
+      }
+      if (layout.viewports.isEmpty) {
+        return const CommandResult.failed('This layout has no viewports.');
+      }
+
+      final index = await _resolveViewportIndex(context, layout);
+      if (index == null) {
+        return const CommandResult.failed('No viewport was selected.');
+      }
+      final viewport = layout.viewports[index];
+      final locked = context.args.boolean('locked') ?? !viewport.locked;
+      if (locked == viewport.locked) {
+        return CommandResult.ok(
+          message: 'Viewport is already ${locked ? 'locked' : 'unlocked'}.',
+          data: {'index': index, 'locked': locked},
+        );
+      }
+
+      final committed = context.edit('Viewport lock', (transaction) {
+        final next = [...layout.viewports];
+        next[index] = viewport.copyWith(locked: locked);
+        transaction.putLayout(layout.copyWith(viewports: next));
+      });
+      if (committed == null) {
+        return const CommandResult.failed('The lock was not changed.');
+      }
+      context.services.invalidate();
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Viewport is now ${locked ? 'locked' : 'unlocked'}.',
+        data: {'index': index, 'locked': locked},
         transaction: committed,
       );
     },

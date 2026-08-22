@@ -2815,6 +2815,40 @@ void main() {
       expect(result.status, CommandStatus.failed);
     });
 
+    test('vplock toggles the only viewport and blocks vpscale', () async {
+      await run('layout.new');
+      await run('layout.mview', {
+        'corner1': [10, 10],
+        'corner2': [200, 150],
+        'scale': 1,
+      });
+
+      final locked = await run('layout.vplock');
+      expect(locked.status, CommandStatus.ok, reason: locked.message);
+      expect(document.activeLayout.viewports.single.locked, isTrue);
+
+      final refused = await run('layout.vpscale', {'scale': 0.25});
+      expect(refused.status, CommandStatus.failed);
+      expect(document.activeLayout.viewports.single.scale, closeTo(1, 1e-9));
+
+      final unlocked = await run('layout.vplock', {'locked': false});
+      expect(unlocked.status, CommandStatus.ok, reason: unlocked.message);
+      expect(document.activeLayout.viewports.single.locked, isFalse);
+
+      final scaled = await run('layout.vpscale', {'scale': 0.25});
+      expect(scaled.status, CommandStatus.ok, reason: scaled.message);
+      expect(document.activeLayout.viewports.single.scale, closeTo(0.25, 1e-9));
+
+      await run('edit.undo');
+      await run('edit.undo');
+      expect(document.activeLayout.viewports.single.locked, isTrue);
+    });
+
+    test('vplock refuses the model tab', () async {
+      final result = await run('layout.vplock', {'locked': true});
+      expect(result.status, CommandStatus.failed);
+    });
+
     test('mview honours an explicit scale', () async {
       document.addLayout(
         const Layout(
