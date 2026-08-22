@@ -153,6 +153,7 @@ class DxfWriter {
       if (layer.lineWeight != LineWeight.byDefault) {
         pair(370, layer.lineWeight);
       }
+      if (!layer.plottable) pair(290, 0);
     }
     pair(0, 'ENDTAB');
   }

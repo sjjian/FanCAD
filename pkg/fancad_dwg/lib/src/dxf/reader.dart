@@ -323,6 +323,7 @@ class DxfReader {
       visible: raw >= 0,
       frozen: flags & 1 != 0,
       locked: flags & 4 != 0,
+      plottable: (int.tryParse(v[290] ?? '1') ?? 1) != 0,
     );
   }
 

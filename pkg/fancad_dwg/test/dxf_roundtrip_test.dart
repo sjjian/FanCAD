@@ -314,6 +314,18 @@ void main() {
     expect(dim.definitionPoints[2], const Vec2(5, 4));
   });
 
+  test('a non-plottable layer stays off the plot through DXF', () {
+    final original = CadDocument()
+      ..putLayer(const LayerDef(name: 'VIEWPORT-FRAME', plottable: false));
+
+    final dxf = const DxfWriter().writeString(original);
+    expect(dxf, contains('290'));
+
+    final restored = const DxfReader().readString(dxf);
+    expect(restored.layers['VIEWPORT-FRAME']?.plottable, isFalse);
+    expect(restored.layers['0']?.plottable, isTrue);
+  });
+
   test('text styles survive DXF', () {
     final original = CadDocument()
       ..putTextStyle(
