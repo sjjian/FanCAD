@@ -824,6 +824,24 @@ void main() {
       expect(remnant.vertexAt(1), const Vec2(10, 0));
     });
 
+    test('break splits an arc at a point', () async {
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [0, 10],
+        'end': [-10, 0],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.break', {
+        'target': id,
+        'first': [0, 10],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      expect(document.entities.every((each) => each is ArcEntity), isTrue);
+    });
+
     test('lengthen sets the total length from the picked end', () async {
       final id = await drawLine(0, 0, 10, 0);
 

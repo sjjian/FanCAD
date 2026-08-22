@@ -1407,15 +1407,15 @@ class EditCommands {
     category: _category,
     aliases: const ['br', 'break'],
     description:
-        'Splits a line or straight polyline at a point, or removes the portion '
-        'between two points. A closed polyline opens at the first point; a '
-        'second point drops the span running toward it. Omit the second point '
-        'to only split.',
+        'Splits a line, straight polyline or arc at a point, or removes the '
+        'portion between two points. A circle needs two points and keeps the '
+        'counter-clockwise remnant from the second pick back to the first. '
+        'Omit the second point to only split (arcs and open chains).',
     params: const [
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line or polyline to break',
+        description: 'The line, polyline, arc or circle to break',
         required: false,
       ),
       ParamSpec.point('first', description: 'First break point'),
@@ -1434,7 +1434,7 @@ class EditCommands {
       } else {
         context.selection.clear();
         final picked = await context.input.selection(
-          'BREAK  Select a line or polyline:',
+          'BREAK  Select object to break:',
           useExistingSelection: false,
           single: true,
         );
@@ -1443,9 +1443,12 @@ class EditCommands {
       }
 
       final target = context.document.entity(targetId);
-      if (target is! LineEntity && target is! PolylineEntity) {
+      if (target is! LineEntity &&
+          target is! PolylineEntity &&
+          target is! ArcEntity &&
+          target is! CircleEntity) {
         return const CommandResult.failed(
-          'Break supports lines and straight polylines.',
+          'Break supports lines, straight polylines, arcs and circles.',
         );
       }
 
@@ -1465,10 +1468,19 @@ class EditCommands {
       context.input
         ..setPreview(null)
         ..setMarkers(const []);
+      if (target is CircleEntity && second == null) {
+        return const CommandResult.failed(
+          'A circle needs two break points.',
+        );
+      }
 
-      final pieces = target is LineEntity
-          ? Construct.breakLine(target, first, second)
-          : Construct.breakPolyline(target as PolylineEntity, first, second);
+      final pieces = switch (target) {
+        LineEntity() => Construct.breakLine(target, first, second),
+        PolylineEntity() => Construct.breakPolyline(target, first, second),
+        ArcEntity() => Construct.breakArc(target, first, second),
+        CircleEntity() => Construct.breakCircle(target, first, second),
+        _ => null,
+      };
       if (pieces == null) {
         return const CommandResult.failed(
           'The break point is at an end of the object, so nothing changed.',

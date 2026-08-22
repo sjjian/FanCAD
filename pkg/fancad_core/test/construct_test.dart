@@ -912,6 +912,65 @@ void main() {
     });
   });
 
+  group('breakArc', () {
+    const semicircle = ArcEntity(
+      id: 1,
+      center: Vec2(0, 0),
+      radius: 10,
+      startAngle: 0,
+      endAngle: math.pi,
+    );
+
+    test('splits an arc at an interior point', () {
+      final pieces = Construct.breakArc(semicircle, const Vec2(0, 10));
+
+      expect(pieces, hasLength(2));
+      expect(pieces![0].endAngle, closeTo(math.pi / 2, 1e-9));
+      expect(pieces[1].startAngle, closeTo(math.pi / 2, 1e-9));
+      expect(pieces[1].endAngle, closeTo(math.pi, 1e-9));
+    });
+
+    test('returns null when the point is an endpoint', () {
+      expect(Construct.breakArc(semicircle, const Vec2(10, 0)), isNull);
+    });
+
+    test('drops the span between two points', () {
+      final pieces = Construct.breakArc(
+        semicircle,
+        const Vec2(0, 10),
+        const Vec2(-10, 0),
+      );
+
+      expect(pieces, hasLength(1));
+      expect(pieces!.first.endAngle, closeTo(math.pi / 2, 1e-9));
+    });
+  });
+
+  group('breakCircle', () {
+    test('keeps the counter-clockwise remnant between two points', () {
+      const circle = CircleEntity(id: 1, center: Vec2(0, 0), radius: 10);
+      final pieces = Construct.breakCircle(
+        circle,
+        const Vec2(10, 0),
+        const Vec2(0, 10),
+      );
+
+      expect(pieces, hasLength(1));
+      expect(pieces!.first.startAngle, closeTo(math.pi / 2, 1e-9));
+      expect(pieces.first.sweep, closeTo(math.pi * 1.5, 1e-9));
+    });
+
+    test('refuses a single point', () {
+      expect(
+        Construct.breakCircle(
+          const CircleEntity(id: 1, center: Vec2(0, 0), radius: 10),
+          const Vec2(10, 0),
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('joinEntities', () {
     test('joins a line onto an open polyline', () {
       final polyline = PolylineEntity.fromPoints(

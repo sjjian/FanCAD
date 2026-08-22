@@ -1353,6 +1353,82 @@ class Construct {
     );
   }
 
+  /// Breaks [arc] at [first], or drops the span between [first] and [second].
+  ///
+  /// One point splits the arc in two. Two points drop the interior along the
+  /// sweep (the earlier parameter first) and leave the outer remnants.
+  /// Returns null when nothing would change; an empty list when the whole
+  /// arc is removed.
+  static List<ArcEntity>? breakArc(
+    ArcEntity arc,
+    Vec2 first, [
+    Vec2? second,
+  ]) {
+    if (arc.radius <= 0 || arc.sweep < 1e-12) return null;
+    var t1 = _arcParam(arc, first);
+    var t2 = second == null ? t1 : _arcParam(arc, second);
+    if (t1 > t2) {
+      final swap = t1;
+      t1 = t2;
+      t2 = swap;
+    }
+    final pieces = <ArcEntity>[];
+    if (t1 > 1e-9) {
+      pieces.add(_arcSpan(arc, 0, t1, arc.id));
+    }
+    if (t2 < 1 - 1e-9) {
+      pieces.add(_arcSpan(arc, t2, 1, pieces.isEmpty ? arc.id : 0));
+    }
+    if (pieces.isEmpty) return const [];
+    if (pieces.length == 1 &&
+        (pieces.first.startAngle - arc.startAngle).abs() < 1e-9 &&
+        angularSweep(pieces.first.startAngle, pieces.first.endAngle) >
+            arc.sweep - 1e-9) {
+      return null;
+    }
+    return pieces;
+  }
+
+  /// Breaks [circle] between two points, leaving the CCW remnant from the
+  /// second pick back to the first. One point cannot open a circle.
+  static List<ArcEntity>? breakCircle(
+    CircleEntity circle,
+    Vec2 first, [
+    Vec2? second,
+  ]) {
+    if (second == null || circle.radius <= 0) return null;
+    final start = (second - circle.center).angle;
+    final end = (first - circle.center).angle;
+    final sweep = angularSweep(start, end);
+    if (sweep < 1e-9 || sweep > math.pi * 2 - 1e-9) return null;
+    return [
+      ArcEntity(
+        id: circle.id,
+        props: circle.props,
+        center: circle.center,
+        radius: circle.radius,
+        startAngle: start,
+        endAngle: end,
+      ),
+    ];
+  }
+
+  static double _arcParam(ArcEntity arc, Vec2 pick) {
+    final angle = (pick - arc.center).angle;
+    return (angularSweep(arc.startAngle, angle) / arc.sweep).clamp(0.0, 1.0);
+  }
+
+  static ArcEntity _arcSpan(ArcEntity arc, double from, double to, int id) {
+    return ArcEntity(
+      id: id,
+      props: arc.props,
+      center: arc.center,
+      radius: arc.radius,
+      startAngle: arc.startAngle + arc.sweep * from,
+      endAngle: arc.startAngle + arc.sweep * to,
+    );
+  }
+
   /// Direction from the corner along the side of [line] that [pick] sits on.
   static Vec2? _filletKeepDir(LineEntity line, Vec2 corner, Vec2 pick) {
     final along = line.end - line.start;
