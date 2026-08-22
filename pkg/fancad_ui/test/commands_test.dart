@@ -2945,6 +2945,71 @@ void main() {
       expect(insert.blockName, 'BRACKET');
       expect(insert.position, const Vec2(5, 6));
     });
+
+    test('reload rereads the file and keeps the insert', () async {
+      final dir = Directory.systemTemp.createTempSync('fancad_xref');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final path = '${dir.path}/part.dxf';
+      File(path).writeAsStringSync(
+        const DxfWriter().writeString(
+          CadDocument()
+            ..addEntity(
+              const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+            ),
+        ),
+      );
+
+      await run('xref.attach', {
+        'path': path,
+        'at': [3, 4],
+      });
+      final insertId = document.activeEntities.whereType<InsertEntity>().single.id;
+
+      File(path).writeAsStringSync(
+        const DxfWriter().writeString(
+          CadDocument()
+            ..addEntity(
+              const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(20, 0)),
+            ),
+        ),
+      );
+
+      final result = await run('xref.reload');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final insert = document.entity(insertId)! as InsertEntity;
+      expect(insert.position, const Vec2(3, 4));
+      final line =
+          document.entity(document.blocks['PART']!.entityIds.single)!
+              as LineEntity;
+      expect(line.end.x, closeTo(20, 1e-9));
+    });
+
+    test('reload refuses when there is no xref', () async {
+      final result = await run('xref.reload');
+      expect(result.status, CommandStatus.failed);
+    });
+
+    test('reload refuses a missing file', () async {
+      final dir = Directory.systemTemp.createTempSync('fancad_xref');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final path = '${dir.path}/gone.dxf';
+      File(path).writeAsStringSync(
+        const DxfWriter().writeString(
+          CadDocument()
+            ..addEntity(
+              const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+            ),
+        ),
+      );
+      await run('xref.attach', {'path': path});
+      File(path).deleteSync();
+
+      final result = await run('xref.reload');
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.blocks['GONE']!.entityIds, hasLength(1));
+    });
   });
 
   group('registry contract', () {

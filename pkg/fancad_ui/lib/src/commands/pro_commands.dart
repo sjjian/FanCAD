@@ -21,6 +21,7 @@ class ProCommands {
     _plot(),
     _plotPdf(),
     _xrefAttach(),
+    _xrefReload(),
     _audit(),
   ];
 
@@ -843,6 +844,110 @@ class ProCommands {
       );
     },
   );
+
+  static CommandDescriptor _xrefReload() => CommandDescriptor(
+    id: 'xref.reload',
+    title: 'Reload Xref',
+    category: _category,
+    aliases: const ['xrefreload'],
+    description:
+        'Re-reads attached external references from their stored paths. '
+        'Omit the name to reload the selected xref, or the only xref in '
+        'the drawing.',
+    params: const [
+      ParamSpec(
+        name: 'name',
+        type: ParamType.text,
+        required: false,
+        description: 'Xref block to reload. Defaults to the selection.',
+      ),
+    ],
+    handler: (context) async {
+      final targets = _xrefsToReload(context);
+      if (targets.isEmpty) {
+        return const CommandResult.failed('No xref was selected.');
+      }
+
+      final loaded = <({BlockRecord block, CadDocument foreign})>[];
+      for (final block in targets) {
+        final path = block.xrefPath;
+        if (path.isEmpty || !File(path).existsSync()) {
+          return CommandResult.failed(
+            'Cannot find the file for "${block.name}".',
+          );
+        }
+        try {
+          final imported = await DrawingImporter().open(path);
+          loaded.add((block: block, foreign: imported.document));
+        } on Object catch (error) {
+          return CommandResult.failed(
+            'Could not reload "${block.name}": $error',
+          );
+        }
+      }
+
+      final committed = context.edit('Reload xref', (transaction) {
+        for (final item in loaded) {
+          const XrefResolver().attach(
+            host: context.document,
+            foreign: item.foreign,
+            path: item.block.xrefPath,
+            blockName: item.block.name,
+            transaction: transaction,
+          );
+        }
+      });
+      if (committed == null) {
+        return const CommandResult.failed('The xref was not reloaded.');
+      }
+      context.services.invalidate();
+      final names = [for (final item in loaded) item.block.name];
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: names.length == 1
+            ? 'Reloaded ${names.single}.'
+            : 'Reloaded ${names.length} xrefs.',
+        data: {
+          'blocks': names,
+          'entities': [
+            for (final item in loaded) item.foreign.entityCount,
+          ],
+        },
+        transaction: committed,
+      );
+    },
+  );
+
+  static List<BlockRecord> _xrefsToReload(CommandContext context) {
+    final requested = context.args.text('name')?.trim() ?? '';
+    if (requested.isNotEmpty) {
+      final block = _xrefNamed(context.document, requested);
+      return block == null ? const [] : [block];
+    }
+
+    final fromSelection = <String, BlockRecord>{};
+    for (final id in context.selection.ids) {
+      final entity = context.document.entity(id);
+      if (entity is! InsertEntity) continue;
+      final block = _xrefNamed(context.document, entity.blockName);
+      if (block != null) fromSelection[block.name] = block;
+    }
+    if (fromSelection.isNotEmpty) return fromSelection.values.toList();
+
+    final all = [
+      for (final block in context.document.blocks.values)
+        if (block.isXref) block,
+    ];
+    return all.length == 1 ? all : const [];
+  }
+
+  static BlockRecord? _xrefNamed(CadDocument document, String name) {
+    final needle = name.toLowerCase();
+    for (final block in document.blocks.values) {
+      if (block.isXref && block.name.toLowerCase() == needle) return block;
+    }
+    return null;
+  }
 
   static CommandDescriptor _audit() => CommandDescriptor(
     id: 'file.audit',
