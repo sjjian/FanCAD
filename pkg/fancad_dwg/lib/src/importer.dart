@@ -41,10 +41,14 @@ class DrawingImporter {
     );
   }
 
-  /// Whether [path] looks like something this backend can open.
+  /// Whether [path] looks like something this importer can open.
+  ///
+  /// `.fcb` is FanCAD's own format and is always readable here, even when
+  /// the native backend cannot open DWG.
   bool canOpen(String path) {
-    final extension = _extensionOf(path);
-    return capabilities.readableExtensions.contains(extension);
+    final extension = _extensionOf(path.trim());
+    return extension == 'fcb' ||
+        capabilities.readableExtensions.contains(extension);
   }
 
   /// Opens a drawing.

@@ -44,7 +44,8 @@ void main() {
     final importer = DrawingImporter(backend: backend, cache: cache);
 
     expect(importer.canOpen(source.path), isTrue);
-    expect(importer.canOpen('notes.fcb'), isFalse);
+    expect(importer.canOpen('notes.fcb'), isTrue);
+    expect(importer.canOpen('   '), isFalse);
 
     final first = await importer.open(source.path);
     expect(first.fromCache, isFalse);

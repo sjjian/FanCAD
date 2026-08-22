@@ -267,6 +267,7 @@ void main() {
       final importer = DrawingImporter(backend: _NoBackend());
       expect(importer.canOpen('a.dwg'), isFalse);
       expect(importer.canOpen('a.dxf'), isTrue);
+      expect(importer.canOpen('a.fcb'), isTrue);
     });
 
     test('encodes and decodes FanCAD native files', () {
