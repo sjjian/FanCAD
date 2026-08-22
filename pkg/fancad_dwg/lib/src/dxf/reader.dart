@@ -415,6 +415,7 @@ class DxfReader {
       lineWeight: v.containsKey(370)
           ? int.tryParse(v[370]!) ?? LineWeight.byLayer
           : LineWeight.byLayer,
+      visible: (int.tryParse(v[60] ?? '0') ?? 0) == 0,
     );
     double n(int code, [double fallback = 0]) =>
         double.tryParse(v[code] ?? '') ?? fallback;

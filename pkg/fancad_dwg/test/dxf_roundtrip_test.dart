@@ -385,6 +385,24 @@ void main() {
     );
   });
 
+  test('a hidden entity stays off through DXF', () {
+    final original = CadDocument()
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          start: Vec2.zero(),
+          end: Vec2(4, 0),
+          props: EntityProps(visible: false),
+        ),
+      );
+
+    final dxf = const DxfWriter().writeString(original);
+    expect(dxf, contains('\n60\n1\n'));
+
+    final restored = const DxfReader().readString(dxf);
+    expect(restored.entities.single.props.visible, isFalse);
+  });
+
   test('a hidden layer stays off through DXF', () {
     final original = CadDocument()
       ..putLayer(

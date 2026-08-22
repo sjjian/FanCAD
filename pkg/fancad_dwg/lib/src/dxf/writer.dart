@@ -466,6 +466,7 @@ class DxfWriter {
     if (entity.props.lineWeight != LineWeight.byLayer) {
       pair(370, entity.props.lineWeight);
     }
+    if (!entity.props.visible) pair(60, 1);
   }
 
   static int _aci(CadColor color) =>
