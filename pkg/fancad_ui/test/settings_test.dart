@@ -36,6 +36,17 @@ void main() {
     expect(store.values.containsKey(SettingsKeys.showGrid), isFalse);
   });
 
+  test('pushRecent ignores a blank path so it cannot hide real files', () {
+    final store = SettingsStore.inMemory({
+      SettingsKeys.recentFiles: ['a.dxf'],
+    });
+    store.pushRecent(SettingsKeys.recentFiles, '   ');
+    store.pushRecent(SettingsKeys.recentFiles, '');
+    expect(store.getStringList(SettingsKeys.recentFiles), ['a.dxf']);
+    store.pushRecent(SettingsKeys.recentFiles, '  b.dxf  ');
+    expect(store.getStringList(SettingsKeys.recentFiles), ['b.dxf', 'a.dxf']);
+  });
+
   test('a corrupt file is treated as empty and a flush can be reread', () async {
     final dir = Directory.systemTemp.createTempSync('fancad-settings');
     addTearDown(() => dir.deleteSync(recursive: true));

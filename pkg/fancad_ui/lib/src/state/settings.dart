@@ -93,10 +93,15 @@ class SettingsStore extends ChangeNotifier {
   }
 
   /// Adds [entry] to the front of a bounded most-recently-used list.
+  ///
+  /// A blank or whitespace-only path is ignored: storing it would let a
+  /// failed picker hide the drawings the user can actually reopen.
   void pushRecent(String key, String entry, {int limit = 12}) {
+    final path = entry.trim();
+    if (path.isEmpty) return;
     final existing = getStringList(key).toList()
-      ..remove(entry)
-      ..insert(0, entry);
+      ..remove(path)
+      ..insert(0, path);
     while (existing.length > limit) {
       existing.removeLast();
     }
