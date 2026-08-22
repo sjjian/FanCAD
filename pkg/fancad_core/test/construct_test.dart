@@ -482,6 +482,32 @@ void main() {
       expect(trimmed!.vertexCount, 3);
       expect(trimmed.vertexAt(2).y, closeTo(5, 1e-9));
     });
+
+    test('cuts a bulge on the arc, not the chord', () {
+      final quarter = PolylineEntity(
+        id: 1,
+        vertices: Float64List.fromList([
+          10,
+          0,
+          math.tan(math.pi / 8),
+          0,
+          10,
+          0,
+        ]),
+      );
+      final cut = Vec2(10 * math.cos(math.pi / 4), 10 * math.sin(math.pi / 4));
+
+      final trimmed = Construct.trimPolyline(
+        quarter,
+        [cut],
+        const Vec2(0, 10),
+      );
+
+      expect(trimmed, isNotNull);
+      expect(trimmed!.vertexAt(1).x, closeTo(cut.x, 1e-9));
+      expect(trimmed.vertexAt(1).y, closeTo(cut.y, 1e-9));
+      expect(trimmed.bulgeAt(0), closeTo(math.tan(math.pi / 16), 1e-9));
+    });
   });
 
   group('trimArc', () {

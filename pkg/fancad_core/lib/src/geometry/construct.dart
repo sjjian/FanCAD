@@ -654,20 +654,18 @@ class Construct {
     return null;
   }
 
-  /// Shortens an open straight [polyline] back to where it meets [crossings].
+  /// Shortens an open [polyline] back to where it meets [crossings].
   ///
   /// Same contract as [trimLine]: the interval containing [pick] is discarded.
   /// Trimming a middle span keeps the longer remnant rather than splitting
-  /// the polyline in two. Closed or bulged polylines return null.
+  /// the polyline in two. A bulge is cut on the arc, not the chord. Closed
+  /// polylines return null.
   static PolylineEntity? trimPolyline(
     PolylineEntity polyline,
     List<Vec2> crossings,
     Vec2 pick,
   ) {
-    if (crossings.isEmpty ||
-        polyline.closed ||
-        polyline.hasBulges ||
-        polyline.vertexCount < 2) {
+    if (crossings.isEmpty || polyline.closed || polyline.vertexCount < 2) {
       return null;
     }
     final length = _polylineLength(polyline);
@@ -733,12 +731,9 @@ class Construct {
     PolylineEntity polyline,
     double distance,
   ) {
-    final points = [
-      for (var i = 0; i < polyline.vertexCount; i++) polyline.vertexAt(i),
-    ];
-    final trimmed = _trimChainToLength(points, distance);
+    final trimmed = _trimChainToLengthVerts(_polyVertsOf(polyline), distance);
     if (trimmed == null || trimmed.length < 2) return null;
-    return _openPolyline(polyline, trimmed, polyline.id);
+    return _openPolyVerts(polyline, trimmed, polyline.id);
   }
 
   static PolylineEntity? _polylineSuffix(
@@ -746,12 +741,16 @@ class Construct {
     double distance,
   ) {
     final length = _polylineLength(polyline);
-    final points = [
-      for (var i = polyline.vertexCount - 1; i >= 0; i--) polyline.vertexAt(i),
-    ];
-    final trimmed = _trimChainToLength(points, length - distance);
+    final trimmed = _trimChainToLengthVerts(
+      _reversedPolyVerts(_polyVertsOf(polyline)),
+      length - distance,
+    );
     if (trimmed == null || trimmed.length < 2) return null;
-    return _openPolyline(polyline, trimmed.reversed.toList(), polyline.id);
+    return _openPolyVerts(
+      polyline,
+      _reversedPolyVerts(trimmed),
+      polyline.id,
+    );
   }
 
   /// Shortens [arc] back to where it meets [crossings].
@@ -810,18 +809,44 @@ class Construct {
         for (var i = 0;
             i < (target.closed ? target.vertexCount : target.vertexCount - 1);
             i++)
-          ...crossingsWith(
-            LineEntity(
-              id: 0,
-              start: target.vertexAt(i),
-              end: target.vertexAt((i + 1) % target.vertexCount),
-            ),
-            edge,
-          ),
+          ..._crossingsOnPolylineSegment(target, i, edge),
       ],
       ArcEntity() => _crossingsOnArc(target, edge),
       _ => const [],
     };
+  }
+
+  static List<Vec2> _crossingsOnPolylineSegment(
+    PolylineEntity polyline,
+    int index,
+    CadEntity edge,
+  ) {
+    final start = polyline.vertexAt(index);
+    final end = polyline.vertexAt((index + 1) % polyline.vertexCount);
+    final bulge = polyline.bulgeAt(index);
+    if (bulge.abs() < 1e-12) {
+      return crossingsWith(
+        LineEntity(id: 0, start: start, end: end),
+        edge,
+      );
+    }
+    final def = Flatten.bulgeArc(start, end, bulge);
+    if (def == null) {
+      return crossingsWith(
+        LineEntity(id: 0, start: start, end: end),
+        edge,
+      );
+    }
+    return _crossingsOnArc(
+      ArcEntity(
+        id: 0,
+        center: def.center,
+        radius: def.radius,
+        startAngle: def.startAngle,
+        endAngle: def.endAngle,
+      ),
+      edge,
+    );
   }
 
   static List<Vec2> _crossingsOnArc(ArcEntity arc, CadEntity edge) {

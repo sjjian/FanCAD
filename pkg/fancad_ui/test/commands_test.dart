@@ -719,6 +719,31 @@ void main() {
       expect(polyline.vertexAt(1).x, closeTo(5, 1e-9));
     });
 
+    test('trim cuts a joined bulge on the arc', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {'ids': [lineId, arcId]});
+      final target = document.entities.first.id;
+      final cutter = await drawLine(0, 14.142135623730951, 14.142135623730951, 0);
+
+      final result = await run('edit.trim', {
+        'edges': [cutter],
+        'target': target,
+        'pick': [0, 10],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(target)! as PolylineEntity;
+      expect(polyline.vertexAt(2).x, closeTo(7.0710678118654755, 1e-6));
+      expect(polyline.vertexAt(2).y, closeTo(7.0710678118654755, 1e-6));
+      expect(polyline.hasBulges, isTrue);
+    });
+
     test('trim shortens an arc back to a cutting edge', () async {
       final created = await run('draw.arc', {
         'start': [10, 0],

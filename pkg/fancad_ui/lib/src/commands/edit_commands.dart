@@ -906,9 +906,9 @@ class EditCommands {
     aliases: const ['tr', 'trim'],
     icon: 'trim',
     description:
-        'Shortens a line, open straight polyline or arc back to where it '
-        'crosses the selected cutting edges. The part containing the pick '
-        'point is removed.',
+        'Shortens a line, open polyline or arc back to where it crosses '
+        'the selected cutting edges. The part containing the pick point is '
+        'removed. A bulge is cut on the arc, not the chord.',
     params: const [
       ParamSpec.selection('edges', description: 'Cutting edges'),
       ParamSpec(
@@ -2462,24 +2462,32 @@ class EditCommands {
           target is! PolylineEntity &&
           target is! ArcEntity) {
         context.input.write(
-          '$verb supports lines, open straight polylines and arcs; '
+          '$verb supports lines, open polylines and arcs; '
           '${target?.kind.name ?? 'that object'} was skipped.',
         );
         if (suppliedTarget != null) {
           return CommandResult.failed(
-            '$verb supports lines, open straight polylines and arcs.',
+            '$verb supports lines, open polylines and arcs.',
           );
         }
         continue;
       }
-      if (target is PolylineEntity &&
-          (target.closed || target.hasBulges)) {
-        context.input.write(
-          '$verb cannot change a closed or bulged polyline.',
-        );
+      if (target is PolylineEntity && target.closed) {
+        context.input.write('$verb cannot change a closed polyline.');
         if (suppliedTarget != null) {
           return CommandResult.failed(
-            '$verb cannot change a closed or bulged polyline.',
+            '$verb cannot change a closed polyline.',
+          );
+        }
+        continue;
+      }
+      if (extend && target is PolylineEntity && target.hasBulges) {
+        context.input.write(
+          'EXTEND cannot yet grow a bulged polyline.',
+        );
+        if (suppliedTarget != null) {
+          return const CommandResult.failed(
+            'EXTEND cannot yet grow a bulged polyline.',
           );
         }
         continue;
