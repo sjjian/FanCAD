@@ -80,6 +80,10 @@ void main() {
     expect(await ws.openFile('/tmp/fancad-missing-open.dxf'), isNull);
     expect(ws.notices.single.isError, isTrue);
     expect(ws.notices.single.message, contains('fancad-missing-open.dxf'));
+
+    expect(await ws.openFile('   '), isNull);
+    expect(ws.notices.last.message, contains('no file to open'));
+    expect(ws.tabs, hasLength(2));
   });
 
   test('notices cap at 32 and approval without a listener is a decline',

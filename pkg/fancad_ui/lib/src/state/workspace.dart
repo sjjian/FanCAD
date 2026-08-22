@@ -149,32 +149,37 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   /// Opens [path], reporting failures as notices rather than exceptions.
   Future<DocumentTab?> openFile(String path) async {
+    final target = path.trim();
+    if (target.isEmpty) {
+      notify('There is no file to open.', isError: true);
+      return null;
+    }
     // An already-open file is activated rather than opened twice; two tabs onto
     // one file with independent undo stacks is a data-loss trap.
     for (var i = 0; i < _tabs.length; i++) {
-      if (_tabs[i].filePath == path) {
+      if (_tabs[i].filePath == target) {
         activate(i);
         return _tabs[i];
       }
     }
     try {
-      commandLine.write('Opening $path ...');
-      final result = await importer.open(path);
+      commandLine.write('Opening $target ...');
+      final result = await importer.open(target);
       final session = DocumentSession(
         id: '${_nextSessionId++}',
         document: result.document,
-        filePath: path,
+        filePath: target,
       );
       final tab = _adopt(
         DocumentTab(
           session: session,
           snapEngine: snapEngine,
-          filePath: path,
+          filePath: target,
           diagnostics: result.diagnostics,
         ),
       );
       tab.viewport.zoomToExtents(result.document);
-      settings.pushRecent(SettingsKeys.recentFiles, path);
+      settings.pushRecent(SettingsKeys.recentFiles, target);
       commandLine.writeSuccess(
         'Opened ${result.entityCount} entities in '
         '${result.totalTime.inMilliseconds} ms'
@@ -194,7 +199,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
       notify(error.message, isError: true);
       return null;
     } catch (error) {
-      notify('Could not open $path: $error', isError: true);
+      notify('Could not open $target: $error', isError: true);
       return null;
     }
   }
