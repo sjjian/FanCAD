@@ -142,6 +142,19 @@ void main() {
       expect(result.message, contains('collinear'));
     });
 
+    test('donut creates a wide circular polyline', () async {
+      final result = await run('draw.donut', {
+        'inside': 6,
+        'outside': 10,
+        'center': [0, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final donut = document.entities.first as PolylineEntity;
+      expect(donut.closed, isTrue);
+      expect(donut.constantWidth, closeTo(2, 1e-9));
+    });
+
     test('spline accepts a control-point array', () async {
       final result = await run('draw.spline', {
         'points': [

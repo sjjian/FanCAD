@@ -159,6 +159,40 @@ class Construct {
     );
   }
 
+  /// A circular donut as a closed two-vertex polyline with width.
+  ///
+  /// AutoCAD stores DONUT this way: the centreline radius is the average of
+  /// the two radii and [PolylineEntity.constantWidth] is their difference, so
+  /// a zero inner radius becomes a filled disk.
+  static PolylineEntity? donut({
+    required Vec2 center,
+    required double innerRadius,
+    required double outerRadius,
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    final inner = innerRadius.abs();
+    final outer = outerRadius.abs();
+    final r0 = math.min(inner, outer);
+    final r1 = math.max(inner, outer);
+    if (r1 <= 1e-12) return null;
+    final mid = (r0 + r1) / 2;
+    return PolylineEntity(
+      id: id,
+      props: props,
+      vertices: Float64List.fromList([
+        center.x - mid,
+        center.y,
+        1,
+        center.x + mid,
+        center.y,
+        1,
+      ]),
+      closed: true,
+      constantWidth: r1 - r0,
+    );
+  }
+
   /// A closed rectangular polyline through two opposite corners.
   static PolylineEntity? rectangle(
     Vec2 first,

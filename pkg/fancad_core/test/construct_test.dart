@@ -157,6 +157,46 @@ void main() {
     });
   });
 
+  group('donut', () {
+    test('stores a wide circular polyline on the average radius', () {
+      final donut = Construct.donut(
+        center: const Vec2(0, 0),
+        innerRadius: 3,
+        outerRadius: 5,
+      );
+
+      expect(donut, isNotNull);
+      expect(donut!.closed, isTrue);
+      expect(donut.constantWidth, closeTo(2, 1e-9));
+      expect(donut.vertexCount, 2);
+      expect(donut.vertexAt(0).x, closeTo(-4, 1e-9));
+      expect(donut.vertexAt(1).x, closeTo(4, 1e-9));
+      expect(donut.bulgeAt(0), closeTo(1, 1e-9));
+    });
+
+    test('swaps inverted radii and treats a zero inner as a disk', () {
+      final disk = Construct.donut(
+        center: const Vec2(1, 1),
+        innerRadius: 10,
+        outerRadius: 0,
+      );
+
+      expect(disk!.constantWidth, closeTo(10, 1e-9));
+      expect(disk.vertexAt(0).distanceTo(const Vec2(1, 1)), closeTo(5, 1e-9));
+    });
+
+    test('returns null when both radii vanish', () {
+      expect(
+        Construct.donut(
+          center: const Vec2.zero(),
+          innerRadius: 0,
+          outerRadius: 0,
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('polygon', () {
     test('inscribes vertices on the circle', () {
       final hexagon = Construct.polygon(
