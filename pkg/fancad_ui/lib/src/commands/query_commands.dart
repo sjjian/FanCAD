@@ -15,6 +15,7 @@ class QueryCommands {
     _summary(),
     _list(),
     _query(),
+    _id(),
     _distance(),
     _area(),
     _layerList(),
@@ -208,6 +209,30 @@ class QueryCommands {
           'returned': matches.length,
           'entities': matches,
         },
+      );
+    },
+  );
+
+  static CommandDescriptor _id() => CommandDescriptor(
+    id: 'query.id',
+    title: 'ID Point',
+    category: _category,
+    aliases: const ['id'],
+    risk: CommandRisk.readOnly,
+    description:
+        'Reports the X and Y coordinates of a point. Use this when you need '
+        'a location, not a distance between two locations.',
+    params: const [ParamSpec.point('at', description: 'The point to identify')],
+    handler: (context) async {
+      final at = await context.resolvePoint('at', 'ID  Specify point:');
+      context.input.write(
+        '  X = ${at.x.toStringAsFixed(4)}  Y = ${at.y.toStringAsFixed(4)}',
+      );
+      return CommandResult(
+        status: CommandStatus.ok,
+        message:
+            'X = ${at.x.toStringAsFixed(4)}, Y = ${at.y.toStringAsFixed(4)}',
+        data: {'x': at.x, 'y': at.y},
       );
     },
   );

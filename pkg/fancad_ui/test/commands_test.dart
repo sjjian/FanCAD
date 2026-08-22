@@ -717,6 +717,17 @@ void main() {
       expect((entities.first as Map)['kind'], 'line');
     });
 
+    test('id reports the coordinates of a point', () async {
+      final result = await run('query.id', {
+        'at': [12.5, -3],
+      });
+
+      expect(result.status, CommandStatus.ok);
+      expect(result.data!['x'], closeTo(12.5, 1e-9));
+      expect(result.data!['y'], closeTo(-3, 1e-9));
+      expect(result.message, contains('12.5000'));
+    });
+
     test('distance reports length and angle', () async {
       final result = await run('query.distance', {
         'from': [0, 0],
