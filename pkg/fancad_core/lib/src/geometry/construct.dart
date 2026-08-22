@@ -185,6 +185,69 @@ class Construct {
     return linearDimension(first, nextOrigin, dimLine, id: id, props: resolved);
   }
 
+  /// The next linear or aligned dimension in a DIMBASELINE stack.
+  ///
+  /// The first origin stays put and the dimension line steps outward by
+  /// [spacing], so a run of overall lengths shares one extension line instead
+  /// of one dimension line. Linear stacks keep the previous axis, same as
+  /// [continueDimension].
+  static DimensionEntity? baselineDimension(
+    DimensionEntity previous,
+    Vec2 nextOrigin, {
+    int id = 0,
+    EntityProps? props,
+    double spacing = 8,
+  }) {
+    if (spacing <= 1e-9) return null;
+    final points = previous.definitionPoints;
+    if (points.length < 2) return null;
+    final first = points[0];
+    if (first.distanceTo(nextOrigin) < 1e-9) return null;
+    final resolved = props ?? previous.props;
+    final type = previous.dimensionType & 0x0F;
+    if (type == 1) {
+      if (points.length < 3) return null;
+      final span = first.distanceTo(points[1]);
+      if (span < 1e-9) return null;
+      final normal = ((points[1] - first) / span).perpendicular;
+      var offset = (points[2] - first).dot(normal);
+      if (offset.abs() < 1e-6) offset = span * 0.15;
+      final stepped = offset + (offset >= 0 ? spacing : -spacing);
+      final nextSpan = first.distanceTo(nextOrigin);
+      if (nextSpan < 1e-9) return null;
+      final nextNormal = ((nextOrigin - first) / nextSpan).perpendicular;
+      return alignedDimension(
+        first,
+        nextOrigin,
+        first + nextNormal * stepped,
+        id: id,
+        props: resolved,
+      );
+    }
+    if (type != 0 || points.length < 3) return null;
+    final mid = points[0].lerp(points[1], 0.5);
+    final horizontal =
+        (points[2] - mid).y.abs() >= (points[2] - mid).x.abs();
+    if (horizontal) {
+      final dir = points[2].y >= mid.y ? 1.0 : -1.0;
+      return linearDimension(
+        first,
+        nextOrigin,
+        Vec2((first.x + nextOrigin.x) / 2, points[2].y + dir * spacing),
+        id: id,
+        props: resolved,
+      );
+    }
+    final dir = points[2].x >= mid.x ? 1.0 : -1.0;
+    return linearDimension(
+      first,
+      nextOrigin,
+      Vec2(points[2].x + dir * spacing, (first.y + nextOrigin.y) / 2),
+      id: id,
+      props: resolved,
+    );
+  }
+
   /// A radius dimension for a circle or arc.
   ///
   /// [dimLine] is the arrow tip and the text seat; it does not have to lie

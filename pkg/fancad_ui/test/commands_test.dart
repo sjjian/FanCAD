@@ -241,6 +241,52 @@ void main() {
       expect(document.entities.whereType<DimensionEntity>(), hasLength(1));
     });
 
+    test('baseline dimension stacks from the first origin', () async {
+      final created = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [10, 0],
+        'dimLine': [5, 4],
+      });
+      final base = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.dimBaseline', {
+        'base': base,
+        'next': [18, 0],
+        'spacing': 8,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entities.whereType<DimensionEntity>(), hasLength(2));
+      final stacked = document.entity(
+        (result.data!['ids']! as List).first as int,
+      )! as DimensionEntity;
+      expect(stacked.measurement, closeTo(18, 1e-9));
+      expect(stacked.definitionPoints[0], const Vec2(0, 0));
+      expect(stacked.textPosition.y, closeTo(12, 1e-9));
+    });
+
+    test('baseline dimension walks several origins in one command', () async {
+      final created = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [6, 0],
+        'dimLine': [3, 2],
+      });
+      final base = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.dimBaseline', {
+        'base': base,
+        'points': [
+          [12, 0],
+          [20, 0],
+        ],
+        'spacing': 4,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((result.data!['ids']! as List), hasLength(2));
+      expect(document.entities.whereType<DimensionEntity>(), hasLength(3));
+    });
+
     test('dimension text override replaces the measured value', () async {
       final created = await run('draw.dimLinear', {
         'first': [0, 0],

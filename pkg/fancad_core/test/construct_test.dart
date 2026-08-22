@@ -196,6 +196,85 @@ void main() {
     });
   });
 
+  group('baselineDimension', () {
+    test('stacks from the first origin on a stepped dimension line', () {
+      final first = Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(5, 4),
+      )!;
+      final next = Construct.baselineDimension(
+        first,
+        const Vec2(18, 0),
+        spacing: 8,
+      );
+
+      expect(next, isNotNull);
+      expect(next!.measurement, closeTo(18, 1e-9));
+      expect(next.definitionPoints[0], const Vec2(0, 0));
+      expect(next.definitionPoints[1], const Vec2(18, 0));
+      expect(next.textPosition.y, closeTo(12, 1e-9));
+    });
+
+    test('each stacked dim steps farther from the origins', () {
+      final first = Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(8, 0),
+        const Vec2(4, 3),
+      )!;
+      final second = Construct.baselineDimension(
+        first,
+        const Vec2(14, 0),
+        spacing: 5,
+      )!;
+      final third = Construct.baselineDimension(
+        second,
+        const Vec2(20, 0),
+        spacing: 5,
+      )!;
+
+      expect(second.measurement, closeTo(14, 1e-9));
+      expect(third.measurement, closeTo(20, 1e-9));
+      expect(second.textPosition.y, closeTo(8, 1e-9));
+      expect(third.textPosition.y, closeTo(13, 1e-9));
+    });
+
+    test('stacks an aligned dimension outward along the same side', () {
+      final first = Construct.alignedDimension(
+        const Vec2(0, 0),
+        const Vec2(3, 4),
+        const Vec2(-2, 2),
+      )!;
+      final next = Construct.baselineDimension(
+        first,
+        const Vec2(6, 8),
+        spacing: 4,
+      );
+
+      expect(next, isNotNull);
+      expect(next!.measurement, closeTo(10, 1e-9));
+      expect(next.dimensionType, 1);
+      expect(next.definitionPoints[0], const Vec2(0, 0));
+      final firstOffset =
+          (first.definitionPoints[2] - first.definitionPoints[0])
+              .dot((first.definitionPoints[1] - first.definitionPoints[0])
+                  .normalized()
+                  .perpendicular);
+      final nextOffset =
+          (next.definitionPoints[2] - next.definitionPoints[0])
+              .dot((next.definitionPoints[1] - next.definitionPoints[0])
+                  .normalized()
+                  .perpendicular);
+      expect(nextOffset.abs(), closeTo(firstOffset.abs() + 4, 1e-9));
+    });
+
+    test('refuses a radius dimension', () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+      final radial = Construct.radiusDimension(circle, const Vec2(8, 0))!;
+      expect(Construct.baselineDimension(radial, const Vec2(12, 0)), isNull);
+    });
+  });
+
   group('radiusDimension', () {
     test('reads the radius of a circle and prefixes R', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
