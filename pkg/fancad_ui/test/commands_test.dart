@@ -2666,6 +2666,33 @@ void main() {
       expect(document.layouts.any((item) => item.name == 'Layout1'), isFalse);
     });
 
+    test('page setup changes the current sheet size', () async {
+      await run('layout.new');
+      final result = await run('layout.pagesetup', {
+        'width': 420,
+        'height': 297,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayout.paperWidth, closeTo(420, 1e-9));
+      expect(document.activeLayout.paperHeight, closeTo(297, 1e-9));
+      expect(document.extents.width, closeTo(420, 1e-9));
+
+      await run('edit.undo');
+      expect(document.activeLayout.paperWidth, closeTo(297, 1e-9));
+      expect(document.activeLayout.paperHeight, closeTo(210, 1e-9));
+    });
+
+    test('page setup refuses Model', () async {
+      final result = await run('layout.pagesetup', {
+        'name': 'Model',
+        'width': 420,
+        'height': 297,
+      });
+
+      expect(result.status, CommandStatus.failed);
+    });
+
     test('delete layout refuses Model', () async {
       final result = await run('layout.delete', {'name': 'Model'});
 
