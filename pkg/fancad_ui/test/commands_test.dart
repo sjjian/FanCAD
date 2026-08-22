@@ -3000,6 +3000,40 @@ void main() {
     });
   });
 
+  group('plot', () {
+    test('plots a named paper layout without switching tabs', () async {
+      await run('layout.new', {
+        'name': 'A3',
+        'width': 420,
+        'height': 297,
+      });
+      await run('layout.set', {'name': 'Model'});
+      final dir = Directory.systemTemp.createTempSync('fancad_plot');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final path = '${dir.path}/sheet.svg';
+
+      final result = await run('print.exportSvg', {
+        'path': path,
+        'layout': 'A3',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayoutName, 'Model');
+      expect(result.data!['layout'], 'A3');
+      final svg = File(path).readAsStringSync();
+      expect(svg, contains('width="420'));
+      expect(svg, contains('height="297'));
+    });
+
+    test('plot refuses an unknown layout', () async {
+      final result = await run('print.exportSvg', {
+        'path': '/tmp/out.svg',
+        'layout': 'Missing',
+      });
+      expect(result.status, CommandStatus.failed);
+    });
+  });
+
   group('xrefs', () {
     test('attach places an insert in model space', () async {
       final dir = Directory.systemTemp.createTempSync('fancad_xref');

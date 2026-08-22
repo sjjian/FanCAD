@@ -925,25 +925,42 @@ class ProCommands {
     category: _category,
     aliases: const ['plot'],
     description:
-        'Plots the active layout to an SVG file. A .pdf path writes a '
-        'vector PDF instead. Paper-space viewports are honoured.',
+        'Plots a layout to an SVG file. Omit the layout name to plot the '
+        'current tab. A .pdf path writes a vector PDF instead. '
+        'Paper-space viewports are honoured.',
     params: const [
       ParamSpec(
         name: 'path',
         type: ParamType.text,
         description: 'Destination .svg path',
       ),
+      ParamSpec(
+        name: 'layout',
+        type: ParamType.text,
+        description: 'Tab to plot. Defaults to the current layout.',
+        required: false,
+      ),
     ],
     handler: (context) async {
       final path = await context.resolveText('path', 'SVG path:');
-      if (path.toLowerCase().endsWith('.pdf')) {
-        return _writePdf(context, path);
+      final layout = _plotLayout(context);
+      if (layout == null) {
+        return CommandResult.failed(
+          'No layout named ${context.args.text('layout')}',
+        );
       }
-      final svg = const Plotter().toSvg(context.document);
+      if (path.toLowerCase().endsWith('.pdf')) {
+        return _writePdf(context, path, layout);
+      }
+      final svg = const Plotter().toSvg(context.document, layout: layout);
       await File(path).writeAsString(svg);
       return CommandResult.ok(
         message: 'Wrote ${svg.length} characters to $path',
-        data: {'path': path, 'bytes': svg.length},
+        data: {
+          'path': path,
+          'bytes': svg.length,
+          'layout': layout.name,
+        },
       );
     },
   );
@@ -954,30 +971,54 @@ class ProCommands {
     category: _category,
     aliases: const ['plotpdf'],
     description:
-        'Plots the active layout to a vector PDF. Paper size becomes the '
-        'page MediaBox; viewports are clipped.',
+        'Plots a layout to a vector PDF. Omit the layout name to plot the '
+        'current tab. Paper size becomes the page MediaBox; viewports '
+        'are clipped.',
     params: const [
       ParamSpec(
         name: 'path',
         type: ParamType.text,
         description: 'Destination .pdf path',
       ),
+      ParamSpec(
+        name: 'layout',
+        type: ParamType.text,
+        description: 'Tab to plot. Defaults to the current layout.',
+        required: false,
+      ),
     ],
     handler: (context) async {
       final path = await context.resolveText('path', 'PDF path:');
-      return _writePdf(context, path);
+      final layout = _plotLayout(context);
+      if (layout == null) {
+        return CommandResult.failed(
+          'No layout named ${context.args.text('layout')}',
+        );
+      }
+      return _writePdf(context, path, layout);
     },
   );
+
+  static Layout? _plotLayout(CommandContext context) {
+    final requested = context.args.text('layout')?.trim() ?? '';
+    if (requested.isEmpty) return context.document.activeLayout;
+    return _layoutNamed(context.document, requested);
+  }
 
   static Future<CommandResult> _writePdf(
     CommandContext context,
     String path,
+    Layout layout,
   ) async {
-    final pdf = const Plotter().toPdf(context.document);
+    final pdf = const Plotter().toPdf(context.document, layout: layout);
     await File(path).writeAsBytes(pdf);
     return CommandResult.ok(
       message: 'Wrote ${pdf.length} bytes to $path',
-      data: {'path': path, 'bytes': pdf.length},
+      data: {
+        'path': path,
+        'bytes': pdf.length,
+        'layout': layout.name,
+      },
     );
   }
 
