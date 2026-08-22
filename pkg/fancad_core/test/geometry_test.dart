@@ -128,6 +128,33 @@ void main() {
       }
       expect(maxDeviation, greaterThan(1));
     });
+
+    test('a wide open stroke is a strip around the centreline', () {
+      final stroke = Flatten.wideStroke(
+        Float64List.fromList([0, 0, 10, 0]),
+        2,
+        closed: false,
+      );
+
+      expect(stroke, isNotNull);
+      expect(stroke!.hole, isNull);
+      for (var i = 1; i < stroke.outer.length; i += 2) {
+        expect(stroke.outer[i].abs(), closeTo(1, 1e-9));
+      }
+    });
+
+    test('a wide closed ring keeps a hole in the middle', () {
+      final stroke = Flatten.wideStroke(
+        Float64List.fromList([0, 0, 10, 0, 10, 10, 0, 10]),
+        2,
+        closed: true,
+      );
+
+      expect(stroke, isNotNull);
+      expect(stroke!.hole, isNotNull);
+      expect(Bounds2.fromXY(stroke.outer).width, closeTo(12, 1e-6));
+      expect(Bounds2.fromXY(stroke.hole!).width, closeTo(8, 1e-6));
+    });
   });
 
   group('SpatialIndex', () {
@@ -166,6 +193,21 @@ void main() {
       expect(bounds.minY, closeTo(0, 1e-9));
       expect(bounds.maxX, closeTo(10, 1e-9));
       expect(bounds.maxY, closeTo(10, 1e-9));
+    });
+
+    test('a donut emits a filled ring instead of a thin centreline', () {
+      final donut = Construct.donut(
+        center: const Vec2.zero(),
+        innerRadius: 3,
+        outerRadius: 5,
+      )!;
+      final sink = PolylineSink();
+      donut.emit(
+        const EmitContext(tolerance: 0.1),
+        sink,
+      );
+      expect(sink.fills, isNotEmpty);
+      expect(sink.fills.first.length, greaterThan(8));
     });
 
     test('a non-uniform scale turns a circle into an ellipse', () {

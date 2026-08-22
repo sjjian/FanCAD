@@ -301,6 +301,128 @@ class Flatten {
     }
     return basis;
   }
+
+  /// Offsets a flattened centreline by half of [width] on each side.
+  ///
+  /// A donut is a closed polyline with [constantWidth]; without this fill it
+  /// draws as a thin centreline and looks empty. Open strokes become one ring
+  /// (left side, then the right side reversed). Closed strokes become an
+  /// outer ring plus an inner hole so the middle stays clear.
+  static WideStroke? wideStroke(
+    Float64List xy,
+    double width, {
+    required bool closed,
+  }) {
+    final half = width.abs() / 2;
+    if (half < 1e-12 || xy.length < 4) return null;
+    final pts = <Vec2>[];
+    for (var i = 0; i + 1 < xy.length; i += 2) {
+      final p = Vec2(xy[i], xy[i + 1]);
+      if (pts.isEmpty || pts.last.distanceSquaredTo(p) > 1e-24) {
+        pts.add(p);
+      }
+    }
+    if (closed &&
+        pts.length >= 2 &&
+        pts.first.distanceSquaredTo(pts.last) <= 1e-24) {
+      pts.removeLast();
+    }
+    if (pts.length < 2) return null;
+
+    final left = _offsetPoly(pts, half, closed);
+    final right = _offsetPoly(pts, -half, closed);
+    if (left.length < 2 || right.length < 2) return null;
+
+    if (!closed) {
+      return WideStroke(
+        outer: _xyOf([...left, ...right.reversed]),
+      );
+    }
+    final leftArea = _signedArea(left);
+    final rightArea = _signedArea(right);
+    if (leftArea.abs() >= rightArea.abs()) {
+      return WideStroke(outer: _xyOf(left), hole: _xyOf(right));
+    }
+    return WideStroke(outer: _xyOf(right), hole: _xyOf(left));
+  }
+
+  static List<Vec2> _offsetPoly(List<Vec2> pts, double offset, bool closed) {
+    final out = <Vec2>[];
+    final count = pts.length;
+    for (var i = 0; i < count; i++) {
+      final p = pts[i];
+      final prev = closed
+          ? pts[(i - 1 + count) % count]
+          : (i == 0 ? null : pts[i - 1]);
+      final next = closed
+          ? pts[(i + 1) % count]
+          : (i == count - 1 ? null : pts[i + 1]);
+      if (prev == null) {
+        final dir = (next! - p).normalized();
+        if (dir.lengthSquared < 1e-24) continue;
+        out.add(p + dir.perpendicular * offset);
+        continue;
+      }
+      if (next == null) {
+        final dir = (p - prev).normalized();
+        if (dir.lengthSquared < 1e-24) continue;
+        out.add(p + dir.perpendicular * offset);
+        continue;
+      }
+      final incoming = p - prev;
+      final outgoing = next - p;
+      final lenIn = incoming.length;
+      final lenOut = outgoing.length;
+      if (lenIn < 1e-12 || lenOut < 1e-12) continue;
+      final nIn = (incoming / lenIn).perpendicular;
+      final nOut = (outgoing / lenOut).perpendicular;
+      final miter = nIn + nOut;
+      final miterLen = miter.length;
+      if (miterLen < 1e-9) {
+        out.add(p + nIn * offset);
+        continue;
+      }
+      final unit = miter / miterLen;
+      final cosine = unit.dot(nIn);
+      if (cosine.abs() < 1e-6) {
+        out.add(p + nIn * offset);
+        continue;
+      }
+      var scale = offset / cosine;
+      final limit = offset.abs() * 4;
+      if (scale.abs() > limit) scale = scale.sign * limit;
+      out.add(p + unit * scale);
+    }
+    return out;
+  }
+
+  static double _signedArea(List<Vec2> ring) {
+    var sum = 0.0;
+    for (var i = 0; i < ring.length; i++) {
+      final a = ring[i];
+      final b = ring[(i + 1) % ring.length];
+      sum += a.x * b.y - b.x * a.y;
+    }
+    return sum / 2;
+  }
+
+  static Float64List _xyOf(List<Vec2> pts) {
+    final xy = Float64List(pts.length * 2);
+    for (var i = 0; i < pts.length; i++) {
+      xy[i * 2] = pts[i].x;
+      xy[i * 2 + 1] = pts[i].y;
+    }
+    return xy;
+  }
+}
+
+/// A constant-width stroke: [outer] is the filled ring, [hole] the inner
+/// island of a closed donut-like polyline.
+class WideStroke {
+  const WideStroke({required this.outer, this.hole});
+
+  final Float64List outer;
+  final Float64List? hole;
 }
 
 /// The circular arc that a polyline bulge expands to.

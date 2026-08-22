@@ -397,9 +397,27 @@ final class PolylineEntity extends CadEntity {
       closed: closed,
       tolerance: context.tolerance,
     );
+    final style = context.styleFor(props);
+    if (constantWidth.abs() > 1e-12) {
+      final stroke = Flatten.wideStroke(
+        flat,
+        constantWidth.abs(),
+        closed: closed,
+      );
+      if (stroke != null) {
+        sink.fill(
+          context.applyBuffer(stroke.outer),
+          style,
+          holes: [
+            if (stroke.hole != null) context.applyBuffer(stroke.hole!),
+          ],
+        );
+        return;
+      }
+    }
     sink.polyline(
       context.applyBuffer(flat),
-      context.styleFor(props),
+      style,
       closed: closed,
     );
   }
@@ -409,20 +427,23 @@ final class PolylineEntity extends CadEntity {
     BlockLookup blocks = BlockLookup.empty,
     double tolerance = 1e-3,
   }) {
+    final Bounds2 box;
     if (!hasBulges) {
-      var box = const Bounds2.empty();
+      var acc = const Bounds2.empty();
       for (var i = 0; i < vertexCount; i++) {
-        box = box.expandToInclude(vertices[i * 3], vertices[i * 3 + 1]);
+        acc = acc.expandToInclude(vertices[i * 3], vertices[i * 3 + 1]);
       }
-      return box;
+      box = acc;
+    } else {
+      box = Bounds2.fromXY(
+        Flatten.polylineWithBulges(
+          vertices: vertices,
+          closed: closed,
+          tolerance: tolerance,
+        ),
+      );
     }
-    return Bounds2.fromXY(
-      Flatten.polylineWithBulges(
-        vertices: vertices,
-        closed: closed,
-        tolerance: tolerance,
-      ),
-    );
+    return constantWidth.abs() > 0 ? box.inflated(constantWidth.abs()) : box;
   }
 
   @override
