@@ -2556,6 +2556,18 @@ void main() {
       expect(result.status, CommandStatus.ok, reason: result.message);
       expect(document.layer('JUNK'), isNull);
       expect(document.entityCount, 0);
+      expect(document.currentLayer, '0');
+    });
+
+    test('deleting the current layer makes layer 0 current', () async {
+      await run('layer.new', {'name': 'TEMP'});
+      expect(document.currentLayer, 'TEMP');
+
+      final result = await run('layer.delete', {'name': 'TEMP'});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.layer('TEMP'), isNull);
+      expect(document.currentLayer, '0');
     });
   });
 

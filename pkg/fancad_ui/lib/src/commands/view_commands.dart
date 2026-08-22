@@ -810,6 +810,9 @@ class ViewCommands {
         if (!proceed) return const CommandResult.cancelled();
       }
       final committed = context.edit('Delete Layer', (transaction) {
+        if (context.document.currentLayer == name) {
+          transaction.setCurrentLayer('0');
+        }
         transaction
           ..eraseAll(victims)
           ..removeLayer(name);
