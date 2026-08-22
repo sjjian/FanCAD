@@ -2826,6 +2826,76 @@ void main() {
       expect(document.activeLayoutName, 'Model');
     });
 
+    test('order layout moves a paper tab and keeps Model first', () async {
+      await run('layout.new');
+      await run('layout.new');
+      await run('layout.new');
+      expect(
+        [for (final layout in document.layouts) layout.name],
+        ['Model', 'Layout1', 'Layout2', 'Layout3'],
+      );
+
+      final result = await run('layout.order', {
+        'name': 'Layout3',
+        'index': 0,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(
+        [for (final layout in document.layouts) layout.name],
+        ['Model', 'Layout3', 'Layout1', 'Layout2'],
+      );
+      expect(
+        [for (final layout in document.layouts) layout.tabOrder],
+        [0, 1, 2, 3],
+      );
+
+      await run('edit.undo');
+      expect(
+        [for (final layout in document.layouts) layout.name],
+        ['Model', 'Layout1', 'Layout2', 'Layout3'],
+      );
+    });
+
+    test('order layout can insert before or after another paper tab', () async {
+      await run('layout.new');
+      await run('layout.new');
+      await run('layout.new');
+
+      final before = await run('layout.order', {
+        'name': 'Layout3',
+        'before': 'Layout2',
+      });
+      expect(before.status, CommandStatus.ok, reason: before.message);
+      expect(
+        [for (final layout in document.layouts) layout.name],
+        ['Model', 'Layout1', 'Layout3', 'Layout2'],
+      );
+
+      final after = await run('layout.order', {
+        'name': 'Layout1',
+        'after': 'Layout2',
+      });
+      expect(after.status, CommandStatus.ok, reason: after.message);
+      expect(
+        [for (final layout in document.layouts) layout.name],
+        ['Model', 'Layout3', 'Layout2', 'Layout1'],
+      );
+    });
+
+    test('order layout refuses Model', () async {
+      await run('layout.new');
+      final result = await run('layout.order', {
+        'name': 'Model',
+        'index': 0,
+      });
+      expect(result.status, CommandStatus.failed);
+      expect(
+        [for (final layout in document.layouts) layout.name],
+        ['Model', 'Layout1'],
+      );
+    });
+
     test('rename layout refuses a duplicate name', () async {
       await run('layout.new');
       await run('layout.new');
