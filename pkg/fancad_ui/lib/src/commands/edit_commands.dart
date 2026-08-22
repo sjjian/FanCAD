@@ -993,9 +993,10 @@ class EditCommands {
     aliases: const ['tr', 'trim'],
     icon: 'trim',
     description:
-        'Shortens a line, open polyline or arc back to where it crosses '
-        'the selected cutting edges. The part containing the pick point is '
-        'removed. A bulge is cut on the arc, not the chord.',
+        'Shortens a line, polyline or arc back to where it crosses the '
+        'selected cutting edges. The part containing the pick point is '
+        'removed. A closed polyline opens; a bulge is cut on the arc, not '
+        'the chord.',
     params: const [
       ParamSpec.selection('edges', description: 'Cutting edges'),
       ParamSpec(
@@ -2622,21 +2623,21 @@ class EditCommands {
           target is! PolylineEntity &&
           target is! ArcEntity) {
         context.input.write(
-          '$verb supports lines, open polylines and arcs; '
+          '$verb supports lines, polylines and arcs; '
           '${target?.kind.name ?? 'that object'} was skipped.',
         );
         if (suppliedTarget != null) {
           return CommandResult.failed(
-            '$verb supports lines, open polylines and arcs.',
+            '$verb supports lines, polylines and arcs.',
           );
         }
         continue;
       }
-      if (target is PolylineEntity && target.closed) {
-        context.input.write('$verb cannot change a closed polyline.');
+      if (extend && target is PolylineEntity && target.closed) {
+        context.input.write('EXTEND cannot change a closed polyline.');
         if (suppliedTarget != null) {
-          return CommandResult.failed(
-            '$verb cannot change a closed polyline.',
+          return const CommandResult.failed(
+            'EXTEND cannot change a closed polyline.',
           );
         }
         continue;

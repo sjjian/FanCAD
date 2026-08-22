@@ -703,6 +703,30 @@ void main() {
       expect(trimmed.vertexAt(1).y, closeTo(cut.y, 1e-9));
       expect(trimmed.bulgeAt(0), closeTo(math.tan(math.pi / 16), 1e-9));
     });
+
+    test('opens a closed polyline by dropping the picked span', () {
+      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final trimmed = Construct.trimPolyline(
+        square,
+        const [Vec2(5, 0), Vec2(5, 10)],
+        const Vec2(10, 5),
+      );
+
+      expect(trimmed, isNotNull);
+      expect(trimmed!.closed, isFalse);
+      expect(trimmed.vertexAt(0).x, closeTo(5, 1e-9));
+      expect(trimmed.vertexAt(0).y, closeTo(10, 1e-9));
+      expect(trimmed.vertexAt(trimmed.vertexCount - 1).x, closeTo(5, 1e-9));
+      expect(trimmed.vertexAt(trimmed.vertexCount - 1).y, closeTo(0, 1e-9));
+    });
+
+    test('returns null when a closed polyline has only one crossing', () {
+      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      expect(
+        Construct.trimPolyline(square, const [Vec2(5, 0)], const Vec2(10, 5)),
+        isNull,
+      );
+    });
   });
 
   group('trimArc', () {

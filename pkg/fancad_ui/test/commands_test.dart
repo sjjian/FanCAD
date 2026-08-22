@@ -846,6 +846,27 @@ void main() {
       expect(polyline.vertexAt(1).x, closeTo(5, 1e-9));
     });
 
+    test('trim opens a closed polyline at the picked span', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      final target = (created.data!['ids']! as List).first as int;
+      final cutter = await drawLine(5, -5, 5, 15);
+
+      final result = await run('edit.trim', {
+        'edges': [cutter],
+        'target': target,
+        'pick': [10, 5],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(target)! as PolylineEntity;
+      expect(polyline.closed, isFalse);
+      expect(polyline.vertexAt(0).x, closeTo(5, 1e-9));
+      expect(polyline.vertexAt(0).y, closeTo(10, 1e-9));
+    });
+
     test('trim cuts a joined bulge on the arc', () async {
       final lineId = await drawLine(0, 0, 10, 0);
       final created = await run('draw.arc', {

@@ -882,19 +882,23 @@ class Construct {
     return null;
   }
 
-  /// Shortens an open [polyline] back to where it meets [crossings].
+  /// Shortens [polyline] back to where it meets [crossings].
   ///
   /// Same contract as [trimLine]: the interval containing [pick] is discarded.
-  /// Trimming a middle span keeps the longer remnant rather than splitting
-  /// the polyline in two. A bulge is cut on the arc, not the chord. Closed
-  /// polylines return null.
+  /// Trimming a middle span of an open polyline keeps the longer remnant
+  /// rather than splitting it in two. A closed polyline needs two crossings;
+  /// the picked span is dropped and the rest is left open. A bulge is cut on
+  /// the arc, not the chord.
   static PolylineEntity? trimPolyline(
     PolylineEntity polyline,
     List<Vec2> crossings,
     Vec2 pick,
   ) {
-    if (crossings.isEmpty || polyline.closed || polyline.vertexCount < 2) {
+    if (crossings.isEmpty || polyline.vertexCount < 2) {
       return null;
+    }
+    if (polyline.closed) {
+      return _trimClosedPolyline(polyline, crossings, pick);
     }
     final length = _polylineLength(polyline);
     if (length < 1e-12) return null;
@@ -936,6 +940,65 @@ class Construct {
           : _polylineSuffix(polyline, unique[i + 1]);
     }
     return null;
+  }
+
+  /// Drops the circular span that contains [pick] and opens the loop.
+  static PolylineEntity? _trimClosedPolyline(
+    PolylineEntity polyline,
+    List<Vec2> crossings,
+    Vec2 pick,
+  ) {
+    final length = _polylineLength(polyline);
+    if (length < 1e-12) return null;
+    final pickHit = _polylineHit(polyline, pick);
+    if (pickHit == null) return null;
+    var pickDistance = _polylineChainDistance(polyline, pickHit);
+    if (pickDistance >= length - 1e-9) pickDistance = 0;
+
+    final cuts = <({double distance, Vec2 point})>[];
+    for (final crossing in crossings) {
+      final hit = _polylineHit(polyline, crossing);
+      if (hit == null) continue;
+      var distance = _polylineChainDistance(polyline, hit);
+      if (distance >= length - 1e-9) distance = 0;
+      if (cuts.any((cut) => (cut.distance - distance).abs() < 1e-9)) {
+        continue;
+      }
+      cuts.add((distance: distance, point: hit.point));
+    }
+    if (cuts.length < 2) return null;
+    cuts.sort((a, b) => a.distance.compareTo(b.distance));
+    if (cuts.any((cut) => (pickDistance - cut.distance).abs() < 1e-9)) {
+      return null;
+    }
+
+    final ({double distance, Vec2 point}) from;
+    final ({double distance, Vec2 point}) to;
+    if (pickDistance < cuts.first.distance ||
+        pickDistance > cuts.last.distance) {
+      from = cuts.last;
+      to = cuts.first;
+    } else {
+      var found = false;
+      late final ({double distance, Vec2 point}) chosenFrom;
+      late final ({double distance, Vec2 point}) chosenTo;
+      for (var i = 0; i + 1 < cuts.length; i++) {
+        if (pickDistance > cuts[i].distance &&
+            pickDistance < cuts[i + 1].distance) {
+          chosenFrom = cuts[i];
+          chosenTo = cuts[i + 1];
+          found = true;
+          break;
+        }
+      }
+      if (!found) return null;
+      from = chosenFrom;
+      to = chosenTo;
+    }
+
+    final pieces = breakPolyline(polyline, from.point, to.point);
+    if (pieces == null || pieces.isEmpty) return null;
+    return pieces.first;
   }
 
   static double _polylineChainDistance(PolylineEntity polyline, _PolyHit hit) {
