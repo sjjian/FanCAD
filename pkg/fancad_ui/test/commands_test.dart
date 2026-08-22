@@ -468,6 +468,27 @@ void main() {
       expect((document.entity(id)! as LineEntity).start, const Vec2(0, 0));
     });
 
+    test('copy places every extra destination from the same base', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.copy', {
+        'ids': [id],
+        'from': [0, 0],
+        'to': [0, 5],
+        'destinations': [
+          [10, 0],
+          [0, 10],
+        ],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 4);
+      expect(
+        document.entities.whereType<LineEntity>().map((line) => line.start),
+        containsAll(const [Vec2(0, 0), Vec2(0, 5), Vec2(10, 0), Vec2(0, 10)]),
+      );
+    });
+
     test('align rotates the selection to match two point pairs', () async {
       final id = await drawLine(0, 0, 10, 0);
 

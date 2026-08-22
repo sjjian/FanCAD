@@ -4,11 +4,11 @@ import 'package:fancad_core/fancad_core.dart';
 
 /// The editing commands.
 ///
-/// The transform family (move, copy, rotate, scale, mirror, array) all reduce to
+/// The transform family (move, rotate, scale, mirror, array) all reduce to
 /// "collect points, build a matrix, apply it to a selection", so they share
-/// [_transform] and differ only in the matrix they produce. That keeps the
-/// preview, the locked-layer handling and the undo record identical across all
-/// of them.
+/// [_transform] and differ only in the matrix they produce. Copy is the same
+/// idea but keeps asking for destinations from one base so one undo covers
+/// every placement.
 class EditCommands {
   const EditCommands._();
 
@@ -166,20 +166,97 @@ class EditCommands {
     category: _category,
     aliases: const ['co', 'cp', 'copy'],
     icon: 'copy',
-    description: 'Copies the selected objects to a new location.',
+    description:
+        'Copies the selected objects to one or more locations. Each second '
+        'point is another copy from the same base; Escape finishes.',
     params: const [
       ParamSpec.selection('ids'),
       ParamSpec.point('from', description: 'Base point'),
-      ParamSpec.point('to', description: 'Destination of the base point'),
+      ParamSpec.point(
+        'to',
+        description: 'First destination of the base point',
+      ),
     ],
-    handler: (context) => _transform(
-      context,
-      label: 'Copy',
-      verb: 'COPY',
-      copy: true,
-      matrix: (from, to) => Mat3.translation(to.x - from.x, to.y - from.y),
-    ),
+    handler: (context) async {
+      final ids = await context.resolveSelection(
+        'ids',
+        'COPY  Select objects:',
+      );
+      if (ids.isEmpty) return const CommandResult.cancelled();
+      final from = await context.resolvePoint(
+        'from',
+        'COPY  Specify base point:',
+      );
+      _installTransformPreview(
+        context,
+        ids,
+        from,
+        (cursor) => Mat3.translation(cursor.x - from.x, cursor.y - from.y),
+      );
+      final first = await context.resolvePoint(
+        'to',
+        'COPY  Specify second point:',
+        basePoint: from,
+      );
+      final destinations = <Vec2>[
+        first,
+        ..._pointList(context.args['destinations']),
+      ];
+      if (context.input.isInteractive &&
+          !context.args.has('destinations')) {
+        while (true) {
+          _installTransformPreview(
+            context,
+            ids,
+            from,
+            (cursor) => Mat3.translation(cursor.x - from.x, cursor.y - from.y),
+          );
+          final next = await context.input.pointOrNull(
+            'COPY  Specify second point (Escape to finish):',
+            basePoint: from,
+          );
+          if (next == null) break;
+          destinations.add(next);
+        }
+      }
+      context.input.setPreview(null);
+
+      final matrices = [
+        for (final dest in destinations)
+          Mat3.translation(dest.x - from.x, dest.y - from.y),
+      ].where((matrix) => !matrix.isIdentity).toList();
+      if (matrices.isEmpty) {
+        return const CommandResult.cancelled('The transform is a no-op.');
+      }
+
+      final committed = context.edit('Copy', (transaction) {
+        for (final matrix in matrices) {
+          transaction.duplicate(ids, matrix);
+        }
+      });
+      if (committed == null) {
+        return const CommandResult.failed(
+          'Copy affected nothing; the objects may be on a locked layer.',
+        );
+      }
+      context.selection.replace(committed.change.added);
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: matrices.length == 1
+            ? 'Copy: ${ids.length} object(s).'
+            : 'Copy: ${ids.length} object(s) to ${matrices.length} locations.',
+        data: {'ids': committed.change.added},
+        transaction: committed,
+      );
+    },
   );
+
+  static List<Vec2> _pointList(Object? value) {
+    if (value is! List) return const [];
+    return [
+      for (final item in value) ?CommandArgs.parsePoint(item),
+    ];
+  }
 
   static CommandDescriptor _stretch() => CommandDescriptor(
     id: 'edit.stretch',
@@ -2288,7 +2365,7 @@ class EditCommands {
   // Shared implementations
   // -------------------------------------------------------------------------
 
-  /// The two-point transform commands: move, copy and mirror-style operations.
+  /// The two-point transform commands: move and mirror-style operations.
   static Future<CommandResult> _transform(
     CommandContext context, {
     required String label,
