@@ -87,6 +87,108 @@ class Construct {
     );
   }
 
+  /// A circle of [radius] tangent to [first] and [second].
+  ///
+  /// The construction is the offset-and-intersect one: shift each object by
+  /// [radius] toward its pick, then the intersection of those offsets is the
+  /// centre. [pick1] and [pick2] choose which side of a line (or whether a
+  /// circle is an external or internal tangent), which is why two lines that
+  /// cross yield four possible circles and a pick pair names one of them.
+  static CircleEntity? circleTangentRadius(
+    CadEntity first,
+    CadEntity second,
+    double radius,
+    Vec2 pick1,
+    Vec2 pick2, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    if (radius <= 0 || !radius.isFinite) return null;
+    final offset1 = offset(first, radius, pick1);
+    final offset2 = offset(second, radius, pick2);
+    if (offset1 == null || offset2 == null) return null;
+    final center = _offsetIntersection(
+      offset1,
+      offset2,
+      pick1.lerp(pick2, 0.5),
+    );
+    if (center == null) return null;
+    return CircleEntity(
+      id: id,
+      props: props,
+      center: center,
+      radius: radius,
+    );
+  }
+
+  static Vec2? _offsetIntersection(
+    CadEntity first,
+    CadEntity second,
+    Vec2 hint,
+  ) {
+    final line1 = first is LineEntity ? first : null;
+    final line2 = second is LineEntity ? second : null;
+    final circle1 = _circleOf(first);
+    final circle2 = _circleOf(second);
+    if (line1 != null && line2 != null) {
+      return Intersect.lineLine(
+        line1.start,
+        line1.end,
+        line2.start,
+        line2.end,
+      );
+    }
+    if (line1 != null && circle2 != null) {
+      return _nearestHit(
+        Intersect.lineCircle(
+          line1.start,
+          line1.end,
+          circle2.$1,
+          circle2.$2,
+        ),
+        hint,
+      );
+    }
+    if (line2 != null && circle1 != null) {
+      return _nearestHit(
+        Intersect.lineCircle(
+          line2.start,
+          line2.end,
+          circle1.$1,
+          circle1.$2,
+        ),
+        hint,
+      );
+    }
+    if (circle1 != null && circle2 != null) {
+      return _nearestHit(
+        Intersect.circleCircle(circle1.$1, circle1.$2, circle2.$1, circle2.$2),
+        hint,
+      );
+    }
+    return null;
+  }
+
+  static (Vec2, double)? _circleOf(CadEntity entity) => switch (entity) {
+    CircleEntity(:final center, :final radius) => (center, radius),
+    ArcEntity(:final center, :final radius) => (center, radius),
+    _ => null,
+  };
+
+  static Vec2? _nearestHit(List<Vec2> hits, Vec2 hint) {
+    if (hits.isEmpty) return null;
+    var best = hits.first;
+    var bestDistance = best.distanceSquaredTo(hint);
+    for (var i = 1; i < hits.length; i++) {
+      final distance = hits[i].distanceSquaredTo(hint);
+      if (distance < bestDistance) {
+        best = hits[i];
+        bestDistance = distance;
+      }
+    }
+    return best;
+  }
+
   /// A clamped uniform B-spline through the given control points.
   ///
   /// Degree is 3 when there are at least four points, otherwise it drops so

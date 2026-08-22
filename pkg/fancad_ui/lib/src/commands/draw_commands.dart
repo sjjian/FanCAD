@@ -20,6 +20,7 @@ class DrawCommands {
     _circle(),
     _circleDiameter(),
     _circle3p(),
+    _circleTtr(),
     _donut(),
     _arc(),
     _polygon(),
@@ -451,6 +452,111 @@ class DrawCommands {
       return _commit(context, 'Circle', [circle]);
     },
   );
+
+  static CommandDescriptor _circleTtr() => CommandDescriptor(
+    id: 'draw.circleTtr',
+    title: 'Circle (Tan Tan Radius)',
+    category: _category,
+    aliases: const ['ttr', 'circlettr'],
+    description:
+        'Draws a circle of a given radius tangent to two lines, circles '
+        'or arcs. The pick on each object chooses the side (and, for a '
+        'circle, external versus internal tangent).',
+    params: const [
+      ParamSpec(
+        name: 'first',
+        type: ParamType.entity,
+        description: 'First tangent object',
+      ),
+      ParamSpec(
+        name: 'second',
+        type: ParamType.entity,
+        description: 'Second tangent object',
+      ),
+      ParamSpec(
+        name: 'radius',
+        type: ParamType.distance,
+        description: 'Radius of the new circle',
+        min: 1e-9,
+      ),
+      ParamSpec(
+        name: 'pick1',
+        type: ParamType.point,
+        required: false,
+        description: 'Point that marks the side of the first object',
+      ),
+      ParamSpec(
+        name: 'pick2',
+        type: ParamType.point,
+        required: false,
+        description: 'Point that marks the side of the second object',
+      ),
+    ],
+    handler: (context) async {
+      final firstId = context.args.integer('first');
+      final secondId = context.args.integer('second');
+      final int id1;
+      final int id2;
+      if (firstId != null && secondId != null) {
+        id1 = firstId;
+        id2 = secondId;
+      } else {
+        context.selection.clear();
+        final firstPick = await context.input.selection(
+          'CIRCLE  Select first tangent object:',
+          useExistingSelection: false,
+          single: true,
+        );
+        if (firstPick.isEmpty) return const CommandResult.cancelled();
+        id1 = firstPick.first;
+        final secondPick = await context.input.selection(
+          'CIRCLE  Select second tangent object:',
+          useExistingSelection: false,
+          single: true,
+        );
+        if (secondPick.isEmpty) return const CommandResult.cancelled();
+        id2 = secondPick.first;
+      }
+
+      final first = context.document.entity(id1);
+      final second = context.document.entity(id2);
+      if (first == null || second == null) {
+        return const CommandResult.failed('A tangent object no longer exists.');
+      }
+
+      final pick1 = context.args.point('pick1') ?? _tangentPick(first);
+      final pick2 = context.args.point('pick2') ?? _tangentPick(second);
+
+      final radius = context.args.number('radius') ??
+          await context.input.distance('CIRCLE  Specify radius:');
+      if (radius <= 0) {
+        return const CommandResult.failed('The radius must be positive.');
+      }
+
+      final circle = Construct.circleTangentRadius(
+        first,
+        second,
+        radius,
+        pick1,
+        pick2,
+        props: EntityProps(layer: context.document.currentLayer),
+      );
+      if (circle == null) {
+        return const CommandResult.failed(
+          'No circle of that radius is tangent to both objects on the '
+          'picked sides.',
+        );
+      }
+      return _commit(context, 'Circle', [circle]);
+    },
+  );
+
+  static Vec2 _tangentPick(CadEntity entity) => switch (entity) {
+    LineEntity(:final midpoint) => midpoint,
+    CircleEntity(:final center) => center,
+    ArcEntity(:final midPoint) => midPoint,
+    _ => entity.computeBounds().center,
+  };
 
   static CommandDescriptor _donut() => CommandDescriptor(
     id: 'draw.donut',

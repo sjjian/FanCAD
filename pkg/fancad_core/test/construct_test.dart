@@ -83,6 +83,50 @@ void main() {
     });
   });
 
+  group('circleTangentRadius', () {
+    test('sits in the picked quadrant of two crossing lines', () {
+      final circle = Construct.circleTangentRadius(
+        line(0, 10, 0, 0),
+        line(0, 0, 10, 0),
+        2,
+        const Vec2(0, 5),
+        const Vec2(5, 0),
+      );
+
+      expect(circle, isNotNull);
+      expect(circle!.center.x, closeTo(2, 1e-9));
+      expect(circle.center.y, closeTo(2, 1e-9));
+      expect(circle.radius, closeTo(2, 1e-9));
+    });
+
+    test('refuses a non-positive radius', () {
+      expect(
+        Construct.circleTangentRadius(
+          line(0, 10, 0, 0),
+          line(0, 0, 10, 0),
+          0,
+          const Vec2(0, 5),
+          const Vec2(5, 0),
+        ),
+        isNull,
+      );
+    });
+
+    test('finds an external tangent to a line and a circle', () {
+      final circle = Construct.circleTangentRadius(
+        line(-10, 0, 10, 0),
+        const CircleEntity(id: 2, center: Vec2(0, 5), radius: 3),
+        1,
+        const Vec2(0, 1),
+        const Vec2(0, 10),
+      );
+
+      expect(circle, isNotNull);
+      expect(circle!.center.x, closeTo(0, 1e-9));
+      expect(circle.center.y, closeTo(1, 1e-9));
+    });
+  });
+
   group('ellipse', () {
     test('stores the shorter radius as a ratio', () {
       final ellipse = Construct.ellipse(

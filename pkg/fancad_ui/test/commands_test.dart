@@ -105,6 +105,25 @@ void main() {
       expect(polyline.closed, isTrue);
     });
 
+    test('circle tan-tan-radius sits in the picked corner', () async {
+      final vertical = await drawLine(0, 10, 0, 0);
+      final horizontal = await drawLine(0, 0, 10, 0);
+
+      final result = await run('draw.circleTtr', {
+        'first': vertical,
+        'second': horizontal,
+        'radius': 2,
+        'pick1': [0, 5],
+        'pick2': [5, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final circle = document.entities.whereType<CircleEntity>().single;
+      expect(circle.center.x, closeTo(2, 1e-9));
+      expect(circle.center.y, closeTo(2, 1e-9));
+      expect(circle.radius, closeTo(2, 1e-9));
+    });
+
     test('circle through three points uses the circumcircle', () async {
       final result = await run('draw.circle3p', {
         'first': [1, 0],
