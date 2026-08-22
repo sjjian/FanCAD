@@ -263,6 +263,49 @@ void main() {
       expect(document.blocks.containsKey('*Paper_Space'), isFalse);
     });
 
+    test('deleting a paper layout is invertible', () {
+      final document = newDocument();
+      final session = DocumentSession(id: '1', document: document);
+      session.edit('New Layout', (transaction) {
+        transaction
+          ..putLayout(
+            const Layout(
+              name: 'Layout1',
+              blockName: '*Paper_Space',
+              tabOrder: 1,
+            ),
+          )
+          ..setActiveLayout('Layout1')
+          ..add(
+            const LineEntity(
+              id: 0,
+              start: Vec2(10, 10),
+              end: Vec2(40, 10),
+            ),
+            blockName: '*Paper_Space',
+          );
+      });
+      expect(document.activeLayoutName, 'Layout1');
+      expect(document.entitiesOf('*Paper_Space'), hasLength(1));
+
+      session.edit('Delete Layout', (transaction) {
+        for (final entity in document.entitiesOf('*Paper_Space')) {
+          transaction.erase(entity.id);
+        }
+        transaction
+          ..setActiveLayout('Model')
+          ..removeLayout('Layout1');
+      });
+      expect(document.activeLayoutName, 'Model');
+      expect(document.layouts.any((item) => item.name == 'Layout1'), isFalse);
+      expect(document.entitiesOf('*Paper_Space'), isEmpty);
+
+      expect(session.undo(), isTrue);
+      expect(document.activeLayoutName, 'Layout1');
+      expect(document.layouts.any((item) => item.name == 'Layout1'), isTrue);
+      expect(document.entitiesOf('*Paper_Space'), hasLength(1));
+    });
+
     test('adding a paper viewport is invertible', () {
       final document = newDocument()
         ..addLayout(

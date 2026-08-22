@@ -49,6 +49,12 @@ class LayoutTabStrip extends StatelessWidget {
               if (selected) return;
               workspace.run('layout.set', args: {'name': layout.name});
             },
+            onDelete: layout.isModelSpace
+                ? null
+                : () => workspace.run(
+                    'layout.delete',
+                    args: {'name': layout.name},
+                  ),
           );
         },
       ),
@@ -61,11 +67,13 @@ class _LayoutChip extends StatelessWidget {
     required this.layout,
     required this.selected,
     required this.onTap,
+    this.onDelete,
   });
 
   final Layout layout;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -74,9 +82,11 @@ class _LayoutChip extends StatelessWidget {
       message: layout.isModelSpace
           ? 'Model space'
           : '${layout.paperWidth.toStringAsFixed(0)} × '
-              '${layout.paperHeight.toStringAsFixed(0)} mm',
+              '${layout.paperHeight.toStringAsFixed(0)} mm'
+              ' — right-click to delete',
       child: InkWell(
         onTap: onTap,
+        onSecondaryTap: onDelete,
         child: Container(
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),

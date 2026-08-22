@@ -362,6 +362,21 @@ class Transaction {
   /// removes it; undo of a replacement restores the previous sheet.
   void putLayout(Layout layout) => _run(PutLayoutPatch(layout));
 
+  /// Drops a paper tab. Model space cannot be removed. Returns false when
+  /// the name is missing or reserved.
+  bool removeLayout(String name) {
+    Layout? previous;
+    for (final layout in document.layouts) {
+      if (layout.name == name) {
+        previous = layout;
+        break;
+      }
+    }
+    if (previous == null || previous.isModelSpace) return false;
+    _run(RemoveLayoutPatch(previous));
+    return true;
+  }
+
   // -------------------------------------------------------------------------
   // Lifecycle
   // -------------------------------------------------------------------------

@@ -2642,6 +2642,37 @@ void main() {
       expect(document.layouts.where((item) => !item.isModelSpace), hasLength(1));
     });
 
+    test('delete layout removes the current paper tab', () async {
+      await run('layout.new');
+      final result = await run('layout.delete');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayoutName, 'Model');
+      expect(document.layouts.where((item) => !item.isModelSpace), isEmpty);
+
+      await run('edit.undo');
+      expect(document.activeLayoutName, 'Layout1');
+    });
+
+    test('delete layout erases paper-space entities', () async {
+      await run('layout.new');
+      await drawLine(10, 10, 40, 10);
+      expect(document.entitiesOf('*Paper_Space'), hasLength(1));
+
+      final result = await run('layout.delete', {'name': 'Layout1'});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entitiesOf('*Paper_Space'), isEmpty);
+      expect(document.layouts.any((item) => item.name == 'Layout1'), isFalse);
+    });
+
+    test('delete layout refuses Model', () async {
+      final result = await run('layout.delete', {'name': 'Model'});
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.layouts, hasLength(1));
+    });
+
     test('mview works on a layout created by layout.new', () async {
       await drawLine(0, 0, 80, 0);
       await run('layout.new');

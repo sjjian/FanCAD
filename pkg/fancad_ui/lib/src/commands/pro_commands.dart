@@ -12,6 +12,7 @@ class ProCommands {
     _layouts(),
     _setLayout(),
     _newLayout(),
+    _deleteLayout(),
     _mview(),
     _plot(),
     _plotPdf(),
@@ -144,6 +145,87 @@ class ProCommands {
       );
     },
   );
+
+  static CommandDescriptor _deleteLayout() => CommandDescriptor(
+    id: 'layout.delete',
+    title: 'Delete Layout',
+    category: _category,
+    aliases: const ['layoutremove'],
+    risk: CommandRisk.destructive,
+    description:
+        'Removes a paper-space layout tab and the entities on that sheet. '
+        'Model cannot be deleted. Omit the name to delete the current tab.',
+    params: const [
+      ParamSpec(
+        name: 'name',
+        type: ParamType.text,
+        description: 'Tab to delete. Defaults to the current paper layout.',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      var requested = context.args.text('name')?.trim() ?? '';
+      if (requested.isEmpty) {
+        if (context.document.activeLayout.isModelSpace) {
+          requested = await context.resolveText('name', 'Layout to delete:');
+        } else {
+          requested = context.document.activeLayoutName;
+        }
+      }
+      final layout = _layoutNamed(context.document, requested);
+      if (layout == null) {
+        return CommandResult.failed('No layout named $requested');
+      }
+      if (layout.isModelSpace) {
+        return const CommandResult.failed('Model cannot be deleted.');
+      }
+
+      final paperIds = [
+        for (final entity in context.document.entitiesOf(layout.blockName))
+          entity.id,
+      ];
+      final sharedBlock = context.document.layouts
+          .where((item) => item.blockName == layout.blockName)
+          .length >
+          1;
+      final wasActive = context.document.activeLayoutName == layout.name;
+      final modelName = context.document.layouts
+          .firstWhere((item) => item.isModelSpace)
+          .name;
+
+      final committed = context.edit('Delete Layout', (transaction) {
+        if (!sharedBlock) {
+          for (final id in paperIds) {
+            transaction.erase(id);
+          }
+        }
+        if (wasActive) transaction.setActiveLayout(modelName);
+        transaction.removeLayout(layout.name);
+      });
+      if (committed == null) {
+        return const CommandResult.failed('The layout was not deleted.');
+      }
+      context.services.invalidate();
+      context.services.zoomTo(null);
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Layout "${layout.name}" deleted.',
+        data: {
+          'name': layout.name,
+          'erased': sharedBlock ? 0 : paperIds.length,
+        },
+        transaction: committed,
+      );
+    },
+  );
+
+  static Layout? _layoutNamed(CadDocument document, String name) {
+    final needle = name.toLowerCase();
+    for (final layout in document.layouts) {
+      if (layout.name.toLowerCase() == needle) return layout;
+    }
+    return null;
+  }
 
   static String _nextLayoutName(CadDocument document) {
     final taken = {
