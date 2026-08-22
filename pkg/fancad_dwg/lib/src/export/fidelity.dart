@@ -20,6 +20,9 @@ class FidelityReport {
     this.missingLayouts = const [],
     this.extraLayouts = const [],
     this.layoutMismatches = const [],
+    this.missingXrefs = const [],
+    this.extraXrefs = const [],
+    this.xrefMismatches = const [],
     this.notes = const [],
   });
 
@@ -40,6 +43,11 @@ class FidelityReport {
 
   /// Named tabs that survived but changed paper size or viewports.
   final List<String> layoutMismatches;
+
+  /// External-reference blocks that disappeared, appeared, or changed path.
+  final List<String> missingXrefs;
+  final List<String> extraXrefs;
+  final List<String> xrefMismatches;
   final List<String> notes;
 
   bool get isClean =>
@@ -50,7 +58,10 @@ class FidelityReport {
       extraBySpace.isEmpty &&
       missingLayouts.isEmpty &&
       extraLayouts.isEmpty &&
-      layoutMismatches.isEmpty;
+      layoutMismatches.isEmpty &&
+      missingXrefs.isEmpty &&
+      extraXrefs.isEmpty &&
+      xrefMismatches.isEmpty;
 
   String get summary {
     if (isClean) {
@@ -89,6 +100,15 @@ class FidelityReport {
     if (layoutMismatches.isNotEmpty) {
       parts.add(layoutMismatches.join('; '));
     }
+    if (missingXrefs.isNotEmpty) {
+      parts.add('missing xrefs ${missingXrefs.join(', ')}');
+    }
+    if (extraXrefs.isNotEmpty) {
+      parts.add('extra xrefs ${extraXrefs.join(', ')}');
+    }
+    if (xrefMismatches.isNotEmpty) {
+      parts.add(xrefMismatches.join('; '));
+    }
     return parts.join('; ');
   }
 
@@ -103,6 +123,9 @@ class FidelityReport {
     'missingLayouts': missingLayouts,
     'extraLayouts': extraLayouts,
     'layoutMismatches': layoutMismatches,
+    'missingXrefs': missingXrefs,
+    'extraXrefs': extraXrefs,
+    'xrefMismatches': xrefMismatches,
     'clean': isClean,
     'summary': summary,
     if (notes.isNotEmpty) 'notes': notes,
@@ -163,6 +186,28 @@ class FidelityAuditor {
       if (diff != null) layoutMismatches.add(diff);
     }
 
+    final sourceXrefs = _xrefs(source);
+    final targetXrefs = _xrefs(target);
+    final missingXrefs = [
+      for (final key in sourceXrefs.keys)
+        if (!targetXrefs.containsKey(key)) sourceXrefs[key]!.name,
+    ];
+    final extraXrefs = [
+      for (final key in targetXrefs.keys)
+        if (!sourceXrefs.containsKey(key)) targetXrefs[key]!.name,
+    ];
+    final xrefMismatches = <String>[];
+    for (final key in sourceXrefs.keys) {
+      final other = targetXrefs[key];
+      if (other == null) continue;
+      final path = sourceXrefs[key]!.xrefPath;
+      if (path != other.xrefPath) {
+        xrefMismatches.add(
+          '${sourceXrefs[key]!.name}: $path vs ${other.xrefPath}',
+        );
+      }
+    }
+
     return FidelityReport(
       sourceEntities: source.entityCount,
       targetEntities: target.entityCount,
@@ -176,7 +221,18 @@ class FidelityAuditor {
       missingLayouts: missingLayouts,
       extraLayouts: extraLayouts,
       layoutMismatches: layoutMismatches,
+      missingXrefs: missingXrefs,
+      extraXrefs: extraXrefs,
+      xrefMismatches: xrefMismatches,
     );
+  }
+
+  static Map<String, BlockRecord> _xrefs(CadDocument document) {
+    final result = <String, BlockRecord>{};
+    for (final block in document.blocks.values) {
+      if (block.isXref) result[block.name.toUpperCase()] = block;
+    }
+    return result;
   }
 
   static Map<String, int> _counts(CadDocument document) {

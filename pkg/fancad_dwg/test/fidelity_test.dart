@@ -87,4 +87,38 @@ void main() {
     expect(report.layoutMismatches, isNotEmpty);
     expect(report.layoutMismatches.single, contains('Sheet'));
   });
+
+  test('a lost xref path is not a clean round trip', () {
+    final source = CadDocument();
+    source.putBlock(
+      const BlockRecord(
+        name: 'BRACKET',
+        xrefPath: r'C:\parts\bracket.dxf',
+        description: r'Xref C:\parts\bracket.dxf',
+      ),
+    );
+    final target = CadDocument();
+    target.putBlock(const BlockRecord(name: 'BRACKET'));
+
+    final report = const FidelityAuditor().compare(source, target);
+    expect(report.isClean, isFalse);
+    expect(report.missingXrefs, contains('BRACKET'));
+    expect(report.summary, contains('BRACKET'));
+  });
+
+  test('an xref whose file path changed is reported', () {
+    final source = CadDocument();
+    source.putBlock(
+      const BlockRecord(name: 'PART', xrefPath: '/tmp/old.dxf'),
+    );
+    final target = CadDocument();
+    target.putBlock(
+      const BlockRecord(name: 'PART', xrefPath: '/tmp/new.dxf'),
+    );
+
+    final report = const FidelityAuditor().compare(source, target);
+    expect(report.isClean, isFalse);
+    expect(report.xrefMismatches.single, contains('PART'));
+    expect(report.xrefMismatches.single, contains('/tmp/old.dxf'));
+  });
 }
