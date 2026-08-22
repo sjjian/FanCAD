@@ -459,6 +459,9 @@ class CadDocument implements BlockLookup, StyleResolver {
 
   void putLayer(LayerDef layer) {
     _layers[layer.name] = layer;
+    // Insert bounds come from the block, so a freeze/thaw changes them.
+    // Drop the spatial indexes too; they are rebuilt on the next query.
+    _indexes.clear();
     _blockBounds.clear();
     _version++;
   }
@@ -467,6 +470,7 @@ class CadDocument implements BlockLookup, StyleResolver {
     if (name == '0') return null;
     final removed = _layers.remove(name);
     if (removed != null) {
+      _indexes.clear();
       _blockBounds.clear();
       _version++;
     }

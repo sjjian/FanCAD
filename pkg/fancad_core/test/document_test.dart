@@ -176,6 +176,42 @@ void main() {
       expect(document.boundsOf('MARK').maxX, closeTo(4, 1e-9));
     });
 
+    test('queryVisible refreshes insert bounds after a layer freeze', () {
+      final document = CadDocument()
+        ..putLayer(const LayerDef(name: 'FAR'))
+        ..putBlock(const BlockRecord(name: 'MARK', entityIds: []));
+      document.addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+        blockName: 'MARK',
+      );
+      document.addEntity(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(layer: 'FAR'),
+          start: Vec2(200, 0),
+          end: Vec2(400, 0),
+        ),
+        blockName: 'MARK',
+      );
+      final insert = document.addEntity(
+        const InsertEntity(
+          id: 0,
+          blockName: 'MARK',
+          position: Vec2.zero(),
+        ),
+      );
+      const far = Bounds2(190, -1, 410, 1);
+      const near = Bounds2(-1, -1, 5, 1);
+      expect(document.queryVisible(far), [insert.id]);
+
+      document.putLayer(const LayerDef(name: 'FAR', frozen: true));
+      expect(document.queryVisible(far), isEmpty);
+      expect(document.queryVisible(near), [insert.id]);
+
+      document.putLayer(const LayerDef(name: 'FAR'));
+      expect(document.queryVisible(far), [insert.id]);
+    });
+
     test('extents ignore frozen layers and hidden entities', () {
       final document = CadDocument()
         ..putLayer(const LayerDef(name: 'FAR', frozen: true))
