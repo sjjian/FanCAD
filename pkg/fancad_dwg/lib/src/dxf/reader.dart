@@ -157,8 +157,13 @@ class DxfReader {
 
   static PaperViewport? _decodeViewport(List<(int, String)> pairs) {
     final values = <int, String>{};
+    final frozen = <String>[];
     for (final (code, value) in pairs) {
       values[code] = value;
+      if (code == 331) {
+        final name = value.trim();
+        if (name.isNotEmpty) frozen.add(name);
+      }
     }
     double n(int code, [double fallback = 0]) =>
         double.tryParse(values[code] ?? '') ?? fallback;
@@ -185,6 +190,7 @@ class DxfReader {
       isOn: onOff > 0 && flags & 131072 == 0,
       locked: flags & 16384 != 0,
       layer: values[8] ?? '0',
+      frozenLayers: frozen,
     );
   }
 

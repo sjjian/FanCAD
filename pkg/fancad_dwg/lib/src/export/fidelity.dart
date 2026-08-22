@@ -290,6 +290,14 @@ class FidelityAuditor {
         close(a.scale, b.scale) &&
         close(a.rotation, b.rotation) &&
         a.locked == b.locked &&
-        a.isOn == b.isOn;
+        a.isOn == b.isOn &&
+        _sameFrozen(a.frozenLayers, b.frozenLayers);
+  }
+
+  static bool _sameFrozen(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    final left = {for (final name in a) name.toLowerCase()};
+    final right = {for (final name in b) name.toLowerCase()};
+    return left.length == right.length && left.containsAll(right);
   }
 }

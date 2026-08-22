@@ -19,6 +19,7 @@ class PaperViewport {
     this.isOn = true,
     this.locked = false,
     this.layer = '0',
+    this.frozenLayers = const [],
   });
 
   /// The rectangle on the sheet, in millimetres of paper space.
@@ -33,6 +34,20 @@ class PaperViewport {
   final bool isOn;
   final bool locked;
   final String layer;
+
+  /// Layer names frozen in this window only (VPLAYER). Empty means every
+  /// visible model layer still shows through.
+  final List<String> frozenLayers;
+
+  /// Whether [layer] is frozen in this viewport.
+  bool hidesLayer(String layer) {
+    if (frozenLayers.isEmpty) return false;
+    final needle = layer.toLowerCase();
+    for (final name in frozenLayers) {
+      if (name.toLowerCase() == needle) return true;
+    }
+    return false;
+  }
 
   /// Transform from model space into this viewport's paper rectangle.
   Mat3 modelToPaper() {
@@ -113,6 +128,7 @@ class PaperViewport {
     bool? isOn,
     bool? locked,
     String? layer,
+    List<String>? frozenLayers,
   }) => PaperViewport(
     paperBounds: paperBounds ?? this.paperBounds,
     modelCenter: modelCenter ?? this.modelCenter,
@@ -121,6 +137,7 @@ class PaperViewport {
     isOn: isOn ?? this.isOn,
     locked: locked ?? this.locked,
     layer: layer ?? this.layer,
+    frozenLayers: frozenLayers ?? this.frozenLayers,
   );
 
   Map<String, Object?> toJson() => {
@@ -136,6 +153,7 @@ class PaperViewport {
     if (!isOn) 'on': false,
     if (locked) 'locked': true,
     if (layer != '0') 'layer': layer,
+    if (frozenLayers.isNotEmpty) 'frozen': frozenLayers,
   };
 
   factory PaperViewport.fromJson(Map<String, Object?> json) {
@@ -161,6 +179,15 @@ class PaperViewport {
       isOn: json['on'] as bool? ?? true,
       locked: json['locked'] as bool? ?? false,
       layer: json['layer'] as String? ?? '0',
+      frozenLayers: _frozenFromJson(json['frozen']),
     );
+  }
+
+  static List<String> _frozenFromJson(Object? value) {
+    if (value is! List) return const [];
+    return [
+      for (final item in value)
+        if (item is String && item.trim().isNotEmpty) item.trim(),
+    ];
   }
 }

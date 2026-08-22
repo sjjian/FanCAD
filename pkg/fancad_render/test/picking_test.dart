@@ -157,6 +157,26 @@ void main() {
     expect(xy[3], closeTo(14, 1e-9));
   });
 
+  test('does not pick a layer frozen in the viewport', () {
+    final document = paperWithModelLine();
+    document.putLayer(const LayerDef(name: '0'));
+    document.addLayout(
+      document.activeLayout.copyWith(
+        viewports: [
+          document.activeLayout.viewports.single.copyWith(
+            frozenLayers: const ['0'],
+          ),
+        ],
+      ),
+    );
+    final view = CadViewport.fit(document.extents, size);
+
+    expect(
+      const Picker().pickTopmost(document, view, const Vec2(105, 80)),
+      isNull,
+    );
+  });
+
   test('does not pick model geometry through an off viewport', () {
     final document = paperWithModelLine();
     document.addLayout(

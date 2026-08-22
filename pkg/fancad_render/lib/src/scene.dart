@@ -187,6 +187,10 @@ class SceneBuilder {
             context: vpContext,
             query: viewportWindow.modelWindow,
             onlyLayers: onlyLayers,
+            hiddenLayers: {
+              for (final name in viewportWindow.frozenLayers)
+                name.toLowerCase(),
+            },
             bucket: bucket,
             minimumWorldSize: scale < 1e-12
                 ? minimumWorldSize
@@ -234,6 +238,7 @@ class SceneBuilder {
     required EmitContext context,
     required Bounds2 query,
     required Set<String>? onlyLayers,
+    Set<String>? hiddenLayers,
     required int bucket,
     required double minimumWorldSize,
     Bounds2? worldClip,
@@ -247,6 +252,10 @@ class SceneBuilder {
       if (entity == null || !entity.props.visible) continue;
       if (!document.isLayerVisible(entity.props.layer)) continue;
       if (onlyLayers != null && !onlyLayers.contains(entity.props.layer)) {
+        continue;
+      }
+      if (hiddenLayers != null &&
+          hiddenLayers.contains(entity.props.layer.toLowerCase())) {
         continue;
       }
 

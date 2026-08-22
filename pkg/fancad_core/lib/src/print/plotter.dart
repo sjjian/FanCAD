@@ -81,6 +81,8 @@ class Plotter {
             .search(viewport.modelWindow)) {
           final entity = document.entity(id);
           if (entity == null) continue;
+          if (!document.isLayerVisible(entity.props.layer)) continue;
+          if (viewport.hidesLayer(entity.props.layer)) continue;
           entity.emit(transformed, sink);
         }
         sink.clipTo(null);

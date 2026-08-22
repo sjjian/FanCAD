@@ -441,6 +441,44 @@ void main() {
       expect(scene.lineBatches, isNotEmpty);
     });
 
+    test('a viewport-frozen layer is not drawn through the window', () {
+      final document = CadDocument();
+      document.putLayer(const LayerDef(name: 'DIMS'));
+      document.addEntity(
+        LineEntity(
+          id: 0,
+          props: const EntityProps(layer: 'DIMS'),
+          start: const Vec2(0, 0),
+          end: const Vec2(80, 0),
+        ),
+        blockName: document.modelSpaceBlockName,
+      );
+      document.addLayout(
+        Layout(
+          name: 'Layout1',
+          blockName: '*Paper_Space',
+          tabOrder: 1,
+          viewports: const [
+            PaperViewport(
+              paperBounds: Bounds2(10, 10, 200, 150),
+              modelCenter: Vec2(40, 0),
+              scale: 1,
+              frozenLayers: ['DIMS'],
+            ),
+          ],
+        ),
+      );
+      expect(document.setActiveLayout('Layout1'), isTrue);
+
+      final scene = newBuilder().build(
+        document,
+        CadViewport.fit(document.extents, size),
+      );
+
+      expect(scene.entityCount, 0);
+      expect(scene.lineBatches, isNotEmpty);
+    });
+
     test('model space does not composite paper viewports', () {
       final document = CadDocument();
       document.addEntity(

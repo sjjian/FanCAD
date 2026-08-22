@@ -132,6 +132,7 @@ void main() {
             rotation: 0.2,
             locked: true,
             layer: '0',
+            frozenLayers: ['DIMS'],
           ),
           PaperViewport(
             paperBounds: Bounds2(220, 20, 290, 90),
@@ -155,6 +156,7 @@ void main() {
     expect(first.isOn, isTrue);
     expect(first.locked, isTrue);
     expect(first.layer, '0');
+    expect(first.frozenLayers, ['DIMS']);
 
     final second = layout.viewports[1];
     expect(second.paperBounds, const Bounds2(220, 20, 290, 90));

@@ -136,6 +136,7 @@ void main() {
             modelCenter: Vec2(40, 0),
             scale: 0.5,
             locked: true,
+            frozenLayers: ['DIMS'],
           ),
         ],
       ),
@@ -164,6 +165,7 @@ void main() {
     expect(paper.viewports, hasLength(1));
     expect(paper.viewports.single.scale, closeTo(0.5, 1e-9));
     expect(paper.viewports.single.locked, isTrue);
+    expect(paper.viewports.single.frozenLayers, ['DIMS']);
     expect(paper.viewports.single.paperBounds, const Bounds2(20, 20, 220, 170));
 
     expect(

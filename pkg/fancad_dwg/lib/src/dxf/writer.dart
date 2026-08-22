@@ -139,6 +139,9 @@ class DxfWriter {
         if (viewport.locked) flags |= 16384;
         if (!viewport.isOn) flags |= 131072;
         if (flags != 0) pair(90, flags);
+        for (final name in viewport.frozenLayers) {
+          pair(331, name);
+        }
       }
     }
   }

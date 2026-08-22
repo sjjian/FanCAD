@@ -3141,6 +3141,36 @@ void main() {
       expect(result.status, CommandStatus.failed);
     });
 
+    test('vplayer freezes a layer in the only viewport', () async {
+      await run('layer.new', {'name': 'DIMS'});
+      await run('layout.new');
+      await run('layout.mview', {
+        'corner1': [10, 10],
+        'corner2': [200, 150],
+        'scale': 1,
+      });
+
+      final frozen = await run('layout.vplayer', {'layers': 'DIMS'});
+      expect(frozen.status, CommandStatus.ok, reason: frozen.message);
+      expect(document.activeLayout.viewports.single.frozenLayers, ['DIMS']);
+
+      final thawed = await run('layout.vplayer', {
+        'layers': 'DIMS',
+        'freeze': false,
+      });
+      expect(thawed.status, CommandStatus.ok, reason: thawed.message);
+      expect(document.activeLayout.viewports.single.frozenLayers, isEmpty);
+
+      await run('edit.undo');
+      expect(document.activeLayout.viewports.single.frozenLayers, ['DIMS']);
+    });
+
+    test('vplayer refuses the model tab', () async {
+      await run('layer.new', {'name': 'DIMS'});
+      final result = await run('layout.vplayer', {'layers': 'DIMS'});
+      expect(result.status, CommandStatus.failed);
+    });
+
     test('vpmax opens model space through the viewport', () async {
       await run('layout.new');
       await run('layout.mview', {

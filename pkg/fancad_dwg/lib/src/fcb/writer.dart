@@ -855,6 +855,11 @@ class FcbWriter {
           _strings.intern(viewport.layer),
           Endian.little,
         );
+        view.setUint32(
+          at + FcbViewport.frozenLayers,
+          _strings.intern(viewport.frozenLayers.join(',')),
+          Endian.little,
+        );
         written++;
       }
     }

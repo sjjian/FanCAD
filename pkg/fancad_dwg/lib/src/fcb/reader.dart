@@ -457,6 +457,12 @@ class FcbReader {
           isOn: flags & FcbViewportFlags.on != 0,
           locked: flags & FcbViewportFlags.locked != 0,
           layer: layer.isEmpty ? '0' : layer,
+          frozenLayers: [
+            for (final name in _string(
+              _view.getUint32(at + FcbViewport.frozenLayers, Endian.little),
+            ).split(','))
+              if (name.trim().isNotEmpty) name.trim(),
+          ],
         ),
       );
     }

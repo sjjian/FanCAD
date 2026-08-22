@@ -97,6 +97,7 @@ class Picker {
         final entity = document.entity(id);
         if (entity == null) continue;
         if (!_isSelectable(document, entity)) continue;
+        if (space.hidesLayer(entity.props.layer)) continue;
         if (filter != null && !filter(entity)) continue;
 
         final sink = PolylineSink();
@@ -152,6 +153,7 @@ class Picker {
         final entity = document.entity(id);
         if (entity == null) continue;
         if (!_isSelectable(document, entity)) continue;
+        if (space.hidesLayer(entity.props.layer)) continue;
         if (filter != null && !filter(entity)) continue;
 
         final bounds = document.boundsOfEntity(entity);
@@ -203,6 +205,9 @@ class Picker {
           transform: viewport.modelToPaper(),
         ),
         paperClip: viewport.paperBounds,
+        hiddenLayers: {
+          for (final name in viewport.frozenLayers) name.toLowerCase(),
+        },
       );
     }
   }
@@ -303,6 +308,7 @@ class Picker {
       if (owner != document.modelSpaceBlockName) continue;
       for (final viewport in layout.viewports) {
         if (!viewport.isOn) continue;
+        if (viewport.hidesLayer(entity.props.layer)) continue;
         if (visible != null && !viewport.paperBounds.intersects(visible)) {
           continue;
         }
@@ -421,6 +427,7 @@ class Picker {
 
       for (final viewport in layout.viewports) {
         if (!viewport.isOn) continue;
+        if (viewport.hidesLayer(entity.props.layer)) continue;
         final toPaper = viewport.modelToPaper();
         for (var i = 0; i < local.length; i++) {
           final paper = toPaper.transform(local[i]);
@@ -542,6 +549,7 @@ class LayoutSpace {
     required this.query,
     required this.context,
     this.paperClip,
+    this.hiddenLayers = const {},
   });
 
   final String blockName;
@@ -550,4 +558,10 @@ class LayoutSpace {
 
   /// When set, a hit must land inside this paper rectangle.
   final Bounds2? paperClip;
+
+  /// Lower-case layer names frozen in this viewport.
+  final Set<String> hiddenLayers;
+
+  bool hidesLayer(String layer) =>
+      hiddenLayers.isNotEmpty && hiddenLayers.contains(layer.toLowerCase());
 }

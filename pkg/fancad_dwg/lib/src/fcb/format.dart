@@ -190,6 +190,10 @@ class FcbViewport {
   static const int scale = 56;
   static const int rotation = 64;
   static const int layer = 72;
+
+  /// String-table index of a comma-separated frozen-layer list. Offset 76
+  /// was padding; index 0 is the empty string, so older files stay thawed.
+  static const int frozenLayers = 76;
 }
 
 /// Entity type codes. These are wire values and must never be renumbered.
