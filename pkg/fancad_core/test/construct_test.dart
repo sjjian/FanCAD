@@ -220,6 +220,43 @@ void main() {
         isNull,
       );
     });
+
+    test('from two lines labels the sector that contains the dim-arc pick', () {
+      final horizontal = line(-10, 0, 10, 0);
+      final tilted = LineEntity(
+        id: 2,
+        start: const Vec2(0, 0),
+        end: Vec2(math.cos(math.pi / 6) * 10, math.sin(math.pi / 6) * 10),
+      );
+
+      final acute = Construct.angularDimensionFromLines(
+        horizontal,
+        tilted,
+        const Vec2(5, 1),
+      );
+      expect(acute, isNotNull);
+      expect(acute!.measurement, closeTo(30, 1e-6));
+      expect(acute.definitionPoints.first, const Vec2(0, 0));
+
+      final obtuse = Construct.angularDimensionFromLines(
+        horizontal,
+        tilted,
+        const Vec2(-5, 1),
+      );
+      expect(obtuse, isNotNull);
+      expect(obtuse!.measurement, closeTo(150, 1e-6));
+    });
+
+    test('from two lines returns null when they are parallel', () {
+      expect(
+        Construct.angularDimensionFromLines(
+          line(0, 0, 10, 0),
+          line(0, 1, 10, 1),
+          const Vec2(5, 0.5),
+        ),
+        isNull,
+      );
+    });
   });
 
   group('circleTangentRadius', () {

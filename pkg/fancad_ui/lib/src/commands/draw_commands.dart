@@ -1591,19 +1591,51 @@ class DrawCommands {
     aliases: const ['dimangular', 'dimang'],
     icon: 'dimension',
     description:
-        'Places an angular dimension. The first point is the vertex; the '
-        'next two define the rays; the last pick sits on the dimension arc '
-        'and chooses which sector is labelled.',
+        'Places an angular dimension. Pick two lines and their intersection '
+        'is the vertex; the last pick sits on the dimension arc and chooses '
+        'which sector is labelled. Three points still work when a vertex is '
+        'supplied: vertex, then a point on each ray.',
     params: const [
-      ParamSpec.point('vertex', description: 'Vertex of the angle'),
-      ParamSpec.point('first', description: 'A point on the first ray'),
-      ParamSpec.point('second', description: 'A point on the second ray'),
+      ParamSpec(
+        name: 'firstLine',
+        type: ParamType.entity,
+        description: 'First line of the angle',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'secondLine',
+        type: ParamType.entity,
+        description: 'Second line of the angle',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'vertex',
+        type: ParamType.point,
+        description: 'Vertex of the angle',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'first',
+        type: ParamType.point,
+        description: 'A point on the first ray',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'second',
+        type: ParamType.point,
+        description: 'A point on the second ray',
+        required: false,
+      ),
       ParamSpec.point(
         'dimLine',
         description: 'A point on the dimension arc',
       ),
     ],
     handler: (context) async {
+      if (context.args.point('vertex') == null &&
+          context.args.point('first') == null) {
+        return _dimAngularFromLines(context);
+      }
       final vertex = await context.resolvePoint(
         'vertex',
         'DIMANGULAR  Specify vertex:',
@@ -1673,6 +1705,101 @@ class DrawCommands {
     return [
       OverlayLine(vertex, first),
       OverlayLine(vertex, second),
+      if (radius > 1e-9)
+        OverlayArc(
+          center: vertex,
+          radius: radius,
+          startAngle: start,
+          sweep: sweep,
+        ),
+    ];
+  }
+
+  static Future<CommandResult> _dimAngularFromLines(
+    CommandContext context,
+  ) async {
+    final firstId = context.args.integer('firstLine');
+    final secondId = context.args.integer('secondLine');
+    final int id1;
+    final int id2;
+    if (firstId != null && secondId != null) {
+      id1 = firstId;
+      id2 = secondId;
+    } else {
+      context.selection.clear();
+      final firstPick = await context.input.selection(
+        'DIMANGULAR  Select first line:',
+        useExistingSelection: false,
+        single: true,
+      );
+      if (firstPick.isEmpty) return const CommandResult.cancelled();
+      id1 = firstPick.first;
+      final secondPick = await context.input.selection(
+        'DIMANGULAR  Select second line:',
+        useExistingSelection: false,
+        single: true,
+      );
+      if (secondPick.isEmpty) return const CommandResult.cancelled();
+      id2 = secondPick.first;
+    }
+    final first = context.document.entity(id1);
+    final second = context.document.entity(id2);
+    if (first is! LineEntity || second is! LineEntity) {
+      return const CommandResult.failed(
+        'Angular dimension from two objects needs two lines.',
+      );
+    }
+    if (id1 == id2) {
+      return const CommandResult.failed('Select two different lines.');
+    }
+    final vertex = Intersect.lineLine(
+      first.start,
+      first.end,
+      second.start,
+      second.end,
+    );
+    if (vertex == null) {
+      return const CommandResult.failed('The two lines are parallel.');
+    }
+    context.input
+      ..setMarkers([vertex])
+      ..setPreview(
+        (cursor) => _dimAngularFromLinesOverlay(first, second, cursor),
+      );
+    final dimLine = await context.resolvePoint(
+      'dimLine',
+      'DIMANGULAR  Specify dimension arc location:',
+      basePoint: vertex,
+    );
+    context.input
+      ..setPreview(null)
+      ..setMarkers(const []);
+    final entity = Construct.angularDimensionFromLines(
+      first,
+      second,
+      dimLine,
+      props: EntityProps(layer: context.document.currentLayer),
+    );
+    if (entity == null) {
+      return const CommandResult.failed(
+        'The two lines do not form an angle at that location.',
+      );
+    }
+    return _commit(context, 'Angular Dimension', [entity]);
+  }
+
+  static List<OverlayShape> _dimAngularFromLinesOverlay(
+    LineEntity first,
+    LineEntity second,
+    Vec2 cursor,
+  ) {
+    final dim = Construct.angularDimensionFromLines(first, second, cursor);
+    if (dim == null) return const [];
+    final vertex = dim.definitionPoints[0];
+    final start = (dim.definitionPoints[1] - vertex).angle;
+    final sweep = dim.measurement * math.pi / 180;
+    final radius = vertex.distanceTo(cursor);
+    return [
       if (radius > 1e-9)
         OverlayArc(
           center: vertex,

@@ -239,6 +239,23 @@ void main() {
       expect(dim.displayText, '90.00°');
     });
 
+    test('angular dimension from two lines uses their intersection', () async {
+      final first = await drawLine(-10, 0, 10, 0);
+      final second = await drawLine(0, -10, 0, 10);
+
+      final result = await run('draw.dimAngular', {
+        'firstLine': first,
+        'secondLine': second,
+        'dimLine': [4, 4],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entities.whereType<DimensionEntity>().single;
+      expect(dim.definitionPoints.first, const Vec2(0, 0));
+      expect(dim.measurement, closeTo(90, 1e-9));
+      expect(dim.displayText, '90.00°');
+    });
+
     test('donut creates a wide circular polyline', () async {
       final result = await run('draw.donut', {
         'inside': 6,

@@ -260,6 +260,51 @@ class Construct {
     );
   }
 
+  /// An angular dimension between the supporting lines of [first] and [second].
+  ///
+  /// Two lines cut the plane into four sectors. [dimLine] chooses which one is
+  /// labelled — the acute pair or the supplementary pair — so a 30° crossing
+  /// can read 30° or 150° depending on where the arc is placed.
+  static DimensionEntity? angularDimensionFromLines(
+    LineEntity first,
+    LineEntity second,
+    Vec2 dimLine, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    final vertex = Intersect.lineLine(
+      first.start,
+      first.end,
+      second.start,
+      second.end,
+    );
+    if (vertex == null) return null;
+    if (first.length < 1e-9 || second.length < 1e-9) return null;
+    final a1 = (first.end - first.start).angle;
+    final rays = <double>[
+      normalizeAngle(a1),
+      normalizeAngle(a1 + math.pi),
+      normalizeAngle((second.end - second.start).angle),
+      normalizeAngle((second.end - second.start).angle + math.pi),
+    ]..sort();
+    final via = normalizeAngle((dimLine - vertex).angle);
+    for (var i = 0; i < rays.length; i++) {
+      final start = rays[i];
+      final end = rays[(i + 1) % rays.length];
+      if (angularSweep(start, via) <= angularSweep(start, end) + 1e-9) {
+        return angularDimension(
+          vertex,
+          vertex + Vec2.polar(start, 1),
+          vertex + Vec2.polar(end, 1),
+          dimLine,
+          id: id,
+          props: props,
+        );
+      }
+    }
+    return null;
+  }
+
   static (Vec2, double)? _radialSource(CadEntity entity) {
     switch (entity) {
       case CircleEntity(:final center, :final radius):
