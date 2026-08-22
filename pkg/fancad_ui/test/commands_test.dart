@@ -155,6 +155,28 @@ void main() {
       expect(ellipse.ratio, closeTo(0.4, 1e-9));
     });
 
+    test('xline stores an infinite line through two points', () async {
+      final result = await run('draw.xline', {
+        'origin': [0, 0],
+        'through': [10, 5],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final xline = document.entities.first as XLineEntity;
+      expect(xline.origin, const Vec2(0, 0));
+      expect(xline.direction, const Vec2(10, 5));
+    });
+
+    test('xline refuses coincident points', () async {
+      final result = await run('draw.xline', {
+        'origin': [3, 3],
+        'through': [3, 3],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entityCount, 0);
+    });
+
     test('divide places interior points along a line', () async {
       final id = await drawLine(0, 0, 12, 0);
 

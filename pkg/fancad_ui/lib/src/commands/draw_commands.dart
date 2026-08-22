@@ -22,6 +22,7 @@ class DrawCommands {
     _arc(),
     _polygon(),
     _ellipse(),
+    _xline(),
     _point(),
     _divide(),
     _measure(),
@@ -599,6 +600,57 @@ class DrawCommands {
       ),
     ];
   }
+
+  static CommandDescriptor _xline() => CommandDescriptor(
+    id: 'draw.xline',
+    title: 'Construction Line',
+    category: _category,
+    aliases: const ['xl', 'xline'],
+    description:
+        'Draws an infinite construction line through a point in a given '
+        'direction. The second point only sets the angle; both sides extend '
+        'without end.',
+    params: const [
+      ParamSpec.point('origin', description: 'A point on the line'),
+      ParamSpec.point('through', description: 'A second point that sets the direction'),
+    ],
+    handler: (context) async {
+      final origin = await context.resolvePoint(
+        'origin',
+        'XLINE  Specify a point:',
+      );
+      context.input
+        ..setMarkers([origin])
+        ..setPreview(
+          (cursor) => [
+            OverlayTrackingLine(origin, (cursor - origin).angle),
+          ],
+        );
+      final through = await context.resolvePoint(
+        'through',
+        'XLINE  Specify through point:',
+        basePoint: origin,
+      );
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+
+      final direction = through - origin;
+      if (direction.lengthSquared < 1e-20) {
+        return const CommandResult.failed(
+          'The two points coincide, so the line has no direction.',
+        );
+      }
+      return _commit(context, 'Xline', [
+        XLineEntity(
+          id: 0,
+          props: EntityProps(layer: context.document.currentLayer),
+          origin: origin,
+          direction: direction,
+        ),
+      ]);
+    },
+  );
 
   static CommandDescriptor _point() => CommandDescriptor(
     id: 'draw.point',
