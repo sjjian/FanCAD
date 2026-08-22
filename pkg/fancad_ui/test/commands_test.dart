@@ -1707,6 +1707,63 @@ void main() {
       expect(document.entities.whereType<SolidEntity>(), hasLength(2));
     });
 
+    test('block replaces a selection with one insert', () async {
+      final a = await drawLine(0, 0, 10, 0);
+      final b = await drawLine(0, 0, 0, 10);
+
+      final result = await run('edit.block', {
+        'ids': [a, b],
+        'name': 'CORNER',
+        'base': [0, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeEntities, hasLength(1));
+      final insert = document.activeEntities.first as InsertEntity;
+      expect(insert.blockName, 'CORNER');
+      expect(insert.position, const Vec2(0, 0));
+      expect(document.blocks['CORNER']!.entityIds, hasLength(2));
+      expect(document.blocks['CORNER']!.basePoint, const Vec2(0, 0));
+    });
+
+    test('block refuses a name that already exists', () async {
+      await drawLine(0, 0, 4, 0);
+      await run('edit.block', {
+        'ids': [document.activeEntities.first.id],
+        'name': 'BOLT',
+        'base': [0, 0],
+      });
+      final extra = await drawLine(8, 0, 12, 0);
+
+      final result = await run('edit.block', {
+        'ids': [extra],
+        'name': 'bolt',
+        'base': [8, 0],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(result.message, contains('already exists'));
+    });
+
+    test('explode restores the objects a block insert draws', () async {
+      final a = await drawLine(0, 0, 6, 0);
+      final b = await drawLine(0, 2, 6, 2);
+      final created = await run('edit.block', {
+        'ids': [a, b],
+        'name': 'SLOT',
+        'base': [0, 0],
+      });
+      final insertId = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.explode', {
+        'ids': [insertId],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeEntities.whereType<LineEntity>(), hasLength(2));
+      expect(document.activeEntities.whereType<InsertEntity>(), isEmpty);
+    });
+
     test('join merges connected lines into one polyline', () async {
       final a = await drawLine(0, 0, 10, 0);
       final b = await drawLine(10, 0, 10, 10);
