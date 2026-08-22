@@ -1213,6 +1213,48 @@ class Construct {
     ];
   }
 
+  /// Interior points that split [polyline] into [segments] equal pieces.
+  ///
+  /// Open polylines match [divideLine]: the endpoints stay unmarked. A closed
+  /// loop has no leftover end, so it places [segments] points equally around
+  /// the perimeter, including the start vertex.
+  static List<Vec2> dividePolyline(PolylineEntity polyline, int segments) {
+    if (segments < 2 || polyline.hasBulges || polyline.vertexCount < 2) {
+      return const [];
+    }
+    final length = _polylineLength(polyline);
+    if (length < 1e-12) return const [];
+    if (polyline.closed) {
+      return [
+        for (var i = 0; i < segments; i++)
+          _pointAlongPolyline(polyline, length * i / segments),
+      ];
+    }
+    return [
+      for (var i = 1; i < segments; i++)
+        _pointAlongPolyline(polyline, length * i / segments),
+    ];
+  }
+
+  /// Walks [polyline] from its start by [distance] along straight segments.
+  static Vec2 _pointAlongPolyline(PolylineEntity polyline, double distance) {
+    if (distance <= 1e-12) return polyline.vertexAt(0);
+    final count = polyline.vertexCount;
+    final segments = polyline.closed ? count : count - 1;
+    var remaining = distance;
+    for (var i = 0; i < segments; i++) {
+      final from = polyline.vertexAt(i);
+      final to = polyline.vertexAt((i + 1) % count);
+      final segment = from.distanceTo(to);
+      if (segment < 1e-12) continue;
+      if (remaining <= segment + 1e-12) {
+        return from.lerp(to, (remaining / segment).clamp(0.0, 1.0));
+      }
+      remaining -= segment;
+    }
+    return polyline.vertexAt(polyline.closed ? 0 : count - 1);
+  }
+
   /// Points spaced [spacing] apart along [line], starting from the end nearer [pick].
   ///
   /// MEASURE never marks the endpoints: the first node is one interval in, and

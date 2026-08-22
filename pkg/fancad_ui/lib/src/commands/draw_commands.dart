@@ -996,13 +996,14 @@ class DrawCommands {
     category: _category,
     aliases: const ['div', 'divide'],
     description:
-        'Places point markers that split a line into equal segments. The '
-        'endpoints are left alone; only the interior divisions are created.',
+        'Places point markers that split a line or straight polyline into '
+        'equal segments. Open objects leave the endpoints unmarked; a closed '
+        'polyline places a marker at every interval around the loop.',
     params: const [
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line to divide',
+        description: 'The line or polyline to divide',
         required: false,
       ),
       ParamSpec(
@@ -1020,7 +1021,7 @@ class DrawCommands {
       } else {
         context.selection.clear();
         final picked = await context.input.selection(
-          'DIVIDE  Select a line:',
+          'DIVIDE  Select a line or polyline:',
           useExistingSelection: false,
           single: true,
         );
@@ -1029,9 +1030,14 @@ class DrawCommands {
       }
 
       final target = context.document.entity(targetId);
-      if (target is! LineEntity) {
+      if (target is! LineEntity && target is! PolylineEntity) {
         return const CommandResult.failed(
-          'Divide currently supports lines only.',
+          'Divide supports lines and straight polylines.',
+        );
+      }
+      if (target is PolylineEntity && target.hasBulges) {
+        return const CommandResult.failed(
+          'Divide cannot follow a bulged polyline.',
         );
       }
 
@@ -1046,7 +1052,9 @@ class DrawCommands {
         );
       }
 
-      final points = Construct.divideLine(target, segments);
+      final points = target is LineEntity
+          ? Construct.divideLine(target, segments)
+          : Construct.dividePolyline(target as PolylineEntity, segments);
       if (points.isEmpty) {
         return const CommandResult.failed('Nothing to place.');
       }

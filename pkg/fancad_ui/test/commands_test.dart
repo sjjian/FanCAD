@@ -253,6 +253,27 @@ void main() {
       expect(points[1].position.x, closeTo(8, 1e-9));
     });
 
+    test('divide places interior points along a polyline', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.divide', {
+        'target': id,
+        'segments': 4,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final points = document.entities.whereType<PointEntity>().toList();
+      expect(points, hasLength(3));
+      expect(points[1].position, const Vec2(10, 0));
+    });
+
     test('measure places points at a fixed spacing', () async {
       final id = await drawLine(0, 0, 10, 0);
 

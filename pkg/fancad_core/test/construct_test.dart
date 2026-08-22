@@ -780,6 +780,34 @@ void main() {
     });
   });
 
+  group('dividePolyline', () {
+    test('places interior points along an open polyline', () {
+      final polyline = PolylineEntity.fromPoints(
+        id: 1,
+        points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10)],
+      );
+
+      final points = Construct.dividePolyline(polyline, 4);
+
+      expect(points, hasLength(3));
+      expect(points[0].x, closeTo(5, 1e-9));
+      expect(points[1], const Vec2(10, 0));
+      expect(points[2].y, closeTo(5, 1e-9));
+    });
+
+    test('walks a closed polyline around the loop', () {
+      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+
+      final points = Construct.dividePolyline(square, 8);
+
+      expect(points, hasLength(8));
+      expect(points[0], const Vec2(0, 0));
+      expect(points[1].x, closeTo(5, 1e-9));
+      expect(points[2], const Vec2(10, 0));
+      expect(points[4], const Vec2(10, 10));
+    });
+  });
+
   group('measureLine', () {
     test('spaces points from the nearer end', () {
       final points = Construct.measureLine(
