@@ -267,6 +267,9 @@ class FidelityAuditor {
         'plot rotation ${source.plotRotation} vs ${target.plotRotation}',
       );
     }
+    if (!_sameBox(source.plotWindow, target.plotWindow)) {
+      issues.add('plot window changed');
+    }
     if (source.viewports.length != target.viewports.length) {
       issues.add(
         '${source.viewports.length} viewport(s) vs ${target.viewports.length}',
@@ -304,5 +307,15 @@ class FidelityAuditor {
     final left = {for (final name in a) name.toLowerCase()};
     final right = {for (final name in b) name.toLowerCase()};
     return left.length == right.length && left.containsAll(right);
+  }
+
+  static bool _sameBox(Bounds2? a, Bounds2? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    bool close(double x, double y) => (x - y).abs() <= 1e-4;
+    return close(a.minX, b.minX) &&
+        close(a.minY, b.minY) &&
+        close(a.maxX, b.maxX) &&
+        close(a.maxY, b.maxY);
   }
 }

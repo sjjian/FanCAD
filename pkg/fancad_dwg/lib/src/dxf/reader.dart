@@ -133,6 +133,7 @@ class DxfReader {
             paperHeight: double.tryParse(values[45] ?? '210') ?? 210,
             plotRotation:
                 (int.tryParse(values[75] ?? '0') ?? 0).clamp(0, 3) * 90,
+            plotWindow: _plotWindow(values),
             viewports: viewportsByBlock[blockName] ?? const [],
           ),
         );
@@ -155,6 +156,18 @@ class DxfReader {
       );
       tab++;
     }
+  }
+
+  static Bounds2? _plotWindow(Map<int, String> values) {
+    if ((int.tryParse(values[72] ?? '') ?? -1) != 4) return null;
+    final minX = double.tryParse(values[48] ?? '');
+    final minY = double.tryParse(values[49] ?? '');
+    final maxX = double.tryParse(values[140] ?? '');
+    final maxY = double.tryParse(values[141] ?? '');
+    if (minX == null || minY == null || maxX == null || maxY == null) {
+      return null;
+    }
+    return Bounds2.fromCorners(Vec2(minX, minY), Vec2(maxX, maxY));
   }
 
   static PaperViewport? _decodeViewport(List<(int, String)> pairs) {

@@ -46,6 +46,7 @@ class Plotter {
     final target = layout ?? document.activeLayout;
     sink.plotRotation = target.plotRotation;
     final box = window ??
+        target.plotWindow ??
         (target.isModelSpace
             ? document.extents
             : Bounds2(0, 0, target.paperWidth, target.paperHeight));

@@ -61,6 +61,9 @@ class FcbSection {
   /// has an empty viewport list. Adding this kind did not bump [fcbVersion]
   /// because older readers skip unknown TOC entries.
   static const int viewports = 12;
+
+  /// Optional plot windows, one record per layout that has one.
+  static const int plotWindows = 13;
 }
 
 /// Fixed record sizes, in bytes.
@@ -74,6 +77,7 @@ class FcbRecord {
   static const int block = 48;
   static const int layout = 32;
   static const int viewport = 80;
+  static const int plotWindow = 40;
 }
 
 /// Field offsets inside an entity record.
@@ -173,6 +177,17 @@ class FcbLayout {
   static const int tabOrder = 12;
   static const int paperWidth = 16;
   static const int paperHeight = 24;
+}
+
+/// Field offsets inside a plot-window record.
+class FcbPlotWindow {
+  const FcbPlotWindow._();
+
+  static const int layoutIndex = 0;
+  static const int minX = 8;
+  static const int minY = 16;
+  static const int maxX = 24;
+  static const int maxY = 32;
 }
 
 /// Field offsets inside a paper-viewport record.

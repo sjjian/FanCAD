@@ -52,6 +52,8 @@ class ProCommands {
             'tabOrder': layout.tabOrder,
             'plotRotation': layout.plotRotation,
             'current': layout.name == context.document.activeLayoutName,
+            if (layout.plotWindow case final box?)
+              'plotWindow': [box.minX, box.minY, box.maxX, box.maxY],
           },
       ];
       return CommandResult.ok(
@@ -299,6 +301,7 @@ class ProCommands {
         paperWidth: source.paperWidth,
         paperHeight: source.paperHeight,
         plotRotation: source.plotRotation,
+        plotWindow: source.plotWindow,
         viewports: [...source.viewports],
       );
       final paper = context.document.entitiesOf(source.blockName).toList();
@@ -610,9 +613,9 @@ class ProCommands {
     category: _category,
     aliases: const ['pagesetup'],
     description:
-        'Changes the paper size of a layout, in millimetres, and the '
-        'plot rotation (0, 90, 180 or 270). Omit the name to edit the '
-        'current paper tab. Model has no sheet.',
+        'Changes the paper size of a layout, in millimetres, the plot '
+        'rotation (0, 90, 180 or 270), and an optional plot window. '
+        'Omit the name to edit the current paper tab. Model has no sheet.',
     params: const [
       ParamSpec(
         name: 'name',
@@ -634,6 +637,24 @@ class ProCommands {
         name: 'rotation',
         type: ParamType.angle,
         description: 'Plot rotation in degrees: 0, 90, 180 or 270',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'corner1',
+        type: ParamType.point,
+        description: 'First corner of the plot window',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'corner2',
+        type: ParamType.point,
+        description: 'Opposite corner of the plot window',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'window',
+        type: ParamType.boolean,
+        description: 'false clears a stored plot window',
         required: false,
       ),
     ],
@@ -672,9 +693,16 @@ class ProCommands {
       final rotation = rotationArg == null
           ? layout.plotRotation
           : Layout.normalizePlotRotation(rotationArg);
+      final windowChange = _pageSetupWindow(context, layout);
+      if (windowChange.$1 != null) {
+        return CommandResult.failed(windowChange.$1!);
+      }
+      final nextWindow = windowChange.$2;
+      final clearWindow = context.args.boolean('window') == false;
       if (width == layout.paperWidth &&
           height == layout.paperHeight &&
-          rotation == layout.plotRotation) {
+          rotation == layout.plotRotation &&
+          _samePlotBox(nextWindow, layout.plotWindow)) {
         return CommandResult.ok(
           message: '${layout.name} is already ${width} × ${height} mm'
               '${rotation == 0 ? '' : ', rotated $rotation°'}.',
@@ -690,6 +718,8 @@ class ProCommands {
         paperWidth: width,
         paperHeight: height,
         plotRotation: rotation,
+        plotWindow: nextWindow,
+        clearPlotWindow: clearWindow,
       );
       final committed = context.edit('Page Setup', (transaction) {
         transaction.putLayout(updated);
@@ -710,11 +740,42 @@ class ProCommands {
           'name': layout.name,
           'paper': [width, height],
           'rotation': rotation,
+          if (updated.plotWindow case final box?)
+            'plotWindow': [box.minX, box.minY, box.maxX, box.maxY],
         },
         transaction: committed,
       );
     },
   );
+
+  static (String?, Bounds2?) _pageSetupWindow(
+    CommandContext context,
+    Layout layout,
+  ) {
+    if (context.args.boolean('window') == false) {
+      return (null, null);
+    }
+    final first = context.args.point('corner1');
+    final second = context.args.point('corner2');
+    if (first == null && second == null) return (null, layout.plotWindow);
+    if (first == null || second == null) {
+      return ('Plot window needs both corners.', null);
+    }
+    final box = Bounds2.fromCorners(first, second);
+    if (box.width <= 1e-9 || box.height <= 1e-9) {
+      return ('Plot window must have a positive size.', null);
+    }
+    return (null, box);
+  }
+
+  static bool _samePlotBox(Bounds2? a, Bounds2? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return (a.minX - b.minX).abs() <= 1e-9 &&
+        (a.minY - b.minY).abs() <= 1e-9 &&
+        (a.maxX - b.maxX).abs() <= 1e-9 &&
+        (a.maxY - b.maxY).abs() <= 1e-9;
+  }
 
   static Layout? _layoutNamed(CadDocument document, String name) {
     final needle = name.toLowerCase();
@@ -1361,7 +1422,8 @@ class ProCommands {
     description:
         'Plots a layout to an SVG file. Omit the layout name to plot the '
         'current tab. A .pdf path writes a vector PDF instead. '
-        'Paper-space viewports are honoured.',
+        'Pass corner1 and corner2 to plot a window; otherwise the '
+        'layout\'s stored plot window or the full sheet is used.',
     params: const [
       ParamSpec(
         name: 'path',
@@ -1374,6 +1436,18 @@ class ProCommands {
         description: 'Tab to plot. Defaults to the current layout.',
         required: false,
       ),
+      ParamSpec(
+        name: 'corner1',
+        type: ParamType.point,
+        description: 'First corner of a one-shot plot window',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'corner2',
+        type: ParamType.point,
+        description: 'Opposite corner of a one-shot plot window',
+        required: false,
+      ),
     ],
     handler: (context) async {
       final path = await context.resolveText('path', 'SVG path:');
@@ -1383,10 +1457,18 @@ class ProCommands {
           'No layout named ${context.args.text('layout')}',
         );
       }
-      if (path.toLowerCase().endsWith('.pdf')) {
-        return _writePdf(context, path, layout);
+      final window = _resolvePlotWindow(context, layout);
+      if (window.$1 != null) {
+        return CommandResult.failed(window.$1!);
       }
-      final svg = const Plotter().toSvg(context.document, layout: layout);
+      if (path.toLowerCase().endsWith('.pdf')) {
+        return _writePdf(context, path, layout, window: window.$2);
+      }
+      final svg = const Plotter().toSvg(
+        context.document,
+        layout: layout,
+        window: window.$2,
+      );
       await File(path).writeAsString(svg);
       return CommandResult.ok(
         message: 'Wrote ${svg.length} characters to $path',
@@ -1407,7 +1489,7 @@ class ProCommands {
     description:
         'Plots a layout to a vector PDF. Omit the layout name to plot the '
         'current tab. Paper size becomes the page MediaBox; viewports '
-        'are clipped.',
+        'are clipped. Pass corner1 and corner2 to plot a window.',
     params: const [
       ParamSpec(
         name: 'path',
@@ -1420,6 +1502,18 @@ class ProCommands {
         description: 'Tab to plot. Defaults to the current layout.',
         required: false,
       ),
+      ParamSpec(
+        name: 'corner1',
+        type: ParamType.point,
+        description: 'First corner of a one-shot plot window',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'corner2',
+        type: ParamType.point,
+        description: 'Opposite corner of a one-shot plot window',
+        required: false,
+      ),
     ],
     handler: (context) async {
       final path = await context.resolveText('path', 'PDF path:');
@@ -1429,7 +1523,11 @@ class ProCommands {
           'No layout named ${context.args.text('layout')}',
         );
       }
-      return _writePdf(context, path, layout);
+      final window = _resolvePlotWindow(context, layout);
+      if (window.$1 != null) {
+        return CommandResult.failed(window.$1!);
+      }
+      return _writePdf(context, path, layout, window: window.$2);
     },
   );
 
@@ -1439,12 +1537,34 @@ class ProCommands {
     return _layoutNamed(context.document, requested);
   }
 
+  static (String?, Bounds2?) _resolvePlotWindow(
+    CommandContext context,
+    Layout layout,
+  ) {
+    final first = context.args.point('corner1');
+    final second = context.args.point('corner2');
+    if (first == null && second == null) return (null, layout.plotWindow);
+    if (first == null || second == null) {
+      return ('Plot window needs both corners.', null);
+    }
+    final box = Bounds2.fromCorners(first, second);
+    if (box.width <= 1e-9 || box.height <= 1e-9) {
+      return ('Plot window must have a positive size.', null);
+    }
+    return (null, box);
+  }
+
   static Future<CommandResult> _writePdf(
     CommandContext context,
     String path,
-    Layout layout,
-  ) async {
-    final pdf = const Plotter().toPdf(context.document, layout: layout);
+    Layout layout, {
+    Bounds2? window,
+  }) async {
+    final pdf = const Plotter().toPdf(
+      context.document,
+      layout: layout,
+      window: window,
+    );
     await File(path).writeAsBytes(pdf);
     return CommandResult.ok(
       message: 'Wrote ${pdf.length} bytes to $path',

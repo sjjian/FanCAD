@@ -80,6 +80,13 @@ class DxfWriter {
       if (layout.plotRotation != 0) {
         pair(75, Layout.normalizePlotRotation(layout.plotRotation) ~/ 90);
       }
+      if (layout.plotWindow case final box?) {
+        pair(72, 4);
+        pair(48, box.minX);
+        pair(49, box.minY);
+        pair(140, box.maxX);
+        pair(141, box.maxY);
+      }
       pair(100, 'AcDbLayout');
       pair(1, layout.name);
       pair(2, layout.blockName);

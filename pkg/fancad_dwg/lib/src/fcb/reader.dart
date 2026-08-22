@@ -172,6 +172,7 @@ class FcbReader {
     _applyBlocks(document, blockNames, entities);
     _applyLayouts(document, blockNames);
     _applyViewports(document);
+    _applyPlotWindows(document);
     _applyHeaderVariables(document);
 
     document.reindex();
@@ -471,6 +472,30 @@ class FcbReader {
     for (var i = 0; i < layouts.length; i++) {
       if (buckets[i].isEmpty) continue;
       document.addLayout(layouts[i].copyWith(viewports: buckets[i]));
+    }
+  }
+
+  void _applyPlotWindows(CadDocument document) {
+    final section = _section(FcbSection.plotWindows);
+    if (section == null) return;
+    final base = section.$1;
+    final count = _view.getUint64(base, Endian.little);
+    final layouts = List<Layout>.from(document.layouts);
+    for (var i = 0; i < count; i++) {
+      final at = base + 8 + i * FcbRecord.plotWindow;
+      final layoutIndex = _view.getUint32(
+        at + FcbPlotWindow.layoutIndex,
+        Endian.little,
+      );
+      if (layoutIndex >= layouts.length) continue;
+      final box = Bounds2(
+        _view.getFloat64(at + FcbPlotWindow.minX, Endian.little),
+        _view.getFloat64(at + FcbPlotWindow.minY, Endian.little),
+        _view.getFloat64(at + FcbPlotWindow.maxX, Endian.little),
+        _view.getFloat64(at + FcbPlotWindow.maxY, Endian.little),
+      );
+      if (box.isEmpty) continue;
+      document.addLayout(layouts[layoutIndex].copyWith(plotWindow: box));
     }
   }
 

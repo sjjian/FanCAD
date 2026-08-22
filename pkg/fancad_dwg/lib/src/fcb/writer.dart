@@ -219,6 +219,8 @@ class FcbWriter {
       FcbSection.layouts: _encodeLayouts(document, blockIndex),
       FcbSection.viewports: _encodeViewports(document),
       FcbSection.headerVariables: _encodeHeaderVariables(document),
+      if (_encodePlotWindows(document) case final plotWindows?)
+        FcbSection.plotWindows: plotWindows,
     };
 
     // Pools are encoded last: the entity and table encoders above are what
@@ -864,6 +866,28 @@ class FcbWriter {
         );
         written++;
       }
+    }
+    return buffer;
+  }
+
+  Uint8List? _encodePlotWindows(CadDocument document) {
+    final entries = <(int, Bounds2)>[];
+    for (var i = 0; i < document.layouts.length; i++) {
+      final box = document.layouts[i].plotWindow;
+      if (box != null && box.isNotEmpty) entries.add((i, box));
+    }
+    if (entries.isEmpty) return null;
+    final buffer = Uint8List(8 + entries.length * FcbRecord.plotWindow);
+    final view = ByteData.view(buffer.buffer);
+    view.setUint64(0, entries.length, Endian.little);
+    for (var i = 0; i < entries.length; i++) {
+      final (index, box) = entries[i];
+      final at = 8 + i * FcbRecord.plotWindow;
+      view.setUint32(at + FcbPlotWindow.layoutIndex, index, Endian.little);
+      view.setFloat64(at + FcbPlotWindow.minX, box.minX, Endian.little);
+      view.setFloat64(at + FcbPlotWindow.minY, box.minY, Endian.little);
+      view.setFloat64(at + FcbPlotWindow.maxX, box.maxX, Endian.little);
+      view.setFloat64(at + FcbPlotWindow.maxY, box.maxY, Endian.little);
     }
     return buffer;
   }

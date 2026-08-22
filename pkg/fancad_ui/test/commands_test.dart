@@ -2961,6 +2961,25 @@ void main() {
       expect(document.activeLayout.plotRotation, 0);
     });
 
+    test('page setup stores a plot window', () async {
+      await run('layout.new');
+      final result = await run('layout.pagesetup', {
+        'width': 297,
+        'height': 210,
+        'corner1': [10, 20],
+        'corner2': [110, 80],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(
+        document.activeLayout.plotWindow,
+        const Bounds2(10, 20, 110, 80),
+      );
+
+      await run('edit.undo');
+      expect(document.activeLayout.plotWindow, isNull);
+    });
+
     test('page setup refuses Model', () async {
       final result = await run('layout.pagesetup', {
         'name': 'Model',
@@ -3261,6 +3280,29 @@ void main() {
       final svg = File(path).readAsStringSync();
       expect(svg, contains('width="420'));
       expect(svg, contains('height="297'));
+    });
+
+    test('plot honours a window on the named layout', () async {
+      await run('layout.new', {
+        'name': 'A3',
+        'width': 420,
+        'height': 297,
+      });
+      final dir = Directory.systemTemp.createTempSync('fancad_plot');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final path = '${dir.path}/window.svg';
+
+      final result = await run('print.exportSvg', {
+        'path': path,
+        'layout': 'A3',
+        'corner1': [10, 20],
+        'corner2': [110, 80],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final svg = File(path).readAsStringSync();
+      expect(svg, contains('width="100'));
+      expect(svg, contains('height="60'));
     });
 
     test('plot refuses an unknown layout', () async {

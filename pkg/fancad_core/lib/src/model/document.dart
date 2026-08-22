@@ -73,6 +73,7 @@ class Layout {
     this.paperWidth = 297,
     this.paperHeight = 210,
     this.plotRotation = 0,
+    this.plotWindow,
     this.viewports = const [],
   });
 
@@ -96,6 +97,9 @@ class Layout {
     return quarter * 90;
   }
 
+  /// Optional plot window. Null means the full sheet, or model extents.
+  final Bounds2? plotWindow;
+
   /// Windows into model space. Empty on the model tab itself.
   final List<PaperViewport> viewports;
 
@@ -115,6 +119,8 @@ class Layout {
     double? paperWidth,
     double? paperHeight,
     int? plotRotation,
+    Bounds2? plotWindow,
+    bool clearPlotWindow = false,
     List<PaperViewport>? viewports,
   }) => Layout(
     name: name ?? this.name,
@@ -124,6 +130,7 @@ class Layout {
     paperWidth: paperWidth ?? this.paperWidth,
     paperHeight: paperHeight ?? this.paperHeight,
     plotRotation: plotRotation ?? this.plotRotation,
+    plotWindow: clearPlotWindow ? null : (plotWindow ?? this.plotWindow),
     viewports: viewports ?? this.viewports,
   );
 

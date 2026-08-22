@@ -121,6 +121,25 @@ void main() {
     expect(svg, contains('rotate(-90'));
   });
 
+  test('a stored plot window becomes the SVG page', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+        plotWindow: Bounds2(10, 20, 110, 80),
+      ),
+    );
+    document.setActiveLayout('A3');
+
+    final svg = const Plotter().toSvg(document);
+    expect(svg, contains('width="100'));
+    expect(svg, contains('height="60'));
+  });
+
   test('a double-click inside a paper viewport maximizes it', () {
     const layout = Layout(
       name: 'Layout1',
