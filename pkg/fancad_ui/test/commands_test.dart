@@ -543,6 +543,29 @@ void main() {
       expect(document.entities.whereType<ArcEntity>(), hasLength(1));
     });
 
+    test('fillet rounds a polyline vertex into a bulge', () async {
+      final drawn = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      expect(drawn.status, CommandStatus.ok);
+      final id = (drawn.data!['ids']! as List).first as int;
+
+      final result = await run('edit.fillet', {
+        'radius': 2,
+        'first': id,
+        'pick1': [0, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(id)! as PolylineEntity;
+      expect(polyline.vertexCount, 5);
+      expect(polyline.vertexAt(0).x, closeTo(0, 1e-9));
+      expect(polyline.vertexAt(0).y, closeTo(2, 1e-9));
+      expect(polyline.vertexAt(1).x, closeTo(2, 1e-9));
+      expect(polyline.vertexAt(1).y, closeTo(0, 1e-9));
+    });
+
     test('fillet with zero radius makes a sharp corner', () async {
       final vertical = await drawLine(0, 10, 0, 2);
       final horizontal = await drawLine(2, 0, 10, 0);

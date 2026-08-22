@@ -524,6 +524,40 @@ void main() {
     });
   });
 
+  group('filletPolylineVertex', () {
+    test('replaces a square corner with a bulge arc', () {
+      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final filleted = Construct.filletPolylineVertex(
+        square,
+        const Vec2(0, 0),
+        2,
+      );
+
+      expect(filleted, isNotNull);
+      expect(filleted!.vertexCount, 5);
+      expect(filleted.closed, isTrue);
+      expect(filleted.vertexAt(0).x, closeTo(0, 1e-9));
+      expect(filleted.vertexAt(0).y, closeTo(2, 1e-9));
+      expect(filleted.vertexAt(1).x, closeTo(2, 1e-9));
+      expect(filleted.vertexAt(1).y, closeTo(0, 1e-9));
+      expect(filleted.bulgeAt(0), closeTo(math.tan(math.pi / 8), 1e-9));
+      expect(
+        [
+          for (var i = 0; i < filleted.vertexCount; i++) filleted.vertexAt(i),
+        ],
+        isNot(contains(const Vec2(0, 0))),
+      );
+    });
+
+    test('refuses a radius longer than the adjoining sides', () {
+      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(4, 4))!;
+      expect(
+        Construct.filletPolylineVertex(square, const Vec2(0, 0), 5),
+        isNull,
+      );
+    });
+  });
+
   group('chamferLines', () {
     test('cuts an equal bevel on an L-corner', () {
       final result = Construct.chamferLines(

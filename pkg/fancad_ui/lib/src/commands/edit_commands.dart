@@ -948,8 +948,9 @@ class EditCommands {
     aliases: const ['f', 'fillet'],
     icon: 'fillet',
     description:
-        'Rounds the corner between two lines with an arc of a given radius. '
-        'A radius of zero trims or extends the lines to a sharp corner.',
+        'Rounds the corner between two lines, or the picked vertex of a '
+        'polyline, with an arc of a given radius. A radius of zero trims or '
+        'extends two lines to a sharp corner.',
     params: const [
       ParamSpec(
         name: 'radius',
@@ -996,19 +997,26 @@ class EditCommands {
       final firstId = context.args.integer('first');
       final secondId = context.args.integer('second');
       final int id1;
-      final int id2;
+      final int? id2;
       if (firstId != null && secondId != null) {
         id1 = firstId;
         id2 = secondId;
+      } else if (firstId != null && secondId == null) {
+        id1 = firstId;
+        id2 = null;
       } else {
         context.selection.clear();
         final firstPick = await context.input.selection(
-          'FILLET  Select first line:',
+          'FILLET  Select first object:',
           useExistingSelection: false,
           single: true,
         );
         if (firstPick.isEmpty) return const CommandResult.cancelled();
         id1 = firstPick.first;
+        final firstEntity = context.document.entity(id1);
+        if (firstEntity is PolylineEntity) {
+          return _filletPolyline(context, firstEntity, radius);
+        }
         final secondPick = await context.input.selection(
           'FILLET  Select second line:',
           useExistingSelection: false,
@@ -1019,10 +1027,14 @@ class EditCommands {
       }
 
       final first = context.document.entity(id1);
-      final second = context.document.entity(id2);
+      if (first is PolylineEntity && (id2 == null || id2 == id1)) {
+        return _filletPolyline(context, first, radius);
+      }
+
+      final second = id2 == null ? null : context.document.entity(id2);
       if (first is! LineEntity || second is! LineEntity) {
         return const CommandResult.failed(
-          'Fillet currently supports lines only.',
+          'Fillet a polyline vertex, or two lines.',
         );
       }
       if (id1 == id2) {
@@ -1073,6 +1085,45 @@ class EditCommands {
       );
     },
   );
+
+  static Future<CommandResult> _filletPolyline(
+    CommandContext context,
+    PolylineEntity polyline,
+    double radius,
+  ) async {
+    if (radius <= 0) {
+      return const CommandResult.failed(
+        'A polyline fillet needs a positive radius.',
+      );
+    }
+    final pick = context.args.point('pick1') ??
+        context.args.point('pick') ??
+        await context.input.point(
+          'FILLET  Specify a vertex to round:',
+        );
+    final result = Construct.filletPolylineVertex(polyline, pick, radius);
+    if (result == null) {
+      return const CommandResult.failed(
+        'That vertex cannot be filleted; the radius may be larger than '
+        'the adjoining segments, or the corner may already be an arc.',
+      );
+    }
+    final committed = context.edit('Fillet', (transaction) {
+      transaction.modify(result);
+    });
+    if (committed == null) {
+      return const CommandResult.failed(
+        'Nothing was filleted; the polyline may be on a locked layer.',
+      );
+    }
+    context.selection.replace([polyline.id]);
+    return CommandResult(
+      status: CommandStatus.ok,
+      message: 'Fillet: polyline vertex, radius ${radius.toStringAsFixed(4)}.',
+      data: {'ids': [polyline.id]},
+      transaction: committed,
+    );
+  }
 
   static CommandDescriptor _chamfer() => CommandDescriptor(
     id: 'edit.chamfer',
