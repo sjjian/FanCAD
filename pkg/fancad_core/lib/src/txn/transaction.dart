@@ -358,15 +358,9 @@ class Transaction {
   void setActiveLayout(String name) =>
       _run(ActiveLayoutPatch(name, document.activeLayoutName));
 
-  /// Replaces an existing layout tab. Refuses unknown names so undo can
-  /// always restore the previous sheet rather than inventing a delete.
-  bool putLayout(Layout layout) {
-    if (!document.layouts.any((existing) => existing.name == layout.name)) {
-      return false;
-    }
-    _run(PutLayoutPatch(layout));
-    return true;
-  }
+  /// Creates or replaces a layout tab. Undo of a newly created tab
+  /// removes it; undo of a replacement restores the previous sheet.
+  void putLayout(Layout layout) => _run(PutLayoutPatch(layout));
 
   // -------------------------------------------------------------------------
   // Lifecycle

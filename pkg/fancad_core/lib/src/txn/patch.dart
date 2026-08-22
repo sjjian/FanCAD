@@ -354,8 +354,7 @@ final class ActiveLayoutPatch extends Patch {
   String describe() => 'Switch to layout "$name"';
 }
 
-/// Replaces a layout tab in place. Used to add or drop paper viewports
-/// without rebuilding the rest of the sheet.
+/// Creates or replaces a layout tab.
 final class PutLayoutPatch extends Patch {
   const PutLayoutPatch(this.layout);
 
@@ -369,14 +368,35 @@ final class PutLayoutPatch extends Patch {
 
   @override
   Patch inverse(CadDocument document) {
-    final previous = document.layouts.firstWhere(
-      (existing) => existing.name == layout.name,
-    );
-    return PutLayoutPatch(previous);
+    for (final existing in document.layouts) {
+      if (existing.name == layout.name) {
+        return PutLayoutPatch(existing);
+      }
+    }
+    return RemoveLayoutPatch(layout);
   }
 
   @override
-  String describe() => 'Update layout "${layout.name}"';
+  String describe() => 'Layout "${layout.name}"';
+}
+
+/// Drops a paper layout tab.
+final class RemoveLayoutPatch extends Patch {
+  const RemoveLayoutPatch(this.previous);
+
+  final Layout previous;
+
+  @override
+  DocumentChange applyTo(CadDocument document) {
+    document.removeLayout(previous.name);
+    return const DocumentChange(structureChanged: true);
+  }
+
+  @override
+  Patch inverse(CadDocument document) => PutLayoutPatch(previous);
+
+  @override
+  String describe() => 'Delete layout "${previous.name}"';
 }
 
 /// Renames a block definition. Inserts are updated by separate entity patches.

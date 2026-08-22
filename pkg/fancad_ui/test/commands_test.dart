@@ -2606,6 +2606,54 @@ void main() {
       expect(document.extents.width, closeTo(297, 1e-9));
     });
 
+    test('new layout opens a paper tab and frames the sheet', () async {
+      final result = await run('layout.new');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayoutName, 'Layout1');
+      expect(document.activeLayout.isModelSpace, isFalse);
+      expect(document.activeLayout.blockName, '*Paper_Space');
+      expect(document.extents.width, closeTo(297, 1e-9));
+      expect(document.extents.height, closeTo(210, 1e-9));
+
+      await run('edit.undo');
+      expect(document.activeLayoutName, 'Model');
+      expect(document.layouts, hasLength(1));
+    });
+
+    test('new layout accepts a name and a sheet size', () async {
+      final result = await run('layout.new', {
+        'name': 'A3',
+        'width': 420,
+        'height': 297,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayoutName, 'A3');
+      expect(document.activeLayout.paperWidth, closeTo(420, 1e-9));
+      expect(document.activeLayout.paperHeight, closeTo(297, 1e-9));
+    });
+
+    test('new layout refuses a duplicate name', () async {
+      await run('layout.new');
+      final result = await run('layout.new', {'name': 'Layout1'});
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.layouts.where((item) => !item.isModelSpace), hasLength(1));
+    });
+
+    test('mview works on a layout created by layout.new', () async {
+      await drawLine(0, 0, 80, 0);
+      await run('layout.new');
+      final result = await run('layout.mview', {
+        'corner1': [10, 10],
+        'corner2': [200, 150],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayout.viewports, hasLength(1));
+    });
+
     test('mview refuses the model tab', () async {
       final result = await run('layout.mview', {
         'corner1': [10, 10],

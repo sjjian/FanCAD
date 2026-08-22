@@ -480,6 +480,37 @@ class CadDocument implements BlockLookup, StyleResolver {
     _version++;
   }
 
+  /// Drops a paper tab. Model space cannot be removed. An empty layout
+  /// block that no remaining tab uses is discarded so a later new layout
+  /// can reuse `*Paper_Space`.
+  bool removeLayout(String name) {
+    final index = _layouts.indexWhere((layout) => layout.name == name);
+    if (index < 0) return false;
+    final layout = _layouts[index];
+    if (layout.isModelSpace) return false;
+    if (_activeLayoutName == name) {
+      _activeLayoutName = _layouts
+          .firstWhere((item) => item.isModelSpace)
+          .name;
+    }
+    _layouts.removeAt(index);
+    final blockStillUsed = _layouts.any(
+      (item) => item.blockName == layout.blockName,
+    );
+    if (!blockStillUsed) {
+      final block = _blocks[layout.blockName];
+      if (block != null &&
+          block.isLayoutBlock &&
+          block.entityIds.isEmpty) {
+        _blocks.remove(layout.blockName);
+        _indexes.remove(layout.blockName);
+        _blockBounds.remove(layout.blockName);
+      }
+    }
+    _version++;
+    return true;
+  }
+
   bool setActiveLayout(String name) {
     if (!_layouts.any((layout) => layout.name == name)) return false;
     _activeLayoutName = name;

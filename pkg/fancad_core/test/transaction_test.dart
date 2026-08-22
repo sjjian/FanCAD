@@ -237,6 +237,32 @@ void main() {
       expect(session.selection.contains(id), isFalse);
     });
 
+    test('creating a paper layout is invertible', () {
+      final document = newDocument();
+      final session = DocumentSession(id: '1', document: document);
+      const layout = Layout(
+        name: 'Layout1',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+      );
+
+      session.edit('New Layout', (transaction) {
+        transaction
+          ..putLayout(layout)
+          ..setActiveLayout('Layout1');
+      });
+      expect(document.activeLayoutName, 'Layout1');
+      expect(document.blocks.containsKey('*Paper_Space'), isTrue);
+
+      expect(session.undo(), isTrue);
+      expect(document.activeLayoutName, 'Model');
+      expect(
+        document.layouts.any((item) => item.name == 'Layout1'),
+        isFalse,
+      );
+      expect(document.blocks.containsKey('*Paper_Space'), isFalse);
+    });
+
     test('adding a paper viewport is invertible', () {
       final document = newDocument()
         ..addLayout(

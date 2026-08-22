@@ -11,6 +11,7 @@ class ProCommands {
   static List<CommandDescriptor> all() => [
     _layouts(),
     _setLayout(),
+    _newLayout(),
     _mview(),
     _plot(),
     _xrefAttach(),
@@ -61,6 +62,112 @@ class ProCommands {
       return CommandResult.ok(message: 'Active layout is $name');
     },
   );
+
+  static CommandDescriptor _newLayout() => CommandDescriptor(
+    id: 'layout.new',
+    title: 'New Layout',
+    category: _category,
+    aliases: const ['layout', 'layoutnew'],
+    description:
+        'Adds a paper-space layout tab and opens it. The sheet defaults '
+        'to A4 landscape; pass width and height in millimetres to override.',
+    params: const [
+      ParamSpec(
+        name: 'name',
+        type: ParamType.text,
+        description: 'Tab name. Omit to use Layout1, Layout2, …',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'width',
+        type: ParamType.distance,
+        description: 'Sheet width in millimetres',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'height',
+        type: ParamType.distance,
+        description: 'Sheet height in millimetres',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final requested = context.args.text('name')?.trim() ?? '';
+      final name = requested.isEmpty
+          ? _nextLayoutName(context.document)
+          : requested;
+      if (name.toLowerCase() == 'model') {
+        return const CommandResult.failed('Model is reserved.');
+      }
+      final clash = context.document.layouts.any(
+        (layout) => layout.name.toLowerCase() == name.toLowerCase(),
+      );
+      if (clash) {
+        return CommandResult.failed('Layout "$name" already exists.');
+      }
+      final width = context.args.number('width') ?? 297;
+      final height = context.args.number('height') ?? 210;
+      if (width <= 0 || height <= 0) {
+        return const CommandResult.failed('The sheet needs a positive size.');
+      }
+      var tabOrder = 0;
+      for (final layout in context.document.layouts) {
+        if (layout.tabOrder > tabOrder) tabOrder = layout.tabOrder;
+      }
+      final layout = Layout(
+        name: name,
+        blockName: _nextPaperBlock(context.document),
+        tabOrder: tabOrder + 1,
+        paperWidth: width,
+        paperHeight: height,
+      );
+      final committed = context.edit('New Layout', (transaction) {
+        transaction
+          ..putLayout(layout)
+          ..setActiveLayout(name);
+      });
+      if (committed == null) {
+        return const CommandResult.failed('The layout was not created.');
+      }
+      context.services.invalidate();
+      context.services.zoomTo(null);
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Layout "$name" created.',
+        data: {
+          'name': name,
+          'block': layout.blockName,
+          'paper': [width, height],
+        },
+        transaction: committed,
+      );
+    },
+  );
+
+  static String _nextLayoutName(CadDocument document) {
+    final taken = {
+      for (final layout in document.layouts) layout.name.toLowerCase(),
+    };
+    var n = 1;
+    while (taken.contains('layout$n')) {
+      n++;
+    }
+    return 'Layout$n';
+  }
+
+  static String _nextPaperBlock(CadDocument document) {
+    const prefix = '*Paper_Space';
+    final used = {
+      ...document.blocks.keys,
+      for (final layout in document.layouts) layout.blockName,
+    };
+    if (!used.contains(prefix)) return prefix;
+    var n = 0;
+    while (used.contains('$prefix$n')) {
+      n++;
+    }
+    return '$prefix$n';
+  }
 
   static CommandDescriptor _mview() => CommandDescriptor(
     id: 'layout.mview',

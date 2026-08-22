@@ -32,9 +32,14 @@ class LayoutTabStrip extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space2),
-        itemCount: layouts.length,
+        itemCount: layouts.length + 1,
         separatorBuilder: (_, _) => const SizedBox(width: FanCadTokens.space1),
         itemBuilder: (context, index) {
+          if (index == layouts.length) {
+            return _AddLayoutChip(
+              onTap: () => workspace.run('layout.new'),
+            );
+          }
           final layout = layouts[index];
           final selected = layout.name == active;
           return _LayoutChip(
@@ -88,6 +93,31 @@ class _LayoutChip extends StatelessWidget {
             style: tokens.labelStyle.copyWith(
               color: selected ? tokens.text : tokens.textMuted,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddLayoutChip extends StatelessWidget {
+  const _AddLayoutChip({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Tooltip(
+      message: 'New paper layout',
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
+          child: Text(
+            '+',
+            style: tokens.labelStyle.copyWith(color: tokens.textMuted),
           ),
         ),
       ),
