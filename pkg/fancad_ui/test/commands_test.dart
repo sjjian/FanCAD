@@ -437,6 +437,17 @@ void main() {
       expect(document.entity(source)!.props.layer, 'WALLS');
     });
 
+    test('overkill deletes a line drawn twice', () async {
+      final keep = await drawLine(0, 0, 10, 0);
+      await drawLine(10, 0, 0, 0);
+
+      final result = await run('edit.overkill');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 1);
+      expect(document.entity(keep), isNotNull);
+    });
+
     test('erase removes the selection', () async {
       final id = await drawLine(0, 0, 10, 0);
 

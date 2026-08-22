@@ -822,4 +822,30 @@ void main() {
       expect(Construct.areaOf(line(0, 0, 10, 0)), 0);
     });
   });
+
+  group('overkill', () {
+    test('flags a line drawn again in the opposite direction', () {
+      final first = line(0, 0, 10, 0);
+      final copy = LineEntity(
+        id: 2,
+        start: const Vec2(10, 0),
+        end: const Vec2(0, 0),
+      );
+      final other = LineEntity(
+        id: 3,
+        start: const Vec2(0, 0),
+        end: const Vec2(10, 1),
+      );
+
+      expect(Construct.overkillIds([first, copy, other]), [2]);
+    });
+
+    test('flags a second circle on the same centre and radius', () {
+      const a = CircleEntity(id: 1, center: Vec2.zero(), radius: 3);
+      const b = CircleEntity(id: 2, center: Vec2.zero(), radius: 3);
+      const c = CircleEntity(id: 3, center: Vec2.zero(), radius: 4);
+
+      expect(Construct.overkillIds([a, b, c]), [2]);
+    });
+  });
 }

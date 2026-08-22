@@ -1176,6 +1176,64 @@ class Construct {
     _ => 0,
   };
 
+  /// Ids that are exact geometric copies of an earlier entity in [entities].
+  ///
+  /// The first occurrence of each shape is kept; later copies are what
+  /// OVERKILL deletes. A line drawn backwards is still the same stroke, so
+  /// endpoint order does not count as a difference.
+  static List<int> overkillIds(Iterable<CadEntity> entities) {
+    final seen = <String>{};
+    final duplicates = <int>[];
+    for (final entity in entities) {
+      final key = _geometryKey(entity);
+      if (!seen.add(key)) {
+        duplicates.add(entity.id);
+      }
+    }
+    return duplicates;
+  }
+
+  static String _geometryKey(CadEntity entity) {
+    switch (entity) {
+      case LineEntity(:final start, :final end):
+        return _undirectedSegmentKey(start, end);
+      case CircleEntity(:final center, :final radius):
+        return 'C|${_qty(center.x)},${_qty(center.y)}|${_qty(radius)}';
+      case PointEntity(:final position):
+        return 'P|${_qty(position.x)},${_qty(position.y)}';
+      case ArcEntity(
+        :final center,
+        :final radius,
+        :final startAngle,
+        :final endAngle,
+      ):
+        return 'A|${_qty(center.x)},${_qty(center.y)}|${_qty(radius)}|'
+            '${_qty(startAngle)}|${_qty(endAngle)}';
+      case PolylineEntity():
+        if (entity.vertexCount == 2 && !entity.hasBulges) {
+          return _undirectedSegmentKey(entity.vertexAt(0), entity.vertexAt(1));
+        }
+        final verts = [
+          for (var i = 0; i < entity.vertexCount; i++)
+            '${_qty(entity.vertexAt(i).x)},${_qty(entity.vertexAt(i).y)},'
+                '${_qty(entity.bulgeAt(i))}',
+        ].join(';');
+        return 'PL|${entity.closed}|$verts';
+      default:
+        return '${entity.kind.name}|${entity.geometryToJson()}';
+    }
+  }
+
+  static String _undirectedSegmentKey(Vec2 a, Vec2 b) {
+    final first = '${_qty(a.x)},${_qty(a.y)}';
+    final second = '${_qty(b.x)},${_qty(b.y)}';
+    return first.compareTo(second) <= 0
+        ? 'L|$first|$second'
+        : 'L|$second|$first';
+  }
+
+  static String _qty(double value) => value.toStringAsFixed(6);
+
   static double _shoelace(PolylineEntity polyline) {
     var sum = 0.0;
     final count = polyline.vertexCount;

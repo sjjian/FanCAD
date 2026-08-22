@@ -14,6 +14,7 @@ class EditCommands {
 
   static List<CommandDescriptor> all() => [
     _erase(),
+    _overkill(),
     _move(),
     _copy(),
     _stretch(),
@@ -73,6 +74,63 @@ class EditCommands {
       return CommandResult(
         status: CommandStatus.ok,
         message: 'Erased ${committed.change.removed.length} object(s).',
+        data: {'erased': committed.change.removed},
+        transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _overkill() => CommandDescriptor(
+    id: 'edit.overkill',
+    title: 'Overkill',
+    category: _category,
+    aliases: const ['overkill'],
+    risk: CommandRisk.destructive,
+    aiExposure: AiExposure.approvalRequired,
+    description:
+        'Deletes exact geometric duplicates. A line drawn a second time on '
+        'top of itself is the usual case; the first copy is kept. Omitted '
+        'ids means the whole current space, so a leftover selection cannot '
+        'hide the rest of the duplicates.',
+    params: const [
+      ParamSpec(
+        name: 'ids',
+        type: ParamType.selection,
+        required: false,
+        description: 'Objects to inspect; omitted uses the current space',
+      ),
+    ],
+    handler: (context) async {
+      final provided = context.args.ids('ids');
+      final ids = <int>[
+        if (provided != null && provided.isNotEmpty)
+          ...provided
+        else
+          for (final entity in context.document.activeEntities)
+            if (context.document.isSelectable(entity)) entity.id,
+      ];
+      if (ids.isEmpty) return const CommandResult.cancelled();
+
+      final duplicates = Construct.overkillIds([
+        for (final id in ids) ?context.document.entity(id),
+      ]);
+      if (duplicates.isEmpty) {
+        return const CommandResult.ok(message: 'No duplicate geometry.');
+      }
+
+      final committed = context.edit('Overkill', (transaction) {
+        transaction.eraseAll(duplicates);
+      });
+      if (committed == null) {
+        return const CommandResult.failed(
+          'Nothing was deleted; the duplicates may be on a locked layer.',
+        );
+      }
+      context.selection.removeAll(committed.change.removed);
+      return CommandResult(
+        status: CommandStatus.ok,
+        message:
+            'Deleted ${committed.change.removed.length} duplicate object(s).',
         data: {'erased': committed.change.removed},
         transaction: committed,
       );
