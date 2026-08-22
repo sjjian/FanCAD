@@ -1907,6 +1907,59 @@ void main() {
       expect(document.blocks.containsKey('KEEP'), isTrue);
     });
 
+    test('rename block updates the definition and every insert', () async {
+      final a = await drawLine(0, 0, 4, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'CORNER',
+        'base': [0, 0],
+      });
+      await run('edit.insert', {
+        'name': 'CORNER',
+        'at': [20, 0],
+      });
+
+      final result = await run('block.rename', {
+        'name': 'corner',
+        'newName': 'ANGLE',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.blocks.containsKey('CORNER'), isFalse);
+      expect(document.blocks['ANGLE']!.entityIds, hasLength(1));
+      expect(
+        document.activeEntities.whereType<InsertEntity>().every(
+          (insert) => insert.blockName == 'ANGLE',
+        ),
+        isTrue,
+      );
+      expect(document.activeEntities.whereType<InsertEntity>(), hasLength(2));
+    });
+
+    test('rename block refuses a name that already exists', () async {
+      final a = await drawLine(0, 0, 2, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'ONE',
+        'base': [0, 0],
+      });
+      final b = await drawLine(0, 2, 2, 2);
+      await run('edit.block', {
+        'ids': [b],
+        'name': 'TWO',
+        'base': [0, 2],
+      });
+
+      final result = await run('block.rename', {
+        'name': 'ONE',
+        'newName': 'two',
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.blocks.containsKey('ONE'), isTrue);
+      expect(document.blocks.containsKey('TWO'), isTrue);
+    });
+
     test('join merges connected lines into one polyline', () async {
       final a = await drawLine(0, 0, 10, 0);
       final b = await drawLine(10, 0, 10, 10);

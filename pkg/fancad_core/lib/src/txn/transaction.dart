@@ -322,6 +322,25 @@ class Transaction {
   void putBlock(BlockRecord block) =>
       _run(PutBlockPatch(block, document.blocks[block.name]));
 
+  bool renameBlock(String from, String to) {
+    final existing = document.blocks[from];
+    if (existing == null ||
+        existing.isLayoutBlock ||
+        existing.isAnonymous ||
+        existing.isXref) {
+      return false;
+    }
+    if (from == to || to.isEmpty) return false;
+    final clash = document.blocks.keys.any(
+      (name) =>
+          name.toUpperCase() == to.toUpperCase() &&
+          name.toUpperCase() != from.toUpperCase(),
+    );
+    if (clash) return false;
+    _run(RenameBlockPatch(from, to));
+    return true;
+  }
+
   bool removeBlock(String name) {
     final existing = document.blocks[name];
     if (existing == null || existing.isLayoutBlock) return false;

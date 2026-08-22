@@ -353,3 +353,23 @@ final class ActiveLayoutPatch extends Patch {
   @override
   String describe() => 'Switch to layout "$name"';
 }
+
+/// Renames a block definition. Inserts are updated by separate entity patches.
+final class RenameBlockPatch extends Patch {
+  const RenameBlockPatch(this.from, this.to);
+
+  final String from;
+  final String to;
+
+  @override
+  DocumentChange applyTo(CadDocument document) {
+    document.renameBlock(from, to);
+    return const DocumentChange(structureChanged: true);
+  }
+
+  @override
+  Patch inverse(CadDocument document) => RenameBlockPatch(to, from);
+
+  @override
+  String describe() => 'Rename block "$from" to "$to"';
+}

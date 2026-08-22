@@ -433,6 +433,28 @@ class CadDocument implements BlockLookup, StyleResolver {
     _version++;
   }
 
+  /// Renames a block definition without moving or deleting its entities.
+  ///
+  /// Inserts still name the old block until a caller updates them. Layout
+  /// blocks cannot be renamed; a colliding [to] is refused.
+  bool renameBlock(String from, String to) {
+    if (from == to || to.isEmpty) return false;
+    final block = _blocks[from];
+    if (block == null || block.isLayoutBlock) return false;
+    if (_blocks.containsKey(to)) return false;
+    _blocks.remove(from);
+    _blocks[to] = block.copyWith(name: to);
+    final index = _indexes.remove(from);
+    if (index != null) _indexes[to] = index;
+    _blockBounds.remove(from);
+    _blockBounds.remove(to);
+    for (final id in block.entityIds) {
+      _ownerOf[id] = to;
+    }
+    _version++;
+    return true;
+  }
+
   BlockRecord? removeBlock(String name) {
     final removed = _blocks.remove(name);
     if (removed == null) return null;
