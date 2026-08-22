@@ -317,6 +317,53 @@ void main() {
     });
   });
 
+  group('centerMark', () {
+    test('crosses the centre and extends past the circumference', () {
+      const circle = CircleEntity(id: 1, center: Vec2(10, 4), radius: 8);
+      final marks = Construct.centerMark(circle, size: 2);
+
+      expect(marks, isNotNull);
+      expect(marks, hasLength(6));
+      final through = marks!.where((line) {
+        return line.start.distanceTo(circle.center) <= 2 + 1e-9 &&
+            line.end.distanceTo(circle.center) <= 2 + 1e-9;
+      });
+      expect(through, hasLength(2));
+      final farthest = marks
+          .expand((line) => [line.start, line.end])
+          .map((point) => point.distanceTo(circle.center))
+          .reduce(math.max);
+      expect(farthest, closeTo(10, 1e-9));
+    });
+
+    test('can draw only the centre cross', () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 6);
+      final marks = Construct.centerMark(circle, size: 1.5, extend: false);
+
+      expect(marks, hasLength(2));
+      expect(
+        marks!.every(
+          (line) =>
+              line.start.distanceTo(const Vec2.zero()) <= 1.5 + 1e-9 &&
+              line.end.distanceTo(const Vec2.zero()) <= 1.5 + 1e-9,
+        ),
+        isTrue,
+      );
+    });
+
+    test('accepts an arc and refuses a line', () {
+      const arc = ArcEntity(
+        id: 1,
+        center: Vec2.zero(),
+        radius: 4,
+        startAngle: 0,
+        endAngle: 2,
+      );
+      expect(Construct.centerMark(arc, extend: false), hasLength(2));
+      expect(Construct.centerMark(line(0, 0, 10, 0)), isNull);
+    });
+  });
+
   group('angularDimension', () {
     test('labels the sector that contains the dim-arc pick', () {
       final interior = Construct.angularDimension(

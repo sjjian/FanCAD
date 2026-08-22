@@ -411,6 +411,48 @@ void main() {
       expect(document.entityCount, 0);
     });
 
+    test('center mark draws a cross and extensions on a circle', () async {
+      final created = await run('draw.circle', {
+        'center': [0, 0],
+        'radius': 8,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.centerMark', {
+        'ids': [id],
+        'size': 2,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entities.whereType<LineEntity>(), hasLength(6));
+      expect(
+        document.entities.whereType<LineEntity>().every((line) {
+          return line.start.x == 0 ||
+              line.start.y == 0 ||
+              line.end.x == 0 ||
+              line.end.y == 0;
+        }),
+        isTrue,
+      );
+    });
+
+    test('center mark can omit the extensions', () async {
+      final created = await run('draw.circle', {
+        'center': [4, 4],
+        'radius': 5,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.centerMark', {
+        'ids': [id],
+        'size': 1.5,
+        'extend': false,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entities.whereType<LineEntity>(), hasLength(2));
+    });
+
     test('aligned dimension measures the slanted distance', () async {
       final result = await run('draw.dimAligned', {
         'first': [0, 0],

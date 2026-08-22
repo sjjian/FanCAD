@@ -307,6 +307,56 @@ class Construct {
     );
   }
 
+  /// A DIMCENTER mark on a circle or arc.
+  ///
+  /// Two short axes cross at the centre. When [extend] is true and the
+  /// radius is larger than [size], four more segments run from the mark out
+  /// past the circumference, the usual shop-drawing centre mark.
+  static List<LineEntity>? centerMark(
+    CadEntity target, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+    double size = 2.5,
+    bool extend = true,
+  }) {
+    final source = _radialSource(target);
+    if (source == null || size <= 1e-9) return null;
+    final (center, radius) = source;
+    if (radius < 1e-9) return null;
+    final mark = math.min(size, radius);
+    final created = <LineEntity>[];
+    for (final axis in const [Vec2(1, 0), Vec2(0, 1)]) {
+      created.add(
+        LineEntity(
+          id: id,
+          props: props,
+          start: center - axis * mark,
+          end: center + axis * mark,
+        ),
+      );
+      if (!extend || radius <= mark + 1e-9) continue;
+      final outer = radius + mark;
+      created
+        ..add(
+          LineEntity(
+            id: 0,
+            props: props,
+            start: center + axis * mark,
+            end: center + axis * outer,
+          ),
+        )
+        ..add(
+          LineEntity(
+            id: 0,
+            props: props,
+            start: center - axis * mark,
+            end: center - axis * outer,
+          ),
+        );
+    }
+    return created;
+  }
+
   /// An angular dimension at [vertex] between [first] and [second].
   ///
   /// [dimLine] sits on the dimension arc and chooses the sector: the same
