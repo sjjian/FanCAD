@@ -2654,6 +2654,58 @@ void main() {
       expect(document.activeLayoutName, 'Layout1');
     });
 
+    test('copy layout duplicates the sheet, viewports and paper entities', () async {
+      await run('layout.new');
+      await run('layout.pagesetup', {'width': 420, 'height': 297});
+      await run('layout.mview', {
+        'corner1': [10, 10],
+        'corner2': [200, 150],
+        'scale': 1,
+      });
+      await drawLine(10, 10, 40, 10);
+      expect(document.entitiesOf('*Paper_Space'), hasLength(1));
+
+      final result = await run('layout.copy');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayoutName, 'Layout2');
+      expect(document.activeLayout.paperWidth, closeTo(420, 1e-9));
+      expect(document.activeLayout.paperHeight, closeTo(297, 1e-9));
+      expect(document.activeLayout.blockName, '*Paper_Space0');
+      expect(document.activeLayout.viewports, hasLength(1));
+      expect(
+        document.activeLayout.viewports.single.paperBounds,
+        const Bounds2(10, 10, 200, 150),
+      );
+      expect(document.entitiesOf('*Paper_Space0'), hasLength(1));
+      expect(document.entitiesOf('*Paper_Space'), hasLength(1));
+      expect(
+        document.entitiesOf('*Paper_Space').single.id,
+        isNot(document.entitiesOf('*Paper_Space0').single.id),
+      );
+
+      await run('edit.undo');
+      expect(document.activeLayoutName, 'Layout1');
+      expect(document.layouts.any((item) => item.name == 'Layout2'), isFalse);
+      expect(document.blocks.containsKey('*Paper_Space0'), isFalse);
+    });
+
+    test('copy layout refuses the model tab', () async {
+      final result = await run('layout.copy', {'name': 'Model'});
+      expect(result.status, CommandStatus.failed);
+      expect(document.layouts, hasLength(1));
+    });
+
+    test('copy layout refuses a duplicate name', () async {
+      await run('layout.new');
+      await run('layout.new');
+      final result = await run('layout.copy', {
+        'name': 'Layout1',
+        'to': 'Layout2',
+      });
+      expect(result.status, CommandStatus.failed);
+    });
+
     test('delete layout erases paper-space entities', () async {
       await run('layout.new');
       await drawLine(10, 10, 40, 10);
