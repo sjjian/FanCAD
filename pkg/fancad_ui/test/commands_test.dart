@@ -2254,6 +2254,61 @@ void main() {
       expect(document.entity(id), isA<LineEntity>());
     });
 
+    test('hatch edit changes pattern scale and angle', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [20, 10],
+      });
+      final boundary = (created.data!['ids']! as List).first as int;
+      await run('draw.hatch', {
+        'ids': [boundary],
+        'pattern': 'ANSI31',
+        'scale': 1,
+      });
+      final hatchId = document.entities.whereType<HatchEntity>().single.id;
+
+      final result = await run('edit.hatch', {
+        'ids': [hatchId],
+        'scale': 2.5,
+        'angle': 45,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final hatch = document.entity(hatchId)! as HatchEntity;
+      expect(hatch.patternName, 'ANSI31');
+      expect(hatch.patternScale, closeTo(2.5, 1e-9));
+      expect(hatch.patternAngle, closeTo(math.pi / 4, 1e-9));
+
+      await run('edit.undo');
+      expect(
+        (document.entity(hatchId)! as HatchEntity).patternScale,
+        closeTo(1, 1e-9),
+      );
+    });
+
+    test('hatch edit can switch a fill to solid', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      final boundary = (created.data!['ids']! as List).first as int;
+      await run('draw.hatch', {
+        'ids': [boundary],
+        'pattern': 'ANSI31',
+      });
+      final hatchId = document.entities.whereType<HatchEntity>().single.id;
+
+      final result = await run('edit.hatch', {
+        'ids': [hatchId],
+        'pattern': 'SOLID',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final hatch = document.entity(hatchId)! as HatchEntity;
+      expect(hatch.patternName, 'SOLID');
+      expect(hatch.solid, isTrue);
+    });
+
     test('reverse swaps the ends of a line', () async {
       final id = await drawLine(0, 0, 10, 4);
 

@@ -1720,6 +1720,21 @@ final class HatchEntity extends CadEntity {
     patternScale: patternScale,
   );
 
+  HatchEntity copyWith({
+    String? patternName,
+    bool? solid,
+    double? patternAngle,
+    double? patternScale,
+  }) => HatchEntity(
+    id: id,
+    props: props,
+    loops: loops,
+    patternName: patternName ?? this.patternName,
+    solid: solid ?? this.solid,
+    patternAngle: patternAngle ?? this.patternAngle,
+    patternScale: patternScale ?? this.patternScale,
+  );
+
   @override
   HatchEntity transformed(Mat3 matrix) => HatchEntity(
     id: id,
