@@ -636,6 +636,32 @@ void main() {
       expect(document.layer('0')!.visible, isFalse);
     });
 
+    test('isolate hides every object except the selection', () async {
+      final keep = await drawLine(0, 0, 10, 0);
+      final other = await drawLine(0, 5, 10, 5);
+
+      final result = await run('view.isolateObjects', {
+        'ids': [keep],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entity(keep)!.props.visible, isTrue);
+      expect(document.entity(other)!.props.visible, isFalse);
+
+      await run('view.unisolateObjects');
+      expect(document.entity(other)!.props.visible, isTrue);
+    });
+
+    test('hide turns off the selection and unisolate restores it', () async {
+      final id = await drawLine(0, 0, 1, 0);
+
+      await run('view.hideObjects', {'ids': [id]});
+      expect(document.entity(id)!.props.visible, isFalse);
+
+      await run('view.unisolateObjects');
+      expect(document.entity(id)!.props.visible, isTrue);
+    });
+
     test('layer 0 cannot be deleted', () async {
       final result = await run('layer.delete', {'name': '0'});
       expect(result.status, CommandStatus.failed);

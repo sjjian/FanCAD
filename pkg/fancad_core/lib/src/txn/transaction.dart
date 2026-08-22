@@ -230,6 +230,17 @@ class Transaction {
     return count;
   }
 
+  /// Shows or hides entities without deleting them.
+  int setVisibleOf(Iterable<int> ids, bool visible) {
+    var count = 0;
+    for (final id in ids.toList()) {
+      final entity = document.entity(id);
+      if (entity == null) continue;
+      if (setProps(id, entity.props.copyWith(visible: visible))) count++;
+    }
+    return count;
+  }
+
   /// Changes the colour of entities.
   int setColorOf(Iterable<int> ids, CadColor color) {
     var count = 0;

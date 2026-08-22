@@ -20,6 +20,9 @@ class ViewCommands {
     _selectInvert(),
     _selectSimilar(),
     _selectByLayer(),
+    _isolateObjects(),
+    _hideObjects(),
+    _unisolateObjects(),
     _layerNew(),
     _layerSetCurrent(),
     _layerToggle(),
@@ -245,6 +248,94 @@ class ViewCommands {
       context.selection.replace(ids);
       return CommandResult.ok(
         message: '${ids.length} object(s) selected on "$layer".',
+      );
+    },
+  );
+
+  static CommandDescriptor _isolateObjects() => CommandDescriptor(
+    id: 'view.isolateObjects',
+    title: 'Isolate Objects',
+    category: _select,
+    aliases: const ['isolate', 'isolateobjects'],
+    description:
+        'Hides every object in the current space except the selection, so the '
+        'rest of the drawing is out of the way without being deleted.',
+    params: const [ParamSpec.selection('ids')],
+    handler: (context) async {
+      final ids = await context.resolveSelection(
+        'ids',
+        'ISOLATE  Select objects to keep visible:',
+      );
+      if (ids.isEmpty) return const CommandResult.cancelled();
+      final keep = ids.toSet();
+      final hidden = [
+        for (final entity in context.document.activeEntities)
+          if (!keep.contains(entity.id) && entity.props.visible) entity.id,
+      ];
+      if (hidden.isEmpty) {
+        return const CommandResult.ok(
+          message: 'The rest of the drawing is already hidden.',
+        );
+      }
+      final committed = context.edit('Isolate Objects', (transaction) {
+        transaction.setVisibleOf(hidden, false);
+      });
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Isolated ${keep.length} object(s); hid ${hidden.length}.',
+        transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _hideObjects() => CommandDescriptor(
+    id: 'view.hideObjects',
+    title: 'Hide Objects',
+    category: _select,
+    aliases: const ['hide', 'hideobjects'],
+    description: 'Hides the selected objects without deleting them.',
+    params: const [ParamSpec.selection('ids')],
+    handler: (context) async {
+      final ids = await context.resolveSelection(
+        'ids',
+        'HIDE  Select objects to hide:',
+      );
+      if (ids.isEmpty) return const CommandResult.cancelled();
+      final committed = context.edit('Hide Objects', (transaction) {
+        transaction.setVisibleOf(ids, false);
+      });
+      context.selection.clear();
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Hid ${ids.length} object(s).',
+        transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _unisolateObjects() => CommandDescriptor(
+    id: 'view.unisolateObjects',
+    title: 'Unisolate Objects',
+    category: _select,
+    aliases: const ['unisolate', 'unisolateobjects'],
+    description:
+        'Shows every object that Isolate or Hide had turned off in the '
+        'current space.',
+    handler: (context) async {
+      final hidden = [
+        for (final entity in context.document.activeEntities)
+          if (!entity.props.visible) entity.id,
+      ];
+      if (hidden.isEmpty) {
+        return const CommandResult.ok(message: 'Nothing is hidden.');
+      }
+      final committed = context.edit('Unisolate Objects', (transaction) {
+        transaction.setVisibleOf(hidden, true);
+      });
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Restored ${hidden.length} hidden object(s).',
+        transaction: committed,
       );
     },
   );
