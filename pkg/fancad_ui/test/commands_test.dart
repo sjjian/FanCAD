@@ -1036,6 +1036,26 @@ void main() {
       expect((document.entities.first as PolylineEntity).vertexCount, 4);
     });
 
+    test('join merges a line onto an arc', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.join', {
+        'ids': [lineId, arcId],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 1);
+      final polyline = document.entities.first as PolylineEntity;
+      expect(polyline.vertexCount, 3);
+      expect(polyline.bulgeAt(1), closeTo(0.41421356237, 1e-6));
+    });
+
     test('join refuses lines that do not touch', () async {
       final a = await drawLine(0, 0, 10, 0);
       final b = await drawLine(50, 50, 60, 50);

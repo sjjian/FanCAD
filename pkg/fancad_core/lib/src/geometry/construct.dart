@@ -1744,10 +1744,11 @@ class Construct {
 
   /// Joins [entities] whose endpoints meet into one polyline.
   ///
-  /// Lines and open polylines can mix; a piece is reversed when that is how
-  /// it touches the chain. Closed or unsupported objects return null, as do
-  /// selections that do not form a single connected path. A loop whose ends
-  /// meet is stored closed without a duplicate last vertex.
+  /// Lines, arcs and open polylines can mix; a piece is reversed when that
+  /// is how it touches the chain. An arc is stored as a bulge. Closed or
+  /// unsupported objects return null, as do selections that do not form a
+  /// single connected path. A loop whose ends meet is stored closed without
+  /// a duplicate last vertex.
   static PolylineEntity? joinEntities(
     List<CadEntity> entities, {
     double gap = 1e-6,
@@ -2481,6 +2482,9 @@ class _JoinRun {
               i < count - 1 ? entity.bulgeAt(i) : 0,
           ],
         );
+      case ArcEntity(:final startPoint, :final endPoint, :final sweep):
+        if (sweep < 1e-12 || sweep >= math.pi * 2 - 1e-9) return null;
+        return _JoinRun([startPoint, endPoint], [math.tan(sweep / 4), 0]);
       default:
         return null;
     }

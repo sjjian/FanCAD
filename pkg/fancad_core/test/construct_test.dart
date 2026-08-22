@@ -1107,6 +1107,51 @@ void main() {
         isNull,
       );
     });
+
+    test('joins a line onto an arc as a bulged polyline', () {
+      final arc = ArcEntity(
+        id: 2,
+        center: const Vec2(0, 0),
+        radius: 10,
+        startAngle: 0,
+        endAngle: math.pi / 2,
+      );
+      final joined = Construct.joinEntities([
+        line(0, 0, 10, 0),
+        arc,
+      ]);
+
+      expect(joined, isNotNull);
+      expect(joined!.vertexCount, 3);
+      expect(joined.vertexAt(2).x, closeTo(0, 1e-9));
+      expect(joined.vertexAt(2).y, closeTo(10, 1e-9));
+      expect(joined.bulgeAt(1), closeTo(math.tan(math.pi / 8), 1e-9));
+    });
+
+    test('closes two semicircles without duplicating the start', () {
+      final joined = Construct.joinEntities([
+        const ArcEntity(
+          id: 1,
+          center: Vec2(0, 0),
+          radius: 10,
+          startAngle: 0,
+          endAngle: math.pi,
+        ),
+        const ArcEntity(
+          id: 2,
+          center: Vec2(0, 0),
+          radius: 10,
+          startAngle: math.pi,
+          endAngle: math.pi * 2,
+        ),
+      ]);
+
+      expect(joined, isNotNull);
+      expect(joined!.closed, isTrue);
+      expect(joined.vertexCount, 2);
+      expect(joined.bulgeAt(0), closeTo(1, 1e-9));
+      expect(joined.bulgeAt(1), closeTo(1, 1e-9));
+    });
   });
 
   group('reverse', () {

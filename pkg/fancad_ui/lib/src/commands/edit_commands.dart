@@ -1701,25 +1701,26 @@ class EditCommands {
     category: _category,
     aliases: const ['j', 'join'],
     description:
-        'Joins selected lines and open polylines whose endpoints meet into '
-        'a single polyline. A piece is reversed when that is how it touches '
-        'the chain; a loop whose ends meet is stored closed.',
+        'Joins selected lines, arcs and open polylines whose endpoints meet '
+        'into a single polyline. A piece is reversed when that is how it '
+        'touches the chain; a loop whose ends meet is stored closed.',
     params: const [ParamSpec.selection('ids')],
     handler: (context) async {
       final ids = await context.resolveSelection(
         'ids',
-        'JOIN  Select lines or polylines to join:',
+        'JOIN  Select lines, arcs or polylines to join:',
       );
       final pieces = <CadEntity>[
         for (final id in ids)
           if (context.document.entity(id) case final CadEntity entity)
             if (entity is LineEntity ||
+                entity is ArcEntity ||
                 (entity is PolylineEntity && !entity.closed))
               entity,
       ];
       if (pieces.length < 2) {
         return const CommandResult.failed(
-          'Select at least two lines or open polylines to join.',
+          'Select at least two lines, arcs or open polylines to join.',
         );
       }
 
