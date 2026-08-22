@@ -26,6 +26,7 @@ class ProCommands {
     _xrefAttach(),
     _xrefReload(),
     _xrefDetach(),
+    _xrefBind(),
     _audit(),
   ];
 
@@ -1153,6 +1154,55 @@ class ProCommands {
         message: names.length == 1
             ? 'Detached ${names.single}.'
             : 'Detached ${names.length} xrefs.',
+        data: {'blocks': names},
+        transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _xrefBind() => CommandDescriptor(
+    id: 'xref.bind',
+    title: 'Bind Xref',
+    category: _category,
+    aliases: const ['xrefbind'],
+    description:
+        'Turns an external reference into a local block so the drawing '
+        'no longer depends on that file. Inserts stay where they are. '
+        'Omit the name to bind the selected xref, or the only xref in '
+        'the drawing.',
+    params: const [
+      ParamSpec(
+        name: 'name',
+        type: ParamType.text,
+        required: false,
+        description: 'Xref block to bind. Defaults to the selection.',
+      ),
+    ],
+    handler: (context) async {
+      final targets = _xrefsFromContext(context);
+      if (targets.isEmpty) {
+        return const CommandResult.failed('No xref was selected.');
+      }
+
+      final names = [for (final block in targets) block.name];
+      final committed = context.edit('Bind xref', (transaction) {
+        for (final block in targets) {
+          const XrefResolver().bind(
+            host: context.document,
+            name: block.name,
+            transaction: transaction,
+          );
+        }
+      });
+      if (committed == null) {
+        return const CommandResult.failed('The xref was not bound.');
+      }
+      context.services.invalidate();
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: names.length == 1
+            ? 'Bound ${names.single}.'
+            : 'Bound ${names.length} xrefs.',
         data: {'blocks': names},
         transaction: committed,
       );

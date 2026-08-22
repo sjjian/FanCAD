@@ -106,4 +106,46 @@ void main() {
     expect(host.blocks['PART']!.isXref, isTrue);
     expect(host.activeEntities.whereType<InsertEntity>().single.position, const Vec2(3, 4));
   });
+
+  test('binding an xref keeps the insert and drops the file path', () {
+    final host = CadDocument();
+    final foreign = CadDocument()
+      ..addEntity(
+        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+      );
+    final session = DocumentSession(id: 't', document: host);
+
+    session.edit('Attach xref', (transaction) {
+      const XrefResolver().attach(
+        host: host,
+        foreign: foreign,
+        path: '/tmp/part.dxf',
+        at: const Vec2(3, 4),
+        transaction: transaction,
+      );
+    });
+
+    session.edit('Bind xref', (transaction) {
+      expect(
+        const XrefResolver().bind(
+          host: host,
+          name: 'PART',
+          transaction: transaction,
+        ),
+        isTrue,
+      );
+    });
+
+    expect(host.blocks['PART']!.isXref, isFalse);
+    expect(host.blocks['PART']!.xrefPath, isEmpty);
+    expect(host.blocks['PART']!.entityIds, hasLength(1));
+    expect(
+      host.activeEntities.whereType<InsertEntity>().single.position,
+      const Vec2(3, 4),
+    );
+
+    expect(session.undo(), isTrue);
+    expect(host.blocks['PART']!.isXref, isTrue);
+    expect(host.blocks['PART']!.xrefPath, '/tmp/part.dxf');
+  });
 }

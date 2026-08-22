@@ -91,6 +91,31 @@ class XrefResolver {
     return transaction.removeBlock(block.name);
   }
 
+  /// Turns an xref into a local block. Inserts stay; the file path is dropped
+  /// so reload and detach no longer apply.
+  bool bind({
+    required CadDocument host,
+    required String name,
+    required Transaction transaction,
+  }) {
+    final needle = name.toLowerCase();
+    BlockRecord? block;
+    for (final item in host.blocks.values) {
+      if (item.isXref && item.name.toLowerCase() == needle) {
+        block = item;
+        break;
+      }
+    }
+    if (block == null) return false;
+    transaction.putBlock(
+      block.copyWith(
+        xrefPath: '',
+        description: 'Bound ${block.name}',
+      ),
+    );
+    return true;
+  }
+
   static String _nameFromPath(String path) {
     final separator = path.contains(r'\') ? r'\' : '/';
     final base = path.split(separator).last;

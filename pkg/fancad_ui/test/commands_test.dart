@@ -3123,6 +3123,41 @@ void main() {
       final result = await run('xref.detach');
       expect(result.status, CommandStatus.failed);
     });
+
+    test('bind keeps the insert and drops the file path', () async {
+      final dir = Directory.systemTemp.createTempSync('fancad_xref');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final path = '${dir.path}/part.dxf';
+      File(path).writeAsStringSync(
+        const DxfWriter().writeString(
+          CadDocument()
+            ..addEntity(
+              const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+            ),
+        ),
+      );
+      await run('xref.attach', {
+        'path': path,
+        'at': [3, 4],
+      });
+
+      final result = await run('xref.bind');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.blocks['PART']!.isXref, isFalse);
+      expect(
+        document.activeEntities.whereType<InsertEntity>().single.position,
+        const Vec2(3, 4),
+      );
+
+      final reload = await run('xref.reload');
+      expect(reload.status, CommandStatus.failed);
+    });
+
+    test('bind refuses when there is no xref', () async {
+      final result = await run('xref.bind');
+      expect(result.status, CommandStatus.failed);
+    });
   });
 
   group('registry contract', () {
