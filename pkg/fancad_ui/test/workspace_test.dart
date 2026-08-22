@@ -163,6 +163,16 @@ void main() {
     expect(await ws.submitCommandLine(''), isNull);
   });
 
+  test('saveActive refuses a blank path instead of writing the empty string',
+      () async {
+    final ws = workspace();
+    ws.newDocument(title: 'Untitled');
+    expect(await ws.saveActive('   '), isNull);
+    expect(ws.notices.single.message, contains('no path to save'));
+    expect(ws.active!.filePath, isNull);
+    expect(ws.active!.isDirty, isFalse);
+  });
+
   test('close on an empty workspace does not invent a drawing', () async {
     final ws = workspace();
     registerBuiltinCommands(

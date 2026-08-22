@@ -217,8 +217,11 @@ class Workspace extends ChangeNotifier implements CommandServices {
       notify('There is no drawing to save.', isError: true);
       return null;
     }
-    final target = path ?? tab.filePath;
-    if (target == null) return null;
+    final target = (path ?? tab.filePath)?.trim();
+    if (target == null || target.isEmpty) {
+      notify('There is no path to save to.', isError: true);
+      return null;
+    }
 
     try {
       final outcome = await importer.save(target, tab.document);
