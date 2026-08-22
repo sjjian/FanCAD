@@ -14,6 +14,7 @@ class ProCommands {
     _newLayout(),
     _mview(),
     _plot(),
+    _plotPdf(),
     _xrefAttach(),
     _audit(),
   ];
@@ -263,8 +264,8 @@ class ProCommands {
     category: _category,
     aliases: const ['plot'],
     description:
-        'Plots the active layout to an SVG file. Paper-space viewports are '
-        'honoured.',
+        'Plots the active layout to an SVG file. A .pdf path writes a '
+        'vector PDF instead. Paper-space viewports are honoured.',
     params: const [
       ParamSpec(
         name: 'path',
@@ -274,6 +275,9 @@ class ProCommands {
     ],
     handler: (context) async {
       final path = await context.resolveText('path', 'SVG path:');
+      if (path.toLowerCase().endsWith('.pdf')) {
+        return _writePdf(context, path);
+      }
       final svg = const Plotter().toSvg(context.document);
       await File(path).writeAsString(svg);
       return CommandResult.ok(
@@ -282,6 +286,39 @@ class ProCommands {
       );
     },
   );
+
+  static CommandDescriptor _plotPdf() => CommandDescriptor(
+    id: 'print.exportPdf',
+    title: 'Export PDF',
+    category: _category,
+    aliases: const ['plotpdf'],
+    description:
+        'Plots the active layout to a vector PDF. Paper size becomes the '
+        'page MediaBox; viewports are clipped.',
+    params: const [
+      ParamSpec(
+        name: 'path',
+        type: ParamType.text,
+        description: 'Destination .pdf path',
+      ),
+    ],
+    handler: (context) async {
+      final path = await context.resolveText('path', 'PDF path:');
+      return _writePdf(context, path);
+    },
+  );
+
+  static Future<CommandResult> _writePdf(
+    CommandContext context,
+    String path,
+  ) async {
+    final pdf = const Plotter().toPdf(context.document);
+    await File(path).writeAsBytes(pdf);
+    return CommandResult.ok(
+      message: 'Wrote ${pdf.length} bytes to $path',
+      data: {'path': path, 'bytes': pdf.length},
+    );
+  }
 
   static CommandDescriptor _xrefAttach() => CommandDescriptor(
     id: 'xref.attach',

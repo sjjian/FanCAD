@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
@@ -39,6 +40,57 @@ void main() {
   test('an empty SHX buffer is rejected without throwing', () {
     final font = ShxFont.parse(Uint8List(0));
     expect(font.isEmpty, isTrue);
+  });
+
+  test('a plot of a line is a well-formed PDF', () {
+    final document = CadDocument();
+    final session = DocumentSession(id: 't', document: document);
+    session.edit('line', (transaction) {
+      transaction.add(
+        LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(10, 5)),
+      );
+    });
+    final pdf = const Plotter().toPdf(document);
+    final text = utf8.decode(pdf, allowMalformed: true);
+    expect(pdf[0], 0x25); // %
+    expect(text, startsWith('%PDF'));
+    expect(text, contains('%%EOF'));
+    expect(text, contains(' m\n'));
+    expect(text, contains('\nS\n'));
+    expect(text, contains('/MediaBox'));
+  });
+
+  test('a paper layout plot uses the sheet as the PDF page', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+        viewports: [
+          PaperViewport(
+            paperBounds: Bounds2(20, 20, 200, 160),
+            modelCenter: Vec2(5, 2.5),
+            scale: 1,
+          ),
+        ],
+      ),
+    );
+    document.setActiveLayout('A3');
+    document.addEntity(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 5)),
+    );
+
+    final text = utf8.decode(
+      const Plotter().toPdf(document),
+      allowMalformed: true,
+    );
+    // 420 mm × 297 mm in points (72/25.4).
+    expect(text, contains('1190.55'));
+    expect(text, contains('841.88'));
+    expect(text, contains('W n'));
   });
 
   test('a plot of a line is a well-formed SVG', () {
