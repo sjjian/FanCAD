@@ -561,6 +561,35 @@ void main() {
       expect(document.entityCount, 2);
     });
 
+    test('close marks an open polyline as closed', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+      expect((document.entity(id)! as PolylineEntity).closed, isFalse);
+
+      final result = await run('edit.close', {'ids': [id]});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as PolylineEntity).closed, isTrue);
+    });
+
+    test('close refuses a polyline that is already closed', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [4, 3],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.close', {'ids': [id]});
+
+      expect(result.status, CommandStatus.failed);
+    });
+
     test('a locked layer refuses edits', () async {
       final id = await drawLine(0, 0, 10, 0);
       await run('layer.toggleLock', {'name': '0', 'locked': true});

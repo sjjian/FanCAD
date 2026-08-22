@@ -30,6 +30,7 @@ class EditCommands {
     _lengthen(),
     _explode(),
     _join(),
+    _close(),
     _undo(),
     _redo(),
     _changeLayer(),
@@ -1257,6 +1258,63 @@ class EditCommands {
       return CommandResult(
         status: CommandStatus.ok,
         message: 'Joined ${lines.length} lines into one polyline.',
+        transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _close() => CommandDescriptor(
+    id: 'edit.close',
+    title: 'Close Polyline',
+    category: _category,
+    aliases: const ['pedit', 'plclose'],
+    description:
+        'Closes the selected open polylines by connecting the last vertex '
+        'back to the first. Already-closed polylines are left alone.',
+    params: const [ParamSpec.selection('ids')],
+    handler: (context) async {
+      final ids = await context.resolveSelection(
+        'ids',
+        'PEDIT  Select polylines to close:',
+      );
+      if (ids.isEmpty) return const CommandResult.cancelled();
+
+      final targets = <PolylineEntity>[];
+      for (final id in ids) {
+        final entity = context.document.entity(id);
+        if (entity is PolylineEntity &&
+            !entity.closed &&
+            entity.vertexCount >= 2) {
+          targets.add(entity);
+        }
+      }
+      if (targets.isEmpty) {
+        return const CommandResult.failed(
+          'Select at least one open polyline with two or more vertices.',
+        );
+      }
+
+      final committed = context.edit('Close Polyline', (transaction) {
+        for (final polyline in targets) {
+          transaction.modify(
+            PolylineEntity(
+              id: polyline.id,
+              props: polyline.props,
+              vertices: polyline.vertices,
+              closed: true,
+              constantWidth: polyline.constantWidth,
+            ),
+          );
+        }
+      });
+      if (committed == null) {
+        return const CommandResult.failed(
+          'Nothing was closed; the polylines may be on a locked layer.',
+        );
+      }
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Closed ${targets.length} polyline(s).',
         transaction: committed,
       );
     },
