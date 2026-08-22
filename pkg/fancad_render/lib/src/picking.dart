@@ -66,26 +66,31 @@ class Picker {
     final tolerance = viewport.tolerance;
     final hits = <PickHit>[];
 
-    for (final id in _candidates(document, aperture)) {
-      final entity = document.entity(id);
-      if (entity == null) continue;
-      if (!_isSelectable(document, entity)) continue;
-      if (filter != null && !filter(entity)) continue;
+    for (final space in spacesUnder(document, aperture, tolerance: tolerance)) {
+      for (final id in document.indexFor(space.blockName).search(space.query)) {
+        final entity = document.entity(id);
+        if (entity == null) continue;
+        if (!_isSelectable(document, entity)) continue;
+        if (filter != null && !filter(entity)) continue;
 
-      final sink = PolylineSink();
-      entity.emit(
-        document.emitContext(tolerance: tolerance, clip: aperture),
-        sink,
-      );
-      final closest = _closestOn(sink, world, radius);
-      if (closest == null) continue;
-      hits.add(
-        PickHit(
-          entityId: id,
-          distance: closest.distance * viewport.scale,
-          point: closest.point,
-        ),
-      );
+        final sink = PolylineSink();
+        entity.emit(space.context, sink);
+        final closest = _closestOn(sink, world, radius);
+        if (closest == null) continue;
+        if (space.paperClip != null &&
+            !space.paperClip!
+                .inflated(radius)
+                .containsPoint(closest.point.x, closest.point.y)) {
+          continue;
+        }
+        hits.add(
+          PickHit(
+            entityId: id,
+            distance: closest.distance * viewport.scale,
+            point: closest.point,
+          ),
+        );
+      }
     }
 
     // Nearest first; ties broken by draw order so the entity drawn last, and
@@ -112,36 +117,69 @@ class Picker {
     bool Function(CadEntity entity)? filter,
   }) {
     final result = <int>[];
+    final seen = <int>{};
     final tolerance = viewport.tolerance;
 
-    for (final id in _candidates(document, window)) {
-      final entity = document.entity(id);
-      if (entity == null) continue;
-      if (!_isSelectable(document, entity)) continue;
-      if (filter != null && !filter(entity)) continue;
+    for (final space in spacesUnder(document, window, tolerance: tolerance)) {
+      for (final id in document.indexFor(space.blockName).search(space.query)) {
+        if (!seen.add(id)) continue;
+        final entity = document.entity(id);
+        if (entity == null) continue;
+        if (!_isSelectable(document, entity)) continue;
+        if (filter != null && !filter(entity)) continue;
 
-      final bounds = document.boundsOfEntity(entity);
-      if (bounds.isEmpty) continue;
-      if (!crossing) {
-        // Enclosing selection can be decided from the bounding box alone.
-        if (window.containsBox(bounds)) result.add(id);
-        continue;
+        final bounds = document.boundsOfEntity(entity);
+        if (bounds.isEmpty) continue;
+        final paperBounds = space.context.transform.isIdentity
+            ? bounds
+            : bounds.transformed(space.context.transform);
+        if (!crossing) {
+          // Enclosing selection can be decided from the bounding box alone.
+          if (window.containsBox(paperBounds)) result.add(id);
+          continue;
+        }
+        if (!window.intersects(paperBounds)) continue;
+        // A bounding box overlap is not a real crossing: the window may sit in
+        // the empty middle of a large circle. Check the geometry.
+        final sink = PolylineSink();
+        entity.emit(space.context, sink);
+        if (_crosses(sink, window)) result.add(id);
       }
-      if (!window.intersects(bounds)) continue;
-      // A bounding box overlap is not a real crossing: the window may sit in
-      // the empty middle of a large circle. Check the geometry.
-      final sink = PolylineSink();
-      entity.emit(
-        document.emitContext(tolerance: tolerance, clip: window),
-        sink,
-      );
-      if (_crosses(sink, window)) result.add(id);
     }
     return result;
   }
 
-  Iterable<int> _candidates(CadDocument document, Bounds2 box) =>
-      document.indexFor(document.currentBlockName).search(box);
+  /// Paper-space entities, plus model-space entities seen through a viewport.
+  static Iterable<LayoutSpace> spacesUnder(
+    CadDocument document,
+    Bounds2 paperBox, {
+    required double tolerance,
+  }) sync* {
+    yield LayoutSpace(
+      blockName: document.currentBlockName,
+      query: paperBox,
+      context: document.emitContext(tolerance: tolerance, clip: paperBox),
+    );
+    final layout = document.activeLayout;
+    if (layout.isModelSpace) return;
+    for (final viewport in layout.viewports) {
+      if (!viewport.isOn) continue;
+      if (!viewport.paperBounds.intersects(paperBox)) continue;
+      final inverse = viewport.paperToModel();
+      if (inverse == null) continue;
+      final scale = viewport.scale.abs();
+      yield LayoutSpace(
+        blockName: document.modelSpaceBlockName,
+        query: paperBox.transformed(inverse),
+        context: document.emitContext(
+          tolerance: scale < 1e-12 ? tolerance : tolerance / scale,
+          clip: viewport.modelWindow,
+          transform: viewport.modelToPaper(),
+        ),
+        paperClip: viewport.paperBounds,
+      );
+    }
+  }
 
   static bool _isSelectable(CadDocument document, CadEntity entity) =>
       entity.props.visible &&
@@ -307,4 +345,24 @@ class Picker {
     }
     return total;
   }
+}
+
+/// One space that can contribute geometry under a paper-space query.
+///
+/// Model space is just the active block. A paper layout also yields a query
+/// per viewport, with a transform that puts model entities onto the sheet.
+class LayoutSpace {
+  const LayoutSpace({
+    required this.blockName,
+    required this.query,
+    required this.context,
+    this.paperClip,
+  });
+
+  final String blockName;
+  final Bounds2 query;
+  final EmitContext context;
+
+  /// When set, a hit must land inside this paper rectangle.
+  final Bounds2? paperClip;
 }

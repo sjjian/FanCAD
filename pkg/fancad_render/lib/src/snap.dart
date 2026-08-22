@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:meta/meta.dart';
 
+import 'picking.dart';
 import 'viewport.dart';
 
 /// The object snap modes a user can turn on, matching AutoCAD's OSMODE bits in
@@ -279,27 +280,63 @@ class SnapEngine {
     // between the entities that are actually near the cursor.
     final flattened = <int, PolylineSink>{};
 
-    for (final id in document.indexFor(document.currentBlockName).search(
+    for (final space in Picker.spacesUnder(
+      document,
       aperture,
+      tolerance: tolerance,
     )) {
-      if (excludedIds.contains(id)) continue;
-      final entity = document.entity(id);
-      if (entity == null) continue;
-      if (!entity.props.visible) continue;
-      if (!document.isLayerVisible(entity.props.layer)) continue;
+      final toPaper = space.context.transform.isIdentity
+          ? null
+          : space.context.transform;
+      final inverse = toPaper?.inverted();
+      final localCursor = inverse == null ? cursor : inverse.transform(cursor);
+      final localRadius = inverse == null
+          ? radius
+          : radius / math.max(space.context.transform.meanScale, 1e-12);
 
-      _collectAnalytic(entity, cursor, radius, candidates);
+      for (final id in document.indexFor(space.blockName).search(space.query)) {
+        if (excludedIds.contains(id)) continue;
+        final entity = document.entity(id);
+        if (entity == null) continue;
+        if (!entity.props.visible) continue;
+        if (!document.isLayerVisible(entity.props.layer)) continue;
 
-      if (modes.contains(SnapMode.nearest) ||
-          modes.contains(SnapMode.perpendicular) ||
-          modes.contains(SnapMode.intersection)) {
-        final sink = PolylineSink();
-        entity.emit(
-          document.emitContext(tolerance: tolerance, clip: aperture),
-          sink,
-        );
-        flattened[id] = sink;
-        _collectFromFlattened(id, sink, cursor, radius, candidates);
+        if (toPaper == null) {
+          _collectAnalytic(entity, cursor, radius, candidates);
+        } else {
+          final local = <_Candidate>[];
+          _collectAnalytic(entity, localCursor, localRadius, local);
+          for (final candidate in local) {
+            final point = toPaper.transform(candidate.point);
+            if (space.paperClip != null &&
+                !space.paperClip!
+                    .inflated(radius)
+                    .containsPoint(point.x, point.y)) {
+              continue;
+            }
+            candidates.add(
+              _Candidate(
+                mode: candidate.mode,
+                point: point,
+                distance: point.distanceTo(cursor),
+                entityId: candidate.entityId,
+                direction: candidate.direction == null
+                    ? null
+                    : toPaper.transformDirection(candidate.direction!),
+              ),
+            );
+          }
+        }
+
+        if (modes.contains(SnapMode.nearest) ||
+            modes.contains(SnapMode.perpendicular) ||
+            modes.contains(SnapMode.intersection)) {
+          final sink = PolylineSink();
+          entity.emit(space.context, sink);
+          flattened[id] = sink;
+          _collectFromFlattened(id, sink, cursor, radius, candidates);
+        }
+        if (candidates.length > 4096) break;
       }
       if (candidates.length > 4096) break;
     }

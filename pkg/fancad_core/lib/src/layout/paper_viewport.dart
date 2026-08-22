@@ -43,6 +43,9 @@ class PaperViewport {
         .multiplied(Mat3.translation(-modelCenter.x, -modelCenter.y));
   }
 
+  /// Inverse of [modelToPaper], or null when the viewport scale is zero.
+  Mat3? paperToModel() => modelToPaper().inverted();
+
   /// The model-space window this viewport shows.
   Bounds2 get modelWindow {
     if (scale == 0) return const Bounds2.empty();
