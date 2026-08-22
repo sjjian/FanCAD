@@ -1764,6 +1764,64 @@ void main() {
       expect(document.activeEntities.whereType<InsertEntity>(), isEmpty);
     });
 
+    test('insert places another reference to a named block', () async {
+      final a = await drawLine(0, 0, 4, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'STUD',
+        'base': [0, 0],
+      });
+
+      final result = await run('edit.insert', {
+        'name': 'stud',
+        'at': [20, 5],
+        'scale': 2,
+        'rotation': 90,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeEntities.whereType<InsertEntity>(), hasLength(2));
+      final placed = document.entity(
+        (result.data!['ids']! as List).first as int,
+      )! as InsertEntity;
+      expect(placed.blockName, 'STUD');
+      expect(placed.position, const Vec2(20, 5));
+      expect(placed.scale, const Vec2(2, 2));
+      expect(placed.rotation, closeTo(math.pi / 2, 1e-9));
+    });
+
+    test('insert stamps a block at several points', () async {
+      final a = await drawLine(0, 0, 2, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'PIN',
+        'base': [0, 0],
+      });
+
+      final result = await run('edit.insert', {
+        'name': 'PIN',
+        'points': [
+          [10, 0],
+          [20, 0],
+          [30, 0],
+        ],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((result.data!['ids']! as List), hasLength(3));
+      expect(document.activeEntities.whereType<InsertEntity>(), hasLength(4));
+    });
+
+    test('insert refuses an unknown block', () async {
+      final result = await run('edit.insert', {
+        'name': 'MISSING',
+        'at': [0, 0],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.activeEntities, isEmpty);
+    });
+
     test('join merges connected lines into one polyline', () async {
       final a = await drawLine(0, 0, 10, 0);
       final b = await drawLine(10, 0, 10, 10);
