@@ -1078,18 +1078,9 @@ class Construct {
               hit,
         ];
       case PolylineEntity():
-        final count = edge.vertexCount;
-        final segments = edge.closed ? count : count - 1;
         return [
-          for (var i = 0; i < segments; i++)
-            ..._crossingsOnArc(
-              arc,
-              LineEntity(
-                id: 0,
-                start: edge.vertexAt(i),
-                end: edge.vertexAt((i + 1) % count),
-              ),
-            ),
+          for (final arm in _polylineArms(edge))
+            ..._crossingsOnArc(arc, arm),
         ];
       default:
         return const [];
@@ -2919,19 +2910,10 @@ class Construct {
               hit,
         ];
       case PolylineEntity():
-        final result = <Vec2>[];
-        final count = edge.vertexCount;
-        final segments = edge.closed ? count : count - 1;
-        for (var i = 0; i < segments; i++) {
-          final hit = Intersect.segmentSegment(
-            line.start,
-            line.end,
-            edge.vertexAt(i),
-            edge.vertexAt((i + 1) % count),
-          );
-          if (hit != null) result.add(hit);
-        }
-        return result;
+        return [
+          for (final arm in _polylineArms(edge))
+            ...crossingsWith(line, arm, tolerance: tolerance),
+        ];
       default:
         return const [];
     }

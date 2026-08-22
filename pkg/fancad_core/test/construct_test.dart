@@ -580,6 +580,25 @@ void main() {
         isNull,
       );
     });
+
+    test('cuts against a bulged polyline on the arc, not the chord', () {
+      final wall = PolylineEntity(
+        id: 2,
+        vertices: Float64List.fromList([10, 0, 1, -10, 0, 0]),
+      );
+      final crossings = Construct.crossingsWith(line(0, 0, 0, 20), wall);
+
+      expect(crossings, hasLength(1));
+      expect(crossings.single.y, closeTo(10, 1e-9));
+
+      final trimmed = Construct.trimLine(
+        line(0, 0, 0, 20),
+        crossings,
+        const Vec2(0, 15),
+      );
+      expect(trimmed, isNotNull);
+      expect(trimmed!.end.y, closeTo(10, 1e-9));
+    });
   });
 
   group('trimPolyline', () {
