@@ -77,7 +77,7 @@ class SettingsStore extends ChangeNotifier {
     if (value is! List) return const [];
     return [
       for (final item in value)
-        if (item is String) item,
+        if (item is String && item.trim().isNotEmpty) item.trim(),
     ];
   }
 

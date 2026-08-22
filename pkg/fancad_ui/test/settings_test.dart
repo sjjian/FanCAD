@@ -9,7 +9,8 @@ void main() {
       SettingsKeys.showGrid: true,
       SettingsKeys.sidebarWidth: 240,
       SettingsKeys.themeBrightness: 'dark',
-      SettingsKeys.recentFiles: ['a.dxf', 3, 'b.dwg'],
+      SettingsKeys.recentFiles: ['a.dxf', 3, '  ', '', '  b.dwg  '],
+      'blanks': ['', '  '],
       'bad': 'x',
     });
     expect(store.getBool(SettingsKeys.showGrid), isTrue);
@@ -19,6 +20,7 @@ void main() {
     expect(store.getInt(SettingsKeys.sidebarWidth), 240);
     expect(store.getString(SettingsKeys.themeBrightness), 'dark');
     expect(store.getStringList(SettingsKeys.recentFiles), ['a.dxf', 'b.dwg']);
+    expect(store.getStringList('blanks'), isEmpty);
     expect(store.getStringList('missing'), isEmpty);
   });
 
