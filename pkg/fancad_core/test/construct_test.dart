@@ -364,6 +364,58 @@ void main() {
     });
   });
 
+  group('centerLine', () {
+    test('sits midway between two parallel lines and overshoots both', () {
+      final mark = Construct.centerLine(
+        line(0, 0, 10, 0),
+        line(2, 4, 12, 4),
+        extension: 2,
+      );
+
+      expect(mark, isNotNull);
+      expect(mark!.start.y, closeTo(2, 1e-9));
+      expect(mark.end.y, closeTo(2, 1e-9));
+      expect(mark.start.x, closeTo(-2, 1e-9));
+      expect(mark.end.x, closeTo(14, 1e-9));
+    });
+
+    test('refuses lines that are not parallel', () {
+      expect(
+        Construct.centerLine(line(0, 0, 10, 0), line(0, 0, 0, 10)),
+        isNull,
+      );
+    });
+
+    test('runs through two circle centres and past both rims', () {
+      const left = CircleEntity(id: 1, center: Vec2.zero(), radius: 2);
+      const right = CircleEntity(id: 2, center: Vec2(10, 0), radius: 3);
+      final mark = Construct.centerLine(left, right, extension: 1);
+
+      expect(mark, isNotNull);
+      expect(mark!.start, const Vec2(-3, 0));
+      expect(mark.end, const Vec2(14, 0));
+    });
+
+    test('accepts an arc pair and refuses concentric circles', () {
+      const arc = ArcEntity(
+        id: 1,
+        center: Vec2.zero(),
+        radius: 4,
+        startAngle: 0,
+        endAngle: 2,
+      );
+      const other = CircleEntity(id: 2, center: Vec2(6, 0), radius: 1);
+      expect(Construct.centerLine(arc, other, extension: 0), isNotNull);
+      expect(
+        Construct.centerLine(
+          const CircleEntity(id: 1, center: Vec2.zero(), radius: 2),
+          const CircleEntity(id: 2, center: Vec2.zero(), radius: 5),
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('angularDimension', () {
     test('labels the sector that contains the dim-arc pick', () {
       final interior = Construct.angularDimension(

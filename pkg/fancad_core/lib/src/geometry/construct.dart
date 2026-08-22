@@ -357,6 +357,76 @@ class Construct {
     return created;
   }
 
+  /// A centreline between two parallel lines, or through two circle/arc centres.
+  ///
+  /// Parallel lines share a midline spanning both segments, then grow by
+  /// [extension] at each end. Two radial objects get the line through their
+  /// centres, grown past each circumference by the same amount.
+  static LineEntity? centerLine(
+    CadEntity first,
+    CadEntity second, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+    double extension = 2.5,
+  }) {
+    if (extension < 0) return null;
+    if (first is LineEntity && second is LineEntity) {
+      return _centerLineBetweenLines(
+        first,
+        second,
+        id: id,
+        props: props,
+        extension: extension,
+      );
+    }
+    final a = _radialSource(first);
+    final b = _radialSource(second);
+    if (a == null || b == null) return null;
+    final delta = b.$1 - a.$1;
+    final span = delta.length;
+    if (span < 1e-9) return null;
+    final unit = delta / span;
+    return LineEntity(
+      id: id,
+      props: props,
+      start: a.$1 - unit * (a.$2 + extension),
+      end: b.$1 + unit * (b.$2 + extension),
+    );
+  }
+
+  static LineEntity? _centerLineBetweenLines(
+    LineEntity first,
+    LineEntity second, {
+    required int id,
+    required EntityProps props,
+    required double extension,
+  }) {
+    final dir = first.end - first.start;
+    final length = dir.length;
+    if (length < 1e-9) return null;
+    final other = second.end - second.start;
+    if (other.length < 1e-9) return null;
+    if (dir.cross(other).abs() > 1e-8 * length * other.length) return null;
+    final unit = dir / length;
+    final normal = unit.perpendicular;
+    final offset = (second.start - first.start).dot(normal);
+    final origin = first.start + normal * (offset / 2);
+    var minT = double.infinity;
+    var maxT = -double.infinity;
+    for (final point in [first.start, first.end, second.start, second.end]) {
+      final t = (point - origin).dot(unit);
+      if (t < minT) minT = t;
+      if (t > maxT) maxT = t;
+    }
+    if (maxT - minT < 1e-9) return null;
+    return LineEntity(
+      id: id,
+      props: props,
+      start: origin + unit * (minT - extension),
+      end: origin + unit * (maxT + extension),
+    );
+  }
+
   /// An angular dimension at [vertex] between [first] and [second].
   ///
   /// [dimLine] sits on the dimension arc and chooses the sector: the same

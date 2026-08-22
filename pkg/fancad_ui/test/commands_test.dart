@@ -453,6 +453,48 @@ void main() {
       expect(document.entities.whereType<LineEntity>(), hasLength(2));
     });
 
+    test('centerline sits between two parallel lines', () async {
+      final first = await drawLine(0, 0, 10, 0);
+      final second = await drawLine(2, 4, 12, 4);
+
+      final result = await run('draw.centerLine', {
+        'first': first,
+        'second': second,
+        'extension': 2,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final mark = document.entity(
+        (result.data!['ids']! as List).first as int,
+      )! as LineEntity;
+      expect(mark.start.y, closeTo(2, 1e-9));
+      expect(mark.end.y, closeTo(2, 1e-9));
+      expect(mark.start.x, closeTo(-2, 1e-9));
+      expect(mark.end.x, closeTo(14, 1e-9));
+    });
+
+    test('centerline through two circles overshoots both rims', () async {
+      final left = await run('draw.circle', {
+        'center': [0, 0],
+        'radius': 2,
+      });
+      final right = await run('draw.circle', {
+        'center': [10, 0],
+        'radius': 3,
+      });
+
+      final result = await run('draw.centerLine', {
+        'first': (left.data!['ids']! as List).first,
+        'second': (right.data!['ids']! as List).first,
+        'extension': 1,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final mark = document.entities.whereType<LineEntity>().single;
+      expect(mark.start, const Vec2(-3, 0));
+      expect(mark.end, const Vec2(14, 0));
+    });
+
     test('aligned dimension measures the slanted distance', () async {
       final result = await run('draw.dimAligned', {
         'first': [0, 0],
