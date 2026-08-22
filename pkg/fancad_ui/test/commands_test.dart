@@ -2946,6 +2946,21 @@ void main() {
       expect(document.activeLayout.paperHeight, closeTo(210, 1e-9));
     });
 
+    test('page setup stores a plot rotation', () async {
+      await run('layout.new');
+      final result = await run('layout.pagesetup', {
+        'width': 297,
+        'height': 210,
+        'rotation': 90,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayout.plotRotation, 90);
+
+      await run('edit.undo');
+      expect(document.activeLayout.plotRotation, 0);
+    });
+
     test('page setup refuses Model', () async {
       final result = await run('layout.pagesetup', {
         'name': 'Model',

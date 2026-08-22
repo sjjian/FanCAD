@@ -93,6 +93,34 @@ void main() {
     expect(text, contains('W n'));
   });
 
+  test('a 90 degree plot swaps the PDF page', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+        plotRotation: 90,
+      ),
+    );
+    document.setActiveLayout('A3');
+
+    final text = utf8.decode(
+      const Plotter().toPdf(document),
+      allowMalformed: true,
+    );
+    expect(text, contains('841.88'));
+    expect(text, contains('1190.55'));
+    expect(text, contains('0 1 -1 0 297 0 cm'));
+
+    final svg = const Plotter().toSvg(document);
+    expect(svg, contains('width="297'));
+    expect(svg, contains('height="420'));
+    expect(svg, contains('rotate(-90'));
+  });
+
   test('a double-click inside a paper viewport maximizes it', () {
     const layout = Layout(
       name: 'Layout1',

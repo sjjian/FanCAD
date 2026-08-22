@@ -267,6 +267,9 @@ class FcbLayoutFlags {
   const FcbLayoutFlags._();
 
   static const int modelSpace = 1 << 0;
+
+  /// Bits 1–2 store plot rotation as quarter-turns (0, 90, 180, 270).
+  static const int plotRotationShift = 1;
 }
 
 /// Paper-viewport flag bits.

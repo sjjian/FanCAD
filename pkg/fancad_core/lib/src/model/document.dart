@@ -72,6 +72,7 @@ class Layout {
     this.tabOrder = 0,
     this.paperWidth = 297,
     this.paperHeight = 210,
+    this.plotRotation = 0,
     this.viewports = const [],
   });
 
@@ -83,6 +84,17 @@ class Layout {
   /// Paper size in millimetres.
   final double paperWidth;
   final double paperHeight;
+
+  /// Plot twist in degrees: 0, 90, 180 or 270. The sheet on screen stays
+  /// put; only SVG/PDF output rotates.
+  final int plotRotation;
+
+  /// Snaps an angle to the four plot orientations AutoCAD offers.
+  static int normalizePlotRotation(num degrees) {
+    var quarter = (degrees / 90).round() % 4;
+    if (quarter < 0) quarter += 4;
+    return quarter * 90;
+  }
 
   /// Windows into model space. Empty on the model tab itself.
   final List<PaperViewport> viewports;
@@ -102,6 +114,7 @@ class Layout {
     int? tabOrder,
     double? paperWidth,
     double? paperHeight,
+    int? plotRotation,
     List<PaperViewport>? viewports,
   }) => Layout(
     name: name ?? this.name,
@@ -110,6 +123,7 @@ class Layout {
     tabOrder: tabOrder ?? this.tabOrder,
     paperWidth: paperWidth ?? this.paperWidth,
     paperHeight: paperHeight ?? this.paperHeight,
+    plotRotation: plotRotation ?? this.plotRotation,
     viewports: viewports ?? this.viewports,
   );
 

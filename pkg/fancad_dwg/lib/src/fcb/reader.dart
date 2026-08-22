@@ -398,6 +398,8 @@ class FcbReader {
               ? blockNames[blockIndex]
               : document.modelSpaceBlockName,
           isModelSpace: flags & FcbLayoutFlags.modelSpace != 0,
+          plotRotation:
+              ((flags >> FcbLayoutFlags.plotRotationShift) & 3) * 90,
           tabOrder: _view.getUint32(at + FcbLayout.tabOrder, Endian.little),
           paperWidth: _view.getFloat64(
             at + FcbLayout.paperWidth,

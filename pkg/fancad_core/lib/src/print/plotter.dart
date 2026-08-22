@@ -44,6 +44,7 @@ class Plotter {
     Bounds2? window,
   }) {
     final target = layout ?? document.activeLayout;
+    sink.plotRotation = target.plotRotation;
     final box = window ??
         (target.isModelSpace
             ? document.extents
@@ -94,6 +95,7 @@ class Plotter {
 }
 
 abstract class _PlotSink implements GeometrySink {
+  abstract int plotRotation;
   void clipTo(Bounds2? box);
   void frame(Bounds2 box);
 }
@@ -101,6 +103,8 @@ abstract class _PlotSink implements GeometrySink {
 class _SvgSink implements _PlotSink {
   _SvgSink({required this.strokeWidth});
 
+  @override
+  var plotRotation = 0;
   final double strokeWidth;
   final StringBuffer _defs = StringBuffer();
   final StringBuffer _body = StringBuffer();
@@ -226,13 +230,24 @@ class _SvgSink implements _PlotSink {
     }
     final width = box.width == 0 ? 297.0 : box.width;
     final height = box.height == 0 ? 210.0 : box.height;
+    final rot = Layout.normalizePlotRotation(plotRotation);
+    final swap = rot == 90 || rot == 270;
+    final pageW = swap ? height : width;
+    final pageH = swap ? width : height;
+    final cx = box.minX + width / 2;
+    final cy = -box.maxY + height / 2;
+    final viewX = swap ? cx - pageW / 2 : box.minX;
+    final viewY = swap ? cy - pageH / 2 : -box.maxY;
+    final wrapped = rot == 0
+        ? '$_body'
+        : '<g transform="rotate(${-rot} $cx $cy)">\n$_body</g>\n';
     final defs = _defs.isEmpty ? '' : '  <defs>\n$_defs  </defs>\n';
     return '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<svg xmlns="http://www.w3.org/2000/svg" '
-        'viewBox="${box.minX} ${-box.maxY} $width $height" '
-        'width="${width}mm" height="${height}mm">\n'
+        'viewBox="$viewX $viewY $pageW $pageH" '
+        'width="${pageW}mm" height="${pageH}mm">\n'
         '$defs'
-        '$_body'
+        '$wrapped'
         '</svg>\n';
   }
 
@@ -272,6 +287,8 @@ class _SvgSink implements _PlotSink {
 class _PdfSink implements _PlotSink {
   _PdfSink({required this.strokeWidth});
 
+  @override
+  var plotRotation = 0;
   final double strokeWidth;
   final StringBuffer _ops = StringBuffer();
   var _clipped = false;
@@ -418,20 +435,45 @@ class _PdfSink implements _PlotSink {
     const mmToPt = 72.0 / 25.4;
     final width = box.width == 0 ? 297.0 : box.width;
     final height = box.height == 0 ? 210.0 : box.height;
+    final rot = Layout.normalizePlotRotation(plotRotation);
+    final swap = rot == 90 || rot == 270;
+    final pageW = swap ? height : width;
+    final pageH = swap ? width : height;
+    final twist = _plotRotationCm(rot, width, height);
     final content = StringBuffer()
       ..writeln('q')
       ..writeln(
         '${_pdfNum(mmToPt)} 0 0 ${_pdfNum(mmToPt)} 0 0 cm',
-      )
+      );
+    if (rot != 0) {
+      content.writeln(
+        '${_pdfNum(twist.a)} ${_pdfNum(twist.b)} ${_pdfNum(twist.c)} '
+        '${_pdfNum(twist.d)} ${_pdfNum(twist.e)} ${_pdfNum(twist.f)} cm',
+      );
+    }
+    content
       ..writeln('1 0 0 1 ${_pdfNum(-box.minX)} ${_pdfNum(-box.minY)} cm')
       ..write(_ops)
       ..writeln('Q');
     return _pdfBytes(
-      pageWidth: width * mmToPt,
-      pageHeight: height * mmToPt,
+      pageWidth: pageW * mmToPt,
+      pageHeight: pageH * mmToPt,
       content: content.toString(),
     );
   }
+}
+
+({double a, double b, double c, double d, double e, double f}) _plotRotationCm(
+  int rotation,
+  double width,
+  double height,
+) {
+  return switch (rotation) {
+    90 => (a: 0, b: 1, c: -1, d: 0, e: height, f: 0),
+    180 => (a: -1, b: 0, c: 0, d: -1, e: width, f: height),
+    270 => (a: 0, b: -1, c: 1, d: 0, e: 0, f: width),
+    _ => (a: 1, b: 0, c: 0, d: 1, e: 0, f: 0),
+  };
 }
 
 List<String> _plotRgb(ResolvedStyle style) {

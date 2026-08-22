@@ -130,6 +130,7 @@ void main() {
         tabOrder: 1,
         paperWidth: 420,
         paperHeight: 297,
+        plotRotation: 270,
         viewports: [
           PaperViewport(
             paperBounds: Bounds2(20, 20, 220, 170),
@@ -162,6 +163,7 @@ void main() {
     final paper = restored.layouts.firstWhere((item) => item.name == 'A3');
     expect(paper.paperWidth, closeTo(420, 1e-9));
     expect(paper.paperHeight, closeTo(297, 1e-9));
+    expect(paper.plotRotation, 270);
     expect(paper.viewports, hasLength(1));
     expect(paper.viewports.single.scale, closeTo(0.5, 1e-9));
     expect(paper.viewports.single.locked, isTrue);

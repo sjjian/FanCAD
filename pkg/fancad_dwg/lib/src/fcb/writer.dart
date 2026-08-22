@@ -778,7 +778,9 @@ class FcbWriter {
       );
       view.setUint32(
         at + FcbLayout.flags,
-        layout.isModelSpace ? FcbLayoutFlags.modelSpace : 0,
+        (layout.isModelSpace ? FcbLayoutFlags.modelSpace : 0) |
+            ((Layout.normalizePlotRotation(layout.plotRotation) ~/ 90) <<
+                FcbLayoutFlags.plotRotationShift),
         Endian.little,
       );
       view.setUint32(at + FcbLayout.tabOrder, layout.tabOrder, Endian.little);

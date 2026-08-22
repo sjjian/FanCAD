@@ -262,6 +262,11 @@ class FidelityAuditor {
         '${target.paperWidth}×${target.paperHeight}',
       );
     }
+    if (source.plotRotation != target.plotRotation) {
+      issues.add(
+        'plot rotation ${source.plotRotation} vs ${target.plotRotation}',
+      );
+    }
     if (source.viewports.length != target.viewports.length) {
       issues.add(
         '${source.viewports.length} viewport(s) vs ${target.viewports.length}',

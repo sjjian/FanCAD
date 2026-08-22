@@ -131,6 +131,8 @@ class DxfReader {
             tabOrder: int.tryParse(values[71] ?? '0') ?? 0,
             paperWidth: double.tryParse(values[44] ?? '297') ?? 297,
             paperHeight: double.tryParse(values[45] ?? '210') ?? 210,
+            plotRotation:
+                (int.tryParse(values[75] ?? '0') ?? 0).clamp(0, 3) * 90,
             viewports: viewportsByBlock[blockName] ?? const [],
           ),
         );

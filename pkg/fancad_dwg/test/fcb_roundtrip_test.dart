@@ -124,6 +124,7 @@ void main() {
         name: 'Layout1',
         blockName: '*Paper_Space',
         tabOrder: 1,
+        plotRotation: 90,
         viewports: [
           PaperViewport(
             paperBounds: Bounds2(10, 20, 210, 170),
@@ -146,6 +147,7 @@ void main() {
 
     final restored = FcbReader(FcbWriter().write(document)).decode().document;
     final layout = restored.layouts.firstWhere((item) => item.name == 'Layout1');
+    expect(layout.plotRotation, 90);
     expect(layout.viewports, hasLength(2));
 
     final first = layout.viewports[0];

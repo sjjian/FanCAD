@@ -50,6 +50,7 @@ class ProCommands {
             'paper': [layout.paperWidth, layout.paperHeight],
             'viewports': layout.viewports.length,
             'tabOrder': layout.tabOrder,
+            'plotRotation': layout.plotRotation,
             'current': layout.name == context.document.activeLayoutName,
           },
       ];
@@ -297,6 +298,7 @@ class ProCommands {
         tabOrder: tabOrder + 1,
         paperWidth: source.paperWidth,
         paperHeight: source.paperHeight,
+        plotRotation: source.plotRotation,
         viewports: [...source.viewports],
       );
       final paper = context.document.entitiesOf(source.blockName).toList();
@@ -608,8 +610,9 @@ class ProCommands {
     category: _category,
     aliases: const ['pagesetup'],
     description:
-        'Changes the paper size of a layout, in millimetres. Omit the '
-        'name to edit the current paper tab. Model has no sheet.',
+        'Changes the paper size of a layout, in millimetres, and the '
+        'plot rotation (0, 90, 180 or 270). Omit the name to edit the '
+        'current paper tab. Model has no sheet.',
     params: const [
       ParamSpec(
         name: 'name',
@@ -626,6 +629,12 @@ class ProCommands {
         name: 'height',
         type: ParamType.distance,
         description: 'Sheet height in millimetres',
+      ),
+      ParamSpec(
+        name: 'rotation',
+        type: ParamType.angle,
+        description: 'Plot rotation in degrees: 0, 90, 180 or 270',
+        required: false,
       ),
     ],
     handler: (context) async {
@@ -658,14 +667,30 @@ class ProCommands {
       if (width <= 0 || height <= 0) {
         return const CommandResult.failed('The sheet needs a positive size.');
       }
-      if (width == layout.paperWidth && height == layout.paperHeight) {
+      final rotationArg =
+          context.args.number('rotation') ?? context.args.integer('rotation');
+      final rotation = rotationArg == null
+          ? layout.plotRotation
+          : Layout.normalizePlotRotation(rotationArg);
+      if (width == layout.paperWidth &&
+          height == layout.paperHeight &&
+          rotation == layout.plotRotation) {
         return CommandResult.ok(
-          message: '${layout.name} is already ${width} × ${height} mm.',
-          data: {'name': layout.name, 'paper': [width, height]},
+          message: '${layout.name} is already ${width} × ${height} mm'
+              '${rotation == 0 ? '' : ', rotated $rotation°'}.',
+          data: {
+            'name': layout.name,
+            'paper': [width, height],
+            'rotation': rotation,
+          },
         );
       }
 
-      final updated = layout.copyWith(paperWidth: width, paperHeight: height);
+      final updated = layout.copyWith(
+        paperWidth: width,
+        paperHeight: height,
+        plotRotation: rotation,
+      );
       final committed = context.edit('Page Setup', (transaction) {
         transaction.putLayout(updated);
         if (context.document.activeLayoutName != layout.name) {
@@ -679,10 +704,12 @@ class ProCommands {
       context.services.zoomTo(null);
       return CommandResult(
         status: CommandStatus.ok,
-        message: '${layout.name} is now ${width} × ${height} mm.',
+        message: '${layout.name} is now ${width} × ${height} mm'
+            '${rotation == 0 ? '' : ', plot $rotation°'}.',
         data: {
           'name': layout.name,
           'paper': [width, height],
+          'rotation': rotation,
         },
         transaction: committed,
       );

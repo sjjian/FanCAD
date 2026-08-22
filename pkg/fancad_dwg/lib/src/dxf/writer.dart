@@ -77,6 +77,9 @@ class DxfWriter {
       pair(100, 'AcDbPlotSettings');
       pair(44, layout.paperWidth);
       pair(45, layout.paperHeight);
+      if (layout.plotRotation != 0) {
+        pair(75, Layout.normalizePlotRotation(layout.plotRotation) ~/ 90);
+      }
       pair(100, 'AcDbLayout');
       pair(1, layout.name);
       pair(2, layout.blockName);
