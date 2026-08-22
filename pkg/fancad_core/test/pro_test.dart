@@ -112,6 +112,42 @@ void main() {
     expect(moved.modelCenter, const Vec2(40, 0));
   });
 
+  test('a paper viewport plot clips model geometry in SVG', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+        viewports: [
+          PaperViewport(
+            paperBounds: Bounds2(20, 20, 200, 160),
+            modelCenter: Vec2(5, 2.5),
+            scale: 1,
+          ),
+        ],
+      ),
+    );
+    document.setActiveLayout('A3');
+    document.addEntity(
+      const LineEntity(id: 0, start: Vec2(-100, 0), end: Vec2(400, 0)),
+    );
+
+    final svg = const Plotter().toSvg(document);
+    expect(svg, contains('<clipPath id="vp1">'));
+    expect(
+      svg,
+      contains(
+        '<rect x="20.0" y="-160.0" width="180.0" height="140.0"/>',
+      ),
+    );
+    expect(svg, contains('clip-path="url(#vp1)"'));
+    expect(svg, contains('</g>'));
+    expect(svg, contains('<path'));
+  });
+
   test('a plot of a line is a well-formed SVG', () {
     final document = CadDocument();
     final session = DocumentSession(id: 't', document: document);

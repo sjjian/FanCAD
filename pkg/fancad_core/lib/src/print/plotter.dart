@@ -26,7 +26,7 @@ class Plotter {
   }
 
   /// Vector PDF of the active (or given) layout. Paper size is the MediaBox;
-  /// viewports are clipped the same way the SVG plot clips them.
+  /// viewports are clipped with a path, matching the SVG `clipPath`.
   Uint8List toPdf(
     CadDocument document, {
     Layout? layout,
@@ -100,12 +100,28 @@ class _SvgSink implements _PlotSink {
   _SvgSink({required this.strokeWidth});
 
   final double strokeWidth;
+  final StringBuffer _defs = StringBuffer();
   final StringBuffer _body = StringBuffer();
+  var _clipOpen = false;
+  var _clipIndex = 0;
 
   @override
   void clipTo(Bounds2? box) {
-    // SVG clipPath would be the matching feature; the viewport frame is
-    // enough for a review plot, and the PDF sink is what actually clips.
+    if (_clipOpen) {
+      _body.writeln('</g>');
+      _clipOpen = false;
+    }
+    if (box == null) return;
+    _clipIndex++;
+    final id = 'vp$_clipIndex';
+    _defs.writeln(
+      '<clipPath id="$id">'
+      '<rect x="${box.minX}" y="${-box.maxY}" width="${box.width}" '
+      'height="${box.height}"/>'
+      '</clipPath>',
+    );
+    _body.writeln('<g clip-path="url(#$id)">');
+    _clipOpen = true;
   }
 
   @override
@@ -202,12 +218,18 @@ class _SvgSink implements _PlotSink {
   }
 
   String finish(Bounds2 box) {
+    if (_clipOpen) {
+      _body.writeln('</g>');
+      _clipOpen = false;
+    }
     final width = box.width == 0 ? 297.0 : box.width;
     final height = box.height == 0 ? 210.0 : box.height;
+    final defs = _defs.isEmpty ? '' : '  <defs>\n$_defs  </defs>\n';
     return '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<svg xmlns="http://www.w3.org/2000/svg" '
         'viewBox="${box.minX} ${-box.maxY} $width $height" '
         'width="${width}mm" height="${height}mm">\n'
+        '$defs'
         '$_body'
         '</svg>\n';
   }
