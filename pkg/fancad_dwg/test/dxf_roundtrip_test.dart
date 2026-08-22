@@ -213,6 +213,37 @@ void main() {
     expect(insert.position, const Vec2(5, 6));
   });
 
+  test('dimension styles survive DXF', () {
+    final original = CadDocument()
+      ..putDimStyle(
+        const DimStyleDef(
+          name: 'ARCH',
+          textHeight: 5,
+          arrowSize: 4,
+          extensionLineOffset: 1,
+          extensionLineExtend: 2,
+          textGap: 0.8,
+          scale: 2,
+          decimalPlaces: 0,
+          textStyle: 'Standard',
+        ),
+      );
+    final dxf = const DxfWriter().writeString(original);
+    expect(dxf, contains('DIMSTYLE'));
+    expect(dxf, contains('ARCH'));
+
+    final restored = const DxfReader().readString(dxf);
+    final style = restored.namedDimStyle('ARCH')!;
+    expect(style.textHeight, closeTo(5, 1e-9));
+    expect(style.arrowSize, closeTo(4, 1e-9));
+    expect(style.extensionLineOffset, closeTo(1, 1e-9));
+    expect(style.extensionLineExtend, closeTo(2, 1e-9));
+    expect(style.textGap, closeTo(0.8, 1e-9));
+    expect(style.scale, closeTo(2, 1e-9));
+    expect(style.decimalPlaces, 0);
+    expect(style.textStyle, 'Standard');
+  });
+
   test('a stress drawing of 10k entities encodes and decodes as DXF', () {
     final original = SampleDrawings.stressTest(count: 2000);
     final dxf = const DxfWriter().writeString(original);

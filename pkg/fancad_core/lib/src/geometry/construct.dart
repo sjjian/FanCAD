@@ -101,6 +101,7 @@ class Construct {
     Vec2 dimLine, {
     int id = 0,
     EntityProps props = EntityProps.defaults,
+    String styleName = 'Standard',
   }) {
     final points = [first, second, dimLine];
     final measurement = DimensionEntity.measuredLength(points, 0);
@@ -115,6 +116,7 @@ class Construct {
       definitionPoints: points,
       textPosition: a.lerp(b, 0.5),
       measurement: measurement,
+      styleName: styleName,
     );
   }
 
@@ -128,6 +130,7 @@ class Construct {
     Vec2 dimLine, {
     int id = 0,
     EntityProps props = EntityProps.defaults,
+    String styleName = 'Standard',
   }) {
     final measurement = first.distanceTo(second);
     if (measurement < 1e-9) return null;
@@ -143,6 +146,7 @@ class Construct {
       definitionPoints: [first, second, dimLine],
       textPosition: a.lerp(b, 0.5),
       measurement: measurement,
+      styleName: styleName,
       dimensionType: 1,
     );
   }
@@ -173,6 +177,7 @@ class Construct {
         dimLine,
         id: id,
         props: resolved,
+        styleName: previous.styleName,
       );
     }
     if (type != 0 || points.length < 3) return null;
@@ -182,7 +187,14 @@ class Construct {
     final dimLine = horizontal
         ? Vec2((first.x + nextOrigin.x) / 2, points[2].y)
         : Vec2(points[2].x, (first.y + nextOrigin.y) / 2);
-    return linearDimension(first, nextOrigin, dimLine, id: id, props: resolved);
+    return linearDimension(
+      first,
+      nextOrigin,
+      dimLine,
+      id: id,
+      props: resolved,
+      styleName: previous.styleName,
+    );
   }
 
   /// The next linear or aligned dimension in a DIMBASELINE stack.
@@ -222,6 +234,7 @@ class Construct {
         first + nextNormal * stepped,
         id: id,
         props: resolved,
+        styleName: previous.styleName,
       );
     }
     if (type != 0 || points.length < 3) return null;
@@ -236,6 +249,7 @@ class Construct {
         Vec2((first.x + nextOrigin.x) / 2, points[2].y + dir * spacing),
         id: id,
         props: resolved,
+        styleName: previous.styleName,
       );
     }
     final dir = points[2].x >= mid.x ? 1.0 : -1.0;
@@ -245,6 +259,7 @@ class Construct {
       Vec2(points[2].x + dir * spacing, (first.y + nextOrigin.y) / 2),
       id: id,
       props: resolved,
+      styleName: previous.styleName,
     );
   }
 
@@ -258,6 +273,7 @@ class Construct {
     Vec2 dimLine, {
     int id = 0,
     EntityProps props = EntityProps.defaults,
+    String styleName = 'Standard',
   }) {
     final source = _radialSource(target);
     if (source == null) return null;
@@ -274,6 +290,7 @@ class Construct {
       textPosition: chord,
       measurement: radius,
       overrideText: 'R<>',
+      styleName: styleName,
       dimensionType: 4,
     );
   }
@@ -287,6 +304,7 @@ class Construct {
     Vec2 dimLine, {
     int id = 0,
     EntityProps props = EntityProps.defaults,
+    String styleName = 'Standard',
   }) {
     final source = _radialSource(target);
     if (source == null) return null;
@@ -303,6 +321,7 @@ class Construct {
       textPosition: chord,
       measurement: radius * 2,
       overrideText: 'Ø<>',
+      styleName: styleName,
       dimensionType: 3,
     );
   }
@@ -439,6 +458,7 @@ class Construct {
     Vec2 dimLine, {
     int id = 0,
     EntityProps props = EntityProps.defaults,
+    String styleName = 'Standard',
   }) {
     if (first.distanceTo(vertex) < 1e-9 || second.distanceTo(vertex) < 1e-9) {
       return null;
@@ -478,6 +498,7 @@ class Construct {
       textPosition: text,
       measurement: degrees,
       overrideText: '<>°',
+      styleName: styleName,
       dimensionType: 2,
     );
   }
@@ -493,6 +514,7 @@ class Construct {
     Vec2 dimLine, {
     int id = 0,
     EntityProps props = EntityProps.defaults,
+    String styleName = 'Standard',
   }) {
     final vertex = Intersect.lineLine(
       first.start,
@@ -521,6 +543,7 @@ class Construct {
           dimLine,
           id: id,
           props: props,
+          styleName: styleName,
         );
       }
     }
@@ -537,6 +560,7 @@ class Construct {
     Vec2 dimLine, {
     int id = 0,
     EntityProps props = EntityProps.defaults,
+    String styleName = 'Standard',
   }) {
     if (arc.radius <= 0 || arc.sweep < 1e-9 || arc.sweep > 2 * math.pi - 1e-9) {
       return null;
@@ -548,6 +572,7 @@ class Construct {
       dimLine,
       id: id,
       props: props,
+      styleName: styleName,
     );
   }
 
@@ -619,20 +644,28 @@ class Construct {
   /// EXPLODE has to produce the same picture the fallback renderer does, so
   /// a dimension that never had an anonymous block still comes apart into
   /// geometry a user can move independently.
-  static List<CadEntity> explodeDimension(DimensionEntity entity) {
+  static List<CadEntity> explodeDimension(
+    DimensionEntity entity, {
+    DimStyleDef? style,
+  }) {
+    final dim = style ?? DimStyleDef.standard;
     final props = entity.props;
     final pieces = <CadEntity>[];
     final points = entity.definitionPoints;
     if (points.length >= 2) {
       switch (entity.dimensionType & 0x0F) {
         case 2:
-          pieces.addAll(_explodeAngularDim(entity, props));
+          pieces.addAll(_explodeAngularDim(entity, props, dim));
         case 3:
-          pieces.addAll(_explodeRadialDim(entity, props, diameter: true));
+          pieces.addAll(
+            _explodeRadialDim(entity, props, dim, diameter: true),
+          );
         case 4:
-          pieces.addAll(_explodeRadialDim(entity, props, diameter: false));
+          pieces.addAll(
+            _explodeRadialDim(entity, props, dim, diameter: false),
+          );
         default:
-          pieces.addAll(_explodeLinearDim(entity, props));
+          pieces.addAll(_explodeLinearDim(entity, props, dim));
       }
     }
     if (entity.overrideText != ' ') {
@@ -641,9 +674,9 @@ class Construct {
           id: 0,
           props: props,
           position: entity.textPosition,
-          content: entity.displayText,
-          height: 2.5,
-          styleName: entity.styleName,
+          content: entity.displayTextFor(dim),
+          height: dim.scaledTextHeight,
+          styleName: dim.textStyle,
           hAlign: TextHAlign.center,
           vAlign: TextVAlign.middle,
         ),
@@ -655,6 +688,7 @@ class Construct {
   static List<CadEntity> _explodeLinearDim(
     DimensionEntity entity,
     EntityProps props,
+    DimStyleDef dim,
   ) {
     final points = entity.definitionPoints;
     final p1 = points[0];
@@ -682,17 +716,18 @@ class Construct {
       b = p2 + normal * offset;
     }
     return [
-      LineEntity(id: 0, props: props, start: p1, end: a),
-      LineEntity(id: 0, props: props, start: p2, end: b),
+      ..._extensionLine(p1, a, props, dim),
+      ..._extensionLine(p2, b, props, dim),
       LineEntity(id: 0, props: props, start: a, end: b),
-      ..._dimArrows(a, unit, props),
-      ..._dimArrows(b, -unit, props),
+      ..._dimArrows(a, unit, props, dim.scaledArrowSize),
+      ..._dimArrows(b, -unit, props, dim.scaledArrowSize),
     ];
   }
 
   static List<CadEntity> _explodeRadialDim(
     DimensionEntity entity,
-    EntityProps props, {
+    EntityProps props,
+    DimStyleDef dim, {
     required bool diameter,
   }) {
     final center = entity.definitionPoints[0];
@@ -709,16 +744,17 @@ class Construct {
           start: center,
           end: center - delta,
         ),
-      ..._dimArrows(chord, -unit, props),
+      ..._dimArrows(chord, -unit, props, dim.scaledArrowSize),
     ];
   }
 
   static List<CadEntity> _explodeAngularDim(
     DimensionEntity entity,
     EntityProps props,
+    DimStyleDef dim,
   ) {
     final points = entity.definitionPoints;
-    if (points.length < 3) return _explodeLinearDim(entity, props);
+    if (points.length < 3) return _explodeLinearDim(entity, props, dim);
     final vertex = points[0];
     final a = points[1];
     final b = points[2];
@@ -740,10 +776,31 @@ class Construct {
     ];
   }
 
-  static List<CadEntity> _dimArrows(Vec2 tip, Vec2 direction, EntityProps props) {
-    if (direction.length < 1e-9) return const [];
+  static List<CadEntity> _extensionLine(
+    Vec2 origin,
+    Vec2 dimEnd,
+    EntityProps props,
+    DimStyleDef dim,
+  ) {
+    final span = dimEnd - origin;
+    final length = span.length;
+    if (length < 1e-9) return const [];
+    final unit = span / length;
+    final exo = dim.scaledExtensionOffset;
+    final start = exo >= length ? dimEnd : origin + unit * exo;
+    final end = dimEnd + unit * dim.scaledExtensionExtend;
+    if (start.distanceTo(end) < 1e-9) return const [];
+    return [LineEntity(id: 0, props: props, start: start, end: end)];
+  }
+
+  static List<CadEntity> _dimArrows(
+    Vec2 tip,
+    Vec2 direction,
+    EntityProps props,
+    double size,
+  ) {
+    if (direction.length < 1e-9 || size <= 1e-9) return const [];
     final unit = direction.normalized();
-    const size = 2.5;
     return [
       SolidEntity(
         id: 0,

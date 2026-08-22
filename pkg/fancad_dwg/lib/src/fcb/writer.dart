@@ -215,6 +215,7 @@ class FcbWriter {
       FcbSection.layers: _encodeLayers(document, layerNames, lineTypeIndex),
       FcbSection.lineTypes: _encodeLineTypes(document, lineTypeNames),
       FcbSection.textStyles: _encodeTextStyles(document),
+      FcbSection.dimStyles: _encodeDimStyles(document),
       FcbSection.blocks: _encodeBlocks(document, blockNames, blockRanges),
       FcbSection.layouts: _encodeLayouts(document, blockIndex),
       FcbSection.viewports: _encodeViewports(document),
@@ -713,6 +714,55 @@ class FcbWriter {
         style.obliqueAngle,
         Endian.little,
       );
+    }
+    return buffer;
+  }
+
+  Uint8List _encodeDimStyles(CadDocument document) {
+    final styles = document.dimStyles.values.toList();
+    final buffer = Uint8List(8 + styles.length * FcbRecord.dimStyle);
+    final view = ByteData.view(buffer.buffer);
+    view.setUint64(0, styles.length, Endian.little);
+    for (var i = 0; i < styles.length; i++) {
+      final style = styles[i];
+      final at = 8 + i * FcbRecord.dimStyle;
+      view.setUint32(
+        at + FcbDimStyle.name,
+        _strings.intern(style.name),
+        Endian.little,
+      );
+      view.setUint32(
+        at + FcbDimStyle.textStyle,
+        _strings.intern(style.textStyle),
+        Endian.little,
+      );
+      view.setUint32(
+        at + FcbDimStyle.decimalPlaces,
+        style.decimalPlaces,
+        Endian.little,
+      );
+      view.setFloat64(
+        at + FcbDimStyle.textHeight,
+        style.textHeight,
+        Endian.little,
+      );
+      view.setFloat64(
+        at + FcbDimStyle.arrowSize,
+        style.arrowSize,
+        Endian.little,
+      );
+      view.setFloat64(
+        at + FcbDimStyle.extensionLineOffset,
+        style.extensionLineOffset,
+        Endian.little,
+      );
+      view.setFloat64(
+        at + FcbDimStyle.extensionLineExtend,
+        style.extensionLineExtend,
+        Endian.little,
+      );
+      view.setFloat64(at + FcbDimStyle.textGap, style.textGap, Endian.little);
+      view.setFloat64(at + FcbDimStyle.scale, style.scale, Endian.little);
     }
     return buffer;
   }

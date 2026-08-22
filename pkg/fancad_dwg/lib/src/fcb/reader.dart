@@ -147,6 +147,7 @@ class FcbReader {
     final lineTypes = _decodeLineTypes();
     final layers = _decodeLayers(lineTypes);
     final textStyles = _decodeTextStyles();
+    final dimStyles = _decodeDimStyles();
     final blockNames = _blockNames();
 
     final document = CadDocument(
@@ -158,6 +159,7 @@ class FcbReader {
         for (final lineType in lineTypes) lineType.name: lineType,
       },
       textStyles: textStyles.isEmpty ? null : textStyles,
+      dimStyles: dimStyles.isEmpty ? null : dimStyles,
     );
 
     final layerNames = _layerNames();
@@ -318,6 +320,46 @@ class FcbReader {
         ),
         backwards: flags & 1 != 0,
         upsideDown: flags & 2 != 0,
+      );
+    }
+    return result;
+  }
+
+  Map<String, DimStyleDef> _decodeDimStyles() {
+    final section = _section(FcbSection.dimStyles);
+    if (section == null) return {};
+    final base = section.$1;
+    final count = _view.getUint64(base, Endian.little);
+    final result = <String, DimStyleDef>{};
+    for (var i = 0; i < count; i++) {
+      final at = base + 8 + i * FcbRecord.dimStyle;
+      final name = _string(
+        _view.getUint32(at + FcbDimStyle.name, Endian.little),
+      );
+      result[name] = DimStyleDef(
+        name: name,
+        textStyle: _string(
+          _view.getUint32(at + FcbDimStyle.textStyle, Endian.little),
+        ),
+        decimalPlaces: _view.getUint32(
+          at + FcbDimStyle.decimalPlaces,
+          Endian.little,
+        ),
+        textHeight: _view.getFloat64(
+          at + FcbDimStyle.textHeight,
+          Endian.little,
+        ),
+        arrowSize: _view.getFloat64(at + FcbDimStyle.arrowSize, Endian.little),
+        extensionLineOffset: _view.getFloat64(
+          at + FcbDimStyle.extensionLineOffset,
+          Endian.little,
+        ),
+        extensionLineExtend: _view.getFloat64(
+          at + FcbDimStyle.extensionLineExtend,
+          Endian.little,
+        ),
+        textGap: _view.getFloat64(at + FcbDimStyle.textGap, Endian.little),
+        scale: _view.getFloat64(at + FcbDimStyle.scale, Endian.little),
       );
     }
     return result;

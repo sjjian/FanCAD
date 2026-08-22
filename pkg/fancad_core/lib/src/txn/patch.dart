@@ -214,6 +214,48 @@ final class PutTextStylePatch extends Patch {
   String describe() => 'Text style "${style.name}"';
 }
 
+/// Creates or updates a dimension style definition.
+final class PutDimStylePatch extends Patch {
+  const PutDimStylePatch(this.style, this.previous);
+
+  final DimStyleDef style;
+  final DimStyleDef? previous;
+
+  @override
+  DocumentChange applyTo(CadDocument document) {
+    document.putDimStyle(style);
+    return const DocumentChange(tablesChanged: true);
+  }
+
+  @override
+  Patch inverse(CadDocument document) => previous == null
+      ? RemoveDimStylePatch(style.name, style)
+      : PutDimStylePatch(previous!, style);
+
+  @override
+  String describe() => 'Dimension style "${style.name}"';
+}
+
+/// Deletes a dimension style definition.
+final class RemoveDimStylePatch extends Patch {
+  const RemoveDimStylePatch(this.name, this.previous);
+
+  final String name;
+  final DimStyleDef previous;
+
+  @override
+  DocumentChange applyTo(CadDocument document) {
+    document.removeDimStyle(name);
+    return const DocumentChange(tablesChanged: true);
+  }
+
+  @override
+  Patch inverse(CadDocument document) => PutDimStylePatch(previous, null);
+
+  @override
+  String describe() => 'Delete dimension style "$name"';
+}
+
 /// Creates or updates a block definition.
 final class PutBlockPatch extends Patch {
   const PutBlockPatch(this.block, this.previous);
@@ -333,6 +375,26 @@ final class CurrentLayerPatch extends Patch {
 
   @override
   String describe() => 'Set current layer to "$name"';
+}
+
+/// Switches the style new dimensions are created with.
+final class CurrentDimStylePatch extends Patch {
+  const CurrentDimStylePatch(this.name, this.previous);
+
+  final String name;
+  final String previous;
+
+  @override
+  DocumentChange applyTo(CadDocument document) {
+    document.currentDimStyle = name;
+    return const DocumentChange(tablesChanged: true);
+  }
+
+  @override
+  Patch inverse(CadDocument document) => CurrentDimStylePatch(previous, name);
+
+  @override
+  String describe() => 'Set current dimension style to "$name"';
 }
 
 final class ActiveLayoutPatch extends Patch {

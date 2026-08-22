@@ -53,6 +53,10 @@ class DxfReader {
         document.putLayer(_layer(scan.collectMap()));
         continue;
       }
+      if (type == 'DIMSTYLE' && section == 'TABLES') {
+        document.putDimStyle(_dimStyle(scan.collectMap()));
+        continue;
+      }
       if (type == 'BLOCK') {
         final values = scan.collectMap();
         currentBlock = values[2] ?? document.modelSpaceBlockName;
@@ -206,6 +210,22 @@ class DxfReader {
       locked: flags & 16384 != 0,
       layer: values[8] ?? '0',
       frozenLayers: frozen,
+    );
+  }
+
+  static DimStyleDef _dimStyle(Map<int, String> v) {
+    double n(int code, double fallback) =>
+        double.tryParse(v[code] ?? '') ?? fallback;
+    return DimStyleDef(
+      name: v[2] ?? 'Standard',
+      textHeight: n(140, 2.5),
+      arrowSize: n(41, 2.5),
+      extensionLineOffset: n(42, 0.625),
+      extensionLineExtend: n(44, 1.25),
+      textGap: n(46, 0.625),
+      scale: n(40, 1),
+      decimalPlaces: int.tryParse(v[271] ?? '') ?? 2,
+      textStyle: v[7] ?? 'Standard',
     );
   }
 

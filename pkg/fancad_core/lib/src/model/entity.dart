@@ -1410,9 +1410,43 @@ final class DimensionEntity extends CadEntity {
 
   bool get hasRenderedBlock => blockName.isNotEmpty;
 
-  String get displayText => overrideText.isEmpty
-      ? measurement.toStringAsFixed(2)
-      : overrideText.replaceAll('<>', measurement.toStringAsFixed(2));
+  /// Measurement text using two decimal places. Regenerated graphics use
+  /// [displayTextFor] so a DIMSTYLE can choose a different precision.
+  String get displayText => formatMeasurement(2);
+
+  String displayTextFor(DimStyleDef style) =>
+      formatMeasurement(style.clampedDecimals);
+
+  String formatMeasurement(int decimalPlaces) {
+    final places = decimalPlaces < 0
+        ? 0
+        : (decimalPlaces > 8 ? 8 : decimalPlaces);
+    final value = measurement.toStringAsFixed(places);
+    if (overrideText.isEmpty) return value;
+    return overrideText.replaceAll('<>', value);
+  }
+
+  DimensionEntity copyWith({
+    int? id,
+    EntityProps? props,
+    String? blockName,
+    List<Vec2>? definitionPoints,
+    Vec2? textPosition,
+    double? measurement,
+    String? overrideText,
+    String? styleName,
+    int? dimensionType,
+  }) => DimensionEntity(
+    id: id ?? this.id,
+    props: props ?? this.props,
+    blockName: blockName ?? this.blockName,
+    definitionPoints: definitionPoints ?? this.definitionPoints,
+    textPosition: textPosition ?? this.textPosition,
+    measurement: measurement ?? this.measurement,
+    overrideText: overrideText ?? this.overrideText,
+    styleName: styleName ?? this.styleName,
+    dimensionType: dimensionType ?? this.dimensionType,
+  );
 
   @override
   EntityKind get kind => EntityKind.dimension;

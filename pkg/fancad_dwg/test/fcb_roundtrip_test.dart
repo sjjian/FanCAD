@@ -168,6 +168,33 @@ void main() {
     expect(second.locked, isFalse);
   });
 
+  test('dimension styles survive a round trip', () {
+    final document = CadDocument()
+      ..putDimStyle(
+        const DimStyleDef(
+          name: 'ARCH',
+          textHeight: 5,
+          arrowSize: 4,
+          extensionLineOffset: 1,
+          extensionLineExtend: 2,
+          textGap: 0.8,
+          scale: 2,
+          decimalPlaces: 0,
+          textStyle: 'Standard',
+        ),
+      );
+    final restored = FcbReader(FcbWriter().write(document)).decode().document;
+    final style = restored.namedDimStyle('ARCH')!;
+    expect(style.textHeight, closeTo(5, 1e-12));
+    expect(style.arrowSize, closeTo(4, 1e-12));
+    expect(style.extensionLineOffset, closeTo(1, 1e-12));
+    expect(style.extensionLineExtend, closeTo(2, 1e-12));
+    expect(style.textGap, closeTo(0.8, 1e-12));
+    expect(style.scale, closeTo(2, 1e-12));
+    expect(style.decimalPlaces, 0);
+    expect(style.textStyle, 'Standard');
+  });
+
   test('a large document round trips and stays within a sane size', () {
     final document = SampleDrawings.stressTest(count: 20000);
     final bytes = FcbWriter().write(document);

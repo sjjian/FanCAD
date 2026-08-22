@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import '../geometry/vector.dart';
 import '../model/entity.dart';
 import '../model/geometry_sink.dart';
+import '../model/style.dart';
 
 /// Regenerates dimension graphics when the `*D` anonymous block is missing.
 ///
@@ -20,23 +21,24 @@ class DimensionGraphics {
     GeometrySink sink,
   ) {
     final style = context.styleFor(entity.props);
+    final dim = context.styles.dimStyle(entity.styleName);
     final points = entity.definitionPoints;
     if (points.length < 2) {
-      _text(entity, context, sink, style);
+      _text(entity, context, sink, style, dim);
       return;
     }
 
     final family = entity.dimensionType & 0x0F;
     switch (family) {
       case 2:
-        _angular(entity, context, sink, style);
+        _angular(entity, context, sink, style, dim);
       case 3:
       case 4:
-        _radial(entity, context, sink, style, diameter: family == 3);
+        _radial(entity, context, sink, style, dim, diameter: family == 3);
       default:
-        _linear(entity, context, sink, style);
+        _linear(entity, context, sink, style, dim);
     }
-    _text(entity, context, sink, style);
+    _text(entity, context, sink, style, dim);
   }
 
   void _linear(
@@ -44,6 +46,7 @@ class DimensionGraphics {
     EmitContext context,
     GeometrySink sink,
     ResolvedStyle style,
+    DimStyleDef dim,
   ) {
     final points = entity.definitionPoints;
     final p1 = points[0];
@@ -59,11 +62,11 @@ class DimensionGraphics {
       final b = horizontal ? Vec2(p2.x, dimLine.y) : Vec2(dimLine.x, p2.y);
       if (a.distanceTo(b) < 1e-9) return;
       final unit = (b - a).normalized();
-      _line(context, sink, style, p1, a);
-      _line(context, sink, style, p2, b);
+      _extension(context, sink, style, p1, a, dim);
+      _extension(context, sink, style, p2, b, dim);
       _line(context, sink, style, a, b);
-      _arrow(context, sink, style, a, unit);
-      _arrow(context, sink, style, b, -unit);
+      _arrow(context, sink, style, a, unit, dim.scaledArrowSize);
+      _arrow(context, sink, style, b, -unit, dim.scaledArrowSize);
       return;
     }
     final direction = p2 - p1;
@@ -74,18 +77,19 @@ class DimensionGraphics {
     if (offset.abs() < 1e-6) offset = (p2 - p1).length * 0.15;
     final a = p1 + normal * offset;
     final b = p2 + normal * offset;
-    _line(context, sink, style, p1, a);
-    _line(context, sink, style, p2, b);
+    _extension(context, sink, style, p1, a, dim);
+    _extension(context, sink, style, p2, b, dim);
     _line(context, sink, style, a, b);
-    _arrow(context, sink, style, a, unit);
-    _arrow(context, sink, style, b, -unit);
+    _arrow(context, sink, style, a, unit, dim.scaledArrowSize);
+    _arrow(context, sink, style, b, -unit, dim.scaledArrowSize);
   }
 
   void _radial(
     DimensionEntity entity,
     EmitContext context,
     GeometrySink sink,
-    ResolvedStyle style, {
+    ResolvedStyle style,
+    DimStyleDef dim, {
     required bool diameter,
   }) {
     final center = entity.definitionPoints[0];
@@ -95,7 +99,7 @@ class DimensionGraphics {
       _line(context, sink, style, center, center - (chord - center));
     }
     final unit = (chord - center).normalized();
-    _arrow(context, sink, style, chord, -unit);
+    _arrow(context, sink, style, chord, -unit, dim.scaledArrowSize);
   }
 
   void _angular(
@@ -103,10 +107,11 @@ class DimensionGraphics {
     EmitContext context,
     GeometrySink sink,
     ResolvedStyle style,
+    DimStyleDef dim,
   ) {
     final points = entity.definitionPoints;
     if (points.length < 3) {
-      _linear(entity, context, sink, style);
+      _linear(entity, context, sink, style, dim);
       return;
     }
     final vertex = points[0];
@@ -136,15 +141,16 @@ class DimensionGraphics {
     EmitContext context,
     GeometrySink sink,
     ResolvedStyle style,
+    DimStyleDef dim,
   ) {
     if (entity.overrideText == ' ') return;
     sink.text(
       TextGeometry(
-        text: entity.displayText,
+        text: entity.displayTextFor(dim),
         origin: context.apply(entity.textPosition),
-        height: 2.5,
+        height: dim.scaledTextHeight,
         rotation: 0,
-        styleName: entity.styleName,
+        styleName: dim.textStyle,
         hAlign: TextHAlign.center,
         vAlign: TextVAlign.middle,
       ),
@@ -164,16 +170,36 @@ class DimensionGraphics {
     sink.polyline(Float64List.fromList([p.x, p.y, q.x, q.y]), style);
   }
 
+  void _extension(
+    EmitContext context,
+    GeometrySink sink,
+    ResolvedStyle style,
+    Vec2 origin,
+    Vec2 dimEnd,
+    DimStyleDef dim,
+  ) {
+    final span = dimEnd - origin;
+    final length = span.length;
+    if (length < 1e-9) return;
+    final unit = span / length;
+    final exo = dim.scaledExtensionOffset;
+    final exe = dim.scaledExtensionExtend;
+    final start = exo >= length ? dimEnd : origin + unit * exo;
+    final end = dimEnd + unit * exe;
+    if (start.distanceTo(end) < 1e-9) return;
+    _line(context, sink, style, start, end);
+  }
+
   void _arrow(
     EmitContext context,
     GeometrySink sink,
     ResolvedStyle style,
     Vec2 tip,
     Vec2 direction,
+    double size,
   ) {
-    if (direction.length < 1e-9) return;
+    if (direction.length < 1e-9 || size <= 1e-9) return;
     final unit = direction.normalized();
-    final size = 2.5;
     final left = tip - unit * size + unit.perpendicular * (size * 0.35);
     final right = tip - unit * size - unit.perpendicular * (size * 0.35);
     final t = context.apply(tip);

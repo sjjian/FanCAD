@@ -319,6 +319,15 @@ class Transaction {
   void putTextStyle(TextStyleDef style) =>
       _run(PutTextStylePatch(style, document.textStyles[style.name]));
 
+  void putDimStyle(DimStyleDef style) =>
+      _run(PutDimStylePatch(style, document.namedDimStyle(style.name)));
+
+  /// Sets the style new dimensions are created with.
+  void setCurrentDimStyle(String name) {
+    if (document.currentDimStyle == name) return;
+    _run(CurrentDimStylePatch(name, document.currentDimStyle));
+  }
+
   void putBlock(BlockRecord block) =>
       _run(PutBlockPatch(block, document.blocks[block.name]));
 

@@ -85,6 +85,9 @@ abstract class StyleResolver {
   /// Whether the named layer should be drawn and picked at all.
   bool isLayerVisible(String layer);
 
+  /// The named dimension style, or Standard when the name is missing.
+  DimStyleDef dimStyle(String name) => DimStyleDef.standard;
+
   static const StyleResolver passthrough = _PassthroughResolver();
 }
 
@@ -114,6 +117,9 @@ class _PassthroughResolver implements StyleResolver {
 
   @override
   bool isLayerVisible(String layer) => true;
+
+  @override
+  DimStyleDef dimStyle(String name) => DimStyleDef.standard;
 }
 
 /// Horizontal text justification.

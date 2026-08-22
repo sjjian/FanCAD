@@ -3836,7 +3836,10 @@ class EditCommands {
             ];
           }
         }
-        return Construct.explodeDimension(entity);
+        return Construct.explodeDimension(
+          entity,
+          style: document.dimStyle(entity.styleName),
+        );
       default:
         return const [];
     }

@@ -64,6 +64,9 @@ class FcbSection {
 
   /// Optional plot windows, one record per layout that has one.
   static const int plotWindows = 13;
+
+  /// Dimension styles. Optional: a missing section leaves Standard in place.
+  static const int dimStyles = 14;
 }
 
 /// Fixed record sizes, in bytes.
@@ -78,6 +81,7 @@ class FcbRecord {
   static const int layout = 32;
   static const int viewport = 80;
   static const int plotWindow = 40;
+  static const int dimStyle = 64;
 }
 
 /// Field offsets inside an entity record.
@@ -209,6 +213,21 @@ class FcbViewport {
   /// String-table index of a comma-separated frozen-layer list. Offset 76
   /// was padding; index 0 is the empty string, so older files stay thawed.
   static const int frozenLayers = 76;
+}
+
+/// Field offsets inside a dimension-style record.
+class FcbDimStyle {
+  const FcbDimStyle._();
+
+  static const int name = 0;
+  static const int textStyle = 4;
+  static const int decimalPlaces = 8;
+  static const int textHeight = 16;
+  static const int arrowSize = 24;
+  static const int extensionLineOffset = 32;
+  static const int extensionLineExtend = 40;
+  static const int textGap = 48;
+  static const int scale = 56;
 }
 
 /// Entity type codes. These are wire values and must never be renumbered.

@@ -249,6 +249,63 @@ void main() {
       expect(dim.displayText, '10.00');
     });
 
+    test('dimstyle drives regenerated dimension text and arrows', () async {
+      final created = await run('annot.dimstyle', {
+        'name': 'ARCH',
+        'textHeight': 5,
+        'arrowSize': 4,
+        'decimalPlaces': 0,
+      });
+      expect(created.status, CommandStatus.ok, reason: created.message);
+      expect(document.currentDimStyle, 'ARCH');
+      expect(document.namedDimStyle('ARCH')!.textHeight, 5);
+
+      final drawn = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [10, 0],
+        'dimLine': [5, 4],
+      });
+      expect(drawn.status, CommandStatus.ok, reason: drawn.message);
+      final dim = document.entity(
+        (drawn.data!['ids']! as List).first as int,
+      )! as DimensionEntity;
+      expect(dim.styleName, 'ARCH');
+      expect(dim.displayTextFor(document.dimStyle('ARCH')), '10');
+
+      final sink = PolylineSink();
+      dim.emit(document.emitContext(tolerance: 0.1), sink);
+      expect(sink.texts.single.text, '10');
+      expect(sink.texts.single.height, closeTo(5, 1e-9));
+    });
+
+    test('dimstyle undo restores the previous table', () async {
+      final created = await run('annot.dimstyle', {
+        'name': 'ARCH',
+        'textHeight': 5,
+      });
+      expect(created.status, CommandStatus.ok, reason: created.message);
+      expect(workspace.active!.session.undo(), isTrue);
+      expect(document.namedDimStyle('ARCH'), isNull);
+      expect(document.currentDimStyle, 'Standard');
+    });
+
+    test('dimstyle lists the table when no name is given', () async {
+      final result = await run('annot.dimstyle');
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(result.data!['current'], 'Standard');
+      final styles = result.data!['styles']! as List;
+      expect(styles, isNotEmpty);
+    });
+
+    test('dimstyle refuses a non-positive text height', () async {
+      final result = await run('annot.dimstyle', {
+        'name': 'ARCH',
+        'textHeight': 0,
+      });
+      expect(result.status, CommandStatus.failed);
+      expect(document.namedDimStyle('ARCH'), isNull);
+    });
+
     test('continue dimension chains from the previous second origin', () async {
       final created = await run('draw.dimLinear', {
         'first': [0, 0],

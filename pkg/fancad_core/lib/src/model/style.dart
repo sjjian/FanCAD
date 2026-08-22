@@ -450,6 +450,44 @@ class DimStyleDef {
   final int decimalPlaces;
   final String textStyle;
 
+  /// Overall scale used when regenerating geometry. Non-positive values
+  /// collapse to 1 so a broken style cannot hide the dimension.
+  double get overallScale => scale > 0 && scale.isFinite ? scale : 1;
+
+  double get scaledTextHeight => textHeight * overallScale;
+  double get scaledArrowSize => arrowSize * overallScale;
+  double get scaledExtensionOffset => extensionLineOffset * overallScale;
+  double get scaledExtensionExtend => extensionLineExtend * overallScale;
+
+  /// DIMDEC, clamped to the 0–8 range AutoCAD accepts.
+  int get clampedDecimals {
+    if (decimalPlaces < 0) return 0;
+    if (decimalPlaces > 8) return 8;
+    return decimalPlaces;
+  }
+
+  DimStyleDef copyWith({
+    String? name,
+    double? textHeight,
+    double? arrowSize,
+    double? extensionLineOffset,
+    double? extensionLineExtend,
+    double? textGap,
+    double? scale,
+    int? decimalPlaces,
+    String? textStyle,
+  }) => DimStyleDef(
+    name: name ?? this.name,
+    textHeight: textHeight ?? this.textHeight,
+    arrowSize: arrowSize ?? this.arrowSize,
+    extensionLineOffset: extensionLineOffset ?? this.extensionLineOffset,
+    extensionLineExtend: extensionLineExtend ?? this.extensionLineExtend,
+    textGap: textGap ?? this.textGap,
+    scale: scale ?? this.scale,
+    decimalPlaces: decimalPlaces ?? this.decimalPlaces,
+    textStyle: textStyle ?? this.textStyle,
+  );
+
   @override
   String toString() => 'DimStyleDef($name)';
 }

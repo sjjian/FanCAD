@@ -33,6 +33,7 @@ class DxfWriter {
     pair(0, 'SECTION');
     pair(2, 'TABLES');
     _layers(pair, document);
+    _dimStyles(pair, document);
     pair(0, 'ENDSEC');
 
     pair(0, 'SECTION');
@@ -113,6 +114,28 @@ class DxfWriter {
       pair(70, (layer.frozen ? 1 : 0) | (layer.locked ? 4 : 0));
       pair(62, _aci(layer.color));
       pair(6, layer.lineType);
+    }
+    pair(0, 'ENDTAB');
+  }
+
+  void _dimStyles(void Function(int, Object) pair, CadDocument document) {
+    pair(0, 'TABLE');
+    pair(2, 'DIMSTYLE');
+    pair(70, document.dimStyles.length);
+    for (final style in document.dimStyles.values) {
+      pair(0, 'DIMSTYLE');
+      pair(100, 'AcDbSymbolTableRecord');
+      pair(100, 'AcDbDimStyleTableRecord');
+      pair(2, style.name);
+      pair(70, 0);
+      pair(140, style.textHeight);
+      pair(41, style.arrowSize);
+      pair(42, style.extensionLineOffset);
+      pair(44, style.extensionLineExtend);
+      pair(46, style.textGap);
+      pair(40, style.scale);
+      pair(271, style.decimalPlaces);
+      pair(7, style.textStyle);
     }
     pair(0, 'ENDTAB');
   }

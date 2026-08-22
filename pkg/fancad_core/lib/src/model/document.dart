@@ -275,6 +275,9 @@ class CadDocument implements BlockLookup, StyleResolver {
   /// Name of the layer that new entities are created on.
   String currentLayer = '0';
 
+  /// Dimension style new dimensions are created with.
+  String currentDimStyle = 'Standard';
+
   /// Tolerance used when the caller does not supply one, in model units.
   double defaultTolerance = 1e-3;
 
@@ -451,6 +454,43 @@ class CadDocument implements BlockLookup, StyleResolver {
   void putDimStyle(DimStyleDef style) {
     _dimStyles[style.name] = style;
     _version++;
+  }
+
+  /// The named style, or null when the table has no match.
+  DimStyleDef? namedDimStyle(String name) {
+    final direct = _dimStyles[name];
+    if (direct != null) return direct;
+    final needle = name.toLowerCase();
+    for (final style in _dimStyles.values) {
+      if (style.name.toLowerCase() == needle) return style;
+    }
+    return null;
+  }
+
+  @override
+  DimStyleDef dimStyle(String name) =>
+      namedDimStyle(name) ??
+      namedDimStyle('Standard') ??
+      DimStyleDef.standard;
+
+  /// Removes a dimension style. Refuses to drop Standard.
+  DimStyleDef? removeDimStyle(String name) {
+    if (name.toLowerCase() == 'standard') return null;
+    DimStyleDef? removed = _dimStyles.remove(name);
+    if (removed == null) {
+      final match = namedDimStyle(name);
+      if (match == null || match.name.toLowerCase() == 'standard') {
+        return null;
+      }
+      removed = _dimStyles.remove(match.name);
+    }
+    if (removed != null) {
+      if (currentDimStyle.toLowerCase() == removed.name.toLowerCase()) {
+        currentDimStyle = 'Standard';
+      }
+      _version++;
+    }
+    return removed;
   }
 
   void putBlock(BlockRecord block) {
