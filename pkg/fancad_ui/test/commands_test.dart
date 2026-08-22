@@ -419,6 +419,32 @@ void main() {
       );
     });
 
+    test('change linetype installs a stock pattern and assigns it', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.changeLinetype', {
+        'ids': [id],
+        'linetype': 'dashed',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entity(id)!.props.lineType, 'DASHED');
+      expect(document.lineTypes['DASHED'], isNotNull);
+      expect(document.lineTypes['DASHED']!.pattern, isNotEmpty);
+    });
+
+    test('change linetype rejects an unknown name', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.changeLinetype', {
+        'ids': [id],
+        'linetype': 'NOT-A-TYPE',
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entity(id)!.props.lineType, 'ByLayer');
+    });
+
     test('match properties copies layer and colour onto the target', () async {
       final target = await drawLine(0, 5, 10, 5);
       await run('layer.new', {'name': 'WALLS', 'color': '1'});

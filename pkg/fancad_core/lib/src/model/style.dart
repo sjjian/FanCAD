@@ -267,6 +267,76 @@ class LineTypeDef {
     description: 'Solid line',
   );
 
+  static const LineTypeDef dashed = LineTypeDef(
+    name: 'DASHED',
+    description: 'Dashed __ __ __',
+    pattern: [12, -6],
+    patternLength: 18,
+  );
+
+  static const LineTypeDef hidden = LineTypeDef(
+    name: 'HIDDEN',
+    description: 'Hidden __ __ __',
+    pattern: [6, -3],
+    patternLength: 9,
+  );
+
+  static const LineTypeDef center = LineTypeDef(
+    name: 'CENTER',
+    description: 'Center ____ _ ____ _',
+    pattern: [24, -6, 6, -6],
+    patternLength: 42,
+  );
+
+  static const LineTypeDef phantom = LineTypeDef(
+    name: 'PHANTOM',
+    description: 'Phantom ____ _ _ ____',
+    pattern: [24, -6, 6, -6, 6, -6],
+    patternLength: 54,
+  );
+
+  static const LineTypeDef dot = LineTypeDef(
+    name: 'DOT',
+    description: 'Dot . . . .',
+    pattern: [0, -6],
+    patternLength: 6,
+  );
+
+  static const LineTypeDef dashdot = LineTypeDef(
+    name: 'DASHDOT',
+    description: 'Dash dot __ . __ .',
+    pattern: [12, -6, 0, -6],
+    patternLength: 24,
+  );
+
+  static const LineTypeDef divide = LineTypeDef(
+    name: 'DIVIDE',
+    description: 'Divide __ . . __ . .',
+    pattern: [12, -6, 0, -6, 0, -6],
+    patternLength: 30,
+  );
+
+  /// The stock patterns CHANGE LINETYPE can install when a drawing has none.
+  static const List<LineTypeDef> builtins = [
+    continuous,
+    dashed,
+    hidden,
+    center,
+    phantom,
+    dot,
+    dashdot,
+    divide,
+  ];
+
+  /// Looks up a stock pattern by name, ignoring case.
+  static LineTypeDef? builtin(String name) {
+    final key = name.toLowerCase();
+    for (final def in builtins) {
+      if (def.name.toLowerCase() == key) return def;
+    }
+    return null;
+  }
+
   final String name;
   final String description;
   final List<double> pattern;
