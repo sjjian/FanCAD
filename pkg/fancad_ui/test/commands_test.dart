@@ -1822,6 +1822,56 @@ void main() {
       expect(document.activeEntities, isEmpty);
     });
 
+    test('minsert places a block as one rectangular array', () async {
+      final a = await drawLine(0, 0, 2, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'RIVET',
+        'base': [0, 0],
+      });
+
+      final result = await run('edit.minsert', {
+        'name': 'rivet',
+        'at': [10, 4],
+        'columns': 3,
+        'rows': 2,
+        'columnSpacing': 5,
+        'rowSpacing': 8,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeEntities.whereType<InsertEntity>(), hasLength(2));
+      final grid = document.entity(
+        (result.data!['ids']! as List).first as int,
+      )! as InsertEntity;
+      expect(grid.blockName, 'RIVET');
+      expect(grid.position, const Vec2(10, 4));
+      expect(grid.columnCount, 3);
+      expect(grid.rowCount, 2);
+      expect(grid.columnSpacing, 5);
+      expect(grid.rowSpacing, 8);
+      expect(grid.isArray, isTrue);
+    });
+
+    test('minsert refuses a 1 by 1 grid', () async {
+      final a = await drawLine(0, 0, 2, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'DOT',
+        'base': [0, 0],
+      });
+
+      final result = await run('edit.minsert', {
+        'name': 'DOT',
+        'at': [0, 0],
+        'columns': 1,
+        'rows': 1,
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.activeEntities.whereType<InsertEntity>(), hasLength(1));
+    });
+
     test('join merges connected lines into one polyline', () async {
       final a = await drawLine(0, 0, 10, 0);
       final b = await drawLine(10, 0, 10, 10);
