@@ -122,6 +122,39 @@ void main() {
       expect(document.entities.whereType<HatchEntity>(), isEmpty);
     });
 
+    test('mtext places wrapped multiline text', () async {
+      final result = await run('draw.mtext', {
+        'content': 'NOTE\nRev A',
+        'at': [10, 20],
+        'height': 2.5,
+        'width': 40,
+        'justify': 'tr',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final text = document.entities.whereType<MTextEntity>().single;
+      expect(text.content, r'NOTE\PRev A');
+      expect(text.position, const Vec2(10, 20));
+      expect(text.height, closeTo(2.5, 1e-9));
+      expect(text.rectangleWidth, closeTo(40, 1e-9));
+      expect(text.attachment, 3);
+      expect(text.hAlign, TextHAlign.right);
+      expect(text.vAlign, TextVAlign.top);
+
+      await run('edit.undo');
+      expect(document.entities.whereType<MTextEntity>(), isEmpty);
+    });
+
+    test('mtext refuses a bad attachment', () async {
+      final result = await run('draw.mtext', {
+        'content': 'A',
+        'at': [0, 0],
+        'attachment': 0,
+      });
+      expect(result.status, CommandStatus.failed);
+      expect(document.entities.whereType<MTextEntity>(), isEmpty);
+    });
+
     test('rectangle refuses a degenerate corner pair', () async {
       final result = await run('draw.rectangle', {
         'corner1': [5, 5],
