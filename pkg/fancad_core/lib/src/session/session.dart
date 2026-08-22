@@ -33,6 +33,10 @@ class DocumentSession {
   String? _title;
   bool _dirty = false;
 
+  /// Paper tab left by VPMAX so VPMIN can restore the sheet. Not undo state.
+  String? maximizedLayoutName;
+  int? maximizedViewportIndex;
+
   final StreamController<DocumentChange> _changes =
       StreamController<DocumentChange>.broadcast(sync: true);
   final StreamController<CommittedTransaction> _transactions =

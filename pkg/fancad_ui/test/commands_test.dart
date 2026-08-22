@@ -2948,6 +2948,37 @@ void main() {
       expect(result.status, CommandStatus.failed);
     });
 
+    test('vpmax opens model space through the viewport', () async {
+      await run('layout.new');
+      await run('layout.mview', {
+        'corner1': [10, 10],
+        'corner2': [200, 150],
+        'scale': 0.5,
+      });
+
+      final result = await run('layout.vpmax');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayout.isModelSpace, isTrue);
+      expect(workspace.active!.session.maximizedLayoutName, 'Layout1');
+      expect(workspace.active!.session.maximizedViewportIndex, 0);
+
+      final back = await run('layout.vpmin');
+      expect(back.status, CommandStatus.ok, reason: back.message);
+      expect(document.activeLayoutName, 'Layout1');
+      expect(workspace.active!.session.maximizedLayoutName, isNull);
+    });
+
+    test('vpmax refuses the model tab', () async {
+      final result = await run('layout.vpmax');
+      expect(result.status, CommandStatus.failed);
+    });
+
+    test('vpmin refuses when nothing is maximized', () async {
+      final result = await run('layout.vpmin');
+      expect(result.status, CommandStatus.failed);
+    });
+
     test('mview honours an explicit scale', () async {
       document.addLayout(
         const Layout(

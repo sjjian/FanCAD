@@ -19,6 +19,8 @@ class ProCommands {
     _mview(),
     _vpScale(),
     _vpLock(),
+    _vpMax(),
+    _vpMin(),
     _plot(),
     _plotPdf(),
     _xrefAttach(),
@@ -66,6 +68,9 @@ class ProCommands {
       if (!context.document.setActiveLayout(name)) {
         return CommandResult.failed('No layout named $name');
       }
+      context.session
+        ..maximizedLayoutName = null
+        ..maximizedViewportIndex = null;
       context.services.invalidate();
       context.services.zoomTo(null);
       return CommandResult.ok(message: 'Active layout is $name');
@@ -812,6 +817,106 @@ class ProCommands {
     }
     return null;
   }
+
+  static CommandDescriptor _vpMax() => CommandDescriptor(
+    id: 'layout.vpmax',
+    title: 'Maximize Viewport',
+    category: _category,
+    aliases: const ['vpmax'],
+    description:
+        'Opens model space framed to a paper viewport so the model can '
+        'be edited through that window. VPMIN returns to the sheet.',
+    params: const [
+      ParamSpec(
+        name: 'index',
+        type: ParamType.integer,
+        description: 'Viewport index on the current layout, from 0',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'point',
+        type: ParamType.point,
+        description: 'A point on the viewport to maximize',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      if (context.session.maximizedLayoutName != null &&
+          context.document.activeLayout.isModelSpace) {
+        return CommandResult.ok(
+          message: 'Viewport is already maximized.',
+          data: {
+            'layout': context.session.maximizedLayoutName,
+            'index': context.session.maximizedViewportIndex,
+          },
+        );
+      }
+      final layout = context.document.activeLayout;
+      if (layout.isModelSpace) {
+        return const CommandResult.failed(
+          'VPMAX only works on a paper layout.',
+        );
+      }
+      if (layout.viewports.isEmpty) {
+        return const CommandResult.failed('This layout has no viewports.');
+      }
+      final index = await _resolveViewportIndex(context, layout);
+      if (index == null) {
+        return const CommandResult.failed('No viewport was selected.');
+      }
+      final viewport = layout.viewports[index];
+      final model = context.document.layouts.firstWhere(
+        (item) => item.isModelSpace,
+      );
+      if (!context.document.setActiveLayout(model.name)) {
+        return const CommandResult.failed('Model space is missing.');
+      }
+      context.session
+        ..maximizedLayoutName = layout.name
+        ..maximizedViewportIndex = index;
+      context.services.invalidate();
+      context.services.zoomTo(viewport.modelWindow);
+      return CommandResult.ok(
+        message: 'Maximized viewport $index from ${layout.name}.',
+        data: {
+          'layout': layout.name,
+          'index': index,
+          'center': [viewport.modelCenter.x, viewport.modelCenter.y],
+          'scale': viewport.scale,
+        },
+      );
+    },
+  );
+
+  static CommandDescriptor _vpMin() => CommandDescriptor(
+    id: 'layout.vpmin',
+    title: 'Minimize Viewport',
+    category: _category,
+    aliases: const ['vpmin'],
+    description:
+        'Returns to the paper layout left by VPMAX and frames the sheet.',
+    handler: (context) async {
+      final name = context.session.maximizedLayoutName;
+      if (name == null) {
+        return const CommandResult.failed('No viewport is maximized.');
+      }
+      if (!context.document.setActiveLayout(name)) {
+        context.session
+          ..maximizedLayoutName = null
+          ..maximizedViewportIndex = null;
+        return CommandResult.failed('Layout "$name" is gone.');
+      }
+      context.session
+        ..maximizedLayoutName = null
+        ..maximizedViewportIndex = null;
+      context.services.invalidate();
+      context.services.zoomTo(null);
+      return CommandResult.ok(
+        message: 'Returned to $name.',
+        data: {'layout': name},
+      );
+    },
+  );
 
   static CommandDescriptor _plot() => CommandDescriptor(
     id: 'print.exportSvg',
