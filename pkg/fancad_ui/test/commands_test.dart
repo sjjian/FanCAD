@@ -372,6 +372,31 @@ void main() {
       expect(points[1].position.y, closeTo(2, 1e-9));
     });
 
+    test('measure follows a joined line and arc along the bulge', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {'ids': [lineId, arcId]});
+      final id = document.entities.first.id;
+
+      final result = await run('draw.measure', {
+        'target': id,
+        'spacing': 10,
+        'pick': [0, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final points = document.entities.whereType<PointEntity>().toList();
+      expect(points, hasLength(2));
+      expect(points[0].position.x, closeTo(10, 1e-6));
+      expect(points[1].position.x, closeTo(10 * math.cos(1), 1e-6));
+      expect(points[1].position.y, closeTo(10 * math.sin(1), 1e-6));
+    });
+
     test('measure places points around a circle', () async {
       final created = await run('draw.circle', {
         'center': [0, 0],

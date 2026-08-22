@@ -1079,9 +1079,10 @@ class DrawCommands {
     category: _category,
     aliases: const ['me', 'measure'],
     description:
-        'Places point markers at a fixed spacing along a line, straight '
-        'polyline, arc or circle. Open objects start from the nearer end; a '
-        'circle starts at the pick. Endpoints are not marked.',
+        'Places point markers at a fixed spacing along a line, polyline, '
+        'arc or circle. Open objects start from the nearer end; a circle '
+        'starts at the pick. Endpoints are not marked. A bulge is followed '
+        'as its arc, not the chord.',
     params: const [
       ParamSpec(
         name: 'target',
@@ -1124,12 +1125,7 @@ class DrawCommands {
           target is! ArcEntity &&
           target is! CircleEntity) {
         return const CommandResult.failed(
-          'Measure supports lines, straight polylines, arcs and circles.',
-        );
-      }
-      if (target is PolylineEntity && target.hasBulges) {
-        return const CommandResult.failed(
-          'Measure cannot follow a bulged polyline.',
+          'Measure supports lines, polylines, arcs and circles.',
         );
       }
 

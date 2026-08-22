@@ -1389,6 +1389,30 @@ void main() {
       expect(points[0], const Vec2(10, 5));
       expect(points[1], const Vec2(0, 10));
     });
+
+    test('follows a bulge as an arc, not the chord', () {
+      final quarter = PolylineEntity(
+        id: 1,
+        vertices: Float64List.fromList([
+          10,
+          0,
+          math.tan(math.pi / 8),
+          0,
+          10,
+          0,
+        ]),
+      );
+
+      final points = Construct.measurePolyline(
+        quarter,
+        5 * math.pi / 2,
+        const Vec2(10, 0),
+      );
+
+      expect(points, hasLength(1));
+      expect(points.first.x, closeTo(10 * math.cos(math.pi / 4), 1e-9));
+      expect(points.first.y, closeTo(10 * math.sin(math.pi / 4), 1e-9));
+    });
   });
 
   group('measureArc', () {

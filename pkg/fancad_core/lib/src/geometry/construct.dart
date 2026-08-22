@@ -2070,16 +2070,14 @@ class Construct {
   ///
   /// Open polylines match [measureLine]: the first node is one interval in from
   /// the end nearer [pick], and a leftover shorter than [spacing] is unmarked.
-  /// A closed loop always walks forward from the start vertex.
+  /// A closed loop always walks forward from the start vertex. A bulge is
+  /// measured along its arc, not the chord.
   static List<Vec2> measurePolyline(
     PolylineEntity polyline,
     double spacing,
     Vec2 pick,
   ) {
-    if (spacing <= 0 ||
-        !spacing.isFinite ||
-        polyline.hasBulges ||
-        polyline.vertexCount < 2) {
+    if (spacing <= 0 || !spacing.isFinite || polyline.vertexCount < 2) {
       return const [];
     }
     final length = _polylineLength(polyline);
