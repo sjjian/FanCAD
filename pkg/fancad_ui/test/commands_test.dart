@@ -648,6 +648,28 @@ void main() {
       expect((document.entity(id)! as LineEntity).end.x, closeTo(2, 1e-9));
     });
 
+    test('break splits a polyline at a vertex', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.break', {
+        'target': id,
+        'first': [10, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      final remnant = document.entity(id)! as PolylineEntity;
+      expect(remnant.vertexCount, 2);
+      expect(remnant.vertexAt(1), const Vec2(10, 0));
+    });
+
     test('lengthen sets the total length from the picked end', () async {
       final id = await drawLine(0, 0, 10, 0);
 

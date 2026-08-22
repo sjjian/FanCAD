@@ -954,6 +954,171 @@ class Construct {
     return pieces;
   }
 
+  /// Breaks [polyline] at [first], or drops the span from [first] to [second].
+  ///
+  /// Straight segments only: a bulge would need its own split. One point on an
+  /// open polyline splits it in two; on a closed polyline it opens the loop
+  /// there. Two points remove the part that runs from the first pick toward
+  /// the second, which is how AutoCAD chooses which side of a closed shape
+  /// disappears.
+  ///
+  /// Returns null when nothing would change; an empty list when the whole
+  /// polyline is removed.
+  static List<PolylineEntity>? breakPolyline(
+    PolylineEntity polyline,
+    Vec2 first, [
+    Vec2? second,
+  ]) {
+    if (polyline.hasBulges || polyline.vertexCount < 2) return null;
+    final hit1 = _polylineHit(polyline, first);
+    if (hit1 == null) return null;
+    if (second == null) return _breakPolylineAt(polyline, [hit1]);
+    final hit2 = _polylineHit(polyline, second);
+    if (hit2 == null) return null;
+    return _breakPolylineAt(polyline, [hit1, hit2]);
+  }
+
+  static _PolyHit? _polylineHit(PolylineEntity polyline, Vec2 pick) {
+    final count = polyline.vertexCount;
+    final segments = polyline.closed ? count : count - 1;
+    if (segments <= 0) return null;
+    var bestDistance = double.infinity;
+    var bestSegment = 0;
+    var bestT = 0.0;
+    var bestPoint = polyline.vertexAt(0);
+    for (var i = 0; i < segments; i++) {
+      final start = polyline.vertexAt(i);
+      final end = polyline.vertexAt((i + 1) % count);
+      final delta = end - start;
+      final lengthSquared = delta.lengthSquared;
+      if (lengthSquared < 1e-20) continue;
+      final t = ((pick - start).dot(delta) / lengthSquared).clamp(0.0, 1.0);
+      final point = start + delta * t;
+      final distance = pick.distanceSquaredTo(point);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestSegment = i;
+        bestT = t;
+        bestPoint = point;
+      }
+    }
+    return _PolyHit(bestSegment, bestT, bestPoint);
+  }
+
+  static List<PolylineEntity>? _breakPolylineAt(
+    PolylineEntity polyline,
+    List<_PolyHit> hits,
+  ) {
+    final verts = _polylineVertsWithBreaks(polyline, hits);
+    final indices = [for (final hit in hits) _nearestVertexIndex(verts, hit.point)];
+    if (hits.length == 1) {
+      final index = indices.first;
+      if (!polyline.closed) {
+        if (index <= 0 || index >= verts.length - 1) return null;
+        final left = verts.sublist(0, index + 1);
+        final right = verts.sublist(index);
+        return [
+          _openPolyline(polyline, left, polyline.id),
+          _openPolyline(polyline, right, 0),
+        ];
+      }
+      final opened = [
+        ...verts.sublist(index),
+        ...verts.sublist(0, index),
+        verts[index],
+      ];
+      if (opened.length < 3) return const [];
+      return [_openPolyline(polyline, opened, polyline.id)];
+    }
+
+    final first = indices[0];
+    final second = indices[1];
+    if (first == second) {
+      return _breakPolylineAt(polyline, [hits.first]);
+    }
+    if (!polyline.closed) {
+      final lo = first < second ? first : second;
+      final hi = first < second ? second : first;
+      final pieces = <PolylineEntity>[];
+      final left = verts.sublist(0, lo + 1);
+      final right = verts.sublist(hi);
+      if (left.length >= 2) {
+        pieces.add(_openPolyline(polyline, left, polyline.id));
+      }
+      if (right.length >= 2) {
+        pieces.add(
+          _openPolyline(polyline, right, pieces.isEmpty ? polyline.id : 0),
+        );
+      }
+      if (pieces.isEmpty) return const [];
+      if (pieces.length == 1 &&
+          pieces.first.vertexCount == polyline.vertexCount &&
+          !polyline.closed) {
+        return null;
+      }
+      return pieces;
+    }
+
+    final remaining = first < second
+        ? [...verts.sublist(second), ...verts.sublist(0, first + 1)]
+        : verts.sublist(second, first + 1);
+    if (remaining.length < 2) return const [];
+    return [_openPolyline(polyline, remaining, polyline.id)];
+  }
+
+  static List<Vec2> _polylineVertsWithBreaks(
+    PolylineEntity polyline,
+    List<_PolyHit> hits,
+  ) {
+    final count = polyline.vertexCount;
+    final segments = polyline.closed ? count : count - 1;
+    final out = <Vec2>[];
+    for (var i = 0; i < count; i++) {
+      out.add(polyline.vertexAt(i));
+      if (i >= segments) continue;
+      final extras = [
+        for (final hit in hits)
+          if (hit.segment == i && hit.t > 1e-9 && hit.t < 1 - 1e-9) hit,
+      ]..sort((a, b) => a.t.compareTo(b.t));
+      for (final hit in extras) {
+        out.add(hit.point);
+      }
+    }
+    return out;
+  }
+
+  static int _nearestVertexIndex(List<Vec2> points, Vec2 target) {
+    var best = 0;
+    var bestDistance = points.first.distanceSquaredTo(target);
+    for (var i = 1; i < points.length; i++) {
+      final distance = points[i].distanceSquaredTo(target);
+      if (distance < bestDistance) {
+        best = i;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  }
+
+  static PolylineEntity _openPolyline(
+    PolylineEntity source,
+    List<Vec2> points,
+    int id,
+  ) {
+    final created = PolylineEntity.fromPoints(
+      id: id,
+      props: source.props,
+      points: points,
+    );
+    if (source.constantWidth == 0) return created;
+    return PolylineEntity(
+      id: created.id,
+      props: created.props,
+      vertices: created.vertices,
+      constantWidth: source.constantWidth,
+    );
+  }
+
   /// Direction from the corner along the side of [line] that [pick] sits on.
   static Vec2? _filletKeepDir(LineEntity line, Vec2 corner, Vec2 pick) {
     final along = line.end - line.start;
@@ -1428,6 +1593,14 @@ class Construct {
 }
 
 /// The two trimmed lines and optional joining arc produced by [Construct.filletLines].
+class _PolyHit {
+  const _PolyHit(this.segment, this.t, this.point);
+
+  final int segment;
+  final double t;
+  final Vec2 point;
+}
+
 class FilletResult {
   const FilletResult({
     required this.first,

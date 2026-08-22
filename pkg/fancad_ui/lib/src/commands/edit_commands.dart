@@ -1342,13 +1342,15 @@ class EditCommands {
     category: _category,
     aliases: const ['br', 'break'],
     description:
-        'Splits a line at a point, or removes the portion between two points. '
-        'Omit the second point to only split.',
+        'Splits a line or straight polyline at a point, or removes the portion '
+        'between two points. A closed polyline opens at the first point; a '
+        'second point drops the span running toward it. Omit the second point '
+        'to only split.',
     params: const [
       ParamSpec(
         name: 'target',
         type: ParamType.entity,
-        description: 'The line to break',
+        description: 'The line or polyline to break',
         required: false,
       ),
       ParamSpec.point('first', description: 'First break point'),
@@ -1367,7 +1369,7 @@ class EditCommands {
       } else {
         context.selection.clear();
         final picked = await context.input.selection(
-          'BREAK  Select a line:',
+          'BREAK  Select a line or polyline:',
           useExistingSelection: false,
           single: true,
         );
@@ -1376,9 +1378,9 @@ class EditCommands {
       }
 
       final target = context.document.entity(targetId);
-      if (target is! LineEntity) {
+      if (target is! LineEntity && target is! PolylineEntity) {
         return const CommandResult.failed(
-          'Break currently supports lines only.',
+          'Break supports lines and straight polylines.',
         );
       }
 
@@ -1399,10 +1401,12 @@ class EditCommands {
         ..setPreview(null)
         ..setMarkers(const []);
 
-      final pieces = Construct.breakLine(target, first, second);
+      final pieces = target is LineEntity
+          ? Construct.breakLine(target, first, second)
+          : Construct.breakPolyline(target as PolylineEntity, first, second);
       if (pieces == null) {
         return const CommandResult.failed(
-          'The break point is at an end of the line, so nothing changed.',
+          'The break point is at an end of the object, so nothing changed.',
         );
       }
 
@@ -1412,11 +1416,13 @@ class EditCommands {
           return;
         }
         transaction.modify(pieces.first);
-        if (pieces.length > 1) transaction.add(pieces[1]);
+        for (var i = 1; i < pieces.length; i++) {
+          transaction.add(pieces[i]);
+        }
       });
       if (committed == null) {
         return const CommandResult.failed(
-          'Nothing was broken; the line may be on a locked layer.',
+          'Nothing was broken; the object may be on a locked layer.',
         );
       }
       context.selection.replace([
@@ -1426,10 +1432,10 @@ class EditCommands {
       return CommandResult(
         status: CommandStatus.ok,
         message: pieces.isEmpty
-            ? 'Break: the line was removed.'
+            ? 'Break: the object was removed.'
             : pieces.length == 1
             ? 'Break: one remnant remains.'
-            : 'Break: the line was split.',
+            : 'Break: the object was split.',
         data: {
           'ids': [
             if (pieces.isNotEmpty) pieces.first.id,

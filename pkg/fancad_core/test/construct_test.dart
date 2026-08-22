@@ -686,6 +686,60 @@ void main() {
     });
   });
 
+  group('breakPolyline', () {
+    test('splits an open polyline at an interior vertex', () {
+      final polyline = PolylineEntity.fromPoints(
+        id: 1,
+        points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10)],
+      );
+
+      final pieces = Construct.breakPolyline(polyline, const Vec2(10, 0));
+
+      expect(pieces, hasLength(2));
+      expect(pieces![0].vertexAt(0), const Vec2(0, 0));
+      expect(pieces[0].vertexAt(1), const Vec2(10, 0));
+      expect(pieces[1].vertexAt(0), const Vec2(10, 0));
+      expect(pieces[1].vertexAt(1), const Vec2(10, 10));
+    });
+
+    test('opens a closed polyline at one point', () {
+      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final pieces = Construct.breakPolyline(square, const Vec2(5, 0));
+
+      expect(pieces, hasLength(1));
+      expect(pieces!.first.closed, isFalse);
+      expect(pieces.first.vertexAt(0).x, closeTo(5, 1e-9));
+      expect(pieces.first.vertexAt(0).y, closeTo(0, 1e-9));
+      expect(
+        pieces.first.vertexAt(pieces.first.vertexCount - 1).x,
+        closeTo(5, 1e-9),
+      );
+    });
+
+    test('drops the span between two points on an open polyline', () {
+      final polyline = PolylineEntity.fromPoints(
+        id: 1,
+        points: const [
+          Vec2(0, 0),
+          Vec2(10, 0),
+          Vec2(10, 10),
+          Vec2(20, 10),
+        ],
+      );
+
+      final pieces = Construct.breakPolyline(
+        polyline,
+        const Vec2(10, 0),
+        const Vec2(10, 10),
+      );
+
+      expect(pieces, hasLength(2));
+      expect(pieces![0].vertexAt(1), const Vec2(10, 0));
+      expect(pieces[1].vertexAt(0), const Vec2(10, 10));
+      expect(pieces[1].vertexAt(1), const Vec2(20, 10));
+    });
+  });
+
   group('reverse', () {
     test('swaps the ends of a line', () {
       final reversed = Construct.reverse(line(0, 0, 10, 5)) as LineEntity;
