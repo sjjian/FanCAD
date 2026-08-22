@@ -225,6 +225,20 @@ void main() {
       expect(dim.displayText, 'Ø10.00');
     });
 
+    test('angular dimension labels the picked sector', () async {
+      final result = await run('draw.dimAngular', {
+        'vertex': [0, 0],
+        'first': [10, 0],
+        'second': [0, 10],
+        'dimLine': [4, 4],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entities.first as DimensionEntity;
+      expect(dim.measurement, closeTo(90, 1e-9));
+      expect(dim.displayText, '90.00°');
+    });
+
     test('donut creates a wide circular polyline', () async {
       final result = await run('draw.donut', {
         'inside': 6,

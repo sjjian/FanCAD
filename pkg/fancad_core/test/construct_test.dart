@@ -187,6 +187,41 @@ void main() {
     });
   });
 
+  group('angularDimension', () {
+    test('labels the sector that contains the dim-arc pick', () {
+      final interior = Construct.angularDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(0, 10),
+        const Vec2(4, 4),
+      );
+      expect(interior, isNotNull);
+      expect(interior!.measurement, closeTo(90, 1e-9));
+      expect(interior.displayText, '90.00°');
+
+      final exterior = Construct.angularDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(0, 10),
+        const Vec2(-4, -4),
+      );
+      expect(exterior, isNotNull);
+      expect(exterior!.measurement, closeTo(270, 1e-9));
+    });
+
+    test('returns null when a ray collapses onto the vertex', () {
+      expect(
+        Construct.angularDimension(
+          const Vec2(0, 0),
+          const Vec2(0, 0),
+          const Vec2(1, 0),
+          const Vec2(1, 1),
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('circleTangentRadius', () {
     test('sits in the picked quadrant of two crossing lines', () {
       final circle = Construct.circleTangentRadius(

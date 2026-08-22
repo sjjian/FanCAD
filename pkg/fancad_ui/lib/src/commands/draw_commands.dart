@@ -36,6 +36,7 @@ class DrawCommands {
     _dimAligned(),
     _dimRadius(),
     _dimDiameter(),
+    _dimAngular(),
   ];
 
   static const String _category = 'Draw';
@@ -1582,6 +1583,105 @@ class DrawCommands {
       return _commit(context, 'Diameter Dimension', [entity]);
     },
   );
+
+  static CommandDescriptor _dimAngular() => CommandDescriptor(
+    id: 'draw.dimAngular',
+    title: 'Angular Dimension',
+    category: _category,
+    aliases: const ['dimangular', 'dimang'],
+    icon: 'dimension',
+    description:
+        'Places an angular dimension. The first point is the vertex; the '
+        'next two define the rays; the last pick sits on the dimension arc '
+        'and chooses which sector is labelled.',
+    params: const [
+      ParamSpec.point('vertex', description: 'Vertex of the angle'),
+      ParamSpec.point('first', description: 'A point on the first ray'),
+      ParamSpec.point('second', description: 'A point on the second ray'),
+      ParamSpec.point(
+        'dimLine',
+        description: 'A point on the dimension arc',
+      ),
+    ],
+    handler: (context) async {
+      final vertex = await context.resolvePoint(
+        'vertex',
+        'DIMANGULAR  Specify vertex:',
+      );
+      context.input
+        ..setMarkers([vertex])
+        ..setPreview((cursor) => [OverlayLine(vertex, cursor)]);
+      final first = await context.resolvePoint(
+        'first',
+        'DIMANGULAR  Specify a point on the first ray:',
+        basePoint: vertex,
+      );
+      context.input
+        ..setMarkers([vertex, first])
+        ..setPreview((cursor) => [
+          OverlayLine(vertex, first),
+          OverlayLine(vertex, cursor),
+        ]);
+      final second = await context.resolvePoint(
+        'second',
+        'DIMANGULAR  Specify a point on the second ray:',
+        basePoint: vertex,
+      );
+      context.input
+        ..setMarkers([vertex, first, second])
+        ..setPreview((cursor) => _dimAngularOverlay(vertex, first, second, cursor));
+      final dimLine = await context.resolvePoint(
+        'dimLine',
+        'DIMANGULAR  Specify dimension arc location:',
+        basePoint: vertex,
+      );
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+      final entity = Construct.angularDimension(
+        vertex,
+        first,
+        second,
+        dimLine,
+        props: EntityProps(layer: context.document.currentLayer),
+      );
+      if (entity == null) {
+        return const CommandResult.failed(
+          'The three points do not form an angle.',
+        );
+      }
+      return _commit(context, 'Angular Dimension', [entity]);
+    },
+  );
+
+  static List<OverlayShape> _dimAngularOverlay(
+    Vec2 vertex,
+    Vec2 first,
+    Vec2 second,
+    Vec2 cursor,
+  ) {
+    final dim = Construct.angularDimension(vertex, first, second, cursor);
+    if (dim == null) {
+      return [
+        OverlayLine(vertex, first),
+        OverlayLine(vertex, second),
+      ];
+    }
+    final start = (dim.definitionPoints[1] - vertex).angle;
+    final sweep = dim.measurement * math.pi / 180;
+    final radius = vertex.distanceTo(cursor);
+    return [
+      OverlayLine(vertex, first),
+      OverlayLine(vertex, second),
+      if (radius > 1e-9)
+        OverlayArc(
+          center: vertex,
+          radius: radius,
+          startAngle: start,
+          sweep: sweep,
+        ),
+    ];
+  }
 
   /// Adds [entities] in one transaction and reports what happened.
   ///

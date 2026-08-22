@@ -205,6 +205,61 @@ class Construct {
     );
   }
 
+  /// An angular dimension at [vertex] between [first] and [second].
+  ///
+  /// [dimLine] sits on the dimension arc and chooses the sector: the same
+  /// three points can be 90° or 270°, and the pick is which one goes on the
+  /// drawing. Degrees are stored so the text is what a drawing reader expects.
+  static DimensionEntity? angularDimension(
+    Vec2 vertex,
+    Vec2 first,
+    Vec2 second,
+    Vec2 dimLine, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    if (first.distanceTo(vertex) < 1e-9 || second.distanceTo(vertex) < 1e-9) {
+      return null;
+    }
+    var a = first;
+    var b = second;
+    var start = (a - vertex).angle;
+    var end = (b - vertex).angle;
+    if (dimLine.distanceTo(vertex) >= 1e-9) {
+      final via = (dimLine - vertex).angle;
+      if (angularSweep(start, via) > angularSweep(start, end) + 1e-9) {
+        a = second;
+        b = first;
+        start = (a - vertex).angle;
+        end = (b - vertex).angle;
+      }
+    } else if (angularSweep(start, end) > math.pi) {
+      a = second;
+      b = first;
+      start = (a - vertex).angle;
+      end = (b - vertex).angle;
+    }
+    final sweep = angularSweep(start, end);
+    final degrees = sweep * 180 / math.pi;
+    if (degrees < 1e-6 || degrees > 360 - 1e-6) return null;
+    final text = dimLine.distanceTo(vertex) < 1e-9
+        ? vertex +
+            Vec2.polar(
+              start + sweep / 2,
+              math.min(a.distanceTo(vertex), b.distanceTo(vertex)) * 0.5,
+            )
+        : dimLine;
+    return DimensionEntity(
+      id: id,
+      props: props,
+      definitionPoints: [vertex, a, b],
+      textPosition: text,
+      measurement: degrees,
+      overrideText: '<>°',
+      dimensionType: 2,
+    );
+  }
+
   static (Vec2, double)? _radialSource(CadEntity entity) {
     switch (entity) {
       case CircleEntity(:final center, :final radius):
