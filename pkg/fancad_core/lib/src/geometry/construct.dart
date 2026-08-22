@@ -3845,6 +3845,133 @@ class Construct {
     }
     return sum / 2;
   }
+
+  /// Changes text justification and shifts the insertion point so the glyphs
+  /// stay put, using the same width estimate as [TextGeometry.estimatedBounds].
+  ///
+  /// Align and Fit need a second point and are rejected. Unknown keywords
+  /// return null.
+  static TextEntity? justifyText(TextEntity entity, String justify) {
+    final next = parseTextJustify(
+      justify,
+      currentH: entity.hAlign,
+      currentV: entity.vAlign,
+    );
+    if (next == null) return null;
+    final width = entity.content.length * entity.height * 0.62 * entity.widthFactor;
+    final totalHeight = entity.height * 1.2;
+    final delta = (_textAlignOffset(entity.hAlign, entity.vAlign, width, totalHeight) -
+            _textAlignOffset(next.h, next.v, width, totalHeight))
+        .rotated(entity.rotation);
+    return TextEntity(
+      id: entity.id,
+      props: entity.props,
+      position: entity.position + delta,
+      content: entity.content,
+      height: entity.height,
+      rotation: entity.rotation,
+      styleName: entity.styleName,
+      widthFactor: entity.widthFactor,
+      obliqueAngle: entity.obliqueAngle,
+      hAlign: next.h,
+      vAlign: next.v,
+    );
+  }
+
+  /// Same as [justifyText] for MTEXT, rewriting the 1–9 attachment point.
+  static MTextEntity? justifyMText(MTextEntity entity, String justify) {
+    final next = parseTextJustify(
+      justify,
+      currentH: entity.hAlign,
+      currentV: entity.vAlign,
+    );
+    if (next == null) return null;
+    final lines = entity.plainText.split('\n');
+    var longest = 0;
+    for (final line in lines) {
+      if (line.length > longest) longest = line.length;
+    }
+    final width = entity.rectangleWidth > 0
+        ? entity.rectangleWidth
+        : longest * entity.height * 0.62;
+    final totalHeight = entity.height * lines.length * 1.2;
+    final delta = (_textAlignOffset(entity.hAlign, entity.vAlign, width, totalHeight) -
+            _textAlignOffset(next.h, next.v, width, totalHeight))
+        .rotated(entity.rotation);
+    final h = switch (next.h) {
+      TextHAlign.right => 2,
+      TextHAlign.center || TextHAlign.middle || TextHAlign.fit => 1,
+      _ => 0,
+    };
+    final v = switch (next.v) {
+      TextVAlign.top => 0,
+      TextVAlign.middle => 1,
+      _ => 2,
+    };
+    return MTextEntity(
+      id: entity.id,
+      props: entity.props,
+      position: entity.position + delta,
+      content: entity.content,
+      height: entity.height,
+      rotation: entity.rotation,
+      styleName: entity.styleName,
+      rectangleWidth: entity.rectangleWidth,
+      attachment: 1 + v * 3 + h,
+    );
+  }
+
+  /// Left / Center / Right keep the current vertical; TL…BR set both axes.
+  /// Align and Fit return null.
+  static ({TextHAlign h, TextVAlign v})? parseTextJustify(
+    String raw, {
+    required TextHAlign currentH,
+    required TextVAlign currentV,
+  }) {
+    final key = raw.trim().toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '');
+    if (key.isEmpty) return null;
+    return switch (key) {
+      'l' || 'left' => (h: TextHAlign.left, v: currentV),
+      'c' || 'center' || 'centre' => (h: TextHAlign.center, v: currentV),
+      'r' || 'right' => (h: TextHAlign.right, v: currentV),
+      'm' || 'middle' => (h: TextHAlign.center, v: TextVAlign.middle),
+      'tl' || 'topleft' => (h: TextHAlign.left, v: TextVAlign.top),
+      'tc' || 'topcenter' || 'topcentre' => (h: TextHAlign.center, v: TextVAlign.top),
+      'tr' || 'topright' => (h: TextHAlign.right, v: TextVAlign.top),
+      'ml' || 'middleleft' => (h: TextHAlign.left, v: TextVAlign.middle),
+      'mc' || 'middlecenter' || 'middlecentre' => (
+        h: TextHAlign.center,
+        v: TextVAlign.middle,
+      ),
+      'mr' || 'middleright' => (h: TextHAlign.right, v: TextVAlign.middle),
+      'bl' || 'bottomleft' => (h: TextHAlign.left, v: TextVAlign.bottom),
+      'bc' || 'bottomcenter' || 'bottomcentre' => (
+        h: TextHAlign.center,
+        v: TextVAlign.bottom,
+      ),
+      'br' || 'bottomright' => (h: TextHAlign.right, v: TextVAlign.bottom),
+      _ => null,
+    };
+  }
+
+  static Vec2 _textAlignOffset(
+    TextHAlign h,
+    TextVAlign v,
+    double width,
+    double totalHeight,
+  ) {
+    final dx = switch (h) {
+      TextHAlign.left || TextHAlign.aligned => 0.0,
+      TextHAlign.center || TextHAlign.middle || TextHAlign.fit => -width / 2,
+      TextHAlign.right => -width,
+    };
+    final dy = switch (v) {
+      TextVAlign.baseline || TextVAlign.bottom => 0.0,
+      TextVAlign.middle => -totalHeight / 2,
+      TextVAlign.top => -totalHeight,
+    };
+    return Vec2(dx, dy);
+  }
 }
 
 /// Deletes and stretches produced by [Construct.overkill].

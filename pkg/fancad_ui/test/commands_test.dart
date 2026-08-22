@@ -361,6 +361,37 @@ void main() {
       expect((document.entity(id)! as LineEntity).start, const Vec2(0, 0));
     });
 
+    test('justify text changes alignment without moving the letters', () async {
+      final created = await run('draw.text', {
+        'content': 'ABC',
+        'at': [0, 0],
+        'height': 10,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.justifyText', {
+        'ids': [id],
+        'justify': 'right',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final text = document.entity(id)! as TextEntity;
+      expect(text.hAlign, TextHAlign.right);
+      expect(text.position.x, closeTo(3 * 10 * 0.62, 1e-9));
+    });
+
+    test('justify text refuses a line', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.justifyText', {
+        'ids': [id],
+        'justify': 'center',
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect((document.entity(id)! as LineEntity).start, const Vec2(0, 0));
+    });
+
     test('edit text changes a placed string', () async {
       final created = await run('draw.text', {
         'content': 'ROOM',

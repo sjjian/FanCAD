@@ -2531,4 +2531,66 @@ void main() {
       expect(Construct.overkill([first, other]).isEmpty, isTrue);
     });
   });
+
+  group('justifyText', () {
+    test('moves the insertion point so a left-to-right change stays put', () {
+      final text = TextEntity(
+        id: 1,
+        position: const Vec2(0, 0),
+        content: 'ABC',
+        height: 10,
+      );
+
+      final justified = Construct.justifyText(text, 'right');
+
+      expect(justified, isNotNull);
+      expect(justified!.hAlign, TextHAlign.right);
+      expect(justified.vAlign, TextVAlign.baseline);
+      expect(justified.position.x, closeTo(3 * 10 * 0.62, 1e-9));
+      expect(justified.position.y, closeTo(0, 1e-9));
+    });
+
+    test('keeps rotated text from sliding off its baseline', () {
+      final text = TextEntity(
+        id: 1,
+        position: const Vec2(0, 0),
+        content: 'AB',
+        height: 10,
+        rotation: math.pi / 2,
+      );
+
+      final justified = Construct.justifyText(text, 'right');
+
+      expect(justified, isNotNull);
+      expect(justified!.position.x, closeTo(0, 1e-9));
+      expect(justified.position.y, closeTo(2 * 10 * 0.62, 1e-9));
+    });
+
+    test('rewrites an mtext attachment point', () {
+      final text = MTextEntity(
+        id: 1,
+        position: const Vec2(0, 0),
+        content: 'Hi',
+        height: 10,
+      );
+
+      final justified = Construct.justifyMText(text, 'tr');
+
+      expect(justified, isNotNull);
+      expect(justified!.attachment, 3);
+      expect(justified.hAlign, TextHAlign.right);
+      expect(justified.vAlign, TextVAlign.top);
+    });
+
+    test('rejects align and unknown keywords', () {
+      final text = TextEntity(
+        id: 1,
+        position: const Vec2.zero(),
+        content: 'A',
+      );
+
+      expect(Construct.justifyText(text, 'align'), isNull);
+      expect(Construct.justifyText(text, 'widget'), isNull);
+    });
+  });
 }
