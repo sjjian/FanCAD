@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import '../model/entity.dart';
 import '../model/style.dart';
 import 'bounds.dart';
+import 'flatten.dart';
 import 'intersect.dart';
 import 'matrix.dart';
 import 'vector.dart';
@@ -418,11 +419,16 @@ class Construct {
   ///
   /// Miter joins rather than round ones, because the mitered offset of a
   /// rectangle is another rectangle, which is what a user expects to get.
+  /// A bulge is offset as a concentric arc so a filleted profile stays
+  /// filleted instead of collapsing to chords.
   static PolylineEntity? _offsetPolyline(
     PolylineEntity source,
     double distance,
     Vec2 towards,
   ) {
+    if (source.hasBulges) {
+      return _offsetBulgedPolyline(source, distance, towards);
+    }
     final count = source.vertexCount;
     if (count < 2) return null;
     final vertices = [for (var i = 0; i < count; i++) source.vertexAt(i)];
@@ -482,6 +488,121 @@ class Construct {
       points: result,
       closed: source.closed,
     );
+  }
+
+  static PolylineEntity? _offsetBulgedPolyline(
+    PolylineEntity source,
+    double distance,
+    Vec2 towards,
+  ) {
+    final count = source.vertexCount;
+    if (count < 2) return null;
+    final segmentCount = source.closed ? count : count - 1;
+
+    var bestDistance = double.infinity;
+    var sign = 1.0;
+    for (var i = 0; i < segmentCount; i++) {
+      final a = source.vertexAt(i);
+      final b = source.vertexAt((i + 1) % count);
+      final foot = Intersect.closestPointOnSegment(towards, a, b);
+      final gap = foot.distanceTo(towards);
+      if (gap < bestDistance) {
+        bestDistance = gap;
+        final normal = (b - a).normalized().perpendicular;
+        sign = normal.dot(towards - a) >= 0 ? 1.0 : -1.0;
+      }
+    }
+
+    final arms = <_OffsetArm>[];
+    for (var i = 0; i < segmentCount; i++) {
+      final arm = _offsetPolylineArm(source, i, distance, sign);
+      if (arm == null) return null;
+      arms.add(arm);
+    }
+    if (arms.isEmpty) return null;
+
+    final points = <Vec2>[];
+    if (!source.closed) points.add(arms.first.start);
+    final joints = source.closed ? arms.length : arms.length - 1;
+    for (var i = 0; i < joints; i++) {
+      final current = arms[i];
+      final next = arms[(i + 1) % arms.length];
+      points.add(
+        _offsetArmJoint(current, next) ?? current.end,
+      );
+    }
+    if (!source.closed) points.add(arms.last.end);
+    if (points.length < 2) return null;
+
+    final vertices = Float64List(points.length * 3);
+    for (var i = 0; i < points.length; i++) {
+      vertices[i * 3] = points[i].x;
+      vertices[i * 3 + 1] = points[i].y;
+      final armIndex = source.closed ? i : (i < arms.length ? i : -1);
+      vertices[i * 3 + 2] = armIndex < 0
+          ? 0
+          : arms[armIndex].bulgeBetween(
+              points[i],
+              points[(i + 1) % points.length],
+            );
+    }
+    return PolylineEntity(
+      id: 0,
+      props: source.props,
+      vertices: vertices,
+      closed: source.closed,
+      constantWidth: source.constantWidth,
+    );
+  }
+
+  static _OffsetArm? _offsetPolylineArm(
+    PolylineEntity source,
+    int index,
+    double distance,
+    double sign,
+  ) {
+    final count = source.vertexCount;
+    final start = source.vertexAt(index);
+    final end = source.vertexAt((index + 1) % count);
+    final direction = end - start;
+    if (direction.lengthSquared < 1e-20) return null;
+    final bulge = source.bulgeAt(index);
+    if (bulge.abs() < 1e-12) {
+      final shift = direction.normalized().perpendicular * (distance * sign);
+      return _OffsetArm.line(start + shift, end + shift);
+    }
+    final def = Flatten.bulgeArc(start, end, bulge);
+    if (def == null) return null;
+    final chordNormal = direction.normalized().perpendicular;
+    final centerIsLeft = chordNormal.dot(def.center - start) > 0;
+    final grow = (sign > 0) != centerIsLeft;
+    final radius = grow ? def.radius + distance : def.radius - distance;
+    if (radius <= 0) return null;
+    final startAngle = (start - def.center).angle;
+    final endAngle = (end - def.center).angle;
+    return _OffsetArm.arc(
+      def.center + Vec2.polar(startAngle, radius),
+      def.center + Vec2.polar(endAngle, radius),
+      def.center,
+      radius,
+      bulge,
+    );
+  }
+
+  static Vec2? _offsetArmJoint(_OffsetArm current, _OffsetArm next) {
+    final hits = current.hits(next);
+    if (hits.isEmpty) return null;
+    final hint = current.end.lerp(next.start, 0.5);
+    var best = hits.first;
+    var bestGap = best.distanceSquaredTo(hint);
+    for (var i = 1; i < hits.length; i++) {
+      final gap = hits[i].distanceSquaredTo(hint);
+      if (gap < bestGap) {
+        best = hits[i];
+        bestGap = gap;
+      }
+    }
+    return best;
   }
 
   /// Trims [line] by discarding the piece that contains [pick].
@@ -2456,6 +2577,64 @@ class _PolyHit {
   final int segment;
   final double t;
   final Vec2 point;
+}
+
+/// One offset segment of a bulged polyline, either a line or a concentric arc.
+class _OffsetArm {
+  const _OffsetArm.line(this.start, this.end)
+    : center = null,
+      radius = 0,
+      bulge = 0;
+
+  const _OffsetArm.arc(
+    this.start,
+    this.end,
+    this.center,
+    this.radius,
+    this.bulge,
+  );
+
+  final Vec2 start;
+  final Vec2 end;
+  final Vec2? center;
+  final double radius;
+  final double bulge;
+
+  List<Vec2> hits(_OffsetArm other) {
+    final ownCenter = center;
+    final otherCenter = other.center;
+    if (ownCenter == null && otherCenter == null) {
+      final hit = Intersect.lineLine(start, end, other.start, other.end);
+      return hit == null ? const [] : [hit];
+    }
+    if (ownCenter != null && otherCenter != null) {
+      return Intersect.circleCircle(
+        ownCenter,
+        radius,
+        otherCenter,
+        other.radius,
+      );
+    }
+    if (ownCenter != null) {
+      return Intersect.lineCircle(
+        other.start,
+        other.end,
+        ownCenter,
+        radius,
+      );
+    }
+    return Intersect.lineCircle(start, end, otherCenter!, other.radius);
+  }
+
+  double bulgeBetween(Vec2 from, Vec2 to) {
+    final ownCenter = center;
+    if (ownCenter == null || bulge.abs() < 1e-12) return 0;
+    final a0 = (from - ownCenter).angle;
+    final a1 = (to - ownCenter).angle;
+    return bulge >= 0
+        ? math.tan(angularSweep(a0, a1) / 4)
+        : -math.tan(angularSweep(a1, a0) / 4);
+  }
 }
 
 /// A directed open chain used by [Construct.joinEntities].

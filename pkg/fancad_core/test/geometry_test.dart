@@ -98,6 +98,16 @@ void main() {
     });
 
     test('a 90 degree bulge produces a quarter arc', () {
+      final quarter = Flatten.bulgeArc(
+        const Vec2(10, 0),
+        const Vec2(0, 10),
+        math.tan(math.pi / 8),
+      );
+      expect(quarter, isNotNull);
+      expect(quarter!.center.x, closeTo(0, 1e-9));
+      expect(quarter.center.y, closeTo(0, 1e-9));
+      expect(quarter.radius, closeTo(10, 1e-9));
+
       final vertices = Float64List.fromList([
         0, 0, math.tan(math.pi / 8),
         10, 10, 0,

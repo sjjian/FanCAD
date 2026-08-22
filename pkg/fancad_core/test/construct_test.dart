@@ -335,6 +335,55 @@ void main() {
       expect(box.maxY, closeTo(11, 1e-9));
     });
 
+    test('offsets a bulged arc segment concentrically', () {
+      final source = PolylineEntity(
+        id: 1,
+        vertices: Float64List.fromList([
+          10,
+          0,
+          math.tan(math.pi / 8),
+          0,
+          10,
+          0,
+        ]),
+      );
+
+      final outer = Construct.offset(source, 2, const Vec2(20, 20))
+          as PolylineEntity;
+      expect(outer.vertexAt(0).x, closeTo(12, 1e-9));
+      expect(outer.vertexAt(0).y, closeTo(0, 1e-9));
+      expect(outer.vertexAt(1).x, closeTo(0, 1e-9));
+      expect(outer.vertexAt(1).y, closeTo(12, 1e-9));
+      expect(outer.bulgeAt(0), closeTo(math.tan(math.pi / 8), 1e-9));
+
+      final inner = Construct.offset(source, 2, const Vec2(1, 1))
+          as PolylineEntity;
+      expect(inner.vertexAt(0).x, closeTo(8, 1e-9));
+      expect(inner.vertexAt(1).y, closeTo(8, 1e-9));
+    });
+
+    test('mitres a line into a following bulge', () {
+      final joined = Construct.joinEntities([
+        line(0, 0, 10, 0),
+        ArcEntity(
+          id: 2,
+          center: const Vec2(0, 0),
+          radius: 10,
+          startAngle: 0,
+          endAngle: math.pi / 2,
+        ),
+      ])!;
+
+      final offset = Construct.offset(joined, 2, const Vec2(0, 5))
+          as PolylineEntity;
+      expect(offset.hasBulges, isTrue);
+      expect(offset.vertexAt(0).y, closeTo(2, 1e-9));
+      expect(offset.vertexAt(1).x, closeTo(math.sqrt(60), 1e-9));
+      expect(offset.vertexAt(1).y, closeTo(2, 1e-9));
+      expect(offset.vertexAt(2).x, closeTo(0, 1e-9));
+      expect(offset.vertexAt(2).y, closeTo(8, 1e-9));
+    });
+
     test('returns null for types it cannot offset', () {
       const text = TextEntity(
         id: 1,

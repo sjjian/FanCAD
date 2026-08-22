@@ -605,6 +605,30 @@ void main() {
       expect(offset.start.y, closeTo(2, 1e-9));
     });
 
+    test('offset keeps the bulge of a joined line and arc', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {'ids': [lineId, arcId]});
+      final id = document.entities.first.id;
+
+      final result = await run('edit.offset', {
+        'distance': 2,
+        'ids': [id],
+        'side': [0, 5],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final offset = document.entities.last as PolylineEntity;
+      expect(offset.hasBulges, isTrue);
+      expect(offset.vertexAt(0).y, closeTo(2, 1e-6));
+      expect(offset.vertexAt(2).y, closeTo(8, 1e-6));
+    });
+
     test('trim shortens a line back to a cutting edge', () async {
       final target = await drawLine(0, 0, 10, 0);
       final cutter = await drawLine(4, -5, 4, 5);

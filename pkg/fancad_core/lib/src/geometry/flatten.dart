@@ -125,12 +125,12 @@ class Flatten {
     final sweep = 4 * math.atan(bulge);
     final radius = chordLength / 2 / math.sin(sweep.abs() / 2);
     if (!radius.isFinite || radius == 0) return null;
-    // Distance from the chord midpoint to the arc center.
-    final apothem = radius * math.cos(sweep.abs() / 2);
+    // A positive bulge is the counter-clockwise (left-of-chord) included
+    // arc. The signed apothem puts the centre on that side, and flips
+    // across the chord when |sweep| exceeds π.
     final mid = start.lerp(end, 0.5);
     final normal = chord.perpendicular.normalized();
-    final sign = sweep > 0 ? -1.0 : 1.0;
-    final center = mid + normal * (apothem * sign);
+    final center = mid + normal * (radius * math.cos(sweep / 2));
     final startAngle = (start - center).angle;
     final endAngle = (end - center).angle;
     return BulgeArc(
