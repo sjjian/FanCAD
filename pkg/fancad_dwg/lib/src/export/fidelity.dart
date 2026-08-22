@@ -3,9 +3,9 @@ import 'package:fancad_core/fancad_core.dart';
 /// A comparison of two drawings, used as a save-round-trip audit.
 ///
 /// The numbers that matter are the ones a user can see: did anything
-/// disappear, did extents jump, did a layer vanish. A perfect byte match is
+/// disappear, did a sheet vanish, did a layer drop. A perfect byte match is
 /// not the goal — DWG and DXF will never be byte-identical to the original —
-/// but a missing entity is a bug, not a rounding error.
+/// but a missing entity or a missing paper tab is a bug, not a rounding error.
 class FidelityReport {
   const FidelityReport({
     required this.sourceEntities,
@@ -15,6 +15,11 @@ class FidelityReport {
     required this.sourceExtents,
     required this.targetExtents,
     required this.missingLayers,
+    this.missingBySpace = const {},
+    this.extraBySpace = const {},
+    this.missingLayouts = const [],
+    this.extraLayouts = const [],
+    this.layoutMismatches = const [],
     this.notes = const [],
   });
 
@@ -25,10 +30,27 @@ class FidelityReport {
   final Bounds2 sourceExtents;
   final Bounds2 targetExtents;
   final List<String> missingLayers;
+
+  /// Entity-count deltas keyed by layout block (`*Model_Space`, `*Paper_Space`).
+  final Map<String, int> missingBySpace;
+  final Map<String, int> extraBySpace;
+
+  final List<String> missingLayouts;
+  final List<String> extraLayouts;
+
+  /// Named tabs that survived but changed paper size or viewports.
+  final List<String> layoutMismatches;
   final List<String> notes;
 
   bool get isClean =>
-      missingByKind.isEmpty && extraByKind.isEmpty && missingLayers.isEmpty;
+      missingByKind.isEmpty &&
+      extraByKind.isEmpty &&
+      missingLayers.isEmpty &&
+      missingBySpace.isEmpty &&
+      extraBySpace.isEmpty &&
+      missingLayouts.isEmpty &&
+      extraLayouts.isEmpty &&
+      layoutMismatches.isEmpty;
 
   String get summary {
     if (isClean) {
@@ -45,8 +67,27 @@ class FidelityReport {
         'gained ${extraByKind.entries.map((e) => '${e.value} ${e.key}').join(', ')}',
       );
     }
+    if (missingBySpace.isNotEmpty) {
+      parts.add(
+        'lost ${missingBySpace.entries.map((e) => '${e.value} on ${e.key}').join(', ')}',
+      );
+    }
+    if (extraBySpace.isNotEmpty) {
+      parts.add(
+        'gained ${extraBySpace.entries.map((e) => '${e.value} on ${e.key}').join(', ')}',
+      );
+    }
     if (missingLayers.isNotEmpty) {
       parts.add('missing layers ${missingLayers.join(', ')}');
+    }
+    if (missingLayouts.isNotEmpty) {
+      parts.add('missing layouts ${missingLayouts.join(', ')}');
+    }
+    if (extraLayouts.isNotEmpty) {
+      parts.add('extra layouts ${extraLayouts.join(', ')}');
+    }
+    if (layoutMismatches.isNotEmpty) {
+      parts.add(layoutMismatches.join('; '));
     }
     return parts.join('; ');
   }
@@ -57,6 +98,11 @@ class FidelityReport {
     'missingByKind': missingByKind,
     'extraByKind': extraByKind,
     'missingLayers': missingLayers,
+    'missingBySpace': missingBySpace,
+    'extraBySpace': extraBySpace,
+    'missingLayouts': missingLayouts,
+    'extraLayouts': extraLayouts,
+    'layoutMismatches': layoutMismatches,
     'clean': isClean,
     'summary': summary,
     if (notes.isNotEmpty) 'notes': notes,
@@ -82,6 +128,41 @@ class FidelityAuditor {
       for (final name in source.layers.keys)
         if (!target.layers.containsKey(name)) name,
     ];
+
+    final sourceSpaces = _spaceCounts(source);
+    final targetSpaces = _spaceCounts(target);
+    final missingBySpace = <String, int>{};
+    final extraBySpace = <String, int>{};
+    for (final name in {...sourceSpaces.keys, ...targetSpaces.keys}) {
+      final delta = (targetSpaces[name] ?? 0) - (sourceSpaces[name] ?? 0);
+      if (delta < 0) missingBySpace[name] = -delta;
+      if (delta > 0) extraBySpace[name] = delta;
+    }
+
+    final sourceNames = {for (final layout in source.layouts) layout.name};
+    final targetNames = {for (final layout in target.layouts) layout.name};
+    final missingLayouts = [
+      for (final name in sourceNames)
+        if (!targetNames.contains(name)) name,
+    ];
+    final extraLayouts = [
+      for (final name in targetNames)
+        if (!sourceNames.contains(name)) name,
+    ];
+    final layoutMismatches = <String>[];
+    for (final sourceLayout in source.layouts) {
+      Layout? match;
+      for (final item in target.layouts) {
+        if (item.name == sourceLayout.name) {
+          match = item;
+          break;
+        }
+      }
+      if (match == null) continue;
+      final diff = _layoutDiff(sourceLayout, match);
+      if (diff != null) layoutMismatches.add(diff);
+    }
+
     return FidelityReport(
       sourceEntities: source.entityCount,
       targetEntities: target.entityCount,
@@ -90,6 +171,11 @@ class FidelityAuditor {
       sourceExtents: source.extents,
       targetExtents: target.extents,
       missingLayers: missingLayers,
+      missingBySpace: missingBySpace,
+      extraBySpace: extraBySpace,
+      missingLayouts: missingLayouts,
+      extraLayouts: extraLayouts,
+      layoutMismatches: layoutMismatches,
     );
   }
 
@@ -99,5 +185,55 @@ class FidelityAuditor {
       counts.update(entity.kind.name, (n) => n + 1, ifAbsent: () => 1);
     }
     return counts;
+  }
+
+  static Map<String, int> _spaceCounts(CadDocument document) {
+    final counts = <String, int>{};
+    final seen = <String>{};
+    for (final layout in document.layouts) {
+      if (!seen.add(layout.blockName)) continue;
+      counts[layout.blockName] = document.entitiesOf(layout.blockName).length;
+    }
+    return counts;
+  }
+
+  static String? _layoutDiff(Layout source, Layout target) {
+    final issues = <String>[];
+    if ((source.paperWidth - target.paperWidth).abs() > 1e-4 ||
+        (source.paperHeight - target.paperHeight).abs() > 1e-4) {
+      issues.add(
+        'paper ${source.paperWidth}×${source.paperHeight} vs '
+        '${target.paperWidth}×${target.paperHeight}',
+      );
+    }
+    if (source.viewports.length != target.viewports.length) {
+      issues.add(
+        '${source.viewports.length} viewport(s) vs ${target.viewports.length}',
+      );
+    } else {
+      for (var i = 0; i < source.viewports.length; i++) {
+        if (!_sameViewport(source.viewports[i], target.viewports[i])) {
+          issues.add('viewport ${i + 1} changed');
+        }
+      }
+    }
+    if (issues.isEmpty) return null;
+    return '${source.name}: ${issues.join(', ')}';
+  }
+
+  static bool _sameViewport(PaperViewport a, PaperViewport b) {
+    bool close(double x, double y) => (x - y).abs() <= 1e-6;
+    final pa = a.paperBounds;
+    final pb = b.paperBounds;
+    return close(pa.minX, pb.minX) &&
+        close(pa.minY, pb.minY) &&
+        close(pa.maxX, pb.maxX) &&
+        close(pa.maxY, pb.maxY) &&
+        close(a.modelCenter.x, b.modelCenter.x) &&
+        close(a.modelCenter.y, b.modelCenter.y) &&
+        close(a.scale, b.scale) &&
+        close(a.rotation, b.rotation) &&
+        a.locked == b.locked &&
+        a.isOn == b.isOn;
   }
 }
