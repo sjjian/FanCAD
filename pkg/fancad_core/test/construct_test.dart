@@ -175,6 +175,18 @@ void main() {
     });
   });
 
+  group('diameterDimension', () {
+    test('reads twice the radius and prefixes Ø', () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+      final dim = Construct.diameterDimension(circle, const Vec2(8, 0));
+
+      expect(dim, isNotNull);
+      expect(dim!.measurement, closeTo(10, 1e-9));
+      expect(dim.dimensionType, 3);
+      expect(dim.displayText, 'Ø10.00');
+    });
+  });
+
   group('circleTangentRadius', () {
     test('sits in the picked quadrant of two crossing lines', () {
       final circle = Construct.circleTangentRadius(

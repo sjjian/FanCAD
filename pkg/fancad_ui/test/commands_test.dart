@@ -207,6 +207,24 @@ void main() {
       expect(dim.displayText, 'R5.00');
     });
 
+    test('diameter dimension labels a circle with Ø', () async {
+      final created = await run('draw.circle', {
+        'center': [0, 0],
+        'radius': 5,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('draw.dimDiameter', {
+        'target': id,
+        'dimLine': [8, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entities.whereType<DimensionEntity>().single;
+      expect(dim.measurement, closeTo(10, 1e-9));
+      expect(dim.displayText, 'Ø10.00');
+    });
+
     test('donut creates a wide circular polyline', () async {
       final result = await run('draw.donut', {
         'inside': 6,

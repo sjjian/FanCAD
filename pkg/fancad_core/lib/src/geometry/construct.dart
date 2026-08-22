@@ -176,6 +176,35 @@ class Construct {
     );
   }
 
+  /// A diameter dimension for a circle or arc.
+  ///
+  /// Same picks as [radiusDimension], but the measurement is twice the
+  /// radius and the text uses Ø so it cannot be read as a radius.
+  static DimensionEntity? diameterDimension(
+    CadEntity target,
+    Vec2 dimLine, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    final source = _radialSource(target);
+    if (source == null) return null;
+    final (center, radius) = source;
+    if (radius < 1e-9) return null;
+    var chord = dimLine;
+    if (chord.distanceTo(center) < 1e-9) {
+      chord = center + Vec2(radius, 0);
+    }
+    return DimensionEntity(
+      id: id,
+      props: props,
+      definitionPoints: [center, chord],
+      textPosition: chord,
+      measurement: radius * 2,
+      overrideText: 'Ø<>',
+      dimensionType: 3,
+    );
+  }
+
   static (Vec2, double)? _radialSource(CadEntity entity) {
     switch (entity) {
       case CircleEntity(:final center, :final radius):
