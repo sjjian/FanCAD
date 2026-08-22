@@ -111,4 +111,62 @@ void main() {
       expect(font.glyph(65)?.name, 'A');
     });
   });
+
+  group('MTextEntity', () {
+    test('attachment points map to the nine AutoCAD corners', () {
+      TextHAlign hOf(int attachment) =>
+          MTextEntity(id: 1, position: Vec2.zero(), content: 'A', attachment: attachment)
+              .hAlign;
+      TextVAlign vOf(int attachment) =>
+          MTextEntity(id: 1, position: Vec2.zero(), content: 'A', attachment: attachment)
+              .vAlign;
+
+      expect(hOf(1), TextHAlign.left);
+      expect(vOf(1), TextVAlign.top);
+      expect(hOf(5), TextHAlign.center);
+      expect(vOf(5), TextVAlign.middle);
+      expect(hOf(9), TextHAlign.right);
+      expect(vOf(9), TextVAlign.bottom);
+      expect(
+        const MTextEntity(
+          id: 1,
+          position: Vec2.zero(),
+          content: r'A\PB',
+        ).plainText,
+        'A\nB',
+      );
+    });
+
+    test('empty content is silent and a grip moves the insertion', () {
+      const text = MTextEntity(
+        id: 1,
+        position: Vec2(2, 3),
+        content: r'Hello\Pworld',
+        height: 2.5,
+        attachment: 3,
+      );
+      final emptySink = PolylineSink();
+      const MTextEntity(id: 2, position: Vec2.zero(), content: '').emit(
+        const EmitContext(tolerance: 0.1),
+        emptySink,
+      );
+      expect(emptySink.texts, isEmpty);
+
+      final sink = PolylineSink();
+      text.emit(const EmitContext(tolerance: 0.1), sink);
+      expect(sink.texts.single.text, 'Hello\nworld');
+      expect(sink.texts.single.hAlign, TextHAlign.right);
+      expect(sink.texts.single.vAlign, TextVAlign.top);
+      expect(sink.texts.single.isMultiline, isTrue);
+
+      expect(text.grips(), const [Vec2(2, 3)]);
+      expect(
+        text.withGrip(0, const Vec2(8, 1)).position,
+        const Vec2(8, 1),
+      );
+      final scaled = text.transformed(const Mat3.scaling(2, 2));
+      expect(scaled.height, 5);
+      expect(scaled.attachment, 3);
+    });
+  });
 }
