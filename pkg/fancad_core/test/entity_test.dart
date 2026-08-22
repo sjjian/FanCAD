@@ -23,6 +23,32 @@ void main() {
       expect(line.withProps(const EntityProps(layer: 'A')).props.layer, 'A');
     });
 
+    test('circle quadrant grips change radius and a point grip moves', () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+      expect(circle.grips(), const [
+        Vec2.zero(),
+        Vec2(5, 0),
+        Vec2(0, 5),
+        Vec2(-5, 0),
+        Vec2(0, -5),
+      ]);
+      final stretched = circle.withGrip(1, const Vec2(8, 0)) as CircleEntity;
+      expect(stretched.center, const Vec2.zero());
+      expect(stretched.radius, 8);
+      final north = circle.withGrip(2, const Vec2(0, 3)) as CircleEntity;
+      expect(north.radius, 3);
+      final uniform = circle.transformed(const Mat3.scaling(2, 2)) as CircleEntity;
+      expect(uniform.radius, 10);
+      expect(uniform.center, const Vec2.zero());
+
+      const point = PointEntity(id: 2, position: Vec2(1, 2));
+      expect(point.grips(), const [Vec2(1, 2)]);
+      expect(
+        (point.withGrip(0, const Vec2(4, 5)) as PointEntity).position,
+        const Vec2(4, 5),
+      );
+    });
+
     test('circle, text and insert grips stay on their anchors', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
       expect(
