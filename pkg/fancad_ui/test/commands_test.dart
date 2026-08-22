@@ -329,6 +329,38 @@ void main() {
       expect(dim.displayText, '8.00');
     });
 
+    test('dimension text move relocates the label and dim line', () async {
+      final created = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [10, 0],
+        'dimLine': [5, 4],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.dimTedit', {
+        'ids': [id],
+        'at': [8, 12],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entity(id)! as DimensionEntity;
+      expect(dim.textPosition, const Vec2(8, 12));
+      expect(dim.definitionPoints[2], const Vec2(5, 12));
+      expect(dim.measurement, closeTo(10, 1e-9));
+    });
+
+    test('dimension text move refuses a line', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.dimTedit', {
+        'ids': [id],
+        'at': [0, 4],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect((document.entity(id)! as LineEntity).start, const Vec2(0, 0));
+    });
+
     test('edit text changes a placed string', () async {
       final created = await run('draw.text', {
         'content': 'ROOM',
