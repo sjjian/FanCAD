@@ -152,6 +152,30 @@ void main() {
       expect(document.activeLayoutName, 'Model');
     });
 
+    test('block bounds ignore frozen members and refresh when a layer changes',
+        () {
+      final document = CadDocument()
+        ..putLayer(const LayerDef(name: 'FAR'))
+        ..putBlock(const BlockRecord(name: 'MARK', entityIds: []));
+      document.addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+        blockName: 'MARK',
+      );
+      document.addEntity(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(layer: 'FAR'),
+          start: Vec2.zero(),
+          end: Vec2(400, 0),
+        ),
+        blockName: 'MARK',
+      );
+      expect(document.boundsOf('MARK').maxX, closeTo(400, 1e-9));
+
+      document.putLayer(const LayerDef(name: 'FAR', frozen: true));
+      expect(document.boundsOf('MARK').maxX, closeTo(4, 1e-9));
+    });
+
     test('extents ignore frozen layers and hidden entities', () {
       final document = CadDocument()
         ..putLayer(const LayerDef(name: 'FAR', frozen: true))

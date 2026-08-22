@@ -459,13 +459,17 @@ class CadDocument implements BlockLookup, StyleResolver {
 
   void putLayer(LayerDef layer) {
     _layers[layer.name] = layer;
+    _blockBounds.clear();
     _version++;
   }
 
   LayerDef? removeLayer(String name) {
     if (name == '0') return null;
     final removed = _layers.remove(name);
-    if (removed != null) _version++;
+    if (removed != null) {
+      _blockBounds.clear();
+      _version++;
+    }
     return removed;
   }
 
@@ -732,6 +736,9 @@ class CadDocument implements BlockLookup, StyleResolver {
     for (final id in block.entityIds) {
       final entity = _entities[id];
       if (entity == null) continue;
+      if (!entity.props.visible || !isLayerVisible(entity.props.layer)) {
+        continue;
+      }
       box = box.union(
         entity.computeBounds(blocks: this, tolerance: defaultTolerance),
       );
