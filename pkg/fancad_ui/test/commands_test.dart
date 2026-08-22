@@ -590,6 +590,17 @@ void main() {
       expect(result.status, CommandStatus.failed);
     });
 
+    test('reverse swaps the ends of a line', () async {
+      final id = await drawLine(0, 0, 10, 4);
+
+      final result = await run('edit.reverse', {'ids': [id]});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final reversed = document.entity(id)! as LineEntity;
+      expect(reversed.start, const Vec2(10, 4));
+      expect(reversed.end, const Vec2(0, 0));
+    });
+
     test('a locked layer refuses edits', () async {
       final id = await drawLine(0, 0, 10, 0);
       await run('layer.toggleLock', {'name': '0', 'locked': true});

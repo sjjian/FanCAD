@@ -703,6 +703,53 @@ class Construct {
     );
   }
 
+  /// Reverses the direction of a line or polyline.
+  ///
+  /// Vertex order flips, and each bulge is negated and moved onto the segment
+  /// that now runs the other way, so the drawn curve stays the same.
+  static CadEntity? reverse(CadEntity entity) {
+    switch (entity) {
+      case LineEntity(:final start, :final end):
+        if (start == end) return null;
+        return LineEntity(
+          id: entity.id,
+          props: entity.props,
+          start: end,
+          end: start,
+        );
+      case PolylineEntity():
+        return _reversePolyline(entity);
+      default:
+        return null;
+    }
+  }
+
+  static PolylineEntity? _reversePolyline(PolylineEntity polyline) {
+    final count = polyline.vertexCount;
+    if (count < 2) return null;
+    final out = Float64List(count * 3);
+    for (var i = 0; i < count; i++) {
+      final source = count - 1 - i;
+      out[i * 3] = polyline.vertices[source * 3];
+      out[i * 3 + 1] = polyline.vertices[source * 3 + 1];
+      if (polyline.closed) {
+        final bulgeFrom = (count - 2 - i) % count;
+        out[i * 3 + 2] = -polyline.bulgeAt(bulgeFrom);
+      } else if (i < count - 1) {
+        out[i * 3 + 2] = -polyline.bulgeAt(count - 2 - i);
+      } else {
+        out[i * 3 + 2] = 0;
+      }
+    }
+    return PolylineEntity(
+      id: polyline.id,
+      props: polyline.props,
+      vertices: out,
+      closed: polyline.closed,
+      constantWidth: polyline.constantWidth,
+    );
+  }
+
   /// Interior points that split [line] into [segments] equal pieces.
   ///
   /// DIVIDE places markers between the ends, not on them: 4 segments means

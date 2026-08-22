@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:test/test.dart';
@@ -573,6 +574,32 @@ void main() {
         Construct.breakLine(line(0, 0, 10, 0), const Vec2(0, 0)),
         isNull,
       );
+    });
+  });
+
+  group('reverse', () {
+    test('swaps the ends of a line', () {
+      final reversed = Construct.reverse(line(0, 0, 10, 5)) as LineEntity;
+
+      expect(reversed.start, const Vec2(10, 5));
+      expect(reversed.end, const Vec2(0, 0));
+    });
+
+    test('reverses polyline vertices and negates bulges', () {
+      final source = PolylineEntity(
+        id: 1,
+        vertices: Float64List.fromList([
+          0, 0, 1,
+          10, 0, 0,
+          10, 10, 0,
+        ]),
+      );
+      final reversed = Construct.reverse(source) as PolylineEntity;
+
+      expect(reversed.vertexAt(0), const Vec2(10, 10));
+      expect(reversed.vertexAt(2), const Vec2(0, 0));
+      expect(reversed.bulgeAt(1), closeTo(-1, 1e-9));
+      expect(reversed.bulgeAt(2), 0);
     });
   });
 
