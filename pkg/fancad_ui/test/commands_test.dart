@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_dwg/fancad_dwg.dart';
 import 'package:fancad_ui/fancad_ui.dart';
@@ -288,6 +290,32 @@ void main() {
 
       expect(result.status, CommandStatus.ok, reason: result.message);
       expect(document.entities.whereType<PointEntity>(), hasLength(4));
+    });
+
+    test('divide follows a joined line and arc along the bulge', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {'ids': [lineId, arcId]});
+      final id = document.entities.first.id;
+
+      final result = await run('draw.divide', {
+        'target': id,
+        'segments': 2,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final points = document.entities.whereType<PointEntity>().toList();
+      expect(points, hasLength(1));
+      final along = 10 + 5 * 3.141592653589793;
+      final mid = along / 2;
+      final arcDistance = mid - 10;
+      expect(points.first.position.x, closeTo(10 * math.cos(arcDistance / 10), 1e-6));
+      expect(points.first.position.y, closeTo(10 * math.sin(arcDistance / 10), 1e-6));
     });
 
     test('divide places an interior point on an arc', () async {

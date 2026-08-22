@@ -996,9 +996,10 @@ class DrawCommands {
     category: _category,
     aliases: const ['div', 'divide'],
     description:
-        'Places point markers that split a line, straight polyline, arc or '
-        'circle into equal segments. Open objects leave the endpoints unmarked; '
-        'a circle or closed polyline places a marker at every interval.',
+        'Places point markers that split a line, polyline, arc or circle '
+        'into equal segments. Open objects leave the endpoints unmarked; '
+        'a circle or closed polyline places a marker at every interval. '
+        'A bulge is followed as its arc, not the chord.',
     params: const [
       ParamSpec(
         name: 'target',
@@ -1035,12 +1036,7 @@ class DrawCommands {
           target is! ArcEntity &&
           target is! CircleEntity) {
         return const CommandResult.failed(
-          'Divide supports lines, straight polylines, arcs and circles.',
-        );
-      }
-      if (target is PolylineEntity && target.hasBulges) {
-        return const CommandResult.failed(
-          'Divide cannot follow a bulged polyline.',
+          'Divide supports lines, polylines, arcs and circles.',
         );
       }
 

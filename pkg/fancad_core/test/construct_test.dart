@@ -1269,6 +1269,26 @@ void main() {
       expect(points[2], const Vec2(10, 0));
       expect(points[4], const Vec2(10, 10));
     });
+
+    test('follows a bulge as an arc, not the chord', () {
+      final quarter = PolylineEntity(
+        id: 1,
+        vertices: Float64List.fromList([
+          10,
+          0,
+          math.tan(math.pi / 8),
+          0,
+          10,
+          0,
+        ]),
+      );
+
+      final points = Construct.dividePolyline(quarter, 2);
+
+      expect(points, hasLength(1));
+      expect(points.first.x, closeTo(10 * math.cos(math.pi / 4), 1e-9));
+      expect(points.first.y, closeTo(10 * math.sin(math.pi / 4), 1e-9));
+    });
   });
 
   group('divideArc', () {

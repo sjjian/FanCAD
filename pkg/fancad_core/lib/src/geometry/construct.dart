@@ -1955,9 +1955,10 @@ class Construct {
   ///
   /// Open polylines match [divideLine]: the endpoints stay unmarked. A closed
   /// loop has no leftover end, so it places [segments] points equally around
-  /// the perimeter, including the start vertex.
+  /// the perimeter, including the start vertex. A bulge is measured along
+  /// its arc, not the chord.
   static List<Vec2> dividePolyline(PolylineEntity polyline, int segments) {
-    if (segments < 2 || polyline.hasBulges || polyline.vertexCount < 2) {
+    if (segments < 2 || polyline.vertexCount < 2) {
       return const [];
     }
     final length = _polylineLength(polyline);
@@ -2002,7 +2003,9 @@ class Construct {
     ];
   }
 
-  /// Walks [polyline] from its start by [distance] along straight segments.
+  /// Walks [polyline] from its start by [distance] along each segment.
+  ///
+  /// A bulge is followed as its circular arc, not the chord.
   static Vec2 _pointAlongPolyline(PolylineEntity polyline, double distance) {
     if (distance <= 1e-12) return polyline.vertexAt(0);
     final count = polyline.vertexCount;
@@ -2011,14 +2014,38 @@ class Construct {
     for (var i = 0; i < segments; i++) {
       final from = polyline.vertexAt(i);
       final to = polyline.vertexAt((i + 1) % count);
-      final segment = from.distanceTo(to);
+      final bulge = polyline.bulgeAt(i);
+      final segment = _segmentLength(from, to, bulge);
       if (segment < 1e-12) continue;
       if (remaining <= segment + 1e-12) {
-        return from.lerp(to, (remaining / segment).clamp(0.0, 1.0));
+        return _pointAlongSegment(from, to, bulge, remaining);
       }
       remaining -= segment;
     }
     return polyline.vertexAt(polyline.closed ? 0 : count - 1);
+  }
+
+  static double _segmentLength(Vec2 from, Vec2 to, double bulge) {
+    if (bulge.abs() < 1e-12) return from.distanceTo(to);
+    final def = Flatten.bulgeArc(from, to, bulge);
+    if (def == null) return from.distanceTo(to);
+    return def.radius * (4 * math.atan(bulge)).abs();
+  }
+
+  static Vec2 _pointAlongSegment(
+    Vec2 from,
+    Vec2 to,
+    double bulge,
+    double distance,
+  ) {
+    final length = _segmentLength(from, to, bulge);
+    if (length < 1e-12) return from;
+    final t = (distance / length).clamp(0.0, 1.0);
+    if (bulge.abs() < 1e-12) return from.lerp(to, t);
+    final def = Flatten.bulgeArc(from, to, bulge);
+    if (def == null) return from.lerp(to, t);
+    final startAngle = (from - def.center).angle;
+    return def.center + Vec2.polar(startAngle + 4 * math.atan(bulge) * t, def.radius);
   }
 
   /// Points spaced [spacing] apart along [line], starting from the end nearer [pick].
@@ -2471,9 +2498,11 @@ class Construct {
     final count = polyline.vertexCount;
     final segments = polyline.closed ? count : count - 1;
     for (var i = 0; i < segments; i++) {
-      total += polyline
-          .vertexAt(i)
-          .distanceTo(polyline.vertexAt((i + 1) % count));
+      total += _segmentLength(
+        polyline.vertexAt(i),
+        polyline.vertexAt((i + 1) % count),
+        polyline.bulgeAt(i),
+      );
     }
     return total;
   }
