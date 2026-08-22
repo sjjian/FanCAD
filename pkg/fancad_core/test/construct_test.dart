@@ -120,6 +120,31 @@ void main() {
     });
   });
 
+  group('alignedDimension', () {
+    test('measures the true distance, not a projected axis', () {
+      final dim = Construct.alignedDimension(
+        const Vec2(0, 0),
+        const Vec2(3, 4),
+        const Vec2(1, 2),
+      );
+
+      expect(dim, isNotNull);
+      expect(dim!.measurement, closeTo(5, 1e-9));
+      expect(dim.dimensionType, 1);
+    });
+
+    test('returns null when the origins coincide', () {
+      expect(
+        Construct.alignedDimension(
+          const Vec2(2, 2),
+          const Vec2(2, 2),
+          const Vec2(4, 4),
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('circleTangentRadius', () {
     test('sits in the picked quadrant of two crossing lines', () {
       final circle = Construct.circleTangentRadius(

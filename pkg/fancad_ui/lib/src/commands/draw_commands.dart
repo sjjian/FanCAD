@@ -33,6 +33,7 @@ class DrawCommands {
     _text(),
     _hatch(),
     _dimLinear(),
+    _dimAligned(),
   ];
 
   static const String _category = 'Draw';
@@ -1363,6 +1364,77 @@ class DrawCommands {
     final horizontal = (cursor - mid).y.abs() >= (cursor - mid).x.abs();
     final a = horizontal ? Vec2(first.x, cursor.y) : Vec2(cursor.x, first.y);
     final b = horizontal ? Vec2(second.x, cursor.y) : Vec2(cursor.x, second.y);
+    return [
+      OverlayLine(first, a),
+      OverlayLine(second, b),
+      OverlayLine(a, b),
+    ];
+  }
+
+  static CommandDescriptor _dimAligned() => CommandDescriptor(
+    id: 'draw.dimAligned',
+    title: 'Aligned Dimension',
+    category: _category,
+    aliases: const ['dal', 'dimaligned'],
+    icon: 'dimension',
+    description:
+        'Places a dimension parallel to the two origins. The text is the '
+        'true distance, not the horizontal or vertical component.',
+    params: const [
+      ParamSpec.point('first', description: 'First extension-line origin'),
+      ParamSpec.point('second', description: 'Second extension-line origin'),
+      ParamSpec.point(
+        'dimLine',
+        description: 'A point on the dimension line',
+      ),
+    ],
+    handler: (context) async {
+      final first = await context.resolvePoint(
+        'first',
+        'DIMALIGNED  Specify first extension line origin:',
+      );
+      final second = await context.resolvePoint(
+        'second',
+        'DIMALIGNED  Specify second extension line origin:',
+        basePoint: first,
+      );
+      context.input.setPreview(
+        (cursor) => _dimAlignedOverlay(first, second, cursor),
+      );
+      final dimLine = await context.resolvePoint(
+        'dimLine',
+        'DIMALIGNED  Specify dimension line location:',
+        basePoint: first.lerp(second, 0.5),
+      );
+      context.input.setPreview(null);
+      final entity = Construct.alignedDimension(
+        first,
+        second,
+        dimLine,
+        props: EntityProps(layer: context.document.currentLayer),
+      );
+      if (entity == null) {
+        return const CommandResult.failed(
+          'The two origins are the same point.',
+        );
+      }
+      return _commit(context, 'Aligned Dimension', [entity]);
+    },
+  );
+
+  static List<OverlayShape> _dimAlignedOverlay(
+    Vec2 first,
+    Vec2 second,
+    Vec2 cursor,
+  ) {
+    final length = first.distanceTo(second);
+    if (length < 1e-9) return const [];
+    final unit = (second - first) / length;
+    final normal = unit.perpendicular;
+    var offset = (cursor - first).dot(normal);
+    if (offset.abs() < 1e-6) offset = length * 0.15;
+    final a = first + normal * offset;
+    final b = second + normal * offset;
     return [
       OverlayLine(first, a),
       OverlayLine(second, b),

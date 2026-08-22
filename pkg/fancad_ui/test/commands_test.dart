@@ -176,6 +176,19 @@ void main() {
       expect(dim.displayText, '10.00');
     });
 
+    test('aligned dimension measures the slanted distance', () async {
+      final result = await run('draw.dimAligned', {
+        'first': [0, 0],
+        'second': [3, 4],
+        'dimLine': [1, 2],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final dim = document.entities.first as DimensionEntity;
+      expect(dim.measurement, closeTo(5, 1e-9));
+      expect(dim.displayText, '5.00');
+    });
+
     test('donut creates a wide circular polyline', () async {
       final result = await run('draw.donut', {
         'inside': 6,

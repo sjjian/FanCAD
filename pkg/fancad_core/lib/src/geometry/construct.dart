@@ -117,6 +117,35 @@ class Construct {
     );
   }
 
+  /// A dimension parallel to the line from [first] to [second].
+  ///
+  /// DIMALIGNED measures the true distance, not |Δx| or |Δy|. [dimLine]
+  /// only places the dimension line on one side of the segment.
+  static DimensionEntity? alignedDimension(
+    Vec2 first,
+    Vec2 second,
+    Vec2 dimLine, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+  }) {
+    final measurement = first.distanceTo(second);
+    if (measurement < 1e-9) return null;
+    final unit = (second - first) / measurement;
+    final normal = unit.perpendicular;
+    var offset = (dimLine - first).dot(normal);
+    if (offset.abs() < 1e-6) offset = measurement * 0.15;
+    final a = first + normal * offset;
+    final b = second + normal * offset;
+    return DimensionEntity(
+      id: id,
+      props: props,
+      definitionPoints: [first, second, dimLine],
+      textPosition: a.lerp(b, 0.5),
+      measurement: measurement,
+      dimensionType: 1,
+    );
+  }
+
   /// A circle of [radius] tangent to [first] and [second].
   ///
   /// The construction is the offset-and-intersect one: shift each object by
