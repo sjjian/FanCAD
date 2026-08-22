@@ -19,6 +19,7 @@ class FileCommands {
     required this.closeActive,
     required this.saveActive,
     required this.recentFiles,
+    this.chooseSavePath,
   });
 
   /// Opens a path and makes it the active document.
@@ -33,6 +34,9 @@ class FileCommands {
   final Future<String?> Function(String? path) saveActive;
 
   final List<String> Function() recentFiles;
+
+  /// Override for tests. Production leaves this null and uses [saveFileDialog].
+  final Future<String?> Function({String suggestedName})? chooseSavePath;
 
   List<CommandDescriptor> all() => [
     _new(),
@@ -111,9 +115,12 @@ class FileCommands {
     handler: (context) async {
       var path = context.session.filePath;
       if (path == null || path.isEmpty) {
-        final chosen = await saveFileDialog(
-          suggestedName: context.session.title,
-        );
+        late final String? chosen;
+        try {
+          chosen = await _pickSavePath(context.session.title);
+        } catch (error) {
+          return CommandResult.failed('The file dialog failed: $error');
+        }
         if (chosen == null) return const CommandResult.cancelled();
         path = chosen;
       }
@@ -143,9 +150,12 @@ class FileCommands {
     handler: (context) async {
       var path = context.args.text('path');
       if (path == null || path.isEmpty) {
-        final chosen = await saveFileDialog(
-          suggestedName: context.session.title,
-        );
+        late final String? chosen;
+        try {
+          chosen = await _pickSavePath(context.session.title);
+        } catch (error) {
+          return CommandResult.failed('The file dialog failed: $error');
+        }
         if (chosen == null) return const CommandResult.cancelled();
         path = chosen;
       }
@@ -205,6 +215,11 @@ class FileCommands {
           : CommandResult.failed('Could not open $path');
     },
   );
+
+  Future<String?> _pickSavePath(String suggestedName) {
+    final pick = chooseSavePath ?? saveFileDialog;
+    return pick(suggestedName: suggestedName);
+  }
 
   static const List<String> _drawingExtensions = ['dwg', 'dxf', 'fcb'];
 

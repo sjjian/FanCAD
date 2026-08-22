@@ -68,4 +68,41 @@ void main() {
     expect(saveAs.status, CommandStatus.failed);
     expect(workspace.tabs, isEmpty);
   });
+
+  test('a failing save dialog is a failed command, not a throw', () async {
+    var saved = false;
+    final workspace = Workspace(
+      commands: CommandRegistry(),
+      importer: DrawingImporter(backend: MemoryDrawingBackend()),
+      settings: SettingsStore.inMemory(),
+    );
+    addTearDown(workspace.dispose);
+    registerBuiltinCommands(
+      workspace.commands,
+      fileCommands: FileCommands(
+        openFile: (_) async => false,
+        newDocument: workspace.newDocument,
+        closeActive: ({bool force = false}) => true,
+        saveActive: (path) async {
+          saved = true;
+          return path;
+        },
+        recentFiles: () => const [],
+        chooseSavePath: ({suggestedName = 'Drawing'}) async {
+          throw StateError('dialog channel missing');
+        },
+      ),
+    );
+    workspace.newDocument(title: 'Untitled');
+
+    final result = await workspace.run('file.save');
+    expect(result.status, CommandStatus.failed);
+    expect(result.message, contains('dialog'));
+    expect(saved, isFalse);
+
+    final saveAs = await workspace.run('file.saveAs');
+    expect(saveAs.status, CommandStatus.failed);
+    expect(saveAs.message, contains('dialog'));
+    expect(saved, isFalse);
+  });
 }
