@@ -90,10 +90,10 @@ class EditCommands {
     risk: CommandRisk.destructive,
     aiExposure: AiExposure.approvalRequired,
     description:
-        'Deletes exact geometric duplicates. A line drawn a second time on '
-        'top of itself is the usual case; the first copy is kept. Omitted '
-        'ids means the whole current space, so a leftover selection cannot '
-        'hide the rest of the duplicates.',
+        'Deletes exact geometric duplicates and folds overlapping or abutting '
+        'collinear lines into one stroke. The first copy is kept and '
+        'stretched to the union. Omitted ids means the whole current space, '
+        'so a leftover selection cannot hide the rest of the duplicates.',
     params: const [
       ParamSpec(
         name: 'ids',
@@ -113,15 +113,18 @@ class EditCommands {
       ];
       if (ids.isEmpty) return const CommandResult.cancelled();
 
-      final duplicates = Construct.overkillIds([
+      final plan = Construct.overkill([
         for (final id in ids) ?context.document.entity(id),
       ]);
-      if (duplicates.isEmpty) {
+      if (plan.isEmpty) {
         return const CommandResult.ok(message: 'No duplicate geometry.');
       }
 
       final committed = context.edit('Overkill', (transaction) {
-        transaction.eraseAll(duplicates);
+        for (final entity in plan.replace) {
+          transaction.modify(entity);
+        }
+        transaction.eraseAll(plan.erase);
       });
       if (committed == null) {
         return const CommandResult.failed(
@@ -129,11 +132,17 @@ class EditCommands {
         );
       }
       context.selection.removeAll(committed.change.removed);
+      final erased = committed.change.removed.length;
+      final merged = plan.replace.length;
       return CommandResult(
         status: CommandStatus.ok,
-        message:
-            'Deleted ${committed.change.removed.length} duplicate object(s).',
-        data: {'erased': committed.change.removed},
+        message: merged == 0
+            ? 'Deleted $erased duplicate object(s).'
+            : 'Merged $merged overlapping line(s); deleted $erased.',
+        data: {
+          'erased': committed.change.removed,
+          'replaced': [for (final entity in plan.replace) entity.id],
+        },
         transaction: committed,
       );
     },

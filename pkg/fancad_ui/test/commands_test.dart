@@ -655,6 +655,19 @@ void main() {
       expect(document.entity(keep), isNotNull);
     });
 
+    test('overkill folds overlapping collinear lines into one', () async {
+      final keep = await drawLine(0, 0, 10, 0);
+      await drawLine(5, 0, 15, 0);
+
+      final result = await run('edit.overkill');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 1);
+      final grown = document.entity(keep)! as LineEntity;
+      expect(grown.start, const Vec2(0, 0));
+      expect(grown.end.x, closeTo(15, 1e-9));
+    });
+
     test('erase removes the selection', () async {
       final id = await drawLine(0, 0, 10, 0);
 

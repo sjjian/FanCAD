@@ -2778,6 +2778,140 @@ class Construct {
     return duplicates;
   }
 
+  /// Exact copies plus collinear line segments that overlap or abut.
+  ///
+  /// A leftover from OFFSET or a line drawn twice with a different length is
+  /// the usual case: the first stroke is stretched to the union and the rest
+  /// are deleted. Segments that only share a supporting line, with a gap
+  /// between them, stay put. Colour and layer have to match; mixing a red
+  /// leftover into a blue line would lose information.
+  static OverkillResult overkill(Iterable<CadEntity> entities) {
+    final list = entities.toList();
+    final exact = overkillIds(list);
+    final gone = exact.toSet();
+    final remaining = [
+      for (final entity in list)
+        if (!gone.contains(entity.id)) entity,
+    ];
+    final merged = _mergeOverlappingLines(remaining);
+    return OverkillResult(
+      erase: [...exact, ...merged.erase],
+      replace: merged.replace,
+    );
+  }
+
+  static OverkillResult _mergeOverlappingLines(List<CadEntity> entities) {
+    final groups = <String, List<_OverlapSpan>>{};
+    for (var i = 0; i < entities.length; i++) {
+      final entity = entities[i];
+      final ends = _lineLikeEnds(entity);
+      if (ends == null) continue;
+      final axis = _CollinearAxis.tryParse(ends.$1, ends.$2);
+      if (axis == null) continue;
+      final t0 = axis.along(ends.$1);
+      final t1 = axis.along(ends.$2);
+      final lo = math.min(t0, t1);
+      final hi = math.max(t0, t1);
+      if (hi - lo < 1e-9) continue;
+      final key = '${axis.key}|${_styleKey(entity)}';
+      (groups[key] ??= []).add(
+        _OverlapSpan(entity, i, axis, lo, hi, t0 <= t1),
+      );
+    }
+
+    final erase = <int>[];
+    final replace = <CadEntity>[];
+    for (final group in groups.values) {
+      group.sort((a, b) => a.lo.compareTo(b.lo));
+      var cluster = <_OverlapSpan>[group.first];
+      var clusterHi = group.first.hi;
+      void flush() {
+        if (cluster.length < 2) return;
+        cluster.sort((a, b) => a.order.compareTo(b.order));
+        final keeper = cluster.first;
+        var lo = cluster.first.lo;
+        var hi = cluster.first.hi;
+        for (final span in cluster.skip(1)) {
+          lo = math.min(lo, span.lo);
+          hi = math.max(hi, span.hi);
+          erase.add(span.entity.id);
+        }
+        final start = keeper.forward ? keeper.axis.at(lo) : keeper.axis.at(hi);
+        final end = keeper.forward ? keeper.axis.at(hi) : keeper.axis.at(lo);
+        final grown = _lineLikeWithEnds(keeper.entity, start, end);
+        if (grown != null &&
+            (start.distanceTo(keeper.entityStart) > 1e-9 ||
+                end.distanceTo(keeper.entityEnd) > 1e-9)) {
+          replace.add(grown);
+        }
+      }
+
+      for (var i = 1; i < group.length; i++) {
+        final next = group[i];
+        if (next.lo <= clusterHi + 1e-6) {
+          cluster.add(next);
+          clusterHi = math.max(clusterHi, next.hi);
+        } else {
+          flush();
+          cluster = [next];
+          clusterHi = next.hi;
+        }
+      }
+      flush();
+    }
+    return OverkillResult(erase: erase, replace: replace);
+  }
+
+  static (Vec2, Vec2)? _lineLikeEnds(CadEntity entity) {
+    switch (entity) {
+      case LineEntity(:final start, :final end):
+        return (start, end);
+      case PolylineEntity():
+        if (entity.closed || entity.hasBulges || entity.vertexCount != 2) {
+          return null;
+        }
+        return (entity.vertexAt(0), entity.vertexAt(1));
+      default:
+        return null;
+    }
+  }
+
+  static CadEntity? _lineLikeWithEnds(CadEntity entity, Vec2 start, Vec2 end) {
+    switch (entity) {
+      case LineEntity():
+        return LineEntity(
+          id: entity.id,
+          props: entity.props,
+          start: start,
+          end: end,
+        );
+      case PolylineEntity():
+        return PolylineEntity(
+          id: entity.id,
+          props: entity.props,
+          vertices: Float64List.fromList([
+            start.x,
+            start.y,
+            0,
+            end.x,
+            end.y,
+            0,
+          ]),
+          closed: false,
+          constantWidth: entity.constantWidth,
+        );
+      default:
+        return null;
+    }
+  }
+
+  static String _styleKey(CadEntity entity) {
+    final props = entity.props;
+    final width = entity is PolylineEntity ? entity.constantWidth : 0.0;
+    return '${props.layer}|${props.color}|${props.lineType}|'
+        '${props.lineWeight}|${_qty(width)}';
+  }
+
   static String _geometryKey(CadEntity entity) {
     switch (entity) {
       case LineEntity(:final start, :final end):
@@ -2829,6 +2963,65 @@ class Construct {
     }
     return sum / 2;
   }
+}
+
+/// Deletes and stretches produced by [Construct.overkill].
+class OverkillResult {
+  const OverkillResult({
+    this.erase = const [],
+    this.replace = const [],
+  });
+
+  final List<int> erase;
+  final List<CadEntity> replace;
+
+  bool get isEmpty => erase.isEmpty && replace.isEmpty;
+}
+
+class _CollinearAxis {
+  const _CollinearAxis(this.dir, this.offset);
+
+  final Vec2 dir;
+  final double offset;
+
+  String get key => '${Construct._qty(dir.x)},${Construct._qty(dir.y)}|'
+      '${Construct._qty(offset)}';
+
+  double along(Vec2 point) => dir.dot(point);
+
+  Vec2 at(double t) => dir * t + dir.perpendicular * offset;
+
+  static _CollinearAxis? tryParse(Vec2 start, Vec2 end) {
+    final delta = end - start;
+    final length = delta.length;
+    if (length < 1e-9) return null;
+    var dir = delta / length;
+    if (dir.x < -1e-9 || (dir.x.abs() <= 1e-9 && dir.y < 0)) {
+      dir = -dir;
+    }
+    return _CollinearAxis(dir, dir.perpendicular.dot(start));
+  }
+}
+
+class _OverlapSpan {
+  _OverlapSpan(
+    this.entity,
+    this.order,
+    this.axis,
+    this.lo,
+    this.hi,
+    this.forward,
+  );
+
+  final CadEntity entity;
+  final int order;
+  final _CollinearAxis axis;
+  final double lo;
+  final double hi;
+  final bool forward;
+
+  Vec2 get entityStart => Construct._lineLikeEnds(entity)!.$1;
+  Vec2 get entityEnd => Construct._lineLikeEnds(entity)!.$2;
 }
 
 class _PolyVert {

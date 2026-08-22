@@ -1822,5 +1822,77 @@ void main() {
 
       expect(Construct.overkillIds([a, b, c]), [2]);
     });
+
+    test('stretches the first line across an overlapping neighbour', () {
+      final first = LineEntity(
+        id: 1,
+        start: const Vec2(0, 0),
+        end: const Vec2(10, 0),
+      );
+      final overlap = LineEntity(
+        id: 2,
+        start: const Vec2(5, 0),
+        end: const Vec2(15, 0),
+      );
+
+      final plan = Construct.overkill([first, overlap]);
+
+      expect(plan.erase, [2]);
+      expect(plan.replace, hasLength(1));
+      final grown = plan.replace.single as LineEntity;
+      expect(grown.id, 1);
+      expect(grown.start.x, closeTo(0, 1e-9));
+      expect(grown.end.x, closeTo(15, 1e-9));
+    });
+
+    test('joins collinear lines that only touch at an endpoint', () {
+      final first = LineEntity(
+        id: 1,
+        start: const Vec2(0, 0),
+        end: const Vec2(5, 0),
+      );
+      final next = LineEntity(
+        id: 2,
+        start: const Vec2(5, 0),
+        end: const Vec2(10, 0),
+      );
+
+      final plan = Construct.overkill([first, next]);
+
+      expect(plan.erase, [2]);
+      final grown = plan.replace.single as LineEntity;
+      expect(grown.end.x, closeTo(10, 1e-9));
+    });
+
+    test('leaves a gap between collinear lines alone', () {
+      final first = LineEntity(
+        id: 1,
+        start: const Vec2(0, 0),
+        end: const Vec2(3, 0),
+      );
+      final later = LineEntity(
+        id: 2,
+        start: const Vec2(5, 0),
+        end: const Vec2(10, 0),
+      );
+
+      expect(Construct.overkill([first, later]).isEmpty, isTrue);
+    });
+
+    test('does not merge lines that only share a colour on another layer', () {
+      final first = LineEntity(
+        id: 1,
+        start: const Vec2(0, 0),
+        end: const Vec2(10, 0),
+      );
+      final other = LineEntity(
+        id: 2,
+        props: const EntityProps(layer: 'WALLS'),
+        start: const Vec2(5, 0),
+        end: const Vec2(15, 0),
+      );
+
+      expect(Construct.overkill([first, other]).isEmpty, isTrue);
+    });
   });
 }
