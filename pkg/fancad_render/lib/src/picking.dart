@@ -267,6 +267,51 @@ class Picker {
     return false;
   }
 
+  /// Re-emits [ids] in the coordinates of the current layout tab.
+  ///
+  /// Model-space entities are replayed through every on paper viewport, so a
+  /// selection outline lands on the sheet instead of at the untransformed
+  /// model point.
+  static void emitInActiveLayout(
+    CadDocument document,
+    Iterable<int> ids,
+    GeometrySink sink, {
+    required double tolerance,
+    Bounds2? visible,
+  }) {
+    final layout = document.activeLayout;
+    for (final id in ids) {
+      final entity = document.entity(id);
+      if (entity == null || !entity.props.visible) continue;
+      if (!document.isLayerVisible(entity.props.layer)) continue;
+      final owner = document.ownerOf(id) ?? document.modelSpaceBlockName;
+      final onSheet = layout.isModelSpace || owner == layout.blockName;
+      if (onSheet) {
+        entity.emit(
+          document.emitContext(tolerance: tolerance, clip: visible),
+          sink,
+        );
+        continue;
+      }
+      if (owner != document.modelSpaceBlockName) continue;
+      for (final viewport in layout.viewports) {
+        if (!viewport.isOn) continue;
+        if (visible != null && !viewport.paperBounds.intersects(visible)) {
+          continue;
+        }
+        final scale = viewport.scale.abs();
+        entity.emit(
+          document.emitContext(
+            tolerance: scale < 1e-12 ? tolerance : tolerance / scale,
+            clip: viewport.modelWindow,
+            transform: viewport.modelToPaper(),
+          ),
+          sink,
+        );
+      }
+    }
+  }
+
   /// Grips of [entityIds] in the coordinates of the current layout.
   ///
   /// Model-space grips are mapped through every on paper viewport that

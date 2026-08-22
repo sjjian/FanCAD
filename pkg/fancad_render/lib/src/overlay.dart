@@ -6,6 +6,7 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/painting.dart';
 import 'package:meta/meta.dart';
 
+import 'picking.dart';
 import 'viewport.dart';
 
 /// Everything drawn on top of the drawing: selection, grips, previews, snaps.
@@ -180,13 +181,13 @@ class OverlayPainter {
     double width,
   ) {
     final sink = _OutlineSink(viewport);
-    final context = document.emitContext(
+    Picker.emitInActiveLayout(
+      document,
+      ids,
+      sink,
       tolerance: viewport.tolerance,
-      clip: viewport.visibleBounds,
+      visible: viewport.visibleBounds,
     );
-    for (final id in ids) {
-      document.entity(id)?.emit(context, sink);
-    }
     if (sink.buffer.isEmpty) return;
     _stroke
       ..color = color

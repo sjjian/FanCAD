@@ -122,4 +122,38 @@ void main() {
 
     expect(hit, isNull);
   });
+
+  test('outlines a model-space line on the paper viewport', () {
+    final document = paperWithModelLine();
+    final id = document.entities.first.id;
+    final sink = PolylineSink();
+
+    Picker.emitInActiveLayout(document, [id], sink, tolerance: 0.1);
+
+    expect(sink.polylines, isNotEmpty);
+    final xy = sink.polylines.first;
+    // Viewport centre (105, 80) looks at model (40, 0) at 1:1.
+    expect(xy[0], closeTo(65, 1e-9));
+    expect(xy[1], closeTo(80, 1e-9));
+    expect(xy[2], closeTo(145, 1e-9));
+    expect(xy[3], closeTo(80, 1e-9));
+  });
+
+  test('outlines a paper-space line in sheet coordinates', () {
+    final document = paperWithModelLine();
+    final paper = document.addEntity(
+      const LineEntity(id: 0, start: Vec2(12, 14), end: Vec2(40, 14)),
+      blockName: '*Paper_Space',
+    );
+    final sink = PolylineSink();
+
+    Picker.emitInActiveLayout(document, [paper.id], sink, tolerance: 0.1);
+
+    expect(sink.polylines, isNotEmpty);
+    final xy = sink.polylines.first;
+    expect(xy[0], closeTo(12, 1e-9));
+    expect(xy[1], closeTo(14, 1e-9));
+    expect(xy[2], closeTo(40, 1e-9));
+    expect(xy[3], closeTo(14, 1e-9));
+  });
 }
