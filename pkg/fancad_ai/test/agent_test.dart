@@ -194,4 +194,145 @@ void main() {
     final turn = await agent.run('Hello');
     expect(turn.error, isNotNull);
   });
+
+  test('declining an edit still runs the read-only remainder', () async {
+    final deltas = <String>[];
+    final agent = AgentLoop(
+      provider: ScriptedLlmProvider([
+        const LlmCompletion(
+          toolCalls: [
+            LlmToolCall(id: '1', name: 'query_summary', arguments: {}),
+            LlmToolCall(
+              id: '2',
+              name: 'draw_line',
+              arguments: {
+                'start': [0, 0],
+                'end': [4, 0],
+              },
+            ),
+          ],
+        ),
+        const LlmCompletion(text: 'Counted, did not draw.'),
+      ]),
+      registry: registry,
+      execute: execute,
+      document: session.document,
+      onDelta: deltas.add,
+      askApproval: (_) async => false,
+    );
+
+    final turn = await agent.run('Summarise then draw');
+    expect(ran, ['query.summary']);
+    expect(session.document.entities, isEmpty);
+    expect(turn.cancelled, isFalse);
+    expect(turn.reply, contains('Counted'));
+    expect(deltas, ['Counted, did not draw.']);
+  });
+
+  test('unknown, hidden and thrown tools become failed rows, not crashes',
+      () async {
+    registry.register(
+      CommandDescriptor(
+        id: 'view.zoomIn',
+        title: 'Zoom In',
+        aiExposure: AiExposure.hidden,
+        handler: (_) async => const CommandResult.ok(),
+      ),
+    );
+    final conversation = Conversation();
+    final agent = AgentLoop(
+      provider: ScriptedLlmProvider([
+        const LlmCompletion(
+          toolCalls: [
+            LlmToolCall(id: '1', name: 'no_such_tool', arguments: {}),
+            LlmToolCall(id: '2', name: 'view_zoomIn', arguments: {}),
+            LlmToolCall(id: '3', name: 'query_summary', arguments: {}),
+          ],
+        ),
+        const LlmCompletion(text: 'Done.'),
+      ]),
+      registry: registry,
+      conversation: conversation,
+      execute: (id, args) async {
+        if (id == 'query.summary') throw StateError('offline');
+        return execute(id, args);
+      },
+      document: session.document,
+      policy: const ApprovalPolicy(autoApproveEdits: true),
+      askApproval: (_) async => true,
+    );
+
+    final turn = await agent.run('Zoom and summarise');
+    expect(turn.isOk, isTrue);
+    expect(ran, isEmpty);
+    final texts = conversation.visible
+        .where((item) => item.role == ChatRole.tool)
+        .map((item) => item.text)
+        .toList();
+    expect(texts, hasLength(3));
+    expect(texts[0], contains('Unknown tool'));
+    expect(texts[1], contains('not available'));
+    expect(texts[2], contains('offline'));
+  });
+
+  test('a failed plugin activate ships a repair hint and max rounds stop',
+      () async {
+    registry.register(
+      CommandDescriptor(
+        id: 'plugins.reload',
+        title: 'Reload',
+        risk: CommandRisk.edit,
+        handler: (_) async =>
+            const CommandResult.failed('could not activate: SyntaxError'),
+      ),
+    );
+    final conversation = Conversation();
+    final reload = AgentLoop(
+      provider: ScriptedLlmProvider([
+        const LlmCompletion(
+          toolCalls: [
+            LlmToolCall(
+              id: '1',
+              name: 'plugins_reload',
+              arguments: {'id': 'demo.wall'},
+            ),
+          ],
+        ),
+        const LlmCompletion(text: 'I will fix it.'),
+      ]),
+      registry: registry,
+      conversation: conversation,
+      execute: execute,
+      document: session.document,
+      typings: 'declare const fancad: FanCadApi;',
+      policy: const ApprovalPolicy(autoApproveEdits: true),
+    );
+
+    await reload.run('Reload the plugin');
+    expect(
+      conversation.visible.singleWhere((item) => item.role == ChatRole.tool).text,
+      contains('repairHint'),
+    );
+    expect(
+      conversation.visible.singleWhere((item) => item.role == ChatRole.tool).text,
+      contains('plugins.write'),
+    );
+
+    final looping = AgentLoop(
+      provider: ScriptedLlmProvider([
+        const LlmCompletion(
+          toolCalls: [
+            LlmToolCall(id: '1', name: 'query_summary', arguments: {}),
+          ],
+        ),
+      ]),
+      registry: registry,
+      execute: execute,
+      document: session.document,
+      maxRounds: 1,
+    );
+    final stopped = await looping.run('Keep going');
+    expect(stopped.error, contains('Stopped after 1'));
+    expect(ran, ['query.summary']);
+  });
 }
