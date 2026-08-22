@@ -558,6 +558,46 @@ void main() {
     });
   });
 
+  group('filletPolyline', () {
+    test('rounds every corner of a square', () {
+      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final filleted = Construct.filletPolyline(square, 2);
+
+      expect(filleted, isNotNull);
+      expect(filleted!.vertexCount, 8);
+      expect(filleted.closed, isTrue);
+      expect(
+        [
+          for (var i = 0; i < filleted.vertexCount; i++) filleted.vertexAt(i),
+        ],
+        isNot(contains(const Vec2(0, 0))),
+      );
+      expect(
+        [
+          for (var i = 0; i < filleted.vertexCount; i++) filleted.vertexAt(i),
+        ],
+        isNot(contains(const Vec2(10, 10))),
+      );
+    });
+
+    test('skips a corner whose sides are shorter than the radius', () {
+      final polyline = PolylineEntity.fromPoints(
+        id: 1,
+        points: const [
+          Vec2(0, 0),
+          Vec2(10, 0),
+          Vec2(10, 10),
+          Vec2(11, 10),
+        ],
+      );
+      final filleted = Construct.filletPolyline(polyline, 2);
+
+      expect(filleted, isNotNull);
+      expect(filleted!.vertexCount, 5);
+      expect(filleted.vertexAt(3), const Vec2(10, 10));
+    });
+  });
+
   group('chamferLines', () {
     test('cuts an equal bevel on an L-corner', () {
       final result = Construct.chamferLines(

@@ -948,9 +948,10 @@ class EditCommands {
     aliases: const ['f', 'fillet'],
     icon: 'fillet',
     description:
-        'Rounds the corner between two lines, or the picked vertex of a '
-        'polyline, with an arc of a given radius. A radius of zero trims or '
-        'extends two lines to a sharp corner.',
+        'Rounds the corner between two lines, or vertices of a polyline, with '
+        'an arc of a given radius. Pass all=true to fillet every straight '
+        'corner of a polyline. A radius of zero trims or extends two lines to '
+        'a sharp corner.',
     params: const [
       ParamSpec(
         name: 'radius',
@@ -958,6 +959,12 @@ class EditCommands {
         description: 'Fillet radius; 0 for a sharp corner',
         required: false,
         min: 0,
+      ),
+      ParamSpec(
+        name: 'all',
+        type: ParamType.boolean,
+        description: 'Round every straight vertex of a polyline',
+        required: false,
       ),
       ParamSpec(
         name: 'first',
@@ -1096,20 +1103,39 @@ class EditCommands {
         'A polyline fillet needs a positive radius.',
       );
     }
-    final pick = context.args.point('pick1') ??
-        context.args.point('pick') ??
-        await context.input.point(
-          'FILLET  Specify a vertex to round:',
-        );
-    final result = Construct.filletPolylineVertex(polyline, pick, radius);
+    final filletAll = context.args.boolean('all') ??
+        (context.args.point('pick1') == null &&
+            context.args.point('pick') == null &&
+            context.input.isInteractive &&
+            await context.input.keyword(
+                  'FILLET  Fillet [Vertex/All]:',
+                  const ['Vertex', 'All'],
+                  defaultOption: 'Vertex',
+                ) ==
+                'All');
+    final PolylineEntity? result;
+    if (filletAll) {
+      result = Construct.filletPolyline(polyline, radius);
+    } else {
+      final pick = context.args.point('pick1') ??
+          context.args.point('pick') ??
+          await context.input.point(
+            'FILLET  Specify a vertex to round:',
+          );
+      result = Construct.filletPolylineVertex(polyline, pick, radius);
+    }
     if (result == null) {
-      return const CommandResult.failed(
-        'That vertex cannot be filleted; the radius may be larger than '
-        'the adjoining segments, or the corner may already be an arc.',
+      return CommandResult.failed(
+        filletAll
+            ? 'No polyline vertex could be filleted; the radius may be '
+                'larger than the adjoining segments.'
+            : 'That vertex cannot be filleted; the radius may be larger than '
+                'the adjoining segments, or the corner may already be an arc.',
       );
     }
+    final filleted = result;
     final committed = context.edit('Fillet', (transaction) {
-      transaction.modify(result);
+      transaction.modify(filleted);
     });
     if (committed == null) {
       return const CommandResult.failed(
@@ -1119,7 +1145,9 @@ class EditCommands {
     context.selection.replace([polyline.id]);
     return CommandResult(
       status: CommandStatus.ok,
-      message: 'Fillet: polyline vertex, radius ${radius.toStringAsFixed(4)}.',
+      message: filletAll
+          ? 'Fillet: polyline, radius ${radius.toStringAsFixed(4)}.'
+          : 'Fillet: polyline vertex, radius ${radius.toStringAsFixed(4)}.',
       data: {'ids': [polyline.id]},
       transaction: committed,
     );

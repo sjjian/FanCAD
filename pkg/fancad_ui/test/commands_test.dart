@@ -609,6 +609,24 @@ void main() {
       expect(polyline.vertexAt(1).y, closeTo(0, 1e-9));
     });
 
+    test('fillet all rounds every polyline vertex', () async {
+      final drawn = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      final id = (drawn.data!['ids']! as List).first as int;
+
+      final result = await run('edit.fillet', {
+        'radius': 2,
+        'first': id,
+        'all': true,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(id)! as PolylineEntity;
+      expect(polyline.vertexCount, 8);
+    });
+
     test('fillet with zero radius makes a sharp corner', () async {
       final vertical = await drawLine(0, 10, 0, 2);
       final horizontal = await drawLine(2, 0, 10, 0);

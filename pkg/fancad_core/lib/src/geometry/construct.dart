@@ -755,6 +755,35 @@ class Construct {
     );
   }
 
+  /// Rounds every straight corner of [polyline] with the same [radius].
+  ///
+  /// That is AutoCAD FILLET's Polyline option: each eligible vertex is
+  /// replaced in turn. A corner that is already an arc, or whose adjoining
+  /// segments are shorter than [radius], is skipped so the rest can still
+  /// round. Returns null when nothing changed.
+  static PolylineEntity? filletPolyline(
+    PolylineEntity polyline,
+    double radius,
+  ) {
+    if (radius <= 0 || !radius.isFinite) return null;
+    final count = polyline.vertexCount;
+    if (count < 3) return null;
+    final firstIndex = polyline.closed ? 0 : 1;
+    final lastIndex = polyline.closed ? count : count - 1;
+    final corners = [
+      for (var i = firstIndex; i < lastIndex; i++) polyline.vertexAt(i),
+    ];
+    var current = polyline;
+    var changed = false;
+    for (final corner in corners) {
+      final next = filletPolylineVertex(current, corner, radius);
+      if (next == null) continue;
+      current = next;
+      changed = true;
+    }
+    return changed ? current : null;
+  }
+
   /// Cuts a straight chamfer between two lines.
   ///
   /// [dist1] and [dist2] are the distances from the intersection back along
