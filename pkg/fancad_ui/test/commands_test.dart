@@ -2697,6 +2697,52 @@ void main() {
       expect(document.layouts, hasLength(1));
     });
 
+    test('rename layout keeps the sheet and paper entities', () async {
+      await run('layout.new');
+      await run('layout.pagesetup', {'width': 420, 'height': 297});
+      await run('layout.mview', {
+        'corner1': [10, 10],
+        'corner2': [200, 150],
+        'scale': 1,
+      });
+      await drawLine(10, 10, 40, 10);
+
+      final result = await run('layout.rename', {'to': 'Title'});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeLayoutName, 'Title');
+      expect(document.layouts.any((item) => item.name == 'Layout1'), isFalse);
+      expect(document.activeLayout.blockName, '*Paper_Space');
+      expect(document.activeLayout.paperWidth, closeTo(420, 1e-9));
+      expect(document.activeLayout.viewports, hasLength(1));
+      expect(document.entitiesOf('*Paper_Space'), hasLength(1));
+
+      await run('edit.undo');
+      expect(document.activeLayoutName, 'Layout1');
+      expect(document.layouts.any((item) => item.name == 'Title'), isFalse);
+      expect(document.entitiesOf('*Paper_Space'), hasLength(1));
+    });
+
+    test('rename layout refuses the model tab', () async {
+      final result = await run('layout.rename', {
+        'name': 'Model',
+        'to': 'World',
+      });
+      expect(result.status, CommandStatus.failed);
+      expect(document.activeLayoutName, 'Model');
+    });
+
+    test('rename layout refuses a duplicate name', () async {
+      await run('layout.new');
+      await run('layout.new');
+      final result = await run('layout.rename', {
+        'name': 'Layout1',
+        'to': 'Layout2',
+      });
+      expect(result.status, CommandStatus.failed);
+      expect(document.layouts.any((item) => item.name == 'Layout1'), isTrue);
+    });
+
     test('copy layout refuses a duplicate name', () async {
       await run('layout.new');
       await run('layout.new');
