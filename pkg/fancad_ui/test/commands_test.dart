@@ -3042,6 +3042,35 @@ void main() {
       expect(result.status, CommandStatus.failed);
     });
 
+    test('vpon toggles the only viewport and refuses vpmax while off', () async {
+      await run('layout.new');
+      await run('layout.mview', {
+        'corner1': [10, 10],
+        'corner2': [200, 150],
+        'scale': 1,
+      });
+
+      final off = await run('layout.vpon');
+      expect(off.status, CommandStatus.ok, reason: off.message);
+      expect(document.activeLayout.viewports.single.isOn, isFalse);
+
+      final refused = await run('layout.vpmax');
+      expect(refused.status, CommandStatus.failed);
+      expect(document.activeLayout.isModelSpace, isFalse);
+
+      final on = await run('layout.vpon', {'on': true});
+      expect(on.status, CommandStatus.ok, reason: on.message);
+      expect(document.activeLayout.viewports.single.isOn, isTrue);
+
+      await run('edit.undo');
+      expect(document.activeLayout.viewports.single.isOn, isFalse);
+    });
+
+    test('vpon refuses the model tab', () async {
+      final result = await run('layout.vpon', {'on': false});
+      expect(result.status, CommandStatus.failed);
+    });
+
     test('vpmax opens model space through the viewport', () async {
       await run('layout.new');
       await run('layout.mview', {

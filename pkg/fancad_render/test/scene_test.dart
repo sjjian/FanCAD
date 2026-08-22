@@ -405,6 +405,42 @@ void main() {
       expect(document.extents.height, closeTo(210, 1e-9));
     });
 
+    test('an off viewport keeps its frame and hides the model', () {
+      final document = CadDocument();
+      document.addEntity(
+        LineEntity(
+          id: 0,
+          start: const Vec2(0, 0),
+          end: const Vec2(80, 0),
+        ),
+        blockName: document.modelSpaceBlockName,
+      );
+      document.addLayout(
+        Layout(
+          name: 'Layout1',
+          blockName: '*Paper_Space',
+          tabOrder: 1,
+          viewports: const [
+            PaperViewport(
+              paperBounds: Bounds2(10, 10, 200, 150),
+              modelCenter: Vec2(40, 0),
+              scale: 1,
+              isOn: false,
+            ),
+          ],
+        ),
+      );
+      expect(document.setActiveLayout('Layout1'), isTrue);
+
+      final scene = newBuilder().build(
+        document,
+        CadViewport.fit(document.extents, size),
+      );
+
+      expect(scene.entityCount, 0);
+      expect(scene.lineBatches, isNotEmpty);
+    });
+
     test('model space does not composite paper viewports', () {
       final document = CadDocument();
       document.addEntity(

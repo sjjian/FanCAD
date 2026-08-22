@@ -336,7 +336,6 @@ class Picker {
     int? found;
     for (var i = 0; i < layout.viewports.length; i++) {
       final window = layout.viewports[i];
-      if (!window.isOn) continue;
       final distance = _distanceToRectEdge(world, window.paperBounds);
       if (distance <= best) {
         best = distance;
@@ -357,7 +356,6 @@ class Picker {
     for (final index in viewportIndices) {
       if (index < 0 || index >= layout.viewports.length) continue;
       final window = layout.viewports[index];
-      if (!window.isOn) continue;
       final local = window.grips();
       for (var i = 0; i < local.length; i++) {
         result.add(

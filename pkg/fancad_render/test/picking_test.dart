@@ -157,6 +157,27 @@ void main() {
     expect(xy[3], closeTo(14, 1e-9));
   });
 
+  test('does not pick model geometry through an off viewport', () {
+    final document = paperWithModelLine();
+    document.addLayout(
+      document.activeLayout.copyWith(
+        viewports: [
+          document.activeLayout.viewports.single.copyWith(isOn: false),
+        ],
+      ),
+    );
+    final view = CadViewport.fit(document.extents, size);
+
+    expect(
+      const Picker().pickTopmost(document, view, const Vec2(105, 80)),
+      isNull,
+    );
+    expect(
+      const Picker().pickViewportFrame(document, view, const Vec2(10, 80)),
+      0,
+    );
+  });
+
   test('picks a paper viewport by its frame, not its interior', () {
     final document = paperWithModelLine();
     final view = CadViewport.fit(document.extents, size);

@@ -172,29 +172,30 @@ class SceneBuilder {
     final layout = document.activeLayout;
     if (!layout.isModelSpace) {
       for (final viewportWindow in layout.viewports) {
-        if (!viewportWindow.isOn) continue;
         if (!viewportWindow.paperBounds.intersects(visible)) continue;
-        final scale = viewportWindow.scale.abs();
-        final vpContext = document.emitContext(
-          tolerance: scale < 1e-12 ? tolerance : tolerance / scale,
-          clip: viewportWindow.modelWindow,
-          transform: viewportWindow.modelToPaper(),
-        );
-        final model = _emitBlock(
-          document: document,
-          sink: sink,
-          blockName: document.modelSpaceBlockName,
-          context: vpContext,
-          query: viewportWindow.modelWindow,
-          onlyLayers: onlyLayers,
-          bucket: bucket,
-          minimumWorldSize: scale < 1e-12
-              ? minimumWorldSize
-              : minimumWorldSize / scale,
-          worldClip: viewportWindow.paperBounds,
-        );
-        drawn += model.drawn;
-        culled += model.culled;
+        if (viewportWindow.isOn) {
+          final scale = viewportWindow.scale.abs();
+          final vpContext = document.emitContext(
+            tolerance: scale < 1e-12 ? tolerance : tolerance / scale,
+            clip: viewportWindow.modelWindow,
+            transform: viewportWindow.modelToPaper(),
+          );
+          final model = _emitBlock(
+            document: document,
+            sink: sink,
+            blockName: document.modelSpaceBlockName,
+            context: vpContext,
+            query: viewportWindow.modelWindow,
+            onlyLayers: onlyLayers,
+            bucket: bucket,
+            minimumWorldSize: scale < 1e-12
+                ? minimumWorldSize
+                : minimumWorldSize / scale,
+            worldClip: viewportWindow.paperBounds,
+          );
+          drawn += model.drawn;
+          culled += model.culled;
+        }
         _emitViewportFrame(sink, viewportWindow.paperBounds);
       }
     }
