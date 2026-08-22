@@ -23,6 +23,7 @@ class ViewCommands {
     _selectByColor(),
     _selectByLinetype(),
     _selectByLineweight(),
+    _selectByType(),
     _isolateObjects(),
     _hideObjects(),
     _unisolateObjects(),
@@ -393,6 +394,66 @@ class ViewCommands {
       );
     },
   );
+
+  static CommandDescriptor _selectByType() => CommandDescriptor(
+    id: 'select.byType',
+    title: 'Select by Type',
+    category: _select,
+    aliases: const ['seltype', 'selecttype'],
+    description:
+        'Selects every object of one entity kind in the current space. '
+        'LINE, CIRCLE, INSERT, DIMENSION and the other FanCAD kinds work; '
+        'LWPOLYLINE and BLOCK are accepted as polyline and insert.',
+    params: const [
+      ParamSpec(
+        name: 'kind',
+        type: ParamType.text,
+        description: 'Entity kind, e.g. line, circle, insert',
+      ),
+    ],
+    handler: (context) async {
+      final raw = await context.resolveText(
+        'kind',
+        'SELECT  Enter object type (LINE, CIRCLE, INSERT, …):',
+      );
+      final kind = _tryEntityKind(raw);
+      if (kind == null) {
+        return CommandResult.failed(
+          '"$raw" is not an object type. Use LINE, CIRCLE, ARC, POLYLINE, '
+          'INSERT, TEXT, DIMENSION, …',
+        );
+      }
+      final ids = [
+        for (final entity in context.document.activeEntities)
+          if (entity.kind == kind && context.document.isSelectable(entity))
+            entity.id,
+      ];
+      context.selection.replace(ids);
+      return CommandResult.ok(
+        message: '${ids.length} ${kind.name} object(s) selected.',
+      );
+    },
+  );
+
+  static EntityKind? _tryEntityKind(String raw) {
+    final key = raw.trim().toLowerCase();
+    if (key.isEmpty) return null;
+    const aliases = {
+      'lwpolyline': EntityKind.polyline,
+      'pline': EntityKind.polyline,
+      'block': EntityKind.insert,
+      'blockref': EntityKind.insert,
+      'dim': EntityKind.dimension,
+      'dtext': EntityKind.text,
+      'constructionline': EntityKind.xline,
+    };
+    if (aliases[key] case final kind?) return kind;
+    for (final kind in EntityKind.values) {
+      if (kind == EntityKind.unknown) continue;
+      if (kind.name == key) return kind;
+    }
+    return null;
+  }
 
   static CommandDescriptor _isolateObjects() => CommandDescriptor(
     id: 'view.isolateObjects',

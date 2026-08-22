@@ -2326,6 +2326,44 @@ void main() {
       expect(workspace.active!.selection.ids, [thick]);
     });
 
+    test('select by type keeps only that kind of object', () async {
+      await drawLine(0, 0, 1, 0);
+      final circle = await run('draw.circle', {
+        'center': [0, 0],
+        'radius': 3,
+      });
+      final circleId = (circle.data!['ids']! as List).first as int;
+
+      final result = await run('select.byType', {'kind': 'CIRCLE'});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(workspace.active!.selection.ids, [circleId]);
+    });
+
+    test('select by type accepts a polyline alias', () async {
+      await drawLine(0, 0, 1, 0);
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [2, 0],
+          [2, 2],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('select.byType', {'kind': 'lwpolyline'});
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(workspace.active!.selection.ids, [id]);
+    });
+
+    test('select by type refuses an unknown kind', () async {
+      final result = await run('select.byType', {'kind': 'widget'});
+
+      expect(result.status, CommandStatus.failed);
+      expect(result.message, contains('not an object type'));
+    });
+
     test('summary reports counts and extents', () async {
       await drawLine(0, 0, 10, 0);
       await run('draw.circle', {'center': [0, 0], 'radius': 5});
