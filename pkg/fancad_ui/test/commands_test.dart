@@ -922,6 +922,29 @@ void main() {
       expect(remnant.vertexAt(1), const Vec2(10, 0));
     });
 
+    test('break splits a bulged polyline at a point on the arc', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {'ids': [lineId, arcId]});
+      final id = document.entities.first.id;
+
+      final result = await run('edit.break', {
+        'target': id,
+        'first': [7.0710678118654755, 7.0710678118654755],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      final first = document.entity(id)! as PolylineEntity;
+      expect(first.hasBulges, isTrue);
+      expect(first.vertexAt(first.vertexCount - 1).y, closeTo(7.071, 1e-3));
+    });
+
     test('break splits an arc at a point', () async {
       final created = await run('draw.arc', {
         'start': [10, 0],

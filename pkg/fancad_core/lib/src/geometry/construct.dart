@@ -715,15 +715,18 @@ class Construct {
   static double _polylineChainDistance(PolylineEntity polyline, _PolyHit hit) {
     var distance = 0.0;
     for (var i = 0; i < hit.segment; i++) {
-      distance += polyline
-          .vertexAt(i)
-          .distanceTo(polyline.vertexAt(i + 1));
+      distance += _segmentLength(
+        polyline.vertexAt(i),
+        polyline.vertexAt(i + 1),
+        polyline.bulgeAt(i),
+      );
     }
     final start = polyline.vertexAt(hit.segment);
     final end = polyline.vertexAt(
       (hit.segment + 1) % polyline.vertexCount,
     );
-    return distance + start.distanceTo(end) * hit.t;
+    return distance +
+        _segmentLength(start, end, polyline.bulgeAt(hit.segment)) * hit.t;
   }
 
   static PolylineEntity? _polylinePrefix(
@@ -1543,7 +1546,7 @@ class Construct {
 
   /// Breaks [polyline] at [first], or drops the span from [first] to [second].
   ///
-  /// Straight segments only: a bulge would need its own split. One point on an
+  /// A bulge is split into two smaller bulges at the pick. One point on an
   /// open polyline splits it in two; on a closed polyline it opens the loop
   /// there. Two points remove the part that runs from the first pick toward
   /// the second, which is how AutoCAD chooses which side of a closed shape
@@ -1556,7 +1559,7 @@ class Construct {
     Vec2 first, [
     Vec2? second,
   ]) {
-    if (polyline.hasBulges || polyline.vertexCount < 2) return null;
+    if (polyline.vertexCount < 2) return null;
     final hit1 = _polylineHit(polyline, first);
     if (hit1 == null) return null;
     if (second == null) return _breakPolylineAt(polyline, [hit1]);
@@ -1576,20 +1579,61 @@ class Construct {
     for (var i = 0; i < segments; i++) {
       final start = polyline.vertexAt(i);
       final end = polyline.vertexAt((i + 1) % count);
-      final delta = end - start;
-      final lengthSquared = delta.lengthSquared;
-      if (lengthSquared < 1e-20) continue;
-      final t = ((pick - start).dot(delta) / lengthSquared).clamp(0.0, 1.0);
-      final point = start + delta * t;
-      final distance = pick.distanceSquaredTo(point);
-      if (distance < bestDistance) {
-        bestDistance = distance;
+      final closest = _closestOnSegment(start, end, polyline.bulgeAt(i), pick);
+      if (closest == null) continue;
+      if (closest.dist2 < bestDistance) {
+        bestDistance = closest.dist2;
         bestSegment = i;
-        bestT = t;
-        bestPoint = point;
+        bestT = closest.t;
+        bestPoint = closest.point;
       }
     }
     return _PolyHit(bestSegment, bestT, bestPoint);
+  }
+
+  static ({Vec2 point, double t, double dist2})? _closestOnSegment(
+    Vec2 start,
+    Vec2 end,
+    double bulge,
+    Vec2 pick,
+  ) {
+    if (bulge.abs() < 1e-12) {
+      final delta = end - start;
+      final lengthSquared = delta.lengthSquared;
+      if (lengthSquared < 1e-20) return null;
+      final t = ((pick - start).dot(delta) / lengthSquared).clamp(0.0, 1.0);
+      final point = start + delta * t;
+      return (point: point, t: t, dist2: pick.distanceSquaredTo(point));
+    }
+    final def = Flatten.bulgeArc(start, end, bulge);
+    if (def == null) return _closestOnSegment(start, end, 0, pick);
+    final startAngle = (start - def.center).angle;
+    final signedSweep = 4 * math.atan(bulge);
+    final t = _clampToSweep(startAngle, signedSweep, (pick - def.center).angle);
+    final point =
+        def.center + Vec2.polar(startAngle + signedSweep * t, def.radius);
+    return (point: point, t: t, dist2: pick.distanceSquaredTo(point));
+  }
+
+  static double _clampToSweep(
+    double startAngle,
+    double signedSweep,
+    double pickAngle,
+  ) {
+    if (signedSweep.abs() < 1e-12) return 0;
+    if (signedSweep > 0) {
+      final along = angularSweep(startAngle, pickAngle);
+      if (along <= signedSweep + 1e-9) {
+        return (along / signedSweep).clamp(0.0, 1.0);
+      }
+      return along - signedSweep < 2 * math.pi - along ? 1.0 : 0.0;
+    }
+    final along = angularSweep(pickAngle, startAngle);
+    final mag = -signedSweep;
+    if (along <= mag + 1e-9) {
+      return (along / mag).clamp(0.0, 1.0);
+    }
+    return along - mag < 2 * math.pi - along ? 1.0 : 0.0;
   }
 
   static List<PolylineEntity>? _breakPolylineAt(
@@ -1597,7 +1641,9 @@ class Construct {
     List<_PolyHit> hits,
   ) {
     final verts = _polylineVertsWithBreaks(polyline, hits);
-    final indices = [for (final hit in hits) _nearestVertexIndex(verts, hit.point)];
+    final indices = [
+      for (final hit in hits) _nearestPolyVertIndex(verts, hit.point),
+    ];
     if (hits.length == 1) {
       final index = indices.first;
       if (!polyline.closed) {
@@ -1605,8 +1651,8 @@ class Construct {
         final left = verts.sublist(0, index + 1);
         final right = verts.sublist(index);
         return [
-          _openPolyline(polyline, left, polyline.id),
-          _openPolyline(polyline, right, 0),
+          _openPolyVerts(polyline, left, polyline.id),
+          _openPolyVerts(polyline, right, 0),
         ];
       }
       final opened = [
@@ -1615,7 +1661,7 @@ class Construct {
         verts[index],
       ];
       if (opened.length < 3) return const [];
-      return [_openPolyline(polyline, opened, polyline.id)];
+      return [_openPolyVerts(polyline, opened, polyline.id)];
     }
 
     final first = indices[0];
@@ -1630,11 +1676,11 @@ class Construct {
       final left = verts.sublist(0, lo + 1);
       final right = verts.sublist(hi);
       if (left.length >= 2) {
-        pieces.add(_openPolyline(polyline, left, polyline.id));
+        pieces.add(_openPolyVerts(polyline, left, polyline.id));
       }
       if (right.length >= 2) {
         pieces.add(
-          _openPolyline(polyline, right, pieces.isEmpty ? polyline.id : 0),
+          _openPolyVerts(polyline, right, pieces.isEmpty ? polyline.id : 0),
         );
       }
       if (pieces.isEmpty) return const [];
@@ -1650,41 +1696,74 @@ class Construct {
         ? [...verts.sublist(second), ...verts.sublist(0, first + 1)]
         : verts.sublist(second, first + 1);
     if (remaining.length < 2) return const [];
-    return [_openPolyline(polyline, remaining, polyline.id)];
+    return [_openPolyVerts(polyline, remaining, polyline.id)];
   }
 
-  static List<Vec2> _polylineVertsWithBreaks(
+  static List<_PolyVert> _polylineVertsWithBreaks(
     PolylineEntity polyline,
     List<_PolyHit> hits,
   ) {
     final count = polyline.vertexCount;
     final segments = polyline.closed ? count : count - 1;
-    final out = <Vec2>[];
+    final out = <_PolyVert>[];
     for (var i = 0; i < count; i++) {
-      out.add(polyline.vertexAt(i));
+      final bulge = i < segments ? polyline.bulgeAt(i) : 0.0;
+      out.add(_PolyVert(polyline.vertexAt(i), bulge));
       if (i >= segments) continue;
       final extras = [
         for (final hit in hits)
           if (hit.segment == i && hit.t > 1e-9 && hit.t < 1 - 1e-9) hit,
       ]..sort((a, b) => a.t.compareTo(b.t));
-      for (final hit in extras) {
-        out.add(hit.point);
+      if (extras.isEmpty) continue;
+      final ts = [0.0, for (final hit in extras) hit.t, 1.0];
+      out.last.bulge = _partialBulge(bulge, ts[0], ts[1]);
+      for (var k = 0; k < extras.length; k++) {
+        out.add(
+          _PolyVert(
+            extras[k].point,
+            _partialBulge(bulge, ts[k + 1], ts[k + 2]),
+          ),
+        );
       }
     }
     return out;
   }
 
-  static int _nearestVertexIndex(List<Vec2> points, Vec2 target) {
+  static double _partialBulge(double bulge, double fromT, double toT) {
+    if (bulge.abs() < 1e-12) return 0;
+    return math.tan(math.atan(bulge) * (toT - fromT));
+  }
+
+  static int _nearestPolyVertIndex(List<_PolyVert> verts, Vec2 target) {
     var best = 0;
-    var bestDistance = points.first.distanceSquaredTo(target);
-    for (var i = 1; i < points.length; i++) {
-      final distance = points[i].distanceSquaredTo(target);
+    var bestDistance = verts.first.point.distanceSquaredTo(target);
+    for (var i = 1; i < verts.length; i++) {
+      final distance = verts[i].point.distanceSquaredTo(target);
       if (distance < bestDistance) {
         best = i;
         bestDistance = distance;
       }
     }
     return best;
+  }
+
+  static PolylineEntity _openPolyVerts(
+    PolylineEntity source,
+    List<_PolyVert> verts,
+    int id,
+  ) {
+    final vertices = Float64List(verts.length * 3);
+    for (var i = 0; i < verts.length; i++) {
+      vertices[i * 3] = verts[i].point.x;
+      vertices[i * 3 + 1] = verts[i].point.y;
+      vertices[i * 3 + 2] = i < verts.length - 1 ? verts[i].bulge : 0;
+    }
+    return PolylineEntity(
+      id: id,
+      props: source.props,
+      vertices: vertices,
+      constantWidth: source.constantWidth,
+    );
   }
 
   static PolylineEntity _openPolyline(
@@ -2597,7 +2676,13 @@ class Construct {
   }
 }
 
-/// The two trimmed lines and optional joining arc produced by [Construct.filletLines].
+class _PolyVert {
+  _PolyVert(this.point, this.bulge);
+
+  final Vec2 point;
+  double bulge;
+}
+
 class _PolyHit {
   const _PolyHit(this.segment, this.t, this.point);
 

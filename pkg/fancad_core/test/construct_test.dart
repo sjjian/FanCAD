@@ -1025,6 +1025,32 @@ void main() {
       );
     });
 
+    test('splits a bulge into two smaller bulges', () {
+      final quarter = PolylineEntity(
+        id: 1,
+        vertices: Float64List.fromList([
+          10,
+          0,
+          math.tan(math.pi / 8),
+          0,
+          10,
+          0,
+        ]),
+      );
+
+      final pieces = Construct.breakPolyline(
+        quarter,
+        Vec2(10 * math.cos(math.pi / 4), 10 * math.sin(math.pi / 4)),
+      );
+
+      expect(pieces, hasLength(2));
+      expect(pieces![0].vertexCount, 2);
+      expect(pieces[0].bulgeAt(0), closeTo(math.tan(math.pi / 16), 1e-9));
+      expect(pieces[1].bulgeAt(0), closeTo(math.tan(math.pi / 16), 1e-9));
+      expect(pieces[0].vertexAt(1).x, closeTo(10 * math.cos(math.pi / 4), 1e-9));
+      expect(pieces[1].vertexAt(1).y, closeTo(10, 1e-9));
+    });
+
     test('drops the span between two points on an open polyline', () {
       final polyline = PolylineEntity.fromPoints(
         id: 1,

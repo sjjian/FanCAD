@@ -1407,10 +1407,11 @@ class EditCommands {
     category: _category,
     aliases: const ['br', 'break'],
     description:
-        'Splits a line, straight polyline or arc at a point, or removes the '
-        'portion between two points. A circle needs two points and keeps the '
-        'counter-clockwise remnant from the second pick back to the first. '
-        'Omit the second point to only split (arcs and open chains).',
+        'Splits a line, polyline or arc at a point, or removes the portion '
+        'between two points. A bulge is split into two smaller arcs. A circle '
+        'needs two points and keeps the counter-clockwise remnant from the '
+        'second pick back to the first. Omit the second point to only split '
+        '(arcs and open chains).',
     params: const [
       ParamSpec(
         name: 'target',
@@ -1448,7 +1449,7 @@ class EditCommands {
           target is! ArcEntity &&
           target is! CircleEntity) {
         return const CommandResult.failed(
-          'Break supports lines, straight polylines, arcs and circles.',
+          'Break supports lines, polylines, arcs and circles.',
         );
       }
 
