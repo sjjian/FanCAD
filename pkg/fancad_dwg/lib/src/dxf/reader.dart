@@ -53,6 +53,11 @@ class DxfReader {
         section = '';
         continue;
       }
+      if (type == 'LTYPE' && section == 'TABLES') {
+        final lineType = _lineType(scan.collectPairs());
+        if (lineType != null) document.putLineType(lineType);
+        continue;
+      }
       if (type == 'LAYER' && section == 'TABLES') {
         document.putLayer(_layer(scan.collectMap()));
         continue;
@@ -254,6 +259,35 @@ class DxfReader {
       scale: n(40, 1),
       decimalPlaces: int.tryParse(v[271] ?? '') ?? 2,
       textStyle: v[7] ?? 'Standard',
+    );
+  }
+
+  static LineTypeDef? _lineType(List<(int, String)> pairs) {
+    var name = '';
+    var description = '';
+    var patternLength = 0.0;
+    final pattern = <double>[];
+    for (final (code, value) in pairs) {
+      switch (code) {
+        case 2:
+          name = value;
+        case 3:
+          description = value;
+        case 40:
+          patternLength = double.tryParse(value) ?? 0;
+        case 49:
+          pattern.add(double.tryParse(value) ?? 0);
+      }
+    }
+    if (name.isEmpty) return null;
+    if (patternLength <= 0 && pattern.isNotEmpty) {
+      patternLength = pattern.fold<double>(0, (sum, dash) => sum + dash.abs());
+    }
+    return LineTypeDef(
+      name: name,
+      description: description,
+      pattern: pattern,
+      patternLength: patternLength,
     );
   }
 

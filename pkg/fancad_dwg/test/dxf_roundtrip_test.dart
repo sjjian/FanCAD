@@ -314,6 +314,40 @@ void main() {
     expect(dim.definitionPoints[2], const Vec2(5, 4));
   });
 
+  test('line type dash patterns survive DXF', () {
+    final original = CadDocument()
+      ..putLineType(
+        const LineTypeDef(
+          name: 'CENTER',
+          description: 'Center ____ _ ____',
+          pattern: [24, -6, 6, -6],
+          patternLength: 42,
+        ),
+      )
+      ..putLayer(
+        const LayerDef(name: 'AXIS', lineType: 'CENTER'),
+      )
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          start: Vec2.zero(),
+          end: Vec2(10, 0),
+          props: EntityProps(layer: 'AXIS'),
+        ),
+      );
+
+    final dxf = const DxfWriter().writeString(original);
+    expect(dxf, contains('LTYPE'));
+    expect(dxf, contains('CENTER'));
+
+    final restored = const DxfReader().readString(dxf);
+    final center = restored.lineTypes['CENTER'];
+    expect(center, isNotNull);
+    expect(center!.pattern, const [24, -6, 6, -6]);
+    expect(center.patternLength, closeTo(42, 1e-12));
+    expect(restored.layers['AXIS']?.lineType, 'CENTER');
+  });
+
   test('unknown entities are not written as a point at the origin', () {
     final original = CadDocument();
     original

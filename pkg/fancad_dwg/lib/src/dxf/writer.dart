@@ -34,6 +34,7 @@ class DxfWriter {
 
     pair(0, 'SECTION');
     pair(2, 'TABLES');
+    _lineTypes(pair, document);
     _layers(pair, document);
     _dimStyles(pair, document);
     pair(0, 'ENDSEC');
@@ -110,6 +111,28 @@ class DxfWriter {
     final file = File(path);
     await file.parent.create(recursive: true);
     await file.writeAsString(writeString(document), encoding: utf8);
+  }
+
+  void _lineTypes(void Function(int, Object) pair, CadDocument document) {
+    pair(0, 'TABLE');
+    pair(2, 'LTYPE');
+    pair(70, document.lineTypes.length);
+    for (final lineType in document.lineTypes.values) {
+      pair(0, 'LTYPE');
+      pair(2, lineType.name);
+      pair(70, 0);
+      if (lineType.description.isNotEmpty) pair(3, lineType.description);
+      pair(72, 65);
+      pair(73, lineType.pattern.length);
+      final length = lineType.patternLength > 0
+          ? lineType.patternLength
+          : lineType.pattern.fold<double>(0, (sum, dash) => sum + dash.abs());
+      pair(40, length);
+      for (final dash in lineType.pattern) {
+        pair(49, dash);
+      }
+    }
+    pair(0, 'ENDTAB');
   }
 
   void _layers(void Function(int, Object) pair, CadDocument document) {
