@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -713,8 +714,60 @@ class _DragArea extends StatelessWidget {
   );
 }
 
-class _WindowButtons extends StatelessWidget {
+class _WindowButtons extends StatefulWidget {
   const _WindowButtons();
+
+  @override
+  State<_WindowButtons> createState() => _WindowButtonsState();
+}
+
+class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
+  bool _maximized = false;
+  bool _listening = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_bind());
+  }
+
+  Future<void> _bind() async {
+    try {
+      windowManager.addListener(this);
+      _listening = true;
+      final maximized = await windowManager.isMaximized();
+      if (mounted) setState(() => _maximized = maximized);
+    } catch (_) {
+      // Headless tests have no window plugin.
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_listening) windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  @override
+  void onWindowMaximize() => _setMaximized(true);
+
+  @override
+  void onWindowUnmaximize() => _setMaximized(false);
+
+  void _setMaximized(bool value) {
+    if (!mounted || _maximized == value) return;
+    setState(() => _maximized = value);
+  }
+
+  Future<void> _toggleMaximize() async {
+    try {
+      if (await windowManager.isMaximized()) {
+        await windowManager.unmaximize();
+      } else {
+        await windowManager.maximize();
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) => Row(
@@ -725,16 +778,10 @@ class _WindowButtons extends StatelessWidget {
         onPressed: windowManager.minimize,
       ),
       ShellIconButton(
-        icon: Icons.crop_square,
-        iconSize: 13,
-        tooltip: 'Maximise',
-        onPressed: () async {
-          if (await windowManager.isMaximized()) {
-            await windowManager.unmaximize();
-          } else {
-            await windowManager.maximize();
-          }
-        },
+        icon: _maximized ? Icons.filter_none : Icons.crop_square,
+        iconSize: _maximized ? 12 : 13,
+        tooltip: _maximized ? 'Restore' : 'Maximise',
+        onPressed: _toggleMaximize,
       ),
       ShellIconButton(
         icon: Icons.close,
