@@ -228,6 +228,22 @@ class _CommandLinePaneState extends State<CommandLinePane> {
             onPressed: widget.onToggleExpand,
           ),
           ShellIconButton(
+            icon: Icons.copy_outlined,
+            tooltip: _model.lines.isEmpty
+                ? 'Nothing to copy'
+                : 'Copy command history',
+            enabled: _model.lines.isNotEmpty,
+            size: 22,
+            iconSize: 14,
+            onPressed: () {
+              final text = [
+                for (final line in _model.lines) line.text,
+              ].join('\n');
+              Clipboard.setData(ClipboardData(text: text));
+              widget.workspace.notify('Copied command history');
+            },
+          ),
+          ShellIconButton(
             icon: Icons.delete_outline,
             tooltip: _model.lines.isEmpty
                 ? 'Nothing to clear'
