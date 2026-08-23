@@ -278,6 +278,14 @@ class _DocumentViewState extends State<DocumentView> {
                 onCancel: widget.workspace.cancelActive,
               ),
             ),
+            if (tab.document.entityCount == 0 &&
+                !widget.workspace.isBusy &&
+                !widget.workspace.commandLine.isAwaitingInput)
+              _EmptyDrawingHint(
+                onLine: () => widget.workspace.run('draw.line'),
+                onRectangle: () => widget.workspace.run('draw.rectangle'),
+                onCircle: () => widget.workspace.run('draw.circle'),
+              ),
           ],
         ),
       ),
@@ -381,6 +389,73 @@ class _CanvasPromptHud extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// First-stroke hints on a new, empty drawing.
+class _EmptyDrawingHint extends StatelessWidget {
+  const _EmptyDrawingHint({
+    required this.onLine,
+    required this.onRectangle,
+    required this.onCircle,
+  });
+
+  final VoidCallback onLine;
+  final VoidCallback onRectangle;
+  final VoidCallback onCircle;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Align(
+      alignment: Alignment.center,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Material(
+          color: tokens.surfaceOverlay.withValues(alpha: 0.94),
+          elevation: 4,
+          shadowColor: Colors.black.withValues(alpha: 0.25),
+          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              FanCadTokens.space4,
+              FanCadTokens.space4,
+              FanCadTokens.space4,
+              FanCadTokens.space3,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'This drawing is empty',
+                  style: tokens.bodyStyle.copyWith(fontSize: 14),
+                ),
+                const SizedBox(height: FanCadTokens.space1),
+                Text(
+                  'Start a command from the toolbar, type an alias such as L or C, or pick one below.',
+                  style: tokens.labelStyle,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: FanCadTokens.space3),
+                Wrap(
+                  spacing: FanCadTokens.space2,
+                  runSpacing: FanCadTokens.space2,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    PromptKeywordChip(label: 'Line  L', onPressed: onLine),
+                    PromptKeywordChip(
+                      label: 'Rectangle  REC',
+                      onPressed: onRectangle,
+                    ),
+                    PromptKeywordChip(label: 'Circle  C', onPressed: onCircle),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
