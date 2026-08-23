@@ -163,6 +163,11 @@ class Workspace extends ChangeNotifier implements CommandServices {
       notify('There is no file to open.', isError: true);
       return null;
     }
+    if (!File(target).existsSync()) {
+      _dropRecent(target);
+      notify('$target is missing and was removed from Recent.', isError: true);
+      return null;
+    }
     // An already-open file is activated rather than opened twice; two tabs onto
     // one file with independent undo stacks is a data-loss trap. Compare the
     // resolved file, so a symlink or a `./` in the path is not a second tab.
@@ -271,6 +276,32 @@ class Workspace extends ChangeNotifier implements CommandServices {
   /// menu and on the empty workspace until the user restarts.
   void clearRecentFiles() {
     settings.set(SettingsKeys.recentFiles, <String>[]);
+    notifyListeners();
+  }
+
+  /// Drops recent paths whose files are gone, so the File menu and empty
+  /// workspace stop offering drawings that cannot be opened.
+  int pruneMissingRecentFiles() {
+    final recent = settings.getStringList(SettingsKeys.recentFiles);
+    final kept = [
+      for (final path in recent)
+        if (File(path).existsSync()) path,
+    ];
+    if (kept.length == recent.length) return 0;
+    settings.set(SettingsKeys.recentFiles, kept);
+    notifyListeners();
+    return recent.length - kept.length;
+  }
+
+  void _dropRecent(String path) {
+    final identity = _fileIdentity(path);
+    final recent = settings.getStringList(SettingsKeys.recentFiles);
+    final kept = [
+      for (final item in recent)
+        if (_fileIdentity(item) != identity) item,
+    ];
+    if (kept.length == recent.length) return;
+    settings.set(SettingsKeys.recentFiles, kept);
     notifyListeners();
   }
 

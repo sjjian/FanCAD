@@ -299,6 +299,17 @@ class _FileMenu extends StatelessWidget {
           workspace.clearRecentFiles();
           return;
         }
+        if (value == 'pruneRecent') {
+          final removed = workspace.pruneMissingRecentFiles();
+          workspace.notify(
+            removed == 0
+                ? 'Every recent file is still on disk.'
+                : removed == 1
+                ? 'Removed 1 missing file from Recent.'
+                : 'Removed $removed missing files from Recent.',
+          );
+          return;
+        }
         workspace.run(value);
       },
       itemBuilder: (context) => [
@@ -313,6 +324,12 @@ class _FileMenu extends StatelessWidget {
           ),
           for (final path in recent.take(8))
             _recentItem(context, tokens, path),
+          if (recent.any((path) => !File(path).existsSync()))
+            PopupMenuItem<String>(
+              value: 'pruneRecent',
+              height: 32,
+              child: Text('Remove missing', style: tokens.bodyStyle),
+            ),
           PopupMenuItem<String>(
             value: 'clearRecent',
             height: 32,
