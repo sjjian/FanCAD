@@ -538,6 +538,7 @@ class ShellTextField extends StatelessWidget {
     this.style,
     this.autofocus = false,
     this.prefix,
+    this.suffix,
     this.inputFormatters,
   });
 
@@ -549,6 +550,7 @@ class ShellTextField extends StatelessWidget {
   final TextStyle? style;
   final bool autofocus;
   final Widget? prefix;
+  final Widget? suffix;
   final List<TextInputFormatter>? inputFormatters;
 
   @override
@@ -581,6 +583,7 @@ class ShellTextField extends StatelessWidget {
             onChanged: onChanged,
           ),
         ),
+        ?suffix,
       ],
     );
   }

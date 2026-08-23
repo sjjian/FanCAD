@@ -596,6 +596,18 @@ class _CommandListPanelState extends State<_CommandListPanel> {
               child: Icon(Icons.search, size: 13, color: tokens.textFaint),
             ),
             onChanged: (value) => setState(() => _query = value),
+            suffix: _query.isEmpty
+                ? null
+                : ShellIconButton(
+                    icon: Icons.close,
+                    size: 18,
+                    iconSize: 12,
+                    tooltip: 'Clear filter',
+                    onPressed: () {
+                      _filter.clear();
+                      setState(() => _query = '');
+                    },
+                  ),
           ),
         ),
         Expanded(

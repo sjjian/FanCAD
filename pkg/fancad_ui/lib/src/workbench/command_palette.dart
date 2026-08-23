@@ -180,6 +180,18 @@ class _CommandPaletteState extends State<CommandPalette> {
                           hintText: 'Search commands, aliases or categories',
                           style: tokens.bodyStyle.copyWith(fontSize: 14),
                           onChanged: _recompute,
+                          suffix: _query.text.isEmpty
+                              ? null
+                              : ShellIconButton(
+                                  icon: Icons.close,
+                                  size: 22,
+                                  iconSize: 14,
+                                  tooltip: 'Clear search',
+                                  onPressed: () {
+                                    _query.clear();
+                                    _recompute('');
+                                  },
+                                ),
                           prefix: Padding(
                             padding: const EdgeInsets.only(
                               right: FanCadTokens.space2,

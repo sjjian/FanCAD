@@ -107,6 +107,18 @@ class _LayersPanelState extends State<LayersPanel> {
             ),
             onChanged: (value) =>
                 setState(() => _filter = value.trim().toLowerCase()),
+            suffix: _filter.isEmpty
+                ? null
+                : ShellIconButton(
+                    icon: Icons.close,
+                    size: 18,
+                    iconSize: 12,
+                    tooltip: 'Clear filter',
+                    onPressed: () {
+                      _filterController.clear();
+                      setState(() => _filter = '');
+                    },
+                  ),
           ),
         ),
         Expanded(
