@@ -59,7 +59,12 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
                 )
               : StreamBuilder<PluginHost>(
                   stream: host.changes,
-                  builder: (context, _) => _buildList(context, host),
+                  builder: (context, _) => Column(
+                    children: [
+                      Expanded(child: _buildList(context, host)),
+                      _ExtensionFooter(host: host),
+                    ],
+                  ),
                 ),
         ),
       ],
@@ -69,25 +74,35 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
   Widget _buildList(BuildContext context, PluginHost host) {
     final plugins = host.plugins;
     if (plugins.isEmpty) {
-      return const _PanelMessage(
-        'No extensions are installed. Use Create Extension to write one, or '
-        'drop a folder containing fancad.plugin.json into the extensions '
-        'directory.',
+      return _PanelMessage(
+        'No extensions are installed. Create one, or drop a folder with '
+        'fancad.plugin.json into the extensions directory.',
+        actionLabel: 'Create extension',
+        onAction: () => widget.workspace.run('plugins.scaffold'),
       );
     }
+    final failedId = plugins
+        .where((plugin) => plugin.state == PluginState.failed)
+        .map((plugin) => plugin.id)
+        .firstOrNull;
     return ListView.builder(
       padding: EdgeInsets.zero,
       itemCount: plugins.length,
       itemBuilder: (context, index) {
         final handle = plugins[index];
+        final expanded = _expanded ?? failedId;
         return _ExtensionTile(
           handle: handle,
-          isExpanded: _expanded == handle.id,
+          isExpanded: expanded == handle.id,
           onToggle: () => setState(
-            () => _expanded = _expanded == handle.id ? null : handle.id,
+            () => _expanded = expanded == handle.id ? '' : handle.id,
           ),
           onReload: () =>
               widget.workspace.run('plugins.reload', args: {'id': handle.id}),
+          onEdit: () =>
+              widget.workspace.run('plugins.edit', args: {'id': handle.id}),
+          onRunCommand: (id) => widget.workspace.run(id),
+          onCopied: (text) => widget.workspace.notify('Copied $text'),
           onSetEnabled: (value) => widget.workspace.run(
             value ? 'plugins.enable' : 'plugins.disable',
             args: {'id': handle.id},
@@ -104,6 +119,9 @@ class _ExtensionTile extends StatelessWidget {
     required this.isExpanded,
     required this.onToggle,
     required this.onReload,
+    required this.onEdit,
+    required this.onRunCommand,
+    required this.onCopied,
     required this.onSetEnabled,
   });
 
@@ -111,6 +129,9 @@ class _ExtensionTile extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onToggle;
   final VoidCallback onReload;
+  final VoidCallback onEdit;
+  final ValueChanged<String> onRunCommand;
+  final ValueChanged<String> onCopied;
   final ValueChanged<bool> onSetEnabled;
 
   @override
@@ -173,8 +194,15 @@ class _ExtensionTile extends StatelessWidget {
                     ),
                   ),
                   ShellIconButton(
-                    icon: isDisabled ? Icons.play_arrow : Icons.block,
-                    tooltip: isDisabled ? 'Enable' : 'Disable',
+                    icon: Icons.code,
+                    tooltip: 'Edit source',
+                    onPressed: onEdit,
+                  ),
+                  ShellIconButton(
+                    icon: isDisabled
+                        ? Icons.play_arrow_outlined
+                        : Icons.pause_outlined,
+                    tooltip: isDisabled ? 'Enable extension' : 'Disable extension',
                     onPressed: () => onSetEnabled(isDisabled),
                   ),
                   ShellIconButton(
@@ -186,7 +214,12 @@ class _ExtensionTile extends StatelessWidget {
               ),
             ),
           ),
-          if (isExpanded) _Details(handle: handle),
+          if (isExpanded)
+            _Details(
+              handle: handle,
+              onRunCommand: onRunCommand,
+              onCopied: onCopied,
+            ),
         ],
       ),
     );
@@ -194,9 +227,15 @@ class _ExtensionTile extends StatelessWidget {
 }
 
 class _Details extends StatelessWidget {
-  const _Details({required this.handle});
+  const _Details({
+    required this.handle,
+    required this.onRunCommand,
+    required this.onCopied,
+  });
 
   final PluginHandle handle;
+  final ValueChanged<String> onRunCommand;
+  final ValueChanged<String> onCopied;
 
   @override
   Widget build(BuildContext context) {
@@ -218,9 +257,14 @@ class _Details extends StatelessWidget {
               ),
               child: Text(manifest.description, style: tokens.labelStyle),
             ),
-          _Row(label: 'State', value: handle.state.name),
+          _Row(label: 'State', value: _stateLabel(handle.state)),
           if (manifest.directory.isNotEmpty)
-            _Row(label: 'Folder', value: manifest.directory),
+            _Row(
+              label: 'Folder',
+              value: manifest.directory,
+              copyText: manifest.directory,
+              onCopied: onCopied,
+            ),
           _Row(
             label: 'Permissions',
             value: manifest.permissions.isEmpty
@@ -234,7 +278,14 @@ class _Details extends StatelessWidget {
               title: 'Commands',
               children: [
                 for (final command in manifest.commands)
-                  _Row(label: command.title, value: command.id),
+                  PropertyRow(
+                    label: command.title,
+                    value: Text(command.id),
+                    isEditable: true,
+                    onTap: () => onRunCommand(command.id),
+                    copyText: command.id,
+                    onCopied: onCopied,
+                  ),
               ],
             ),
           if (handle.log.isNotEmpty)
@@ -269,10 +320,17 @@ class _Details extends StatelessWidget {
 
 /// A label and a plain string, the shape most of this panel needs.
 class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.value});
+  const _Row({
+    required this.label,
+    required this.value,
+    this.copyText,
+    this.onCopied,
+  });
 
   final String label;
   final String value;
+  final String? copyText;
+  final ValueChanged<String>? onCopied;
 
   @override
   Widget build(BuildContext context) => PropertyRow(
@@ -282,8 +340,18 @@ class _Row extends StatelessWidget {
       style: context.tokens.bodyStyle,
       overflow: TextOverflow.ellipsis,
     ),
+    copyText: copyText ?? value,
+    onCopied: onCopied,
   );
 }
+
+String _stateLabel(PluginState state) => switch (state) {
+  PluginState.active => 'Running',
+  PluginState.activating => 'Starting',
+  PluginState.failed => 'Failed',
+  PluginState.disabled => 'Disabled',
+  PluginState.installed => 'Installed',
+};
 
 class _StateDot extends StatelessWidget {
   const _StateDot({required this.state, required this.tokens});
@@ -301,7 +369,7 @@ class _StateDot extends StatelessWidget {
       PluginState.installed => tokens.textMuted,
     };
     return Tooltip(
-      message: state.name,
+      message: _stateLabel(state),
       child: Container(
         width: 8,
         height: 8,
@@ -312,16 +380,71 @@ class _StateDot extends StatelessWidget {
 }
 
 class _PanelMessage extends StatelessWidget {
-  const _PanelMessage(this.message);
+  const _PanelMessage(this.message, {this.actionLabel, this.onAction});
 
   final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return Padding(
       padding: const EdgeInsets.all(FanCadTokens.space4),
-      child: Text(message, style: tokens.labelStyle),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(message, style: tokens.labelStyle, textAlign: TextAlign.center),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: FanCadTokens.space3),
+            ShellRow(
+              onTap: onAction,
+              height: 28,
+              padding: const EdgeInsets.symmetric(
+                horizontal: FanCadTokens.space2,
+              ),
+              child: Text(
+                actionLabel!,
+                style: tokens.bodyStyle.copyWith(color: tokens.accent),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ExtensionFooter extends StatelessWidget {
+  const _ExtensionFooter({required this.host});
+
+  final PluginHost host;
+
+  @override
+  Widget build(BuildContext context) {
+    final plugins = host.plugins;
+    final failed = plugins
+        .where((plugin) => plugin.state == PluginState.failed)
+        .length;
+    final running = plugins
+        .where((plugin) => plugin.state == PluginState.active)
+        .length;
+    return Container(
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: context.tokens.border)),
+      ),
+      child: Text(
+        [
+          '${plugins.length} extension${plugins.length == 1 ? '' : 's'}',
+          if (running > 0) '$running running',
+          if (failed > 0) '$failed failed',
+        ].join(' · '),
+        style: context.tokens.labelStyle,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 }
