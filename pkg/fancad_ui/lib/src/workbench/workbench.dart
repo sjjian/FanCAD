@@ -517,7 +517,6 @@ class _Notices extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final notices = workspace.notices.reversed.take(3).toList();
     if (notices.isEmpty) return const SizedBox.shrink();
     return Column(
@@ -526,45 +525,129 @@ class _Notices extends StatelessWidget {
         for (final notice in notices)
           Padding(
             padding: const EdgeInsets.only(top: FanCadTokens.space2),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: FanCadTokens.space3,
-                  vertical: FanCadTokens.space2,
-                ),
-                decoration: BoxDecoration(
-                  color: tokens.surfaceOverlay,
-                  borderRadius: BorderRadius.circular(FanCadTokens.radius),
-                  border: Border.all(
-                    color: notice.isError ? tokens.danger : tokens.border,
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      notice.isError ? Icons.error_outline : Icons.info_outline,
-                      size: 14,
-                      color: notice.isError ? tokens.danger : tokens.accent,
-                    ),
-                    const SizedBox(width: FanCadTokens.space2),
-                    Expanded(
-                      child: Text(notice.message, style: tokens.bodyStyle),
-                    ),
-                    const SizedBox(width: FanCadTokens.space2),
-                    ShellIconButton(
-                      icon: Icons.close,
-                      size: 18,
-                      iconSize: 12,
-                      onPressed: () => workspace.dismissNotice(notice),
-                    ),
-                  ],
-                ),
-              ),
+            child: _NoticeToast(
+              key: ValueKey('${notice.at.microsecondsSinceEpoch}:${notice.message}'),
+              workspace: workspace,
+              notice: notice,
             ),
           ),
       ],
+    );
+  }
+}
+
+/// A toast that can be copied, dismissed, and — for non-errors — fades itself.
+class _NoticeToast extends StatefulWidget {
+  const _NoticeToast({
+    super.key,
+    required this.workspace,
+    required this.notice,
+  });
+
+  final Workspace workspace;
+  final Notice notice;
+
+  @override
+  State<_NoticeToast> createState() => _NoticeToastState();
+}
+
+class _NoticeToastState extends State<_NoticeToast> {
+  Timer? _timer;
+  bool _hovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _arm();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _arm() {
+    _timer?.cancel();
+    if (widget.notice.isError) return;
+    _timer = Timer(const Duration(seconds: 6), () {
+      if (mounted && !_hovered) {
+        widget.workspace.dismissNotice(widget.notice);
+      }
+    });
+  }
+
+  void _copy() {
+    Clipboard.setData(ClipboardData(text: widget.notice.message));
+    widget.workspace.dismissNotice(widget.notice);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final notice = widget.notice;
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _hovered = true);
+        _timer?.cancel();
+      },
+      onExit: (_) {
+        setState(() => _hovered = false);
+        _arm();
+      },
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Material(
+          color: tokens.surfaceOverlay,
+          elevation: 8,
+          shadowColor: Colors.black.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(FanCadTokens.radius),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space3,
+              vertical: FanCadTokens.space2,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(FanCadTokens.radius),
+              border: Border.all(
+                color: notice.isError ? tokens.danger : tokens.borderStrong,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  notice.isError
+                      ? Icons.error_outline
+                      : Icons.check_circle_outline,
+                  size: 14,
+                  color: notice.isError ? tokens.danger : tokens.success,
+                ),
+                const SizedBox(width: FanCadTokens.space2),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _copy,
+                    child: Tooltip(
+                      message: 'Click to copy and dismiss',
+                      waitDuration: const Duration(milliseconds: 500),
+                      child: Text(notice.message, style: tokens.bodyStyle),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: FanCadTokens.space2),
+                ShellIconButton(
+                  icon: Icons.close,
+                  size: 18,
+                  iconSize: 12,
+                  tooltip: 'Dismiss',
+                  onPressed: () =>
+                      widget.workspace.dismissNotice(notice),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
