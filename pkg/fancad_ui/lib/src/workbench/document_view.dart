@@ -227,6 +227,10 @@ class _DocumentViewState extends State<DocumentView> {
     for (final entity in tab.document.activeEntities) {
       if (!entity.props.visible) hiddenCount += 1;
     }
+    var hiddenLayers = 0;
+    for (final layer in tab.document.layers.values) {
+      if (!layer.visible) hiddenLayers += 1;
+    }
     return Focus(
       onKeyEvent: (node, event) {
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -251,10 +255,23 @@ class _DocumentViewState extends State<DocumentView> {
         child: Column(
           children: [
             if (hiddenCount > 0)
-              _HiddenObjectsBanner(
-                count: hiddenCount,
+              _VisibilityBanner(
+                icon: Icons.visibility_off_outlined,
+                message: hiddenCount == 1
+                    ? '1 object is hidden'
+                    : '$hiddenCount objects are hidden',
+                action: 'Show all',
                 onShowAll: () =>
                     widget.workspace.run('view.unisolateObjects'),
+              )
+            else if (hiddenLayers > 0)
+              _VisibilityBanner(
+                icon: Icons.layers_outlined,
+                message: hiddenLayers == 1
+                    ? '1 layer is off'
+                    : '$hiddenLayers layers are off',
+                action: 'Show all layers',
+                onShowAll: () => widget.workspace.run('layer.showAll'),
               ),
             Expanded(
               child: Stack(
@@ -309,15 +326,19 @@ class _DocumentViewState extends State<DocumentView> {
   }
 }
 
-/// Isolate and Hide leave objects in the drawing but invisible. Without a
-/// strip on the canvas the only way back is a command name or a right-click.
-class _HiddenObjectsBanner extends StatelessWidget {
-  const _HiddenObjectsBanner({
-    required this.count,
+/// Isolate, Hide and layer-off leave geometry in the file but off the
+/// canvas. A strip here is the way back when the Layers panel is not open.
+class _VisibilityBanner extends StatelessWidget {
+  const _VisibilityBanner({
+    required this.icon,
+    required this.message,
+    required this.action,
     required this.onShowAll,
   });
 
-  final int count;
+  final IconData icon;
+  final String message;
+  final String action;
   final VoidCallback onShowAll;
 
   @override
@@ -333,23 +354,17 @@ class _HiddenObjectsBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(
-              Icons.visibility_off_outlined,
-              size: 14,
-              color: tokens.warning,
-            ),
+            Icon(icon, size: 14, color: tokens.warning),
             const SizedBox(width: FanCadTokens.space2),
             Expanded(
               child: Text(
-                count == 1
-                    ? '1 object is hidden'
-                    : '$count objects are hidden',
+                message,
                 style: tokens.bodyStyle.copyWith(color: tokens.text),
               ),
             ),
             TextButton(
               onPressed: onShowAll,
-              child: const Text('Show all'),
+              child: Text(action),
             ),
           ],
         ),
