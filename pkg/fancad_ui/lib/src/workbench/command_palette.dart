@@ -166,7 +166,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                           controller: _query,
                           focusNode: _focus,
                           autofocus: true,
-                          hintText: 'Type a command name or alias',
+                          hintText: 'Search commands, aliases or categories',
                           style: tokens.bodyStyle.copyWith(fontSize: 14),
                           onChanged: _recompute,
                           prefix: Padding(
@@ -174,8 +174,8 @@ class _CommandPaletteState extends State<CommandPalette> {
                               right: FanCadTokens.space2,
                             ),
                             child: Icon(
-                              Icons.chevron_right,
-                              size: 18,
+                              Icons.search,
+                              size: 16,
                               color: tokens.textMuted,
                             ),
                           ),
@@ -185,12 +185,24 @@ class _CommandPaletteState extends State<CommandPalette> {
                         constraints: const BoxConstraints(maxHeight: 396),
                         child: _matches.isEmpty
                             ? Padding(
-                                padding: const EdgeInsets.all(
-                                  FanCadTokens.space4,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: FanCadTokens.space4,
+                                  vertical: FanCadTokens.space5,
                                 ),
-                                child: Text(
-                                  'No matching commands.',
-                                  style: tokens.labelStyle,
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      _query.text.trim().isEmpty
+                                          ? 'Start typing to find a command.'
+                                          : 'No commands match “${_query.text.trim()}”.',
+                                      style: tokens.bodyStyle,
+                                    ),
+                                    const SizedBox(height: FanCadTokens.space2),
+                                    Text(
+                                      'Try an alias such as L, C or M, or a category like Draw.',
+                                      style: tokens.labelStyle,
+                                    ),
+                                  ],
                                 ),
                               )
                             : ListView.builder(
@@ -201,12 +213,44 @@ class _CommandPaletteState extends State<CommandPalette> {
                                 itemBuilder: (context, index) => _PaletteRow(
                                   descriptor: _matches[index],
                                   isHighlighted: index == _highlighted,
+                                  onHover: () {
+                                    if (_highlighted == index) return;
+                                    setState(() => _highlighted = index);
+                                  },
                                   onTap: () {
                                     setState(() => _highlighted = index);
                                     _accept();
                                   },
                                 ),
                               ),
+                      ),
+                      Container(
+                        height: 28,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: FanCadTokens.space4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: tokens.surfaceRaised,
+                          border: Border(
+                            top: BorderSide(color: tokens.border),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${_matches.length} command${_matches.length == 1 ? '' : 's'}',
+                              style: tokens.labelStyle,
+                            ),
+                            const Spacer(),
+                            Text(
+                              '↑↓  move   Enter  run   Esc  close',
+                              style: tokens.monoStyle.copyWith(
+                                fontSize: 10.5,
+                                color: tokens.textFaint,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -225,71 +269,76 @@ class _PaletteRow extends StatelessWidget {
     required this.descriptor,
     required this.isHighlighted,
     required this.onTap,
+    required this.onHover,
   });
 
   final CommandDescriptor descriptor;
   final bool isHighlighted;
   final VoidCallback onTap;
+  final VoidCallback onHover;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return ShellRow(
-      isSelected: isHighlighted,
-      onTap: onTap,
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      descriptor.title,
-                      style: tokens.bodyStyle.copyWith(fontSize: 13),
-                    ),
-                    if (descriptor.aliases.isNotEmpty) ...[
-                      const SizedBox(width: FanCadTokens.space2),
+    return MouseRegion(
+      onEnter: (_) => onHover(),
+      child: ShellRow(
+        isSelected: isHighlighted,
+        onTap: onTap,
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
                       Text(
-                        descriptor.aliases.first.toUpperCase(),
-                        style: tokens.monoStyle.copyWith(
-                          fontSize: 10.5,
-                          color: tokens.textFaint,
-                        ),
+                        descriptor.title,
+                        style: tokens.bodyStyle.copyWith(fontSize: 13),
                       ),
+                      if (descriptor.aliases.isNotEmpty) ...[
+                        const SizedBox(width: FanCadTokens.space2),
+                        Text(
+                          descriptor.aliases.first.toUpperCase(),
+                          style: tokens.monoStyle.copyWith(
+                            fontSize: 10.5,
+                            color: tokens.textFaint,
+                          ),
+                        ),
+                      ],
+                      if (!descriptor.isBuiltIn) ...[
+                        const SizedBox(width: FanCadTokens.space2),
+                        _Badge(text: descriptor.extensionId),
+                      ],
                     ],
-                    if (!descriptor.isBuiltIn) ...[
-                      const SizedBox(width: FanCadTokens.space2),
-                      _Badge(text: descriptor.extensionId),
-                    ],
-                  ],
-                ),
-                if (descriptor.description.isNotEmpty)
-                  Text(
-                    descriptor.description,
-                    style: tokens.labelStyle.copyWith(fontSize: 10.5),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-              ],
-            ),
-          ),
-          Text(descriptor.category, style: tokens.labelStyle),
-          if (descriptor.defaultKeybinding != null) ...[
-            const SizedBox(width: FanCadTokens.space3),
-            Text(
-              descriptor.defaultKeybinding!.toUpperCase(),
-              style: tokens.monoStyle.copyWith(
-                fontSize: 10.5,
-                color: tokens.textFaint,
+                  if (descriptor.description.isNotEmpty)
+                    Text(
+                      descriptor.description,
+                      style: tokens.labelStyle.copyWith(fontSize: 10.5),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
               ),
             ),
+            Text(descriptor.category, style: tokens.labelStyle),
+            if (descriptor.defaultKeybinding != null) ...[
+              const SizedBox(width: FanCadTokens.space3),
+              Text(
+                descriptor.defaultKeybinding!.toUpperCase(),
+                style: tokens.monoStyle.copyWith(
+                  fontSize: 10.5,
+                  color: tokens.textFaint,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
