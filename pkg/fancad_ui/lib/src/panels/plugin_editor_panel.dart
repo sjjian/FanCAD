@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
@@ -71,7 +72,60 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
     final target = widget.workspace.pluginEditorTarget;
     if (target == null || request == _seenRequest) return;
     _seenRequest = request;
-    _open(target.id, target.relative);
+    unawaited(_switchTo(target.id, target.relative));
+  }
+
+  Future<void> _switchTo(String id, String relative) async {
+    if (!await _confirmLeave()) return;
+    await _open(id, relative);
+  }
+
+  /// Leaving a dirty buffer used to just load the next file over it.
+  Future<bool> _confirmLeave() async {
+    if (!_dirty) return true;
+    if (!mounted) return false;
+    final tokens = context.tokens;
+    final choice = await showDialog<String>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (context) => AlertDialog(
+        backgroundColor: tokens.surfaceOverlay,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+          side: BorderSide(color: tokens.borderStrong),
+        ),
+        title: Text(
+          'Unsaved editor changes',
+          style: tokens.bodyStyle.copyWith(fontSize: 15),
+        ),
+        content: Text(
+          '"$_relative" has edits that have not been written.',
+          style: tokens.labelStyle,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('cancel'),
+            child: Text('Cancel', style: tokens.bodyStyle),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('discard'),
+            child: Text(
+              "Don't save",
+              style: tokens.bodyStyle.copyWith(color: tokens.danger),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop('save'),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (choice == 'save') {
+      await _save();
+      return !_dirty;
+    }
+    return choice == 'discard';
   }
 
   Future<void> _open(String id, String relative) async {
@@ -176,9 +230,14 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
                             ),
                         ],
                         onChanged: (id) {
-                          if (id != null) {
-                            _open(id, host?.plugin(id)?.manifest.entryPoint ?? 'main.js');
-                          }
+                          if (id == null) return;
+                          unawaited(
+                            _switchTo(
+                              id,
+                              host?.plugin(id)?.manifest.entryPoint ??
+                                  'main.js',
+                            ),
+                          );
                         },
                       ),
                     ),
