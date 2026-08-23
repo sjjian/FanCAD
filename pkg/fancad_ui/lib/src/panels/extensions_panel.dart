@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter/material.dart';
 
@@ -16,13 +18,32 @@ class ExtensionsPanel extends StatefulWidget {
     super.key,
     required this.workspace,
     required this.host,
+    this.folder = '',
   });
 
   final Workspace workspace;
   final PluginHost? host;
 
+  /// User extensions directory. Empty in tests and headless runs.
+  final String folder;
+
   @override
   State<ExtensionsPanel> createState() => _ExtensionsPanelState();
+}
+
+Future<void> _openFolder(Workspace workspace, String path) async {
+  try {
+    await Directory(path).create(recursive: true);
+    if (Platform.isMacOS) {
+      await Process.start('open', [path]);
+    } else if (Platform.isWindows) {
+      await Process.start('explorer', [path]);
+    } else {
+      await Process.start('xdg-open', [path]);
+    }
+  } catch (error) {
+    workspace.notify('Could not open $path: $error', isError: true);
+  }
 }
 
 class _ExtensionsPanelState extends State<ExtensionsPanel> {
@@ -37,6 +58,12 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
         PanelHeader(
           title: 'Extensions',
           actions: [
+            if (widget.folder.isNotEmpty)
+              ShellIconButton(
+                icon: Icons.folder_open_outlined,
+                tooltip: 'Open extensions folder',
+                onPressed: () => _openFolder(widget.workspace, widget.folder),
+              ),
             if (host != null)
               ShellIconButton(
                 icon: Icons.add,

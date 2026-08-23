@@ -339,6 +339,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     'plugins' => ExtensionsPanel(
       workspace: workspace,
       host: ref.watch(pluginHostProvider),
+      folder: ref.watch(pluginsDirectoryProvider),
     ),
     'editor' => PluginEditorPanel(
       workspace: workspace,
