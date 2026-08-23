@@ -4,6 +4,7 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../panels/ai_panel.dart';
 import '../panels/extensions_panel.dart';
@@ -36,13 +37,15 @@ class Workbench extends ConsumerStatefulWidget {
   ConsumerState<Workbench> createState() => _WorkbenchState();
 }
 
-class _WorkbenchState extends ConsumerState<Workbench> {
+class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   /// Focus for the command line. Held here because the canvas hands focus back
   /// to it on every click, which is what makes typing mid-command work.
   final FocusNode _commandFocus = FocusNode(debugLabel: 'command-line');
 
   StreamSubscription<String>? _panelReveals;
   StreamSubscription<ApprovalRequest>? _approvals;
+  bool _listeningForWindowClose = false;
+  bool _closingWindow = false;
 
   @override
   void initState() {
@@ -54,6 +57,7 @@ class _WorkbenchState extends ConsumerState<Workbench> {
       ref.read(sidebarProvider.notifier).reveal(panelId);
     });
     _approvals = workspace.approvals.listen(_showApproval);
+    unawaited(_bindWindowClose());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _commandFocus.requestFocus();
       // The extension host is started after the first frame so third-party
@@ -64,10 +68,55 @@ class _WorkbenchState extends ConsumerState<Workbench> {
 
   @override
   void dispose() {
+    if (_listeningForWindowClose) {
+      windowManager.removeListener(this);
+    }
     _panelReveals?.cancel();
     _approvals?.cancel();
     _commandFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _bindWindowClose() async {
+    try {
+      await windowManager.ensureInitialized();
+      windowManager.addListener(this);
+      await windowManager.setPreventClose(true);
+      _listeningForWindowClose = true;
+    } catch (_) {
+      // Headless tests have no window plugin; the shell must still mount.
+    }
+  }
+
+  @override
+  void onWindowClose() {
+    unawaited(_confirmWindowClose());
+  }
+
+  /// The red button and Alt+F4 used to skip the same Save / Don't save /
+  /// Cancel path a tab close already offers.
+  Future<void> _confirmWindowClose() async {
+    if (_closingWindow) return;
+    _closingWindow = true;
+    try {
+      final workspace = ref.read(workspaceProvider);
+      while (workspace.tabs.isNotEmpty) {
+        if (!mounted) return;
+        final dirtyIndex = workspace.tabs.indexWhere((tab) => tab.isDirty);
+        if (dirtyIndex >= 0 && workspace.activeIndex != dirtyIndex) {
+          workspace.activate(dirtyIndex);
+        }
+        final result = await workspace.run('file.close');
+        if (!result.isOk) return;
+      }
+      if (!mounted) return;
+      await windowManager.setPreventClose(false);
+      await windowManager.destroy();
+    } catch (_) {
+      // Leave the window up if the plugin cannot finish the destroy.
+    } finally {
+      _closingWindow = false;
+    }
   }
 
   Future<void> _showApproval(ApprovalRequest request) async {

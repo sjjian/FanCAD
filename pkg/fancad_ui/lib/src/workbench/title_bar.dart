@@ -598,7 +598,7 @@ class _WindowButtons extends StatelessWidget {
       ),
       ShellIconButton(
         icon: Icons.close,
-        tooltip: 'Close',
+        tooltip: 'Close window',
         destructive: true,
         onPressed: windowManager.close,
       ),
