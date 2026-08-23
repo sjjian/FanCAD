@@ -227,6 +227,17 @@ class _CommandLinePaneState extends State<CommandLinePane> {
             isActive: widget.isExpanded,
             onPressed: widget.onToggleExpand,
           ),
+          ShellIconButton(
+            icon: Icons.delete_outline,
+            tooltip: _model.lines.isEmpty
+                ? 'Nothing to clear'
+                : 'Clear command history',
+            enabled: _model.lines.isNotEmpty,
+            destructive: true,
+            size: 22,
+            iconSize: 15,
+            onPressed: _model.clear,
+          ),
           const SizedBox(width: FanCadTokens.space1),
           if (prompt.isNotEmpty)
             Padding(
