@@ -156,7 +156,7 @@ class _SettingsRow extends StatelessWidget {
           const SizedBox(width: FanCadTokens.space2),
           Expanded(
             child: Tooltip(
-              message: 'Click to change the model',
+              message: 'Click to change the model or endpoint',
               child: GestureDetector(
                 onTapDown: (details) =>
                     _pickModel(context, controller, details.globalPosition),
@@ -235,20 +235,45 @@ Future<void> _pickModel(
       PopupMenuItem(
         value: 'custom',
         height: 32,
-        child: Text('Custom…', style: tokens.bodyStyle),
+        child: Text('Custom model…', style: tokens.bodyStyle),
+      ),
+      PopupMenuItem(
+        value: 'endpoint',
+        height: 32,
+        child: Text('Endpoint…', style: tokens.bodyStyle),
       ),
     ],
   );
   if (chosen == null || !context.mounted) return;
-  if (chosen != 'custom') {
-    controller.setModel(chosen);
+  if (chosen == 'custom') {
+    final typed = await _askSetting(
+      context,
+      title: 'Model',
+      current: controller.model,
+      hint: 'Model id',
+    );
+    if (typed != null && typed.isNotEmpty) controller.setModel(typed);
     return;
   }
-  final typed = await _askCustomModel(context, controller.model);
-  if (typed != null && typed.isNotEmpty) controller.setModel(typed);
+  if (chosen == 'endpoint') {
+    final typed = await _askSetting(
+      context,
+      title: 'Endpoint',
+      current: controller.baseUrl,
+      hint: 'https://api.openai.com/v1',
+    );
+    if (typed != null && typed.isNotEmpty) controller.setBaseUrl(typed);
+    return;
+  }
+  controller.setModel(chosen);
 }
 
-Future<String?> _askCustomModel(BuildContext context, String current) async {
+Future<String?> _askSetting(
+  BuildContext context, {
+  required String title,
+  required String current,
+  required String hint,
+}) async {
   final tokens = context.tokens;
   final field = TextEditingController(text: current);
   final result = await showDialog<String>(
@@ -261,12 +286,12 @@ Future<String?> _askCustomModel(BuildContext context, String current) async {
         side: BorderSide(color: tokens.borderStrong),
       ),
       title: Text(
-        'Model',
+        title,
         style: tokens.bodyStyle.copyWith(fontSize: 15),
       ),
       content: ShellTextField(
         controller: field,
-        hintText: 'Model id',
+        hintText: hint,
         autofocus: true,
         style: tokens.monoStyle,
         onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
