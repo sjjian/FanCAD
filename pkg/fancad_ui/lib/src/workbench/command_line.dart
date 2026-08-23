@@ -377,8 +377,11 @@ class StatusBar extends StatelessWidget {
           StatusToggle(
             label: 'SNAP',
             isOn: snap.enabled,
-            tooltip: 'Object snapping (F3)',
+            tooltip:
+                'Object snapping (F3). Right-click to choose Endpoint, Midpoint…',
             onPressed: () => workspace.setSnapEnabled(!snap.enabled),
+            onContextMenu: (position) =>
+                _openSnapModeMenu(context, workspace, position),
           ),
           StatusToggle(
             label: 'ORTHO',
@@ -463,6 +466,58 @@ class StatusBar extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+Future<void> _openSnapModeMenu(
+  BuildContext context,
+  Workspace workspace,
+  Offset globalPosition,
+) async {
+  final tokens = context.tokens;
+  final chosen = await showMenu<Object>(
+    context: context,
+    position: RelativeRect.fromLTRB(
+      globalPosition.dx,
+      globalPosition.dy,
+      globalPosition.dx,
+      globalPosition.dy,
+    ),
+    color: tokens.surfaceOverlay,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(FanCadTokens.radius),
+      side: BorderSide(color: tokens.borderStrong),
+    ),
+    items: [
+      for (final mode in SnapMode.values)
+        PopupMenuItem<Object>(
+          value: mode,
+          height: 32,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                child: workspace.snapEngine.modes.contains(mode)
+                    ? Icon(Icons.check, size: 14, color: tokens.accent)
+                    : null,
+              ),
+              const SizedBox(width: FanCadTokens.space2),
+              Text(mode.label, style: tokens.bodyStyle),
+            ],
+          ),
+        ),
+      const PopupMenuDivider(),
+      PopupMenuItem<Object>(
+        value: 'defaults',
+        height: 32,
+        child: Text('Restore defaults', style: tokens.bodyStyle),
+      ),
+    ],
+  );
+  if (chosen is SnapMode) {
+    workspace.toggleSnapMode(chosen);
+  } else if (chosen == 'defaults') {
+    workspace.resetSnapModes();
   }
 }
 

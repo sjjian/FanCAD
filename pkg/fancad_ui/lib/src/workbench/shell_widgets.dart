@@ -408,12 +408,16 @@ class StatusToggle extends StatefulWidget {
     required this.label,
     required this.isOn,
     required this.onPressed,
+    this.onContextMenu,
     this.tooltip,
   });
 
   final String label;
   final bool isOn;
   final VoidCallback onPressed;
+
+  /// Right-click, for choosing which SNAP modes are live.
+  final void Function(Offset globalPosition)? onContextMenu;
   final String? tooltip;
 
   @override
@@ -432,6 +436,9 @@ class _StatusToggleState extends State<StatusToggle> {
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         onTap: widget.onPressed,
+        onSecondaryTapDown: widget.onContextMenu == null
+            ? null
+            : (details) => widget.onContextMenu!(details.globalPosition),
         child: Container(
           height: FanCadTokens.statusBarHeight,
           padding: const EdgeInsets.symmetric(

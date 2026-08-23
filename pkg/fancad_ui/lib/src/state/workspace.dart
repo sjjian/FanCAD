@@ -490,10 +490,20 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   void toggleSnapMode(SnapMode mode) {
     if (!snapEngine.modes.remove(mode)) snapEngine.modes.add(mode);
+    _persistSnapModes();
+    notifyListeners();
+  }
+
+  void resetSnapModes() {
+    snapEngine.modes = {...SnapMode.defaults};
+    _persistSnapModes();
+    notifyListeners();
+  }
+
+  void _persistSnapModes() {
     settings.set(SettingsKeys.snapModes, [
       for (final each in snapEngine.modes) each.name,
     ]);
-    notifyListeners();
   }
 
   void setSnapEnabled(bool value) {
