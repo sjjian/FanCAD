@@ -230,14 +230,22 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                               child: _sidebarBody(sidebar.viewId, workspace),
                             ),
                           ),
-                          ShellSplitter(
-                            axis: Axis.vertical,
-                            onDrag: (delta) => ref
-                                .read(sidebarProvider.notifier)
-                                .resize(sidebar.width + delta),
-                            onDragEnd: ref
-                                .read(sidebarProvider.notifier)
-                                .commitWidth,
+                          Tooltip(
+                            message:
+                                'Drag to resize · double-click to reset width',
+                            waitDuration: const Duration(milliseconds: 500),
+                            child: ShellSplitter(
+                              axis: Axis.vertical,
+                              onDrag: (delta) => ref
+                                  .read(sidebarProvider.notifier)
+                                  .resize(sidebar.width + delta),
+                              onDragEnd: ref
+                                  .read(sidebarProvider.notifier)
+                                  .commitWidth,
+                              onDoubleTap: ref
+                                  .read(sidebarProvider.notifier)
+                                  .resetWidth,
+                            ),
                           ),
                         ],
                         Expanded(

@@ -163,12 +163,16 @@ class SidebarController extends StateNotifier<SidebarState> {
             fallback: 'layers',
           ),
           isOpen: _settings.getBool(SettingsKeys.sidebarOpen, fallback: true),
-          width: _settings.getDouble(SettingsKeys.sidebarWidth, fallback: 280),
+          width: _settings.getDouble(
+            SettingsKeys.sidebarWidth,
+            fallback: defaultWidth,
+          ),
         ),
       );
 
   final SettingsStore _settings;
 
+  static const double defaultWidth = 280;
   static const double minWidth = 200;
   static const double maxWidth = 560;
 
@@ -206,6 +210,13 @@ class SidebarController extends StateNotifier<SidebarState> {
   /// Persisted on drag end rather than on every frame, to avoid writing the
   /// settings file sixty times a second.
   void commitWidth() => _settings.set(SettingsKeys.sidebarWidth, state.width);
+
+  /// Double-clicking the sash puts the pane back where it started, instead of
+  /// hunting for a comfortable width after a drag went too far.
+  void resetWidth() {
+    state = state.copyWith(width: defaultWidth);
+    commitWidth();
+  }
 }
 
 final sidebarProvider =
