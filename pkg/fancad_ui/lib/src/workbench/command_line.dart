@@ -398,38 +398,86 @@ class StatusBar extends StatelessWidget {
   }
 }
 
-class _CurrentLayerIndicator extends StatelessWidget {
+class _CurrentLayerIndicator extends StatefulWidget {
   const _CurrentLayerIndicator({required this.workspace});
 
   final Workspace workspace;
 
   @override
+  State<_CurrentLayerIndicator> createState() => _CurrentLayerIndicatorState();
+}
+
+class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final tab = workspace.active;
+    final tab = widget.workspace.active;
     if (tab == null) return const SizedBox.shrink();
     final name = tab.document.currentLayer;
     final layer = tab.document.layer(name);
+    final hidden = layer != null && !layer.isEffectivelyVisible;
+    final locked = layer?.locked ?? false;
+    final states = [
+      if (hidden) 'hidden',
+      if (locked) 'locked',
+    ];
     return Tooltip(
-      message: 'Show the Layers panel',
-      child: InkWell(
-        onTap: () => workspace.revealPanel('layers'),
-        child: Row(
-          children: [
-            Container(
-              width: 9,
-              height: 9,
-              decoration: BoxDecoration(
-                color: layer == null
-                    ? tokens.textFaint
-                    : (tokens.isDark ? AciPalette.dark : AciPalette.light)
-                          .colorOf(layer.color),
-                borderRadius: BorderRadius.circular(2),
-              ),
+      message: [
+        'Current layer "$name"${states.isEmpty ? '' : ' (${states.join(', ')})'}',
+        'Click to manage layers',
+      ].join('\n'),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: () => widget.workspace.revealPanel('layers'),
+          child: Container(
+            height: FanCadTokens.statusBarHeight,
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space2,
             ),
-            const SizedBox(width: FanCadTokens.space2),
-            Text(name, style: tokens.labelStyle.copyWith(color: tokens.text)),
-          ],
+            color: _hovered ? tokens.hover : Colors.transparent,
+            child: Row(
+              children: [
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: layer == null
+                        ? tokens.textFaint
+                        : (tokens.isDark ? AciPalette.dark : AciPalette.light)
+                              .colorOf(layer.color),
+                    border: Border.all(color: tokens.border),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: FanCadTokens.space2),
+                Text(
+                  name,
+                  style: tokens.labelStyle.copyWith(color: tokens.text),
+                ),
+                if (hidden) ...[
+                  const SizedBox(width: FanCadTokens.space1),
+                  Icon(
+                    Icons.visibility_off_outlined,
+                    size: 11,
+                    color: tokens.textFaint,
+                  ),
+                ],
+                if (locked) ...[
+                  const SizedBox(width: FanCadTokens.space1),
+                  Icon(
+                    Icons.lock_outline,
+                    size: 11,
+                    color: tokens.textFaint,
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
