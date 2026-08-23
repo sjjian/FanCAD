@@ -571,14 +571,17 @@ class _TabState extends State<_Tab> {
               if (tab.diagnostics.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(right: FanCadTokens.space1),
-                  child: Tooltip(
-                    message:
-                        '${tab.diagnostics.length} import warning(s)\n'
-                        '${tab.diagnostics.take(6).join('\n')}',
-                    child: Icon(
-                      Icons.warning_amber_rounded,
-                      size: 13,
-                      color: tokens.warning,
+                  child: GestureDetector(
+                    onTap: () => _showImportWarnings(),
+                    child: Tooltip(
+                      message:
+                          '${tab.diagnostics.length} import warning(s) — '
+                          'click to read',
+                      child: Icon(
+                        Icons.warning_amber_rounded,
+                        size: 13,
+                        color: tokens.warning,
+                      ),
                     ),
                   ),
                 ),
@@ -667,13 +670,23 @@ class _TabState extends State<_Tab> {
           height: 32,
           child: Text('Close all', style: tokens.bodyStyle),
         ),
-        if (path != null) ...[
+        if (path != null || tab.diagnostics.isNotEmpty) ...[
           const PopupMenuDivider(),
-          PopupMenuItem(
-            value: 'copyPath',
-            height: 32,
-            child: Text('Copy path', style: tokens.bodyStyle),
-          ),
+          if (path != null)
+            PopupMenuItem(
+              value: 'copyPath',
+              height: 32,
+              child: Text('Copy path', style: tokens.bodyStyle),
+            ),
+          if (tab.diagnostics.isNotEmpty)
+            PopupMenuItem(
+              value: 'warnings',
+              height: 32,
+              child: Text(
+                'Import warnings (${tab.diagnostics.length})',
+                style: tokens.bodyStyle,
+              ),
+            ),
         ],
       ],
     );
@@ -689,7 +702,63 @@ class _TabState extends State<_Tab> {
         if (path == null) return;
         await Clipboard.setData(ClipboardData(text: path));
         workspace.notify('Copied $path');
+      case 'warnings':
+        await _showImportWarnings();
     }
+  }
+
+  Future<void> _showImportWarnings() async {
+    final tokens = context.tokens;
+    final diagnostics = widget.tab.diagnostics;
+    if (diagnostics.isEmpty) return;
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (context) => AlertDialog(
+        backgroundColor: tokens.surfaceOverlay,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+          side: BorderSide(color: tokens.borderStrong),
+        ),
+        title: Text(
+          '${diagnostics.length} import warning'
+          '${diagnostics.length == 1 ? '' : 's'}',
+          style: tokens.bodyStyle.copyWith(fontSize: 15),
+        ),
+        content: SizedBox(
+          width: 480,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 360),
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final line in diagnostics)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: FanCadTokens.space2),
+                    child: Text(line, style: tokens.labelStyle),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(
+                ClipboardData(text: diagnostics.join('\n')),
+              );
+              widget.workspace.notify('Copied ${diagnostics.length} warning(s)');
+              Navigator.of(context).pop();
+            },
+            child: Text('Copy all', style: tokens.bodyStyle),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
