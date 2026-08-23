@@ -259,6 +259,7 @@ class _TabState extends State<_Tab> {
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         onTap: widget.onTap,
+        onTertiaryTapUp: (_) => widget.onClose(),
         child: Container(
           padding: const EdgeInsets.only(
             left: FanCadTokens.space3,
@@ -381,6 +382,7 @@ class _WindowButtons extends StatelessWidget {
       ShellIconButton(
         icon: Icons.close,
         tooltip: 'Close',
+        destructive: true,
         onPressed: windowManager.close,
       ),
       const SizedBox(width: FanCadTokens.space1),

@@ -21,6 +21,7 @@ class ShellIconButton extends StatefulWidget {
     this.iconSize = 16,
     this.showActiveBar = false,
     this.enabled = true,
+    this.destructive = false,
   });
 
   final IconData icon;
@@ -33,6 +34,9 @@ class ShellIconButton extends StatefulWidget {
   /// Draws the accent bar an activity-bar item uses to show which view is open.
   final bool showActiveBar;
   final bool enabled;
+
+  /// Window-close and similar actions: hover tints the icon with [FanCadTokens.danger].
+  final bool destructive;
 
   @override
   State<ShellIconButton> createState() => _ShellIconButtonState();
@@ -47,9 +51,18 @@ class _ShellIconButtonState extends State<ShellIconButton> {
     final enabled = widget.enabled && widget.onPressed != null;
     final color = !enabled
         ? tokens.textFaint
+        : widget.destructive && _hovered
+        ? tokens.danger
         : widget.isActive
         ? tokens.text
         : tokens.textMuted;
+    final fill = !enabled
+        ? Colors.transparent
+        : widget.destructive && _hovered
+        ? tokens.danger.withValues(alpha: tokens.isDark ? 0.16 : 0.12)
+        : _hovered
+        ? tokens.hover
+        : Colors.transparent;
 
     Widget button = MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -61,7 +74,7 @@ class _ShellIconButtonState extends State<ShellIconButton> {
           width: widget.size,
           height: widget.size,
           decoration: BoxDecoration(
-            color: _hovered && enabled ? tokens.hover : Colors.transparent,
+            color: fill,
             borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
           ),
           child: Stack(
@@ -380,7 +393,11 @@ class _StatusToggleState extends State<StatusToggle> {
           padding: const EdgeInsets.symmetric(
             horizontal: FanCadTokens.space2,
           ),
-          color: _hovered ? tokens.hover : Colors.transparent,
+          color: widget.isOn
+              ? tokens.selection
+              : _hovered
+              ? tokens.hover
+              : Colors.transparent,
           alignment: Alignment.center,
           child: Text(
             widget.label,
@@ -468,12 +485,14 @@ class EmptyWorkspace extends StatelessWidget {
     required this.onOpenRecent,
     required this.onOpen,
     required this.onNew,
+    required this.onShowCommands,
   });
 
   final List<String> recentFiles;
   final ValueChanged<String> onOpenRecent;
   final VoidCallback onOpen;
   final VoidCallback onNew;
+  final VoidCallback onShowCommands;
 
   @override
   Widget build(BuildContext context) {
@@ -482,49 +501,63 @@ class EmptyWorkspace extends StatelessWidget {
       color: tokens.canvas,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'FanCAD',
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w200,
-                  letterSpacing: 4,
-                  color: tokens.text,
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space5,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 36,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: tokens.accent,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const SizedBox(height: FanCadTokens.space1),
-              Text(
-                'An AI-native, plugin-everything 2D CAD',
-                style: tokens.labelStyle,
-              ),
-              const SizedBox(height: FanCadTokens.space5),
-              _Action(
-                label: 'New drawing',
-                shortcut: 'Ctrl N',
-                onPressed: onNew,
-              ),
-              _Action(
-                label: 'Open a DWG or DXF file',
-                shortcut: 'Ctrl O',
-                onPressed: onOpen,
-              ),
-              _Action(
-                label: 'Show all commands',
-                shortcut: 'Ctrl Shift P',
-                onPressed: () {},
-              ),
-              if (recentFiles.isNotEmpty) ...[
-                const SizedBox(height: FanCadTokens.space5),
-                Text('Recent', style: tokens.sectionTitleStyle),
+                const SizedBox(height: FanCadTokens.space3),
+                Text(
+                  'FanCAD',
+                  style: TextStyle(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w200,
+                    letterSpacing: 4,
+                    color: tokens.text,
+                  ),
+                ),
                 const SizedBox(height: FanCadTokens.space1),
-                for (final path in recentFiles.take(6))
-                  _Recent(path: path, onPressed: () => onOpenRecent(path)),
+                Text(
+                  'An AI-native, plugin-everything 2D CAD',
+                  style: tokens.labelStyle.copyWith(fontSize: 13),
+                ),
+                const SizedBox(height: FanCadTokens.space5),
+                _Action(
+                  label: 'New drawing',
+                  shortcut: 'Ctrl N',
+                  onPressed: onNew,
+                ),
+                _Action(
+                  label: 'Open a DWG or DXF file',
+                  shortcut: 'Ctrl O',
+                  onPressed: onOpen,
+                ),
+                _Action(
+                  label: 'Show all commands',
+                  shortcut: 'Ctrl Shift P',
+                  onPressed: onShowCommands,
+                ),
+                if (recentFiles.isNotEmpty) ...[
+                  const SizedBox(height: FanCadTokens.space5),
+                  Text('RECENT', style: tokens.sectionTitleStyle),
+                  const SizedBox(height: FanCadTokens.space2),
+                  for (final path in recentFiles.take(6))
+                    _Recent(path: path, onPressed: () => onOpenRecent(path)),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -548,14 +581,15 @@ class _Action extends StatelessWidget {
     final tokens = context.tokens;
     return ShellRow(
       onTap: onPressed,
-      padding: EdgeInsets.zero,
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
       child: Row(
         children: [
           Text(
             label,
             style: tokens.bodyStyle.copyWith(color: tokens.accent),
           ),
-          const SizedBox(width: FanCadTokens.space2),
+          const Spacer(),
           Text(shortcut, style: tokens.labelStyle),
         ],
       ),
@@ -580,7 +614,8 @@ class _Recent extends StatelessWidget {
         : '';
     return ShellRow(
       onTap: onPressed,
-      padding: EdgeInsets.zero,
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
       child: Row(
         children: [
           Text(name, style: tokens.bodyStyle.copyWith(color: tokens.accent)),

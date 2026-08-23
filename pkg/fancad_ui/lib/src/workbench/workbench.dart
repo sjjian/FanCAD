@@ -228,6 +228,8 @@ class _WorkbenchState extends ConsumerState<Workbench> {
             workspace.run('file.open', args: {'path': path}),
         onOpen: () => workspace.run('file.open'),
         onNew: () => workspace.run('file.new'),
+        onShowCommands: () =>
+            ref.read(paletteOpenProvider.notifier).state = true,
       );
     }
     return DocumentView(

@@ -232,31 +232,46 @@ class _CommandLinePaneState extends State<CommandLinePane> {
 ///
 /// Present because a keyword prompt that can only be answered by typing is a
 /// discoverability dead end for anyone who has not memorised the options.
-class _Keyword extends StatelessWidget {
+class _Keyword extends StatefulWidget {
   const _Keyword({required this.label, required this.onPressed});
 
   final String label;
   final VoidCallback onPressed;
 
   @override
+  State<_Keyword> createState() => _KeywordState();
+}
+
+class _KeywordState extends State<_Keyword> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
-        onTap: onPressed,
-        child: Container(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 90),
           padding: const EdgeInsets.symmetric(
             horizontal: FanCadTokens.space2,
             vertical: 2,
           ),
           decoration: BoxDecoration(
-            border: Border.all(color: tokens.borderStrong),
+            color: _hovered ? tokens.selection : Colors.transparent,
+            border: Border.all(
+              color: _hovered ? tokens.accent : tokens.borderStrong,
+            ),
             borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
           ),
           child: Text(
-            label,
-            style: tokens.labelStyle.copyWith(color: tokens.text),
+            widget.label,
+            style: tokens.labelStyle.copyWith(
+              color: _hovered ? tokens.accent : tokens.text,
+            ),
           ),
         ),
       ),
