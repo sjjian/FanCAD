@@ -124,4 +124,37 @@ void main() {
       expect(read.message, contains('outside'));
     },
   );
+
+  test(
+    'typings, edit, logs and a missing file stay inside the extension',
+    () async {
+      final created = await run('plugins.scaffold', {'id': 'acme.safe'});
+      expect(created.status, CommandStatus.ok, reason: created.message);
+
+      final types = await run('plugins.typings');
+      expect(types.status, CommandStatus.ok);
+      expect(File(p.join(root.path, 'fancad.d.ts')).existsSync(), isTrue);
+      expect(types.data!['path'], p.join(root.path, 'fancad.d.ts'));
+
+      final revealed = workspace.panelReveals.first;
+      final edit = await run('plugins.edit', {'id': 'acme.safe'});
+      expect(edit.status, CommandStatus.ok);
+      expect(await revealed, 'editor');
+
+    final logs = await run('plugins.logs', {'id': 'acme.safe'});
+    expect(logs.status, CommandStatus.ok);
+    expect(logs.data!['id'], 'acme.safe');
+      expect(
+        (await run('plugins.read', {
+          'id': 'acme.safe',
+          'path': 'missing.js',
+        })).status,
+        CommandStatus.failed,
+      );
+      expect(
+        (await run('plugins.eval', {'id': 'ghost', 'source': '1'})).status,
+        CommandStatus.failed,
+      );
+    },
+  );
 }
