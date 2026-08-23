@@ -562,8 +562,13 @@ class _CommandListPanelState extends State<_CommandListPanel> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final commands = widget.workspace.commands.search(_query, limit: 500);
+    final lastId = widget.workspace.commands.lastCommandId;
+    final last = _query.trim().isEmpty && lastId != null
+        ? widget.workspace.commands.find(lastId)
+        : null;
     final byCategory = <String, List<CommandDescriptor>>{};
     for (final descriptor in commands) {
+      if (last != null && descriptor.id == last.id) continue;
       byCategory.putIfAbsent(descriptor.category, () => []).add(descriptor);
     }
     final categories = byCategory.keys.toList()..sort();
@@ -626,6 +631,11 @@ class _CommandListPanelState extends State<_CommandListPanel> {
                 )
               : ListView(
                   children: [
+                    if (last != null)
+                      PanelSection(
+                        title: 'Last used',
+                        children: [_commandRow(tokens, last)],
+                      ),
                     for (final category in categories)
                       PanelSection(
                         title: category,
