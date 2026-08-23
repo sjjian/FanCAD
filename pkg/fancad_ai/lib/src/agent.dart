@@ -76,6 +76,11 @@ class AgentLoop {
   final DocumentContextBuilder contextBuilder = const DocumentContextBuilder();
   final PluginAuthoring authoring = const PluginAuthoring();
 
+  bool _cancelled = false;
+
+  /// Asks the loop to stop after the in-flight model reply or tool call.
+  void cancel() => _cancelled = true;
+
   /// Runs one user message to completion.
   Future<AgentTurn> run(String userMessage) async {
     if (userMessage.trim().isEmpty) {
@@ -103,6 +108,9 @@ class AgentLoop {
     String? error;
 
     for (var round = 0; round < maxRounds; round++) {
+      if (_cancelled) {
+        return _stopped(convo, collectedCalls, undoBefore);
+      }
       final messages = [system, ...convo.llmMessages];
       LlmCompletion completion;
       try {
@@ -112,6 +120,9 @@ class AgentLoop {
       } on LlmException catch (caught) {
         error = caught.message;
         break;
+      }
+      if (_cancelled) {
+        return _stopped(convo, collectedCalls, undoBefore);
       }
 
       if (completion.text.isNotEmpty) {
@@ -165,11 +176,17 @@ class AgentLoop {
             );
           }
           await _runCalls(remainder, convo);
+          if (_cancelled) {
+            return _stopped(convo, collectedCalls, undoBefore);
+          }
           continue;
         }
       }
 
       await _runCalls(completion.toolCalls, convo);
+      if (_cancelled) {
+        return _stopped(convo, collectedCalls, undoBefore);
+      }
     }
 
     _coalesce(undoBefore);
@@ -185,8 +202,26 @@ class AgentLoop {
     );
   }
 
+  AgentTurn _stopped(
+    Conversation convo,
+    List<LlmToolCall> collectedCalls,
+    int undoBefore,
+  ) {
+    _coalesce(undoBefore);
+    return AgentTurn(
+      reply: convo.visible
+          .where((message) => message.role == ChatRole.assistant)
+          .map((message) => message.text)
+          .join('\n'),
+      toolCalls: collectedCalls,
+      cancelled: true,
+      undoEntries: (history?.depth ?? undoBefore) - undoBefore,
+    );
+  }
+
   Future<void> _runCalls(List<LlmToolCall> calls, Conversation convo) async {
     for (final call in calls) {
+      if (_cancelled) return;
       final command = catalog.commandFor(registry, call.name);
       if (command == null) {
         convo.addToolResult(

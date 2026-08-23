@@ -117,6 +117,7 @@ class _AiPanelState extends State<AiPanel> {
           busy: controller.isBusy,
           onChanged: controller.setDraft,
           onSend: () => controller.send(_input.text),
+          onStop: controller.stop,
         ),
       ],
     );
@@ -474,6 +475,7 @@ class _Composer extends StatelessWidget {
     required this.busy,
     required this.onChanged,
     required this.onSend,
+    required this.onStop,
   });
 
   final TextEditingController controller;
@@ -482,6 +484,7 @@ class _Composer extends StatelessWidget {
   final bool busy;
   final ValueChanged<String> onChanged;
   final VoidCallback onSend;
+  final VoidCallback onStop;
 
   @override
   Widget build(BuildContext context) {
@@ -510,9 +513,9 @@ class _Composer extends StatelessWidget {
             ),
           ),
           ShellIconButton(
-            icon: busy ? Icons.hourglass_empty : Icons.send,
-            tooltip: busy ? 'Working' : 'Send  Enter',
-            onPressed: canSend ? onSend : null,
+            icon: busy ? Icons.stop : Icons.send,
+            tooltip: busy ? 'Stop' : 'Send  Enter',
+            onPressed: busy ? onStop : (canSend ? onSend : null),
           ),
         ],
       ),

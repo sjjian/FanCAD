@@ -27,8 +27,10 @@ class AiController extends ChangeNotifier {
   final Conversation conversation = Conversation();
 
   bool _busy = false;
+  bool _stopping = false;
   String? _error;
   String _draft = '';
+  AgentLoop? _active;
 
   bool get isBusy => _busy;
   String? get error => _error;
@@ -68,9 +70,17 @@ class AiController extends ChangeNotifier {
   bool get autoApprove => settings.getBool(SettingsKeys.aiAutoApprove);
 
   void clear() {
+    _active?.cancel();
     conversation.clear();
     _error = null;
     notifyListeners();
+  }
+
+  /// Stops the in-flight turn after the current model reply or tool call.
+  void stop() {
+    if (_active == null) return;
+    _stopping = true;
+    _active!.cancel();
   }
 
   void clearError() {
@@ -131,14 +141,21 @@ class AiController extends ChangeNotifier {
       ),
       onDelta: (_) => notifyListeners(),
     );
+    _active = agent;
 
     try {
       final turn = await agent.run(message);
-      if (turn.error != null) _error = turn.error;
+      if (_stopping) {
+        workspace.notify('Assistant stopped.');
+      } else if (turn.error != null) {
+        _error = turn.error;
+      }
     } catch (error) {
       _error = '$error';
     } finally {
+      if (identical(_active, agent)) _active = null;
       _busy = false;
+      _stopping = false;
       notifyListeners();
     }
   }
