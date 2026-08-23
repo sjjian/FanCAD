@@ -155,10 +155,20 @@ class _SettingsRow extends StatelessWidget {
           ),
           const SizedBox(width: FanCadTokens.space2),
           Expanded(
-            child: Text(
-              controller.model,
-              style: tokens.monoStyle.copyWith(fontSize: 10.5),
-              overflow: TextOverflow.ellipsis,
+            child: Tooltip(
+              message: 'Click to change the model',
+              child: GestureDetector(
+                onTapDown: (details) =>
+                    _pickModel(context, controller, details.globalPosition),
+                child: Text(
+                  controller.model,
+                  style: tokens.monoStyle.copyWith(
+                    fontSize: 10.5,
+                    color: tokens.accent,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
           ),
           Text('Auto-approve', style: tokens.labelStyle),
@@ -180,6 +190,101 @@ class _SettingsRow extends StatelessWidget {
       ),
     );
   }
+}
+
+const _presetModels = ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1', 'o4-mini'];
+
+Future<void> _pickModel(
+  BuildContext context,
+  AiController controller,
+  Offset globalPosition,
+) async {
+  final tokens = context.tokens;
+  final chosen = await showMenu<String>(
+    context: context,
+    position: RelativeRect.fromLTRB(
+      globalPosition.dx,
+      globalPosition.dy,
+      globalPosition.dx,
+      globalPosition.dy,
+    ),
+    color: tokens.surfaceOverlay,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(FanCadTokens.radius),
+      side: BorderSide(color: tokens.borderStrong),
+    ),
+    items: [
+      for (final model in _presetModels)
+        PopupMenuItem(
+          value: model,
+          height: 32,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                child: model == controller.model
+                    ? Icon(Icons.check, size: 14, color: tokens.accent)
+                    : null,
+              ),
+              const SizedBox(width: FanCadTokens.space2),
+              Text(model, style: tokens.monoStyle.copyWith(fontSize: 12)),
+            ],
+          ),
+        ),
+      const PopupMenuDivider(),
+      PopupMenuItem(
+        value: 'custom',
+        height: 32,
+        child: Text('Custom…', style: tokens.bodyStyle),
+      ),
+    ],
+  );
+  if (chosen == null || !context.mounted) return;
+  if (chosen != 'custom') {
+    controller.setModel(chosen);
+    return;
+  }
+  final typed = await _askCustomModel(context, controller.model);
+  if (typed != null && typed.isNotEmpty) controller.setModel(typed);
+}
+
+Future<String?> _askCustomModel(BuildContext context, String current) async {
+  final tokens = context.tokens;
+  final field = TextEditingController(text: current);
+  final result = await showDialog<String>(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: 0.4),
+    builder: (context) => AlertDialog(
+      backgroundColor: tokens.surfaceOverlay,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+        side: BorderSide(color: tokens.borderStrong),
+      ),
+      title: Text(
+        'Model',
+        style: tokens.bodyStyle.copyWith(fontSize: 15),
+      ),
+      content: ShellTextField(
+        controller: field,
+        hintText: 'Model id',
+        autofocus: true,
+        style: tokens.monoStyle,
+        onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel', style: tokens.bodyStyle),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(field.text.trim()),
+          child: const Text('Use'),
+        ),
+      ],
+    ),
+  );
+  field.dispose();
+  return result;
 }
 
 class _EmptyAssistant extends StatelessWidget {
