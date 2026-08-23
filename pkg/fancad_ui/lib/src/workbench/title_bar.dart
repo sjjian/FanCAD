@@ -678,6 +678,12 @@ class _TabState extends State<_Tab> {
               height: 32,
               child: Text('Copy path', style: tokens.bodyStyle),
             ),
+          if (path != null)
+            PopupMenuItem(
+              value: 'reveal',
+              height: 32,
+              child: Text(_revealLabel, style: tokens.bodyStyle),
+            ),
           if (tab.diagnostics.isNotEmpty)
             PopupMenuItem(
               value: 'warnings',
@@ -702,8 +708,31 @@ class _TabState extends State<_Tab> {
         if (path == null) return;
         await Clipboard.setData(ClipboardData(text: path));
         workspace.notify('Copied $path');
+      case 'reveal':
+        if (path == null) return;
+        await _revealOnDisk(path);
       case 'warnings':
         await _showImportWarnings();
+    }
+  }
+
+  static String get _revealLabel {
+    if (Platform.isMacOS) return 'Show in Finder';
+    if (Platform.isWindows) return 'Show in Explorer';
+    return 'Show in folder';
+  }
+
+  Future<void> _revealOnDisk(String path) async {
+    try {
+      if (Platform.isMacOS) {
+        await Process.start('open', ['-R', path]);
+      } else if (Platform.isWindows) {
+        await Process.start('explorer', ['/select,', path]);
+      } else {
+        await Process.start('xdg-open', [File(path).parent.path]);
+      }
+    } catch (error) {
+      widget.workspace.notify('Could not reveal $path: $error', isError: true);
     }
   }
 
