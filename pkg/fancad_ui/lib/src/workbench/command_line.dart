@@ -146,33 +146,39 @@ class _CommandLinePaneState extends State<CommandLinePane> {
 
   Widget _buildHistory(FanCadTokens tokens) {
     final lines = _model.lines;
+    if (lines.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: FanCadTokens.space3,
+          vertical: FanCadTokens.space2,
+        ),
+        child: Text(
+          'Command history will appear here. Click a line to reuse it, '
+          'or press ↑ to recall the last thing you typed.',
+          style: tokens.labelStyle,
+        ),
+      );
+    }
     return Scrollbar(
       controller: _scroll,
       thickness: 6,
       child: ListView.builder(
         controller: _scroll,
         padding: const EdgeInsets.symmetric(
-          horizontal: FanCadTokens.space3,
+          horizontal: FanCadTokens.space2,
           vertical: FanCadTokens.space1,
         ),
         itemCount: lines.length,
         itemExtent: 17,
         itemBuilder: (context, index) {
           final line = lines[index];
-          return Text(
-            line.text,
-            style: tokens.monoStyle.copyWith(
-              fontSize: 11.5,
-              color: switch (line.level) {
-                HistoryLevel.normal => tokens.textMuted,
-                HistoryLevel.prompt => tokens.text,
-                HistoryLevel.success => tokens.success,
-                HistoryLevel.warning => tokens.warning,
-                HistoryLevel.error => tokens.danger,
-              },
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          return _HistoryLine(
+            line: line,
+            tokens: tokens,
+            onReuse: () {
+              _setText(line.text.trim());
+              widget.focusNode.requestFocus();
+            },
           );
         },
       ),
@@ -258,6 +264,63 @@ class _CommandLinePaneState extends State<CommandLinePane> {
 }
 
 /// The status bar: coordinates, drafting toggles and scene statistics.
+/// One command-history row. A click puts the text back in the input so a
+/// previous verb or coordinate does not have to be retyped from memory.
+class _HistoryLine extends StatefulWidget {
+  const _HistoryLine({
+    required this.line,
+    required this.tokens,
+    required this.onReuse,
+  });
+
+  final HistoryLine line;
+  final FanCadTokens tokens;
+  final VoidCallback onReuse;
+
+  @override
+  State<_HistoryLine> createState() => _HistoryLineState();
+}
+
+class _HistoryLineState extends State<_HistoryLine> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = widget.tokens;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onReuse,
+        child: ColoredBox(
+          color: _hovered ? tokens.hover : Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space1,
+            ),
+            child: Text(
+              widget.line.text,
+              style: tokens.monoStyle.copyWith(
+                fontSize: 11.5,
+                color: switch (widget.line.level) {
+                  HistoryLevel.normal => tokens.textMuted,
+                  HistoryLevel.prompt => tokens.text,
+                  HistoryLevel.success => tokens.success,
+                  HistoryLevel.warning => tokens.warning,
+                  HistoryLevel.error => tokens.danger,
+                },
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class StatusBar extends StatelessWidget {
   const StatusBar({super.key, required this.workspace});
 
