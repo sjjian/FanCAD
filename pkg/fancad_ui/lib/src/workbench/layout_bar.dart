@@ -57,12 +57,19 @@ class LayoutTabStrip extends StatelessWidget {
                   selected: layout.name == active,
                   isMaximized: maximized == layout.name,
                   onSelect: () {
+                    if (maximized == layout.name) {
+                      workspace.run('layout.vpmin');
+                      return;
+                    }
                     if (layout.name == active) return;
                     workspace.run(
                       'layout.set',
                       args: {'name': layout.name},
                     );
                   },
+                  onRestore: maximized == layout.name
+                      ? () => workspace.run('layout.vpmin')
+                      : null,
                   onRename: layout.isModelSpace
                       ? null
                       : () => workspace.run(
@@ -106,6 +113,7 @@ class _LayoutChip extends StatefulWidget {
     required this.isMaximized,
     required this.onSelect,
     required this.onNew,
+    this.onRestore,
     this.onRename,
     this.onCopy,
     this.onDelete,
@@ -116,6 +124,7 @@ class _LayoutChip extends StatefulWidget {
   final bool isMaximized;
   final VoidCallback onSelect;
   final VoidCallback onNew;
+  final VoidCallback? onRestore;
   final VoidCallback? onRename;
   final VoidCallback? onCopy;
   final VoidCallback? onDelete;
@@ -140,6 +149,8 @@ class _LayoutChipState extends State<_LayoutChip> {
         origin.dy + 1,
       ),
       items: [
+        if (widget.onRestore != null)
+          const PopupMenuItem(value: 'restore', child: Text('Restore viewport')),
         if (widget.onRename != null)
           const PopupMenuItem(value: 'rename', child: Text('Rename')),
         if (widget.onCopy != null)
@@ -151,6 +162,8 @@ class _LayoutChipState extends State<_LayoutChip> {
     ).then((action) {
       if (!mounted || action == null) return;
       switch (action) {
+        case 'restore':
+          widget.onRestore?.call();
         case 'rename':
           widget.onRename?.call();
         case 'copy':
@@ -175,7 +188,7 @@ class _LayoutChipState extends State<_LayoutChip> {
     return Tooltip(
       message: [
         paper,
-        if (widget.isMaximized) 'Viewport maximised — double-click to restore',
+        if (widget.isMaximized) 'Viewport maximised — click to restore',
         if (!layout.isModelSpace) 'Right-click for rename, duplicate or delete',
       ].join('\n'),
       child: MouseRegion(
