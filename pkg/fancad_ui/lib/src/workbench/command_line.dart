@@ -411,60 +411,41 @@ class StatusBar extends StatelessWidget {
           ),
           const Spacer(),
           if (tab != null) ...[
-            Tooltip(
-              message: tab.selection.isEmpty
+            _StatusAction(
+              label: '${tab.selection.length} selected',
+              tooltip: tab.selection.isEmpty
                   ? 'Nothing selected'
-                  : 'Inspect properties',
-              child: InkWell(
-                onTap: tab.selection.isEmpty
-                    ? null
-                    : () => workspace.revealPanel('properties'),
-                child: Text(
-                  '${tab.selection.length} selected',
-                  style: tokens.labelStyle.copyWith(
-                    color: tab.selection.isEmpty
-                        ? tokens.textMuted
-                        : tokens.text,
+                  : 'Open properties for the selection',
+              enabled: tab.selection.isNotEmpty,
+              onPressed: () => workspace.revealPanel('properties'),
+            ),
+            _StatusAction(
+              label: '${tab.document.entityCount} objects',
+              tooltip: tab.document.entityCount == 0
+                  ? 'The drawing is empty'
+                  : 'Select every object',
+              enabled: tab.document.entityCount > 0,
+              onPressed: () => workspace.run('select.all'),
+            ),
+            _StatusAction(
+              label:
+                  '1:${(1 / tab.viewport.viewport.scale).toStringAsFixed(2)}',
+              tooltip: 'Zoom extents — fit the drawing in the window',
+              onPressed: () => workspace.run('view.zoomExtents'),
+            ),
+            if (scene != null)
+              Tooltip(
+                message: 'Batches drawn / entities visible in the viewport',
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: FanCadTokens.space2,
+                  ),
+                  child: Text(
+                    '${scene.drawCallCount} draw calls · ${scene.entityCount} visible',
+                    style: tokens.labelStyle,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: FanCadTokens.space4),
-            Tooltip(
-              message: 'Select all',
-              child: InkWell(
-                onTap: tab.document.entityCount == 0
-                    ? null
-                    : () => workspace.run('select.all'),
-                child: Text(
-                  '${tab.document.entityCount} objects',
-                  style: tokens.labelStyle,
-                ),
-              ),
-            ),
-            const SizedBox(width: FanCadTokens.space4),
-            // The zoom and draw-call readout is here because it is the fastest
-            // way to tell a slow drawing from a slow renderer.
-            Tooltip(
-              message: 'Zoom extents',
-              child: InkWell(
-                onTap: () => workspace.run('view.zoomExtents'),
-                child: Text(
-                  '1:${(1 / tab.viewport.viewport.scale).toStringAsFixed(2)}',
-                  style: tokens.labelStyle,
-                ),
-              ),
-            ),
-            if (scene != null) ...[
-              const SizedBox(width: FanCadTokens.space4),
-              Tooltip(
-                message: 'Batches drawn / entities visible in the viewport',
-                child: Text(
-                  '${scene.drawCallCount} draw calls · ${scene.entityCount} visible',
-                  style: tokens.labelStyle,
-                ),
-              ),
-            ],
           ],
           const SizedBox(width: FanCadTokens.space3),
           _CurrentLayerIndicator(workspace: workspace),
@@ -654,6 +635,63 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
                   ),
                 ],
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A status-bar count that does something, so it looks like SNAP rather than
+/// a dead label someone only discovers by accident.
+class _StatusAction extends StatefulWidget {
+  const _StatusAction({
+    required this.label,
+    required this.tooltip,
+    required this.onPressed,
+    this.enabled = true,
+  });
+
+  final String label;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final bool enabled;
+
+  @override
+  State<_StatusAction> createState() => _StatusActionState();
+}
+
+class _StatusActionState extends State<_StatusAction> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Tooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        cursor: widget.enabled
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.enabled ? widget.onPressed : null,
+          child: Container(
+            height: FanCadTokens.statusBarHeight,
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space2,
+            ),
+            color: widget.enabled && _hovered
+                ? tokens.hover
+                : Colors.transparent,
+            alignment: Alignment.center,
+            child: Text(
+              widget.label,
+              style: tokens.labelStyle.copyWith(
+                color: widget.enabled ? tokens.text : tokens.textMuted,
+              ),
             ),
           ),
         ),
