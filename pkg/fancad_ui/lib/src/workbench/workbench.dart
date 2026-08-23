@@ -265,7 +265,11 @@ class _WorkbenchState extends ConsumerState<Workbench> {
   Widget _sidebarBody(String viewId, Workspace workspace) => switch (viewId) {
     'layers' => LayersPanel(workspace: workspace),
     'properties' => PropertiesPanel(workspace: workspace),
-    'commands' => _CommandListPanel(workspace: workspace),
+    'commands' => _CommandListPanel(
+      workspace: workspace,
+      onOpenPalette: () =>
+          ref.read(paletteOpenProvider.notifier).state = true,
+    ),
     'plugins' => ExtensionsPanel(
       workspace: workspace,
       host: ref.watch(pluginHostProvider),
@@ -420,9 +424,13 @@ class _ActivityBar extends StatelessWidget {
 /// Worth a panel of its own because it is the honest answer to "what can this
 /// application do", and because it is the same list the assistant sees.
 class _CommandListPanel extends StatefulWidget {
-  const _CommandListPanel({required this.workspace});
+  const _CommandListPanel({
+    required this.workspace,
+    required this.onOpenPalette,
+  });
 
   final Workspace workspace;
+  final VoidCallback onOpenPalette;
 
   @override
   State<_CommandListPanel> createState() => _CommandListPanelState();
@@ -450,7 +458,17 @@ class _CommandListPanelState extends State<_CommandListPanel> {
 
     return Column(
       children: [
-        const PanelHeader(title: 'Commands'),
+        PanelHeader(
+          title: 'Commands',
+          actions: [
+            ShellIconButton(
+              icon: Icons.search,
+              tooltip: 'Command palette  ${shellShortcut('P', shift: true)}',
+              iconSize: 15,
+              onPressed: widget.onOpenPalette,
+            ),
+          ],
+        ),
         Container(
           height: 28,
           padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
@@ -459,7 +477,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
           ),
           child: ShellTextField(
             controller: _filter,
-            hintText: 'Filter commands',
+            hintText: 'Filter by name, alias or category',
             style: tokens.bodyStyle,
             prefix: Padding(
               padding: const EdgeInsets.only(right: FanCadTokens.space2),
@@ -469,42 +487,100 @@ class _CommandListPanelState extends State<_CommandListPanel> {
           ),
         ),
         Expanded(
-          child: ListView(
-            children: [
-              for (final category in categories)
-                PanelSection(
-                  title: category,
+          child: commands.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(FanCadTokens.space4),
+                    child: Text(
+                      _query.trim().isEmpty
+                          ? 'No commands are registered.'
+                          : 'No commands match “${_query.trim()}”.',
+                      style: tokens.labelStyle,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              : ListView(
                   children: [
-                    for (final descriptor in byCategory[category]!)
-                      ShellRow(
-                        onTap: () => widget.workspace.run(descriptor.id),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                descriptor.title,
-                                style: tokens.bodyStyle,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (descriptor.aliases.isNotEmpty)
-                              Text(
-                                descriptor.aliases.first.toUpperCase(),
-                                style: tokens.monoStyle.copyWith(
-                                  fontSize: 10.5,
-                                  color: tokens.textFaint,
-                                ),
-                              ),
-                          ],
+                    for (final category in categories)
+                      PanelSection(
+                        title: category,
+                        trailing: Text(
+                          '${byCategory[category]!.length}',
+                          style: tokens.labelStyle,
                         ),
+                        children: [
+                          for (final descriptor in byCategory[category]!)
+                            _commandRow(tokens, descriptor),
+                        ],
                       ),
+                    const SizedBox(height: FanCadTokens.space4),
                   ],
                 ),
-              const SizedBox(height: FanCadTokens.space4),
-            ],
+        ),
+        Container(
+          height: 22,
+          padding: const EdgeInsets.symmetric(
+            horizontal: FanCadTokens.space3,
+          ),
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: tokens.border)),
+          ),
+          child: Text(
+            '${commands.length} command${commands.length == 1 ? '' : 's'}'
+            '${_query.trim().isEmpty ? '' : ' matching'}',
+            style: tokens.labelStyle,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _commandRow(FanCadTokens tokens, CommandDescriptor descriptor) {
+    final hint = [
+      if (descriptor.description.isNotEmpty) descriptor.description,
+      if (descriptor.aliases.isNotEmpty)
+        'Alias ${descriptor.aliases.first.toUpperCase()}',
+      if (descriptor.defaultKeybinding != null)
+        descriptor.defaultKeybinding!.toUpperCase(),
+    ].join('\n');
+    final row = ShellRow(
+      isSelected: widget.workspace.runningCommand == descriptor.id,
+      onTap: () => widget.workspace.run(descriptor.id),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              descriptor.title,
+              style: tokens.bodyStyle,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (descriptor.defaultKeybinding != null)
+            Text(
+              descriptor.defaultKeybinding!.toUpperCase(),
+              style: tokens.monoStyle.copyWith(
+                fontSize: 10.5,
+                color: tokens.textFaint,
+              ),
+            )
+          else if (descriptor.aliases.isNotEmpty)
+            Text(
+              descriptor.aliases.first.toUpperCase(),
+              style: tokens.monoStyle.copyWith(
+                fontSize: 10.5,
+                color: tokens.textFaint,
+              ),
+            ),
+        ],
+      ),
+    );
+    if (hint.isEmpty) return row;
+    return Tooltip(
+      message: hint,
+      waitDuration: const Duration(milliseconds: 500),
+      child: row,
     );
   }
 }
