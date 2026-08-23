@@ -379,13 +379,44 @@ class _ActivityBar extends StatelessWidget {
   final String activeViewId;
   final ValueChanged<String> onSelect;
 
-  static const List<({String id, IconData icon, String label})> _views = [
-    (id: 'layers', icon: Icons.layers_outlined, label: 'Layers'),
-    (id: 'properties', icon: Icons.tune, label: 'Properties'),
-    (id: 'commands', icon: Icons.terminal, label: 'Commands'),
-    (id: 'plugins', icon: Icons.extension_outlined, label: 'Extensions'),
-    (id: 'editor', icon: Icons.code, label: 'Re-Editor'),
-    (id: 'ai', icon: Icons.auto_awesome_outlined, label: 'Assistant'),
+  static const List<({String id, IconData icon, String label, String hint})>
+  _views = [
+    (
+      id: 'layers',
+      icon: Icons.layers_outlined,
+      label: 'Layers',
+      hint: 'Current layer, visibility and lock',
+    ),
+    (
+      id: 'properties',
+      icon: Icons.tune,
+      label: 'Properties',
+      hint: 'Inspect and change the selection',
+    ),
+    (
+      id: 'commands',
+      icon: Icons.terminal,
+      label: 'Commands',
+      hint: 'Everything the application can run',
+    ),
+    (
+      id: 'plugins',
+      icon: Icons.extension_outlined,
+      label: 'Extensions',
+      hint: 'Installed plugins and their errors',
+    ),
+    (
+      id: 'editor',
+      icon: Icons.code,
+      label: 'Re-Editor',
+      hint: 'Review extension source',
+    ),
+    (
+      id: 'ai',
+      icon: Icons.auto_awesome_outlined,
+      label: 'Assistant',
+      hint: 'Ask about the drawing or change it',
+    ),
   ];
 
   @override
@@ -405,7 +436,9 @@ class _ActivityBar extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 2),
               child: ShellIconButton(
                 icon: view.icon,
-                tooltip: view.label,
+                tooltip: activeViewId == view.id
+                    ? 'Hide ${view.label}\n${view.hint}'
+                    : '${view.label}\n${view.hint}',
                 size: FanCadTokens.activityBarWidth,
                 iconSize: 20,
                 isActive: activeViewId == view.id,
@@ -413,6 +446,19 @@ class _ActivityBar extends StatelessWidget {
                 onPressed: () => onSelect(view.id),
               ),
             ),
+          const Spacer(),
+          ShellIconButton(
+            icon: Icons.view_sidebar_outlined,
+            tooltip: activeViewId.isEmpty
+                ? 'Show the sidebar  ${shellShortcut('B')}'
+                : 'Hide the sidebar  ${shellShortcut('B')}',
+            size: FanCadTokens.activityBarWidth,
+            iconSize: 18,
+            onPressed: () => onSelect(
+              activeViewId.isEmpty ? _views.first.id : activeViewId,
+            ),
+          ),
+          const SizedBox(height: FanCadTokens.space2),
         ],
       ),
     );
