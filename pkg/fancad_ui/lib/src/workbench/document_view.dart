@@ -231,6 +231,7 @@ class _DocumentViewState extends State<DocumentView> {
     for (final layer in tab.document.layers.values) {
       if (!layer.visible) hiddenLayers += 1;
     }
+    final currentLayer = tab.document.layer(tab.document.currentLayer);
     return Focus(
       onKeyEvent: (node, event) {
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -272,6 +273,16 @@ class _DocumentViewState extends State<DocumentView> {
                     : '$hiddenLayers layers are off',
                 action: 'Show all layers',
                 onShowAll: () => widget.workspace.run('layer.showAll'),
+              )
+            else if (currentLayer != null && currentLayer.locked)
+              _VisibilityBanner(
+                icon: Icons.lock_outline,
+                message: 'Current layer "${currentLayer.name}" is locked',
+                action: 'Unlock',
+                onShowAll: () => widget.workspace.run(
+                  'layer.toggleLock',
+                  args: {'name': currentLayer.name},
+                ),
               ),
             Expanded(
               child: Stack(
