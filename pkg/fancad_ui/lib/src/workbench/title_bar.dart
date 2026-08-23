@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../state/document_tab.dart';
+import '../state/settings.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import 'shell_widgets.dart';
@@ -44,26 +47,34 @@ class TitleBar extends StatelessWidget {
           const SizedBox(width: FanCadTokens.space2),
           ShellIconButton(
             icon: Icons.menu,
-            tooltip: 'Toggle sidebar  Ctrl B',
+            tooltip: 'Toggle sidebar  ${shellShortcut('B')}',
             onPressed: onToggleSidebar,
           ),
           const _Divider(),
           ShellIconButton(
             icon: Icons.insert_drive_file_outlined,
-            tooltip: 'New drawing  Ctrl N',
+            tooltip: 'New drawing  ${shellShortcut('N')}',
             onPressed: () => workspace.run('file.new'),
           ),
           ShellIconButton(
             icon: Icons.folder_open_outlined,
-            tooltip: 'Open  Ctrl O',
+            tooltip: 'Open  ${shellShortcut('O')}',
             onPressed: () => workspace.run('file.open'),
           ),
           ShellIconButton(
             icon: Icons.save_outlined,
-            tooltip: 'Save  Ctrl S',
+            tooltip: tab == null
+                ? 'Save  ${shellShortcut('S')}'
+                : tab.isDirty
+                ? 'Save unsaved changes  ${shellShortcut('S')}'
+                : tab.filePath == null
+                ? 'Save this drawing  ${shellShortcut('S')}'
+                : 'Saved — ${shellShortcut('S')} to write again',
             enabled: tab != null,
+            isActive: tab?.isDirty ?? false,
             onPressed: () => workspace.run('file.save'),
           ),
+          _FileMenu(workspace: workspace),
           const _Divider(),
           ShellIconButton(
             icon: Icons.undo,
@@ -101,7 +112,7 @@ class TitleBar extends StatelessWidget {
           ),
           ShellIconButton(
             icon: Icons.search,
-            tooltip: 'Command palette  Ctrl Shift P',
+            tooltip: 'Command palette  ${shellShortcut('P', shift: true)}',
             onPressed: onTogglePalette,
           ),
           ShellIconButton(
@@ -119,12 +130,16 @@ class TitleBar extends StatelessWidget {
   /// Naming what will be undone turns a guess into a decision.
   static String _undoTooltip(DocumentTab? tab) {
     final label = tab?.history.nextUndoLabel;
-    return label == null ? 'Nothing to undo' : 'Undo $label  Ctrl Z';
+    return label == null
+        ? 'Nothing to undo'
+        : 'Undo $label  ${shellShortcut('Z')}';
   }
 
   static String _redoTooltip(DocumentTab? tab) {
     final label = tab?.history.nextRedoLabel;
-    return label == null ? 'Nothing to redo' : 'Redo $label  Ctrl Shift Z';
+    return label == null
+        ? 'Nothing to redo'
+        : 'Redo $label  ${shellShortcut('Z', shift: true)}';
   }
 
   static const List<({String commandId, IconData icon, String tooltip})>
@@ -182,6 +197,131 @@ class TitleBar extends StatelessWidget {
   ];
 }
 
+/// Overflow for Save As, recent files and Close — the actions that do not
+/// earn a permanent toolbar icon.
+class _FileMenu extends StatelessWidget {
+  const _FileMenu({required this.workspace});
+
+  final Workspace workspace;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final tab = workspace.active;
+    final recent = workspace.settings.getStringList(SettingsKeys.recentFiles);
+    return PopupMenuButton<String>(
+      tooltip: 'More file actions',
+      padding: EdgeInsets.zero,
+      offset: const Offset(0, FanCadTokens.titleBarHeight - 8),
+      color: tokens.surfaceOverlay,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FanCadTokens.radius),
+        side: BorderSide(color: tokens.borderStrong),
+      ),
+      onSelected: (value) {
+        if (value.startsWith('recent:')) {
+          workspace.run(
+            'file.open',
+            args: {'path': value.substring('recent:'.length)},
+          );
+          return;
+        }
+        workspace.run(value);
+      },
+      itemBuilder: (context) => [
+        _item(tokens, 'file.new', 'New drawing', shellShortcut('N')),
+        _item(tokens, 'file.open', 'Open…', shellShortcut('O')),
+        if (recent.isNotEmpty) ...[
+          const PopupMenuDivider(),
+          PopupMenuItem<String>(
+            enabled: false,
+            height: 28,
+            child: Text('Recent', style: tokens.sectionTitleStyle),
+          ),
+          for (final path in recent.take(8))
+            PopupMenuItem<String>(
+              value: 'recent:$path',
+              height: 32,
+              child: Tooltip(
+                message: File(path).existsSync() ? path : 'Missing — $path',
+                child: Text(
+                  _fileName(path),
+                  style: tokens.bodyStyle.copyWith(
+                    color: File(path).existsSync()
+                        ? tokens.text
+                        : tokens.textFaint,
+                    decoration: File(path).existsSync()
+                        ? null
+                        : TextDecoration.lineThrough,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+        ],
+        const PopupMenuDivider(),
+        _item(
+          tokens,
+          'file.save',
+          'Save',
+          shellShortcut('S'),
+          enabled: tab != null,
+        ),
+        _item(
+          tokens,
+          'file.saveAs',
+          'Save As…',
+          shellShortcut('S', shift: true),
+          enabled: tab != null,
+        ),
+        _item(
+          tokens,
+          'file.close',
+          'Close drawing',
+          shellShortcut('W'),
+          enabled: tab != null,
+        ),
+      ],
+      child: SizedBox(
+        width: 22,
+        height: 28,
+        child: Icon(
+          Icons.expand_more,
+          size: 16,
+          color: tokens.textMuted,
+        ),
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _item(
+    FanCadTokens tokens,
+    String value,
+    String label,
+    String shortcut, {
+    bool enabled = true,
+  }) {
+    return PopupMenuItem<String>(
+      value: value,
+      enabled: enabled,
+      height: 32,
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: tokens.bodyStyle)),
+          const SizedBox(width: FanCadTokens.space4),
+          Text(shortcut, style: tokens.labelStyle),
+        ],
+      ),
+    );
+  }
+
+  static String _fileName(String path) {
+    final separator = path.contains(r'\') ? r'\' : '/';
+    final parts = path.split(separator);
+    return parts.isEmpty ? path : parts.last;
+  }
+}
+
 /// The document tab strip.
 class DocumentTabStrip extends StatelessWidget {
   const DocumentTabStrip({super.key, required this.workspace});
@@ -219,7 +359,7 @@ class DocumentTabStrip extends StatelessWidget {
           ),
           ShellIconButton(
             icon: Icons.add,
-            tooltip: 'New drawing  Ctrl N',
+            tooltip: 'New drawing  ${shellShortcut('N')}',
             onPressed: () => workspace.run('file.new'),
           ),
           const SizedBox(width: FanCadTokens.space1),
@@ -295,10 +435,18 @@ class _TabState extends State<_Tab> {
                     ),
                   ),
                 ),
-              Text(
-                tab.title,
-                style: tokens.bodyStyle.copyWith(
-                  color: widget.isActive ? tokens.text : tokens.textMuted,
+              Tooltip(
+                message: tab.isDirty
+                    ? tab.filePath == null
+                        ? 'Unsaved drawing'
+                        : 'Unsaved changes — ${tab.filePath}'
+                    : tab.filePath ?? 'Unsaved drawing',
+                waitDuration: const Duration(milliseconds: 500),
+                child: Text(
+                  tab.title,
+                  style: tokens.bodyStyle.copyWith(
+                    color: widget.isActive ? tokens.text : tokens.textMuted,
+                  ),
                 ),
               ),
               const SizedBox(width: FanCadTokens.space2),
@@ -311,7 +459,9 @@ class _TabState extends State<_Tab> {
                         icon: Icons.close,
                         size: 18,
                         iconSize: 12,
-                        tooltip: 'Close  Ctrl W',
+                        tooltip: tab.isDirty
+                            ? 'Close — unsaved changes  ${shellShortcut('W')}'
+                            : 'Close  ${shellShortcut('W')}',
                         onPressed: widget.onClose,
                       )
                     : tab.isDirty

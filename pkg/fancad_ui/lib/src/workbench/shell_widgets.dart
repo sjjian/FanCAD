@@ -1,7 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/tokens.dart';
+
+/// A modifier-aware shortcut label for chrome that mentions keystrokes.
+String shellShortcut(String key, {bool shift = false}) {
+  final prefix = Platform.isMacOS ? '⌘' : 'Ctrl';
+  return shift ? '$prefix Shift $key' : '$prefix $key';
+}
 
 /// The small widgets the shell is assembled from.
 ///
@@ -594,24 +602,24 @@ class EmptyWorkspace extends StatelessWidget {
                 const SizedBox(height: FanCadTokens.space5),
                 _Action(
                   label: 'New drawing',
-                  shortcut: 'Ctrl N',
+                  shortcut: shellShortcut('N'),
                   onPressed: onNew,
                 ),
                 _Action(
-                  label: 'Open a DWG or DXF file',
-                  shortcut: 'Ctrl O',
+                  label: 'Open a DWG, DXF or FCB file',
+                  shortcut: shellShortcut('O'),
                   onPressed: onOpen,
                 ),
                 _Action(
                   label: 'Show all commands',
-                  shortcut: 'Ctrl Shift P',
+                  shortcut: shellShortcut('P', shift: true),
                   onPressed: onShowCommands,
                 ),
                 if (recentFiles.isNotEmpty) ...[
                   const SizedBox(height: FanCadTokens.space5),
                   Text('RECENT', style: tokens.sectionTitleStyle),
                   const SizedBox(height: FanCadTokens.space2),
-                  for (final path in recentFiles.take(6))
+                  for (final path in recentFiles.take(8))
                     _Recent(path: path, onPressed: () => onOpenRecent(path)),
                 ],
               ],
@@ -639,7 +647,7 @@ class _Action extends StatelessWidget {
     final tokens = context.tokens;
     return ShellRow(
       onTap: onPressed,
-      height: 30,
+      height: 32,
       padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
       child: Row(
         children: [
@@ -670,22 +678,41 @@ class _Recent extends StatelessWidget {
     final folder = parts.length > 1
         ? parts.sublist(0, parts.length - 1).join(separator)
         : '';
-    return ShellRow(
-      onTap: onPressed,
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
-      child: Row(
-        children: [
-          Text(name, style: tokens.bodyStyle.copyWith(color: tokens.accent)),
-          const SizedBox(width: FanCadTokens.space2),
-          Expanded(
-            child: Text(
-              folder,
-              style: tokens.labelStyle,
-              overflow: TextOverflow.ellipsis,
+    final missing = !File(path).existsSync();
+    return Tooltip(
+      message: missing ? 'Missing — $path' : path,
+      waitDuration: const Duration(milliseconds: 400),
+      child: ShellRow(
+        onTap: onPressed,
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
+        child: Row(
+          children: [
+            Icon(
+              missing
+                  ? Icons.broken_image_outlined
+                  : Icons.insert_drive_file_outlined,
+              size: 14,
+              color: missing ? tokens.textFaint : tokens.textMuted,
             ),
-          ),
-        ],
+            const SizedBox(width: FanCadTokens.space2),
+            Text(
+              name,
+              style: tokens.bodyStyle.copyWith(
+                color: missing ? tokens.textFaint : tokens.accent,
+                decoration: missing ? TextDecoration.lineThrough : null,
+              ),
+            ),
+            const SizedBox(width: FanCadTokens.space2),
+            Expanded(
+              child: Text(
+                missing ? 'Missing · $folder' : folder,
+                style: tokens.labelStyle,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

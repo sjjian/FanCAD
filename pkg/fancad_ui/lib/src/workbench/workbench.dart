@@ -74,7 +74,10 @@ class _WorkbenchState extends ConsumerState<Workbench> {
     final workspace = ref.read(workspaceProvider);
     workspace.setPendingHighlights(request.highlightIds);
     final tokens = context.tokens;
-    final approved = await showDialog<bool>(
+    final title = request.title.toLowerCase();
+    final unsaved =
+        title.contains('unsaved') || title.contains('discard');
+    final approved = await showDialog<String>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (context) => AlertDialog(
@@ -90,18 +93,35 @@ class _WorkbenchState extends ConsumerState<Workbench> {
         content: Text(request.details, style: tokens.labelStyle),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(context).pop('cancel'),
             child: Text('Cancel', style: tokens.bodyStyle),
           ),
+          if (unsaved)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop('discard'),
+              child: Text(
+                "Don't save",
+                style: tokens.bodyStyle.copyWith(color: tokens.danger),
+              ),
+            ),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Continue'),
+            onPressed: () => Navigator.of(context).pop(
+              unsaved ? 'save' : 'continue',
+            ),
+            child: Text(unsaved ? 'Save' : 'Continue'),
           ),
         ],
       ),
     );
     workspace.setPendingHighlights(const []);
-    if (approved ?? false) {
+    if (approved == 'save') {
+      final result = await workspace.run('file.save');
+      if (result.isOk) {
+        request.approve();
+      } else {
+        request.reject();
+      }
+    } else if (approved == 'continue' || approved == 'discard') {
       request.approve();
     } else {
       request.reject();

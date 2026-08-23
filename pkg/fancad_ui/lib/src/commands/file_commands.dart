@@ -179,8 +179,8 @@ class FileCommands {
       // Unsaved work is the one case where a command refuses and hands the
       // decision back, rather than choosing on the user's behalf.
       final discard = await context.services.requestApproval(
-        'Discard unsaved changes?',
-        '"${context.session.title}" has unsaved changes that will be lost.',
+        'Unsaved changes',
+        '"${context.session.title}" has unsaved changes.',
       );
       if (!discard) return const CommandResult.cancelled();
       closeActive(force: true);
