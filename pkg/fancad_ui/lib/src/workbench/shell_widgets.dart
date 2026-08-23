@@ -325,6 +325,8 @@ class PropertyRow extends StatelessWidget {
     required this.value,
     this.onTap,
     this.isEditable = false,
+    this.copyText,
+    this.onCopied,
   });
 
   final String label;
@@ -332,12 +334,29 @@ class PropertyRow extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isEditable;
 
+  /// Copied on right-click, or on a left-click when the row is not editable.
+  final String? copyText;
+  final ValueChanged<String>? onCopied;
+
+  void _copy(BuildContext context) {
+    final text = copyText;
+    if (text == null || text.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: text));
+    onCopied?.call(text);
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return ShellRow(
-      onTap: onTap,
-      height: 24,
+    final tooltip = onTap != null
+        ? 'Click to change $label'
+        : copyText != null
+        ? 'Click to copy $label'
+        : null;
+    Widget row = ShellRow(
+      onTap: onTap ?? (copyText == null ? null : () => _copy(context)),
+      onSecondaryTap: copyText == null ? null : () => _copy(context),
+      height: FanCadTokens.rowHeight,
       padding: const EdgeInsets.only(left: FanCadTokens.space3, right: 4),
       child: Row(
         children: [
@@ -359,8 +378,20 @@ class PropertyRow extends StatelessWidget {
               child: value,
             ),
           ),
+          if (isEditable)
+            Icon(
+              Icons.chevron_right,
+              size: 14,
+              color: tokens.textFaint,
+            ),
         ],
       ),
+    );
+    if (tooltip == null) return row;
+    return Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 600),
+      child: row,
     );
   }
 }

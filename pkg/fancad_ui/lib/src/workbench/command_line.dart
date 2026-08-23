@@ -319,14 +319,18 @@ class StatusBar extends StatelessWidget {
             Tooltip(
               message: tab.selection.isEmpty
                   ? 'Nothing selected'
-                  : 'Zoom to selection',
+                  : 'Inspect properties',
               child: InkWell(
                 onTap: tab.selection.isEmpty
                     ? null
-                    : () => workspace.run('view.zoomSelected'),
+                    : () => workspace.revealPanel('properties'),
                 child: Text(
                   '${tab.selection.length} selected',
-                  style: tokens.labelStyle,
+                  style: tokens.labelStyle.copyWith(
+                    color: tab.selection.isEmpty
+                        ? tokens.textMuted
+                        : tokens.text,
+                  ),
                 ),
               ),
             ),
