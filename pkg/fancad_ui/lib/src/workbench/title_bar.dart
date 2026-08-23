@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../state/document_tab.dart';
@@ -413,6 +414,7 @@ class DocumentTabStrip extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               itemCount: tabs.length,
               itemBuilder: (context, index) => _Tab(
+                workspace: workspace,
                 tab: tabs[index],
                 isActive: index == workspace.activeIndex,
                 onTap: () => workspace.activate(index),
@@ -438,12 +440,14 @@ class DocumentTabStrip extends StatelessWidget {
 
 class _Tab extends StatefulWidget {
   const _Tab({
+    required this.workspace,
     required this.tab,
     required this.isActive,
     required this.onTap,
     required this.onClose,
   });
 
+  final Workspace workspace;
   final DocumentTab tab;
   final bool isActive;
   final VoidCallback onTap;
@@ -467,6 +471,10 @@ class _TabState extends State<_Tab> {
       child: GestureDetector(
         onTap: widget.onTap,
         onTertiaryTapUp: (_) => widget.onClose(),
+        onSecondaryTapDown: (details) {
+          widget.onTap();
+          _openMenu(details.globalPosition);
+        },
         child: Container(
           padding: const EdgeInsets.only(
             left: FanCadTokens.space3,
@@ -549,6 +557,67 @@ class _TabState extends State<_Tab> {
         ),
       ),
     );
+  }
+
+  Future<void> _openMenu(Offset globalPosition) async {
+    final tokens = context.tokens;
+    final workspace = widget.workspace;
+    final tab = widget.tab;
+    final others = workspace.tabs.length > 1;
+    final path = tab.filePath;
+    final chosen = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        globalPosition.dx,
+        globalPosition.dy,
+        globalPosition.dx,
+        globalPosition.dy,
+      ),
+      color: tokens.surfaceOverlay,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FanCadTokens.radius),
+        side: BorderSide(color: tokens.borderStrong),
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'close',
+          height: 32,
+          child: Text('Close', style: tokens.bodyStyle),
+        ),
+        PopupMenuItem(
+          value: 'closeOthers',
+          enabled: others,
+          height: 32,
+          child: Text('Close others', style: tokens.bodyStyle),
+        ),
+        PopupMenuItem(
+          value: 'closeAll',
+          height: 32,
+          child: Text('Close all', style: tokens.bodyStyle),
+        ),
+        if (path != null) ...[
+          const PopupMenuDivider(),
+          PopupMenuItem(
+            value: 'copyPath',
+            height: 32,
+            child: Text('Copy path', style: tokens.bodyStyle),
+          ),
+        ],
+      ],
+    );
+    if (!mounted) return;
+    switch (chosen) {
+      case 'close':
+        widget.onClose();
+      case 'closeOthers':
+        await workspace.closeOtherTabs(tab);
+      case 'closeAll':
+        await workspace.closeAllTabs();
+      case 'copyPath':
+        if (path == null) return;
+        await Clipboard.setData(ClipboardData(text: path));
+        workspace.notify('Copied $path');
+    }
   }
 }
 

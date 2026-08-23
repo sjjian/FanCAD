@@ -291,6 +291,36 @@ class Workspace extends ChangeNotifier implements CommandServices {
     return true;
   }
 
+  /// Closes every drawing except [keep], using the same Save / Don't save /
+  /// Cancel path a single tab close uses.
+  Future<bool> closeOtherTabs(DocumentTab keep) async {
+    while (true) {
+      DocumentTab? next;
+      for (final tab in _tabs) {
+        if (!identical(tab, keep)) {
+          next = tab;
+          break;
+        }
+      }
+      if (next == null) {
+        activateTab(keep);
+        return true;
+      }
+      activateTab(next);
+      final result = await run('file.close');
+      if (!result.isOk) return false;
+    }
+  }
+
+  /// Closes every drawing. Returns false if the user cancelled a dirty prompt.
+  Future<bool> closeAllTabs() async {
+    while (_tabs.isNotEmpty) {
+      final result = await run('file.close');
+      if (!result.isOk) return false;
+    }
+    return true;
+  }
+
   // -------------------------------------------------------------------------
   // Command execution
   // -------------------------------------------------------------------------
