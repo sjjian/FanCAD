@@ -223,6 +223,10 @@ class _DocumentViewState extends State<DocumentView> {
         : overlay.copyWith(
             highlightedIds: [...overlay.highlightedIds, ...pending],
           );
+    var hiddenCount = 0;
+    for (final entity in tab.document.activeEntities) {
+      if (!entity.props.visible) hiddenCount += 1;
+    }
     return Focus(
       onKeyEvent: (node, event) {
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -244,8 +248,17 @@ class _DocumentViewState extends State<DocumentView> {
       },
       child: Listener(
         onPointerDown: (_) => widget.commandLineFocus.requestFocus(),
-        child: Stack(
+        child: Column(
           children: [
+            if (hiddenCount > 0)
+              _HiddenObjectsBanner(
+                count: hiddenCount,
+                onShowAll: () =>
+                    widget.workspace.run('view.unisolateObjects'),
+              ),
+            Expanded(
+              child: Stack(
+                children: [
             CadCanvas(
               key: _canvasKey,
               document: tab.document,
@@ -286,6 +299,58 @@ class _DocumentViewState extends State<DocumentView> {
                 onRectangle: () => widget.workspace.run('draw.rectangle'),
                 onCircle: () => widget.workspace.run('draw.circle'),
               ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Isolate and Hide leave objects in the drawing but invisible. Without a
+/// strip on the canvas the only way back is a command name or a right-click.
+class _HiddenObjectsBanner extends StatelessWidget {
+  const _HiddenObjectsBanner({
+    required this.count,
+    required this.onShowAll,
+  });
+
+  final int count;
+  final VoidCallback onShowAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Material(
+      color: tokens.warning.withValues(alpha: tokens.isDark ? 0.16 : 0.12),
+      child: Container(
+        height: FanCadTokens.tabBarHeight,
+        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: tokens.border)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.visibility_off_outlined,
+              size: 14,
+              color: tokens.warning,
+            ),
+            const SizedBox(width: FanCadTokens.space2),
+            Expanded(
+              child: Text(
+                count == 1
+                    ? '1 object is hidden'
+                    : '$count objects are hidden',
+                style: tokens.bodyStyle.copyWith(color: tokens.text),
+              ),
+            ),
+            TextButton(
+              onPressed: onShowAll,
+              child: const Text('Show all'),
+            ),
           ],
         ),
       ),
