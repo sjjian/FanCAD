@@ -730,6 +730,7 @@ class _Recent extends StatelessWidget {
       waitDuration: const Duration(milliseconds: 400),
       child: ShellRow(
         onTap: onPressed,
+        onSecondaryTap: missing ? null : () => _revealOnDisk(path),
         height: 30,
         padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
         child: Row(
@@ -757,9 +758,35 @@ class _Recent extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (!missing)
+              ShellIconButton(
+                icon: Icons.folder_open_outlined,
+                size: 22,
+                iconSize: 13,
+                tooltip: _revealLabel,
+                onPressed: () => _revealOnDisk(path),
+              ),
           ],
         ),
       ),
     );
   }
+}
+
+String get _revealLabel {
+  if (Platform.isMacOS) return 'Show in Finder';
+  if (Platform.isWindows) return 'Show in Explorer';
+  return 'Show in folder';
+}
+
+Future<void> _revealOnDisk(String path) async {
+  try {
+    if (Platform.isMacOS) {
+      await Process.start('open', ['-R', path]);
+    } else if (Platform.isWindows) {
+      await Process.start('explorer', ['/select,', path]);
+    } else {
+      await Process.start('xdg-open', [File(path).parent.path]);
+    }
+  } catch (_) {}
 }
