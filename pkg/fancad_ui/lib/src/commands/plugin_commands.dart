@@ -4,6 +4,8 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:path/path.dart' as p;
 
+import '../state/workspace.dart';
+
 /// Commands for managing extensions.
 ///
 /// These are the seam the AI authoring loop needs: `plugins.scaffold`,
@@ -416,7 +418,13 @@ class PluginCommands {
         'Refusing to open a path outside the extension folder: "$relative"',
       );
     }
-    context.services.revealPanel('editor');
+    final relativePath = p.normalize(relative);
+    final services = context.services;
+    if (services is Workspace) {
+      services.openPluginEditor(id, relativePath);
+    } else {
+      services.revealPanel('editor');
+    }
     return CommandResult.ok(
       message: 'Editing ${p.relative(file.path, from: handle.manifest.directory)}',
       data: {

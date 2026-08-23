@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
 import '../state/workspace.dart';
@@ -34,11 +35,43 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
   String _relative = 'main.js';
   String? _error;
   bool _dirty = false;
+  int _seenRequest = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.workspace.addListener(_onWorkspace);
+    _consumeTarget();
+  }
+
+  @override
+  void didUpdateWidget(PluginEditorPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.workspace != widget.workspace) {
+      oldWidget.workspace.removeListener(_onWorkspace);
+      widget.workspace.addListener(_onWorkspace);
+      _consumeTarget();
+    }
+  }
 
   @override
   void dispose() {
+    widget.workspace.removeListener(_onWorkspace);
     _body.dispose();
     super.dispose();
+  }
+
+  void _onWorkspace() {
+    if (!mounted) return;
+    _consumeTarget();
+  }
+
+  void _consumeTarget() {
+    final request = widget.workspace.pluginEditorRequest;
+    final target = widget.workspace.pluginEditorTarget;
+    if (target == null || request == _seenRequest) return;
+    _seenRequest = request;
+    _open(target.id, target.relative);
   }
 
   Future<void> _open(String id, String relative) async {
@@ -55,6 +88,7 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
       return;
     }
     _body.text = await file.readAsString();
+    if (!mounted) return;
     setState(() {
       _pluginId = id;
       _relative = relative;
@@ -65,11 +99,12 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
 
   Future<void> _save() async {
     final id = _pluginId;
-    if (id == null) return;
+    if (id == null || !_dirty) return;
     final result = await widget.workspace.runHeadless(
       'plugins.write',
       args: {'id': id, 'path': _relative, 'content': _body.text},
     );
+    if (!mounted) return;
     setState(() {
       _dirty = !result.isOk;
       _error = result.isOk ? null : result.message;
@@ -81,82 +116,190 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
     final tokens = context.tokens;
     final host = widget.host;
     final plugins = host?.plugins ?? const [];
-    return Column(
-      children: [
-        PanelHeader(
-          title: 'Re-Editor',
-          actions: [
-            ShellIconButton(
-              icon: Icons.save_outlined,
-              tooltip: 'Save and reload',
-              onPressed: _pluginId == null ? null : _save,
+    return CallbackShortcuts(
+      bindings: {
+        SingleActivator(LogicalKeyboardKey.keyS, control: true): _save,
+        SingleActivator(LogicalKeyboardKey.keyS, meta: true): _save,
+      },
+      child: Focus(
+        autofocus: true,
+        child: Column(
+          children: [
+            PanelHeader(
+              title: 'Re-Editor',
+              actions: [
+                ShellIconButton(
+                  icon: Icons.save_outlined,
+                  tooltip: _pluginId == null
+                      ? 'Nothing to save'
+                      : _dirty
+                      ? 'Save and reload  ${shellShortcut('S')}'
+                      : 'Saved',
+                  enabled: _pluginId != null && _dirty,
+                  isActive: _dirty,
+                  onPressed: _save,
+                ),
+              ],
             ),
-          ],
-        ),
-        Container(
-          height: 28,
-          padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: tokens.border)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _pluginId != null &&
-                            plugins.any((handle) => handle.id == _pluginId)
-                        ? _pluginId
-                        : null,
-                    hint: Text('Extension', style: tokens.labelStyle),
-                    isExpanded: true,
-                    style: tokens.bodyStyle,
-                    dropdownColor: tokens.surfaceOverlay,
-                    items: [
-                      for (final handle in plugins)
-                        DropdownMenuItem(
-                          value: handle.id,
-                          child: Text(handle.id, overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: (id) {
-                      if (id != null) _open(id, 'main.js');
-                    },
+            Container(
+              height: 28,
+              padding: const EdgeInsets.symmetric(
+                horizontal: FanCadTokens.space3,
+              ),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: tokens.border)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value:
+                            _pluginId != null &&
+                                plugins.any((handle) => handle.id == _pluginId)
+                            ? _pluginId
+                            : null,
+                        hint: Text('Extension', style: tokens.labelStyle),
+                        isExpanded: true,
+                        style: tokens.bodyStyle,
+                        dropdownColor: tokens.surfaceOverlay,
+                        items: [
+                          for (final handle in plugins)
+                            DropdownMenuItem(
+                              value: handle.id,
+                              child: Text(
+                                handle.manifest.name.isEmpty
+                                    ? handle.id
+                                    : handle.manifest.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                        onChanged: (id) {
+                          if (id != null) {
+                            _open(id, host?.plugin(id)?.manifest.entryPoint ?? 'main.js');
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: FanCadTokens.space2),
+                  Text(
+                    _dirty ? '$_relative •' : _relative,
+                    style: tokens.monoStyle.copyWith(
+                      fontSize: 10.5,
+                      color: _dirty ? tokens.accent : tokens.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_error != null)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.all(FanCadTokens.space2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: FanCadTokens.space3,
+                  vertical: FanCadTokens.space2,
+                ),
+                decoration: BoxDecoration(
+                  color: tokens.danger.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(FanCadTokens.radius),
+                  border: Border.all(
+                    color: tokens.danger.withValues(alpha: 0.4),
                   ),
                 ),
+                child: Text(
+                  _error!,
+                  style: tokens.labelStyle.copyWith(color: tokens.danger),
+                ),
               ),
-              const SizedBox(width: FanCadTokens.space2),
-              Text(
-                _dirty ? '$_relative •' : _relative,
-                style: tokens.monoStyle.copyWith(fontSize: 10.5),
+            Expanded(child: _editorBody(tokens, plugins)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _editorBody(FanCadTokens tokens, List<PluginHandle> plugins) {
+    if (widget.host == null) {
+      return const _EditorEmpty(
+        message:
+            'Extensions are unavailable: no extensions folder was configured.',
+      );
+    }
+    if (plugins.isEmpty) {
+      return _EditorEmpty(
+        message: 'Create an extension first, then open it here.',
+        actionLabel: 'Create extension',
+        onAction: () => widget.workspace.run('plugins.scaffold'),
+      );
+    }
+    if (_pluginId == null) {
+      return _EditorEmpty(
+        message:
+            'Choose an extension above, or use Edit source from the Extensions panel.',
+      );
+    }
+    return TextField(
+      controller: _body,
+      maxLines: null,
+      expands: true,
+      style: tokens.monoStyle.copyWith(fontSize: 12),
+      cursorColor: tokens.accent,
+      decoration: const InputDecoration(
+        border: InputBorder.none,
+        contentPadding: EdgeInsets.all(FanCadTokens.space3),
+      ),
+      onChanged: (_) {
+        if (!_dirty) setState(() => _dirty = true);
+      },
+    );
+  }
+}
+
+class _EditorEmpty extends StatelessWidget {
+  const _EditorEmpty({
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(FanCadTokens.space4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              style: tokens.labelStyle,
+              textAlign: TextAlign.center,
+            ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: FanCadTokens.space3),
+              ShellRow(
+                onTap: onAction,
+                height: 28,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: FanCadTokens.space2,
+                ),
+                child: Text(
+                  actionLabel!,
+                  style: tokens.bodyStyle.copyWith(color: tokens.accent),
+                ),
               ),
             ],
-          ),
+          ],
         ),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.all(FanCadTokens.space2),
-            child: Text(
-              _error!,
-              style: tokens.labelStyle.copyWith(color: tokens.danger),
-            ),
-          ),
-        Expanded(
-          child: TextField(
-            controller: _body,
-            maxLines: null,
-            expands: true,
-            style: tokens.monoStyle.copyWith(fontSize: 12),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.all(FanCadTokens.space3),
-            ),
-            onChanged: (_) {
-              if (!_dirty) setState(() => _dirty = true);
-            },
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

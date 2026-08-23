@@ -107,6 +107,10 @@ class Workspace extends ChangeNotifier implements CommandServices {
   /// Entities an approval dialog is asking about, drawn as highlights.
   List<int> _pendingHighlights = const [];
 
+  /// The extension file `plugins.edit` asked the Re-Editor to open.
+  ({String id, String relative})? _pluginEditorTarget;
+  int _pluginEditorRequest = 0;
+
   List<DocumentTab> get tabs => List.unmodifiable(_tabs);
   int get activeIndex => _activeIndex;
 
@@ -129,6 +133,9 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   /// Entities the canvas should highlight while an approval is pending.
   List<int> get pendingHighlightIds => _pendingHighlights;
+
+  ({String id, String relative})? get pluginEditorTarget => _pluginEditorTarget;
+  int get pluginEditorRequest => _pluginEditorRequest;
 
   void setPendingHighlights(List<int> ids) {
     _pendingHighlights = List.unmodifiable(ids);
@@ -564,6 +571,16 @@ class Workspace extends ChangeNotifier implements CommandServices {
   @override
   void revealPanel(String panelId) {
     if (!_panelReveals.isClosed) _panelReveals.add(panelId);
+  }
+
+  /// Opens [relative] of extension [id] in the Re-Editor and brings that panel
+  /// forward. The editor watches [pluginEditorRequest] so a second edit of the
+  /// same file still reloads it.
+  void openPluginEditor(String id, String relative) {
+    _pluginEditorTarget = (id: id, relative: relative);
+    _pluginEditorRequest += 1;
+    revealPanel('editor');
+    notifyListeners();
   }
 
   @override
