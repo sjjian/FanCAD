@@ -52,7 +52,18 @@ class _CommandPaletteState extends State<CommandPalette> {
 
   void _recompute(String text) {
     setState(() {
-      _matches = widget.workspace.commands.search(text, limit: 60);
+      var matches = widget.workspace.commands.search(text, limit: 60);
+      final lastId = widget.workspace.commands.lastCommandId;
+      if (text.trim().isEmpty && lastId != null) {
+        final last = widget.workspace.commands.find(lastId);
+        if (last != null) {
+          matches = [
+            last,
+            ...matches.where((each) => each.id != lastId),
+          ];
+        }
+      }
+      _matches = matches;
       _highlighted = 0;
     });
   }
@@ -212,6 +223,11 @@ class _CommandPaletteState extends State<CommandPalette> {
                                 itemCount: _matches.length,
                                 itemBuilder: (context, index) => _PaletteRow(
                                   descriptor: _matches[index],
+                                  isLastUsed:
+                                      index == 0 &&
+                                      _query.text.trim().isEmpty &&
+                                      _matches[index].id ==
+                                          widget.workspace.commands.lastCommandId,
                                   isHighlighted: index == _highlighted,
                                   onHover: () {
                                     if (_highlighted == index) return;
@@ -270,10 +286,12 @@ class _PaletteRow extends StatelessWidget {
     required this.isHighlighted,
     required this.onTap,
     required this.onHover,
+    this.isLastUsed = false,
   });
 
   final CommandDescriptor descriptor;
   final bool isHighlighted;
+  final bool isLastUsed;
   final VoidCallback onTap;
   final VoidCallback onHover;
 
@@ -309,6 +327,10 @@ class _PaletteRow extends StatelessWidget {
                             color: tokens.textFaint,
                           ),
                         ),
+                      ],
+                      if (isLastUsed) ...[
+                        const SizedBox(width: FanCadTokens.space2),
+                        const _Badge(text: 'Last'),
                       ],
                       if (!descriptor.isBuiltIn) ...[
                         const SizedBox(width: FanCadTokens.space2),
