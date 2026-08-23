@@ -182,24 +182,37 @@ class _CommandLinePaneState extends State<CommandLinePane> {
   Widget _buildInput(FanCadTokens tokens) {
     final prompt = _model.promptText;
     final keywords = _model.pending?.keywords ?? const <String>[];
+    final awaiting = _model.isAwaitingInput;
     return Container(
       height: FanCadTokens.commandLineHeight,
       padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
       decoration: BoxDecoration(
         color: tokens.surfaceRaised,
-        border: Border(top: BorderSide(color: tokens.border)),
+        border: Border(
+          top: BorderSide(
+            color: awaiting ? tokens.accent : tokens.border,
+            width: awaiting ? 2 : 1,
+          ),
+        ),
       ),
       child: Row(
         children: [
           if (prompt.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: FanCadTokens.space2),
-              child: Text(
-                prompt,
-                style: tokens.monoStyle.copyWith(
-                  color: _model.isAwaitingInput
-                      ? tokens.accent
-                      : tokens.textMuted,
+              child: Tooltip(
+                message: prompt,
+                waitDuration: const Duration(milliseconds: 500),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Text(
+                    prompt,
+                    style: tokens.monoStyle.copyWith(
+                      color: awaiting ? tokens.accent : tokens.textMuted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
             ),
@@ -209,7 +222,11 @@ class _CommandLinePaneState extends State<CommandLinePane> {
               child: ShellTextField(
                 controller: _input,
                 focusNode: widget.focusNode,
-                hintText: prompt.isEmpty ? 'Type a command' : null,
+                hintText: awaiting
+                    ? 'Click in the drawing, or type a value'
+                    : prompt.isEmpty
+                    ? 'Type a command'
+                    : null,
                 onSubmitted: _submit,
               ),
             ),
@@ -217,63 +234,24 @@ class _CommandLinePaneState extends State<CommandLinePane> {
           for (final keyword in keywords.take(6))
             Padding(
               padding: const EdgeInsets.only(left: FanCadTokens.space1),
-              child: _Keyword(
+              child: PromptKeywordChip(
                 label: keyword,
                 onPressed: () => _submit(keyword),
               ),
             ),
+          if (awaiting || widget.workspace.isBusy)
+            Padding(
+              padding: const EdgeInsets.only(left: FanCadTokens.space1),
+              child: PromptKeywordChip(
+                label: 'Cancel',
+                muted: true,
+                onPressed: () {
+                  widget.workspace.cancelActive();
+                  _input.clear();
+                },
+              ),
+            ),
         ],
-      ),
-    );
-  }
-}
-
-/// A clickable keyword option offered by the current prompt.
-///
-/// Present because a keyword prompt that can only be answered by typing is a
-/// discoverability dead end for anyone who has not memorised the options.
-class _Keyword extends StatefulWidget {
-  const _Keyword({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  State<_Keyword> createState() => _KeywordState();
-}
-
-class _KeywordState extends State<_Keyword> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 90),
-          padding: const EdgeInsets.symmetric(
-            horizontal: FanCadTokens.space2,
-            vertical: 2,
-          ),
-          decoration: BoxDecoration(
-            color: _hovered ? tokens.selection : Colors.transparent,
-            border: Border.all(
-              color: _hovered ? tokens.accent : tokens.borderStrong,
-            ),
-            borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
-          ),
-          child: Text(
-            widget.label,
-            style: tokens.labelStyle.copyWith(
-              color: _hovered ? tokens.accent : tokens.text,
-            ),
-          ),
-        ),
       ),
     );
   }

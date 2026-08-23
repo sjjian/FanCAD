@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../state/document_tab.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
+import 'shell_widgets.dart';
 
 /// The drawing area for one tab.
 ///
@@ -190,19 +191,145 @@ class _DocumentViewState extends State<DocumentView> {
       },
       child: Listener(
         onPointerDown: (_) => widget.commandLineFocus.requestFocus(),
-        child: CadCanvas(
-          key: _canvasKey,
-          document: tab.document,
-          controller: tab.viewport,
-          inputHandler: tab.tools,
-          overlay: effectiveOverlay,
-          background: tokens.canvas,
-          palette: tokens.isDark ? AciPalette.dark : AciPalette.light,
-          showGrid: tab.showGrid,
-          onSceneBuilt: tab.noteScene,
-          onContextMenu: _openContextMenu,
-          onDoubleClick: _onDoubleClick,
-          onlyLayers: tab.isolatedLayers,
+        child: Stack(
+          children: [
+            CadCanvas(
+              key: _canvasKey,
+              document: tab.document,
+              controller: tab.viewport,
+              inputHandler: tab.tools,
+              overlay: effectiveOverlay,
+              background: tokens.canvas,
+              palette: tokens.isDark ? AciPalette.dark : AciPalette.light,
+              showGrid: tab.showGrid,
+              onSceneBuilt: tab.noteScene,
+              onContextMenu: _openContextMenu,
+              onDoubleClick: _onDoubleClick,
+              onlyLayers: tab.isolatedLayers,
+            ),
+            ListenableBuilder(
+              listenable: Listenable.merge([
+                widget.workspace,
+                widget.workspace.commandLine,
+              ]),
+              builder: (context, _) => _CanvasPromptHud(
+                workspace: widget.workspace,
+                onKeyword: (keyword) {
+                  final remaining = widget.workspace.commandLine.submit(
+                    keyword,
+                  );
+                  if (remaining != null) {
+                    widget.workspace.submitCommandLine(remaining);
+                  }
+                },
+                onCancel: widget.workspace.cancelActive,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Keeps the current prompt in the drawing, so a LINE or MOVE does not depend
+/// on the user looking down at the command line.
+class _CanvasPromptHud extends StatelessWidget {
+  const _CanvasPromptHud({
+    required this.workspace,
+    required this.onKeyword,
+    required this.onCancel,
+  });
+
+  final Workspace workspace;
+  final ValueChanged<String> onKeyword;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final model = workspace.commandLine;
+    if (!workspace.isBusy && !model.isAwaitingInput) {
+      return const SizedBox.shrink();
+    }
+    final prompt = model.promptText;
+    if (prompt.isEmpty) return const SizedBox.shrink();
+    final keywords = model.pending?.keywords ?? const <String>[];
+    final running = workspace.runningCommand;
+    final title = running == null
+        ? null
+        : workspace.commands.find(running)?.title;
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsets.only(top: FanCadTokens.space3),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Material(
+            color: tokens.surfaceOverlay,
+            elevation: 8,
+            shadowColor: Colors.black.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(FanCadTokens.radius),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: FanCadTokens.space3,
+                vertical: FanCadTokens.space2,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(FanCadTokens.radius),
+                border: Border.all(
+                  color: tokens.accent.withValues(alpha: 0.45),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.edit_outlined,
+                    size: 14,
+                    color: tokens.accent,
+                  ),
+                  const SizedBox(width: FanCadTokens.space2),
+                  if (title != null) ...[
+                    Text(
+                      title,
+                      style: tokens.labelStyle.copyWith(
+                        color: tokens.accent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: FanCadTokens.space2),
+                  ],
+                  Expanded(
+                    child: Text(
+                      prompt,
+                      style: tokens.bodyStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  for (final keyword in keywords)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: FanCadTokens.space1,
+                      ),
+                      child: PromptKeywordChip(
+                        label: keyword,
+                        onPressed: () => onKeyword(keyword),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: FanCadTokens.space1),
+                    child: PromptKeywordChip(
+                      label: 'Cancel',
+                      muted: true,
+                      onPressed: onCancel,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
