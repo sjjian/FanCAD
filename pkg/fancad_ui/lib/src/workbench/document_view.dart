@@ -88,10 +88,15 @@ class _DocumentViewState extends State<DocumentView> {
       if (box is! RenderBox) return;
       final global = box.localToGlobal(local);
       final tab = widget.tab;
+      final tokens = context.tokens;
       final selected = tab.selection.isNotEmpty;
       final hasHidden = tab.document.activeEntities.any(
         (entity) => !entity.props.visible,
       );
+      final running = widget.workspace.runningCommand;
+      final runningTitle = running == null
+          ? null
+          : widget.workspace.commands.find(running)?.title ?? running;
       showMenu<String>(
         context: context,
         position: RelativeRect.fromLTRB(
@@ -100,63 +105,111 @@ class _DocumentViewState extends State<DocumentView> {
           global.dx + 1,
           global.dy + 1,
         ),
+        color: tokens.surfaceOverlay,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FanCadTokens.radius),
+          side: BorderSide(color: tokens.borderStrong),
+        ),
         items: [
-          const PopupMenuItem(
-            value: 'view.zoomExtents',
-            child: Text('Zoom Extents'),
-          ),
-          const PopupMenuItem(value: 'view.zoomIn', child: Text('Zoom In')),
-          const PopupMenuItem(value: 'view.zoomOut', child: Text('Zoom Out')),
-          const PopupMenuItem(
-            value: 'view.zoomWindow',
-            child: Text('Zoom Window'),
-          ),
-          if (selected)
-            const PopupMenuItem(
-              value: 'view.zoomSelected',
-              child: Text('Zoom to Selection'),
-            ),
-          const PopupMenuDivider(),
-          if (selected)
-            const PopupMenuItem(value: 'edit.erase', child: Text('Erase'))
-          else
-            const PopupMenuItem(value: 'select.all', child: Text('Select All')),
-          if (selected)
-            const PopupMenuItem(
-              value: 'select.none',
-              child: Text('Deselect All'),
-            ),
-          if (selected)
-            const PopupMenuItem(
-              value: 'view.isolateObjects',
-              child: Text('Isolate'),
-            ),
-          if (selected)
-            const PopupMenuItem(
-              value: 'view.hideObjects',
-              child: Text('Hide'),
-            ),
+          if (runningTitle != null)
+            _item('__cancel__', 'Cancel $runningTitle', 'Esc', tokens),
+          if (runningTitle != null) const PopupMenuDivider(),
+          if (selected) ...[
+            _item('__properties__', 'Properties', null, tokens),
+            _item('view.zoomSelected', 'Zoom to selection', null, tokens),
+            const PopupMenuDivider(),
+            _item('edit.erase', 'Erase', 'Del', tokens),
+            _item('edit.move', 'Move', 'M', tokens),
+            _item('edit.copy', 'Copy', 'CO', tokens),
+            _item('view.isolateObjects', 'Isolate', null, tokens),
+            _item('view.hideObjects', 'Hide', null, tokens),
+            _item('select.none', 'Deselect', null, tokens),
+          ] else ...[
+            _item('select.all', 'Select all', null, tokens),
+            _item('view.zoomExtents', 'Zoom extents', null, tokens),
+            _item('view.zoomWindow', 'Zoom window', null, tokens),
+          ],
           PopupMenuItem(
             value: 'view.unisolateObjects',
             enabled: hasHidden,
-            child: const Text('Unisolate'),
+            height: 32,
+            child: _label(
+              hasHidden ? 'Show hidden objects' : 'No hidden objects',
+              null,
+              tokens,
+              enabled: hasHidden,
+            ),
           ),
           const PopupMenuDivider(),
-          PopupMenuItem(
-            value: 'edit.undo',
+          _item(
+            'edit.undo',
+            tab.history.nextUndoLabel == null
+                ? 'Undo'
+                : 'Undo ${tab.history.nextUndoLabel}',
+            shellShortcut('Z'),
+            tokens,
             enabled: tab.history.canUndo,
-            child: const Text('Undo'),
           ),
-          PopupMenuItem(
-            value: 'edit.redo',
+          _item(
+            'edit.redo',
+            tab.history.nextRedoLabel == null
+                ? 'Redo'
+                : 'Redo ${tab.history.nextRedoLabel}',
+            shellShortcut('Z', shift: true),
+            tokens,
             enabled: tab.history.canRedo,
-            child: const Text('Redo'),
           ),
         ],
       ).then((id) {
-        if (id != null && mounted) widget.workspace.run(id);
+        if (id == null || !mounted) return;
+        if (id == '__cancel__') {
+          widget.workspace.cancelActive();
+          return;
+        }
+        if (id == '__properties__') {
+          widget.workspace.revealPanel('properties');
+          return;
+        }
+        widget.workspace.run(id);
       });
     });
+  }
+
+  PopupMenuItem<String> _item(
+    String value,
+    String label,
+    String? shortcut,
+    FanCadTokens tokens, {
+    bool enabled = true,
+  }) {
+    return PopupMenuItem<String>(
+      value: value,
+      enabled: enabled,
+      height: 32,
+      child: _label(label, shortcut, tokens, enabled: enabled),
+    );
+  }
+
+  Widget _label(
+    String label,
+    String? shortcut,
+    FanCadTokens tokens, {
+    bool enabled = true,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: tokens.bodyStyle.copyWith(
+              color: enabled ? tokens.text : tokens.textFaint,
+            ),
+          ),
+        ),
+        if (shortcut != null)
+          Text(shortcut, style: tokens.labelStyle),
+      ],
+    );
   }
 
   @override
