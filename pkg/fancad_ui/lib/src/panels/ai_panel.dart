@@ -60,7 +60,6 @@ class _AiPanelState extends State<AiPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final controller = widget.controller;
     return Column(
       children: [
@@ -69,7 +68,11 @@ class _AiPanelState extends State<AiPanel> {
           actions: [
             ShellIconButton(
               icon: Icons.delete_outline,
-              tooltip: 'Clear conversation',
+              tooltip: controller.messages.isEmpty
+                  ? 'Nothing to clear'
+                  : 'Clear conversation',
+              enabled: controller.messages.isNotEmpty,
+              destructive: true,
               onPressed: controller.clear,
             ),
           ],
@@ -77,18 +80,16 @@ class _AiPanelState extends State<AiPanel> {
         _SettingsRow(controller: controller),
         Expanded(
           child: controller.messages.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(FanCadTokens.space4),
-                  child: Text(
-                    controller.isConfigured
-                        ? 'Ask about the drawing, or ask the assistant to '
-                            'change it. It uses the same commands you do, and '
-                            'one reply is one undo step.'
-                        : 'Set the ${SettingsKeysHint.envVar} environment '
-                            'variable to talk to a model, or point the base '
-                            'URL at a local server.',
-                    style: tokens.labelStyle,
-                  ),
+              ? _EmptyAssistant(
+                  configured: controller.isConfigured,
+                  onUsePrompt: (prompt) {
+                    _input
+                      ..text = prompt
+                      ..selection = TextSelection.collapsed(
+                        offset: prompt.length,
+                      );
+                    controller.setDraft(prompt);
+                  },
                 )
               : ListView.builder(
                   controller: _scroll,
@@ -99,25 +100,20 @@ class _AiPanelState extends State<AiPanel> {
                   itemCount: controller.messages.length,
                   itemBuilder: (context, index) => _Bubble(
                     message: controller.messages[index],
+                    onCopied: (text) =>
+                        widget.controller.workspace.notify('Copied $text'),
                   ),
                 ),
         ),
         if (controller.error != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              FanCadTokens.space3,
-              0,
-              FanCadTokens.space3,
-              FanCadTokens.space2,
-            ),
-            child: Text(
-              controller.error!,
-              style: tokens.labelStyle.copyWith(color: tokens.danger),
-            ),
+          _ErrorBanner(
+            message: controller.error!,
+            onDismiss: controller.clearError,
           ),
         _Composer(
           controller: _input,
           enabled: !controller.isBusy,
+          canSend: !controller.isBusy && controller.draft.trim().isNotEmpty,
           busy: controller.isBusy,
           onChanged: controller.setDraft,
           onSend: () => controller.send(_input.text),
@@ -149,6 +145,15 @@ class _SettingsRow extends StatelessWidget {
       ),
       child: Row(
         children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: controller.isConfigured ? tokens.success : tokens.warning,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: FanCadTokens.space2),
           Expanded(
             child: Text(
               controller.model,
@@ -156,8 +161,12 @@ class _SettingsRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          Text('Auto-approve', style: tokens.labelStyle),
+          const SizedBox(width: FanCadTokens.space1),
           Tooltip(
-            message: 'Auto-approve edits',
+            message: controller.autoApprove
+                ? 'Edits run without asking'
+                : 'Ask before the assistant edits the drawing',
             child: SizedBox(
               height: 22,
               child: Switch.adaptive(
@@ -173,39 +182,154 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
+class _EmptyAssistant extends StatelessWidget {
+  const _EmptyAssistant({required this.configured, required this.onUsePrompt});
+
+  final bool configured;
+  final ValueChanged<String> onUsePrompt;
+
+  static const _prompts = [
+    'How many objects are in this drawing?',
+    'Draw a 100 mm square at the origin',
+    'List what is selected',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return ListView(
+      padding: const EdgeInsets.all(FanCadTokens.space4),
+      children: [
+        Text(
+          configured
+              ? 'Ask about the drawing, or ask the assistant to change it. '
+                  'It uses the same commands you do, and one reply is one undo step.'
+              : 'Set the ${SettingsKeysHint.envVar} environment variable to '
+                  'talk to a model, or point the base URL at a local server.',
+          style: tokens.labelStyle,
+        ),
+        if (configured) ...[
+          const SizedBox(height: FanCadTokens.space4),
+          Text('TRY', style: tokens.sectionTitleStyle),
+          const SizedBox(height: FanCadTokens.space2),
+          for (final prompt in _prompts)
+            Padding(
+              padding: const EdgeInsets.only(bottom: FanCadTokens.space1),
+              child: ShellRow(
+                onTap: () => onUsePrompt(prompt),
+                height: 28,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: FanCadTokens.space1,
+                ),
+                child: Text(
+                  prompt,
+                  style: tokens.bodyStyle.copyWith(color: tokens.accent),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message, required this.onDismiss});
+
+  final String message;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(
+        FanCadTokens.space2,
+        0,
+        FanCadTokens.space2,
+        FanCadTokens.space2,
+      ),
+      padding: const EdgeInsets.only(left: FanCadTokens.space3),
+      decoration: BoxDecoration(
+        color: tokens.danger.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(FanCadTokens.radius),
+        border: Border.all(color: tokens.danger.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, size: 14, color: tokens.danger),
+          const SizedBox(width: FanCadTokens.space2),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: FanCadTokens.space2),
+              child: Text(
+                message,
+                style: tokens.labelStyle.copyWith(color: tokens.danger),
+              ),
+            ),
+          ),
+          ShellIconButton(
+            icon: Icons.close,
+            size: 22,
+            iconSize: 13,
+            tooltip: 'Dismiss',
+            onPressed: onDismiss,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.message});
+  const _Bubble({required this.message, required this.onCopied});
 
   final ChatMessage message;
+  final ValueChanged<String> onCopied;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final isUser = message.role == ChatRole.user;
     final isTool = message.role == ChatRole.tool;
+    final text = isTool
+        ? '${message.toolName ?? 'tool'}: ${message.text}'
+        : message.text;
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: FanCadTokens.space2),
-        padding: const EdgeInsets.symmetric(
-          horizontal: FanCadTokens.space3,
-          vertical: FanCadTokens.space2,
-        ),
-        constraints: const BoxConstraints(maxWidth: 420),
-        decoration: BoxDecoration(
-          color: isUser ? tokens.accent.withValues(alpha: 0.16) : tokens.surfaceRaised,
-          borderRadius: BorderRadius.circular(FanCadTokens.radius),
-          border: Border.all(
-            color: message.isError ? tokens.danger : tokens.border,
+      child: Tooltip(
+        message: 'Click to copy',
+        waitDuration: const Duration(milliseconds: 600),
+        child: GestureDetector(
+          onTap: () {
+            Clipboard.setData(ClipboardData(text: text));
+            onCopied(text);
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: FanCadTokens.space2),
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space3,
+              vertical: FanCadTokens.space2,
+            ),
+            constraints: const BoxConstraints(maxWidth: 420),
+            decoration: BoxDecoration(
+              color: isUser
+                  ? tokens.accent.withValues(alpha: 0.16)
+                  : tokens.surfaceRaised,
+              borderRadius: BorderRadius.circular(FanCadTokens.radius),
+              border: Border.all(
+                color: message.isError ? tokens.danger : tokens.border,
+              ),
+            ),
+            child: Text(
+              text,
+              style: isTool
+                  ? tokens.monoStyle.copyWith(fontSize: 10.5)
+                  : tokens.bodyStyle,
+            ),
           ),
-        ),
-        child: Text(
-          isTool
-              ? '${message.toolName ?? 'tool'}: ${message.text}'
-              : message.text,
-          style: isTool
-              ? tokens.monoStyle.copyWith(fontSize: 10.5)
-              : tokens.bodyStyle,
         ),
       ),
     );
@@ -216,6 +340,7 @@ class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
     required this.enabled,
+    required this.canSend,
     required this.busy,
     required this.onChanged,
     required this.onSend,
@@ -223,6 +348,7 @@ class _Composer extends StatelessWidget {
 
   final TextEditingController controller;
   final bool enabled;
+  final bool canSend;
   final bool busy;
   final ValueChanged<String> onChanged;
   final VoidCallback onSend;
@@ -241,11 +367,13 @@ class _Composer extends StatelessWidget {
             child: CallbackShortcuts(
               bindings: {
                 const SingleActivator(LogicalKeyboardKey.enter):
-                    enabled ? onSend : () {},
+                    canSend ? onSend : () {},
               },
               child: ShellTextField(
                 controller: controller,
-                hintText: busy ? 'Working…' : 'Ask the assistant',
+                hintText: busy
+                    ? 'Working…'
+                    : 'Ask the assistant  Enter to send',
                 style: tokens.bodyStyle,
                 onChanged: onChanged,
               ),
@@ -253,8 +381,8 @@ class _Composer extends StatelessWidget {
           ),
           ShellIconButton(
             icon: busy ? Icons.hourglass_empty : Icons.send,
-            tooltip: 'Send',
-            onPressed: enabled ? onSend : null,
+            tooltip: busy ? 'Working' : 'Send  Enter',
+            onPressed: canSend ? onSend : null,
           ),
         ],
       ),
