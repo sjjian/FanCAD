@@ -312,25 +312,7 @@ class _FileMenu extends StatelessWidget {
             child: Text('Recent', style: tokens.sectionTitleStyle),
           ),
           for (final path in recent.take(8))
-            PopupMenuItem<String>(
-              value: 'recent:$path',
-              height: 32,
-              child: Tooltip(
-                message: File(path).existsSync() ? path : 'Missing — $path',
-                child: Text(
-                  _fileName(path),
-                  style: tokens.bodyStyle.copyWith(
-                    color: File(path).existsSync()
-                        ? tokens.text
-                        : tokens.textFaint,
-                    decoration: File(path).existsSync()
-                        ? null
-                        : TextDecoration.lineThrough,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
+            _recentItem(context, tokens, path),
           PopupMenuItem<String>(
             value: 'clearRecent',
             height: 32,
@@ -370,6 +352,73 @@ class _FileMenu extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  PopupMenuItem<String> _recentItem(
+    BuildContext context,
+    FanCadTokens tokens,
+    String path,
+  ) {
+    final exists = File(path).existsSync();
+    return PopupMenuItem<String>(
+      value: 'recent:$path',
+      height: 32,
+      child: Row(
+        children: [
+          Expanded(
+            child: Tooltip(
+              message: exists ? path : 'Missing — $path',
+              child: Text(
+                _fileName(path),
+                style: tokens.bodyStyle.copyWith(
+                  color: exists ? tokens.text : tokens.textFaint,
+                  decoration: exists ? null : TextDecoration.lineThrough,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          if (exists)
+            Tooltip(
+              message: _revealLabel,
+              child: InkWell(
+                onTap: () {
+                  Navigator.of(context).pop();
+                  unawaited(_revealOnDisk(path));
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.folder_open_outlined,
+                    size: 14,
+                    color: tokens.textMuted,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  static String get _revealLabel {
+    if (Platform.isMacOS) return 'Show in Finder';
+    if (Platform.isWindows) return 'Show in Explorer';
+    return 'Show in folder';
+  }
+
+  Future<void> _revealOnDisk(String path) async {
+    try {
+      if (Platform.isMacOS) {
+        await Process.start('open', ['-R', path]);
+      } else if (Platform.isWindows) {
+        await Process.start('explorer', ['/select,', path]);
+      } else {
+        await Process.start('xdg-open', [File(path).parent.path]);
+      }
+    } catch (error) {
+      workspace.notify('Could not reveal $path: $error', isError: true);
+    }
   }
 
   PopupMenuItem<String> _item(
