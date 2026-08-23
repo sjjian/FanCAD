@@ -581,7 +581,7 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
     return Tooltip(
       message: [
         'Current layer "$name"${states.isEmpty ? '' : ' (${states.join(', ')})'}',
-        'Click to manage layers',
+        'Click to manage layers. Right-click to turn on or unlock',
       ].join('\n'),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -589,6 +589,8 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           onTap: () => widget.workspace.revealPanel('layers'),
+          onSecondaryTapDown: (details) =>
+              _openMenu(details.globalPosition, name, hidden, locked),
           child: Container(
             height: FanCadTokens.statusBarHeight,
             padding: const EdgeInsets.symmetric(
@@ -636,6 +638,63 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
         ),
       ),
     );
+  }
+
+  Future<void> _openMenu(
+    Offset globalPosition,
+    String name,
+    bool hidden,
+    bool locked,
+  ) async {
+    final tokens = context.tokens;
+    final workspace = widget.workspace;
+    final chosen = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        globalPosition.dx,
+        globalPosition.dy,
+        globalPosition.dx,
+        globalPosition.dy,
+      ),
+      color: tokens.surfaceOverlay,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FanCadTokens.radius),
+        side: BorderSide(color: tokens.borderStrong),
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'visible',
+          height: 32,
+          child: Text(
+            hidden ? 'Turn layer on' : 'Turn layer off',
+            style: tokens.bodyStyle,
+          ),
+        ),
+        PopupMenuItem(
+          value: 'lock',
+          height: 32,
+          child: Text(
+            locked ? 'Unlock layer' : 'Lock layer',
+            style: tokens.bodyStyle,
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'manage',
+          height: 32,
+          child: Text('Manage layers', style: tokens.bodyStyle),
+        ),
+      ],
+    );
+    if (chosen == null) return;
+    switch (chosen) {
+      case 'visible':
+        await workspace.run('layer.toggleVisible', args: {'name': name});
+      case 'lock':
+        await workspace.run('layer.toggleLock', args: {'name': name});
+      case 'manage':
+        workspace.revealPanel('layers');
+    }
   }
 }
 
