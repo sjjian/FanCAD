@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
@@ -392,8 +394,12 @@ class StatusBar extends StatelessWidget {
           StatusToggle(
             label: 'POLAR',
             isOn: snap.tracking.polar,
-            tooltip: 'Polar angle tracking (F10)',
+            tooltip:
+                'Polar tracking (F10) — ${_polarDegrees(snap.tracking.polarIncrement)}°. '
+                'Right-click to change the increment',
             onPressed: () => workspace.setPolar(!snap.tracking.polar),
+            onContextMenu: (position) =>
+                _openPolarIncrementMenu(context, workspace, position),
           ),
           StatusToggle(
             label: 'GRID',
@@ -519,6 +525,55 @@ Future<void> _openSnapModeMenu(
   } else if (chosen == 'defaults') {
     workspace.resetSnapModes();
   }
+}
+
+const _polarIncrements = [5, 15, 30, 45, 90];
+
+int _polarDegrees(double radians) =>
+    (radians * 180 / math.pi).round();
+
+Future<void> _openPolarIncrementMenu(
+  BuildContext context,
+  Workspace workspace,
+  Offset globalPosition,
+) async {
+  final tokens = context.tokens;
+  final current = _polarDegrees(workspace.snapEngine.tracking.polarIncrement);
+  final chosen = await showMenu<int>(
+    context: context,
+    position: RelativeRect.fromLTRB(
+      globalPosition.dx,
+      globalPosition.dy,
+      globalPosition.dx,
+      globalPosition.dy,
+    ),
+    color: tokens.surfaceOverlay,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(FanCadTokens.radius),
+      side: BorderSide(color: tokens.borderStrong),
+    ),
+    items: [
+      for (final degrees in _polarIncrements)
+        PopupMenuItem<int>(
+          value: degrees,
+          height: 32,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                child: degrees == current
+                    ? Icon(Icons.check, size: 14, color: tokens.accent)
+                    : null,
+              ),
+              const SizedBox(width: FanCadTokens.space2),
+              Text('$degrees°', style: tokens.bodyStyle),
+            ],
+          ),
+        ),
+    ],
+  );
+  if (chosen == null) return;
+  workspace.setPolarIncrement(chosen * math.pi / 180);
 }
 
 class _CurrentLayerIndicator extends StatefulWidget {
