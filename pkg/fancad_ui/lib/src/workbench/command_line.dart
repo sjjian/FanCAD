@@ -370,11 +370,7 @@ class StatusBar extends StatelessWidget {
           const SizedBox(width: FanCadTokens.space3),
           SizedBox(
             width: 190,
-            child: _CoordinateReadout(
-              cursor: cursor,
-              tokens: tokens,
-              onCopy: (text) => workspace.notify('Copied $text'),
-            ),
+            child: _CoordinateReadout(workspace: workspace, cursor: cursor),
           ),
           StatusToggle(
             label: 'SNAP',
@@ -700,40 +696,70 @@ class _StatusActionState extends State<_StatusAction> {
   }
 }
 
-/// The live cursor, clickable so a measured point can leave the window.
-class _CoordinateReadout extends StatelessWidget {
+/// The live cursor. A click copies it, or feeds it to a command that is
+/// already asking for a point — so a measured XY does not have to be retyped.
+class _CoordinateReadout extends StatefulWidget {
   const _CoordinateReadout({
+    required this.workspace,
     required this.cursor,
-    required this.tokens,
-    required this.onCopy,
   });
 
+  final Workspace workspace;
   final Vec2? cursor;
-  final FanCadTokens tokens;
-  final ValueChanged<String> onCopy;
+
+  @override
+  State<_CoordinateReadout> createState() => _CoordinateReadoutState();
+}
+
+class _CoordinateReadoutState extends State<_CoordinateReadout> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final cursor = widget.cursor;
     final text = cursor == null
         ? null
-        : '${cursor!.x.toStringAsFixed(3)}, ${cursor!.y.toStringAsFixed(3)}';
+        : '${cursor.x.toStringAsFixed(3)}, ${cursor.y.toStringAsFixed(3)}';
+    final awaiting = widget.workspace.commandLine.isAwaitingInput;
+    final enabled = text != null;
     return Tooltip(
-      message: text == null ? 'Cursor' : 'Copy $text',
-      child: InkWell(
-        onTap: text == null
-            ? null
-            : () {
-                Clipboard.setData(ClipboardData(text: text));
-                onCopy(text);
-              },
-        child: Text(
-          text ?? '—',
-          style: tokens.monoStyle.copyWith(
-            fontSize: 11,
-            color: tokens.textMuted,
+      message: text == null
+          ? 'Cursor'
+          : awaiting
+          ? 'Use $text as the next point'
+          : 'Copy $text',
+      child: MouseRegion(
+        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: enabled ? () => _activate(text) : null,
+          child: Container(
+            height: FanCadTokens.statusBarHeight,
+            alignment: Alignment.centerLeft,
+            color: enabled && _hovered ? tokens.hover : Colors.transparent,
+            child: Text(
+              text ?? '—',
+              style: tokens.monoStyle.copyWith(
+                fontSize: 11,
+                color: awaiting && enabled ? tokens.accent : tokens.textMuted,
+              ),
+            ),
           ),
         ),
       ),
     );
+  }
+
+  void _activate(String text) {
+    final workspace = widget.workspace;
+    if (workspace.commandLine.isAwaitingInput) {
+      final remaining = workspace.commandLine.submit(text);
+      if (remaining != null) workspace.submitCommandLine(remaining);
+      return;
+    }
+    Clipboard.setData(ClipboardData(text: text));
+    workspace.notify('Copied $text');
   }
 }
