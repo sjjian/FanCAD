@@ -160,9 +160,9 @@ class _WorkbenchState extends ConsumerState<Workbench> {
                     .read(paletteOpenProvider.notifier)
                     .update((open) => !open),
                 onToggleSidebar: ref.read(sidebarProvider.notifier).toggle,
-                onToggleTheme: ref
+                onSetTheme: ref
                     .read(themeBrightnessProvider.notifier)
-                    .toggle,
+                    .setBrightness,
               ),
               Expanded(
                 child: Stack(

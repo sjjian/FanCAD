@@ -20,13 +20,13 @@ class TitleBar extends StatelessWidget {
     required this.workspace,
     required this.onTogglePalette,
     required this.onToggleSidebar,
-    required this.onToggleTheme,
+    required this.onSetTheme,
   });
 
   final Workspace workspace;
   final VoidCallback onTogglePalette;
   final VoidCallback onToggleSidebar;
-  final VoidCallback onToggleTheme;
+  final ValueChanged<Brightness> onSetTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -115,11 +115,7 @@ class TitleBar extends StatelessWidget {
             tooltip: 'Command palette  ${shellShortcut('P', shift: true)}',
             onPressed: onTogglePalette,
           ),
-          ShellIconButton(
-            icon: tokens.isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-            tooltip: 'Toggle theme',
-            onPressed: onToggleTheme,
-          ),
+          _AppearanceMenu(onSetTheme: onSetTheme),
           const _Divider(),
           const _WindowButtons(),
         ],
@@ -195,6 +191,77 @@ class TitleBar extends StatelessWidget {
       tooltip: 'Trim  TR',
     ),
   ];
+}
+
+/// Dark / Light is a choice, not a coin flip — a checked menu says which
+/// appearance is current and that the setting is kept across launches.
+class _AppearanceMenu extends StatelessWidget {
+  const _AppearanceMenu({required this.onSetTheme});
+
+  final ValueChanged<Brightness> onSetTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final current = tokens.isDark ? Brightness.dark : Brightness.light;
+    return PopupMenuButton<Brightness>(
+      tooltip: tokens.isDark
+          ? 'Appearance — Dark. Choose Light or Dark'
+          : 'Appearance — Light. Choose Light or Dark',
+      padding: EdgeInsets.zero,
+      offset: const Offset(0, FanCadTokens.titleBarHeight - 8),
+      color: tokens.surfaceOverlay,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FanCadTokens.radius),
+        side: BorderSide(color: tokens.borderStrong),
+      ),
+      onSelected: onSetTheme,
+      itemBuilder: (context) => [
+        _item(tokens, Brightness.dark, Icons.dark_mode_outlined, 'Dark'),
+        _item(tokens, Brightness.light, Icons.light_mode_outlined, 'Light'),
+      ],
+      child: SizedBox(
+        width: 28,
+        height: 28,
+        child: Icon(
+          current == Brightness.dark
+              ? Icons.dark_mode_outlined
+              : Icons.light_mode_outlined,
+          size: 16,
+          color: tokens.textMuted,
+        ),
+      ),
+    );
+  }
+
+  PopupMenuItem<Brightness> _item(
+    FanCadTokens tokens,
+    Brightness value,
+    IconData icon,
+    String label,
+  ) {
+    final selected =
+        (tokens.isDark && value == Brightness.dark) ||
+        (!tokens.isDark && value == Brightness.light);
+    return PopupMenuItem<Brightness>(
+      value: value,
+      height: 32,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 18,
+            child: selected
+                ? Icon(Icons.check, size: 14, color: tokens.accent)
+                : null,
+          ),
+          const SizedBox(width: FanCadTokens.space2),
+          Icon(icon, size: 14, color: tokens.textMuted),
+          const SizedBox(width: FanCadTokens.space2),
+          Text(label, style: tokens.bodyStyle),
+        ],
+      ),
+    );
+  }
 }
 
 /// Overflow for Save As, recent files and Close — the actions that do not

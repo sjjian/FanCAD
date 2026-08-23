@@ -277,7 +277,14 @@ class ThemeModeController extends StateNotifier<Brightness> {
   final SettingsStore _settings;
 
   void toggle() {
-    state = state == Brightness.dark ? Brightness.light : Brightness.dark;
+    setBrightness(
+      state == Brightness.dark ? Brightness.light : Brightness.dark,
+    );
+  }
+
+  void setBrightness(Brightness value) {
+    if (state == value) return;
+    state = value;
     _settings.set(SettingsKeys.themeBrightness, state.name);
   }
 }

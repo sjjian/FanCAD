@@ -146,6 +146,24 @@ class FanCadTheme {
           side: WidgetStatePropertyAll(BorderSide(color: tokens.border)),
         ),
       ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: tokens.surfaceOverlay,
+        textStyle: tokens.bodyStyle,
+        labelTextStyle: WidgetStatePropertyAll(tokens.bodyStyle),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FanCadTokens.radius),
+          side: BorderSide(color: tokens.borderStrong),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: tokens.surfaceOverlay,
+        titleTextStyle: tokens.bodyStyle.copyWith(fontSize: 15),
+        contentTextStyle: tokens.labelStyle,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+          side: BorderSide(color: tokens.borderStrong),
+        ),
+      ),
     );
   }
 }
