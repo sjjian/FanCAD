@@ -426,6 +426,7 @@ class DocumentTabStrip extends StatelessWidget {
               ),
             ),
           ),
+          if (tabs.length > 1) _OpenDrawingsMenu(workspace: workspace),
           ShellIconButton(
             icon: Icons.add,
             tooltip: 'New drawing  ${shellShortcut('N')}',
@@ -433,6 +434,76 @@ class DocumentTabStrip extends StatelessWidget {
           ),
           const SizedBox(width: FanCadTokens.space1),
         ],
+      ),
+    );
+  }
+}
+
+/// The strip scrolls; this list does not. A drawing that has gone off the
+/// right edge is still one click away.
+class _OpenDrawingsMenu extends StatelessWidget {
+  const _OpenDrawingsMenu({required this.workspace});
+
+  final Workspace workspace;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final tabs = workspace.tabs;
+    return PopupMenuButton<int>(
+      tooltip: 'Open drawings (${tabs.length})',
+      padding: EdgeInsets.zero,
+      offset: const Offset(0, FanCadTokens.tabBarHeight - 6),
+      color: tokens.surfaceOverlay,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FanCadTokens.radius),
+        side: BorderSide(color: tokens.borderStrong),
+      ),
+      onSelected: workspace.activate,
+      itemBuilder: (context) => [
+        for (var i = 0; i < tabs.length; i++)
+          PopupMenuItem<int>(
+            value: i,
+            height: 32,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  child: i == workspace.activeIndex
+                      ? Icon(Icons.check, size: 14, color: tokens.accent)
+                      : tabs[i].isDirty
+                      ? Center(
+                          child: Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: tokens.textMuted,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: FanCadTokens.space2),
+                Expanded(
+                  child: Text(
+                    tabs[i].title,
+                    style: tokens.bodyStyle,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+      child: SizedBox(
+        width: 22,
+        height: 28,
+        child: Icon(
+          Icons.arrow_drop_down,
+          size: 18,
+          color: tokens.textMuted,
+        ),
       ),
     );
   }
