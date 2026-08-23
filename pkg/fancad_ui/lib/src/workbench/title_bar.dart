@@ -295,6 +295,10 @@ class _FileMenu extends StatelessWidget {
           );
           return;
         }
+        if (value == 'clearRecent') {
+          workspace.clearRecentFiles();
+          return;
+        }
         workspace.run(value);
       },
       itemBuilder: (context) => [
@@ -327,6 +331,11 @@ class _FileMenu extends StatelessWidget {
                 ),
               ),
             ),
+          PopupMenuItem<String>(
+            value: 'clearRecent',
+            height: 32,
+            child: Text('Clear recent', style: tokens.bodyStyle),
+          ),
         ],
         const PopupMenuDivider(),
         _item(

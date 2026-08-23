@@ -267,6 +267,13 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   void activateTab(DocumentTab tab) => activate(_tabs.indexOf(tab));
 
+  /// Drops the recent-files list. Missing paths otherwise stay in the File
+  /// menu and on the empty workspace until the user restarts.
+  void clearRecentFiles() {
+    settings.set(SettingsKeys.recentFiles, <String>[]);
+    notifyListeners();
+  }
+
   /// Closes a tab. Returns false when the caller should ask about unsaved
   /// changes first.
   bool closeTab(int index, {bool force = false}) {
