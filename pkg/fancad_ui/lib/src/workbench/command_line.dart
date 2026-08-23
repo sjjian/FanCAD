@@ -21,6 +21,8 @@ class CommandLinePane extends StatefulWidget {
     required this.height,
     required this.onResize,
     required this.onResizeEnd,
+    required this.onToggleExpand,
+    required this.isExpanded,
     required this.focusNode,
   });
 
@@ -28,6 +30,8 @@ class CommandLinePane extends StatefulWidget {
   final double height;
   final void Function(double delta) onResize;
   final VoidCallback onResizeEnd;
+  final VoidCallback onToggleExpand;
+  final bool isExpanded;
 
   /// Owned by the workbench so that the canvas can hand focus back here after
   /// a click, which is what keeps typed input working mid-command.
@@ -122,12 +126,18 @@ class _CommandLinePaneState extends State<CommandLinePane> {
     final tokens = context.tokens;
     return Column(
       children: [
-        ShellSplitter(
-          axis: Axis.horizontal,
-          // Dragging the splitter up has to make the pane taller, so the
-          // delta is inverted relative to the pointer.
-          onDrag: (delta) => widget.onResize(-delta),
-          onDragEnd: widget.onResizeEnd,
+        Tooltip(
+          message: 'Drag to resize · double-click to '
+              '${widget.isExpanded ? 'collapse' : 'expand'}',
+          waitDuration: const Duration(milliseconds: 500),
+          child: ShellSplitter(
+            axis: Axis.horizontal,
+            // Dragging the splitter up has to make the pane taller, so the
+            // delta is inverted relative to the pointer.
+            onDrag: (delta) => widget.onResize(-delta),
+            onDragEnd: widget.onResizeEnd,
+            onDoubleTap: widget.onToggleExpand,
+          ),
         ),
         Expanded(
           child: Container(
@@ -203,6 +213,19 @@ class _CommandLinePaneState extends State<CommandLinePane> {
       ),
       child: Row(
         children: [
+          ShellIconButton(
+            icon: widget.isExpanded
+                ? Icons.expand_more
+                : Icons.unfold_more,
+            tooltip: widget.isExpanded
+                ? 'Collapse command history'
+                : 'Expand command history',
+            size: 22,
+            iconSize: 16,
+            isActive: widget.isExpanded,
+            onPressed: widget.onToggleExpand,
+          ),
+          const SizedBox(width: FanCadTokens.space1),
           if (prompt.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: FanCadTokens.space2),

@@ -184,6 +184,7 @@ class ShellSplitter extends StatefulWidget {
     required this.axis,
     required this.onDrag,
     this.onDragEnd,
+    this.onDoubleTap,
     this.thickness = 1,
     this.hitSize = 7,
   });
@@ -193,6 +194,9 @@ class ShellSplitter extends StatefulWidget {
 
   final void Function(double delta) onDrag;
   final VoidCallback? onDragEnd;
+
+  /// A double-click snaps the pane to a remembered large or small size.
+  final VoidCallback? onDoubleTap;
   final double thickness;
   final double hitSize;
 
@@ -215,6 +219,7 @@ class _ShellSplitterState extends State<ShellSplitter> {
       onExit: (_) => setState(() => _active = false),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
+        onDoubleTap: widget.onDoubleTap,
         onHorizontalDragUpdate: isVertical
             ? (details) => widget.onDrag(details.delta.dx)
             : null,

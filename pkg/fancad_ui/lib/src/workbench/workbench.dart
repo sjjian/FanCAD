@@ -202,6 +202,7 @@ class _WorkbenchState extends ConsumerState<Workbench> {
                                 child: CommandLinePane(
                                   workspace: workspace,
                                   height: commandPane.height,
+                                  isExpanded: commandPane.isExpanded,
                                   focusNode: _commandFocus,
                                   onResize: (delta) => ref
                                       .read(commandPaneProvider.notifier)
@@ -209,6 +210,14 @@ class _WorkbenchState extends ConsumerState<Workbench> {
                                   onResizeEnd: ref
                                       .read(commandPaneProvider.notifier)
                                       .commitHeight,
+                                  onToggleExpand: () {
+                                    ref
+                                        .read(commandPaneProvider.notifier)
+                                        .toggleExpanded();
+                                    ref
+                                        .read(commandPaneProvider.notifier)
+                                        .commitHeight();
+                                  },
                                 ),
                               ),
                             ],
