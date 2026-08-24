@@ -92,4 +92,17 @@ void main() {
       expect(scene!.entityCount, 0);
     },
   );
+
+  testWidgets('the drawing is clipped so a stroke cannot cover the chrome', (
+    tester,
+  ) async {
+    await pumpCanvas(tester);
+    expect(
+      find.descendant(
+        of: find.byType(CadCanvas),
+        matching: find.byType(ClipRect),
+      ),
+      findsOneWidget,
+    );
+  });
 }

@@ -177,58 +177,64 @@ class CadCanvasState extends State<CadCanvas> {
           });
         }
 
-        return Listener(
-          behavior: HitTestBehavior.opaque,
-          onPointerDown: _handlePointerDown,
-          onPointerMove: _handlePointerMove,
-          onPointerUp: _handlePointerUp,
-          onPointerHover: _handlePointerHover,
-          onPointerSignal: _handlePointerSignal,
-          onPointerPanZoomStart: _handlePanZoomStart,
-          onPointerPanZoomUpdate: _handlePanZoomUpdate,
-          onPointerPanZoomEnd: _handlePanZoomEnd,
-          onPointerCancel: (_) => _endAllGestures(),
-          child: MouseRegion(
-            cursor: _panDragging || _trackpadPointer != null
-                ? SystemMouseCursors.grabbing
-                : SystemMouseCursors.precise,
-            onExit: (_) => widget.inputHandler?.onPointerExit(),
-            child: ColoredBox(
-              color: widget.background,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  RepaintBoundary(
-                    child: CustomPaint(
-                      painter: _DrawingLayerPainter(
-                        document: widget.document,
-                        documentVersion: widget.document.version,
-                        viewport: widget.controller.viewport,
-                        builder: _sceneBuilder,
-                        painter: _scenePainter,
-                        holder: _holder,
-                        onlyLayers: widget.onlyLayers,
-                        onSceneBuilt: widget.onSceneBuilt,
-                        grid: widget.showGrid
-                            ? _GridStyle(
-                                color: widget.background,
-                                palette: _palette,
-                              )
-                            : null,
+        // ClipRect is required, not decorative. CustomPaint does not clip, and
+        // a RepaintBoundary grows to whatever the painter drew. Without this,
+        // a sheet border or a long stroke composites over the sidebar.
+        return ClipRect(
+          child: Listener(
+            behavior: HitTestBehavior.opaque,
+            onPointerDown: _handlePointerDown,
+            onPointerMove: _handlePointerMove,
+            onPointerUp: _handlePointerUp,
+            onPointerHover: _handlePointerHover,
+            onPointerSignal: _handlePointerSignal,
+            onPointerPanZoomStart: _handlePanZoomStart,
+            onPointerPanZoomUpdate: _handlePanZoomUpdate,
+            onPointerPanZoomEnd: _handlePanZoomEnd,
+            onPointerCancel: (_) => _endAllGestures(),
+            child: MouseRegion(
+              cursor: _panDragging || _trackpadPointer != null
+                  ? SystemMouseCursors.grabbing
+                  : SystemMouseCursors.precise,
+              onExit: (_) => widget.inputHandler?.onPointerExit(),
+              child: ColoredBox(
+                color: widget.background,
+                child: Stack(
+                  fit: StackFit.expand,
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    RepaintBoundary(
+                      child: CustomPaint(
+                        painter: _DrawingLayerPainter(
+                          document: widget.document,
+                          documentVersion: widget.document.version,
+                          viewport: widget.controller.viewport,
+                          builder: _sceneBuilder,
+                          painter: _scenePainter,
+                          holder: _holder,
+                          onlyLayers: widget.onlyLayers,
+                          onSceneBuilt: widget.onSceneBuilt,
+                          grid: widget.showGrid
+                              ? _GridStyle(
+                                  color: widget.background,
+                                  palette: _palette,
+                                )
+                              : null,
+                        ),
                       ),
                     ),
-                  ),
-                  RepaintBoundary(
-                    child: CustomPaint(
-                      painter: _OverlayLayerPainter(
-                        document: widget.document,
-                        viewport: widget.controller.viewport,
-                        model: widget.overlay,
-                        painter: _overlayPainter,
+                    RepaintBoundary(
+                      child: CustomPaint(
+                        painter: _OverlayLayerPainter(
+                          document: widget.document,
+                          viewport: widget.controller.viewport,
+                          model: widget.overlay,
+                          painter: _overlayPainter,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -452,6 +458,8 @@ class _DrawingLayerPainter extends CustomPainter {
 
   @override
   void paint(ui.Canvas canvas, Size size) {
+    canvas.save();
+    canvas.clipRect(Offset.zero & size, doAntiAlias: false);
     if (grid != null) _paintGrid(canvas, size);
 
     final cached = holder.scene;
@@ -465,6 +473,7 @@ class _DrawingLayerPainter extends CustomPainter {
         ..translate(delta.dx, delta.dy)
         ..drawPicture(picture)
         ..restore();
+      canvas.restore();
       return;
     }
 
@@ -472,6 +481,7 @@ class _DrawingLayerPainter extends CustomPainter {
     final recorded = painter.record(scene);
     holder.store(scene, recorded);
     canvas.drawPicture(recorded);
+    canvas.restore();
     onSceneBuilt?.call(scene);
   }
 
@@ -571,7 +581,10 @@ class _OverlayLayerPainter extends CustomPainter {
   @override
   void paint(ui.Canvas canvas, Size size) {
     if (model.isEmpty) return;
+    canvas.save();
+    canvas.clipRect(Offset.zero & size, doAntiAlias: false);
     painter.paint(canvas, model, viewport, document);
+    canvas.restore();
   }
 
   @override

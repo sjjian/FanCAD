@@ -66,6 +66,18 @@ void main() {
     picture.dispose();
   });
 
+  test('a recorded scene rasterises at the viewport size', () async {
+    final picture = ScenePainter().record(sceneWithEveryBatch());
+    final image = await picture.toImage(
+      view.size.width.toInt(),
+      view.size.height.toInt(),
+    );
+    expect(image.width, view.size.width.toInt());
+    expect(image.height, view.size.height.toInt());
+    image.dispose();
+    picture.dispose();
+  });
+
   test('paint walks fills, lines, points, text and an image placeholder', () {
     final cache = ParagraphCache();
     final painter = ScenePainter(paragraphs: cache);

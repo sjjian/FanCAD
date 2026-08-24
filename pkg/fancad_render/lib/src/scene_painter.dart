@@ -125,9 +125,14 @@ class ScenePainter {
   }
 
   /// Rasterises a scene into a picture that can be replayed cheaply.
+  ///
+  /// The recording is culled to the viewport so a sheet border that lands
+  /// off-screen cannot expand a [RepaintBoundary] over the application chrome.
   ui.Picture record(RenderScene scene) {
     final recorder = ui.PictureRecorder();
-    paint(ui.Canvas(recorder), scene);
+    final size = scene.viewport.size;
+    final cull = size.width > 0 && size.height > 0 ? Offset.zero & size : null;
+    paint(ui.Canvas(recorder, cull), scene);
     return recorder.endRecording();
   }
 }
