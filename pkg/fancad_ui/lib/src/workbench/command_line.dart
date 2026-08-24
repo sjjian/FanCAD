@@ -5,6 +5,7 @@ import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import 'command_line_model.dart';
@@ -130,8 +131,9 @@ class _CommandLinePaneState extends State<CommandLinePane> {
     return Column(
       children: [
         Tooltip(
-          message: 'Drag to resize · double-click to '
-              '${widget.isExpanded ? 'collapse' : 'expand'}',
+          message: widget.isExpanded
+              ? context.l10n.resize_collapse
+              : context.l10n.resize_expand,
           waitDuration: const Duration(milliseconds: 500),
           child: ShellSplitter(
             axis: Axis.horizontal,
@@ -167,8 +169,7 @@ class _CommandLinePaneState extends State<CommandLinePane> {
           vertical: FanCadTokens.space2,
         ),
         child: Text(
-          'Command history will appear here. Click a line to reuse it, '
-          'or press ↑ to recall the last thing you typed.',
+          context.l10n.command_history_hint,
           style: tokens.labelStyle,
         ),
       );
@@ -222,8 +223,8 @@ class _CommandLinePaneState extends State<CommandLinePane> {
                 ? Icons.expand_more
                 : Icons.unfold_more,
             tooltip: widget.isExpanded
-                ? 'Collapse command history'
-                : 'Expand command history',
+                ? context.l10n.collapse_history
+                : context.l10n.expand_history,
             size: 20,
             iconSize: FanCadTokens.iconMedium,
             isActive: widget.isExpanded,
@@ -236,7 +237,7 @@ class _CommandLinePaneState extends State<CommandLinePane> {
                 for (final line in _model.lines) line.text,
               ].join('\n');
               Clipboard.setData(ClipboardData(text: text));
-              widget.workspace.notify('Copied command history');
+              widget.workspace.notify(context.l10n.copied_history);
             },
             onClear: _model.clear,
           ),
@@ -267,9 +268,9 @@ class _CommandLinePaneState extends State<CommandLinePane> {
                 controller: _input,
                 focusNode: widget.focusNode,
                 hintText: awaiting
-                    ? 'Click in the drawing, or type a value'
+                    ? context.l10n.hint_click_or_type
                     : prompt.isEmpty
-                    ? 'Type a command'
+                    ? context.l10n.hint_type_command
                     : null,
                 onSubmitted: _submit,
               ),
@@ -287,7 +288,7 @@ class _CommandLinePaneState extends State<CommandLinePane> {
             Padding(
               padding: const EdgeInsets.only(left: FanCadTokens.space1),
               child: PromptKeywordChip(
-                label: 'Cancel',
+                label: context.l10n.cancel,
                 muted: true,
                 onPressed: () {
                   widget.workspace.cancelActive();
@@ -397,7 +398,7 @@ class _HistoryOverflow extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return PopupMenuButton<String>(
-      tooltip: 'Command history',
+      tooltip: context.l10n.command_history,
       padding: EdgeInsets.zero,
       enabled: enabled,
       offset: const Offset(0, -8),
@@ -419,13 +420,13 @@ class _HistoryOverflow extends StatelessWidget {
           value: 'copy',
           enabled: enabled,
           height: 32,
-          child: Text('Copy history', style: tokens.bodyStyle),
+          child: Text(context.l10n.copy_history, style: tokens.bodyStyle),
         ),
         PopupMenuItem(
           value: 'clear',
           enabled: enabled,
           height: 32,
-          child: Text('Clear history', style: tokens.bodyStyle),
+          child: Text(context.l10n.clear_history, style: tokens.bodyStyle),
         ),
       ],
       child: SizedBox(
@@ -449,6 +450,7 @@ class StatusBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     final tab = workspace.active;
     final snap = workspace.snapEngine;
     final cursor = tab?.tools.cursor;
@@ -468,34 +470,33 @@ class StatusBar extends StatelessWidget {
             child: _CoordinateReadout(workspace: workspace, cursor: cursor),
           ),
           StatusToggle(
-            label: 'SNAP',
+            label: l10n.snap,
             isOn: snap.enabled,
-            tooltip:
-                'Object snapping (F3). Right-click to choose Endpoint, Midpoint…',
+            tooltip: l10n.snap_tooltip,
             onPressed: () => workspace.setSnapEnabled(!snap.enabled),
             onContextMenu: (position) =>
                 _openSnapModeMenu(context, workspace, position),
           ),
           StatusToggle(
-            label: 'ORTHO',
+            label: l10n.ortho,
             isOn: snap.tracking.ortho,
-            tooltip: 'Constrain to horizontal and vertical (F8)',
+            tooltip: l10n.ortho_tooltip,
             onPressed: () => workspace.setOrtho(!snap.tracking.ortho),
           ),
           StatusToggle(
-            label: 'POLAR',
+            label: l10n.polar,
             isOn: snap.tracking.polar,
-            tooltip:
-                'Polar tracking (F10) — ${_polarDegrees(snap.tracking.polarIncrement)}°. '
-                'Right-click to change the increment',
+            tooltip: l10n.polar_tooltip(
+              _polarDegrees(snap.tracking.polarIncrement),
+            ),
             onPressed: () => workspace.setPolar(!snap.tracking.polar),
             onContextMenu: (position) =>
                 _openPolarIncrementMenu(context, workspace, position),
           ),
           StatusToggle(
-            label: 'GRID',
+            label: l10n.grid,
             isOn: tab?.showGrid ?? false,
-            tooltip: 'Reference grid (F7)',
+            tooltip: l10n.grid_tooltip,
             onPressed: () {
               if (tab != null) workspace.setShowGrid(!tab.showGrid);
             },
@@ -503,36 +504,39 @@ class StatusBar extends StatelessWidget {
           Expanded(child: LayoutTabStrip(workspace: workspace)),
           if (tab != null) ...[
             _StatusAction(
-              label: '${tab.selection.length} selected',
+              label: l10n.selected_count(tab.selection.length),
               tooltip: tab.selection.isEmpty
-                  ? 'Nothing selected'
-                  : 'Open properties for the selection',
+                  ? l10n.nothing_selected
+                  : l10n.open_properties_selection,
               enabled: tab.selection.isNotEmpty,
               onPressed: () => workspace.revealPanel('properties'),
             ),
             _StatusAction(
-              label: '${tab.document.entityCount} objects',
+              label: l10n.objects_count(tab.document.entityCount),
               tooltip: tab.document.entityCount == 0
-                  ? 'The drawing is empty'
-                  : 'Select every object',
+                  ? l10n.drawing_empty
+                  : l10n.select_every_object,
               enabled: tab.document.entityCount > 0,
               onPressed: () => workspace.run('select.all'),
             ),
             _StatusAction(
               label:
                   '1:${(1 / tab.viewport.viewport.scale).toStringAsFixed(2)}',
-              tooltip: 'Zoom extents — fit the drawing in the window',
+              tooltip: l10n.zoom_extents_tooltip,
               onPressed: () => workspace.run('view.zoomExtents'),
             ),
             if (scene != null)
               Tooltip(
-                message: 'Batches drawn / entities visible in the viewport',
+                message: l10n.scene_stats_tooltip,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: FanCadTokens.space2,
                   ),
                   child: Text(
-                    '${scene.drawCallCount} draw calls · ${scene.entityCount} visible',
+                    l10n.draw_calls_visible(
+                      scene.drawCallCount,
+                      scene.entityCount,
+                    ),
                     style: tokens.labelStyle,
                   ),
                 ),
@@ -580,7 +584,7 @@ Future<void> _openSnapModeMenu(
                     : null,
               ),
               const SizedBox(width: FanCadTokens.space2),
-              Text(mode.label, style: tokens.bodyStyle),
+              Text(context.l10n.snapModeLabel(mode), style: tokens.bodyStyle),
             ],
           ),
         ),
@@ -588,7 +592,7 @@ Future<void> _openSnapModeMenu(
       PopupMenuItem<Object>(
         value: 'defaults',
         height: 32,
-        child: Text('Restore defaults', style: tokens.bodyStyle),
+        child: Text(context.l10n.restore_defaults, style: tokens.bodyStyle),
       ),
     ],
   );
@@ -669,14 +673,15 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
     final layer = tab.document.layer(name);
     final hidden = layer != null && !layer.isEffectivelyVisible;
     final locked = layer?.locked ?? false;
+    final l10n = context.l10n;
     final states = [
-      if (hidden) 'hidden',
-      if (locked) 'locked',
+      if (hidden) l10n.layer_hidden,
+      if (locked) l10n.layer_locked,
     ];
     return Tooltip(
       message: [
-        'Current layer "$name"${states.isEmpty ? '' : ' (${states.join(', ')})'}',
-        'Click to manage layers. Right-click to turn on or unlock',
+        '${l10n.current_layer_named(name)}${states.isEmpty ? '' : ' (${states.join(', ')})'}',
+        l10n.current_layer_hint,
       ].join('\n'),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -761,7 +766,7 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
           value: 'visible',
           height: 32,
           child: Text(
-            hidden ? 'Turn layer on' : 'Turn layer off',
+            hidden ? context.l10n.turn_layer_on : context.l10n.turn_layer_off,
             style: tokens.bodyStyle,
           ),
         ),
@@ -769,7 +774,7 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
           value: 'lock',
           height: 32,
           child: Text(
-            locked ? 'Unlock layer' : 'Lock layer',
+            locked ? context.l10n.unlock_layer : context.l10n.lock_layer,
             style: tokens.bodyStyle,
           ),
         ),
@@ -777,7 +782,7 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
         PopupMenuItem(
           value: 'manage',
           height: 32,
-          child: Text('Manage layers', style: tokens.bodyStyle),
+          child: Text(context.l10n.manage_layers, style: tokens.bodyStyle),
         ),
       ],
     );
@@ -871,6 +876,7 @@ class _CoordinateReadoutState extends State<_CoordinateReadout> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     final cursor = widget.cursor;
     final text = cursor == null
         ? null
@@ -879,10 +885,10 @@ class _CoordinateReadoutState extends State<_CoordinateReadout> {
     final enabled = text != null;
     return Tooltip(
       message: text == null
-          ? 'Cursor'
+          ? l10n.cursor
           : awaiting
-          ? 'Use $text as the next point'
-          : 'Copy $text',
+          ? l10n.use_as_next_point(text)
+          : l10n.copy_text(text),
       child: MouseRegion(
         cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
         onEnter: (_) => setState(() => _hovered = true),
@@ -914,6 +920,6 @@ class _CoordinateReadoutState extends State<_CoordinateReadout> {
       return;
     }
     Clipboard.setData(ClipboardData(text: text));
-    workspace.notify('Copied $text');
+    workspace.notify(context.l10n.copied_text(text));
   }
 }

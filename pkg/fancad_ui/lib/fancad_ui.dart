@@ -9,6 +9,7 @@ export 'src/commands/plugin_commands.dart';
 export 'src/commands/pro_commands.dart';
 export 'src/commands/query_commands.dart';
 export 'src/commands/view_commands.dart';
+export 'src/l10n/l10n.dart';
 export 'src/panels/ai_panel.dart';
 export 'src/panels/extensions_panel.dart';
 export 'src/panels/layers_panel.dart';

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../commands/builtins.dart';
 import '../commands/file_commands.dart';
 import '../commands/plugin_commands.dart';
+import '../l10n/locale.dart';
 import '../theme/tokens.dart';
 import 'ai_controller.dart';
 import 'plugin_delegate.dart';
@@ -398,4 +399,31 @@ class ThemeModeController extends StateNotifier<Brightness> {
 final themeBrightnessProvider =
     StateNotifierProvider<ThemeModeController, Brightness>(
   (ref) => ThemeModeController(ref.watch(settingsProvider)),
+);
+
+/// UI language. Stored as `en` / `zh`, matching OpenHare. Unknown leftovers
+/// fall back to English so a corrupt settings file cannot blank the shell.
+class LanguageController extends StateNotifier<String> {
+  LanguageController(this._settings)
+    : super(
+        FanCadLanguage.parse(
+          _settings.getString(
+            SettingsKeys.language,
+            fallback: FanCadLanguage.english,
+          ),
+        ),
+      );
+
+  final SettingsStore _settings;
+
+  void setLanguage(String value) {
+    final language = FanCadLanguage.parse(value);
+    if (state == language) return;
+    state = language;
+    _settings.set(SettingsKeys.language, state);
+  }
+}
+
+final languageProvider = StateNotifierProvider<LanguageController, String>(
+  (ref) => LanguageController(ref.watch(settingsProvider)),
 );

@@ -4,6 +4,7 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../state/document_tab.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
@@ -26,11 +27,11 @@ class PropertiesPanel extends StatelessWidget {
     if (tab == null) {
       return Column(
         children: [
-          const PanelHeader(title: 'Properties'),
+          PanelHeader(title: context.l10n.properties),
           Expanded(
             child: _placeholder(
               context,
-              'Open a drawing to inspect its objects.',
+              context.l10n.properties_empty_workspace,
             ),
           ),
         ],
@@ -44,25 +45,25 @@ class PropertiesPanel extends StatelessWidget {
     return Column(
       children: [
         PanelHeader(
-          title: 'Properties',
+          title: context.l10n.properties,
           actions: [
             if (entities.isNotEmpty) ...[
               ShellIconButton(
                 icon: Icons.center_focus_strong,
-                tooltip: 'Zoom to selection',
+                tooltip: context.l10n.zoom_to_selection,
                 iconSize: FanCadTokens.iconMedium,
                 onPressed: () => workspace.run('view.zoomSelected'),
               ),
               ShellIconButton(
                 icon: Icons.deselect,
-                tooltip: 'Clear selection',
+                tooltip: context.l10n.clear_selection,
                 iconSize: FanCadTokens.iconMedium,
                 onPressed: () => workspace.run('select.none'),
               ),
             ],
             ShellIconButton(
               icon: Icons.info_outline,
-              tooltip: 'List the selection in the command history',
+              tooltip: context.l10n.list_selection,
               iconSize: FanCadTokens.iconMedium,
               enabled: entities.isNotEmpty,
               onPressed: () => workspace.run('query.list'),
@@ -86,11 +87,11 @@ class PropertiesPanel extends StatelessWidget {
                     ),
                     if (entities.length == 1)
                       PanelSection(
-                        title: 'Geometry',
+                        title: context.l10n.geometry,
                         children: _geometryRows(context, entities.first),
                       ),
                     PanelSection(
-                      title: 'Measurements',
+                      title: context.l10n.measurements,
                       children: _measurementRows(context, tab, entities),
                     ),
                   ],
@@ -127,7 +128,8 @@ class PropertiesPanel extends StatelessWidget {
     return '${kind}s';
   }
 
-  void _copied(String text) => workspace.notify('Copied $text');
+  void _copied(BuildContext context, String text) =>
+      workspace.notify(context.l10n.copied_text(text));
 
   List<Widget> _generalRows(
     BuildContext context,
@@ -142,21 +144,22 @@ class PropertiesPanel extends StatelessWidget {
     );
     final lineType = _shared(entities, (entity) => entity.props.lineType);
     final lineWeight = _shared(entities, (entity) => entity.props.lineWeight);
+    final l10n = context.l10n;
     final swatch = _colorSwatch(tab, entities, tokens);
     return [
       PropertyRow(
-        label: 'Layer',
+        label: l10n.layer,
         isEditable: true,
         copyText: layer,
-        onCopied: _copied,
+        onCopied: (text) => _copied(context, text),
         value: Text(layer ?? '*Varies*'),
         onTap: () => workspace.run('edit.changeLayer'),
       ),
       PropertyRow(
-        label: 'Colour',
+        label: l10n.colour,
         isEditable: true,
         copyText: colorLabel,
-        onCopied: _copied,
+        onCopied: (text) => _copied(context, text),
         value: Row(
           children: [
             if (swatch != null) ...[
@@ -177,101 +180,104 @@ class PropertiesPanel extends StatelessWidget {
         onTap: () => workspace.run('edit.changeColor'),
       ),
       PropertyRow(
-        label: 'Line type',
+        label: l10n.line_type,
         isEditable: true,
         copyText: lineType,
-        onCopied: _copied,
+        onCopied: (text) => _copied(context, text),
         value: Text(lineType ?? '*Varies*'),
         onTap: () => workspace.run('edit.changeLinetype'),
       ),
       PropertyRow(
-        label: 'Lineweight',
+        label: l10n.lineweight,
         isEditable: true,
-        copyText: lineWeight == null ? null : _lineWeight(lineWeight),
-        onCopied: _copied,
+        copyText: lineWeight == null ? null : _lineWeight(l10n, lineWeight),
+        onCopied: (text) => _copied(context, text),
         value: Text(
-          lineWeight == null ? '*Varies*' : _lineWeight(lineWeight),
+          lineWeight == null ? '*Varies*' : _lineWeight(l10n, lineWeight),
         ),
         onTap: () => workspace.run('edit.changeLineweight'),
       ),
     ];
   }
 
-  PropertyRow _read(String label, String text) => PropertyRow(
-    label: label,
-    value: Text(text),
-    copyText: text,
-    onCopied: _copied,
-  );
+  PropertyRow _read(BuildContext context, String label, String text) =>
+      PropertyRow(
+        label: label,
+        value: Text(text),
+        copyText: text,
+        onCopied: (value) => _copied(context, value),
+      );
 
   List<Widget> _geometryRows(BuildContext context, CadEntity entity) {
+    final l10n = context.l10n;
     switch (entity) {
       case LineEntity(:final start, :final end, :final length):
         final delta = end - start;
         return [
-          _read('Start', _point(start)),
-          _read('End', _point(end)),
-          _read('Length', _number(length)),
-          _read('Angle', '${_number(delta.angle * 180 / math.pi)}°'),
+          _read(context, l10n.start, _point(start)),
+          _read(context, l10n.end, _point(end)),
+          _read(context, l10n.length, _number(length)),
+          _read(context, l10n.angle, '${_number(delta.angle * 180 / math.pi)}°'),
         ];
       case CircleEntity(:final center, :final radius):
         return [
-          _read('Centre', _point(center)),
-          _read('Radius', _number(radius)),
-          _read('Diameter', _number(radius * 2)),
-          _read('Circumference', _number(2 * math.pi * radius)),
+          _read(context, l10n.centre, _point(center)),
+          _read(context, l10n.radius, _number(radius)),
+          _read(context, l10n.diameter, _number(radius * 2)),
+          _read(context, l10n.circumference, _number(2 * math.pi * radius)),
         ];
       case ArcEntity(:final center, :final radius):
         return [
-          _read('Centre', _point(center)),
-          _read('Radius', _number(radius)),
-          _read('Start angle', '${_number(entity.startAngle * 180 / math.pi)}°'),
-          _read('End angle', '${_number(entity.endAngle * 180 / math.pi)}°'),
-          _read('Total angle', '${_number(entity.sweep * 180 / math.pi)}°'),
+          _read(context, l10n.centre, _point(center)),
+          _read(context, l10n.radius, _number(radius)),
+          _read(context, l10n.start_angle, '${_number(entity.startAngle * 180 / math.pi)}°'),
+          _read(context, l10n.end_angle, '${_number(entity.endAngle * 180 / math.pi)}°'),
+          _read(context, l10n.total_angle, '${_number(entity.sweep * 180 / math.pi)}°'),
         ];
       case PolylineEntity():
         return [
-          _read('Vertices', '${entity.vertexCount}'),
-          _read('Closed', entity.closed ? 'Yes' : 'No'),
-          _read('Length', _number(Construct.lengthOf(entity))),
+          _read(context, l10n.vertices, '${entity.vertexCount}'),
+          _read(context, l10n.closed, entity.closed ? l10n.yes : l10n.no),
+          _read(context, l10n.length, _number(Construct.lengthOf(entity))),
         ];
       case TextEntity(:final content, :final position, :final height):
         return [
-          _read('Contents', content),
-          _read('Position', _point(position)),
-          _read('Height', _number(height)),
-          _read('Rotation', '${_number(entity.rotation * 180 / math.pi)}°'),
-          _read('Style', entity.styleName),
+          _read(context, l10n.contents, content),
+          _read(context, l10n.position, _point(position)),
+          _read(context, l10n.height, _number(height)),
+          _read(context, l10n.rotation, '${_number(entity.rotation * 180 / math.pi)}°'),
+          _read(context, l10n.style, entity.styleName),
         ];
       case MTextEntity(:final content, :final position):
         return [
-          _read('Contents', content),
-          _read('Position', _point(position)),
-          _read('Column width', _number(entity.rectangleWidth)),
+          _read(context, l10n.contents, content),
+          _read(context, l10n.position, _point(position)),
+          _read(context, l10n.column_width, _number(entity.rectangleWidth)),
         ];
       case InsertEntity(:final blockName, :final position):
         return [
-          _read('Block', blockName),
-          _read('Position', _point(position)),
+          _read(context, l10n.block, blockName),
+          _read(context, l10n.position, _point(position)),
           _read(
-            'Scale',
+            context,
+            l10n.scale,
             '${_number(entity.scale.x)}, ${_number(entity.scale.y)}',
           ),
-          _read('Rotation', '${_number(entity.rotation * 180 / math.pi)}°'),
+          _read(context, l10n.rotation, '${_number(entity.rotation * 180 / math.pi)}°'),
         ];
       case PointEntity(:final position):
-        return [_read('Position', _point(position))];
+        return [_read(context, l10n.position, _point(position))];
       case HatchEntity(:final patternName, :final solid):
         return [
-          _read('Pattern', patternName),
-          _read('Solid fill', solid ? 'Yes' : 'No'),
-          _read('Boundaries', '${entity.loops.length}'),
+          _read(context, l10n.pattern, patternName),
+          _read(context, l10n.solid_fill, solid ? l10n.yes : l10n.no),
+          _read(context, l10n.boundaries, '${entity.loops.length}'),
         ];
       case DimensionEntity(:final measurement, :final displayText):
         return [
-          _read('Measurement', _number(measurement)),
-          _read('Text', displayText),
-          _read('Style', entity.styleName),
+          _read(context, l10n.measurement, _number(measurement)),
+          _read(context, l10n.text, displayText),
+          _read(context, l10n.style, entity.styleName),
         ];
       default:
         return const [];
@@ -291,13 +297,14 @@ class PropertiesPanel extends StatelessWidget {
       area += Construct.areaOf(entity).abs();
       box = box.union(tab.document.boundsOfEntity(entity));
     }
+    final l10n = context.l10n;
     return [
-      _read('Total length', _number(length)),
-      if (area > 0) _read('Total area', _number(area)),
+      _read(context, l10n.total_length, _number(length)),
+      if (area > 0) _read(context, l10n.total_area, _number(area)),
       if (box.isNotEmpty) ...[
-        _read('Min', _point(box.min)),
-        _read('Max', _point(box.max)),
-        _read('Size', '${_number(box.width)} × ${_number(box.height)}'),
+        _read(context, l10n.min, _point(box.min)),
+        _read(context, l10n.max, _point(box.max)),
+        _read(context, l10n.size, '${_number(box.width)} × ${_number(box.height)}'),
       ],
     ];
   }
@@ -343,11 +350,11 @@ class PropertiesPanel extends StatelessWidget {
     return palette.colorOf(resolved);
   }
 
-  static String _lineWeight(int weight) {
-    if (weight == LineWeight.byLayer) return 'ByLayer';
-    if (weight == LineWeight.byBlock) return 'ByBlock';
-    if (weight == LineWeight.byDefault) return 'Default';
-    if (weight == LineWeight.zero) return 'Hairline';
+  static String _lineWeight(AppLocalizations l10n, int weight) {
+    if (weight == LineWeight.byLayer) return l10n.by_layer;
+    if (weight == LineWeight.byBlock) return l10n.by_block;
+    if (weight == LineWeight.byDefault) return l10n.default_value;
+    if (weight == LineWeight.zero) return l10n.hairline;
     final mm = LineWeight.toMillimetres(weight);
     final text = mm == mm.roundToDouble() ? mm.toStringAsFixed(0) : '$mm';
     return '$text mm';
@@ -382,15 +389,17 @@ class _EmptySelection extends StatelessWidget {
           children: [
             Text(
               objectCount == 0
-                  ? 'This drawing is empty.'
-                  : 'Click an object on the canvas to inspect it.',
+                  ? context.l10n.drawing_empty_inspect
+                  : context.l10n.click_object_inspect,
               style: tokens.bodyStyle,
               textAlign: TextAlign.center,
             ),
             if (onSelectAll != null) ...[
               const SizedBox(height: FanCadTokens.space3),
               Text(
-                '$objectCount object${objectCount == 1 ? '' : 's'} in this drawing.',
+                objectCount == 1
+                    ? context.l10n.objects_in_drawing_one
+                    : context.l10n.objects_in_drawing_many(objectCount),
                 style: tokens.labelStyle,
                 textAlign: TextAlign.center,
               ),
@@ -402,7 +411,7 @@ class _EmptySelection extends StatelessWidget {
                   horizontal: FanCadTokens.space2,
                 ),
                 child: Text(
-                  'Select all',
+                  context.l10n.select_all,
                   style: tokens.bodyStyle.copyWith(color: tokens.accent),
                 ),
               ),

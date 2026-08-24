@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
+import '../l10n/l10n.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import '../workbench/shell_widgets.dart';
@@ -95,28 +96,28 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
           side: BorderSide(color: tokens.borderStrong),
         ),
         title: Text(
-          'Unsaved editor changes',
+          context.l10n.unsaved_editor_changes,
           style: tokens.bodyStyle.copyWith(fontSize: 15),
         ),
         content: Text(
-          '"$_relative" has edits that have not been written.',
+          context.l10n.editor_file_dirty(_relative),
           style: tokens.labelStyle,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop('cancel'),
-            child: Text('Cancel', style: tokens.bodyStyle),
+            child: Text(context.l10n.cancel, style: tokens.bodyStyle),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop('discard'),
             child: Text(
-              "Don't save",
+              context.l10n.dont_save,
               style: tokens.bodyStyle.copyWith(color: tokens.danger),
             ),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop('save'),
-            child: const Text('Save'),
+            child: Text(context.l10n.save),
           ),
         ],
       ),
@@ -133,12 +134,12 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
     if (host == null) return;
     final handle = host.plugin(id);
     if (handle == null) {
-      setState(() => _error = '$id is not installed');
+      setState(() => _error = context.l10n.plugin_not_installed(id));
       return;
     }
     final file = File(p.join(handle.manifest.directory, relative));
     if (!file.existsSync()) {
-      setState(() => _error = 'No such file: $relative');
+      setState(() => _error = context.l10n.no_such_file(relative));
       return;
     }
     _body.text = await file.readAsString();
@@ -180,15 +181,15 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
         child: Column(
           children: [
             PanelHeader(
-              title: 'Re-Editor',
+              title: context.l10n.re_editor,
               actions: [
                 ShellIconButton(
                   icon: Icons.save_outlined,
                   tooltip: _pluginId == null
-                      ? 'Nothing to save'
+                      ? context.l10n.nothing_to_save
                       : _dirty
-                      ? 'Save and reload  ${shellShortcut('S')}'
-                      : 'Saved',
+                      ? '${context.l10n.save_and_reload}  ${shellShortcut('S')}'
+                      : context.l10n.saved,
                   enabled: _pluginId != null && _dirty,
                   isActive: _dirty,
                   onPressed: _save,
@@ -213,7 +214,7 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
                                 plugins.any((handle) => handle.id == _pluginId)
                             ? _pluginId
                             : null,
-                        hint: Text('Extension', style: tokens.labelStyle),
+                        hint: Text(context.l10n.extension, style: tokens.labelStyle),
                         isExpanded: true,
                         style: tokens.bodyStyle,
                         dropdownColor: tokens.surfaceOverlay,
@@ -282,23 +283,17 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
 
   Widget _editorBody(FanCadTokens tokens, List<PluginHandle> plugins) {
     if (widget.host == null) {
-      return const _EditorEmpty(
-        message:
-            'Extensions are unavailable: no extensions folder was configured.',
-      );
+      return _EditorEmpty(message: context.l10n.editor_unavailable);
     }
     if (plugins.isEmpty) {
       return _EditorEmpty(
-        message: 'Create an extension first, then open it here.',
-        actionLabel: 'Create extension',
+        message: context.l10n.create_extension_first,
+        actionLabel: context.l10n.create_extension,
         onAction: () => widget.workspace.run('plugins.scaffold'),
       );
     }
     if (_pluginId == null) {
-      return _EditorEmpty(
-        message:
-            'Choose an extension above, or use Edit source from the Extensions panel.',
-      );
+      return _EditorEmpty(message: context.l10n.choose_extension);
     }
     return TextField(
       controller: _body,

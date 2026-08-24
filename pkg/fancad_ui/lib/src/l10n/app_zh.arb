@@ -1,0 +1,2082 @@
+{
+  "@@locale": "zh",
+  "language": "语言",
+  "@language": {
+    "description": "language"
+  },
+  "theme": "主题",
+  "@theme": {
+    "description": "theme"
+  },
+  "theme_dark": "深色",
+  "@theme_dark": {
+    "description": "theme dark"
+  },
+  "theme_light": "浅色",
+  "@theme_light": {
+    "description": "theme light"
+  },
+  "appearance_dark_tooltip": "外观 — 深色。可切换浅色或深色",
+  "@appearance_dark_tooltip": {
+    "description": "appearance dark tooltip"
+  },
+  "appearance_light_tooltip": "外观 — 浅色。可切换浅色或深色",
+  "@appearance_light_tooltip": {
+    "description": "appearance light tooltip"
+  },
+  "new_drawing": "新建图纸",
+  "@new_drawing": {
+    "description": "new drawing"
+  },
+  "open": "打开",
+  "@open": {
+    "description": "open"
+  },
+  "open_ellipsis": "打开…",
+  "@open_ellipsis": {
+    "description": "open ellipsis"
+  },
+  "save": "保存",
+  "@save": {
+    "description": "save"
+  },
+  "save_as": "另存为…",
+  "@save_as": {
+    "description": "save as"
+  },
+  "save_unsaved_changes": "保存未保存的更改",
+  "@save_unsaved_changes": {
+    "description": "save unsaved changes"
+  },
+  "save_this_drawing": "保存此图纸",
+  "@save_this_drawing": {
+    "description": "save this drawing"
+  },
+  "saved_write_again": "已保存 — 再按 {shortcut} 可再次写入",
+  "@saved_write_again": {
+    "description": "saved write again",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
+  "close_drawing": "关闭图纸",
+  "@close_drawing": {
+    "description": "close drawing"
+  },
+  "command_palette": "命令面板",
+  "@command_palette": {
+    "description": "command palette"
+  },
+  "hide_assistant": "隐藏助手",
+  "@hide_assistant": {
+    "description": "hide assistant"
+  },
+  "show_assistant": "显示助手",
+  "@show_assistant": {
+    "description": "show assistant"
+  },
+  "nothing_to_undo": "没有可撤销的操作",
+  "@nothing_to_undo": {
+    "description": "nothing to undo"
+  },
+  "nothing_to_redo": "没有可重做的操作",
+  "@nothing_to_redo": {
+    "description": "nothing to redo"
+  },
+  "undo_named": "撤销 {label}",
+  "@undo_named": {
+    "description": "undo named",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "redo_named": "重做 {label}",
+  "@redo_named": {
+    "description": "redo named",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "undo": "撤销",
+  "@undo": {
+    "description": "undo"
+  },
+  "redo": "重做",
+  "@redo": {
+    "description": "redo"
+  },
+  "more_file_actions": "更多文件操作",
+  "@more_file_actions": {
+    "description": "more file actions"
+  },
+  "recent": "最近",
+  "@recent": {
+    "description": "recent"
+  },
+  "remove_missing": "移除缺失项",
+  "@remove_missing": {
+    "description": "remove missing"
+  },
+  "clear_recent": "清空最近",
+  "@clear_recent": {
+    "description": "clear recent"
+  },
+  "recent_all_on_disk": "最近打开的文件都还在磁盘上。",
+  "@recent_all_on_disk": {
+    "description": "recent all on disk"
+  },
+  "recent_removed_one": "已从最近列表移除 1 个缺失文件。",
+  "@recent_removed_one": {
+    "description": "recent removed one"
+  },
+  "recent_removed_many": "已从最近列表移除 {count} 个缺失文件。",
+  "@recent_removed_many": {
+    "description": "recent removed many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "missing_path": "缺失 — {path}",
+  "@missing_path": {
+    "description": "missing path",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "missing_folder": "缺失 · {folder}",
+  "@missing_folder": {
+    "description": "missing folder",
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "show_in_finder": "在 Finder 中显示",
+  "@show_in_finder": {
+    "description": "show in finder"
+  },
+  "show_in_explorer": "在资源管理器中显示",
+  "@show_in_explorer": {
+    "description": "show in explorer"
+  },
+  "show_in_folder": "在文件夹中显示",
+  "@show_in_folder": {
+    "description": "show in folder"
+  },
+  "could_not_reveal": "无法显示 {path}：{error}",
+  "@could_not_reveal": {
+    "description": "could not reveal",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "could_not_open": "无法打开 {path}：{error}",
+  "@could_not_open": {
+    "description": "could not open",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "copied_path": "已复制 {path}",
+  "@copied_path": {
+    "description": "copied path",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "open_drawings": "已打开图纸（{count}）",
+  "@open_drawings": {
+    "description": "open drawings",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "import_warnings_tooltip": "{count} 条导入警告 — 点击查看",
+  "@import_warnings_tooltip": {
+    "description": "import warnings tooltip",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "unsaved_drawing": "未保存的图纸",
+  "@unsaved_drawing": {
+    "description": "unsaved drawing"
+  },
+  "unsaved_changes_path": "未保存的更改 — {path}",
+  "@unsaved_changes_path": {
+    "description": "unsaved changes path",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "close": "关闭",
+  "@close": {
+    "description": "close"
+  },
+  "close_unsaved": "关闭 — 有未保存的更改",
+  "@close_unsaved": {
+    "description": "close unsaved"
+  },
+  "close_others": "关闭其他",
+  "@close_others": {
+    "description": "close others"
+  },
+  "close_all": "全部关闭",
+  "@close_all": {
+    "description": "close all"
+  },
+  "copy_path": "复制路径",
+  "@copy_path": {
+    "description": "copy path"
+  },
+  "import_warnings": "导入警告（{count}）",
+  "@import_warnings": {
+    "description": "import warnings",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "import_warning_title_one": "1 条导入警告",
+  "@import_warning_title_one": {
+    "description": "import warning title one"
+  },
+  "import_warning_title_many": "{count} 条导入警告",
+  "@import_warning_title_many": {
+    "description": "import warning title many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "copied_warnings": "已复制 {count} 条警告",
+  "@copied_warnings": {
+    "description": "copied warnings",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "copy_all": "全部复制",
+  "@copy_all": {
+    "description": "copy all"
+  },
+  "minimise": "最小化",
+  "@minimise": {
+    "description": "minimise"
+  },
+  "restore": "还原",
+  "@restore": {
+    "description": "restore"
+  },
+  "maximise": "最大化",
+  "@maximise": {
+    "description": "maximise"
+  },
+  "close_window": "关闭窗口",
+  "@close_window": {
+    "description": "close window"
+  },
+  "layers": "图层",
+  "@layers": {
+    "description": "layers"
+  },
+  "properties": "特性",
+  "@properties": {
+    "description": "properties"
+  },
+  "commands": "命令",
+  "@commands": {
+    "description": "commands"
+  },
+  "extensions": "扩展",
+  "@extensions": {
+    "description": "extensions"
+  },
+  "re_editor": "扩展编辑器",
+  "@re_editor": {
+    "description": "re editor"
+  },
+  "assistant": "助手",
+  "@assistant": {
+    "description": "assistant"
+  },
+  "view_layers_hint": "当前图层、可见性与锁定",
+  "@view_layers_hint": {
+    "description": "view layers hint"
+  },
+  "view_properties_hint": "查看并修改选择集",
+  "@view_properties_hint": {
+    "description": "view properties hint"
+  },
+  "view_commands_hint": "应用可执行的全部命令",
+  "@view_commands_hint": {
+    "description": "view commands hint"
+  },
+  "view_extensions_hint": "已安装扩展及其错误",
+  "@view_extensions_hint": {
+    "description": "view extensions hint"
+  },
+  "view_editor_hint": "查看扩展源码",
+  "@view_editor_hint": {
+    "description": "view editor hint"
+  },
+  "hide_view": "隐藏{label}",
+  "@hide_view": {
+    "description": "hide view",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "show_sidebar": "显示侧栏",
+  "@show_sidebar": {
+    "description": "show sidebar"
+  },
+  "hide_sidebar": "隐藏侧栏",
+  "@hide_sidebar": {
+    "description": "hide sidebar"
+  },
+  "resize_reset_width": "拖动调整宽度 · 双击恢复默认",
+  "@resize_reset_width": {
+    "description": "resize reset width"
+  },
+  "resize_collapse": "拖动调整高度 · 双击折叠",
+  "@resize_collapse": {
+    "description": "resize collapse"
+  },
+  "resize_expand": "拖动调整高度 · 双击展开",
+  "@resize_expand": {
+    "description": "resize expand"
+  },
+  "cancel": "取消",
+  "@cancel": {
+    "description": "cancel"
+  },
+  "dont_save": "不保存",
+  "@dont_save": {
+    "description": "dont save"
+  },
+  "continue_action": "继续",
+  "@continue_action": {
+    "description": "continue action"
+  },
+  "filter_commands": "按名称、别名或类别筛选",
+  "@filter_commands": {
+    "description": "filter commands"
+  },
+  "clear_filter": "清除筛选",
+  "@clear_filter": {
+    "description": "clear filter"
+  },
+  "no_commands_registered": "尚未注册任何命令。",
+  "@no_commands_registered": {
+    "description": "no commands registered"
+  },
+  "no_commands_match": "没有匹配“{query}”的命令。",
+  "@no_commands_match": {
+    "description": "no commands match",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "last_used": "最近使用",
+  "@last_used": {
+    "description": "last used"
+  },
+  "commands_count_one": "1 条命令",
+  "@commands_count_one": {
+    "description": "commands count one"
+  },
+  "commands_count_many": "{count} 条命令",
+  "@commands_count_many": {
+    "description": "commands count many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commands_matching": " 匹配",
+  "@commands_matching": {
+    "description": "commands matching"
+  },
+  "alias_named": "别名 {alias}",
+  "@alias_named": {
+    "description": "alias named",
+    "placeholders": {
+      "alias": {
+        "type": "String"
+      }
+    }
+  },
+  "copy_and_dismiss": "点击复制并关闭",
+  "@copy_and_dismiss": {
+    "description": "copy and dismiss"
+  },
+  "dismiss": "关闭",
+  "@dismiss": {
+    "description": "dismiss"
+  },
+  "search_commands": "搜索命令、别名或类别",
+  "@search_commands": {
+    "description": "search commands"
+  },
+  "clear_search": "清除搜索",
+  "@clear_search": {
+    "description": "clear search"
+  },
+  "start_typing_command": "输入以查找命令。",
+  "@start_typing_command": {
+    "description": "start typing command"
+  },
+  "try_alias_or_category": "可试别名 L、C、M，或类别如“绘图”。",
+  "@try_alias_or_category": {
+    "description": "try alias or category"
+  },
+  "palette_hints": "↑↓  移动   Enter  运行   Esc  关闭",
+  "@palette_hints": {
+    "description": "palette hints"
+  },
+  "last_badge": "最近",
+  "@last_badge": {
+    "description": "last badge"
+  },
+  "empty_tagline": "AI 原生、插件化的二维 CAD",
+  "@empty_tagline": {
+    "description": "empty tagline"
+  },
+  "open_drawing_file": "打开 DWG、DXF 或 FCB 文件",
+  "@open_drawing_file": {
+    "description": "open drawing file"
+  },
+  "show_all_commands": "显示全部命令",
+  "@show_all_commands": {
+    "description": "show all commands"
+  },
+  "command_history_hint": "命令历史将显示在这里。点击一行可重用，或按 ↑ 调出上次输入。",
+  "@command_history_hint": {
+    "description": "command history hint"
+  },
+  "collapse_history": "折叠命令历史",
+  "@collapse_history": {
+    "description": "collapse history"
+  },
+  "expand_history": "展开命令历史",
+  "@expand_history": {
+    "description": "expand history"
+  },
+  "copied_history": "已复制命令历史",
+  "@copied_history": {
+    "description": "copied history"
+  },
+  "hint_click_or_type": "在图纸中拾取，或输入数值",
+  "@hint_click_or_type": {
+    "description": "hint click or type"
+  },
+  "hint_type_command": "输入命令",
+  "@hint_type_command": {
+    "description": "hint type command"
+  },
+  "command_history": "命令历史",
+  "@command_history": {
+    "description": "command history"
+  },
+  "copy_history": "复制历史",
+  "@copy_history": {
+    "description": "copy history"
+  },
+  "clear_history": "清除历史",
+  "@clear_history": {
+    "description": "clear history"
+  },
+  "snap": "捕捉",
+  "@snap": {
+    "description": "snap"
+  },
+  "ortho": "正交",
+  "@ortho": {
+    "description": "ortho"
+  },
+  "polar": "极轴",
+  "@polar": {
+    "description": "polar"
+  },
+  "grid": "栅格",
+  "@grid": {
+    "description": "grid"
+  },
+  "snap_tooltip": "对象捕捉 (F3)。右键选择端点、中点…",
+  "@snap_tooltip": {
+    "description": "snap tooltip"
+  },
+  "ortho_tooltip": "限制为水平与垂直 (F8)",
+  "@ortho_tooltip": {
+    "description": "ortho tooltip"
+  },
+  "polar_tooltip": "极轴追踪 (F10) — {degrees}°。右键更改增量",
+  "@polar_tooltip": {
+    "description": "polar tooltip",
+    "placeholders": {
+      "degrees": {
+        "type": "int"
+      }
+    }
+  },
+  "grid_tooltip": "参考栅格 (F7)",
+  "@grid_tooltip": {
+    "description": "grid tooltip"
+  },
+  "selected_count": "已选 {count}",
+  "@selected_count": {
+    "description": "selected count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nothing_selected": "未选择对象",
+  "@nothing_selected": {
+    "description": "nothing selected"
+  },
+  "open_properties_selection": "打开选择集的特性",
+  "@open_properties_selection": {
+    "description": "open properties selection"
+  },
+  "objects_count": "{count} 个对象",
+  "@objects_count": {
+    "description": "objects count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "drawing_empty": "图纸为空",
+  "@drawing_empty": {
+    "description": "drawing empty"
+  },
+  "select_every_object": "选择全部对象",
+  "@select_every_object": {
+    "description": "select every object"
+  },
+  "zoom_extents_tooltip": "范围缩放 — 使图纸适合窗口",
+  "@zoom_extents_tooltip": {
+    "description": "zoom extents tooltip"
+  },
+  "scene_stats_tooltip": "视口中的批次 / 可见实体",
+  "@scene_stats_tooltip": {
+    "description": "scene stats tooltip"
+  },
+  "draw_calls_visible": "{calls} 次绘制 · {visible} 个可见",
+  "@draw_calls_visible": {
+    "description": "draw calls visible",
+    "placeholders": {
+      "calls": {
+        "type": "int"
+      },
+      "visible": {
+        "type": "int"
+      }
+    }
+  },
+  "restore_defaults": "恢复默认",
+  "@restore_defaults": {
+    "description": "restore defaults"
+  },
+  "layer_hidden": "隐藏",
+  "@layer_hidden": {
+    "description": "layer hidden"
+  },
+  "layer_locked": "锁定",
+  "@layer_locked": {
+    "description": "layer locked"
+  },
+  "current_layer_named": "当前图层“{name}”",
+  "@current_layer_named": {
+    "description": "current layer named",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "current_layer_hint": "点击管理图层。右键可打开或解锁",
+  "@current_layer_hint": {
+    "description": "current layer hint"
+  },
+  "turn_layer_on": "打开图层",
+  "@turn_layer_on": {
+    "description": "turn layer on"
+  },
+  "turn_layer_off": "关闭图层",
+  "@turn_layer_off": {
+    "description": "turn layer off"
+  },
+  "unlock_layer": "解锁图层",
+  "@unlock_layer": {
+    "description": "unlock layer"
+  },
+  "lock_layer": "锁定图层",
+  "@lock_layer": {
+    "description": "lock layer"
+  },
+  "manage_layers": "管理图层",
+  "@manage_layers": {
+    "description": "manage layers"
+  },
+  "cursor": "光标",
+  "@cursor": {
+    "description": "cursor"
+  },
+  "use_as_next_point": "将 {text} 用作下一点",
+  "@use_as_next_point": {
+    "description": "use as next point",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "copy_text": "复制 {text}",
+  "@copy_text": {
+    "description": "copy text",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "copied_text": "已复制 {text}",
+  "@copied_text": {
+    "description": "copied text",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "cancel_named": "取消 {name}",
+  "@cancel_named": {
+    "description": "cancel named",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "erase": "删除",
+  "@erase": {
+    "description": "erase"
+  },
+  "move": "移动",
+  "@move": {
+    "description": "move"
+  },
+  "copy": "复制",
+  "@copy": {
+    "description": "copy"
+  },
+  "isolate": "隔离",
+  "@isolate": {
+    "description": "isolate"
+  },
+  "hide": "隐藏",
+  "@hide": {
+    "description": "hide"
+  },
+  "deselect": "取消选择",
+  "@deselect": {
+    "description": "deselect"
+  },
+  "select_all": "全部选择",
+  "@select_all": {
+    "description": "select all"
+  },
+  "zoom_extents": "范围缩放",
+  "@zoom_extents": {
+    "description": "zoom extents"
+  },
+  "zoom_window": "窗口缩放",
+  "@zoom_window": {
+    "description": "zoom window"
+  },
+  "zoom_to_selection": "缩放到选择集",
+  "@zoom_to_selection": {
+    "description": "zoom to selection"
+  },
+  "show_hidden_objects": "显示隐藏对象",
+  "@show_hidden_objects": {
+    "description": "show hidden objects"
+  },
+  "no_hidden_objects": "没有隐藏对象",
+  "@no_hidden_objects": {
+    "description": "no hidden objects"
+  },
+  "one_object_hidden": "1 个对象已隐藏",
+  "@one_object_hidden": {
+    "description": "one object hidden"
+  },
+  "many_objects_hidden": "{count} 个对象已隐藏",
+  "@many_objects_hidden": {
+    "description": "many objects hidden",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "show_all": "全部显示",
+  "@show_all": {
+    "description": "show all"
+  },
+  "one_layer_off": "1 个图层已关闭",
+  "@one_layer_off": {
+    "description": "one layer off"
+  },
+  "many_layers_off": "{count} 个图层已关闭",
+  "@many_layers_off": {
+    "description": "many layers off",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "show_all_layers": "显示全部图层",
+  "@show_all_layers": {
+    "description": "show all layers"
+  },
+  "current_layer_locked": "当前图层“{name}”已锁定",
+  "@current_layer_locked": {
+    "description": "current layer locked",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unlock": "解锁",
+  "@unlock": {
+    "description": "unlock"
+  },
+  "empty_drawing_title": "此图纸为空",
+  "@empty_drawing_title": {
+    "description": "empty drawing title"
+  },
+  "empty_drawing_hint": "从工具栏开始命令，输入别名如 L 或 C，或选择下方命令。",
+  "@empty_drawing_hint": {
+    "description": "empty drawing hint"
+  },
+  "line_alias": "直线  L",
+  "@line_alias": {
+    "description": "line alias"
+  },
+  "rectangle_alias": "矩形  REC",
+  "@rectangle_alias": {
+    "description": "rectangle alias"
+  },
+  "circle_alias": "圆  C",
+  "@circle_alias": {
+    "description": "circle alias"
+  },
+  "restore_viewport": "恢复视口",
+  "@restore_viewport": {
+    "description": "restore viewport"
+  },
+  "rename": "重命名",
+  "@rename": {
+    "description": "rename"
+  },
+  "duplicate": "复制",
+  "@duplicate": {
+    "description": "duplicate"
+  },
+  "delete": "删除",
+  "@delete": {
+    "description": "delete"
+  },
+  "new_layout": "新建布局",
+  "@new_layout": {
+    "description": "new layout"
+  },
+  "model_space": "模型空间",
+  "@model_space": {
+    "description": "model space"
+  },
+  "paper_size_mm": "{width} × {height} mm",
+  "@paper_size_mm": {
+    "description": "paper size mm",
+    "placeholders": {
+      "width": {
+        "type": "String"
+      },
+      "height": {
+        "type": "String"
+      }
+    }
+  },
+  "viewport_one": "1 个视口",
+  "@viewport_one": {
+    "description": "viewport one"
+  },
+  "viewport_many": "{count} 个视口",
+  "@viewport_many": {
+    "description": "viewport many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "viewport_maximised": "视口已最大化 — 点击还原",
+  "@viewport_maximised": {
+    "description": "viewport maximised"
+  },
+  "layout_right_click": "右键可重命名、复制或删除",
+  "@layout_right_click": {
+    "description": "layout right click"
+  },
+  "delete_layout": "删除布局",
+  "@delete_layout": {
+    "description": "delete layout"
+  },
+  "new_paper_layout": "新建图纸空间布局",
+  "@new_paper_layout": {
+    "description": "new paper layout"
+  },
+  "click_to_change": "点击修改{label}",
+  "@click_to_change": {
+    "description": "click to change",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "click_to_copy_label": "点击复制{label}",
+  "@click_to_copy_label": {
+    "description": "click to copy label",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "layers_empty_workspace": "打开图纸以查看图层。",
+  "@layers_empty_workspace": {
+    "description": "layers empty workspace"
+  },
+  "new_layer_current": "新建图层（并置为当前）",
+  "@new_layer_current": {
+    "description": "new layer current"
+  },
+  "all_layers_on": "全部图层已打开",
+  "@all_layers_on": {
+    "description": "all layers on"
+  },
+  "show_hidden_layers_one": "显示 1 个隐藏图层",
+  "@show_hidden_layers_one": {
+    "description": "show hidden layers one"
+  },
+  "show_hidden_layers_many": "显示 {count} 个隐藏图层",
+  "@show_hidden_layers_many": {
+    "description": "show hidden layers many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filter_layers": "筛选图层",
+  "@filter_layers": {
+    "description": "filter layers"
+  },
+  "no_layers": "此图纸没有图层。",
+  "@no_layers": {
+    "description": "no layers"
+  },
+  "no_layers_match": "没有匹配“{query}”的图层。",
+  "@no_layers_match": {
+    "description": "no layers match",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "already_current": "已是当前图层",
+  "@already_current": {
+    "description": "already current"
+  },
+  "set_as_current": "设为当前",
+  "@set_as_current": {
+    "description": "set as current"
+  },
+  "isolate_layer": "隔离图层",
+  "@isolate_layer": {
+    "description": "isolate layer"
+  },
+  "no_objects_on_layer": "此图层上没有对象",
+  "@no_objects_on_layer": {
+    "description": "no objects on layer"
+  },
+  "select_objects_one": "选择 1 个对象",
+  "@select_objects_one": {
+    "description": "select objects one"
+  },
+  "select_objects_many": "选择 {count} 个对象",
+  "@select_objects_many": {
+    "description": "select objects many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "layer_0_cannot_delete": "图层 0 不能删除",
+  "@layer_0_cannot_delete": {
+    "description": "layer 0 cannot delete"
+  },
+  "delete_layer": "删除图层",
+  "@delete_layer": {
+    "description": "delete layer"
+  },
+  "current_layer_row_hint": "当前图层 — 双击隔离，右键查看更多",
+  "@current_layer_row_hint": {
+    "description": "current layer row hint"
+  },
+  "make_current_row_hint": "点击设为当前 — 双击隔离",
+  "@make_current_row_hint": {
+    "description": "make current row hint"
+  },
+  "properties_empty_workspace": "打开图纸以查看对象特性。",
+  "@properties_empty_workspace": {
+    "description": "properties empty workspace"
+  },
+  "clear_selection": "清除选择",
+  "@clear_selection": {
+    "description": "clear selection"
+  },
+  "list_selection": "在命令历史中列出选择集",
+  "@list_selection": {
+    "description": "list selection"
+  },
+  "geometry": "几何",
+  "@geometry": {
+    "description": "geometry"
+  },
+  "measurements": "测量",
+  "@measurements": {
+    "description": "measurements"
+  },
+  "layer": "图层",
+  "@layer": {
+    "description": "layer"
+  },
+  "colour": "颜色",
+  "@colour": {
+    "description": "colour"
+  },
+  "line_type": "线型",
+  "@line_type": {
+    "description": "line type"
+  },
+  "lineweight": "线宽",
+  "@lineweight": {
+    "description": "lineweight"
+  },
+  "start": "起点",
+  "@start": {
+    "description": "start"
+  },
+  "length": "长度",
+  "@length": {
+    "description": "length"
+  },
+  "angle": "角度",
+  "@angle": {
+    "description": "angle"
+  },
+  "centre": "圆心",
+  "@centre": {
+    "description": "centre"
+  },
+  "radius": "半径",
+  "@radius": {
+    "description": "radius"
+  },
+  "diameter": "直径",
+  "@diameter": {
+    "description": "diameter"
+  },
+  "circumference": "周长",
+  "@circumference": {
+    "description": "circumference"
+  },
+  "start_angle": "起始角",
+  "@start_angle": {
+    "description": "start angle"
+  },
+  "end_angle": "终止角",
+  "@end_angle": {
+    "description": "end angle"
+  },
+  "total_angle": "总角度",
+  "@total_angle": {
+    "description": "total angle"
+  },
+  "vertices": "顶点",
+  "@vertices": {
+    "description": "vertices"
+  },
+  "closed": "闭合",
+  "@closed": {
+    "description": "closed"
+  },
+  "yes": "是",
+  "@yes": {
+    "description": "yes"
+  },
+  "no": "否",
+  "@no": {
+    "description": "no"
+  },
+  "contents": "内容",
+  "@contents": {
+    "description": "contents"
+  },
+  "position": "位置",
+  "@position": {
+    "description": "position"
+  },
+  "height": "高度",
+  "@height": {
+    "description": "height"
+  },
+  "rotation": "旋转",
+  "@rotation": {
+    "description": "rotation"
+  },
+  "style": "样式",
+  "@style": {
+    "description": "style"
+  },
+  "column_width": "列宽",
+  "@column_width": {
+    "description": "column width"
+  },
+  "block": "块",
+  "@block": {
+    "description": "block"
+  },
+  "scale": "比例",
+  "@scale": {
+    "description": "scale"
+  },
+  "pattern": "图案",
+  "@pattern": {
+    "description": "pattern"
+  },
+  "solid_fill": "实体填充",
+  "@solid_fill": {
+    "description": "solid fill"
+  },
+  "boundaries": "边界",
+  "@boundaries": {
+    "description": "boundaries"
+  },
+  "measurement": "测量值",
+  "@measurement": {
+    "description": "measurement"
+  },
+  "text": "文字",
+  "@text": {
+    "description": "text"
+  },
+  "total_length": "总长度",
+  "@total_length": {
+    "description": "total length"
+  },
+  "total_area": "总面积",
+  "@total_area": {
+    "description": "total area"
+  },
+  "size": "尺寸",
+  "@size": {
+    "description": "size"
+  },
+  "by_layer": "随层",
+  "@by_layer": {
+    "description": "by layer"
+  },
+  "by_block": "随块",
+  "@by_block": {
+    "description": "by block"
+  },
+  "default_value": "默认",
+  "@default_value": {
+    "description": "default value"
+  },
+  "hairline": "极细",
+  "@hairline": {
+    "description": "hairline"
+  },
+  "drawing_empty_inspect": "此图纸为空。",
+  "@drawing_empty_inspect": {
+    "description": "drawing empty inspect"
+  },
+  "click_object_inspect": "在画布上点击对象以查看特性。",
+  "@click_object_inspect": {
+    "description": "click object inspect"
+  },
+  "nothing_to_clear": "没有可清除的内容",
+  "@nothing_to_clear": {
+    "description": "nothing to clear"
+  },
+  "clear_conversation": "清除对话",
+  "@clear_conversation": {
+    "description": "clear conversation"
+  },
+  "click_to_change_model": "点击更改模型或端点",
+  "@click_to_change_model": {
+    "description": "click to change model"
+  },
+  "auto_approve": "自动批准",
+  "@auto_approve": {
+    "description": "auto approve"
+  },
+  "edits_without_asking": "编辑将直接执行",
+  "@edits_without_asking": {
+    "description": "edits without asking"
+  },
+  "ask_before_edits": "助手修改图纸前先询问",
+  "@ask_before_edits": {
+    "description": "ask before edits"
+  },
+  "custom_model": "自定义模型…",
+  "@custom_model": {
+    "description": "custom model"
+  },
+  "endpoint_ellipsis": "端点…",
+  "@endpoint_ellipsis": {
+    "description": "endpoint ellipsis"
+  },
+  "model": "模型",
+  "@model": {
+    "description": "model"
+  },
+  "model_id": "模型 ID",
+  "@model_id": {
+    "description": "model id"
+  },
+  "endpoint": "端点",
+  "@endpoint": {
+    "description": "endpoint"
+  },
+  "assistant_empty_configured": "可以询问图纸，或让助手修改。它使用与你相同的命令，一条回复对应一步撤销。",
+  "@assistant_empty_configured": {
+    "description": "assistant empty configured"
+  },
+  "assistant_empty_unconfigured": "设置环境变量 {envVar} 以连接模型，或将基址指向本地服务。",
+  "@assistant_empty_unconfigured": {
+    "description": "assistant empty unconfigured",
+    "placeholders": {
+      "envVar": {
+        "type": "String"
+      }
+    }
+  },
+  "try_section": "试试",
+  "@try_section": {
+    "description": "try section"
+  },
+  "prompt_object_count": "这张图纸有多少个对象？",
+  "@prompt_object_count": {
+    "description": "prompt object count"
+  },
+  "prompt_square": "在原点画一个 100 mm 的正方形",
+  "@prompt_square": {
+    "description": "prompt square"
+  },
+  "prompt_list_selection": "列出当前选择",
+  "@prompt_list_selection": {
+    "description": "prompt list selection"
+  },
+  "click_to_copy": "点击复制",
+  "@click_to_copy": {
+    "description": "click to copy"
+  },
+  "working": "正在处理…",
+  "@working": {
+    "description": "working"
+  },
+  "ask_assistant": "询问助手  Enter 发送",
+  "@ask_assistant": {
+    "description": "ask assistant"
+  },
+  "stop": "停止",
+  "@stop": {
+    "description": "stop"
+  },
+  "send_enter": "发送  Enter",
+  "@send_enter": {
+    "description": "send enter"
+  },
+  "open_extensions_folder": "打开扩展文件夹",
+  "@open_extensions_folder": {
+    "description": "open extensions folder"
+  },
+  "create_extension": "创建扩展",
+  "@create_extension": {
+    "description": "create extension"
+  },
+  "reload_all_extensions": "重新加载全部扩展",
+  "@reload_all_extensions": {
+    "description": "reload all extensions"
+  },
+  "extensions_unavailable": "扩展不可用：本次会话未配置扩展文件夹。",
+  "@extensions_unavailable": {
+    "description": "extensions unavailable"
+  },
+  "no_extensions_installed": "尚未安装扩展。可创建一个，或将含 fancad.plugin.json 的文件夹放入扩展目录。",
+  "@no_extensions_installed": {
+    "description": "no extensions installed"
+  },
+  "edit_source": "编辑源码",
+  "@edit_source": {
+    "description": "edit source"
+  },
+  "enable_extension": "启用扩展",
+  "@enable_extension": {
+    "description": "enable extension"
+  },
+  "disable_extension": "禁用扩展",
+  "@disable_extension": {
+    "description": "disable extension"
+  },
+  "reload": "重新加载",
+  "@reload": {
+    "description": "reload"
+  },
+  "state": "状态",
+  "@state": {
+    "description": "state"
+  },
+  "folder": "文件夹",
+  "@folder": {
+    "description": "folder"
+  },
+  "permissions": "权限",
+  "@permissions": {
+    "description": "permissions"
+  },
+  "log": "日志",
+  "@log": {
+    "description": "log"
+  },
+  "plugin_running": "运行中",
+  "@plugin_running": {
+    "description": "plugin running"
+  },
+  "plugin_starting": "启动中",
+  "@plugin_starting": {
+    "description": "plugin starting"
+  },
+  "plugin_failed": "失败",
+  "@plugin_failed": {
+    "description": "plugin failed"
+  },
+  "plugin_disabled": "已禁用",
+  "@plugin_disabled": {
+    "description": "plugin disabled"
+  },
+  "plugin_installed": "已安装",
+  "@plugin_installed": {
+    "description": "plugin installed"
+  },
+  "unsaved_editor_changes": "编辑器有未保存更改",
+  "@unsaved_editor_changes": {
+    "description": "unsaved editor changes"
+  },
+  "editor_file_dirty": "“{name}” 有尚未写入的修改。",
+  "@editor_file_dirty": {
+    "description": "editor file dirty",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "nothing_to_save": "没有可保存的内容",
+  "@nothing_to_save": {
+    "description": "nothing to save"
+  },
+  "save_and_reload": "保存并重新加载",
+  "@save_and_reload": {
+    "description": "save and reload"
+  },
+  "saved": "已保存",
+  "@saved": {
+    "description": "saved"
+  },
+  "extension": "扩展",
+  "@extension": {
+    "description": "extension"
+  },
+  "editor_unavailable": "扩展不可用：未配置扩展文件夹。",
+  "@editor_unavailable": {
+    "description": "editor unavailable"
+  },
+  "create_extension_first": "请先创建扩展，再在此打开。",
+  "@create_extension_first": {
+    "description": "create extension first"
+  },
+  "choose_extension": "请在上方选择扩展，或从扩展面板使用“编辑源码”。",
+  "@choose_extension": {
+    "description": "choose extension"
+  },
+  "no_such_file": "没有此文件：{name}",
+  "@no_such_file": {
+    "description": "no such file",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "plugin_not_installed": "{id} 未安装",
+  "@plugin_not_installed": {
+    "description": "plugin not installed",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "snap_endpoint": "端点",
+  "@snap_endpoint": {
+    "description": "snap endpoint"
+  },
+  "snap_midpoint": "中点",
+  "@snap_midpoint": {
+    "description": "snap midpoint"
+  },
+  "snap_center": "圆心",
+  "@snap_center": {
+    "description": "snap center"
+  },
+  "snap_quadrant": "象限点",
+  "@snap_quadrant": {
+    "description": "snap quadrant"
+  },
+  "snap_intersection": "交点",
+  "@snap_intersection": {
+    "description": "snap intersection"
+  },
+  "snap_perpendicular": "垂足",
+  "@snap_perpendicular": {
+    "description": "snap perpendicular"
+  },
+  "snap_tangent": "切点",
+  "@snap_tangent": {
+    "description": "snap tangent"
+  },
+  "snap_node": "节点",
+  "@snap_node": {
+    "description": "snap node"
+  },
+  "snap_nearest": "最近点",
+  "@snap_nearest": {
+    "description": "snap nearest"
+  },
+  "category_file": "文件",
+  "@category_file": {
+    "description": "category file"
+  },
+  "category_draw": "绘图",
+  "@category_draw": {
+    "description": "category draw"
+  },
+  "category_modify": "修改",
+  "@category_modify": {
+    "description": "category modify"
+  },
+  "category_view": "视图",
+  "@category_view": {
+    "description": "category view"
+  },
+  "category_select": "选择",
+  "@category_select": {
+    "description": "category select"
+  },
+  "category_layers": "图层",
+  "@category_layers": {
+    "description": "category layers"
+  },
+  "category_inquiry": "查询",
+  "@category_inquiry": {
+    "description": "category inquiry"
+  },
+  "category_output": "输出",
+  "@category_output": {
+    "description": "category output"
+  },
+  "category_extensions": "扩展",
+  "@category_extensions": {
+    "description": "category extensions"
+  },
+  "command_file_new": "新建图纸",
+  "@command_file_new": {
+    "description": "command file new"
+  },
+  "command_file_open": "打开...",
+  "@command_file_open": {
+    "description": "command file open"
+  },
+  "command_file_save": "保存",
+  "@command_file_save": {
+    "description": "command file save"
+  },
+  "command_file_save_as": "另存为...",
+  "@command_file_save_as": {
+    "description": "command file save as"
+  },
+  "command_file_close": "关闭图纸",
+  "@command_file_close": {
+    "description": "command file close"
+  },
+  "command_file_open_recent": "打开最近文件",
+  "@command_file_open_recent": {
+    "description": "command file open recent"
+  },
+  "command_file_audit": "保真审核",
+  "@command_file_audit": {
+    "description": "command file audit"
+  },
+  "command_draw_line": "直线",
+  "@command_draw_line": {
+    "description": "command draw line"
+  },
+  "command_draw_polyline": "多段线",
+  "@command_draw_polyline": {
+    "description": "command draw polyline"
+  },
+  "command_draw_spline": "样条曲线",
+  "@command_draw_spline": {
+    "description": "command draw spline"
+  },
+  "command_draw_rectangle": "矩形",
+  "@command_draw_rectangle": {
+    "description": "command draw rectangle"
+  },
+  "command_draw_circle": "圆",
+  "@command_draw_circle": {
+    "description": "command draw circle"
+  },
+  "command_draw_circle_2p": "圆（两点）",
+  "@command_draw_circle_2p": {
+    "description": "command draw circle 2p"
+  },
+  "command_draw_circle_3p": "圆（三点）",
+  "@command_draw_circle_3p": {
+    "description": "command draw circle 3p"
+  },
+  "command_draw_circle_ttr": "圆（相切、相切、半径）",
+  "@command_draw_circle_ttr": {
+    "description": "command draw circle ttr"
+  },
+  "command_draw_donut": "圆环",
+  "@command_draw_donut": {
+    "description": "command draw donut"
+  },
+  "command_draw_arc": "圆弧",
+  "@command_draw_arc": {
+    "description": "command draw arc"
+  },
+  "command_draw_polygon": "多边形",
+  "@command_draw_polygon": {
+    "description": "command draw polygon"
+  },
+  "command_draw_ellipse": "椭圆",
+  "@command_draw_ellipse": {
+    "description": "command draw ellipse"
+  },
+  "command_draw_xline": "构造线",
+  "@command_draw_xline": {
+    "description": "command draw xline"
+  },
+  "command_draw_ray": "射线",
+  "@command_draw_ray": {
+    "description": "command draw ray"
+  },
+  "command_draw_point": "点",
+  "@command_draw_point": {
+    "description": "command draw point"
+  },
+  "command_draw_divide": "定数等分",
+  "@command_draw_divide": {
+    "description": "command draw divide"
+  },
+  "command_draw_measure": "定距等分",
+  "@command_draw_measure": {
+    "description": "command draw measure"
+  },
+  "command_draw_text": "单行文字",
+  "@command_draw_text": {
+    "description": "command draw text"
+  },
+  "command_draw_mtext": "多行文字",
+  "@command_draw_mtext": {
+    "description": "command draw mtext"
+  },
+  "command_draw_leader": "引线",
+  "@command_draw_leader": {
+    "description": "command draw leader"
+  },
+  "command_draw_hatch": "填充",
+  "@command_draw_hatch": {
+    "description": "command draw hatch"
+  },
+  "command_draw_dim_linear": "线性标注",
+  "@command_draw_dim_linear": {
+    "description": "command draw dim linear"
+  },
+  "command_draw_dim_aligned": "对齐标注",
+  "@command_draw_dim_aligned": {
+    "description": "command draw dim aligned"
+  },
+  "command_draw_dim_radius": "半径标注",
+  "@command_draw_dim_radius": {
+    "description": "command draw dim radius"
+  },
+  "command_draw_dim_diameter": "直径标注",
+  "@command_draw_dim_diameter": {
+    "description": "command draw dim diameter"
+  },
+  "command_draw_center_mark": "圆心标记",
+  "@command_draw_center_mark": {
+    "description": "command draw center mark"
+  },
+  "command_draw_center_line": "中心线",
+  "@command_draw_center_line": {
+    "description": "command draw center line"
+  },
+  "command_draw_dim_angular": "角度标注",
+  "@command_draw_dim_angular": {
+    "description": "command draw dim angular"
+  },
+  "command_draw_dim_continue": "连续标注",
+  "@command_draw_dim_continue": {
+    "description": "command draw dim continue"
+  },
+  "command_draw_dim_baseline": "基线标注",
+  "@command_draw_dim_baseline": {
+    "description": "command draw dim baseline"
+  },
+  "command_annot_dimstyle": "标注样式",
+  "@command_annot_dimstyle": {
+    "description": "command annot dimstyle"
+  },
+  "command_edit_erase": "删除",
+  "@command_edit_erase": {
+    "description": "command edit erase"
+  },
+  "command_edit_overkill": "删除重复",
+  "@command_edit_overkill": {
+    "description": "command edit overkill"
+  },
+  "command_edit_move": "移动",
+  "@command_edit_move": {
+    "description": "command edit move"
+  },
+  "command_edit_copy": "复制",
+  "@command_edit_copy": {
+    "description": "command edit copy"
+  },
+  "command_edit_stretch": "拉伸",
+  "@command_edit_stretch": {
+    "description": "command edit stretch"
+  },
+  "command_edit_rotate": "旋转",
+  "@command_edit_rotate": {
+    "description": "command edit rotate"
+  },
+  "command_edit_scale": "缩放",
+  "@command_edit_scale": {
+    "description": "command edit scale"
+  },
+  "command_edit_mirror": "镜像",
+  "@command_edit_mirror": {
+    "description": "command edit mirror"
+  },
+  "command_edit_align": "对齐",
+  "@command_edit_align": {
+    "description": "command edit align"
+  },
+  "command_edit_array": "矩形阵列",
+  "@command_edit_array": {
+    "description": "command edit array"
+  },
+  "command_edit_polar_array": "环形阵列",
+  "@command_edit_polar_array": {
+    "description": "command edit polar array"
+  },
+  "command_edit_offset": "偏移",
+  "@command_edit_offset": {
+    "description": "command edit offset"
+  },
+  "command_edit_trim": "修剪",
+  "@command_edit_trim": {
+    "description": "command edit trim"
+  },
+  "command_edit_extend": "延伸",
+  "@command_edit_extend": {
+    "description": "command edit extend"
+  },
+  "command_edit_fillet": "圆角",
+  "@command_edit_fillet": {
+    "description": "command edit fillet"
+  },
+  "command_edit_chamfer": "倒角",
+  "@command_edit_chamfer": {
+    "description": "command edit chamfer"
+  },
+  "command_edit_break": "打断",
+  "@command_edit_break": {
+    "description": "command edit break"
+  },
+  "command_edit_lengthen": "拉长",
+  "@command_edit_lengthen": {
+    "description": "command edit lengthen"
+  },
+  "command_edit_explode": "分解",
+  "@command_edit_explode": {
+    "description": "command edit explode"
+  },
+  "command_edit_block": "块",
+  "@command_edit_block": {
+    "description": "command edit block"
+  },
+  "command_edit_insert": "插入",
+  "@command_edit_insert": {
+    "description": "command edit insert"
+  },
+  "command_edit_minsert": "阵列插入",
+  "@command_edit_minsert": {
+    "description": "command edit minsert"
+  },
+  "command_block_purge": "清理未用块",
+  "@command_block_purge": {
+    "description": "command block purge"
+  },
+  "command_block_rename": "重命名块",
+  "@command_block_rename": {
+    "description": "command block rename"
+  },
+  "command_edit_join": "合并",
+  "@command_edit_join": {
+    "description": "command edit join"
+  },
+  "command_edit_close": "闭合多段线",
+  "@command_edit_close": {
+    "description": "command edit close"
+  },
+  "command_edit_open": "打开多段线",
+  "@command_edit_open": {
+    "description": "command edit open"
+  },
+  "command_edit_polyline_width": "多段线宽度",
+  "@command_edit_polyline_width": {
+    "description": "command edit polyline width"
+  },
+  "command_edit_hatch": "编辑填充",
+  "@command_edit_hatch": {
+    "description": "command edit hatch"
+  },
+  "command_edit_to_polyline": "转换为多段线",
+  "@command_edit_to_polyline": {
+    "description": "command edit to polyline"
+  },
+  "command_edit_reverse": "反转",
+  "@command_edit_reverse": {
+    "description": "command edit reverse"
+  },
+  "command_edit_undo": "撤销",
+  "@command_edit_undo": {
+    "description": "command edit undo"
+  },
+  "command_edit_redo": "重做",
+  "@command_edit_redo": {
+    "description": "command edit redo"
+  },
+  "command_edit_change_layer": "更改图层",
+  "@command_edit_change_layer": {
+    "description": "command edit change layer"
+  },
+  "command_edit_change_color": "更改颜色",
+  "@command_edit_change_color": {
+    "description": "command edit change color"
+  },
+  "command_edit_change_linetype": "更改线型",
+  "@command_edit_change_linetype": {
+    "description": "command edit change linetype"
+  },
+  "command_edit_change_lineweight": "更改线宽",
+  "@command_edit_change_lineweight": {
+    "description": "command edit change lineweight"
+  },
+  "command_edit_dimension_text": "标注文字",
+  "@command_edit_dimension_text": {
+    "description": "command edit dimension text"
+  },
+  "command_edit_dim_tedit": "移动标注文字",
+  "@command_edit_dim_tedit": {
+    "description": "command edit dim tedit"
+  },
+  "command_edit_text_content": "编辑文字",
+  "@command_edit_text_content": {
+    "description": "command edit text content"
+  },
+  "command_edit_justify_text": "文字对正",
+  "@command_edit_justify_text": {
+    "description": "command edit justify text"
+  },
+  "command_edit_match_prop": "特性匹配",
+  "@command_edit_match_prop": {
+    "description": "command edit match prop"
+  },
+  "command_view_zoom_extents": "范围缩放",
+  "@command_view_zoom_extents": {
+    "description": "command view zoom extents"
+  },
+  "command_view_zoom_window": "窗口缩放",
+  "@command_view_zoom_window": {
+    "description": "command view zoom window"
+  },
+  "command_view_zoom_in": "放大",
+  "@command_view_zoom_in": {
+    "description": "command view zoom in"
+  },
+  "command_view_zoom_out": "缩小",
+  "@command_view_zoom_out": {
+    "description": "command view zoom out"
+  },
+  "command_view_zoom_selected": "缩放到选择集",
+  "@command_view_zoom_selected": {
+    "description": "command view zoom selected"
+  },
+  "command_view_regen": "重生成",
+  "@command_view_regen": {
+    "description": "command view regen"
+  },
+  "command_select_all": "全部选择",
+  "@command_select_all": {
+    "description": "command select all"
+  },
+  "command_select_none": "取消全部选择",
+  "@command_select_none": {
+    "description": "command select none"
+  },
+  "command_select_invert": "反向选择",
+  "@command_select_invert": {
+    "description": "command select invert"
+  },
+  "command_select_similar": "选择类似",
+  "@command_select_similar": {
+    "description": "command select similar"
+  },
+  "command_select_by_layer": "按图层选择",
+  "@command_select_by_layer": {
+    "description": "command select by layer"
+  },
+  "command_select_by_color": "按颜色选择",
+  "@command_select_by_color": {
+    "description": "command select by color"
+  },
+  "command_select_by_linetype": "按线型选择",
+  "@command_select_by_linetype": {
+    "description": "command select by linetype"
+  },
+  "command_select_by_lineweight": "按线宽选择",
+  "@command_select_by_lineweight": {
+    "description": "command select by lineweight"
+  },
+  "command_select_by_type": "按类型选择",
+  "@command_select_by_type": {
+    "description": "command select by type"
+  },
+  "command_select_by_block": "按块选择",
+  "@command_select_by_block": {
+    "description": "command select by block"
+  },
+  "command_view_isolate_objects": "隔离对象",
+  "@command_view_isolate_objects": {
+    "description": "command view isolate objects"
+  },
+  "command_view_hide_objects": "隐藏对象",
+  "@command_view_hide_objects": {
+    "description": "command view hide objects"
+  },
+  "command_view_unisolate_objects": "取消隔离对象",
+  "@command_view_unisolate_objects": {
+    "description": "command view unisolate objects"
+  },
+  "command_layer_new": "新建图层",
+  "@command_layer_new": {
+    "description": "command layer new"
+  },
+  "command_layer_set_current": "设置当前图层",
+  "@command_layer_set_current": {
+    "description": "command layer set current"
+  },
+  "command_layer_toggle_visible": "切换图层可见性",
+  "@command_layer_toggle_visible": {
+    "description": "command layer toggle visible"
+  },
+  "command_layer_isolate": "隔离图层",
+  "@command_layer_isolate": {
+    "description": "command layer isolate"
+  },
+  "command_layer_show_all": "显示全部图层",
+  "@command_layer_show_all": {
+    "description": "command layer show all"
+  },
+  "command_layer_toggle_lock": "切换图层锁定",
+  "@command_layer_toggle_lock": {
+    "description": "command layer toggle lock"
+  },
+  "command_layer_delete": "删除图层",
+  "@command_layer_delete": {
+    "description": "command layer delete"
+  },
+  "command_layer_purge": "清理未用图层",
+  "@command_layer_purge": {
+    "description": "command layer purge"
+  },
+  "command_query_summary": "图纸摘要",
+  "@command_query_summary": {
+    "description": "command query summary"
+  },
+  "command_query_list": "列表",
+  "@command_query_list": {
+    "description": "command query list"
+  },
+  "command_query_entities": "查询实体",
+  "@command_query_entities": {
+    "description": "command query entities"
+  },
+  "command_query_id": "点坐标",
+  "@command_query_id": {
+    "description": "command query id"
+  },
+  "command_query_distance": "距离",
+  "@command_query_distance": {
+    "description": "command query distance"
+  },
+  "command_query_angle": "角度",
+  "@command_query_angle": {
+    "description": "command query angle"
+  },
+  "command_query_area": "面积",
+  "@command_query_area": {
+    "description": "command query area"
+  },
+  "command_query_layers": "列出图层",
+  "@command_query_layers": {
+    "description": "command query layers"
+  },
+  "command_layout_list": "列出布局",
+  "@command_layout_list": {
+    "description": "command layout list"
+  },
+  "command_layout_set": "设置布局",
+  "@command_layout_set": {
+    "description": "command layout set"
+  },
+  "command_layout_new": "新建布局",
+  "@command_layout_new": {
+    "description": "command layout new"
+  },
+  "command_layout_delete": "删除布局",
+  "@command_layout_delete": {
+    "description": "command layout delete"
+  },
+  "command_layout_copy": "复制布局",
+  "@command_layout_copy": {
+    "description": "command layout copy"
+  },
+  "command_layout_rename": "重命名布局",
+  "@command_layout_rename": {
+    "description": "command layout rename"
+  },
+  "command_layout_order": "布局顺序",
+  "@command_layout_order": {
+    "description": "command layout order"
+  },
+  "command_layout_pagesetup": "页面设置",
+  "@command_layout_pagesetup": {
+    "description": "command layout pagesetup"
+  },
+  "command_layout_mview": "创建视口",
+  "@command_layout_mview": {
+    "description": "command layout mview"
+  },
+  "command_layout_vpscale": "视口比例",
+  "@command_layout_vpscale": {
+    "description": "command layout vpscale"
+  },
+  "command_layout_vplock": "视口锁定",
+  "@command_layout_vplock": {
+    "description": "command layout vplock"
+  },
+  "command_layout_vpon": "打开视口",
+  "@command_layout_vpon": {
+    "description": "command layout vpon"
+  },
+  "command_layout_vplayer": "视口图层冻结",
+  "@command_layout_vplayer": {
+    "description": "command layout vplayer"
+  },
+  "command_layout_vpmax": "最大化视口",
+  "@command_layout_vpmax": {
+    "description": "command layout vpmax"
+  },
+  "command_layout_vpmin": "最小化视口",
+  "@command_layout_vpmin": {
+    "description": "command layout vpmin"
+  },
+  "command_print_export_svg": "导出 SVG",
+  "@command_print_export_svg": {
+    "description": "command print export svg"
+  },
+  "command_print_export_pdf": "导出 PDF",
+  "@command_print_export_pdf": {
+    "description": "command print export pdf"
+  },
+  "command_xref_attach": "附着外部参照",
+  "@command_xref_attach": {
+    "description": "command xref attach"
+  },
+  "command_xref_reload": "重载外部参照",
+  "@command_xref_reload": {
+    "description": "command xref reload"
+  },
+  "command_xref_detach": "拆离外部参照",
+  "@command_xref_detach": {
+    "description": "command xref detach"
+  },
+  "command_xref_bind": "绑定外部参照",
+  "@command_xref_bind": {
+    "description": "command xref bind"
+  },
+  "command_plugins_list": "列出扩展",
+  "@command_plugins_list": {
+    "description": "command plugins list"
+  },
+  "command_plugins_reload": "重新加载扩展",
+  "@command_plugins_reload": {
+    "description": "command plugins reload"
+  },
+  "command_plugins_enable": "启用扩展",
+  "@command_plugins_enable": {
+    "description": "command plugins enable"
+  },
+  "command_plugins_disable": "禁用扩展",
+  "@command_plugins_disable": {
+    "description": "command plugins disable"
+  },
+  "command_plugins_logs": "显示扩展日志",
+  "@command_plugins_logs": {
+    "description": "command plugins logs"
+  },
+  "command_plugins_scaffold": "创建扩展",
+  "@command_plugins_scaffold": {
+    "description": "command plugins scaffold"
+  },
+  "command_plugins_write": "写入扩展文件",
+  "@command_plugins_write": {
+    "description": "command plugins write"
+  },
+  "command_plugins_read": "读取扩展文件",
+  "@command_plugins_read": {
+    "description": "command plugins read"
+  },
+  "command_plugins_typings": "写入插件 API 类型",
+  "@command_plugins_typings": {
+    "description": "command plugins typings"
+  },
+  "command_plugins_edit": "编辑扩展文件",
+  "@command_plugins_edit": {
+    "description": "command plugins edit"
+  },
+  "command_plugins_eval": "在扩展中求值",
+  "@command_plugins_eval": {
+    "description": "command plugins eval"
+  },
+  "end": "终点",
+  "@end": {
+    "description": "end"
+  },
+  "min": "最小",
+  "@min": {
+    "description": "min"
+  },
+  "max": "最大",
+  "@max": {
+    "description": "max"
+  },
+  "objects_in_drawing_one": "此图纸有 1 个对象。",
+  "@objects_in_drawing_one": {
+    "description": "objects in drawing one"
+  },
+  "use": "使用",
+  "@use": {
+    "description": "use"
+  },
+  "objects_in_drawing_many": "此图纸有 {count} 个对象。",
+  "@objects_in_drawing_many": {
+    "description": "objects in drawing many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}

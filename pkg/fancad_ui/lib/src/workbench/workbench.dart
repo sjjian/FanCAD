@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../l10n/l10n.dart';
 import '../panels/ai_panel.dart';
 import '../panels/extensions_panel.dart';
 import '../panels/layers_panel.dart';
@@ -146,13 +147,13 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop('cancel'),
-            child: Text('Cancel', style: tokens.bodyStyle),
+            child: Text(context.l10n.cancel, style: tokens.bodyStyle),
           ),
           if (unsaved)
             TextButton(
               onPressed: () => Navigator.of(context).pop('discard'),
               child: Text(
-                "Don't save",
+                context.l10n.dont_save,
                 style: tokens.bodyStyle.copyWith(color: tokens.danger),
               ),
             ),
@@ -160,7 +161,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
             onPressed: () => Navigator.of(context).pop(
               unsaved ? 'save' : 'continue',
             ),
-            child: Text(unsaved ? 'Save' : 'Continue'),
+            child: Text(unsaved ? context.l10n.save : context.l10n.continue_action),
           ),
         ],
       ),
@@ -219,6 +220,9 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                 onSetTheme: ref
                     .read(themeBrightnessProvider.notifier)
                     .setBrightness,
+                onSetLanguage: ref
+                    .read(languageProvider.notifier)
+                    .setLanguage,
               ),
               Expanded(
                 child: Stack(
@@ -239,7 +243,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                           ),
                           Tooltip(
                             message:
-                                'Drag to resize · double-click to reset width',
+                                context.l10n.resize_reset_width,
                             waitDuration: const Duration(milliseconds: 500),
                             child: ShellSplitter(
                               axis: Axis.vertical,
@@ -289,7 +293,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                         if (assistant.isOpen) ...[
                           Tooltip(
                             message:
-                                'Drag to resize · double-click to reset width',
+                                context.l10n.resize_reset_width,
                             waitDuration: const Duration(milliseconds: 500),
                             child: ShellSplitter(
                               axis: Axis.vertical,
@@ -489,43 +493,28 @@ class _ActivityBar extends StatelessWidget {
   final String activeViewId;
   final ValueChanged<String> onSelect;
 
-  static const List<({String id, IconData icon, String label, String hint})>
-  _views = [
-    (
-      id: 'layers',
-      icon: Icons.layers_outlined,
-      label: 'Layers',
-      hint: 'Current layer, visibility and lock',
-    ),
-    (
-      id: 'properties',
-      icon: Icons.tune,
-      label: 'Properties',
-      hint: 'Inspect and change the selection',
-    ),
-    (
-      id: 'commands',
-      icon: Icons.terminal,
-      label: 'Commands',
-      hint: 'Everything the application can run',
-    ),
-    (
-      id: 'plugins',
-      icon: Icons.extension_outlined,
-      label: 'Extensions',
-      hint: 'Installed plugins and their errors',
-    ),
-    (
-      id: 'editor',
-      icon: Icons.code,
-      label: 'Re-Editor',
-      hint: 'Review extension source',
-    ),
+  static const List<({String id, IconData icon})> _views = [
+    (id: 'layers', icon: Icons.layers_outlined),
+    (id: 'properties', icon: Icons.tune),
+    (id: 'commands', icon: Icons.terminal),
+    (id: 'plugins', icon: Icons.extension_outlined),
+    (id: 'editor', icon: Icons.code),
   ];
+
+  ({String label, String hint}) _copy(AppLocalizations l10n, String id) {
+    return switch (id) {
+      'layers' => (label: l10n.layers, hint: l10n.view_layers_hint),
+      'properties' => (label: l10n.properties, hint: l10n.view_properties_hint),
+      'commands' => (label: l10n.commands, hint: l10n.view_commands_hint),
+      'plugins' => (label: l10n.extensions, hint: l10n.view_extensions_hint),
+      _ => (label: l10n.re_editor, hint: l10n.view_editor_hint),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     return Container(
       width: FanCadTokens.activityBarWidth,
       decoration: BoxDecoration(
@@ -540,9 +529,12 @@ class _ActivityBar extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 2),
               child: ShellIconButton(
                 icon: view.icon,
-                tooltip: activeViewId == view.id
-                    ? 'Hide ${view.label}\n${view.hint}'
-                    : '${view.label}\n${view.hint}',
+                tooltip: () {
+                  final copy = _copy(l10n, view.id);
+                  return activeViewId == view.id
+                      ? '${l10n.hide_view(copy.label)}\n${copy.hint}'
+                      : '${copy.label}\n${copy.hint}';
+                }(),
                 size: FanCadTokens.activityBarWidth,
                 iconSize: FanCadTokens.iconLarge,
                 isActive: activeViewId == view.id,
@@ -554,8 +546,8 @@ class _ActivityBar extends StatelessWidget {
           ShellIconButton(
             icon: Icons.menu,
             tooltip: activeViewId.isEmpty
-                ? 'Show the sidebar  ${shellShortcut('B')}'
-                : 'Hide the sidebar  ${shellShortcut('B')}',
+                ? '${l10n.show_sidebar}  ${shellShortcut('B')}'
+                : '${l10n.hide_sidebar}  ${shellShortcut('B')}',
             size: FanCadTokens.activityBarWidth,
             iconSize: FanCadTokens.iconLarge,
             onPressed: () => onSelect(
@@ -599,7 +591,13 @@ class _CommandListPanelState extends State<_CommandListPanel> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final commands = widget.workspace.commands.search(_query, limit: 500);
+    final l10n = context.l10n;
+    final commands = searchCommandsLocalized(
+      widget.workspace.commands,
+      _query,
+      l10n,
+      limit: 500,
+    );
     final lastId = widget.workspace.commands.lastCommandId;
     final last = _query.trim().isEmpty && lastId != null
         ? widget.workspace.commands.find(lastId)
@@ -614,11 +612,11 @@ class _CommandListPanelState extends State<_CommandListPanel> {
     return Column(
       children: [
         PanelHeader(
-          title: 'Commands',
+          title: l10n.commands,
           actions: [
             ShellIconButton(
               icon: Icons.search,
-              tooltip: 'Command palette  ${shellShortcut('P', shift: true)}',
+              tooltip: '${l10n.command_palette}  ${shellShortcut('P', shift: true)}',
               iconSize: FanCadTokens.iconMedium,
               onPressed: widget.onOpenPalette,
             ),
@@ -632,7 +630,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
           ),
           child: ShellTextField(
             controller: _filter,
-            hintText: 'Filter by name, alias or category',
+            hintText: l10n.filter_commands,
             style: tokens.bodyStyle,
             prefix: Padding(
               padding: const EdgeInsets.only(right: FanCadTokens.space2),
@@ -649,7 +647,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
                     icon: Icons.close,
                     size: 18,
                     iconSize: FanCadTokens.iconSmall,
-                    tooltip: 'Clear filter',
+                    tooltip: l10n.clear_filter,
                     onPressed: () {
                       _filter.clear();
                       setState(() => _query = '');
@@ -664,8 +662,8 @@ class _CommandListPanelState extends State<_CommandListPanel> {
                     padding: const EdgeInsets.all(FanCadTokens.space4),
                     child: Text(
                       _query.trim().isEmpty
-                          ? 'No commands are registered.'
-                          : 'No commands match “${_query.trim()}”.',
+                          ? l10n.no_commands_registered
+                          : l10n.no_commands_match(_query.trim()),
                       style: tokens.labelStyle,
                       textAlign: TextAlign.center,
                     ),
@@ -675,12 +673,12 @@ class _CommandListPanelState extends State<_CommandListPanel> {
                   children: [
                     if (last != null)
                       PanelSection(
-                        title: 'Last used',
+                        title: l10n.last_used,
                         children: [_commandRow(tokens, last)],
                       ),
                     for (final category in categories)
                       PanelSection(
-                        title: category,
+                        title: l10n.commandCategory(category),
                         trailing: Text(
                           '${byCategory[category]!.length}',
                           style: tokens.labelStyle,
@@ -704,8 +702,8 @@ class _CommandListPanelState extends State<_CommandListPanel> {
             border: Border(top: BorderSide(color: tokens.border)),
           ),
           child: Text(
-            '${commands.length} command${commands.length == 1 ? '' : 's'}'
-            '${_query.trim().isEmpty ? '' : ' matching'}',
+            '${l10n.commandCount(commands.length)}'
+            '${_query.trim().isEmpty ? '' : l10n.commands_matching}',
             style: tokens.labelStyle,
           ),
         ),
@@ -714,10 +712,11 @@ class _CommandListPanelState extends State<_CommandListPanel> {
   }
 
   Widget _commandRow(FanCadTokens tokens, CommandDescriptor descriptor) {
+    final l10n = context.l10n;
     final hint = [
       if (descriptor.description.isNotEmpty) descriptor.description,
       if (descriptor.aliases.isNotEmpty)
-        'Alias ${descriptor.aliases.first.toUpperCase()}',
+        l10n.alias_named(descriptor.aliases.first.toUpperCase()),
       if (descriptor.defaultKeybinding != null)
         descriptor.defaultKeybinding!.toUpperCase(),
     ].join('\n');
@@ -728,7 +727,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
         children: [
           Expanded(
             child: Text(
-              descriptor.title,
+              l10n.commandTitle(descriptor.id, descriptor.title),
               style: tokens.bodyStyle,
               overflow: TextOverflow.ellipsis,
             ),
@@ -880,7 +879,7 @@ class _NoticeToastState extends State<_NoticeToast> {
                   child: GestureDetector(
                     onTap: _copy,
                     child: Tooltip(
-                      message: 'Click to copy and dismiss',
+                      message: context.l10n.copy_and_dismiss,
                       waitDuration: const Duration(milliseconds: 500),
                       child: Text(notice.message, style: tokens.bodyStyle),
                     ),
@@ -891,7 +890,7 @@ class _NoticeToastState extends State<_NoticeToast> {
                   icon: Icons.close,
                   size: 18,
                   iconSize: FanCadTokens.iconSmall,
-                  tooltip: 'Dismiss',
+                  tooltip: context.l10n.dismiss,
                   onPressed: () =>
                       widget.workspace.dismissNotice(notice),
                 ),

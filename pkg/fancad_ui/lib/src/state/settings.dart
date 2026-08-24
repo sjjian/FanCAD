@@ -141,6 +141,7 @@ class SettingsKeys {
   const SettingsKeys._();
 
   static const String themeBrightness = 'appearance.brightness';
+  static const String language = 'appearance.language';
   static const String sidebarWidth = 'layout.sidebarWidth';
   static const String sidebarOpen = 'layout.sidebarOpen';
   static const String sidebarView = 'layout.sidebarView';

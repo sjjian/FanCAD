@@ -14,7 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   Widget wrap(ProviderContainer container) => UncontrolledProviderScope(
     container: container,
-    child: MaterialApp(theme: FanCadTheme.dark(), home: const Workbench()),
+    child: const _LocalizedWorkbench(),
   );
 
   ProviderContainer makeContainer() => ProviderContainer(
@@ -48,6 +48,25 @@ void main() {
     expect(find.byIcon(Icons.view_sidebar_outlined), findsNothing);
     expect(find.text('ASSISTANT'), findsNothing);
     expect(find.byIcon(Icons.auto_awesome_outlined), findsOneWidget);
+  });
+
+  testWidgets('switching to Simplified Chinese localizes chrome', (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final container = makeContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(wrap(container));
+    await tester.pump();
+
+    container.read(languageProvider.notifier).setLanguage(FanCadLanguage.chinese);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('图层'), findsOneWidget);
+    expect(find.text('新建图纸'), findsOneWidget);
+    expect(find.text('LAYERS'), findsNothing);
   });
 
   testWidgets('the assistant opens on the right without replacing Layers', (
@@ -198,4 +217,20 @@ void main() {
       }
     }
   });
+}
+
+class _LocalizedWorkbench extends ConsumerWidget {
+  const _LocalizedWorkbench();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final language = ref.watch(languageProvider);
+    return MaterialApp(
+      theme: FanCadTheme.dark(),
+      locale: Locale(language),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: const Workbench(),
+    );
+  }
 }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../l10n/l10n.dart';
 import '../state/document_tab.dart';
 import '../state/settings.dart';
 import '../state/workspace.dart';
@@ -26,6 +27,7 @@ class TitleBar extends StatelessWidget {
     required this.onTogglePalette,
     required this.onToggleAssistant,
     required this.onSetTheme,
+    required this.onSetLanguage,
     this.assistantOpen = false,
   });
 
@@ -33,6 +35,7 @@ class TitleBar extends StatelessWidget {
   final VoidCallback onTogglePalette;
   final VoidCallback onToggleAssistant;
   final ValueChanged<Brightness> onSetTheme;
+  final ValueChanged<String> onSetLanguage;
   final bool assistantOpen;
 
   /// Space before the first title-bar control.
@@ -65,6 +68,7 @@ class TitleBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     final tab = workspace.active;
     final title = chromeTitle(
       tabCount: workspace.tabs.length,
@@ -84,23 +88,23 @@ class TitleBar extends StatelessWidget {
           SizedBox(width: leadingInset(usesNativeTrafficLights: nativeLights)),
           ShellIconButton(
             icon: Icons.insert_drive_file_outlined,
-            tooltip: 'New drawing  ${shellShortcut('N')}',
+            tooltip: '${l10n.new_drawing}  ${shellShortcut('N')}',
             onPressed: () => workspace.run('file.new'),
           ),
           ShellIconButton(
             icon: Icons.folder_open_outlined,
-            tooltip: 'Open  ${shellShortcut('O')}',
+            tooltip: '${l10n.open}  ${shellShortcut('O')}',
             onPressed: () => workspace.run('file.open'),
           ),
           ShellIconButton(
             icon: Icons.save_outlined,
             tooltip: tab == null
-                ? 'Save  ${shellShortcut('S')}'
+                ? '${l10n.save}  ${shellShortcut('S')}'
                 : tab.isDirty
-                ? 'Save unsaved changes  ${shellShortcut('S')}'
+                ? '${l10n.save_unsaved_changes}  ${shellShortcut('S')}'
                 : tab.filePath == null
-                ? 'Save this drawing  ${shellShortcut('S')}'
-                : 'Saved — ${shellShortcut('S')} to write again',
+                ? '${l10n.save_this_drawing}  ${shellShortcut('S')}'
+                : l10n.saved_write_again(shellShortcut('S')),
             enabled: tab != null,
             isActive: tab?.isDirty ?? false,
             onPressed: () => workspace.run('file.save'),
@@ -109,13 +113,13 @@ class TitleBar extends StatelessWidget {
           const _Divider(),
           ShellIconButton(
             icon: Icons.undo,
-            tooltip: _undoTooltip(tab),
+            tooltip: _undoTooltip(l10n, tab),
             enabled: tab?.history.canUndo ?? false,
             onPressed: () => workspace.run('edit.undo'),
           ),
           ShellIconButton(
             icon: Icons.redo,
-            tooltip: _redoTooltip(tab),
+            tooltip: _redoTooltip(l10n, tab),
             enabled: tab?.history.canRedo ?? false,
             onPressed: () => workspace.run('edit.redo'),
           ),
@@ -125,7 +129,8 @@ class TitleBar extends StatelessWidget {
           for (final tool in _quickTools)
             ShellIconButton(
               icon: tool.icon,
-              tooltip: tool.tooltip,
+              tooltip:
+                  '${l10n.commandTitle(tool.commandId, tool.fallback)}  ${tool.alias}',
               enabled: tab != null,
               isActive: workspace.runningCommand == tool.commandId,
               onPressed: () => workspace.run(tool.commandId),
@@ -143,15 +148,18 @@ class TitleBar extends StatelessWidget {
           ),
           ShellIconButton(
             icon: Icons.search,
-            tooltip: 'Command palette  ${shellShortcut('P', shift: true)}',
+            tooltip: '${l10n.command_palette}  ${shellShortcut('P', shift: true)}',
             onPressed: onTogglePalette,
           ),
-          _AppearanceMenu(onSetTheme: onSetTheme),
+          _AppearanceMenu(
+            onSetTheme: onSetTheme,
+            onSetLanguage: onSetLanguage,
+          ),
           ShellIconButton(
             icon: Icons.auto_awesome_outlined,
             tooltip: assistantOpen
-                ? 'Hide assistant'
-                : 'Show assistant',
+                ? l10n.hide_assistant
+                : l10n.show_assistant,
             isActive: assistantOpen,
             onPressed: onToggleAssistant,
           ),
@@ -167,47 +175,67 @@ class TitleBar extends StatelessWidget {
   }
 
   /// Naming what will be undone turns a guess into a decision.
-  static String _undoTooltip(DocumentTab? tab) {
+  static String _undoTooltip(AppLocalizations l10n, DocumentTab? tab) {
     final label = tab?.history.nextUndoLabel;
     return label == null
-        ? 'Nothing to undo'
-        : 'Undo $label  ${shellShortcut('Z')}';
+        ? l10n.nothing_to_undo
+        : '${l10n.undo_named(label)}  ${shellShortcut('Z')}';
   }
 
-  static String _redoTooltip(DocumentTab? tab) {
+  static String _redoTooltip(AppLocalizations l10n, DocumentTab? tab) {
     final label = tab?.history.nextRedoLabel;
     return label == null
-        ? 'Nothing to redo'
-        : 'Redo $label  ${shellShortcut('Z', shift: true)}';
+        ? l10n.nothing_to_redo
+        : '${l10n.redo_named(label)}  ${shellShortcut('Z', shift: true)}';
   }
 
-  static const List<({String commandId, IconData icon, String tooltip})>
+  static const List<
+    ({String commandId, IconData icon, String alias, String fallback})
+  >
   _quickTools = [
-    (commandId: 'draw.line', icon: Icons.show_chart, tooltip: 'Line  L'),
+    (
+      commandId: 'draw.line',
+      icon: Icons.show_chart,
+      alias: 'L',
+      fallback: 'Line',
+    ),
     (
       commandId: 'draw.circle',
       icon: Icons.circle_outlined,
-      tooltip: 'Circle  C',
+      alias: 'C',
+      fallback: 'Circle',
     ),
-    (commandId: 'edit.move', icon: Icons.open_with, tooltip: 'Move  M'),
+    (
+      commandId: 'edit.move',
+      icon: Icons.open_with,
+      alias: 'M',
+      fallback: 'Move',
+    ),
   ];
 }
 
 /// Dark / Light is a choice, not a coin flip — a checked menu says which
 /// appearance is current and that the setting is kept across launches.
 class _AppearanceMenu extends StatelessWidget {
-  const _AppearanceMenu({required this.onSetTheme});
+  const _AppearanceMenu({
+    required this.onSetTheme,
+    required this.onSetLanguage,
+  });
 
   final ValueChanged<Brightness> onSetTheme;
+  final ValueChanged<String> onSetLanguage;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     final current = tokens.isDark ? Brightness.dark : Brightness.light;
-    return PopupMenuButton<Brightness>(
+    final language = Localizations.maybeLocaleOf(context)?.languageCode ??
+        FanCadLanguage.english;
+    return PopupMenuButton<String>(
       tooltip: tokens.isDark
-          ? 'Appearance — Dark. Choose Light or Dark'
-          : 'Appearance — Light. Choose Light or Dark',
+          ? l10n.appearance_dark_tooltip
+          : l10n.appearance_light_tooltip,
       padding: EdgeInsets.zero,
       offset: const Offset(0, FanCadTokens.titleBarHeight - 8),
       color: tokens.surfaceOverlay,
@@ -215,10 +243,52 @@ class _AppearanceMenu extends StatelessWidget {
         borderRadius: BorderRadius.circular(FanCadTokens.radius),
         side: BorderSide(color: tokens.borderStrong),
       ),
-      onSelected: onSetTheme,
+      onSelected: (value) {
+        if (value.startsWith('theme:')) {
+          onSetTheme(
+            value == 'theme:light' ? Brightness.light : Brightness.dark,
+          );
+          return;
+        }
+        if (value.startsWith('language:')) {
+          onSetLanguage(value.substring('language:'.length));
+        }
+      },
       itemBuilder: (context) => [
-        _item(tokens, Brightness.dark, Icons.dark_mode_outlined, 'Dark'),
-        _item(tokens, Brightness.light, Icons.light_mode_outlined, 'Light'),
+        _checked(
+          tokens,
+          'theme:dark',
+          Icons.dark_mode_outlined,
+          l10n.theme_dark,
+          current == Brightness.dark,
+        ),
+        _checked(
+          tokens,
+          'theme:light',
+          Icons.light_mode_outlined,
+          l10n.theme_light,
+          current == Brightness.light,
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          enabled: false,
+          height: 28,
+          child: Text(l10n.language, style: tokens.sectionTitleStyle),
+        ),
+        _checked(
+          tokens,
+          'language:en',
+          Icons.translate_outlined,
+          'English',
+          language == FanCadLanguage.english,
+        ),
+        _checked(
+          tokens,
+          'language:zh',
+          Icons.translate_outlined,
+          '简体中文',
+          language == FanCadLanguage.chinese,
+        ),
       ],
       child: SizedBox(
         width: 28,
@@ -234,16 +304,14 @@ class _AppearanceMenu extends StatelessWidget {
     );
   }
 
-  PopupMenuItem<Brightness> _item(
+  PopupMenuItem<String> _checked(
     FanCadTokens tokens,
-    Brightness value,
+    String value,
     IconData icon,
     String label,
+    bool selected,
   ) {
-    final selected =
-        (tokens.isDark && value == Brightness.dark) ||
-        (!tokens.isDark && value == Brightness.light);
-    return PopupMenuItem<Brightness>(
+    return PopupMenuItem<String>(
       value: value,
       height: 32,
       child: Row(
@@ -274,10 +342,11 @@ class _FileMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     final tab = workspace.active;
     final recent = workspace.settings.getStringList(SettingsKeys.recentFiles);
     return PopupMenuButton<String>(
-      tooltip: 'More file actions',
+      tooltip: l10n.more_file_actions,
       padding: EdgeInsets.zero,
       offset: const Offset(0, FanCadTokens.titleBarHeight - 8),
       color: tokens.surfaceOverlay,
@@ -301,57 +370,57 @@ class _FileMenu extends StatelessWidget {
           final removed = workspace.pruneMissingRecentFiles();
           workspace.notify(
             removed == 0
-                ? 'Every recent file is still on disk.'
+                ? l10n.recent_all_on_disk
                 : removed == 1
-                ? 'Removed 1 missing file from Recent.'
-                : 'Removed $removed missing files from Recent.',
+                ? l10n.recent_removed_one
+                : l10n.recent_removed_many(removed),
           );
           return;
         }
         workspace.run(value);
       },
       itemBuilder: (context) => [
-        _item(tokens, 'file.new', 'New drawing', shellShortcut('N')),
-        _item(tokens, 'file.open', 'Open…', shellShortcut('O')),
+        _item(tokens, 'file.new', l10n.new_drawing, shellShortcut('N')),
+        _item(tokens, 'file.open', l10n.open_ellipsis, shellShortcut('O')),
         if (recent.isNotEmpty) ...[
           const PopupMenuDivider(),
           PopupMenuItem<String>(
             enabled: false,
             height: 28,
-            child: Text('Recent', style: tokens.sectionTitleStyle),
+            child: Text(l10n.recent, style: tokens.sectionTitleStyle),
           ),
           for (final path in recent.take(8)) _recentItem(context, tokens, path),
           if (recent.any((path) => !File(path).existsSync()))
             PopupMenuItem<String>(
               value: 'pruneRecent',
               height: 32,
-              child: Text('Remove missing', style: tokens.bodyStyle),
+              child: Text(l10n.remove_missing, style: tokens.bodyStyle),
             ),
           PopupMenuItem<String>(
             value: 'clearRecent',
             height: 32,
-            child: Text('Clear recent', style: tokens.bodyStyle),
+            child: Text(l10n.clear_recent, style: tokens.bodyStyle),
           ),
         ],
         const PopupMenuDivider(),
         _item(
           tokens,
           'file.save',
-          'Save',
+          l10n.save,
           shellShortcut('S'),
           enabled: tab != null,
         ),
         _item(
           tokens,
           'file.saveAs',
-          'Save As…',
+          l10n.save_as,
           shellShortcut('S', shift: true),
           enabled: tab != null,
         ),
         _item(
           tokens,
           'file.close',
-          'Close drawing',
+          l10n.close_drawing,
           shellShortcut('W'),
           enabled: tab != null,
         ),
@@ -369,6 +438,7 @@ class _FileMenu extends StatelessWidget {
     FanCadTokens tokens,
     String path,
   ) {
+    final l10n = context.l10n;
     final exists = File(path).existsSync();
     return PopupMenuItem<String>(
       value: 'recent:$path',
@@ -377,7 +447,7 @@ class _FileMenu extends StatelessWidget {
         children: [
           Expanded(
             child: Tooltip(
-              message: exists ? path : 'Missing — $path',
+              message: exists ? path : l10n.missing_path(path),
               child: Text(
                 _fileName(path),
                 style: tokens.bodyStyle.copyWith(
@@ -390,11 +460,11 @@ class _FileMenu extends StatelessWidget {
           ),
           if (exists)
             Tooltip(
-              message: _revealLabel,
+              message: l10n.revealInFolder(),
               child: InkWell(
                 onTap: () {
                   Navigator.of(context).pop();
-                  unawaited(_revealOnDisk(path));
+                  unawaited(_revealOnDisk(path, l10n));
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(4),
@@ -411,13 +481,7 @@ class _FileMenu extends StatelessWidget {
     );
   }
 
-  static String get _revealLabel {
-    if (Platform.isMacOS) return 'Show in Finder';
-    if (Platform.isWindows) return 'Show in Explorer';
-    return 'Show in folder';
-  }
-
-  Future<void> _revealOnDisk(String path) async {
+  Future<void> _revealOnDisk(String path, AppLocalizations l10n) async {
     try {
       if (Platform.isMacOS) {
         await Process.start('open', ['-R', path]);
@@ -427,7 +491,7 @@ class _FileMenu extends StatelessWidget {
         await Process.start('xdg-open', [File(path).parent.path]);
       }
     } catch (error) {
-      workspace.notify('Could not reveal $path: $error', isError: true);
+      workspace.notify(l10n.could_not_reveal(path, '$error'), isError: true);
     }
   }
 
@@ -498,7 +562,7 @@ class DocumentTabStrip extends StatelessWidget {
           if (tabs.length > 1) _OpenDrawingsMenu(workspace: workspace),
           ShellIconButton(
             icon: Icons.add,
-            tooltip: 'New drawing  ${shellShortcut('N')}',
+            tooltip: '${context.l10n.new_drawing}  ${shellShortcut('N')}',
             onPressed: () => workspace.run('file.new'),
           ),
           const SizedBox(width: FanCadTokens.space1),
@@ -520,7 +584,7 @@ class _OpenDrawingsMenu extends StatelessWidget {
     final tokens = context.tokens;
     final tabs = workspace.tabs;
     return PopupMenuButton<int>(
-      tooltip: 'Open drawings (${tabs.length})',
+      tooltip: context.l10n.open_drawings(tabs.length),
       padding: EdgeInsets.zero,
       offset: const Offset(0, FanCadTokens.tabBarHeight - 6),
       color: tokens.surfaceOverlay,
@@ -638,9 +702,9 @@ class _TabState extends State<_Tab> {
                   child: GestureDetector(
                     onTap: () => _showImportWarnings(),
                     child: Tooltip(
-                      message:
-                          '${tab.diagnostics.length} import warning(s) — '
-                          'click to read',
+                      message: context.l10n.import_warnings_tooltip(
+                        tab.diagnostics.length,
+                      ),
                       child: Icon(
                         Icons.warning_amber_rounded,
                         size: FanCadTokens.iconSmall,
@@ -652,9 +716,9 @@ class _TabState extends State<_Tab> {
               Tooltip(
                 message: tab.isDirty
                     ? tab.filePath == null
-                          ? 'Unsaved drawing'
-                          : 'Unsaved changes — ${tab.filePath}'
-                    : tab.filePath ?? 'Unsaved drawing',
+                          ? context.l10n.unsaved_drawing
+                          : context.l10n.unsaved_changes_path(tab.filePath!)
+                    : tab.filePath ?? context.l10n.unsaved_drawing,
                 waitDuration: const Duration(milliseconds: 500),
                 child: Text(
                   tab.title,
@@ -674,8 +738,8 @@ class _TabState extends State<_Tab> {
                         size: 18,
                         iconSize: FanCadTokens.iconSmall,
                         tooltip: tab.isDirty
-                            ? 'Close — unsaved changes  ${shellShortcut('W')}'
-                            : 'Close  ${shellShortcut('W')}',
+                            ? '${context.l10n.close_unsaved}  ${shellShortcut('W')}'
+                            : '${context.l10n.close}  ${shellShortcut('W')}',
                         onPressed: widget.onClose,
                       )
                     : tab.isDirty
@@ -700,6 +764,7 @@ class _TabState extends State<_Tab> {
 
   Future<void> _openMenu(Offset globalPosition) async {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     final workspace = widget.workspace;
     final tab = widget.tab;
     final others = workspace.tabs.length > 1;
@@ -721,18 +786,18 @@ class _TabState extends State<_Tab> {
         PopupMenuItem(
           value: 'close',
           height: 32,
-          child: Text('Close', style: tokens.bodyStyle),
+          child: Text(l10n.close, style: tokens.bodyStyle),
         ),
         PopupMenuItem(
           value: 'closeOthers',
           enabled: others,
           height: 32,
-          child: Text('Close others', style: tokens.bodyStyle),
+          child: Text(l10n.close_others, style: tokens.bodyStyle),
         ),
         PopupMenuItem(
           value: 'closeAll',
           height: 32,
-          child: Text('Close all', style: tokens.bodyStyle),
+          child: Text(l10n.close_all, style: tokens.bodyStyle),
         ),
         if (path != null || tab.diagnostics.isNotEmpty) ...[
           const PopupMenuDivider(),
@@ -740,20 +805,20 @@ class _TabState extends State<_Tab> {
             PopupMenuItem(
               value: 'copyPath',
               height: 32,
-              child: Text('Copy path', style: tokens.bodyStyle),
+              child: Text(l10n.copy_path, style: tokens.bodyStyle),
             ),
           if (path != null)
             PopupMenuItem(
               value: 'reveal',
               height: 32,
-              child: Text(_revealLabel, style: tokens.bodyStyle),
+              child: Text(l10n.revealInFolder(), style: tokens.bodyStyle),
             ),
           if (tab.diagnostics.isNotEmpty)
             PopupMenuItem(
               value: 'warnings',
               height: 32,
               child: Text(
-                'Import warnings (${tab.diagnostics.length})',
+                l10n.import_warnings(tab.diagnostics.length),
                 style: tokens.bodyStyle,
               ),
             ),
@@ -771,22 +836,16 @@ class _TabState extends State<_Tab> {
       case 'copyPath':
         if (path == null) return;
         await Clipboard.setData(ClipboardData(text: path));
-        workspace.notify('Copied $path');
+        workspace.notify(l10n.copied_path(path));
       case 'reveal':
         if (path == null) return;
-        await _revealOnDisk(path);
+        await _revealOnDisk(path, l10n);
       case 'warnings':
         await _showImportWarnings();
     }
   }
 
-  static String get _revealLabel {
-    if (Platform.isMacOS) return 'Show in Finder';
-    if (Platform.isWindows) return 'Show in Explorer';
-    return 'Show in folder';
-  }
-
-  Future<void> _revealOnDisk(String path) async {
+  Future<void> _revealOnDisk(String path, AppLocalizations l10n) async {
     try {
       if (Platform.isMacOS) {
         await Process.start('open', ['-R', path]);
@@ -796,12 +855,13 @@ class _TabState extends State<_Tab> {
         await Process.start('xdg-open', [File(path).parent.path]);
       }
     } catch (error) {
-      widget.workspace.notify('Could not reveal $path: $error', isError: true);
+      widget.workspace.notify(l10n.could_not_reveal(path, '$error'), isError: true);
     }
   }
 
   Future<void> _showImportWarnings() async {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     final diagnostics = widget.tab.diagnostics;
     if (diagnostics.isEmpty) return;
     await showDialog<void>(
@@ -814,8 +874,7 @@ class _TabState extends State<_Tab> {
           side: BorderSide(color: tokens.borderStrong),
         ),
         title: Text(
-          '${diagnostics.length} import warning'
-          '${diagnostics.length == 1 ? '' : 's'}',
+          l10n.importWarningTitle(diagnostics.length),
           style: tokens.bodyStyle.copyWith(fontSize: 15),
         ),
         content: SizedBox(
@@ -839,15 +898,15 @@ class _TabState extends State<_Tab> {
             onPressed: () {
               Clipboard.setData(ClipboardData(text: diagnostics.join('\n')));
               widget.workspace.notify(
-                'Copied ${diagnostics.length} warning(s)',
+                l10n.copied_warnings(diagnostics.length),
               );
               Navigator.of(context).pop();
             },
-            child: Text('Copy all', style: tokens.bodyStyle),
+            child: Text(l10n.copy_all, style: tokens.bodyStyle),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+            child: Text(l10n.close),
           ),
         ],
       ),
@@ -936,18 +995,18 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
     children: [
       ShellIconButton(
         icon: Icons.remove,
-        tooltip: 'Minimise',
+        tooltip: context.l10n.minimise,
         onPressed: windowManager.minimize,
       ),
       ShellIconButton(
         icon: _maximized ? Icons.filter_none : Icons.crop_square,
         iconSize: FanCadTokens.iconSmall,
-        tooltip: _maximized ? 'Restore' : 'Maximise',
+        tooltip: _maximized ? context.l10n.restore : context.l10n.maximise,
         onPressed: _toggleMaximize,
       ),
       ShellIconButton(
         icon: Icons.close,
-        tooltip: 'Close window',
+        tooltip: context.l10n.close_window,
         destructive: true,
         onPressed: windowManager.close,
       ),
