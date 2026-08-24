@@ -87,16 +87,18 @@ List<String> _resolveBundledPluginDirectories() {
 Future<void> _configureWindow() async {
   if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) return;
   await windowManager.ensureInitialized();
-  // The title bar is drawn by the application, so the OS one is hidden. The
-  // window is shown only once it has been sized, which avoids the flash of a
-  // default-sized window that `windowManager` otherwise produces.
-  const options = WindowOptions(
-    size: Size(1440, 900),
-    minimumSize: Size(900, 600),
+  // The title bar is drawn by the application. On macOS, `hidden` still
+  // keeps the native traffic lights and lets Flutter draw under them; the
+  // title bar pads its leading edge so the first icon is clear. Windows
+  // and Linux hide the OS buttons and draw our own on the right.
+  final options = WindowOptions(
+    size: const Size(1440, 900),
+    minimumSize: const Size(900, 600),
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
+    windowButtonVisibility: Platform.isMacOS,
     title: 'FanCAD',
   );
   await windowManager.waitUntilReadyToShow(options, () async {
