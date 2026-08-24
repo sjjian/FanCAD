@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 
 /// A modifier-aware shortcut label for chrome that mentions keystrokes.
@@ -364,9 +365,9 @@ class PropertyRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final tooltip = onTap != null
-        ? 'Click to change $label'
+        ? context.l10n.click_to_change(label)
         : copyText != null
-        ? 'Click to copy $label'
+        ? context.l10n.click_to_copy_label(label)
         : null;
     Widget row = ShellRow(
       onTap: onTap ?? (copyText == null ? null : () => _copy(context)),
@@ -660,28 +661,28 @@ class EmptyWorkspace extends StatelessWidget {
                 ),
                 const SizedBox(height: FanCadTokens.space1),
                 Text(
-                  'An AI-native, plugin-everything 2D CAD',
+                  context.l10n.empty_tagline,
                   style: tokens.labelStyle.copyWith(fontSize: 13),
                 ),
                 const SizedBox(height: FanCadTokens.space5),
                 _Action(
-                  label: 'New drawing',
+                  label: context.l10n.new_drawing,
                   shortcut: shellShortcut('N'),
                   onPressed: onNew,
                 ),
                 _Action(
-                  label: 'Open a DWG, DXF or FCB file',
+                  label: context.l10n.open_drawing_file,
                   shortcut: shellShortcut('O'),
                   onPressed: onOpen,
                 ),
                 _Action(
-                  label: 'Show all commands',
+                  label: context.l10n.show_all_commands,
                   shortcut: shellShortcut('P', shift: true),
                   onPressed: onShowCommands,
                 ),
                 if (recentFiles.isNotEmpty) ...[
                   const SizedBox(height: FanCadTokens.space5),
-                  Text('RECENT', style: tokens.sectionTitleStyle),
+                  Text(context.l10n.recent.toUpperCase(), style: tokens.sectionTitleStyle),
                   const SizedBox(height: FanCadTokens.space2),
                   for (final path in recentFiles.take(8))
                     _Recent(path: path, onPressed: () => onOpenRecent(path)),
@@ -743,8 +744,9 @@ class _Recent extends StatelessWidget {
         ? parts.sublist(0, parts.length - 1).join(separator)
         : '';
     final missing = !File(path).existsSync();
+    final l10n = context.l10n;
     return Tooltip(
-      message: missing ? 'Missing — $path' : path,
+      message: missing ? l10n.missing_path(path) : path,
       waitDuration: const Duration(milliseconds: 400),
       child: ShellRow(
         onTap: onPressed,
@@ -771,7 +773,7 @@ class _Recent extends StatelessWidget {
             const SizedBox(width: FanCadTokens.space2),
             Expanded(
               child: Text(
-                missing ? 'Missing · $folder' : folder,
+                missing ? l10n.missing_folder(folder) : folder,
                 style: tokens.labelStyle,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -781,7 +783,7 @@ class _Recent extends StatelessWidget {
                 icon: Icons.folder_open_outlined,
                 size: 20,
                 iconSize: FanCadTokens.iconSmall,
-                tooltip: _revealLabel,
+                tooltip: l10n.revealInFolder(),
                 onPressed: () => _revealOnDisk(path),
               ),
           ],
@@ -789,12 +791,6 @@ class _Recent extends StatelessWidget {
       ),
     );
   }
-}
-
-String get _revealLabel {
-  if (Platform.isMacOS) return 'Show in Finder';
-  if (Platform.isWindows) return 'Show in Explorer';
-  return 'Show in folder';
 }
 
 Future<void> _revealOnDisk(String path) async {

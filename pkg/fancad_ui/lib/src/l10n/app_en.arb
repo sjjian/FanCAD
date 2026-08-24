@@ -1,0 +1,2082 @@
+{
+  "@@locale": "en",
+  "language": "Language",
+  "@language": {
+    "description": "language"
+  },
+  "theme": "Theme",
+  "@theme": {
+    "description": "theme"
+  },
+  "theme_dark": "Dark",
+  "@theme_dark": {
+    "description": "theme dark"
+  },
+  "theme_light": "Light",
+  "@theme_light": {
+    "description": "theme light"
+  },
+  "appearance_dark_tooltip": "Appearance — Dark. Choose Light or Dark",
+  "@appearance_dark_tooltip": {
+    "description": "appearance dark tooltip"
+  },
+  "appearance_light_tooltip": "Appearance — Light. Choose Light or Dark",
+  "@appearance_light_tooltip": {
+    "description": "appearance light tooltip"
+  },
+  "new_drawing": "New drawing",
+  "@new_drawing": {
+    "description": "new drawing"
+  },
+  "open": "Open",
+  "@open": {
+    "description": "open"
+  },
+  "open_ellipsis": "Open…",
+  "@open_ellipsis": {
+    "description": "open ellipsis"
+  },
+  "save": "Save",
+  "@save": {
+    "description": "save"
+  },
+  "save_as": "Save As…",
+  "@save_as": {
+    "description": "save as"
+  },
+  "save_unsaved_changes": "Save unsaved changes",
+  "@save_unsaved_changes": {
+    "description": "save unsaved changes"
+  },
+  "save_this_drawing": "Save this drawing",
+  "@save_this_drawing": {
+    "description": "save this drawing"
+  },
+  "saved_write_again": "Saved — {shortcut} to write again",
+  "@saved_write_again": {
+    "description": "saved write again",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
+  "close_drawing": "Close drawing",
+  "@close_drawing": {
+    "description": "close drawing"
+  },
+  "command_palette": "Command palette",
+  "@command_palette": {
+    "description": "command palette"
+  },
+  "hide_assistant": "Hide assistant",
+  "@hide_assistant": {
+    "description": "hide assistant"
+  },
+  "show_assistant": "Show assistant",
+  "@show_assistant": {
+    "description": "show assistant"
+  },
+  "nothing_to_undo": "Nothing to undo",
+  "@nothing_to_undo": {
+    "description": "nothing to undo"
+  },
+  "nothing_to_redo": "Nothing to redo",
+  "@nothing_to_redo": {
+    "description": "nothing to redo"
+  },
+  "undo_named": "Undo {label}",
+  "@undo_named": {
+    "description": "undo named",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "redo_named": "Redo {label}",
+  "@redo_named": {
+    "description": "redo named",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "undo": "Undo",
+  "@undo": {
+    "description": "undo"
+  },
+  "redo": "Redo",
+  "@redo": {
+    "description": "redo"
+  },
+  "more_file_actions": "More file actions",
+  "@more_file_actions": {
+    "description": "more file actions"
+  },
+  "recent": "Recent",
+  "@recent": {
+    "description": "recent"
+  },
+  "remove_missing": "Remove missing",
+  "@remove_missing": {
+    "description": "remove missing"
+  },
+  "clear_recent": "Clear recent",
+  "@clear_recent": {
+    "description": "clear recent"
+  },
+  "recent_all_on_disk": "Every recent file is still on disk.",
+  "@recent_all_on_disk": {
+    "description": "recent all on disk"
+  },
+  "recent_removed_one": "Removed 1 missing file from Recent.",
+  "@recent_removed_one": {
+    "description": "recent removed one"
+  },
+  "recent_removed_many": "Removed {count} missing files from Recent.",
+  "@recent_removed_many": {
+    "description": "recent removed many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "missing_path": "Missing — {path}",
+  "@missing_path": {
+    "description": "missing path",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "missing_folder": "Missing · {folder}",
+  "@missing_folder": {
+    "description": "missing folder",
+    "placeholders": {
+      "folder": {
+        "type": "String"
+      }
+    }
+  },
+  "show_in_finder": "Show in Finder",
+  "@show_in_finder": {
+    "description": "show in finder"
+  },
+  "show_in_explorer": "Show in Explorer",
+  "@show_in_explorer": {
+    "description": "show in explorer"
+  },
+  "show_in_folder": "Show in folder",
+  "@show_in_folder": {
+    "description": "show in folder"
+  },
+  "could_not_reveal": "Could not reveal {path}: {error}",
+  "@could_not_reveal": {
+    "description": "could not reveal",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "could_not_open": "Could not open {path}: {error}",
+  "@could_not_open": {
+    "description": "could not open",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "copied_path": "Copied {path}",
+  "@copied_path": {
+    "description": "copied path",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "open_drawings": "Open drawings ({count})",
+  "@open_drawings": {
+    "description": "open drawings",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "import_warnings_tooltip": "{count} import warning(s) — click to read",
+  "@import_warnings_tooltip": {
+    "description": "import warnings tooltip",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "unsaved_drawing": "Unsaved drawing",
+  "@unsaved_drawing": {
+    "description": "unsaved drawing"
+  },
+  "unsaved_changes_path": "Unsaved changes — {path}",
+  "@unsaved_changes_path": {
+    "description": "unsaved changes path",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "close": "Close",
+  "@close": {
+    "description": "close"
+  },
+  "close_unsaved": "Close — unsaved changes",
+  "@close_unsaved": {
+    "description": "close unsaved"
+  },
+  "close_others": "Close others",
+  "@close_others": {
+    "description": "close others"
+  },
+  "close_all": "Close all",
+  "@close_all": {
+    "description": "close all"
+  },
+  "copy_path": "Copy path",
+  "@copy_path": {
+    "description": "copy path"
+  },
+  "import_warnings": "Import warnings ({count})",
+  "@import_warnings": {
+    "description": "import warnings",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "import_warning_title_one": "1 import warning",
+  "@import_warning_title_one": {
+    "description": "import warning title one"
+  },
+  "import_warning_title_many": "{count} import warnings",
+  "@import_warning_title_many": {
+    "description": "import warning title many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "copied_warnings": "Copied {count} warning(s)",
+  "@copied_warnings": {
+    "description": "copied warnings",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "copy_all": "Copy all",
+  "@copy_all": {
+    "description": "copy all"
+  },
+  "minimise": "Minimise",
+  "@minimise": {
+    "description": "minimise"
+  },
+  "restore": "Restore",
+  "@restore": {
+    "description": "restore"
+  },
+  "maximise": "Maximise",
+  "@maximise": {
+    "description": "maximise"
+  },
+  "close_window": "Close window",
+  "@close_window": {
+    "description": "close window"
+  },
+  "layers": "Layers",
+  "@layers": {
+    "description": "layers"
+  },
+  "properties": "Properties",
+  "@properties": {
+    "description": "properties"
+  },
+  "commands": "Commands",
+  "@commands": {
+    "description": "commands"
+  },
+  "extensions": "Extensions",
+  "@extensions": {
+    "description": "extensions"
+  },
+  "re_editor": "Re-Editor",
+  "@re_editor": {
+    "description": "re editor"
+  },
+  "assistant": "Assistant",
+  "@assistant": {
+    "description": "assistant"
+  },
+  "view_layers_hint": "Current layer, visibility and lock",
+  "@view_layers_hint": {
+    "description": "view layers hint"
+  },
+  "view_properties_hint": "Inspect and change the selection",
+  "@view_properties_hint": {
+    "description": "view properties hint"
+  },
+  "view_commands_hint": "Everything the application can run",
+  "@view_commands_hint": {
+    "description": "view commands hint"
+  },
+  "view_extensions_hint": "Installed plugins and their errors",
+  "@view_extensions_hint": {
+    "description": "view extensions hint"
+  },
+  "view_editor_hint": "Review extension source",
+  "@view_editor_hint": {
+    "description": "view editor hint"
+  },
+  "hide_view": "Hide {label}",
+  "@hide_view": {
+    "description": "hide view",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "show_sidebar": "Show the sidebar",
+  "@show_sidebar": {
+    "description": "show sidebar"
+  },
+  "hide_sidebar": "Hide the sidebar",
+  "@hide_sidebar": {
+    "description": "hide sidebar"
+  },
+  "resize_reset_width": "Drag to resize · double-click to reset width",
+  "@resize_reset_width": {
+    "description": "resize reset width"
+  },
+  "resize_collapse": "Drag to resize · double-click to collapse",
+  "@resize_collapse": {
+    "description": "resize collapse"
+  },
+  "resize_expand": "Drag to resize · double-click to expand",
+  "@resize_expand": {
+    "description": "resize expand"
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "cancel"
+  },
+  "dont_save": "Don't save",
+  "@dont_save": {
+    "description": "dont save"
+  },
+  "continue_action": "Continue",
+  "@continue_action": {
+    "description": "continue action"
+  },
+  "filter_commands": "Filter by name, alias or category",
+  "@filter_commands": {
+    "description": "filter commands"
+  },
+  "clear_filter": "Clear filter",
+  "@clear_filter": {
+    "description": "clear filter"
+  },
+  "no_commands_registered": "No commands are registered.",
+  "@no_commands_registered": {
+    "description": "no commands registered"
+  },
+  "no_commands_match": "No commands match “{query}”.",
+  "@no_commands_match": {
+    "description": "no commands match",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "last_used": "Last used",
+  "@last_used": {
+    "description": "last used"
+  },
+  "commands_count_one": "1 command",
+  "@commands_count_one": {
+    "description": "commands count one"
+  },
+  "commands_count_many": "{count} commands",
+  "@commands_count_many": {
+    "description": "commands count many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commands_matching": " matching",
+  "@commands_matching": {
+    "description": "commands matching"
+  },
+  "alias_named": "Alias {alias}",
+  "@alias_named": {
+    "description": "alias named",
+    "placeholders": {
+      "alias": {
+        "type": "String"
+      }
+    }
+  },
+  "copy_and_dismiss": "Click to copy and dismiss",
+  "@copy_and_dismiss": {
+    "description": "copy and dismiss"
+  },
+  "dismiss": "Dismiss",
+  "@dismiss": {
+    "description": "dismiss"
+  },
+  "search_commands": "Search commands, aliases or categories",
+  "@search_commands": {
+    "description": "search commands"
+  },
+  "clear_search": "Clear search",
+  "@clear_search": {
+    "description": "clear search"
+  },
+  "start_typing_command": "Start typing to find a command.",
+  "@start_typing_command": {
+    "description": "start typing command"
+  },
+  "try_alias_or_category": "Try an alias such as L, C or M, or a category like Draw.",
+  "@try_alias_or_category": {
+    "description": "try alias or category"
+  },
+  "palette_hints": "↑↓  move   Enter  run   Esc  close",
+  "@palette_hints": {
+    "description": "palette hints"
+  },
+  "last_badge": "Last",
+  "@last_badge": {
+    "description": "last badge"
+  },
+  "empty_tagline": "An AI-native, plugin-everything 2D CAD",
+  "@empty_tagline": {
+    "description": "empty tagline"
+  },
+  "open_drawing_file": "Open a DWG, DXF or FCB file",
+  "@open_drawing_file": {
+    "description": "open drawing file"
+  },
+  "show_all_commands": "Show all commands",
+  "@show_all_commands": {
+    "description": "show all commands"
+  },
+  "command_history_hint": "Command history will appear here. Click a line to reuse it, or press ↑ to recall the last thing you typed.",
+  "@command_history_hint": {
+    "description": "command history hint"
+  },
+  "collapse_history": "Collapse command history",
+  "@collapse_history": {
+    "description": "collapse history"
+  },
+  "expand_history": "Expand command history",
+  "@expand_history": {
+    "description": "expand history"
+  },
+  "copied_history": "Copied command history",
+  "@copied_history": {
+    "description": "copied history"
+  },
+  "hint_click_or_type": "Click in the drawing, or type a value",
+  "@hint_click_or_type": {
+    "description": "hint click or type"
+  },
+  "hint_type_command": "Type a command",
+  "@hint_type_command": {
+    "description": "hint type command"
+  },
+  "command_history": "Command history",
+  "@command_history": {
+    "description": "command history"
+  },
+  "copy_history": "Copy history",
+  "@copy_history": {
+    "description": "copy history"
+  },
+  "clear_history": "Clear history",
+  "@clear_history": {
+    "description": "clear history"
+  },
+  "snap": "SNAP",
+  "@snap": {
+    "description": "snap"
+  },
+  "ortho": "ORTHO",
+  "@ortho": {
+    "description": "ortho"
+  },
+  "polar": "POLAR",
+  "@polar": {
+    "description": "polar"
+  },
+  "grid": "GRID",
+  "@grid": {
+    "description": "grid"
+  },
+  "snap_tooltip": "Object snapping (F3). Right-click to choose Endpoint, Midpoint…",
+  "@snap_tooltip": {
+    "description": "snap tooltip"
+  },
+  "ortho_tooltip": "Constrain to horizontal and vertical (F8)",
+  "@ortho_tooltip": {
+    "description": "ortho tooltip"
+  },
+  "polar_tooltip": "Polar tracking (F10) — {degrees}°. Right-click to change the increment",
+  "@polar_tooltip": {
+    "description": "polar tooltip",
+    "placeholders": {
+      "degrees": {
+        "type": "int"
+      }
+    }
+  },
+  "grid_tooltip": "Reference grid (F7)",
+  "@grid_tooltip": {
+    "description": "grid tooltip"
+  },
+  "selected_count": "{count} selected",
+  "@selected_count": {
+    "description": "selected count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nothing_selected": "Nothing selected",
+  "@nothing_selected": {
+    "description": "nothing selected"
+  },
+  "open_properties_selection": "Open properties for the selection",
+  "@open_properties_selection": {
+    "description": "open properties selection"
+  },
+  "objects_count": "{count} objects",
+  "@objects_count": {
+    "description": "objects count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "drawing_empty": "The drawing is empty",
+  "@drawing_empty": {
+    "description": "drawing empty"
+  },
+  "select_every_object": "Select every object",
+  "@select_every_object": {
+    "description": "select every object"
+  },
+  "zoom_extents_tooltip": "Zoom extents — fit the drawing in the window",
+  "@zoom_extents_tooltip": {
+    "description": "zoom extents tooltip"
+  },
+  "scene_stats_tooltip": "Batches drawn / entities visible in the viewport",
+  "@scene_stats_tooltip": {
+    "description": "scene stats tooltip"
+  },
+  "draw_calls_visible": "{calls} draw calls · {visible} visible",
+  "@draw_calls_visible": {
+    "description": "draw calls visible",
+    "placeholders": {
+      "calls": {
+        "type": "int"
+      },
+      "visible": {
+        "type": "int"
+      }
+    }
+  },
+  "restore_defaults": "Restore defaults",
+  "@restore_defaults": {
+    "description": "restore defaults"
+  },
+  "layer_hidden": "hidden",
+  "@layer_hidden": {
+    "description": "layer hidden"
+  },
+  "layer_locked": "locked",
+  "@layer_locked": {
+    "description": "layer locked"
+  },
+  "current_layer_named": "Current layer \"{name}\"",
+  "@current_layer_named": {
+    "description": "current layer named",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "current_layer_hint": "Click to manage layers. Right-click to turn on or unlock",
+  "@current_layer_hint": {
+    "description": "current layer hint"
+  },
+  "turn_layer_on": "Turn layer on",
+  "@turn_layer_on": {
+    "description": "turn layer on"
+  },
+  "turn_layer_off": "Turn layer off",
+  "@turn_layer_off": {
+    "description": "turn layer off"
+  },
+  "unlock_layer": "Unlock layer",
+  "@unlock_layer": {
+    "description": "unlock layer"
+  },
+  "lock_layer": "Lock layer",
+  "@lock_layer": {
+    "description": "lock layer"
+  },
+  "manage_layers": "Manage layers",
+  "@manage_layers": {
+    "description": "manage layers"
+  },
+  "cursor": "Cursor",
+  "@cursor": {
+    "description": "cursor"
+  },
+  "use_as_next_point": "Use {text} as the next point",
+  "@use_as_next_point": {
+    "description": "use as next point",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "copy_text": "Copy {text}",
+  "@copy_text": {
+    "description": "copy text",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "copied_text": "Copied {text}",
+  "@copied_text": {
+    "description": "copied text",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "cancel_named": "Cancel {name}",
+  "@cancel_named": {
+    "description": "cancel named",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "erase": "Erase",
+  "@erase": {
+    "description": "erase"
+  },
+  "move": "Move",
+  "@move": {
+    "description": "move"
+  },
+  "copy": "Copy",
+  "@copy": {
+    "description": "copy"
+  },
+  "isolate": "Isolate",
+  "@isolate": {
+    "description": "isolate"
+  },
+  "hide": "Hide",
+  "@hide": {
+    "description": "hide"
+  },
+  "deselect": "Deselect",
+  "@deselect": {
+    "description": "deselect"
+  },
+  "select_all": "Select all",
+  "@select_all": {
+    "description": "select all"
+  },
+  "zoom_extents": "Zoom extents",
+  "@zoom_extents": {
+    "description": "zoom extents"
+  },
+  "zoom_window": "Zoom window",
+  "@zoom_window": {
+    "description": "zoom window"
+  },
+  "zoom_to_selection": "Zoom to selection",
+  "@zoom_to_selection": {
+    "description": "zoom to selection"
+  },
+  "show_hidden_objects": "Show hidden objects",
+  "@show_hidden_objects": {
+    "description": "show hidden objects"
+  },
+  "no_hidden_objects": "No hidden objects",
+  "@no_hidden_objects": {
+    "description": "no hidden objects"
+  },
+  "one_object_hidden": "1 object is hidden",
+  "@one_object_hidden": {
+    "description": "one object hidden"
+  },
+  "many_objects_hidden": "{count} objects are hidden",
+  "@many_objects_hidden": {
+    "description": "many objects hidden",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "show_all": "Show all",
+  "@show_all": {
+    "description": "show all"
+  },
+  "one_layer_off": "1 layer is off",
+  "@one_layer_off": {
+    "description": "one layer off"
+  },
+  "many_layers_off": "{count} layers are off",
+  "@many_layers_off": {
+    "description": "many layers off",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "show_all_layers": "Show all layers",
+  "@show_all_layers": {
+    "description": "show all layers"
+  },
+  "current_layer_locked": "Current layer \"{name}\" is locked",
+  "@current_layer_locked": {
+    "description": "current layer locked",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unlock": "Unlock",
+  "@unlock": {
+    "description": "unlock"
+  },
+  "empty_drawing_title": "This drawing is empty",
+  "@empty_drawing_title": {
+    "description": "empty drawing title"
+  },
+  "empty_drawing_hint": "Start a command from the toolbar, type an alias such as L or C, or pick one below.",
+  "@empty_drawing_hint": {
+    "description": "empty drawing hint"
+  },
+  "line_alias": "Line  L",
+  "@line_alias": {
+    "description": "line alias"
+  },
+  "rectangle_alias": "Rectangle  REC",
+  "@rectangle_alias": {
+    "description": "rectangle alias"
+  },
+  "circle_alias": "Circle  C",
+  "@circle_alias": {
+    "description": "circle alias"
+  },
+  "restore_viewport": "Restore viewport",
+  "@restore_viewport": {
+    "description": "restore viewport"
+  },
+  "rename": "Rename",
+  "@rename": {
+    "description": "rename"
+  },
+  "duplicate": "Duplicate",
+  "@duplicate": {
+    "description": "duplicate"
+  },
+  "delete": "Delete",
+  "@delete": {
+    "description": "delete"
+  },
+  "new_layout": "New layout",
+  "@new_layout": {
+    "description": "new layout"
+  },
+  "model_space": "Model space",
+  "@model_space": {
+    "description": "model space"
+  },
+  "paper_size_mm": "{width} × {height} mm",
+  "@paper_size_mm": {
+    "description": "paper size mm",
+    "placeholders": {
+      "width": {
+        "type": "String"
+      },
+      "height": {
+        "type": "String"
+      }
+    }
+  },
+  "viewport_one": "1 viewport",
+  "@viewport_one": {
+    "description": "viewport one"
+  },
+  "viewport_many": "{count} viewports",
+  "@viewport_many": {
+    "description": "viewport many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "viewport_maximised": "Viewport maximised — click to restore",
+  "@viewport_maximised": {
+    "description": "viewport maximised"
+  },
+  "layout_right_click": "Right-click for rename, duplicate or delete",
+  "@layout_right_click": {
+    "description": "layout right click"
+  },
+  "delete_layout": "Delete layout",
+  "@delete_layout": {
+    "description": "delete layout"
+  },
+  "new_paper_layout": "New paper layout",
+  "@new_paper_layout": {
+    "description": "new paper layout"
+  },
+  "click_to_change": "Click to change {label}",
+  "@click_to_change": {
+    "description": "click to change",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "click_to_copy_label": "Click to copy {label}",
+  "@click_to_copy_label": {
+    "description": "click to copy label",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "layers_empty_workspace": "Open a drawing to see its layers.",
+  "@layers_empty_workspace": {
+    "description": "layers empty workspace"
+  },
+  "new_layer_current": "New layer (made current)",
+  "@new_layer_current": {
+    "description": "new layer current"
+  },
+  "all_layers_on": "All layers are on",
+  "@all_layers_on": {
+    "description": "all layers on"
+  },
+  "show_hidden_layers_one": "Show 1 hidden layer",
+  "@show_hidden_layers_one": {
+    "description": "show hidden layers one"
+  },
+  "show_hidden_layers_many": "Show {count} hidden layers",
+  "@show_hidden_layers_many": {
+    "description": "show hidden layers many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filter_layers": "Filter layers",
+  "@filter_layers": {
+    "description": "filter layers"
+  },
+  "no_layers": "This drawing has no layers.",
+  "@no_layers": {
+    "description": "no layers"
+  },
+  "no_layers_match": "No layers match “{query}”.",
+  "@no_layers_match": {
+    "description": "no layers match",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "already_current": "Already current",
+  "@already_current": {
+    "description": "already current"
+  },
+  "set_as_current": "Set as current",
+  "@set_as_current": {
+    "description": "set as current"
+  },
+  "isolate_layer": "Isolate layer",
+  "@isolate_layer": {
+    "description": "isolate layer"
+  },
+  "no_objects_on_layer": "No objects on this layer",
+  "@no_objects_on_layer": {
+    "description": "no objects on layer"
+  },
+  "select_objects_one": "Select 1 object",
+  "@select_objects_one": {
+    "description": "select objects one"
+  },
+  "select_objects_many": "Select {count} objects",
+  "@select_objects_many": {
+    "description": "select objects many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "layer_0_cannot_delete": "Layer 0 cannot be deleted",
+  "@layer_0_cannot_delete": {
+    "description": "layer 0 cannot delete"
+  },
+  "delete_layer": "Delete layer",
+  "@delete_layer": {
+    "description": "delete layer"
+  },
+  "current_layer_row_hint": "Current layer — double-click to isolate, right-click for more",
+  "@current_layer_row_hint": {
+    "description": "current layer row hint"
+  },
+  "make_current_row_hint": "Click to make current — double-click to isolate",
+  "@make_current_row_hint": {
+    "description": "make current row hint"
+  },
+  "properties_empty_workspace": "Open a drawing to inspect its objects.",
+  "@properties_empty_workspace": {
+    "description": "properties empty workspace"
+  },
+  "clear_selection": "Clear selection",
+  "@clear_selection": {
+    "description": "clear selection"
+  },
+  "list_selection": "List the selection in the command history",
+  "@list_selection": {
+    "description": "list selection"
+  },
+  "geometry": "Geometry",
+  "@geometry": {
+    "description": "geometry"
+  },
+  "measurements": "Measurements",
+  "@measurements": {
+    "description": "measurements"
+  },
+  "layer": "Layer",
+  "@layer": {
+    "description": "layer"
+  },
+  "colour": "Colour",
+  "@colour": {
+    "description": "colour"
+  },
+  "line_type": "Line type",
+  "@line_type": {
+    "description": "line type"
+  },
+  "lineweight": "Lineweight",
+  "@lineweight": {
+    "description": "lineweight"
+  },
+  "start": "Start",
+  "@start": {
+    "description": "start"
+  },
+  "length": "Length",
+  "@length": {
+    "description": "length"
+  },
+  "angle": "Angle",
+  "@angle": {
+    "description": "angle"
+  },
+  "centre": "Centre",
+  "@centre": {
+    "description": "centre"
+  },
+  "radius": "Radius",
+  "@radius": {
+    "description": "radius"
+  },
+  "diameter": "Diameter",
+  "@diameter": {
+    "description": "diameter"
+  },
+  "circumference": "Circumference",
+  "@circumference": {
+    "description": "circumference"
+  },
+  "start_angle": "Start angle",
+  "@start_angle": {
+    "description": "start angle"
+  },
+  "end_angle": "End angle",
+  "@end_angle": {
+    "description": "end angle"
+  },
+  "total_angle": "Total angle",
+  "@total_angle": {
+    "description": "total angle"
+  },
+  "vertices": "Vertices",
+  "@vertices": {
+    "description": "vertices"
+  },
+  "closed": "Closed",
+  "@closed": {
+    "description": "closed"
+  },
+  "yes": "Yes",
+  "@yes": {
+    "description": "yes"
+  },
+  "no": "No",
+  "@no": {
+    "description": "no"
+  },
+  "contents": "Contents",
+  "@contents": {
+    "description": "contents"
+  },
+  "position": "Position",
+  "@position": {
+    "description": "position"
+  },
+  "height": "Height",
+  "@height": {
+    "description": "height"
+  },
+  "rotation": "Rotation",
+  "@rotation": {
+    "description": "rotation"
+  },
+  "style": "Style",
+  "@style": {
+    "description": "style"
+  },
+  "column_width": "Column width",
+  "@column_width": {
+    "description": "column width"
+  },
+  "block": "Block",
+  "@block": {
+    "description": "block"
+  },
+  "scale": "Scale",
+  "@scale": {
+    "description": "scale"
+  },
+  "pattern": "Pattern",
+  "@pattern": {
+    "description": "pattern"
+  },
+  "solid_fill": "Solid fill",
+  "@solid_fill": {
+    "description": "solid fill"
+  },
+  "boundaries": "Boundaries",
+  "@boundaries": {
+    "description": "boundaries"
+  },
+  "measurement": "Measurement",
+  "@measurement": {
+    "description": "measurement"
+  },
+  "text": "Text",
+  "@text": {
+    "description": "text"
+  },
+  "total_length": "Total length",
+  "@total_length": {
+    "description": "total length"
+  },
+  "total_area": "Total area",
+  "@total_area": {
+    "description": "total area"
+  },
+  "size": "Size",
+  "@size": {
+    "description": "size"
+  },
+  "by_layer": "ByLayer",
+  "@by_layer": {
+    "description": "by layer"
+  },
+  "by_block": "ByBlock",
+  "@by_block": {
+    "description": "by block"
+  },
+  "default_value": "Default",
+  "@default_value": {
+    "description": "default value"
+  },
+  "hairline": "Hairline",
+  "@hairline": {
+    "description": "hairline"
+  },
+  "drawing_empty_inspect": "This drawing is empty.",
+  "@drawing_empty_inspect": {
+    "description": "drawing empty inspect"
+  },
+  "click_object_inspect": "Click an object on the canvas to inspect it.",
+  "@click_object_inspect": {
+    "description": "click object inspect"
+  },
+  "nothing_to_clear": "Nothing to clear",
+  "@nothing_to_clear": {
+    "description": "nothing to clear"
+  },
+  "clear_conversation": "Clear conversation",
+  "@clear_conversation": {
+    "description": "clear conversation"
+  },
+  "click_to_change_model": "Click to change the model or endpoint",
+  "@click_to_change_model": {
+    "description": "click to change model"
+  },
+  "auto_approve": "Auto-approve",
+  "@auto_approve": {
+    "description": "auto approve"
+  },
+  "edits_without_asking": "Edits run without asking",
+  "@edits_without_asking": {
+    "description": "edits without asking"
+  },
+  "ask_before_edits": "Ask before the assistant edits the drawing",
+  "@ask_before_edits": {
+    "description": "ask before edits"
+  },
+  "custom_model": "Custom model…",
+  "@custom_model": {
+    "description": "custom model"
+  },
+  "endpoint_ellipsis": "Endpoint…",
+  "@endpoint_ellipsis": {
+    "description": "endpoint ellipsis"
+  },
+  "model": "Model",
+  "@model": {
+    "description": "model"
+  },
+  "model_id": "Model id",
+  "@model_id": {
+    "description": "model id"
+  },
+  "endpoint": "Endpoint",
+  "@endpoint": {
+    "description": "endpoint"
+  },
+  "assistant_empty_configured": "Ask about the drawing, or ask the assistant to change it. It uses the same commands you do, and one reply is one undo step.",
+  "@assistant_empty_configured": {
+    "description": "assistant empty configured"
+  },
+  "assistant_empty_unconfigured": "Set the {envVar} environment variable to talk to a model, or point the base URL at a local server.",
+  "@assistant_empty_unconfigured": {
+    "description": "assistant empty unconfigured",
+    "placeholders": {
+      "envVar": {
+        "type": "String"
+      }
+    }
+  },
+  "try_section": "Try",
+  "@try_section": {
+    "description": "try section"
+  },
+  "prompt_object_count": "How many objects are in this drawing?",
+  "@prompt_object_count": {
+    "description": "prompt object count"
+  },
+  "prompt_square": "Draw a 100 mm square at the origin",
+  "@prompt_square": {
+    "description": "prompt square"
+  },
+  "prompt_list_selection": "List what is selected",
+  "@prompt_list_selection": {
+    "description": "prompt list selection"
+  },
+  "click_to_copy": "Click to copy",
+  "@click_to_copy": {
+    "description": "click to copy"
+  },
+  "working": "Working…",
+  "@working": {
+    "description": "working"
+  },
+  "ask_assistant": "Ask the assistant  Enter to send",
+  "@ask_assistant": {
+    "description": "ask assistant"
+  },
+  "stop": "Stop",
+  "@stop": {
+    "description": "stop"
+  },
+  "send_enter": "Send  Enter",
+  "@send_enter": {
+    "description": "send enter"
+  },
+  "open_extensions_folder": "Open extensions folder",
+  "@open_extensions_folder": {
+    "description": "open extensions folder"
+  },
+  "create_extension": "Create extension",
+  "@create_extension": {
+    "description": "create extension"
+  },
+  "reload_all_extensions": "Reload all extensions",
+  "@reload_all_extensions": {
+    "description": "reload all extensions"
+  },
+  "extensions_unavailable": "Extensions are unavailable: no extensions folder was configured for this session.",
+  "@extensions_unavailable": {
+    "description": "extensions unavailable"
+  },
+  "no_extensions_installed": "No extensions are installed. Create one, or drop a folder with fancad.plugin.json into the extensions directory.",
+  "@no_extensions_installed": {
+    "description": "no extensions installed"
+  },
+  "edit_source": "Edit source",
+  "@edit_source": {
+    "description": "edit source"
+  },
+  "enable_extension": "Enable extension",
+  "@enable_extension": {
+    "description": "enable extension"
+  },
+  "disable_extension": "Disable extension",
+  "@disable_extension": {
+    "description": "disable extension"
+  },
+  "reload": "Reload",
+  "@reload": {
+    "description": "reload"
+  },
+  "state": "State",
+  "@state": {
+    "description": "state"
+  },
+  "folder": "Folder",
+  "@folder": {
+    "description": "folder"
+  },
+  "permissions": "Permissions",
+  "@permissions": {
+    "description": "permissions"
+  },
+  "log": "Log",
+  "@log": {
+    "description": "log"
+  },
+  "plugin_running": "Running",
+  "@plugin_running": {
+    "description": "plugin running"
+  },
+  "plugin_starting": "Starting",
+  "@plugin_starting": {
+    "description": "plugin starting"
+  },
+  "plugin_failed": "Failed",
+  "@plugin_failed": {
+    "description": "plugin failed"
+  },
+  "plugin_disabled": "Disabled",
+  "@plugin_disabled": {
+    "description": "plugin disabled"
+  },
+  "plugin_installed": "Installed",
+  "@plugin_installed": {
+    "description": "plugin installed"
+  },
+  "unsaved_editor_changes": "Unsaved editor changes",
+  "@unsaved_editor_changes": {
+    "description": "unsaved editor changes"
+  },
+  "editor_file_dirty": "\"{name}\" has edits that have not been written.",
+  "@editor_file_dirty": {
+    "description": "editor file dirty",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "nothing_to_save": "Nothing to save",
+  "@nothing_to_save": {
+    "description": "nothing to save"
+  },
+  "save_and_reload": "Save and reload",
+  "@save_and_reload": {
+    "description": "save and reload"
+  },
+  "saved": "Saved",
+  "@saved": {
+    "description": "saved"
+  },
+  "extension": "Extension",
+  "@extension": {
+    "description": "extension"
+  },
+  "editor_unavailable": "Extensions are unavailable: no extensions folder was configured.",
+  "@editor_unavailable": {
+    "description": "editor unavailable"
+  },
+  "create_extension_first": "Create an extension first, then open it here.",
+  "@create_extension_first": {
+    "description": "create extension first"
+  },
+  "choose_extension": "Choose an extension above, or use Edit source from the Extensions panel.",
+  "@choose_extension": {
+    "description": "choose extension"
+  },
+  "no_such_file": "No such file: {name}",
+  "@no_such_file": {
+    "description": "no such file",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "plugin_not_installed": "{id} is not installed",
+  "@plugin_not_installed": {
+    "description": "plugin not installed",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "snap_endpoint": "Endpoint",
+  "@snap_endpoint": {
+    "description": "snap endpoint"
+  },
+  "snap_midpoint": "Midpoint",
+  "@snap_midpoint": {
+    "description": "snap midpoint"
+  },
+  "snap_center": "Center",
+  "@snap_center": {
+    "description": "snap center"
+  },
+  "snap_quadrant": "Quadrant",
+  "@snap_quadrant": {
+    "description": "snap quadrant"
+  },
+  "snap_intersection": "Intersection",
+  "@snap_intersection": {
+    "description": "snap intersection"
+  },
+  "snap_perpendicular": "Perpendicular",
+  "@snap_perpendicular": {
+    "description": "snap perpendicular"
+  },
+  "snap_tangent": "Tangent",
+  "@snap_tangent": {
+    "description": "snap tangent"
+  },
+  "snap_node": "Node",
+  "@snap_node": {
+    "description": "snap node"
+  },
+  "snap_nearest": "Nearest",
+  "@snap_nearest": {
+    "description": "snap nearest"
+  },
+  "category_file": "File",
+  "@category_file": {
+    "description": "category file"
+  },
+  "category_draw": "Draw",
+  "@category_draw": {
+    "description": "category draw"
+  },
+  "category_modify": "Modify",
+  "@category_modify": {
+    "description": "category modify"
+  },
+  "category_view": "View",
+  "@category_view": {
+    "description": "category view"
+  },
+  "category_select": "Select",
+  "@category_select": {
+    "description": "category select"
+  },
+  "category_layers": "Layers",
+  "@category_layers": {
+    "description": "category layers"
+  },
+  "category_inquiry": "Inquiry",
+  "@category_inquiry": {
+    "description": "category inquiry"
+  },
+  "category_output": "Output",
+  "@category_output": {
+    "description": "category output"
+  },
+  "category_extensions": "Extensions",
+  "@category_extensions": {
+    "description": "category extensions"
+  },
+  "command_file_new": "New Drawing",
+  "@command_file_new": {
+    "description": "command file new"
+  },
+  "command_file_open": "Open...",
+  "@command_file_open": {
+    "description": "command file open"
+  },
+  "command_file_save": "Save",
+  "@command_file_save": {
+    "description": "command file save"
+  },
+  "command_file_save_as": "Save As...",
+  "@command_file_save_as": {
+    "description": "command file save as"
+  },
+  "command_file_close": "Close Drawing",
+  "@command_file_close": {
+    "description": "command file close"
+  },
+  "command_file_open_recent": "Open Recent",
+  "@command_file_open_recent": {
+    "description": "command file open recent"
+  },
+  "command_file_audit": "Fidelity Audit",
+  "@command_file_audit": {
+    "description": "command file audit"
+  },
+  "command_draw_line": "Line",
+  "@command_draw_line": {
+    "description": "command draw line"
+  },
+  "command_draw_polyline": "Polyline",
+  "@command_draw_polyline": {
+    "description": "command draw polyline"
+  },
+  "command_draw_spline": "Spline",
+  "@command_draw_spline": {
+    "description": "command draw spline"
+  },
+  "command_draw_rectangle": "Rectangle",
+  "@command_draw_rectangle": {
+    "description": "command draw rectangle"
+  },
+  "command_draw_circle": "Circle",
+  "@command_draw_circle": {
+    "description": "command draw circle"
+  },
+  "command_draw_circle_2p": "Circle (2 Points)",
+  "@command_draw_circle_2p": {
+    "description": "command draw circle 2p"
+  },
+  "command_draw_circle_3p": "Circle (3 Points)",
+  "@command_draw_circle_3p": {
+    "description": "command draw circle 3p"
+  },
+  "command_draw_circle_ttr": "Circle (Tan Tan Radius)",
+  "@command_draw_circle_ttr": {
+    "description": "command draw circle ttr"
+  },
+  "command_draw_donut": "Donut",
+  "@command_draw_donut": {
+    "description": "command draw donut"
+  },
+  "command_draw_arc": "Arc",
+  "@command_draw_arc": {
+    "description": "command draw arc"
+  },
+  "command_draw_polygon": "Polygon",
+  "@command_draw_polygon": {
+    "description": "command draw polygon"
+  },
+  "command_draw_ellipse": "Ellipse",
+  "@command_draw_ellipse": {
+    "description": "command draw ellipse"
+  },
+  "command_draw_xline": "Construction Line",
+  "@command_draw_xline": {
+    "description": "command draw xline"
+  },
+  "command_draw_ray": "Ray",
+  "@command_draw_ray": {
+    "description": "command draw ray"
+  },
+  "command_draw_point": "Point",
+  "@command_draw_point": {
+    "description": "command draw point"
+  },
+  "command_draw_divide": "Divide",
+  "@command_draw_divide": {
+    "description": "command draw divide"
+  },
+  "command_draw_measure": "Measure",
+  "@command_draw_measure": {
+    "description": "command draw measure"
+  },
+  "command_draw_text": "Text",
+  "@command_draw_text": {
+    "description": "command draw text"
+  },
+  "command_draw_mtext": "MText",
+  "@command_draw_mtext": {
+    "description": "command draw mtext"
+  },
+  "command_draw_leader": "Leader",
+  "@command_draw_leader": {
+    "description": "command draw leader"
+  },
+  "command_draw_hatch": "Hatch",
+  "@command_draw_hatch": {
+    "description": "command draw hatch"
+  },
+  "command_draw_dim_linear": "Linear Dimension",
+  "@command_draw_dim_linear": {
+    "description": "command draw dim linear"
+  },
+  "command_draw_dim_aligned": "Aligned Dimension",
+  "@command_draw_dim_aligned": {
+    "description": "command draw dim aligned"
+  },
+  "command_draw_dim_radius": "Radius Dimension",
+  "@command_draw_dim_radius": {
+    "description": "command draw dim radius"
+  },
+  "command_draw_dim_diameter": "Diameter Dimension",
+  "@command_draw_dim_diameter": {
+    "description": "command draw dim diameter"
+  },
+  "command_draw_center_mark": "Center Mark",
+  "@command_draw_center_mark": {
+    "description": "command draw center mark"
+  },
+  "command_draw_center_line": "Centerline",
+  "@command_draw_center_line": {
+    "description": "command draw center line"
+  },
+  "command_draw_dim_angular": "Angular Dimension",
+  "@command_draw_dim_angular": {
+    "description": "command draw dim angular"
+  },
+  "command_draw_dim_continue": "Continue Dimension",
+  "@command_draw_dim_continue": {
+    "description": "command draw dim continue"
+  },
+  "command_draw_dim_baseline": "Baseline Dimension",
+  "@command_draw_dim_baseline": {
+    "description": "command draw dim baseline"
+  },
+  "command_annot_dimstyle": "Dimension Style",
+  "@command_annot_dimstyle": {
+    "description": "command annot dimstyle"
+  },
+  "command_edit_erase": "Erase",
+  "@command_edit_erase": {
+    "description": "command edit erase"
+  },
+  "command_edit_overkill": "Overkill",
+  "@command_edit_overkill": {
+    "description": "command edit overkill"
+  },
+  "command_edit_move": "Move",
+  "@command_edit_move": {
+    "description": "command edit move"
+  },
+  "command_edit_copy": "Copy",
+  "@command_edit_copy": {
+    "description": "command edit copy"
+  },
+  "command_edit_stretch": "Stretch",
+  "@command_edit_stretch": {
+    "description": "command edit stretch"
+  },
+  "command_edit_rotate": "Rotate",
+  "@command_edit_rotate": {
+    "description": "command edit rotate"
+  },
+  "command_edit_scale": "Scale",
+  "@command_edit_scale": {
+    "description": "command edit scale"
+  },
+  "command_edit_mirror": "Mirror",
+  "@command_edit_mirror": {
+    "description": "command edit mirror"
+  },
+  "command_edit_align": "Align",
+  "@command_edit_align": {
+    "description": "command edit align"
+  },
+  "command_edit_array": "Rectangular Array",
+  "@command_edit_array": {
+    "description": "command edit array"
+  },
+  "command_edit_polar_array": "Polar Array",
+  "@command_edit_polar_array": {
+    "description": "command edit polar array"
+  },
+  "command_edit_offset": "Offset",
+  "@command_edit_offset": {
+    "description": "command edit offset"
+  },
+  "command_edit_trim": "Trim",
+  "@command_edit_trim": {
+    "description": "command edit trim"
+  },
+  "command_edit_extend": "Extend",
+  "@command_edit_extend": {
+    "description": "command edit extend"
+  },
+  "command_edit_fillet": "Fillet",
+  "@command_edit_fillet": {
+    "description": "command edit fillet"
+  },
+  "command_edit_chamfer": "Chamfer",
+  "@command_edit_chamfer": {
+    "description": "command edit chamfer"
+  },
+  "command_edit_break": "Break",
+  "@command_edit_break": {
+    "description": "command edit break"
+  },
+  "command_edit_lengthen": "Lengthen",
+  "@command_edit_lengthen": {
+    "description": "command edit lengthen"
+  },
+  "command_edit_explode": "Explode",
+  "@command_edit_explode": {
+    "description": "command edit explode"
+  },
+  "command_edit_block": "Block",
+  "@command_edit_block": {
+    "description": "command edit block"
+  },
+  "command_edit_insert": "Insert",
+  "@command_edit_insert": {
+    "description": "command edit insert"
+  },
+  "command_edit_minsert": "MInsert",
+  "@command_edit_minsert": {
+    "description": "command edit minsert"
+  },
+  "command_block_purge": "Purge Unused Blocks",
+  "@command_block_purge": {
+    "description": "command block purge"
+  },
+  "command_block_rename": "Rename Block",
+  "@command_block_rename": {
+    "description": "command block rename"
+  },
+  "command_edit_join": "Join",
+  "@command_edit_join": {
+    "description": "command edit join"
+  },
+  "command_edit_close": "Close Polyline",
+  "@command_edit_close": {
+    "description": "command edit close"
+  },
+  "command_edit_open": "Open Polyline",
+  "@command_edit_open": {
+    "description": "command edit open"
+  },
+  "command_edit_polyline_width": "Polyline Width",
+  "@command_edit_polyline_width": {
+    "description": "command edit polyline width"
+  },
+  "command_edit_hatch": "Hatch Edit",
+  "@command_edit_hatch": {
+    "description": "command edit hatch"
+  },
+  "command_edit_to_polyline": "Convert to Polyline",
+  "@command_edit_to_polyline": {
+    "description": "command edit to polyline"
+  },
+  "command_edit_reverse": "Reverse",
+  "@command_edit_reverse": {
+    "description": "command edit reverse"
+  },
+  "command_edit_undo": "Undo",
+  "@command_edit_undo": {
+    "description": "command edit undo"
+  },
+  "command_edit_redo": "Redo",
+  "@command_edit_redo": {
+    "description": "command edit redo"
+  },
+  "command_edit_change_layer": "Change Layer",
+  "@command_edit_change_layer": {
+    "description": "command edit change layer"
+  },
+  "command_edit_change_color": "Change Colour",
+  "@command_edit_change_color": {
+    "description": "command edit change color"
+  },
+  "command_edit_change_linetype": "Change Linetype",
+  "@command_edit_change_linetype": {
+    "description": "command edit change linetype"
+  },
+  "command_edit_change_lineweight": "Change Lineweight",
+  "@command_edit_change_lineweight": {
+    "description": "command edit change lineweight"
+  },
+  "command_edit_dimension_text": "Dimension Text",
+  "@command_edit_dimension_text": {
+    "description": "command edit dimension text"
+  },
+  "command_edit_dim_tedit": "Move Dimension Text",
+  "@command_edit_dim_tedit": {
+    "description": "command edit dim tedit"
+  },
+  "command_edit_text_content": "Edit Text",
+  "@command_edit_text_content": {
+    "description": "command edit text content"
+  },
+  "command_edit_justify_text": "Justify Text",
+  "@command_edit_justify_text": {
+    "description": "command edit justify text"
+  },
+  "command_edit_match_prop": "Match Properties",
+  "@command_edit_match_prop": {
+    "description": "command edit match prop"
+  },
+  "command_view_zoom_extents": "Zoom Extents",
+  "@command_view_zoom_extents": {
+    "description": "command view zoom extents"
+  },
+  "command_view_zoom_window": "Zoom Window",
+  "@command_view_zoom_window": {
+    "description": "command view zoom window"
+  },
+  "command_view_zoom_in": "Zoom In",
+  "@command_view_zoom_in": {
+    "description": "command view zoom in"
+  },
+  "command_view_zoom_out": "Zoom Out",
+  "@command_view_zoom_out": {
+    "description": "command view zoom out"
+  },
+  "command_view_zoom_selected": "Zoom to Selection",
+  "@command_view_zoom_selected": {
+    "description": "command view zoom selected"
+  },
+  "command_view_regen": "Regenerate",
+  "@command_view_regen": {
+    "description": "command view regen"
+  },
+  "command_select_all": "Select All",
+  "@command_select_all": {
+    "description": "command select all"
+  },
+  "command_select_none": "Deselect All",
+  "@command_select_none": {
+    "description": "command select none"
+  },
+  "command_select_invert": "Invert Selection",
+  "@command_select_invert": {
+    "description": "command select invert"
+  },
+  "command_select_similar": "Select Similar",
+  "@command_select_similar": {
+    "description": "command select similar"
+  },
+  "command_select_by_layer": "Select by Layer",
+  "@command_select_by_layer": {
+    "description": "command select by layer"
+  },
+  "command_select_by_color": "Select by Colour",
+  "@command_select_by_color": {
+    "description": "command select by color"
+  },
+  "command_select_by_linetype": "Select by Linetype",
+  "@command_select_by_linetype": {
+    "description": "command select by linetype"
+  },
+  "command_select_by_lineweight": "Select by Lineweight",
+  "@command_select_by_lineweight": {
+    "description": "command select by lineweight"
+  },
+  "command_select_by_type": "Select by Type",
+  "@command_select_by_type": {
+    "description": "command select by type"
+  },
+  "command_select_by_block": "Select by Block",
+  "@command_select_by_block": {
+    "description": "command select by block"
+  },
+  "command_view_isolate_objects": "Isolate Objects",
+  "@command_view_isolate_objects": {
+    "description": "command view isolate objects"
+  },
+  "command_view_hide_objects": "Hide Objects",
+  "@command_view_hide_objects": {
+    "description": "command view hide objects"
+  },
+  "command_view_unisolate_objects": "Unisolate Objects",
+  "@command_view_unisolate_objects": {
+    "description": "command view unisolate objects"
+  },
+  "command_layer_new": "New Layer",
+  "@command_layer_new": {
+    "description": "command layer new"
+  },
+  "command_layer_set_current": "Set Current Layer",
+  "@command_layer_set_current": {
+    "description": "command layer set current"
+  },
+  "command_layer_toggle_visible": "Toggle Layer Visibility",
+  "@command_layer_toggle_visible": {
+    "description": "command layer toggle visible"
+  },
+  "command_layer_isolate": "Isolate Layer",
+  "@command_layer_isolate": {
+    "description": "command layer isolate"
+  },
+  "command_layer_show_all": "Show All Layers",
+  "@command_layer_show_all": {
+    "description": "command layer show all"
+  },
+  "command_layer_toggle_lock": "Toggle Layer Lock",
+  "@command_layer_toggle_lock": {
+    "description": "command layer toggle lock"
+  },
+  "command_layer_delete": "Delete Layer",
+  "@command_layer_delete": {
+    "description": "command layer delete"
+  },
+  "command_layer_purge": "Purge Unused Layers",
+  "@command_layer_purge": {
+    "description": "command layer purge"
+  },
+  "command_query_summary": "Drawing Summary",
+  "@command_query_summary": {
+    "description": "command query summary"
+  },
+  "command_query_list": "List",
+  "@command_query_list": {
+    "description": "command query list"
+  },
+  "command_query_entities": "Query Entities",
+  "@command_query_entities": {
+    "description": "command query entities"
+  },
+  "command_query_id": "ID Point",
+  "@command_query_id": {
+    "description": "command query id"
+  },
+  "command_query_distance": "Distance",
+  "@command_query_distance": {
+    "description": "command query distance"
+  },
+  "command_query_angle": "Angle",
+  "@command_query_angle": {
+    "description": "command query angle"
+  },
+  "command_query_area": "Area",
+  "@command_query_area": {
+    "description": "command query area"
+  },
+  "command_query_layers": "List Layers",
+  "@command_query_layers": {
+    "description": "command query layers"
+  },
+  "command_layout_list": "List Layouts",
+  "@command_layout_list": {
+    "description": "command layout list"
+  },
+  "command_layout_set": "Set Layout",
+  "@command_layout_set": {
+    "description": "command layout set"
+  },
+  "command_layout_new": "New Layout",
+  "@command_layout_new": {
+    "description": "command layout new"
+  },
+  "command_layout_delete": "Delete Layout",
+  "@command_layout_delete": {
+    "description": "command layout delete"
+  },
+  "command_layout_copy": "Copy Layout",
+  "@command_layout_copy": {
+    "description": "command layout copy"
+  },
+  "command_layout_rename": "Rename Layout",
+  "@command_layout_rename": {
+    "description": "command layout rename"
+  },
+  "command_layout_order": "Layout Order",
+  "@command_layout_order": {
+    "description": "command layout order"
+  },
+  "command_layout_pagesetup": "Page Setup",
+  "@command_layout_pagesetup": {
+    "description": "command layout pagesetup"
+  },
+  "command_layout_mview": "Make Viewport",
+  "@command_layout_mview": {
+    "description": "command layout mview"
+  },
+  "command_layout_vpscale": "Viewport Scale",
+  "@command_layout_vpscale": {
+    "description": "command layout vpscale"
+  },
+  "command_layout_vplock": "Viewport Lock",
+  "@command_layout_vplock": {
+    "description": "command layout vplock"
+  },
+  "command_layout_vpon": "Viewport On",
+  "@command_layout_vpon": {
+    "description": "command layout vpon"
+  },
+  "command_layout_vplayer": "Viewport Layer Freeze",
+  "@command_layout_vplayer": {
+    "description": "command layout vplayer"
+  },
+  "command_layout_vpmax": "Maximize Viewport",
+  "@command_layout_vpmax": {
+    "description": "command layout vpmax"
+  },
+  "command_layout_vpmin": "Minimize Viewport",
+  "@command_layout_vpmin": {
+    "description": "command layout vpmin"
+  },
+  "command_print_export_svg": "Export SVG",
+  "@command_print_export_svg": {
+    "description": "command print export svg"
+  },
+  "command_print_export_pdf": "Export PDF",
+  "@command_print_export_pdf": {
+    "description": "command print export pdf"
+  },
+  "command_xref_attach": "Attach Xref",
+  "@command_xref_attach": {
+    "description": "command xref attach"
+  },
+  "command_xref_reload": "Reload Xref",
+  "@command_xref_reload": {
+    "description": "command xref reload"
+  },
+  "command_xref_detach": "Detach Xref",
+  "@command_xref_detach": {
+    "description": "command xref detach"
+  },
+  "command_xref_bind": "Bind Xref",
+  "@command_xref_bind": {
+    "description": "command xref bind"
+  },
+  "command_plugins_list": "List Extensions",
+  "@command_plugins_list": {
+    "description": "command plugins list"
+  },
+  "command_plugins_reload": "Reload Extension",
+  "@command_plugins_reload": {
+    "description": "command plugins reload"
+  },
+  "command_plugins_enable": "Enable Extension",
+  "@command_plugins_enable": {
+    "description": "command plugins enable"
+  },
+  "command_plugins_disable": "Disable Extension",
+  "@command_plugins_disable": {
+    "description": "command plugins disable"
+  },
+  "command_plugins_logs": "Show Extension Log",
+  "@command_plugins_logs": {
+    "description": "command plugins logs"
+  },
+  "command_plugins_scaffold": "Create Extension",
+  "@command_plugins_scaffold": {
+    "description": "command plugins scaffold"
+  },
+  "command_plugins_write": "Write Extension File",
+  "@command_plugins_write": {
+    "description": "command plugins write"
+  },
+  "command_plugins_read": "Read Extension File",
+  "@command_plugins_read": {
+    "description": "command plugins read"
+  },
+  "command_plugins_typings": "Write Plugin API Typings",
+  "@command_plugins_typings": {
+    "description": "command plugins typings"
+  },
+  "command_plugins_edit": "Edit Extension File",
+  "@command_plugins_edit": {
+    "description": "command plugins edit"
+  },
+  "command_plugins_eval": "Evaluate In Extension",
+  "@command_plugins_eval": {
+    "description": "command plugins eval"
+  },
+  "end": "End",
+  "@end": {
+    "description": "end"
+  },
+  "min": "Min",
+  "@min": {
+    "description": "min"
+  },
+  "max": "Max",
+  "@max": {
+    "description": "max"
+  },
+  "objects_in_drawing_one": "1 object in this drawing.",
+  "@objects_in_drawing_one": {
+    "description": "objects in drawing one"
+  },
+  "use": "Use",
+  "@use": {
+    "description": "use"
+  },
+  "objects_in_drawing_many": "{count} objects in this drawing.",
+  "@objects_in_drawing_many": {
+    "description": "objects in drawing many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}

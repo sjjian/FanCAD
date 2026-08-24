@@ -2,6 +2,7 @@ import 'package:fancad_ai/fancad_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import '../state/ai_controller.dart';
 import '../theme/tokens.dart';
 import '../workbench/shell_widgets.dart';
@@ -66,13 +67,13 @@ class _AiPanelState extends State<AiPanel> {
     return Column(
       children: [
         PanelHeader(
-          title: 'Assistant',
+          title: context.l10n.assistant,
           actions: [
             ShellIconButton(
               icon: Icons.delete_outline,
               tooltip: controller.messages.isEmpty
-                  ? 'Nothing to clear'
-                  : 'Clear conversation',
+                  ? context.l10n.nothing_to_clear
+                  : context.l10n.clear_conversation,
               enabled: controller.messages.isNotEmpty,
               destructive: true,
               onPressed: controller.clear,
@@ -80,7 +81,7 @@ class _AiPanelState extends State<AiPanel> {
             if (widget.onClose != null)
               ShellIconButton(
                 icon: Icons.close,
-                tooltip: 'Hide assistant',
+                tooltip: context.l10n.hide_assistant,
                 iconSize: FanCadTokens.iconSmall,
                 onPressed: widget.onClose,
               ),
@@ -110,7 +111,9 @@ class _AiPanelState extends State<AiPanel> {
                   itemBuilder: (context, index) => _Bubble(
                     message: controller.messages[index],
                     onCopied: (text) =>
-                        widget.controller.workspace.notify('Copied $text'),
+                        widget.controller.workspace.notify(
+                          context.l10n.copied_text(text),
+                        ),
                   ),
                 ),
         ),
@@ -166,7 +169,7 @@ class _SettingsRow extends StatelessWidget {
           const SizedBox(width: FanCadTokens.space2),
           Expanded(
             child: Tooltip(
-              message: 'Click to change the model or endpoint',
+              message: context.l10n.click_to_change_model,
               child: GestureDetector(
                 onTapDown: (details) =>
                     _pickModel(context, controller, details.globalPosition),
@@ -181,12 +184,12 @@ class _SettingsRow extends StatelessWidget {
               ),
             ),
           ),
-          Text('Auto-approve', style: tokens.labelStyle),
+          Text(context.l10n.auto_approve, style: tokens.labelStyle),
           const SizedBox(width: FanCadTokens.space1),
           Tooltip(
             message: controller.autoApprove
-                ? 'Edits run without asking'
-                : 'Ask before the assistant edits the drawing',
+                ? context.l10n.edits_without_asking
+                : context.l10n.ask_before_edits,
             child: SizedBox(
               height: 22,
               child: Switch.adaptive(
@@ -245,12 +248,12 @@ Future<void> _pickModel(
       PopupMenuItem(
         value: 'custom',
         height: 32,
-        child: Text('Custom model…', style: tokens.bodyStyle),
+        child: Text(context.l10n.custom_model, style: tokens.bodyStyle),
       ),
       PopupMenuItem(
         value: 'endpoint',
         height: 32,
-        child: Text('Endpoint…', style: tokens.bodyStyle),
+        child: Text(context.l10n.endpoint_ellipsis, style: tokens.bodyStyle),
       ),
     ],
   );
@@ -258,9 +261,9 @@ Future<void> _pickModel(
   if (chosen == 'custom') {
     final typed = await _askSetting(
       context,
-      title: 'Model',
+      title: context.l10n.model,
       current: controller.model,
-      hint: 'Model id',
+      hint: context.l10n.model_id,
     );
     if (typed != null && typed.isNotEmpty) controller.setModel(typed);
     return;
@@ -268,7 +271,7 @@ Future<void> _pickModel(
   if (chosen == 'endpoint') {
     final typed = await _askSetting(
       context,
-      title: 'Endpoint',
+      title: context.l10n.endpoint,
       current: controller.baseUrl,
       hint: 'https://api.openai.com/v1',
     );
@@ -309,11 +312,11 @@ Future<String?> _askSetting(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel', style: tokens.bodyStyle),
+          child: Text(context.l10n.cancel, style: tokens.bodyStyle),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(field.text.trim()),
-          child: const Text('Use'),
+          child: Text(context.l10n.use),
         ),
       ],
     ),
@@ -328,31 +331,29 @@ class _EmptyAssistant extends StatelessWidget {
   final bool configured;
   final ValueChanged<String> onUsePrompt;
 
-  static const _prompts = [
-    'How many objects are in this drawing?',
-    'Draw a 100 mm square at the origin',
-    'List what is selected',
-  ];
-
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final l10n = context.l10n;
+    final prompts = [
+      l10n.prompt_object_count,
+      l10n.prompt_square,
+      l10n.prompt_list_selection,
+    ];
     return ListView(
       padding: const EdgeInsets.all(FanCadTokens.space4),
       children: [
         Text(
           configured
-              ? 'Ask about the drawing, or ask the assistant to change it. '
-                  'It uses the same commands you do, and one reply is one undo step.'
-              : 'Set the ${SettingsKeysHint.envVar} environment variable to '
-                  'talk to a model, or point the base URL at a local server.',
+              ? l10n.assistant_empty_configured
+              : l10n.assistant_empty_unconfigured(SettingsKeysHint.envVar),
           style: tokens.labelStyle,
         ),
         if (configured) ...[
           const SizedBox(height: FanCadTokens.space4),
-          Text('TRY', style: tokens.sectionTitleStyle),
+          Text(l10n.try_section.toUpperCase(), style: tokens.sectionTitleStyle),
           const SizedBox(height: FanCadTokens.space2),
-          for (final prompt in _prompts)
+          for (final prompt in prompts)
             Padding(
               padding: const EdgeInsets.only(bottom: FanCadTokens.space1),
               child: ShellRow(
@@ -414,7 +415,7 @@ class _ErrorBanner extends StatelessWidget {
             icon: Icons.close,
             size: 20,
             iconSize: FanCadTokens.iconSmall,
-            tooltip: 'Dismiss',
+            tooltip: context.l10n.dismiss,
             onPressed: onDismiss,
           ),
         ],
@@ -440,7 +441,7 @@ class _Bubble extends StatelessWidget {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Tooltip(
-        message: 'Click to copy',
+        message: context.l10n.click_to_copy,
         waitDuration: const Duration(milliseconds: 600),
         child: GestureDetector(
           onTap: () {
@@ -514,8 +515,8 @@ class _Composer extends StatelessWidget {
               child: ShellTextField(
                 controller: controller,
                 hintText: busy
-                    ? 'Working…'
-                    : 'Ask the assistant  Enter to send',
+                    ? context.l10n.working
+                    : context.l10n.ask_assistant,
                 style: tokens.bodyStyle,
                 onChanged: onChanged,
               ),
@@ -523,7 +524,7 @@ class _Composer extends StatelessWidget {
           ),
           ShellIconButton(
             icon: busy ? Icons.stop : Icons.send,
-            tooltip: busy ? 'Stop' : 'Send  Enter',
+            tooltip: busy ? context.l10n.stop : context.l10n.send_enter,
             onPressed: busy ? onStop : (canSend ? onSend : null),
           ),
         ],

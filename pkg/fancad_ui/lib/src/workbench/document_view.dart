@@ -3,6 +3,7 @@ import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import '../state/document_tab.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
@@ -89,6 +90,7 @@ class _DocumentViewState extends State<DocumentView> {
       final global = box.localToGlobal(local);
       final tab = widget.tab;
       final tokens = context.tokens;
+      final l10n = context.l10n;
       final selected = tab.selection.isNotEmpty;
       final hasHidden = tab.document.activeEntities.any(
         (entity) => !entity.props.visible,
@@ -96,7 +98,11 @@ class _DocumentViewState extends State<DocumentView> {
       final running = widget.workspace.runningCommand;
       final runningTitle = running == null
           ? null
-          : widget.workspace.commands.find(running)?.title ?? running;
+          : () {
+              final descriptor = widget.workspace.commands.find(running);
+              if (descriptor == null) return running;
+              return l10n.commandTitle(descriptor.id, descriptor.title);
+            }();
       showMenu<String>(
         context: context,
         position: RelativeRect.fromLTRB(
@@ -112,29 +118,29 @@ class _DocumentViewState extends State<DocumentView> {
         ),
         items: [
           if (runningTitle != null)
-            _item('__cancel__', 'Cancel $runningTitle', 'Esc', tokens),
+            _item('__cancel__', l10n.cancel_named(runningTitle), 'Esc', tokens),
           if (runningTitle != null) const PopupMenuDivider(),
           if (selected) ...[
-            _item('__properties__', 'Properties', null, tokens),
-            _item('view.zoomSelected', 'Zoom to selection', null, tokens),
+            _item('__properties__', l10n.properties, null, tokens),
+            _item('view.zoomSelected', l10n.zoom_to_selection, null, tokens),
             const PopupMenuDivider(),
-            _item('edit.erase', 'Erase', 'Del', tokens),
-            _item('edit.move', 'Move', 'M', tokens),
-            _item('edit.copy', 'Copy', 'CO', tokens),
-            _item('view.isolateObjects', 'Isolate', null, tokens),
-            _item('view.hideObjects', 'Hide', null, tokens),
-            _item('select.none', 'Deselect', null, tokens),
+            _item('edit.erase', l10n.erase, 'Del', tokens),
+            _item('edit.move', l10n.move, 'M', tokens),
+            _item('edit.copy', l10n.copy, 'CO', tokens),
+            _item('view.isolateObjects', l10n.isolate, null, tokens),
+            _item('view.hideObjects', l10n.hide, null, tokens),
+            _item('select.none', l10n.deselect, null, tokens),
           ] else ...[
-            _item('select.all', 'Select all', null, tokens),
-            _item('view.zoomExtents', 'Zoom extents', null, tokens),
-            _item('view.zoomWindow', 'Zoom window', null, tokens),
+            _item('select.all', l10n.select_all, null, tokens),
+            _item('view.zoomExtents', l10n.zoom_extents, null, tokens),
+            _item('view.zoomWindow', l10n.zoom_window, null, tokens),
           ],
           PopupMenuItem(
             value: 'view.unisolateObjects',
             enabled: hasHidden,
             height: 32,
             child: _label(
-              hasHidden ? 'Show hidden objects' : 'No hidden objects',
+              hasHidden ? l10n.show_hidden_objects : l10n.no_hidden_objects,
               null,
               tokens,
               enabled: hasHidden,
@@ -144,8 +150,8 @@ class _DocumentViewState extends State<DocumentView> {
           _item(
             'edit.undo',
             tab.history.nextUndoLabel == null
-                ? 'Undo'
-                : 'Undo ${tab.history.nextUndoLabel}',
+                ? l10n.undo
+                : l10n.undo_named(tab.history.nextUndoLabel!),
             shellShortcut('Z'),
             tokens,
             enabled: tab.history.canUndo,
@@ -153,8 +159,8 @@ class _DocumentViewState extends State<DocumentView> {
           _item(
             'edit.redo',
             tab.history.nextRedoLabel == null
-                ? 'Redo'
-                : 'Redo ${tab.history.nextRedoLabel}',
+                ? l10n.redo
+                : l10n.redo_named(tab.history.nextRedoLabel!),
             shellShortcut('Z', shift: true),
             tokens,
             enabled: tab.history.canRedo,
@@ -259,9 +265,9 @@ class _DocumentViewState extends State<DocumentView> {
               _VisibilityBanner(
                 icon: Icons.visibility_off_outlined,
                 message: hiddenCount == 1
-                    ? '1 object is hidden'
-                    : '$hiddenCount objects are hidden',
-                action: 'Show all',
+                    ? context.l10n.one_object_hidden
+                    : context.l10n.many_objects_hidden(hiddenCount),
+                action: context.l10n.show_all,
                 onShowAll: () =>
                     widget.workspace.run('view.unisolateObjects'),
               )
@@ -269,16 +275,16 @@ class _DocumentViewState extends State<DocumentView> {
               _VisibilityBanner(
                 icon: Icons.layers_outlined,
                 message: hiddenLayers == 1
-                    ? '1 layer is off'
-                    : '$hiddenLayers layers are off',
-                action: 'Show all layers',
+                    ? context.l10n.one_layer_off
+                    : context.l10n.many_layers_off(hiddenLayers),
+                action: context.l10n.show_all_layers,
                 onShowAll: () => widget.workspace.run('layer.showAll'),
               )
             else if (currentLayer != null && currentLayer.locked)
               _VisibilityBanner(
                 icon: Icons.lock_outline,
-                message: 'Current layer "${currentLayer.name}" is locked',
-                action: 'Unlock',
+                message: context.l10n.current_layer_locked(currentLayer.name),
+                action: context.l10n.unlock,
                 onShowAll: () => widget.workspace.run(
                   'layer.toggleLock',
                   args: {'name': currentLayer.name},
@@ -472,7 +478,7 @@ class _CanvasPromptHud extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(left: FanCadTokens.space1),
                     child: PromptKeywordChip(
-                      label: 'Cancel',
+                      label: context.l10n.cancel,
                       muted: true,
                       onPressed: onCancel,
                     ),
@@ -525,12 +531,12 @@ class _EmptyDrawingHint extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'This drawing is empty',
+                  context.l10n.empty_drawing_title,
                   style: tokens.bodyStyle.copyWith(fontSize: 14),
                 ),
                 const SizedBox(height: FanCadTokens.space1),
                 Text(
-                  'Start a command from the toolbar, type an alias such as L or C, or pick one below.',
+                  context.l10n.empty_drawing_hint,
                   style: tokens.labelStyle,
                   textAlign: TextAlign.center,
                 ),
@@ -540,12 +546,12 @@ class _EmptyDrawingHint extends StatelessWidget {
                   runSpacing: FanCadTokens.space2,
                   alignment: WrapAlignment.center,
                   children: [
-                    PromptKeywordChip(label: 'Line  L', onPressed: onLine),
+                    PromptKeywordChip(label: context.l10n.line_alias, onPressed: onLine),
                     PromptKeywordChip(
-                      label: 'Rectangle  REC',
+                      label: context.l10n.rectangle_alias,
                       onPressed: onRectangle,
                     ),
-                    PromptKeywordChip(label: 'Circle  C', onPressed: onCircle),
+                    PromptKeywordChip(label: context.l10n.circle_alias, onPressed: onCircle),
                   ],
                 ),
               ],

@@ -2,6 +2,7 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import 'shell_widgets.dart';
@@ -39,7 +40,9 @@ class _CommandPaletteState extends State<CommandPalette> {
   @override
   void initState() {
     super.initState();
-    _recompute('');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _recompute('');
+    });
   }
 
   @override
@@ -52,7 +55,12 @@ class _CommandPaletteState extends State<CommandPalette> {
 
   void _recompute(String text) {
     setState(() {
-      var matches = widget.workspace.commands.search(text, limit: 60);
+      var matches = searchCommandsLocalized(
+        widget.workspace.commands,
+        text,
+        context.l10n,
+        limit: 60,
+      );
       final lastId = widget.workspace.commands.lastCommandId;
       if (text.trim().isEmpty && lastId != null) {
         final last = widget.workspace.commands.find(lastId);
@@ -177,7 +185,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                           controller: _query,
                           focusNode: _focus,
                           autofocus: true,
-                          hintText: 'Search commands, aliases or categories',
+                          hintText: context.l10n.search_commands,
                           style: tokens.bodyStyle.copyWith(fontSize: 14),
                           onChanged: _recompute,
                           suffix: _query.text.isEmpty
@@ -186,7 +194,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                                   icon: Icons.close,
                                   size: 20,
                                   iconSize: FanCadTokens.iconSmall,
-                                  tooltip: 'Clear search',
+                                  tooltip: context.l10n.clear_search,
                                   onPressed: () {
                                     _query.clear();
                                     _recompute('');
@@ -216,13 +224,15 @@ class _CommandPaletteState extends State<CommandPalette> {
                                   children: [
                                     Text(
                                       _query.text.trim().isEmpty
-                                          ? 'Start typing to find a command.'
-                                          : 'No commands match “${_query.text.trim()}”.',
+                                          ? context.l10n.start_typing_command
+                                          : context.l10n.no_commands_match(
+                                              _query.text.trim(),
+                                            ),
                                       style: tokens.bodyStyle,
                                     ),
                                     const SizedBox(height: FanCadTokens.space2),
                                     Text(
-                                      'Try an alias such as L, C or M, or a category like Draw.',
+                                      context.l10n.try_alias_or_category,
                                       style: tokens.labelStyle,
                                     ),
                                   ],
@@ -266,12 +276,12 @@ class _CommandPaletteState extends State<CommandPalette> {
                         child: Row(
                           children: [
                             Text(
-                              '${_matches.length} command${_matches.length == 1 ? '' : 's'}',
+                              context.l10n.commandCount(_matches.length),
                               style: tokens.labelStyle,
                             ),
                             const Spacer(),
                             Text(
-                              '↑↓  move   Enter  run   Esc  close',
+                              context.l10n.palette_hints,
                               style: tokens.monoStyle.copyWith(
                                 fontSize: 10.5,
                                 color: tokens.textFaint,
@@ -310,6 +320,7 @@ class _PaletteRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     return MouseRegion(
       onEnter: (_) => onHover(),
       child: ShellRow(
@@ -327,7 +338,7 @@ class _PaletteRow extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        descriptor.title,
+                        l10n.commandTitle(descriptor.id, descriptor.title),
                         style: tokens.bodyStyle.copyWith(fontSize: 13),
                       ),
                       if (descriptor.aliases.isNotEmpty) ...[
@@ -342,7 +353,7 @@ class _PaletteRow extends StatelessWidget {
                       ],
                       if (isLastUsed) ...[
                         const SizedBox(width: FanCadTokens.space2),
-                        const _Badge(text: 'Last'),
+                        _Badge(text: l10n.last_badge),
                       ],
                       if (!descriptor.isBuiltIn) ...[
                         const SizedBox(width: FanCadTokens.space2),
@@ -360,7 +371,7 @@ class _PaletteRow extends StatelessWidget {
                 ],
               ),
             ),
-            Text(descriptor.category, style: tokens.labelStyle),
+            Text(l10n.commandCategory(descriptor.category), style: tokens.labelStyle),
             if (descriptor.defaultKeybinding != null) ...[
               const SizedBox(width: FanCadTokens.space3),
               Text(

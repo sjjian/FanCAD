@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import '../workbench/shell_widgets.dart';
@@ -42,7 +43,10 @@ Future<void> _openFolder(Workspace workspace, String path) async {
       await Process.start('xdg-open', [path]);
     }
   } catch (error) {
-    workspace.notify('Could not open $path: $error', isError: true);
+    workspace.notify(
+      lookupAppLocalizations(const Locale('en')).could_not_open(path, '$error'),
+      isError: true,
+    );
   }
 }
 
@@ -56,34 +60,31 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PanelHeader(
-          title: 'Extensions',
+          title: context.l10n.extensions,
           actions: [
             if (widget.folder.isNotEmpty)
               ShellIconButton(
                 icon: Icons.folder_open_outlined,
-                tooltip: 'Open extensions folder',
+                tooltip: context.l10n.open_extensions_folder,
                 onPressed: () => _openFolder(widget.workspace, widget.folder),
               ),
             if (host != null)
               ShellIconButton(
                 icon: Icons.add,
-                tooltip: 'Create extension',
+                tooltip: context.l10n.create_extension,
                 onPressed: () => widget.workspace.run('plugins.scaffold'),
               ),
             if (host != null)
               ShellIconButton(
                 icon: Icons.refresh,
-                tooltip: 'Reload all extensions',
+                tooltip: context.l10n.reload_all_extensions,
                 onPressed: () => widget.workspace.run('plugins.reload'),
               ),
           ],
         ),
         Expanded(
           child: host == null
-              ? const _PanelMessage(
-                  'Extensions are unavailable: no extensions folder was '
-                  'configured for this session.',
-                )
+              ? _PanelMessage(context.l10n.extensions_unavailable)
               : StreamBuilder<PluginHost>(
                   stream: host.changes,
                   builder: (context, _) => Column(
@@ -102,9 +103,8 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
     final plugins = host.plugins;
     if (plugins.isEmpty) {
       return _PanelMessage(
-        'No extensions are installed. Create one, or drop a folder with '
-        'fancad.plugin.json into the extensions directory.',
-        actionLabel: 'Create extension',
+        context.l10n.no_extensions_installed,
+        actionLabel: context.l10n.create_extension,
         onAction: () => widget.workspace.run('plugins.scaffold'),
       );
     }
@@ -129,7 +129,8 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
           onEdit: () =>
               widget.workspace.run('plugins.edit', args: {'id': handle.id}),
           onRunCommand: (id) => widget.workspace.run(id),
-          onCopied: (text) => widget.workspace.notify('Copied $text'),
+          onCopied: (text) =>
+              widget.workspace.notify(context.l10n.copied_text(text)),
           onSetEnabled: (value) => widget.workspace.run(
             value ? 'plugins.enable' : 'plugins.disable',
             args: {'id': handle.id},
@@ -222,19 +223,21 @@ class _ExtensionTile extends StatelessWidget {
                   ),
                   ShellIconButton(
                     icon: Icons.code,
-                    tooltip: 'Edit source',
+                    tooltip: context.l10n.edit_source,
                     onPressed: onEdit,
                   ),
                   ShellIconButton(
                     icon: isDisabled
                         ? Icons.play_arrow_outlined
                         : Icons.pause_outlined,
-                    tooltip: isDisabled ? 'Enable extension' : 'Disable extension',
+                    tooltip: isDisabled
+                        ? context.l10n.enable_extension
+                        : context.l10n.disable_extension,
                     onPressed: () => onSetEnabled(isDisabled),
                   ),
                   ShellIconButton(
                     icon: Icons.refresh,
-                    tooltip: 'Reload',
+                    tooltip: context.l10n.reload,
                     onPressed: onReload,
                   ),
                 ],
@@ -284,16 +287,16 @@ class _Details extends StatelessWidget {
               ),
               child: Text(manifest.description, style: tokens.labelStyle),
             ),
-          _Row(label: 'State', value: _stateLabel(handle.state)),
+          _Row(label: context.l10n.state, value: _stateLabel(context.l10n, handle.state)),
           if (manifest.directory.isNotEmpty)
             _Row(
-              label: 'Folder',
+              label: context.l10n.folder,
               value: manifest.directory,
               copyText: manifest.directory,
               onCopied: onCopied,
             ),
           _Row(
-            label: 'Permissions',
+            label: context.l10n.permissions,
             value: manifest.permissions.isEmpty
                 ? 'none'
                 : manifest.permissions
@@ -302,7 +305,7 @@ class _Details extends StatelessWidget {
           ),
           if (manifest.commands.isNotEmpty)
             PanelSection(
-              title: 'Commands',
+              title: context.l10n.commands,
               children: [
                 for (final command in manifest.commands)
                   PropertyRow(
@@ -317,7 +320,7 @@ class _Details extends StatelessWidget {
             ),
           if (handle.log.isNotEmpty)
             PanelSection(
-              title: 'Log',
+              title: context.l10n.log,
               children: [
                 Container(
                   constraints: const BoxConstraints(maxHeight: 160),
@@ -372,12 +375,12 @@ class _Row extends StatelessWidget {
   );
 }
 
-String _stateLabel(PluginState state) => switch (state) {
-  PluginState.active => 'Running',
-  PluginState.activating => 'Starting',
-  PluginState.failed => 'Failed',
-  PluginState.disabled => 'Disabled',
-  PluginState.installed => 'Installed',
+String _stateLabel(AppLocalizations l10n, PluginState state) => switch (state) {
+  PluginState.active => l10n.plugin_running,
+  PluginState.activating => l10n.plugin_starting,
+  PluginState.failed => l10n.plugin_failed,
+  PluginState.disabled => l10n.plugin_disabled,
+  PluginState.installed => l10n.plugin_installed,
 };
 
 class _StateDot extends StatelessWidget {
@@ -396,7 +399,7 @@ class _StateDot extends StatelessWidget {
       PluginState.installed => tokens.textMuted,
     };
     return Tooltip(
-      message: _stateLabel(state),
+      message: _stateLabel(context.l10n, state),
       child: Container(
         width: 8,
         height: 8,

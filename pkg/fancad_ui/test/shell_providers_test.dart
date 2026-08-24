@@ -154,4 +154,34 @@ void main() {
     dark.toggle();
     expect(settings.getString(SettingsKeys.themeBrightness), 'dark');
   });
+
+  test('language defaults to English and persists a supported switch', () {
+    final settings = SettingsStore.inMemory();
+    final language = LanguageController(settings);
+    addTearDown(language.dispose);
+    expect(language.state, FanCadLanguage.english);
+
+    language.setLanguage(FanCadLanguage.chinese);
+    expect(language.state, FanCadLanguage.chinese);
+    expect(settings.getString(SettingsKeys.language), FanCadLanguage.chinese);
+  });
+
+  test('a leftover language code is treated as English', () {
+    final leftover = LanguageController(
+      SettingsStore.inMemory({SettingsKeys.language: 'fr'}),
+    );
+    addTearDown(leftover.dispose);
+    expect(leftover.state, FanCadLanguage.english);
+
+    leftover.setLanguage('not-a-locale');
+    expect(leftover.state, FanCadLanguage.english);
+  });
+
+  test('regional Chinese leftovers collapse to zh', () {
+    final leftover = LanguageController(
+      SettingsStore.inMemory({SettingsKeys.language: 'zh_CN'}),
+    );
+    addTearDown(leftover.dispose);
+    expect(leftover.state, FanCadLanguage.chinese);
+  });
 }

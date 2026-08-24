@@ -1,6 +1,7 @@
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import 'shell_widgets.dart';
@@ -149,14 +150,14 @@ class _LayoutChipState extends State<_LayoutChip> {
       ),
       items: [
         if (widget.onRestore != null)
-          const PopupMenuItem(value: 'restore', child: Text('Restore viewport')),
+          PopupMenuItem(value: 'restore', child: Text(context.l10n.restore_viewport)),
         if (widget.onRename != null)
-          const PopupMenuItem(value: 'rename', child: Text('Rename')),
+          PopupMenuItem(value: 'rename', child: Text(context.l10n.rename)),
         if (widget.onCopy != null)
-          const PopupMenuItem(value: 'copy', child: Text('Duplicate')),
+          PopupMenuItem(value: 'copy', child: Text(context.l10n.duplicate)),
         if (widget.onDelete != null)
-          const PopupMenuItem(value: 'delete', child: Text('Delete')),
-        const PopupMenuItem(value: 'new', child: Text('New layout')),
+          PopupMenuItem(value: 'delete', child: Text(context.l10n.delete)),
+        PopupMenuItem(value: 'new', child: Text(context.l10n.new_layout)),
       ],
     ).then((action) {
       if (!mounted || action == null) return;
@@ -178,17 +179,25 @@ class _LayoutChipState extends State<_LayoutChip> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     final layout = widget.layout;
     final paper = layout.isModelSpace
-        ? 'Model space'
-        : '${layout.paperWidth.toStringAsFixed(0)} × '
-              '${layout.paperHeight.toStringAsFixed(0)} mm'
-              '${layout.viewports.isEmpty ? '' : ' · ${layout.viewports.length} viewport${layout.viewports.length == 1 ? '' : 's'}'}';
+        ? l10n.model_space
+        : [
+            l10n.paper_size_mm(
+              layout.paperWidth.toStringAsFixed(0),
+              layout.paperHeight.toStringAsFixed(0),
+            ),
+            if (layout.viewports.isNotEmpty)
+              layout.viewports.length == 1
+                  ? l10n.viewport_one
+                  : l10n.viewport_many(layout.viewports.length),
+          ].join(' · ');
     return Tooltip(
       message: [
         paper,
-        if (widget.isMaximized) 'Viewport maximised — click to restore',
-        if (!layout.isModelSpace) 'Right-click for rename, duplicate or delete',
+        if (widget.isMaximized) l10n.viewport_maximised,
+        if (!layout.isModelSpace) l10n.layout_right_click,
       ].join('\n'),
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
@@ -249,7 +258,7 @@ class _LayoutChipState extends State<_LayoutChip> {
                     icon: Icons.close,
                     size: 18,
                     iconSize: FanCadTokens.iconSmall,
-                    tooltip: 'Delete layout',
+                    tooltip: l10n.delete_layout,
                     destructive: true,
                     onPressed: widget.onDelete,
                   )
@@ -280,7 +289,7 @@ class _AddLayoutChipState extends State<_AddLayoutChip> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return Tooltip(
-      message: 'New paper layout',
+      message: context.l10n.new_paper_layout,
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),

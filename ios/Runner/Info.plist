@@ -3,7 +3,12 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Fancad</string>
 	<key>CFBundleExecutable</key>

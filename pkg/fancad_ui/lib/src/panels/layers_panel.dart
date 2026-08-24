@@ -2,6 +2,7 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import '../workbench/shell_widgets.dart';
@@ -40,10 +41,10 @@ class _LayersPanelState extends State<LayersPanel> {
     if (tab == null) {
       // The header stays even with nothing to list, so a closed workspace looks
       // empty rather than broken.
-      return const Column(
+      return Column(
         children: [
-          PanelHeader(title: 'Layers'),
-          Expanded(child: _Empty(message: 'Open a drawing to see its layers.')),
+          PanelHeader(title: context.l10n.layers),
+          Expanded(child: _Empty(message: context.l10n.layers_empty_workspace)),
         ],
       );
     }
@@ -67,11 +68,11 @@ class _LayersPanelState extends State<LayersPanel> {
     return Column(
       children: [
         PanelHeader(
-          title: 'Layers',
+          title: context.l10n.layers,
           actions: [
             ShellIconButton(
               icon: Icons.add,
-              tooltip: 'New layer (made current)',
+              tooltip: context.l10n.new_layer_current,
               iconSize: FanCadTokens.iconMedium,
               onPressed: () => _workspace.run(
                 'layer.new',
@@ -81,8 +82,10 @@ class _LayersPanelState extends State<LayersPanel> {
             ShellIconButton(
               icon: Icons.visibility_outlined,
               tooltip: hiddenCount == 0
-                  ? 'All layers are on'
-                  : 'Show $hiddenCount hidden layer${hiddenCount == 1 ? '' : 's'}',
+                  ? context.l10n.all_layers_on
+                  : hiddenCount == 1
+                  ? context.l10n.show_hidden_layers_one
+                  : context.l10n.show_hidden_layers_many(hiddenCount),
               iconSize: FanCadTokens.iconMedium,
               enabled: hiddenCount > 0,
               onPressed: () => _workspace.run('layer.showAll'),
@@ -99,7 +102,7 @@ class _LayersPanelState extends State<LayersPanel> {
           ),
           child: ShellTextField(
             controller: _filterController,
-            hintText: 'Filter layers',
+            hintText: context.l10n.filter_layers,
             style: tokens.bodyStyle,
             prefix: Padding(
               padding: const EdgeInsets.only(right: FanCadTokens.space2),
@@ -117,7 +120,7 @@ class _LayersPanelState extends State<LayersPanel> {
                     icon: Icons.close,
                     size: 18,
                     iconSize: FanCadTokens.iconSmall,
-                    tooltip: 'Clear filter',
+                    tooltip: context.l10n.clear_filter,
                     onPressed: () {
                       _filterController.clear();
                       setState(() => _filter = '');
@@ -129,8 +132,10 @@ class _LayersPanelState extends State<LayersPanel> {
           child: visible.isEmpty
               ? _Empty(
                   message: _filter.isEmpty
-                      ? 'This drawing has no layers.'
-                      : 'No layers match “${_filterController.text.trim()}”.',
+                      ? context.l10n.no_layers
+                      : context.l10n.no_layers_match(
+                          _filterController.text.trim(),
+                        ),
                 )
               : ListView.builder(
                   itemCount: visible.length,
@@ -264,6 +269,7 @@ class _LayerRow extends StatefulWidget {
 
 class _LayerRowState extends State<_LayerRow> {
   void _openMenu() {
+    final l10n = context.l10n;
     final box = context.findRenderObject();
     if (box is! RenderBox) return;
     final origin = box.localToGlobal(Offset(box.size.width - 4, 0));
@@ -280,20 +286,22 @@ class _LayerRowState extends State<_LayerRow> {
           value: 'current',
           enabled: !widget.isCurrent,
           child: Text(
-            widget.isCurrent ? 'Already current' : 'Set as current',
+            widget.isCurrent ? l10n.already_current : l10n.set_as_current,
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'isolate',
-          child: Text('Isolate layer'),
+          child: Text(l10n.isolate_layer),
         ),
         PopupMenuItem(
           value: 'select',
           enabled: widget.count > 0,
           child: Text(
             widget.count == 0
-                ? 'No objects on this layer'
-                : 'Select ${widget.count} object${widget.count == 1 ? '' : 's'}',
+                ? l10n.no_objects_on_layer
+                : widget.count == 1
+                ? l10n.select_objects_one
+                : l10n.select_objects_many(widget.count),
           ),
         ),
         PopupMenuItem(
@@ -301,8 +309,8 @@ class _LayerRowState extends State<_LayerRow> {
           enabled: widget.onDelete != null,
           child: Text(
             widget.onDelete == null
-                ? 'Layer 0 cannot be deleted'
-                : 'Delete layer',
+                ? l10n.layer_0_cannot_delete
+                : l10n.delete_layer,
           ),
         ),
       ],
@@ -324,13 +332,14 @@ class _LayerRowState extends State<_LayerRow> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     final layer = widget.layer;
     final dimmed = !layer.isEffectivelyVisible;
 
     return Tooltip(
       message: widget.isCurrent
-          ? 'Current layer — double-click to isolate, right-click for more'
-          : 'Click to make current — double-click to isolate',
+          ? l10n.current_layer_row_hint
+          : l10n.make_current_row_hint,
       waitDuration: const Duration(milliseconds: 700),
       child: ShellRow(
         isSelected: widget.isCurrent,
@@ -344,7 +353,7 @@ class _LayerRowState extends State<_LayerRow> {
               icon: layer.visible
                   ? Icons.visibility_outlined
                   : Icons.visibility_off_outlined,
-              tooltip: layer.visible ? 'Turn layer off' : 'Turn layer on',
+              tooltip: layer.visible ? l10n.turn_layer_off : l10n.turn_layer_on,
               size: 20,
               iconSize: FanCadTokens.iconSmall,
               isActive: layer.visible,
@@ -352,7 +361,7 @@ class _LayerRowState extends State<_LayerRow> {
             ),
             ShellIconButton(
               icon: layer.locked ? Icons.lock_outline : Icons.lock_open,
-              tooltip: layer.locked ? 'Unlock layer' : 'Lock layer',
+              tooltip: layer.locked ? l10n.unlock_layer : l10n.lock_layer,
               size: 20,
               iconSize: FanCadTokens.iconSmall,
               isActive: layer.locked,
