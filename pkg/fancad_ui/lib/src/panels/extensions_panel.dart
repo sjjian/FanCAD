@@ -426,7 +426,7 @@ class _PanelMessage extends StatelessWidget {
             const SizedBox(height: FanCadTokens.space3),
             ShellRow(
               onTap: onAction,
-              height: 28,
+              height: FanCadTokens.rowHeight,
               padding: const EdgeInsets.symmetric(
                 horizontal: FanCadTokens.space2,
               ),
@@ -457,7 +457,7 @@ class _ExtensionFooter extends StatelessWidget {
         .where((plugin) => plugin.state == PluginState.active)
         .length;
     return Container(
-      height: 22,
+      height: FanCadTokens.statusBarHeight,
       padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
       alignment: Alignment.centerLeft,
       decoration: BoxDecoration(

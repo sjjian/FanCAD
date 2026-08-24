@@ -286,6 +286,7 @@ class _DocumentViewState extends State<DocumentView> {
               ),
             Expanded(
               child: Stack(
+                clipBehavior: Clip.hardEdge,
                 children: [
             CadCanvas(
               key: _canvasKey,
@@ -365,7 +366,7 @@ class _VisibilityBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 14, color: tokens.warning),
+            Icon(icon, size: FanCadTokens.iconMedium, color: tokens.warning),
             const SizedBox(width: FanCadTokens.space2),
             Expanded(
               child: Text(
@@ -430,15 +431,13 @@ class _CanvasPromptHud extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(FanCadTokens.radius),
-                border: Border.all(
-                  color: tokens.accent.withValues(alpha: 0.45),
-                ),
+                border: Border.all(color: tokens.borderStrong),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.edit_outlined,
-                    size: 14,
+                    size: FanCadTokens.iconMedium,
                     color: tokens.accent,
                   ),
                   const SizedBox(width: FanCadTokens.space2),
@@ -511,7 +510,10 @@ class _EmptyDrawingHint extends StatelessWidget {
           color: tokens.surfaceOverlay.withValues(alpha: 0.94),
           elevation: 4,
           shadowColor: Colors.black.withValues(alpha: 0.25),
-          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+            side: BorderSide(color: tokens.borderStrong),
+          ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
               FanCadTokens.space4,

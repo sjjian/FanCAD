@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../commands/builtins.dart';
 import '../commands/file_commands.dart';
 import '../commands/plugin_commands.dart';
+import '../theme/tokens.dart';
 import 'ai_controller.dart';
 import 'plugin_delegate.dart';
 import 'settings.dart';
@@ -139,7 +140,7 @@ class SidebarState {
   const SidebarState({
     this.viewId = 'layers',
     this.isOpen = true,
-    this.width = 280,
+    this.width = FanCadTokens.sidePanelWidth,
   });
 
   final String viewId;
@@ -158,41 +159,58 @@ class SidebarController extends StateNotifier<SidebarState> {
   SidebarController(this._settings)
     : super(
         SidebarState(
-          viewId: _settings.getString(
-            SettingsKeys.sidebarView,
-            fallback: 'layers',
+          viewId: _leftViewId(
+            _settings.getString(
+              SettingsKeys.sidebarView,
+              fallback: 'layers',
+            ),
           ),
           isOpen: _settings.getBool(SettingsKeys.sidebarOpen, fallback: true),
           width: _settings.getDouble(
             SettingsKeys.sidebarWidth,
             fallback: defaultWidth,
-          ),
+          ).clamp(minWidth, maxWidth),
         ),
       );
 
   final SettingsStore _settings;
 
-  static const double defaultWidth = 280;
-  static const double minWidth = 200;
-  static const double maxWidth = 560;
+  static const double defaultWidth = FanCadTokens.sidePanelWidth;
+  static const double minWidth = FanCadTokens.sidePanelMinWidth;
+  static const double maxWidth = FanCadTokens.sidePanelMaxWidth;
+
+  static const _leftViews = {
+    'layers',
+    'properties',
+    'commands',
+    'plugins',
+    'editor',
+  };
+
+  /// Assistant used to live here; a leftover setting must not open an empty
+  /// left pane after the chat moved to the right.
+  static String _leftViewId(String viewId) =>
+      _leftViews.contains(viewId) ? viewId : 'layers';
 
   /// Clicking the active icon collapses the sidebar, as VS Code does.
   void select(String viewId) {
-    if (state.viewId == viewId && state.isOpen) {
+    final left = _leftViewId(viewId);
+    if (state.viewId == left && state.isOpen) {
       setOpen(false);
       return;
     }
-    state = state.copyWith(viewId: viewId, isOpen: true);
+    state = state.copyWith(viewId: left, isOpen: true);
     _settings
-      ..set(SettingsKeys.sidebarView, viewId)
+      ..set(SettingsKeys.sidebarView, left)
       ..set(SettingsKeys.sidebarOpen, true);
   }
 
   /// Brings a view forward without toggling, for `revealPanel`.
   void reveal(String viewId) {
-    state = state.copyWith(viewId: viewId, isOpen: true);
+    final left = _leftViewId(viewId);
+    state = state.copyWith(viewId: left, isOpen: true);
     _settings
-      ..set(SettingsKeys.sidebarView, viewId)
+      ..set(SettingsKeys.sidebarView, left)
       ..set(SettingsKeys.sidebarOpen, true);
   }
 
@@ -226,7 +244,10 @@ final sidebarProvider =
 
 /// Height of the command line pane, and whether the history is expanded.
 class CommandPaneState {
-  const CommandPaneState({this.height = 132, this.isExpanded = false});
+  const CommandPaneState({
+    this.height = CommandPaneController.defaultHeight,
+    this.isExpanded = false,
+  });
 
   final double height;
   final bool isExpanded;
@@ -244,14 +265,25 @@ class CommandPaneController extends StateNotifier<CommandPaneState> {
         CommandPaneState(
           height: _settings.getDouble(
             SettingsKeys.commandPaneHeight,
-            fallback: 132,
-          ),
+            fallback: defaultHeight,
+          ).clamp(minHeight, maxHeight),
         ),
       );
 
   final SettingsStore _settings;
 
-  static const double minHeight = 28;
+  /// Splitter plus the input row. History is given no pixels, so collapse
+  /// looks like a single command line rather than a half-empty console.
+  static const double collapsedHeight =
+      FanCadTokens.splitterHit + FanCadTokens.commandLineHeight;
+
+  /// Input plus two or three history lines — enough to read a prompt.
+  static const double defaultHeight = 84;
+
+  /// Tall enough to reread an import warning, short enough to keep the canvas.
+  static const double expandedHeight = 200;
+
+  static const double minHeight = collapsedHeight;
   static const double maxHeight = 420;
 
   void resize(double height) {
@@ -263,13 +295,76 @@ class CommandPaneController extends StateNotifier<CommandPaneState> {
 
   void toggleExpanded() => state = state.copyWith(
     isExpanded: !state.isExpanded,
-    height: state.isExpanded ? 132 : 320,
+    height: state.isExpanded ? collapsedHeight : expandedHeight,
   );
 }
 
 final commandPaneProvider =
     StateNotifierProvider<CommandPaneController, CommandPaneState>(
   (ref) => CommandPaneController(ref.watch(settingsProvider)),
+);
+
+/// The assistant chat, docked on the right so it can stay open next to Layers.
+class AssistantPaneState {
+  const AssistantPaneState({
+    this.isOpen = false,
+    this.width = AssistantPaneController.defaultWidth,
+  });
+
+  final bool isOpen;
+  final double width;
+
+  AssistantPaneState copyWith({bool? isOpen, double? width}) =>
+      AssistantPaneState(
+        isOpen: isOpen ?? this.isOpen,
+        width: width ?? this.width,
+      );
+}
+
+class AssistantPaneController extends StateNotifier<AssistantPaneState> {
+  AssistantPaneController(this._settings)
+    : super(
+        AssistantPaneState(
+          isOpen: _settings.getBool(
+            SettingsKeys.assistantOpen,
+            fallback: false,
+          ),
+          width: _settings.getDouble(
+            SettingsKeys.assistantWidth,
+            fallback: defaultWidth,
+          ).clamp(minWidth, maxWidth),
+        ),
+      );
+
+  final SettingsStore _settings;
+
+  static const double defaultWidth = 320;
+  static const double minWidth = FanCadTokens.sidePanelMinWidth;
+  static const double maxWidth = FanCadTokens.sidePanelMaxWidth;
+
+  void setOpen(bool value) {
+    state = state.copyWith(isOpen: value);
+    _settings.set(SettingsKeys.assistantOpen, value);
+  }
+
+  void toggle() => setOpen(!state.isOpen);
+
+  void resize(double width) {
+    state = state.copyWith(width: width.clamp(minWidth, maxWidth));
+  }
+
+  void commitWidth() =>
+      _settings.set(SettingsKeys.assistantWidth, state.width);
+
+  void resetWidth() {
+    state = state.copyWith(width: defaultWidth);
+    commitWidth();
+  }
+}
+
+final assistantPaneProvider =
+    StateNotifierProvider<AssistantPaneController, AssistantPaneState>(
+  (ref) => AssistantPaneController(ref.watch(settingsProvider)),
 );
 
 /// Whether the command palette overlay is showing.

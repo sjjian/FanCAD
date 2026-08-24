@@ -145,6 +145,8 @@ class SettingsKeys {
   static const String sidebarOpen = 'layout.sidebarOpen';
   static const String sidebarView = 'layout.sidebarView';
   static const String commandPaneHeight = 'layout.commandPaneHeight';
+  static const String assistantOpen = 'layout.assistantOpen';
+  static const String assistantWidth = 'layout.assistantWidth';
   static const String showGrid = 'viewport.showGrid';
   static const String recentFiles = 'files.recent';
   static const String useImportCache = 'files.useImportCache';

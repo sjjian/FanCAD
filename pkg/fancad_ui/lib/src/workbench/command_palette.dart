@@ -184,8 +184,8 @@ class _CommandPaletteState extends State<CommandPalette> {
                               ? null
                               : ShellIconButton(
                                   icon: Icons.close,
-                                  size: 22,
-                                  iconSize: 14,
+                                  size: 20,
+                                  iconSize: FanCadTokens.iconSmall,
                                   tooltip: 'Clear search',
                                   onPressed: () {
                                     _query.clear();
@@ -253,7 +253,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                               ),
                       ),
                       Container(
-                        height: 28,
+                        height: FanCadTokens.statusBarHeight,
                         padding: const EdgeInsets.symmetric(
                           horizontal: FanCadTokens.space4,
                         ),

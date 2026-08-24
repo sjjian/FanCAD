@@ -196,7 +196,7 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
               ],
             ),
             Container(
-              height: 28,
+              height: FanCadTokens.statusBarHeight,
               padding: const EdgeInsets.symmetric(
                 horizontal: FanCadTokens.space3,
               ),
@@ -346,7 +346,7 @@ class _EditorEmpty extends StatelessWidget {
               const SizedBox(height: FanCadTokens.space3),
               ShellRow(
                 onTap: onAction,
-                height: 28,
+                height: FanCadTokens.rowHeight,
                 padding: const EdgeInsets.symmetric(
                   horizontal: FanCadTokens.space2,
                 ),

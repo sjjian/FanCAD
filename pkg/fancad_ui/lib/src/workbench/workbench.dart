@@ -19,7 +19,6 @@ import '../theme/tokens.dart';
 import 'command_line.dart';
 import 'command_palette.dart';
 import 'document_view.dart';
-import 'layout_bar.dart';
 import 'shell_widgets.dart';
 import 'title_bar.dart';
 
@@ -54,6 +53,10 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     // register a second listener and pop two dialogs for one request.
     final workspace = ref.read(workspaceProvider);
     _panelReveals = workspace.panelReveals.listen((panelId) {
+      if (panelId == 'ai') {
+        ref.read(assistantPaneProvider.notifier).setOpen(true);
+        return;
+      }
       ref.read(sidebarProvider.notifier).reveal(panelId);
     });
     _approvals = workspace.approvals.listen(_showApproval);
@@ -189,6 +192,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   Widget _buildShell(BuildContext context, Workspace workspace) {
     final tokens = context.tokens;
     final sidebar = ref.watch(sidebarProvider);
+    final assistant = ref.watch(assistantPaneProvider);
     final commandPane = ref.watch(commandPaneProvider);
     final paletteOpen = ref.watch(paletteOpenProvider);
 
@@ -205,10 +209,13 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
             children: [
               TitleBar(
                 workspace: workspace,
+                assistantOpen: assistant.isOpen,
                 onTogglePalette: () => ref
                     .read(paletteOpenProvider.notifier)
                     .update((open) => !open),
-                onToggleSidebar: ref.read(sidebarProvider.notifier).toggle,
+                onToggleAssistant: ref
+                    .read(assistantPaneProvider.notifier)
+                    .toggle,
                 onSetTheme: ref
                     .read(themeBrightnessProvider.notifier)
                     .setBrightness,
@@ -253,7 +260,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                             children: [
                               DocumentTabStrip(workspace: workspace),
                               Expanded(child: _canvasArea(workspace)),
-                              LayoutTabStrip(workspace: workspace),
                               SizedBox(
                                 height: commandPane.height,
                                 child: CommandLinePane(
@@ -280,6 +286,38 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                             ],
                           ),
                         ),
+                        if (assistant.isOpen) ...[
+                          Tooltip(
+                            message:
+                                'Drag to resize · double-click to reset width',
+                            waitDuration: const Duration(milliseconds: 500),
+                            child: ShellSplitter(
+                              axis: Axis.vertical,
+                              strong: true,
+                              onDrag: (delta) => ref
+                                  .read(assistantPaneProvider.notifier)
+                                  .resize(assistant.width - delta),
+                              onDragEnd: ref
+                                  .read(assistantPaneProvider.notifier)
+                                  .commitWidth,
+                              onDoubleTap: ref
+                                  .read(assistantPaneProvider.notifier)
+                                  .resetWidth,
+                            ),
+                          ),
+                          SizedBox(
+                            width: assistant.width,
+                            child: ColoredBox(
+                              color: tokens.surface,
+                              child: AiPanel(
+                                controller: ref.watch(aiControllerProvider),
+                                onClose: () => ref
+                                    .read(assistantPaneProvider.notifier)
+                                    .setOpen(false),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     if (paletteOpen)
@@ -289,11 +327,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                             ref.read(paletteOpenProvider.notifier).state =
                                 false,
                       ),
-                    Positioned(
-                      right: FanCadTokens.space4,
-                      bottom: FanCadTokens.space4,
-                      child: _Notices(workspace: workspace),
-                    ),
                   ],
                 ),
               ),
@@ -307,24 +340,35 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
 
   Widget _canvasArea(Workspace workspace) {
     final tab = workspace.active;
-    if (tab == null) {
-      return EmptyWorkspace(
-        recentFiles: workspace.settings.getStringList(SettingsKeys.recentFiles),
-        onOpenRecent: (path) =>
-            workspace.run('file.open', args: {'path': path}),
-        onOpen: () => workspace.run('file.open'),
-        onNew: () => workspace.run('file.new'),
-        onShowCommands: () =>
-            ref.read(paletteOpenProvider.notifier).state = true,
-      );
-    }
-    return DocumentView(
-      // Keyed by tab so switching tabs gets a fresh canvas state rather than
-      // one holding another drawing's tessellation cache.
-      key: ValueKey(tab.session.id),
-      workspace: workspace,
-      tab: tab,
-      commandLineFocus: _commandFocus,
+    final body = tab == null
+        ? EmptyWorkspace(
+            recentFiles: workspace.settings.getStringList(
+              SettingsKeys.recentFiles,
+            ),
+            onOpenRecent: (path) =>
+                workspace.run('file.open', args: {'path': path}),
+            onOpen: () => workspace.run('file.open'),
+            onNew: () => workspace.run('file.new'),
+            onShowCommands: () =>
+                ref.read(paletteOpenProvider.notifier).state = true,
+          )
+        : DocumentView(
+            // Keyed by tab so switching tabs gets a fresh canvas state rather
+            // than one holding another drawing's tessellation cache.
+            key: ValueKey(tab.session.id),
+            workspace: workspace,
+            tab: tab,
+            commandLineFocus: _commandFocus,
+          );
+    return Stack(
+      children: [
+        body,
+        Positioned(
+          right: FanCadTokens.space4,
+          top: FanCadTokens.space3,
+          child: _Notices(workspace: workspace),
+        ),
+      ],
     );
   }
 
@@ -345,7 +389,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       workspace: workspace,
       host: ref.watch(pluginHostProvider),
     ),
-    'ai' => AiPanel(controller: ref.watch(aiControllerProvider)),
     _ => const SizedBox.shrink(),
   };
 
@@ -478,12 +521,6 @@ class _ActivityBar extends StatelessWidget {
       label: 'Re-Editor',
       hint: 'Review extension source',
     ),
-    (
-      id: 'ai',
-      icon: Icons.auto_awesome_outlined,
-      label: 'Assistant',
-      hint: 'Ask about the drawing or change it',
-    ),
   ];
 
   @override
@@ -492,7 +529,7 @@ class _ActivityBar extends StatelessWidget {
     return Container(
       width: FanCadTokens.activityBarWidth,
       decoration: BoxDecoration(
-        color: tokens.surface,
+        color: tokens.canvas,
         border: Border(right: BorderSide(color: tokens.border)),
       ),
       child: Column(
@@ -507,7 +544,7 @@ class _ActivityBar extends StatelessWidget {
                     ? 'Hide ${view.label}\n${view.hint}'
                     : '${view.label}\n${view.hint}',
                 size: FanCadTokens.activityBarWidth,
-                iconSize: 20,
+                iconSize: FanCadTokens.iconLarge,
                 isActive: activeViewId == view.id,
                 showActiveBar: true,
                 onPressed: () => onSelect(view.id),
@@ -515,12 +552,12 @@ class _ActivityBar extends StatelessWidget {
             ),
           const Spacer(),
           ShellIconButton(
-            icon: Icons.view_sidebar_outlined,
+            icon: Icons.menu,
             tooltip: activeViewId.isEmpty
                 ? 'Show the sidebar  ${shellShortcut('B')}'
                 : 'Hide the sidebar  ${shellShortcut('B')}',
             size: FanCadTokens.activityBarWidth,
-            iconSize: 18,
+            iconSize: FanCadTokens.iconLarge,
             onPressed: () => onSelect(
               activeViewId.isEmpty ? _views.first.id : activeViewId,
             ),
@@ -582,13 +619,13 @@ class _CommandListPanelState extends State<_CommandListPanel> {
             ShellIconButton(
               icon: Icons.search,
               tooltip: 'Command palette  ${shellShortcut('P', shift: true)}',
-              iconSize: 15,
+              iconSize: FanCadTokens.iconMedium,
               onPressed: widget.onOpenPalette,
             ),
           ],
         ),
         Container(
-          height: 28,
+          height: FanCadTokens.statusBarHeight,
           padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
           decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: tokens.border)),
@@ -599,7 +636,11 @@ class _CommandListPanelState extends State<_CommandListPanel> {
             style: tokens.bodyStyle,
             prefix: Padding(
               padding: const EdgeInsets.only(right: FanCadTokens.space2),
-              child: Icon(Icons.search, size: 13, color: tokens.textFaint),
+              child: Icon(
+                Icons.search,
+                size: FanCadTokens.iconSmall,
+                color: tokens.textFaint,
+              ),
             ),
             onChanged: (value) => setState(() => _query = value),
             suffix: _query.isEmpty
@@ -607,7 +648,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
                 : ShellIconButton(
                     icon: Icons.close,
                     size: 18,
-                    iconSize: 12,
+                    iconSize: FanCadTokens.iconSmall,
                     tooltip: 'Clear filter',
                     onPressed: () {
                       _filter.clear();
@@ -654,7 +695,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
                 ),
         ),
         Container(
-          height: 22,
+          height: FanCadTokens.statusBarHeight,
           padding: const EdgeInsets.symmetric(
             horizontal: FanCadTokens.space3,
           ),
@@ -831,7 +872,7 @@ class _NoticeToastState extends State<_NoticeToast> {
                   notice.isError
                       ? Icons.error_outline
                       : Icons.check_circle_outline,
-                  size: 14,
+                  size: FanCadTokens.iconMedium,
                   color: notice.isError ? tokens.danger : tokens.success,
                 ),
                 const SizedBox(width: FanCadTokens.space2),
@@ -849,7 +890,7 @@ class _NoticeToastState extends State<_NoticeToast> {
                 ShellIconButton(
                   icon: Icons.close,
                   size: 18,
-                  iconSize: 12,
+                  iconSize: FanCadTokens.iconSmall,
                   tooltip: 'Dismiss',
                   onPressed: () =>
                       widget.workspace.dismissNotice(notice),

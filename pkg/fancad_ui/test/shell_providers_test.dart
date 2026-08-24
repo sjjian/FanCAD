@@ -14,15 +14,23 @@ void main() {
     expect(sidebar.state.viewId, 'layers');
     expect(sidebar.state.isOpen, isTrue);
     expect(sidebar.state.width, 240);
+    expect(SidebarController.defaultWidth, FanCadTokens.sidePanelWidth);
+    expect(SidebarController.minWidth, FanCadTokens.sidePanelMinWidth);
+
+    final narrow = SidebarController(
+      SettingsStore.inMemory({SettingsKeys.sidebarWidth: 40}),
+    );
+    addTearDown(narrow.dispose);
+    expect(narrow.state.width, SidebarController.minWidth);
 
     sidebar.select('layers');
     expect(sidebar.state.isOpen, isFalse);
     expect(settings.getBool(SettingsKeys.sidebarOpen), isFalse);
 
-    sidebar.select('ai');
-    expect(sidebar.state.viewId, 'ai');
+    sidebar.select('commands');
+    expect(sidebar.state.viewId, 'commands');
     expect(sidebar.state.isOpen, isTrue);
-    expect(settings.getString(SettingsKeys.sidebarView), 'ai');
+    expect(settings.getString(SettingsKeys.sidebarView), 'commands');
 
     sidebar.setOpen(false);
     sidebar.reveal('properties');
@@ -40,6 +48,65 @@ void main() {
     expect(
       settings.getDouble(SettingsKeys.sidebarWidth),
       SidebarController.maxWidth,
+    );
+  });
+
+  test('a leftover assistant view does not occupy the left sidebar', () {
+    final sidebar = SidebarController(
+      SettingsStore.inMemory({SettingsKeys.sidebarView: 'ai'}),
+    );
+    addTearDown(sidebar.dispose);
+    expect(sidebar.state.viewId, 'layers');
+    sidebar.select('ai');
+    expect(sidebar.state.viewId, 'layers');
+    expect(sidebar.state.isOpen, isFalse);
+  });
+
+  test('the assistant pane opens on the right and keeps its own width', () {
+    final settings = SettingsStore.inMemory({
+      SettingsKeys.assistantOpen: true,
+      SettingsKeys.assistantWidth: 40,
+    });
+    final pane = AssistantPaneController(settings);
+    addTearDown(pane.dispose);
+    expect(pane.state.isOpen, isTrue);
+    expect(pane.state.width, AssistantPaneController.minWidth);
+
+    pane.toggle();
+    expect(pane.state.isOpen, isFalse);
+    expect(settings.getBool(SettingsKeys.assistantOpen), isFalse);
+    pane.resize(900);
+    pane.commitWidth();
+    expect(
+      settings.getDouble(SettingsKeys.assistantWidth),
+      AssistantPaneController.maxWidth,
+    );
+    pane.resetWidth();
+    expect(pane.state.width, AssistantPaneController.defaultWidth);
+  });
+
+  test('a stored pane height below the input row is lifted to collapsed', () {
+    final pane = CommandPaneController(
+      SettingsStore.inMemory({SettingsKeys.commandPaneHeight: 12}),
+    );
+    addTearDown(pane.dispose);
+    expect(pane.state.height, CommandPaneController.collapsedHeight);
+  });
+
+  test('the command pane default leaves the canvas most of the window', () {
+    expect(
+      CommandPaneController.collapsedHeight,
+      FanCadTokens.splitterHit + FanCadTokens.commandLineHeight,
+    );
+    expect(CommandPaneController.defaultHeight, 84);
+    expect(CommandPaneController.expandedHeight, 200);
+    expect(
+      CommandPaneController.defaultHeight,
+      lessThan(CommandPaneController.expandedHeight),
+    );
+    expect(
+      CommandPaneController.collapsedHeight,
+      lessThan(CommandPaneController.defaultHeight),
     );
   });
 
@@ -64,10 +131,10 @@ void main() {
 
     pane.toggleExpanded();
     expect(pane.state.isExpanded, isTrue);
-    expect(pane.state.height, 320);
+    expect(pane.state.height, CommandPaneController.expandedHeight);
     pane.toggleExpanded();
     expect(pane.state.isExpanded, isFalse);
-    expect(pane.state.height, 132);
+    expect(pane.state.height, CommandPaneController.collapsedHeight);
   });
 
   test('theme brightness restores from settings and persists a toggle', () {

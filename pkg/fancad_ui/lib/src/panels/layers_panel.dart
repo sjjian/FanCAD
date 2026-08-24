@@ -72,7 +72,7 @@ class _LayersPanelState extends State<LayersPanel> {
             ShellIconButton(
               icon: Icons.add,
               tooltip: 'New layer (made current)',
-              iconSize: 15,
+              iconSize: FanCadTokens.iconMedium,
               onPressed: () => _workspace.run(
                 'layer.new',
                 args: {'name': _uniqueLayerName(tab.document)},
@@ -83,14 +83,14 @@ class _LayersPanelState extends State<LayersPanel> {
               tooltip: hiddenCount == 0
                   ? 'All layers are on'
                   : 'Show $hiddenCount hidden layer${hiddenCount == 1 ? '' : 's'}',
-              iconSize: 15,
+              iconSize: FanCadTokens.iconMedium,
               enabled: hiddenCount > 0,
               onPressed: () => _workspace.run('layer.showAll'),
             ),
           ],
         ),
         Container(
-          height: 28,
+          height: FanCadTokens.statusBarHeight,
           padding: const EdgeInsets.symmetric(
             horizontal: FanCadTokens.space3,
           ),
@@ -103,7 +103,11 @@ class _LayersPanelState extends State<LayersPanel> {
             style: tokens.bodyStyle,
             prefix: Padding(
               padding: const EdgeInsets.only(right: FanCadTokens.space2),
-              child: Icon(Icons.search, size: 13, color: tokens.textFaint),
+              child: Icon(
+                Icons.search,
+                size: FanCadTokens.iconSmall,
+                color: tokens.textFaint,
+              ),
             ),
             onChanged: (value) =>
                 setState(() => _filter = value.trim().toLowerCase()),
@@ -112,7 +116,7 @@ class _LayersPanelState extends State<LayersPanel> {
                 : ShellIconButton(
                     icon: Icons.close,
                     size: 18,
-                    iconSize: 12,
+                    iconSize: FanCadTokens.iconSmall,
                     tooltip: 'Clear filter',
                     onPressed: () {
                       _filterController.clear();
@@ -169,7 +173,7 @@ class _LayersPanelState extends State<LayersPanel> {
                 ),
         ),
         Container(
-          height: 22,
+          height: FanCadTokens.statusBarHeight,
           padding: const EdgeInsets.symmetric(
             horizontal: FanCadTokens.space3,
           ),
@@ -259,8 +263,6 @@ class _LayerRow extends StatefulWidget {
 }
 
 class _LayerRowState extends State<_LayerRow> {
-  bool _hovered = false;
-
   void _openMenu() {
     final box = context.findRenderObject();
     if (box is! RenderBox) return;
@@ -330,107 +332,81 @@ class _LayerRowState extends State<_LayerRow> {
           ? 'Current layer — double-click to isolate, right-click for more'
           : 'Click to make current — double-click to isolate',
       waitDuration: const Duration(milliseconds: 700),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: ShellRow(
-          isSelected: widget.isCurrent,
-          onTap: widget.onSetCurrent,
-          onDoubleTap: widget.onIsolate,
-          onSecondaryTap: _openMenu,
-          padding: const EdgeInsets.only(left: FanCadTokens.space2, right: 2),
-          child: Row(
-            children: [
-              ShellIconButton(
-                icon: layer.visible
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                tooltip: layer.visible ? 'Turn layer off' : 'Turn layer on',
-                size: 20,
-                iconSize: 14,
-                isActive: layer.visible,
-                onPressed: widget.onToggleVisible,
-              ),
-              ShellIconButton(
-                icon: layer.locked ? Icons.lock_outline : Icons.lock_open,
-                tooltip: layer.locked ? 'Unlock layer' : 'Lock layer',
-                size: 20,
-                iconSize: 13,
-                isActive: layer.locked,
-                onPressed: widget.onToggleLock,
-              ),
-              const SizedBox(width: FanCadTokens.space1),
-              Container(
-                width: 11,
-                height: 11,
-                decoration: BoxDecoration(
-                  color: widget.color.withValues(alpha: dimmed ? 0.35 : 1),
-                  border: Border.all(
-                    color: widget.isCurrent ? tokens.accent : tokens.border,
-                    width: widget.isCurrent ? 1.5 : 1,
-                  ),
-                  borderRadius: BorderRadius.circular(2),
+      child: ShellRow(
+        isSelected: widget.isCurrent,
+        onTap: widget.onSetCurrent,
+        onDoubleTap: widget.onIsolate,
+        onSecondaryTap: _openMenu,
+        padding: const EdgeInsets.only(left: FanCadTokens.space2, right: 2),
+        child: Row(
+          children: [
+            ShellIconButton(
+              icon: layer.visible
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              tooltip: layer.visible ? 'Turn layer off' : 'Turn layer on',
+              size: 20,
+              iconSize: FanCadTokens.iconSmall,
+              isActive: layer.visible,
+              onPressed: widget.onToggleVisible,
+            ),
+            ShellIconButton(
+              icon: layer.locked ? Icons.lock_outline : Icons.lock_open,
+              tooltip: layer.locked ? 'Unlock layer' : 'Lock layer',
+              size: 20,
+              iconSize: FanCadTokens.iconSmall,
+              isActive: layer.locked,
+              onPressed: widget.onToggleLock,
+            ),
+            const SizedBox(width: FanCadTokens.space1),
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: widget.color.withValues(alpha: dimmed ? 0.35 : 1),
+                border: Border.all(
+                  color: widget.isCurrent ? tokens.accent : tokens.border,
+                  width: widget.isCurrent ? 1.5 : 1,
                 ),
+                borderRadius: BorderRadius.circular(2),
               ),
-              const SizedBox(width: FanCadTokens.space2),
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        layer.name,
-                        style: tokens.bodyStyle.copyWith(
-                          color: dimmed ? tokens.textFaint : tokens.text,
-                          fontWeight: widget.isCurrent
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(width: FanCadTokens.space2),
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      layer.name,
+                      style: tokens.bodyStyle.copyWith(
+                        color: dimmed ? tokens.textFaint : tokens.text,
+                        fontWeight: widget.isCurrent
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (layer.frozen) ...[
-                      const SizedBox(width: FanCadTokens.space1),
-                      Icon(
-                        Icons.ac_unit,
-                        size: 11,
-                        color: tokens.textFaint,
-                      ),
-                    ],
+                  ),
+                  if (layer.frozen) ...[
+                    const SizedBox(width: FanCadTokens.space1),
+                    Icon(
+                      Icons.ac_unit,
+                      size: FanCadTokens.iconSmall,
+                      color: tokens.textFaint,
+                    ),
                   ],
-                ),
+                ],
               ),
-              SizedBox(
-                width: 28,
-                child: Text(
-                  '${widget.count}',
-                  style: tokens.labelStyle,
-                  textAlign: TextAlign.right,
-                ),
+            ),
+            SizedBox(
+              width: 28,
+              child: Text(
+                '${widget.count}',
+                style: tokens.labelStyle,
+                textAlign: TextAlign.right,
               ),
-              // Isolate and delete stay off the idle row so a long list is not
-              // a wall of icons; right-click still exposes every action.
-              if (_hovered) ...[
-                ShellIconButton(
-                  icon: Icons.filter_center_focus,
-                  tooltip: 'Isolate this layer',
-                  size: 20,
-                  iconSize: 13,
-                  onPressed: widget.onIsolate,
-                ),
-                ShellIconButton(
-                  icon: Icons.delete_outline,
-                  tooltip: widget.onDelete == null
-                      ? 'Layer 0 cannot be deleted'
-                      : 'Delete layer',
-                  size: 20,
-                  iconSize: 13,
-                  enabled: widget.onDelete != null,
-                  destructive: widget.onDelete != null,
-                  onPressed: widget.onDelete,
-                ),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -59,12 +59,15 @@ class FanCadTheme {
         thickness: 1,
         space: 1,
       ),
-      iconTheme: IconThemeData(color: tokens.textMuted, size: 16),
+      iconTheme: IconThemeData(
+        color: tokens.textMuted,
+        size: FanCadTokens.iconMedium,
+      ),
       tooltipTheme: TooltipThemeData(
         waitDuration: const Duration(milliseconds: 500),
         decoration: BoxDecoration(
           color: tokens.surfaceOverlay,
-          border: Border.all(color: tokens.border),
+          border: Border.all(color: tokens.borderStrong),
           borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
         ),
         textStyle: tokens.bodyStyle,

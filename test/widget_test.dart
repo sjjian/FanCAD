@@ -41,6 +41,71 @@ void main() {
     expect(find.text('FanCAD'), findsWidgets);
     expect(find.text('New drawing'), findsOneWidget);
     expect(find.text('LAYERS'), findsOneWidget);
+    expect(find.text('LAYOUTS'), findsNothing);
+    // Sidebar show/hide lives on the activity bar; a title-bar hamburger
+    // was the same action twice.
+    expect(find.byIcon(Icons.menu), findsOneWidget);
+    expect(find.byIcon(Icons.view_sidebar_outlined), findsNothing);
+    expect(find.text('ASSISTANT'), findsNothing);
+    expect(find.byIcon(Icons.auto_awesome_outlined), findsOneWidget);
+  });
+
+  testWidgets('the assistant opens on the right without replacing Layers', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final container = makeContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(wrap(container));
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.auto_awesome_outlined));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('LAYERS'), findsOneWidget);
+    expect(find.text('ASSISTANT'), findsOneWidget);
+  });
+
+  testWidgets('revealPanel(ai) opens the right dock, not the left sidebar', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final container = makeContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(wrap(container));
+    await tester.pump();
+
+    container.read(workspaceProvider).revealPanel('ai');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('LAYERS'), findsOneWidget);
+    expect(find.text('ASSISTANT'), findsOneWidget);
+  });
+
+  testWidgets('layout chips sit in the status bar, not on their own row', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final container = makeContainer();
+    addTearDown(container.dispose);
+    container.read(workspaceProvider).newDocument();
+    await tester.pumpWidget(wrap(container));
+    await tester.pump();
+
+    expect(find.text('Model'), findsOneWidget);
+    expect(find.text('LAYOUTS'), findsNothing);
+    expect(find.text('FanCAD'), findsWidgets);
   });
 
   testWidgets('the command palette opens and lists built-in commands', (
@@ -58,7 +123,10 @@ void main() {
     container.read(paletteOpenProvider.notifier).state = true;
     await tester.pumpAndSettle();
 
-    expect(find.text('Type a command name or alias'), findsOneWidget);
+    expect(
+      find.text('Search commands, aliases or categories'),
+      findsOneWidget,
+    );
 
     // Searched rather than scrolled to, because the palette's list is lazily
     // built and a command far down the alphabet would not be mounted yet.

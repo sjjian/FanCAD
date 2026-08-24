@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import 'command_line_model.dart';
+import 'layout_bar.dart';
 import 'shell_widgets.dart';
 
 /// The command line and its history pane.
@@ -134,6 +135,7 @@ class _CommandLinePaneState extends State<CommandLinePane> {
           waitDuration: const Duration(milliseconds: 500),
           child: ShellSplitter(
             axis: Axis.horizontal,
+            strong: true,
             // Dragging the splitter up has to make the pane taller, so the
             // delta is inverted relative to the pointer.
             onDrag: (delta) => widget.onResize(-delta),
@@ -222,37 +224,21 @@ class _CommandLinePaneState extends State<CommandLinePane> {
             tooltip: widget.isExpanded
                 ? 'Collapse command history'
                 : 'Expand command history',
-            size: 22,
-            iconSize: 16,
+            size: 20,
+            iconSize: FanCadTokens.iconMedium,
             isActive: widget.isExpanded,
             onPressed: widget.onToggleExpand,
           ),
-          ShellIconButton(
-            icon: Icons.copy_outlined,
-            tooltip: _model.lines.isEmpty
-                ? 'Nothing to copy'
-                : 'Copy command history',
+          _HistoryOverflow(
             enabled: _model.lines.isNotEmpty,
-            size: 22,
-            iconSize: 14,
-            onPressed: () {
+            onCopy: () {
               final text = [
                 for (final line in _model.lines) line.text,
               ].join('\n');
               Clipboard.setData(ClipboardData(text: text));
               widget.workspace.notify('Copied command history');
             },
-          ),
-          ShellIconButton(
-            icon: Icons.delete_outline,
-            tooltip: _model.lines.isEmpty
-                ? 'Nothing to clear'
-                : 'Clear command history',
-            enabled: _model.lines.isNotEmpty,
-            destructive: true,
-            size: 22,
-            iconSize: 15,
-            onPressed: _model.clear,
+            onClear: _model.clear,
           ),
           const SizedBox(width: FanCadTokens.space1),
           if (prompt.isNotEmpty)
@@ -351,22 +337,104 @@ class _HistoryLineState extends State<_HistoryLine> {
             padding: const EdgeInsets.symmetric(
               horizontal: FanCadTokens.space1,
             ),
-            child: Text(
-              widget.line.text,
-              style: tokens.monoStyle.copyWith(
-                fontSize: 11.5,
-                color: switch (widget.line.level) {
-                  HistoryLevel.normal => tokens.textMuted,
-                  HistoryLevel.prompt => tokens.text,
-                  HistoryLevel.success => tokens.success,
-                  HistoryLevel.warning => tokens.warning,
-                  HistoryLevel.error => tokens.danger,
-                },
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Row(
+              children: [
+                if (_historyDot(widget.line.level, tokens) case final dot?) ...[
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: dot,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: FanCadTokens.space1),
+                ],
+                Expanded(
+                  child: Text(
+                    widget.line.text,
+                    style: tokens.monoStyle.copyWith(
+                      fontSize: 11.5,
+                      color: widget.line.level == HistoryLevel.prompt
+                          ? tokens.text
+                          : tokens.textMuted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+Color? _historyDot(HistoryLevel level, FanCadTokens tokens) =>
+    switch (level) {
+      HistoryLevel.success => tokens.success,
+      HistoryLevel.warning => tokens.warning,
+      HistoryLevel.error => tokens.danger,
+      HistoryLevel.normal || HistoryLevel.prompt => null,
+    };
+
+/// Copy and clear sit behind one control so the input row can stay a command
+/// line rather than a toolbar.
+class _HistoryOverflow extends StatelessWidget {
+  const _HistoryOverflow({
+    required this.enabled,
+    required this.onCopy,
+    required this.onClear,
+  });
+
+  final bool enabled;
+  final VoidCallback onCopy;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return PopupMenuButton<String>(
+      tooltip: 'Command history',
+      padding: EdgeInsets.zero,
+      enabled: enabled,
+      offset: const Offset(0, -8),
+      color: tokens.surfaceOverlay,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(FanCadTokens.radius),
+        side: BorderSide(color: tokens.borderStrong),
+      ),
+      onSelected: (value) {
+        switch (value) {
+          case 'copy':
+            onCopy();
+          case 'clear':
+            onClear();
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'copy',
+          enabled: enabled,
+          height: 32,
+          child: Text('Copy history', style: tokens.bodyStyle),
+        ),
+        PopupMenuItem(
+          value: 'clear',
+          enabled: enabled,
+          height: 32,
+          child: Text('Clear history', style: tokens.bodyStyle),
+        ),
+      ],
+      child: SizedBox(
+        width: 20,
+        height: 20,
+        child: Icon(
+          Icons.more_vert,
+          size: FanCadTokens.iconSmall,
+          color: enabled ? tokens.textMuted : tokens.textFaint,
         ),
       ),
     );
@@ -432,7 +500,7 @@ class StatusBar extends StatelessWidget {
               if (tab != null) workspace.setShowGrid(!tab.showGrid);
             },
           ),
-          const Spacer(),
+          Expanded(child: LayoutTabStrip(workspace: workspace)),
           if (tab != null) ...[
             _StatusAction(
               label: '${tab.selection.length} selected',
@@ -508,7 +576,7 @@ Future<void> _openSnapModeMenu(
               SizedBox(
                 width: 18,
                 child: workspace.snapEngine.modes.contains(mode)
-                    ? Icon(Icons.check, size: 14, color: tokens.accent)
+                    ? Icon(Icons.check, size: FanCadTokens.iconSmall, color: tokens.accent)
                     : null,
               ),
               const SizedBox(width: FanCadTokens.space2),
@@ -566,7 +634,7 @@ Future<void> _openPolarIncrementMenu(
               SizedBox(
                 width: 18,
                 child: degrees == current
-                    ? Icon(Icons.check, size: 14, color: tokens.accent)
+                    ? Icon(Icons.check, size: FanCadTokens.iconSmall, color: tokens.accent)
                     : null,
               ),
               const SizedBox(width: FanCadTokens.space2),
@@ -627,8 +695,8 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
             child: Row(
               children: [
                 Container(
-                  width: 9,
-                  height: 9,
+                  width: 12,
+                  height: 12,
                   decoration: BoxDecoration(
                     color: layer == null
                         ? tokens.textFaint
@@ -647,7 +715,7 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
                   const SizedBox(width: FanCadTokens.space1),
                   Icon(
                     Icons.visibility_off_outlined,
-                    size: 11,
+                    size: FanCadTokens.iconSmall,
                     color: tokens.textFaint,
                   ),
                 ],
@@ -655,7 +723,7 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
                   const SizedBox(width: FanCadTokens.space1),
                   Icon(
                     Icons.lock_outline,
-                    size: 11,
+                    size: FanCadTokens.iconSmall,
                     color: tokens.textFaint,
                   ),
                 ],

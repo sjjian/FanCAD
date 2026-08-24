@@ -50,20 +50,20 @@ class PropertiesPanel extends StatelessWidget {
               ShellIconButton(
                 icon: Icons.center_focus_strong,
                 tooltip: 'Zoom to selection',
-                iconSize: 15,
+                iconSize: FanCadTokens.iconMedium,
                 onPressed: () => workspace.run('view.zoomSelected'),
               ),
               ShellIconButton(
                 icon: Icons.deselect,
                 tooltip: 'Clear selection',
-                iconSize: 15,
+                iconSize: FanCadTokens.iconMedium,
                 onPressed: () => workspace.run('select.none'),
               ),
             ],
             ShellIconButton(
               icon: Icons.info_outline,
               tooltip: 'List the selection in the command history',
-              iconSize: 15,
+              iconSize: FanCadTokens.iconMedium,
               enabled: entities.isNotEmpty,
               onPressed: () => workspace.run('query.list'),
             ),
@@ -397,7 +397,7 @@ class _EmptySelection extends StatelessWidget {
               const SizedBox(height: FanCadTokens.space2),
               ShellRow(
                 onTap: onSelectAll,
-                height: 28,
+                height: FanCadTokens.rowHeight,
                 padding: const EdgeInsets.symmetric(
                   horizontal: FanCadTokens.space2,
                 ),

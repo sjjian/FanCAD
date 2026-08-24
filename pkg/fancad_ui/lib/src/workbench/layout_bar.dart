@@ -5,11 +5,12 @@ import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import 'shell_widgets.dart';
 
-/// Model / paper tabs under the drawing, matching the AutoCAD layout strip.
+/// Model / paper chips in the status bar.
 ///
 /// The document already stores layouts and `layout.set` already switches the
 /// active block. Without this strip a paper tab is invisible: the user has a
-/// sheet and viewports, but no way to open them from the shell.
+/// sheet and viewports, but no way to open them from the shell. Sitting in
+/// the status bar keeps a dedicated 32px row from eating the canvas.
 class LayoutTabStrip extends StatelessWidget {
   const LayoutTabStrip({super.key, required this.workspace});
 
@@ -25,23 +26,21 @@ class LayoutTabStrip extends StatelessWidget {
     final active = tab.document.activeLayoutName;
     final maximized = tab.session.maximizedLayoutName;
 
-    return Container(
-      height: FanCadTokens.tabBarHeight,
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        border: Border(top: BorderSide(color: tokens.border)),
-      ),
+    return SizedBox(
+      height: FanCadTokens.statusBarHeight,
       child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: FanCadTokens.space3),
-            child: Text('LAYOUTS', style: tokens.sectionTitleStyle),
+          Container(
+            width: 1,
+            height: 12,
+            color: tokens.borderStrong,
           ),
-          const SizedBox(width: FanCadTokens.space2),
           Expanded(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(right: FanCadTokens.space2),
+              padding: const EdgeInsets.symmetric(
+                horizontal: FanCadTokens.space1,
+              ),
               itemCount: layouts.length + 1,
               separatorBuilder: (_, _) =>
                   const SizedBox(width: FanCadTokens.space1),
@@ -224,7 +223,7 @@ class _LayoutChipState extends State<_LayoutChip> {
                   layout.isModelSpace
                       ? Icons.grid_on_outlined
                       : Icons.description_outlined,
-                  size: 13,
+                  size: FanCadTokens.iconSmall,
                   color: widget.selected ? tokens.accent : tokens.textMuted,
                 ),
                 const SizedBox(width: FanCadTokens.space1),
@@ -241,7 +240,7 @@ class _LayoutChipState extends State<_LayoutChip> {
                   const SizedBox(width: FanCadTokens.space1),
                   Icon(
                     Icons.fullscreen,
-                    size: 12,
+                    size: FanCadTokens.iconSmall,
                     color: tokens.accent,
                   ),
                 ],
@@ -249,7 +248,7 @@ class _LayoutChipState extends State<_LayoutChip> {
                   ShellIconButton(
                     icon: Icons.close,
                     size: 18,
-                    iconSize: 12,
+                    iconSize: FanCadTokens.iconSmall,
                     tooltip: 'Delete layout',
                     destructive: true,
                     onPressed: widget.onDelete,
@@ -296,7 +295,7 @@ class _AddLayoutChipState extends State<_AddLayoutChip> {
             color: _hovered ? tokens.hover : Colors.transparent,
             child: Icon(
               Icons.add,
-              size: 16,
+              size: FanCadTokens.iconMedium,
               color: _hovered ? tokens.text : tokens.textMuted,
             ),
           ),

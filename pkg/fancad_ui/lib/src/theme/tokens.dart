@@ -102,17 +102,31 @@ class FanCadTokens {
   static const double radius = 6;
   static const double radiusLarge = 10;
 
-  /// Chrome heights. Fixed rather than text-derived so that the canvas gets a
-  /// predictable amount of the window.
-  static const double titleBarHeight = 36;
-  static const double activityBarWidth = 48;
-  static const double tabBarHeight = 34;
-  static const double commandLineHeight = 30;
+  /// Chrome heights. Three tracks so title, tabs and footers line up instead
+  /// of each bar inventing its own size and stealing the canvas.
+  static const double titleBarHeight = 32;
+  static const double tabBarHeight = 32;
+  static const double commandLineHeight = 24;
   static const double statusBarHeight = 24;
   static const double rowHeight = 26;
+  static const double activityBarWidth = 48;
+
+  /// Width reserved for the native traffic lights on a macOS hidden title bar.
+  ///
+  /// The cluster is about 70px; the extra 8px is a gap so the first toolbar
+  /// icon does not sit against the green button.
+  static const double macTrafficLightsWidth = 78;
+
+  /// Hit area for pane splitters. Wider than the 1px rule so it can be grabbed.
+  static const double splitterHit = 7;
+
+  /// Icon sizes used in chrome. Dense controls, default tools, activity bar.
+  static const double iconSmall = 12;
+  static const double iconMedium = 16;
+  static const double iconLarge = 20;
 
   /// The default and permitted range for the side panel width.
-  static const double sidePanelWidth = 280;
+  static const double sidePanelWidth = 240;
   static const double sidePanelMinWidth = 180;
   static const double sidePanelMaxWidth = 560;
 

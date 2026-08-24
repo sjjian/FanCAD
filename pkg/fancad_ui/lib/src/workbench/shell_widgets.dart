@@ -26,7 +26,7 @@ class ShellIconButton extends StatefulWidget {
     this.tooltip,
     this.isActive = false,
     this.size = 28,
-    this.iconSize = 16,
+    this.iconSize = FanCadTokens.iconMedium,
     this.showActiveBar = false,
     this.enabled = true,
     this.destructive = false,
@@ -68,6 +68,8 @@ class _ShellIconButtonState extends State<ShellIconButton> {
         ? Colors.transparent
         : widget.destructive && _hovered
         ? tokens.danger.withValues(alpha: tokens.isDark ? 0.16 : 0.12)
+        : widget.isActive && widget.showActiveBar
+        ? (_hovered ? tokens.pressed : tokens.selection)
         : _hovered
         ? tokens.hover
         : Colors.transparent;
@@ -186,7 +188,8 @@ class ShellSplitter extends StatefulWidget {
     this.onDragEnd,
     this.onDoubleTap,
     this.thickness = 1,
-    this.hitSize = 7,
+    this.hitSize = FanCadTokens.splitterHit,
+    this.strong = false,
   });
 
   /// The axis the splitter runs along; a vertical splitter resizes horizontally.
@@ -199,6 +202,9 @@ class ShellSplitter extends StatefulWidget {
   final VoidCallback? onDoubleTap;
   final double thickness;
   final double hitSize;
+
+  /// A harder rule, used where two similar surfaces would otherwise merge.
+  final bool strong;
 
   @override
   State<ShellSplitter> createState() => _ShellSplitterState();
@@ -239,7 +245,11 @@ class _ShellSplitterState extends State<ShellSplitter> {
             child: Container(
               width: isVertical ? widget.thickness : double.infinity,
               height: isVertical ? double.infinity : widget.thickness,
-              color: _active ? tokens.accent : tokens.border,
+              color: _active
+                  ? tokens.accent
+                  : widget.strong
+                  ? tokens.borderStrong
+                  : tokens.border,
             ),
           ),
         ),
@@ -386,7 +396,7 @@ class PropertyRow extends StatelessWidget {
           if (isEditable)
             Icon(
               Icons.chevron_right,
-              size: 14,
+              size: FanCadTokens.iconSmall,
               color: tokens.textFaint,
             ),
         ],
@@ -444,11 +454,19 @@ class _StatusToggleState extends State<StatusToggle> {
           padding: const EdgeInsets.symmetric(
             horizontal: FanCadTokens.space2,
           ),
-          color: widget.isOn
-              ? tokens.selection
-              : _hovered
-              ? tokens.hover
-              : Colors.transparent,
+          decoration: BoxDecoration(
+            color: widget.isOn
+                ? tokens.selection
+                : _hovered
+                ? tokens.hover
+                : Colors.transparent,
+            border: Border(
+              bottom: BorderSide(
+                color: widget.isOn ? tokens.accent : Colors.transparent,
+                width: 2,
+              ),
+            ),
+          ),
           alignment: Alignment.center,
           child: Text(
             widget.label,
@@ -739,7 +757,7 @@ class _Recent extends StatelessWidget {
               missing
                   ? Icons.broken_image_outlined
                   : Icons.insert_drive_file_outlined,
-              size: 14,
+              size: FanCadTokens.iconMedium,
               color: missing ? tokens.textFaint : tokens.textMuted,
             ),
             const SizedBox(width: FanCadTokens.space2),
@@ -761,8 +779,8 @@ class _Recent extends StatelessWidget {
             if (!missing)
               ShellIconButton(
                 icon: Icons.folder_open_outlined,
-                size: 22,
-                iconSize: 13,
+                size: 20,
+                iconSize: FanCadTokens.iconSmall,
                 tooltip: _revealLabel,
                 onPressed: () => _revealOnDisk(path),
               ),

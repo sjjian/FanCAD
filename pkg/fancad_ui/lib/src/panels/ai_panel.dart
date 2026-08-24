@@ -6,16 +6,18 @@ import '../state/ai_controller.dart';
 import '../theme/tokens.dart';
 import '../workbench/shell_widgets.dart';
 
-/// The assistant sidebar.
+/// The assistant pane.
 ///
 /// The interesting part is what is *not* here: there is no second command
 /// catalogue and no special "AI can do this" list. The model sees the same
 /// registry the command palette does, and every edit it makes is an ordinary
-/// command that lands on the ordinary undo stack.
+/// command that lands on the ordinary undo stack. It docks on the right so
+/// Layers can stay open at the same time.
 class AiPanel extends StatefulWidget {
-  const AiPanel({super.key, required this.controller});
+  const AiPanel({super.key, required this.controller, this.onClose});
 
   final AiController controller;
+  final VoidCallback? onClose;
 
   @override
   State<AiPanel> createState() => _AiPanelState();
@@ -75,6 +77,13 @@ class _AiPanelState extends State<AiPanel> {
               destructive: true,
               onPressed: controller.clear,
             ),
+            if (widget.onClose != null)
+              ShellIconButton(
+                icon: Icons.close,
+                tooltip: 'Hide assistant',
+                iconSize: FanCadTokens.iconSmall,
+                onPressed: widget.onClose,
+              ),
           ],
         ),
         _SettingsRow(controller: controller),
@@ -403,8 +412,8 @@ class _ErrorBanner extends StatelessWidget {
           ),
           ShellIconButton(
             icon: Icons.close,
-            size: 22,
-            iconSize: 13,
+            size: 20,
+            iconSize: FanCadTokens.iconSmall,
             tooltip: 'Dismiss',
             onPressed: onDismiss,
           ),

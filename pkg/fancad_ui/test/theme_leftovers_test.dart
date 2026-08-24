@@ -23,12 +23,19 @@ void main() {
   );
 
   test('chrome heights are fixed so a font change cannot steal the canvas', () {
-    expect(FanCadTokens.titleBarHeight, 36);
-    expect(FanCadTokens.activityBarWidth, 48);
-    expect(FanCadTokens.tabBarHeight, 34);
-    expect(FanCadTokens.commandLineHeight, 30);
+    expect(FanCadTokens.titleBarHeight, 32);
+    expect(FanCadTokens.tabBarHeight, 32);
+    expect(FanCadTokens.commandLineHeight, 24);
     expect(FanCadTokens.statusBarHeight, 24);
     expect(FanCadTokens.rowHeight, 26);
+    expect(FanCadTokens.macTrafficLightsWidth, 78);
+    expect(FanCadTokens.activityBarWidth, 48);
+    expect(FanCadTokens.splitterHit, 7);
+    expect(FanCadTokens.iconSmall, 12);
+    expect(FanCadTokens.iconMedium, 16);
+    expect(FanCadTokens.iconLarge, 20);
+    expect(FanCadTokens.sidePanelWidth, 240);
+    expect(FanCadTokens.sidePanelMinWidth, 180);
   });
 
   test('dark and light type styles keep token colours and tabular figures', () {

@@ -14,29 +14,64 @@ import 'shell_widgets.dart';
 /// The custom title bar.
 ///
 /// Replaces the OS chrome so the menus, the quick-access tools and the window
-/// buttons share one 36-pixel row. On a CAD application that row is worth having:
+/// buttons share one 32-pixel row. On a CAD application that row is worth having:
 /// vertical space is the scarcest thing on screen.
+///
+/// macOS keeps the native traffic lights on a hidden title bar, so the first
+/// icon is inset and the Windows-style buttons stay off that platform.
 class TitleBar extends StatelessWidget {
   const TitleBar({
     super.key,
     required this.workspace,
     required this.onTogglePalette,
-    required this.onToggleSidebar,
+    required this.onToggleAssistant,
     required this.onSetTheme,
+    this.assistantOpen = false,
   });
 
   final Workspace workspace;
   final VoidCallback onTogglePalette;
-  final VoidCallback onToggleSidebar;
+  final VoidCallback onToggleAssistant;
   final ValueChanged<Brightness> onSetTheme;
+  final bool assistantOpen;
+
+  /// Space before the first title-bar control.
+  ///
+  /// The native traffic lights sit over the Flutter view; without this inset
+  /// the first file icon is drawn under the red button.
+  @visibleForTesting
+  static double leadingInset({required bool usesNativeTrafficLights}) =>
+      usesNativeTrafficLights
+      ? FanCadTokens.macTrafficLightsWidth
+      : FanCadTokens.space2;
+
+  /// Whether this platform draws its own minimise / maximise / close cluster.
+  @visibleForTesting
+  static bool usesCustomWindowButtons({
+    required bool usesNativeTrafficLights,
+  }) => !usesNativeTrafficLights;
+
+  /// Window title. A single drawing is already named on the tab strip.
+  @visibleForTesting
+  static String chromeTitle({
+    required int tabCount,
+    String? activeTitle,
+    bool dirty = false,
+  }) {
+    if (tabCount <= 1) return 'FanCAD';
+    return '${dirty ? '● ' : ''}$activeTitle — FanCAD';
+  }
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final tab = workspace.active;
-    final title = tab == null
-        ? 'FanCAD'
-        : '${tab.isDirty ? '● ' : ''}${tab.title} — FanCAD';
+    final title = chromeTitle(
+      tabCount: workspace.tabs.length,
+      activeTitle: tab?.title,
+      dirty: tab?.isDirty ?? false,
+    );
+    final nativeLights = Platform.isMacOS;
 
     return Container(
       height: FanCadTokens.titleBarHeight,
@@ -46,13 +81,7 @@ class TitleBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const SizedBox(width: FanCadTokens.space2),
-          ShellIconButton(
-            icon: Icons.menu,
-            tooltip: 'Toggle sidebar  ${shellShortcut('B')}',
-            onPressed: onToggleSidebar,
-          ),
-          const _Divider(),
+          SizedBox(width: leadingInset(usesNativeTrafficLights: nativeLights)),
           ShellIconButton(
             icon: Icons.insert_drive_file_outlined,
             tooltip: 'New drawing  ${shellShortcut('N')}',
@@ -118,8 +147,20 @@ class TitleBar extends StatelessWidget {
             onPressed: onTogglePalette,
           ),
           _AppearanceMenu(onSetTheme: onSetTheme),
-          const _Divider(),
-          const _WindowButtons(),
+          ShellIconButton(
+            icon: Icons.auto_awesome_outlined,
+            tooltip: assistantOpen
+                ? 'Hide assistant'
+                : 'Show assistant',
+            isActive: assistantOpen,
+            onPressed: onToggleAssistant,
+          ),
+          if (usesCustomWindowButtons(
+            usesNativeTrafficLights: nativeLights,
+          )) ...[
+            const _Divider(),
+            const _WindowButtons(),
+          ],
         ],
       ),
     );
@@ -142,56 +183,13 @@ class TitleBar extends StatelessWidget {
 
   static const List<({String commandId, IconData icon, String tooltip})>
   _quickTools = [
-    (
-      commandId: 'draw.line',
-      icon: Icons.show_chart,
-      tooltip: 'Line  L',
-    ),
-    (
-      commandId: 'draw.polyline',
-      icon: Icons.timeline,
-      tooltip: 'Polyline  PL',
-    ),
-    (
-      commandId: 'draw.rectangle',
-      icon: Icons.crop_square,
-      tooltip: 'Rectangle  REC',
-    ),
+    (commandId: 'draw.line', icon: Icons.show_chart, tooltip: 'Line  L'),
     (
       commandId: 'draw.circle',
       icon: Icons.circle_outlined,
       tooltip: 'Circle  C',
     ),
-    (
-      commandId: 'draw.arc',
-      icon: Icons.architecture,
-      tooltip: 'Arc  A',
-    ),
-    (
-      commandId: 'draw.text',
-      icon: Icons.text_fields,
-      tooltip: 'Text  T',
-    ),
-    (
-      commandId: 'edit.move',
-      icon: Icons.open_with,
-      tooltip: 'Move  M',
-    ),
-    (
-      commandId: 'edit.copy',
-      icon: Icons.content_copy_outlined,
-      tooltip: 'Copy  CO',
-    ),
-    (
-      commandId: 'edit.offset',
-      icon: Icons.line_style,
-      tooltip: 'Offset  O',
-    ),
-    (
-      commandId: 'edit.trim',
-      icon: Icons.content_cut,
-      tooltip: 'Trim  TR',
-    ),
+    (commandId: 'edit.move', icon: Icons.open_with, tooltip: 'Move  M'),
   ];
 }
 
@@ -229,7 +227,7 @@ class _AppearanceMenu extends StatelessWidget {
           current == Brightness.dark
               ? Icons.dark_mode_outlined
               : Icons.light_mode_outlined,
-          size: 16,
+          size: FanCadTokens.iconMedium,
           color: tokens.textMuted,
         ),
       ),
@@ -253,11 +251,11 @@ class _AppearanceMenu extends StatelessWidget {
           SizedBox(
             width: 18,
             child: selected
-                ? Icon(Icons.check, size: 14, color: tokens.accent)
+                ? Icon(Icons.check, size: FanCadTokens.iconSmall, color: tokens.accent)
                 : null,
           ),
           const SizedBox(width: FanCadTokens.space2),
-          Icon(icon, size: 14, color: tokens.textMuted),
+          Icon(icon, size: FanCadTokens.iconSmall, color: tokens.textMuted),
           const SizedBox(width: FanCadTokens.space2),
           Text(label, style: tokens.bodyStyle),
         ],
@@ -322,8 +320,7 @@ class _FileMenu extends StatelessWidget {
             height: 28,
             child: Text('Recent', style: tokens.sectionTitleStyle),
           ),
-          for (final path in recent.take(8))
-            _recentItem(context, tokens, path),
+          for (final path in recent.take(8)) _recentItem(context, tokens, path),
           if (recent.any((path) => !File(path).existsSync()))
             PopupMenuItem<String>(
               value: 'pruneRecent',
@@ -362,11 +359,7 @@ class _FileMenu extends StatelessWidget {
       child: SizedBox(
         width: 22,
         height: 28,
-        child: Icon(
-          Icons.expand_more,
-          size: 16,
-          color: tokens.textMuted,
-        ),
+        child: Icon(Icons.expand_more, size: FanCadTokens.iconMedium, color: tokens.textMuted),
       ),
     );
   }
@@ -407,7 +400,7 @@ class _FileMenu extends StatelessWidget {
                   padding: const EdgeInsets.all(4),
                   child: Icon(
                     Icons.folder_open_outlined,
-                    size: 14,
+                    size: FanCadTokens.iconSmall,
                     color: tokens.textMuted,
                   ),
                 ),
@@ -546,7 +539,7 @@ class _OpenDrawingsMenu extends StatelessWidget {
                 SizedBox(
                   width: 18,
                   child: i == workspace.activeIndex
-                      ? Icon(Icons.check, size: 14, color: tokens.accent)
+                      ? Icon(Icons.check, size: FanCadTokens.iconSmall, color: tokens.accent)
                       : tabs[i].isDirty
                       ? Center(
                           child: Container(
@@ -575,11 +568,7 @@ class _OpenDrawingsMenu extends StatelessWidget {
       child: SizedBox(
         width: 22,
         height: 28,
-        child: Icon(
-          Icons.arrow_drop_down,
-          size: 18,
-          color: tokens.textMuted,
-        ),
+        child: Icon(Icons.arrow_drop_down, size: FanCadTokens.iconMedium, color: tokens.textMuted),
       ),
     );
   }
@@ -629,7 +618,7 @@ class _TabState extends State<_Tab> {
           ),
           decoration: BoxDecoration(
             color: widget.isActive
-                ? tokens.canvas
+                ? tokens.selection
                 : _hovered
                 ? tokens.hover
                 : Colors.transparent,
@@ -637,7 +626,7 @@ class _TabState extends State<_Tab> {
               right: BorderSide(color: tokens.border),
               top: BorderSide(
                 color: widget.isActive ? tokens.accent : Colors.transparent,
-                width: 1.5,
+                width: 2,
               ),
             ),
           ),
@@ -654,7 +643,7 @@ class _TabState extends State<_Tab> {
                           'click to read',
                       child: Icon(
                         Icons.warning_amber_rounded,
-                        size: 13,
+                        size: FanCadTokens.iconSmall,
                         color: tokens.warning,
                       ),
                     ),
@@ -663,8 +652,8 @@ class _TabState extends State<_Tab> {
               Tooltip(
                 message: tab.isDirty
                     ? tab.filePath == null
-                        ? 'Unsaved drawing'
-                        : 'Unsaved changes — ${tab.filePath}'
+                          ? 'Unsaved drawing'
+                          : 'Unsaved changes — ${tab.filePath}'
                     : tab.filePath ?? 'Unsaved drawing',
                 waitDuration: const Duration(milliseconds: 500),
                 child: Text(
@@ -683,7 +672,7 @@ class _TabState extends State<_Tab> {
                     ? ShellIconButton(
                         icon: Icons.close,
                         size: 18,
-                        iconSize: 12,
+                        iconSize: FanCadTokens.iconSmall,
                         tooltip: tab.isDirty
                             ? 'Close — unsaved changes  ${shellShortcut('W')}'
                             : 'Close  ${shellShortcut('W')}',
@@ -848,10 +837,10 @@ class _TabState extends State<_Tab> {
         actions: [
           TextButton(
             onPressed: () {
-              Clipboard.setData(
-                ClipboardData(text: diagnostics.join('\n')),
+              Clipboard.setData(ClipboardData(text: diagnostics.join('\n')));
+              widget.workspace.notify(
+                'Copied ${diagnostics.length} warning(s)',
               );
-              widget.workspace.notify('Copied ${diagnostics.length} warning(s)');
               Navigator.of(context).pop();
             },
             child: Text('Copy all', style: tokens.bodyStyle),
@@ -952,7 +941,7 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
       ),
       ShellIconButton(
         icon: _maximized ? Icons.filter_none : Icons.crop_square,
-        iconSize: _maximized ? 12 : 13,
+        iconSize: FanCadTokens.iconSmall,
         tooltip: _maximized ? 'Restore' : 'Maximise',
         onPressed: _toggleMaximize,
       ),
