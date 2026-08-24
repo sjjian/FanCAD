@@ -179,18 +179,26 @@ Future<_LibreDwg?> _buildFromSource(
     return _fromSourceBuild(source, archive);
   }
 
+  var rebuilt = false;
   if (File('$source/CMakeLists.txt').existsSync() && _which('cmake') != null) {
-    if (!await _cmakeBuild(source, buildDir.toFilePath(), logger)) return null;
-  } else if (await _ensureConfigure(source, logger)) {
-    if (!await _autotoolsBuild(source, buildDir.toFilePath(), logger)) {
-      return null;
+    rebuilt = await _cmakeBuild(source, buildDir.toFilePath(), logger);
+    if (!rebuilt) {
+      logger.warning(
+        'cmake could not compile LibreDWG; trying autotools instead.',
+      );
     }
-  } else {
-    logger.severe(
-      'LibreDWG has no usable build system. Install cmake, or autoconf so '
-      'autogen.sh can produce configure.',
-    );
-    return null;
+  }
+  if (!rebuilt) {
+    final autoDir = '${buildDir.toFilePath()}/autotools';
+    Directory(autoDir).createSync(recursive: true);
+    if (await _ensureConfigure(source, logger)) {
+      rebuilt = await _autotoolsBuild(source, autoDir, logger);
+    } else if (!File('$source/CMakeLists.txt').existsSync()) {
+      logger.severe(
+        'LibreDWG has no usable build system. Install cmake, or autoconf so '
+        'autogen.sh can produce configure.',
+      );
+    }
   }
 
   final built = _findArchive(buildDir.toFilePath());
@@ -200,6 +208,11 @@ Future<_LibreDwg?> _buildFromSource(
       '${buildDir.toFilePath()}',
     );
     return null;
+  }
+  if (!rebuilt) {
+    logger.warning(
+      'Reusing an existing LibreDWG archive at $built after a failed rebuild',
+    );
   }
   stamp.writeAsStringSync(built);
   return _fromSourceBuild(source, built);
@@ -268,6 +281,10 @@ _LibreDwg? _probePrefix(String prefix) {
 
 Future<bool> _cmakeBuild(String source, String buildDir, Logger logger) async {
   logger.info('Configuring LibreDWG with cmake in $buildDir');
+  // LibreDWG's generated config.h defines `_POSIX_C_SOURCE=200809L` so strdup
+  // is visible. On Apple that hides `memmem`, while cmake's configure check
+  // still finds the symbol. The compile then dies on an undeclared `memmem`
+  // and the hook used to fall back to a build that cannot open DWG at all.
   final configure = await Process.run(_which('cmake')!, [
     '-S',
     source,
@@ -280,6 +297,10 @@ Future<bool> _cmakeBuild(String source, String buildDir, Logger logger) async {
     '-DDISABLE_WERROR=ON',
     '-DCMAKE_BUILD_TYPE=Release',
     '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
+    if (Platform.isMacOS) ...[
+      '-DCMAKE_C_FLAGS=-D_DARWIN_C_SOURCE',
+      '-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0',
+    ],
   ]);
   if (configure.exitCode != 0) {
     logger.severe(
