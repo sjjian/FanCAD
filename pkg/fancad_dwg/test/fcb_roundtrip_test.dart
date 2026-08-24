@@ -284,7 +284,13 @@ void main() {
       );
       expect(
         () => importer.open('a.dwg'),
-        throwsA(isA<ImportException>()),
+        throwsA(
+          isA<ImportException>().having(
+            (error) => error.message,
+            'message',
+            contains('no DWG backend'),
+          ),
+        ),
       );
     });
 

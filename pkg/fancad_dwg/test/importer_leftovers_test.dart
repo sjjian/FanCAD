@@ -29,6 +29,8 @@ void main() {
     expect(importer.canOpen('part.dwg'), isFalse);
     expect(importer.canOpen('part.dxf'), isTrue);
     expect(importer.canOpen('part.fcb'), isTrue);
+    expect(importer.canOpen('/tmp/SOAS---3.0弧板/part.dxf'), isTrue);
+    expect(importer.canOpen('/tmp/SOAS---3.0弧板/notes'), isFalse);
 
     expect(
       () => importer.open('notes.txt'),
@@ -37,6 +39,16 @@ void main() {
           (error) => error.path,
           'path',
           'notes.txt',
+        ),
+      ),
+    );
+    expect(
+      () => importer.open('part.dwg'),
+      throwsA(
+        isA<ImportException>().having(
+          (error) => error.message,
+          'message',
+          contains('no DWG backend'),
         ),
       ),
     );

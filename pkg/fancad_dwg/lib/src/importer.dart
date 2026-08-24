@@ -61,7 +61,7 @@ class DrawingImporter {
     final target = path.trim();
     if (!canOpen(target)) {
       throw ImportException(
-        'This file is not a drawing FanCAD can open.',
+        _cannotOpenMessage(target),
         path: target.isEmpty ? path : target,
       );
     }
@@ -199,9 +199,22 @@ class DrawingImporter {
     }, debugName: 'fancad-dwg-read');
   }
 
+  String _cannotOpenMessage(String path) {
+    if (_extensionOf(path) == 'dwg' && !capabilities.readDwg) {
+      return 'This build has no DWG backend (${capabilities.description}). '
+          'See pkg/fancad_dwg/README.md for how to enable it.';
+    }
+    return 'This file is not a drawing FanCAD can open.';
+  }
+
+  /// Extension of the last path segment, so a dotted parent folder is ignored.
   static String _extensionOf(String path) {
-    final dot = path.lastIndexOf('.');
-    if (dot < 0 || dot == path.length - 1) return '';
-    return path.substring(dot + 1).toLowerCase();
+    final slash = path.lastIndexOf('/');
+    final back = path.lastIndexOf(r'\');
+    final sep = slash > back ? slash : back;
+    final name = sep < 0 ? path : path.substring(sep + 1);
+    final dot = name.lastIndexOf('.');
+    if (dot < 0 || dot == name.length - 1) return '';
+    return name.substring(dot + 1).toLowerCase();
   }
 }
