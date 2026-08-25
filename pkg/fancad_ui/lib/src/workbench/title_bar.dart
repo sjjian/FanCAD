@@ -138,7 +138,11 @@ class TitleBar extends StatelessWidget {
           if (usesCustomWindowButtons(
             usesNativeTrafficLights: nativeLights,
           )) ...[
-            const _Divider(),
+            const ShellHairline(
+              axis: Axis.vertical,
+              extent: 18,
+              padding: EdgeInsets.symmetric(horizontal: FanCadTokens.space2),
+            ),
             const _WindowButtons(),
           ],
         ],
@@ -834,12 +838,3 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
   );
 }
 
-class _Divider extends StatelessWidget {
-  const _Divider();
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space2),
-    child: Container(width: 1, height: 18, color: context.tokens.border),
-  );
-}

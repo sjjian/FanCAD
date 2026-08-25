@@ -36,6 +36,15 @@ void main() {
       expect(line.lines, isEmpty);
     });
 
+    test('a leftover log click offers text without submitting it', () {
+      final line = CommandLineController();
+      line.offerInput('LINE');
+      expect(line.offeredInput, 'LINE');
+      expect(line.takeOfferedInput(), 'LINE');
+      expect(line.offeredInput, isNull);
+      expect(line.submit('LINE'), 'LINE');
+    });
+
     test('submit feeds a prompt or returns a command when idle', () async {
       final line = CommandLineController();
       expect(line.submit('LINE'), 'LINE');

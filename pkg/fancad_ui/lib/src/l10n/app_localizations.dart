@@ -506,6 +506,12 @@ abstract class AppLocalizations {
   /// **'Properties'**
   String get properties;
 
+  /// layouts
+  ///
+  /// In en, this message translates to:
+  /// **'Layouts'**
+  String get layouts;
+
   /// commands
   ///
   /// In en, this message translates to:
@@ -542,11 +548,23 @@ abstract class AppLocalizations {
   /// **'Inspect and change the selection'**
   String get view_properties_hint;
 
+  /// view layouts hint
+  ///
+  /// In en, this message translates to:
+  /// **'Model and paper space tabs'**
+  String get view_layouts_hint;
+
   /// view commands hint
   ///
   /// In en, this message translates to:
   /// **'Everything the application can run'**
   String get view_commands_hint;
+
+  /// view history hint
+  ///
+  /// In en, this message translates to:
+  /// **'Commands that have already run'**
+  String get view_history_hint;
 
   /// view extensions hint
   ///
@@ -1225,6 +1243,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open a drawing to see its layers.'**
   String get layers_empty_workspace;
+
+  /// layouts empty workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Open a drawing to see its layouts.'**
+  String get layouts_empty_workspace;
 
   /// new layer current
   ///

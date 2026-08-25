@@ -353,6 +353,10 @@
   "@properties": {
     "description": "properties"
   },
+  "layouts": "布局",
+  "@layouts": {
+    "description": "layouts"
+  },
   "commands": "命令",
   "@commands": {
     "description": "commands"
@@ -377,9 +381,17 @@
   "@view_properties_hint": {
     "description": "view properties hint"
   },
+  "view_layouts_hint": "模型空间与图纸空间",
+  "@view_layouts_hint": {
+    "description": "view layouts hint"
+  },
   "view_commands_hint": "应用可执行的全部命令",
   "@view_commands_hint": {
     "description": "view commands hint"
+  },
+  "view_history_hint": "已经执行过的命令",
+  "@view_history_hint": {
+    "description": "view history hint"
   },
   "view_extensions_hint": "已安装扩展及其错误",
   "@view_extensions_hint": {
@@ -938,6 +950,10 @@
   "layers_empty_workspace": "打开图纸以查看图层。",
   "@layers_empty_workspace": {
     "description": "layers empty workspace"
+  },
+  "layouts_empty_workspace": "打开图纸以查看布局。",
+  "@layouts_empty_workspace": {
+    "description": "layouts empty workspace"
   },
   "new_layer_current": "新建图层（并置为当前）",
   "@new_layer_current": {

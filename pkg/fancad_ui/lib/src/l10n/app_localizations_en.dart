@@ -245,6 +245,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get properties => 'Properties';
 
   @override
+  String get layouts => 'Layouts';
+
+  @override
   String get commands => 'Commands';
 
   @override
@@ -263,7 +266,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get view_properties_hint => 'Inspect and change the selection';
 
   @override
+  String get view_layouts_hint => 'Model and paper space tabs';
+
+  @override
   String get view_commands_hint => 'Everything the application can run';
+
+  @override
+  String get view_history_hint => 'Commands that have already run';
 
   @override
   String get view_extensions_hint => 'Installed plugins and their errors';
@@ -652,6 +661,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get layers_empty_workspace => 'Open a drawing to see its layers.';
+
+  @override
+  String get layouts_empty_workspace => 'Open a drawing to see its layouts.';
 
   @override
   String get new_layer_current => 'New layer (made current)';

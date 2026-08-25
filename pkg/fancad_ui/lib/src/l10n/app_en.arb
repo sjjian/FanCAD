@@ -353,6 +353,10 @@
   "@properties": {
     "description": "properties"
   },
+  "layouts": "Layouts",
+  "@layouts": {
+    "description": "layouts"
+  },
   "commands": "Commands",
   "@commands": {
     "description": "commands"
@@ -377,9 +381,17 @@
   "@view_properties_hint": {
     "description": "view properties hint"
   },
+  "view_layouts_hint": "Model and paper space tabs",
+  "@view_layouts_hint": {
+    "description": "view layouts hint"
+  },
   "view_commands_hint": "Everything the application can run",
   "@view_commands_hint": {
     "description": "view commands hint"
+  },
+  "view_history_hint": "Commands that have already run",
+  "@view_history_hint": {
+    "description": "view history hint"
   },
   "view_extensions_hint": "Installed plugins and their errors",
   "@view_extensions_hint": {
@@ -938,6 +950,10 @@
   "layers_empty_workspace": "Open a drawing to see its layers.",
   "@layers_empty_workspace": {
     "description": "layers empty workspace"
+  },
+  "layouts_empty_workspace": "Open a drawing to see its layouts.",
+  "@layouts_empty_workspace": {
+    "description": "layouts empty workspace"
   },
   "new_layer_current": "New layer (made current)",
   "@new_layer_current": {
