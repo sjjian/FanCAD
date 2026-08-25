@@ -134,6 +134,60 @@ abstract class AppLocalizations {
   /// **'Appearance — Light. Choose Light or Dark'**
   String get appearance_light_tooltip;
 
+  /// settings dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
+
+  /// settings title-bar tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Settings. Theme, language and assistant'**
+  String get settings_tooltip;
+
+  /// settings general tab
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get settings_tab_general;
+
+  /// settings assistant tab
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant'**
+  String get settings_tab_assistant;
+
+  /// settings appearance section
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get settings_appearance;
+
+  /// settings assistant connection section
+  ///
+  /// In en, this message translates to:
+  /// **'Connection'**
+  String get settings_connection;
+
+  /// settings api key
+  ///
+  /// In en, this message translates to:
+  /// **'API key'**
+  String get settings_api_key;
+
+  /// settings api key env var
+  ///
+  /// In en, this message translates to:
+  /// **'API key environment variable'**
+  String get settings_api_key_env;
+
+  /// open settings
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get open_settings;
+
   /// new drawing
   ///
   /// In en, this message translates to:
@@ -1556,28 +1610,82 @@ abstract class AppLocalizations {
   /// **'Clear conversation'**
   String get clear_conversation;
 
+  /// new chat
+  ///
+  /// In en, this message translates to:
+  /// **'New chat'**
+  String get new_chat;
+
+  /// chat history
+  ///
+  /// In en, this message translates to:
+  /// **'Chats'**
+  String get chat_history;
+
   /// click to change model
   ///
   /// In en, this message translates to:
   /// **'Click to change the model or endpoint'**
   String get click_to_change_model;
 
+  /// assistant profiles
+  ///
+  /// In en, this message translates to:
+  /// **'Configurations'**
+  String get assistant_profiles;
+
+  /// add assistant profile
+  ///
+  /// In en, this message translates to:
+  /// **'Add configuration'**
+  String get add_assistant_profile;
+
+  /// remove assistant profile
+  ///
+  /// In en, this message translates to:
+  /// **'Remove configuration'**
+  String get remove_assistant_profile;
+
+  /// assistant profile name
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get assistant_profile_name;
+
+  /// ask follow up
+  ///
+  /// In en, this message translates to:
+  /// **'Add a follow-up'**
+  String get ask_follow_up;
+
+  /// context used
+  ///
+  /// In en, this message translates to:
+  /// **'{used} / {window}'**
+  String context_used(String used, String window);
+
+  /// context waiting
+  ///
+  /// In en, this message translates to:
+  /// **'Context size appears after the first reply'**
+  String get context_waiting;
+
   /// auto approve
   ///
   /// In en, this message translates to:
-  /// **'Auto-approve'**
+  /// **'Auto-approve deletes'**
   String get auto_approve;
 
   /// edits without asking
   ///
   /// In en, this message translates to:
-  /// **'Edits run without asking'**
+  /// **'Deletes run without asking'**
   String get edits_without_asking;
 
   /// ask before edits
   ///
   /// In en, this message translates to:
-  /// **'Ask before the assistant edits the drawing'**
+  /// **'Ask before the assistant deletes objects'**
   String get ask_before_edits;
 
   /// custom model
@@ -1601,7 +1709,7 @@ abstract class AppLocalizations {
   /// model id
   ///
   /// In en, this message translates to:
-  /// **'Model id'**
+  /// **'Any model id, for example deepseek-chat'**
   String get model_id;
 
   /// endpoint
@@ -1619,8 +1727,8 @@ abstract class AppLocalizations {
   /// assistant empty unconfigured
   ///
   /// In en, this message translates to:
-  /// **'Set the {envVar} environment variable to talk to a model, or point the base URL at a local server.'**
-  String assistant_empty_unconfigured(String envVar);
+  /// **'Paste an API key in Settings to talk to a model, or point the endpoint at a local server.'**
+  String get assistant_empty_unconfigured;
 
   /// try section
   ///
@@ -1657,6 +1765,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Working…'**
   String get working;
+
+  /// thinking
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking'**
+  String get thinking;
+
+  /// allow one change
+  ///
+  /// In en, this message translates to:
+  /// **'Allow {title}?'**
+  String allow_one_change(String title);
+
+  /// allow n changes
+  ///
+  /// In en, this message translates to:
+  /// **'Allow {count} changes?'**
+  String allow_n_changes(int count);
+
+  /// affects n objects
+  ///
+  /// In en, this message translates to:
+  /// **'Affects {count} object(s).'**
+  String affects_n_objects(int count);
 
   /// ask assistant
   ///
@@ -2474,6 +2606,12 @@ abstract class AppLocalizations {
   /// **'Regenerate'**
   String get command_view_regen;
 
+  /// command workbench preferences
+  ///
+  /// In en, this message translates to:
+  /// **'Settings...'**
+  String get command_workbench_preferences;
+
   /// command select all
   ///
   /// In en, this message translates to:
@@ -2617,6 +2755,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Query Entities'**
   String get command_query_entities;
+
+  /// command query selection
+  ///
+  /// In en, this message translates to:
+  /// **'Query Selection'**
+  String get command_query_selection;
+
+  /// command query viewport
+  ///
+  /// In en, this message translates to:
+  /// **'Query Viewport'**
+  String get command_query_viewport;
 
   /// command query id
   ///

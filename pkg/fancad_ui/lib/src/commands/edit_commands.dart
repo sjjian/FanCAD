@@ -271,12 +271,7 @@ class EditCommands {
     },
   );
 
-  static List<Vec2> _pointList(Object? value) {
-    if (value is! List) return const [];
-    return [
-      for (final item in value) ?CommandArgs.parsePoint(item),
-    ];
-  }
+  static List<Vec2> _pointList(Object? value) => CommandArgs.parsePoints(value);
 
   static CommandDescriptor _stretch() => CommandDescriptor(
     id: 'edit.stretch',
@@ -1911,7 +1906,7 @@ class EditCommands {
       ),
       ParamSpec(
         name: 'points',
-        type: ParamType.json,
+        type: ParamType.points,
         description: 'Array of additional [x, y] insertion points',
         required: false,
       ),

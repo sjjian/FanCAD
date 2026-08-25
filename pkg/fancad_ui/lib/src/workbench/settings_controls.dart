@@ -1,0 +1,317 @@
+import 'package:flutter/material.dart';
+
+import '../theme/tokens.dart';
+import 'shell_widgets.dart';
+
+/// A labelled group inside the settings dialog.
+///
+/// Title plus a hairline, the same desktop form language as OpenHare: the
+/// heading is a sentence, not an uppercase chrome label, so it reads as a
+/// section rather than another tab.
+class SettingsSection extends StatelessWidget {
+  const SettingsSection({
+    super.key,
+    required this.title,
+    required this.children,
+  });
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          title,
+          style: tokens.bodyStyle.copyWith(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: FanCadTokens.space2),
+        Divider(height: 1, color: tokens.border),
+        const SizedBox(height: FanCadTokens.space3),
+        ...children,
+      ],
+    );
+  }
+}
+
+/// A muted label on the left and a control on the right.
+class SettingsLabeledRow extends StatelessWidget {
+  const SettingsLabeledRow({
+    super.key,
+    required this.label,
+    required this.child,
+    this.crossAxisAlignment = CrossAxisAlignment.center,
+  });
+
+  static const double labelWidth = 128;
+
+  final String label;
+  final Widget child;
+  final CrossAxisAlignment crossAxisAlignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: FanCadTokens.space1),
+      child: Row(
+        crossAxisAlignment: crossAxisAlignment,
+        children: [
+          SizedBox(
+            width: labelWidth,
+            child: Padding(
+              padding: const EdgeInsets.only(right: FanCadTokens.space2),
+              child: Text(
+                label,
+                style: tokens.labelStyle.copyWith(color: tokens.textMuted),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+/// A dense outlined field with an accent focus ring.
+///
+/// [ShellTextField] stays borderless so the command line can stay chrome-flat;
+/// settings need a visible box, so the ring lives here.
+class SettingsTextField extends StatefulWidget {
+  const SettingsTextField({
+    super.key,
+    required this.controller,
+    this.hintText,
+    this.onChanged,
+    this.onSubmitted,
+    this.obscureText = false,
+    this.style,
+  });
+
+  final TextEditingController controller;
+  final String? hintText;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final bool obscureText;
+  final TextStyle? style;
+
+  @override
+  State<SettingsTextField> createState() => _SettingsTextFieldState();
+}
+
+class _SettingsTextFieldState extends State<SettingsTextField> {
+  late final FocusNode _focus;
+  late bool _obscured;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus = FocusNode();
+    _focus.addListener(_onFocus);
+    _obscured = widget.obscureText;
+  }
+
+  @override
+  void dispose() {
+    _focus.removeListener(_onFocus);
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _onFocus() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final focused = _focus.hasFocus;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 90),
+      height: 32,
+      padding: EdgeInsets.only(
+        left: FanCadTokens.space2,
+        right: widget.obscureText ? 0 : FanCadTokens.space2,
+      ),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: tokens.surfaceRaised,
+        borderRadius: BorderRadius.circular(FanCadTokens.radius),
+        border: Border.all(
+          color: focused ? tokens.accent : tokens.borderStrong,
+          width: focused ? 1.5 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: ShellTextField(
+              controller: widget.controller,
+              focusNode: _focus,
+              hintText: widget.hintText,
+              obscureText: _obscured,
+              style: widget.style ?? tokens.bodyStyle,
+              onChanged: widget.onChanged,
+              onSubmitted: widget.onSubmitted,
+            ),
+          ),
+          if (widget.obscureText)
+            ShellIconButton(
+              icon: _obscured
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              size: 24,
+              iconSize: FanCadTokens.iconSmall,
+              onPressed: () => setState(() => _obscured = !_obscured),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A mutually exclusive card with a radio mark.
+class SettingsRadioOption extends StatefulWidget {
+  const SettingsRadioOption({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.width = defaultWidth,
+  });
+
+  static const double defaultWidth = 136;
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final double width;
+
+  @override
+  State<SettingsRadioOption> createState() => _SettingsRadioOptionState();
+}
+
+class _SettingsRadioOptionState extends State<SettingsRadioOption> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return SizedBox(
+      width: widget.width,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space2,
+              vertical: FanCadTokens.space2,
+            ),
+            decoration: BoxDecoration(
+              color: widget.selected
+                  ? tokens.selection
+                  : _hovered
+                  ? tokens.hover
+                  : tokens.surfaceRaised,
+              borderRadius: BorderRadius.circular(FanCadTokens.radius),
+              border: Border.all(
+                color: widget.selected ? tokens.accent : tokens.borderStrong,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  widget.selected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  size: FanCadTokens.iconSmall,
+                  color: widget.selected ? tokens.accent : tokens.textMuted,
+                ),
+                const SizedBox(width: FanCadTokens.space2),
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tokens.bodyStyle.copyWith(
+                      color: widget.selected ? tokens.text : tokens.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A labelled row with a compact Material switch on the right.
+class SettingsToggle extends StatelessWidget {
+  const SettingsToggle({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.description,
+    this.tooltip,
+  });
+
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final String? description;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    Widget control = SizedBox(
+      height: 22,
+      child: Switch(
+        value: value,
+        onChanged: onChanged,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+    final tooltip = this.tooltip;
+    if (tooltip != null && tooltip.isNotEmpty) {
+      control = Tooltip(message: tooltip, child: control);
+    }
+    return SettingsLabeledRow(
+      label: label,
+      child: Row(
+        children: [
+          if (description != null)
+            Expanded(
+              child: Text(
+                description!,
+                style: tokens.labelStyle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            )
+          else
+            const Spacer(),
+          control,
+        ],
+      ),
+    );
+  }
+}

@@ -391,11 +391,11 @@ class Workspace extends ChangeNotifier implements CommandServices {
         return CommandResult.failed(message);
       }
     }
-    // File commands that create or replace the document must not leave a
-    // leftover blank tab behind if the user cancels the picker.
+    // Host commands that must not invent a leftover blank tab: file pickers
+    // that the user can cancel, and settings, which has no document at all.
     final tab =
         active ??
-        (_isHostFileCommand(descriptor.id)
+        (_isHostCommand(descriptor.id)
             ? DocumentTab(
                 session: DocumentSession(
                   id: 'transient',
@@ -439,8 +439,11 @@ class Workspace extends ChangeNotifier implements CommandServices {
     }
   }
 
-  static bool _isHostFileCommand(String id) =>
-      id == 'file.open' || id == 'file.openRecent' || id == 'file.new';
+  static bool _isHostCommand(String id) =>
+      id == 'file.open' ||
+      id == 'file.openRecent' ||
+      id == 'file.new' ||
+      id == 'workbench.preferences';
 
   /// Save and close have nowhere to act when the last tab is already gone.
   /// Inventing a blank drawing just so the command can run would leave that
@@ -649,6 +652,21 @@ class Workspace extends ChangeNotifier implements CommandServices {
   @override
   void revealPanel(String panelId) {
     if (!_panelReveals.isClosed) _panelReveals.add(panelId);
+  }
+
+  @override
+  Map<String, Object?> describeView() {
+    final tab = active;
+    if (tab == null) return const {};
+    final view = tab.viewport.viewport;
+    final box = view.visibleBounds;
+    return {
+      'center': [view.center.x, view.center.y],
+      'scale': view.scale,
+      'size': [view.size.width, view.size.height],
+      if (box.isNotEmpty)
+        'visible': [box.minX, box.minY, box.maxX, box.maxY],
+    };
   }
 
   /// Opens [relative] of extension [id] in the Re-Editor and brings that panel

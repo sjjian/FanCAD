@@ -215,4 +215,24 @@ void main() {
     expect(result.message, contains('no drawing to close'));
     expect(ws.tabs, isEmpty);
   });
+
+  test('opening settings without a drawing does not create a tab', () async {
+    final ws = workspace();
+    registerBuiltinCommands(
+      ws.commands,
+      fileCommands: FileCommands(
+        openFile: (_) async => false,
+        newDocument: ws.newDocument,
+        closeActive: ({bool force = false}) =>
+            ws.closeTab(ws.activeIndex, force: force),
+        saveActive: (path) async => path,
+        recentFiles: () => const [],
+      ),
+    );
+
+    expect(ws.tabs, isEmpty);
+    final result = await ws.run('workbench.preferences');
+    expect(result.isOk, isTrue);
+    expect(ws.tabs, isEmpty);
+  });
 }

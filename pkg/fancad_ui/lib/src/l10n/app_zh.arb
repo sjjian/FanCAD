@@ -24,6 +24,42 @@
   "@appearance_light_tooltip": {
     "description": "appearance light tooltip"
   },
+  "settings": "设置",
+  "@settings": {
+    "description": "settings dialog title"
+  },
+  "settings_tooltip": "设置。主题、语言和助手",
+  "@settings_tooltip": {
+    "description": "settings title-bar tooltip"
+  },
+  "settings_tab_general": "常规",
+  "@settings_tab_general": {
+    "description": "settings general tab"
+  },
+  "settings_tab_assistant": "助手",
+  "@settings_tab_assistant": {
+    "description": "settings assistant tab"
+  },
+  "settings_appearance": "外观",
+  "@settings_appearance": {
+    "description": "settings appearance section"
+  },
+  "settings_connection": "连接",
+  "@settings_connection": {
+    "description": "settings assistant connection section"
+  },
+  "settings_api_key": "API 密钥",
+  "@settings_api_key": {
+    "description": "settings api key"
+  },
+  "settings_api_key_env": "API 密钥环境变量",
+  "@settings_api_key_env": {
+    "description": "settings api key env var"
+  },
+  "open_settings": "打开设置",
+  "@open_settings": {
+    "description": "open settings"
+  },
   "new_drawing": "新建图纸",
   "@new_drawing": {
     "description": "new drawing"
@@ -1174,19 +1210,63 @@
   "@clear_conversation": {
     "description": "clear conversation"
   },
+  "new_chat": "新会话",
+  "@new_chat": {
+    "description": "new chat"
+  },
+  "chat_history": "会话",
+  "@chat_history": {
+    "description": "chat history"
+  },
   "click_to_change_model": "点击更改模型或端点",
   "@click_to_change_model": {
     "description": "click to change model"
   },
-  "auto_approve": "自动批准",
+  "assistant_profiles": "配置",
+  "@assistant_profiles": {
+    "description": "assistant profiles"
+  },
+  "add_assistant_profile": "添加配置",
+  "@add_assistant_profile": {
+    "description": "add assistant profile"
+  },
+  "remove_assistant_profile": "删除配置",
+  "@remove_assistant_profile": {
+    "description": "remove assistant profile"
+  },
+  "assistant_profile_name": "显示名",
+  "@assistant_profile_name": {
+    "description": "assistant profile name"
+  },
+  "ask_follow_up": "继续提问",
+  "@ask_follow_up": {
+    "description": "ask follow up"
+  },
+  "context_used": "{used} / {window}",
+  "@context_used": {
+    "description": "context used",
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "window": {
+        "type": "String"
+      }
+    }
+  },
+  "context_waiting": "首次回复后显示上下文占用",
+  "@context_waiting": {
+    "description": "context waiting"
+  },
+  "auto_approve": "自动批准删除",
   "@auto_approve": {
     "description": "auto approve"
   },
-  "edits_without_asking": "编辑将直接执行",
+  "edits_without_asking": "删除将直接执行",
   "@edits_without_asking": {
     "description": "edits without asking"
   },
-  "ask_before_edits": "助手修改图纸前先询问",
+  "ask_before_edits": "助手删除对象前先询问",
   "@ask_before_edits": {
     "description": "ask before edits"
   },
@@ -1202,7 +1282,7 @@
   "@model": {
     "description": "model"
   },
-  "model_id": "模型 ID",
+  "model_id": "任意模型名，例如 deepseek-chat",
   "@model_id": {
     "description": "model id"
   },
@@ -1214,14 +1294,9 @@
   "@assistant_empty_configured": {
     "description": "assistant empty configured"
   },
-  "assistant_empty_unconfigured": "设置环境变量 {envVar} 以连接模型，或将基址指向本地服务。",
+  "assistant_empty_unconfigured": "在设置中填入 API 密钥以连接模型，或将接口指向本地服务。",
   "@assistant_empty_unconfigured": {
-    "description": "assistant empty unconfigured",
-    "placeholders": {
-      "envVar": {
-        "type": "String"
-      }
-    }
+    "description": "assistant empty unconfigured"
   },
   "try_section": "试试",
   "@try_section": {
@@ -1246,6 +1321,22 @@
   "working": "正在处理…",
   "@working": {
     "description": "working"
+  },
+  "thinking": "思考",
+  "@thinking": {
+    "description": "thinking"
+  },
+  "allow_one_change": "允许{title}？",
+  "@allow_one_change": {
+    "description": "allow one change"
+  },
+  "allow_n_changes": "允许 {count} 处更改？",
+  "@allow_n_changes": {
+    "description": "allow n changes"
+  },
+  "affects_n_objects": "影响 {count} 个对象。",
+  "@affects_n_objects": {
+    "description": "affects n objects"
   },
   "ask_assistant": "询问助手  Enter 发送",
   "@ask_assistant": {
@@ -1806,6 +1897,10 @@
   "@command_view_regen": {
     "description": "command view regen"
   },
+  "command_workbench_preferences": "设置...",
+  "@command_workbench_preferences": {
+    "description": "command workbench preferences"
+  },
   "command_select_all": "全部选择",
   "@command_select_all": {
     "description": "command select all"
@@ -1901,6 +1996,14 @@
   "command_query_entities": "查询实体",
   "@command_query_entities": {
     "description": "command query entities"
+  },
+  "command_query_selection": "查询选择集",
+  "@command_query_selection": {
+    "description": "command query selection"
+  },
+  "command_query_viewport": "查询视口",
+  "@command_query_viewport": {
+    "description": "command query viewport"
   },
   "command_query_id": "点坐标",
   "@command_query_id": {

@@ -27,6 +27,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearance_light_tooltip => '外观 — 浅色。可切换浅色或深色';
 
   @override
+  String get settings => '设置';
+
+  @override
+  String get settings_tooltip => '设置。主题、语言和助手';
+
+  @override
+  String get settings_tab_general => '常规';
+
+  @override
+  String get settings_tab_assistant => '助手';
+
+  @override
+  String get settings_appearance => '外观';
+
+  @override
+  String get settings_connection => '连接';
+
+  @override
+  String get settings_api_key => 'API 密钥';
+
+  @override
+  String get settings_api_key_env => 'API 密钥环境变量';
+
+  @override
+  String get open_settings => '打开设置';
+
+  @override
   String get new_drawing => '新建图纸';
 
   @override
@@ -814,16 +841,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get clear_conversation => '清除对话';
 
   @override
+  String get new_chat => '新会话';
+
+  @override
+  String get chat_history => '会话';
+
+  @override
   String get click_to_change_model => '点击更改模型或端点';
 
   @override
-  String get auto_approve => '自动批准';
+  String get assistant_profiles => '配置';
 
   @override
-  String get edits_without_asking => '编辑将直接执行';
+  String get add_assistant_profile => '添加配置';
 
   @override
-  String get ask_before_edits => '助手修改图纸前先询问';
+  String get remove_assistant_profile => '删除配置';
+
+  @override
+  String get assistant_profile_name => '显示名';
+
+  @override
+  String get ask_follow_up => '继续提问';
+
+  @override
+  String context_used(String used, String window) {
+    return '$used / $window';
+  }
+
+  @override
+  String get context_waiting => '首次回复后显示上下文占用';
+
+  @override
+  String get auto_approve => '自动批准删除';
+
+  @override
+  String get edits_without_asking => '删除将直接执行';
+
+  @override
+  String get ask_before_edits => '助手删除对象前先询问';
 
   @override
   String get custom_model => '自定义模型…';
@@ -835,7 +891,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get model => '模型';
 
   @override
-  String get model_id => '模型 ID';
+  String get model_id => '任意模型名，例如 deepseek-chat';
 
   @override
   String get endpoint => '端点';
@@ -845,9 +901,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '可以询问图纸，或让助手修改。它使用与你相同的命令，一条回复对应一步撤销。';
 
   @override
-  String assistant_empty_unconfigured(String envVar) {
-    return '设置环境变量 $envVar 以连接模型，或将基址指向本地服务。';
-  }
+  String get assistant_empty_unconfigured => '在设置中填入 API 密钥以连接模型，或将接口指向本地服务。';
 
   @override
   String get try_section => '试试';
@@ -866,6 +920,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get working => '正在处理…';
+
+  @override
+  String get thinking => '思考';
+
+  @override
+  String allow_one_change(String title) {
+    return '允许$title？';
+  }
+
+  @override
+  String allow_n_changes(int count) {
+    return '允许 $count 处更改？';
+  }
+
+  @override
+  String affects_n_objects(int count) {
+    return '影响 $count 个对象。';
+  }
 
   @override
   String get ask_assistant => '询问助手  Enter 发送';
@@ -1283,6 +1355,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_view_regen => '重生成';
 
   @override
+  String get command_workbench_preferences => '设置...';
+
+  @override
   String get command_select_all => '全部选择';
 
   @override
@@ -1353,6 +1428,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get command_query_entities => '查询实体';
+
+  @override
+  String get command_query_selection => '查询选择集';
+
+  @override
+  String get command_query_viewport => '查询视口';
 
   @override
   String get command_query_id => '点坐标';

@@ -15,6 +15,8 @@ class QueryCommands {
     _summary(),
     _list(),
     _query(),
+    _selection(),
+    _viewport(),
     _id(),
     _distance(),
     _angle(),
@@ -213,6 +215,77 @@ class QueryCommands {
       );
     },
   );
+
+  static CommandDescriptor _selection() => CommandDescriptor(
+    id: 'query.selection',
+    title: 'Query Selection',
+    category: _category,
+    risk: CommandRisk.readOnly,
+    description:
+        'Returns the current selection as structured records (id, kind, '
+        'layer, bounds, short geometry). Use this instead of guessing ids. '
+        'An empty selection is a successful empty list, not a prompt.',
+    handler: (context) async {
+      final ids = context.selection.ids.toList();
+      final records = <Map<String, Object?>>[];
+      for (final id in ids.take(200)) {
+        final entity = context.document.entity(id);
+        if (entity == null) continue;
+        records.add(_describe(context.document, entity));
+      }
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: ids.isEmpty
+            ? 'Nothing is selected.'
+            : ids.length == 1
+            ? '1 object selected.'
+            : '${ids.length} objects selected.',
+        data: {
+          'count': ids.length,
+          'returned': records.length,
+          'entities': records,
+        },
+      );
+    },
+  );
+
+  static CommandDescriptor _viewport() => CommandDescriptor(
+    id: 'query.viewport',
+    title: 'Query Viewport',
+    category: _category,
+    risk: CommandRisk.readOnly,
+    description:
+        'Returns the active camera: centre, scale and visible window as '
+        '[minX, minY, maxX, maxY]. Pass that window to query.entities to '
+        'list what the user is looking at.',
+    handler: (context) async {
+      final view = context.services.describeView();
+      if (view.isEmpty) {
+        return const CommandResult.failed('No view is open.');
+      }
+      final visible = view['visible'];
+      final center = view['center'];
+      final scale = view['scale'];
+      final message = visible is List && visible.length >= 4
+          ? 'Visible [${_num(visible[0])}, ${_num(visible[1])}, '
+                '${_num(visible[2])}, ${_num(visible[3])}], '
+                'scale ${_num(scale)}.'
+          : center is List && center.length >= 2
+          ? 'Viewport centre (${_num(center[0])}, ${_num(center[1])}), '
+                'scale ${_num(scale)}; size is not known yet.'
+          : 'Viewport reported.';
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: message,
+        data: view,
+      );
+    },
+  );
+
+  static String _num(Object? value) {
+    if (value is num) return value.toStringAsFixed(2);
+    return '$value';
+  }
 
   static CommandDescriptor _id() => CommandDescriptor(
     id: 'query.id',

@@ -55,4 +55,11 @@ void main() {
       reopened.dispose();
     },
   );
+
+  test('an in-memory store does not arm a disk flush timer', () {
+    final store = SettingsStore.inMemory();
+    store.set(SettingsKeys.themeBrightness, 'light');
+    expect(store.getString(SettingsKeys.themeBrightness), 'light');
+    store.dispose();
+  });
 }

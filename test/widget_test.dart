@@ -12,6 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// registry the palette shows is the same one an AI turn would call. The
 /// geometry itself is covered by the package tests.
 void main() {
+  tearDown(debugResetSettingsDialog);
+
   Widget wrap(ProviderContainer container) => UncontrolledProviderScope(
     container: container,
     child: const _LocalizedWorkbench(),
@@ -48,6 +50,7 @@ void main() {
     expect(find.byIcon(Icons.view_sidebar_outlined), findsNothing);
     expect(find.text('ASSISTANT'), findsNothing);
     expect(find.byIcon(Icons.auto_awesome_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
   });
 
   testWidgets('switching to Simplified Chinese localizes chrome', (tester) async {
@@ -60,13 +63,71 @@ void main() {
     await tester.pumpWidget(wrap(container));
     await tester.pump();
 
-    container.read(languageProvider.notifier).setLanguage(FanCadLanguage.chinese);
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('settings-language-zh')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('图层'), findsOneWidget);
     expect(find.text('新建图纸'), findsOneWidget);
+    expect(find.text('设置'), findsWidgets);
     expect(find.text('LAYERS'), findsNothing);
+  });
+
+  testWidgets('the settings dialog writes the assistant model', (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final container = makeContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(wrap(container));
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('settings-tab-assistant')));
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const Key('settings-model-field')),
+      'deepseek-chat',
+    );
+    await tester.pump();
+
+    expect(
+      container.read(settingsProvider).getString(SettingsKeys.aiModel),
+      'deepseek-chat',
+    );
+  });
+
+  testWidgets('assistant open settings lands on the assistant page', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final container = makeContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(wrap(container));
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.auto_awesome_outlined));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const Key('assistant-open-settings')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
+    expect(find.text('API key'), findsOneWidget);
   });
 
   testWidgets('the assistant opens on the right without replacing Layers', (
@@ -86,7 +147,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('LAYERS'), findsOneWidget);
-    expect(find.text('ASSISTANT'), findsOneWidget);
+    expect(find.byKey(const Key('assistant-session-tabs')), findsOneWidget);
+    expect(find.text('ASSISTANT'), findsNothing);
   });
 
   testWidgets('revealPanel(ai) opens the right dock, not the left sidebar', (
@@ -106,10 +168,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('LAYERS'), findsOneWidget);
-    expect(find.text('ASSISTANT'), findsOneWidget);
+    expect(find.byKey(const Key('assistant-session-tabs')), findsOneWidget);
+    expect(find.text('ASSISTANT'), findsNothing);
   });
 
-  testWidgets('layout chips sit in the status bar, not on their own row', (
+  testWidgets('layout chips sit on the canvas, not in the status bar', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1600, 1000);
@@ -125,6 +188,20 @@ void main() {
     expect(find.text('Model'), findsOneWidget);
     expect(find.text('LAYOUTS'), findsNothing);
     expect(find.text('FanCAD'), findsWidgets);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('status-bar')),
+        matching: find.text('Model'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-hud')),
+        matching: find.text('Model'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('the command palette opens and lists built-in commands', (
@@ -225,8 +302,13 @@ class _LocalizedWorkbench extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final language = ref.watch(languageProvider);
+    final brightness = ref.watch(themeBrightnessProvider);
     return MaterialApp(
-      theme: FanCadTheme.dark(),
+      theme: FanCadTheme.light(),
+      darkTheme: FanCadTheme.dark(),
+      themeMode: brightness == Brightness.dark
+          ? ThemeMode.dark
+          : ThemeMode.light,
       locale: Locale(language),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

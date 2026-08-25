@@ -9,15 +9,14 @@ import '../l10n/l10n.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import 'command_line_model.dart';
-import 'layout_bar.dart';
 import 'shell_widgets.dart';
 
-/// The command line and its history pane.
+/// The command line and its optional history.
 ///
 /// This is the component that decides whether the application feels like CAD.
-/// Three behaviours carry most of that weight: the history is always visible so
-/// prompts are never missed, the input keeps focus so typing a verb always works
-/// without clicking first, and Escape always cancels whatever is running.
+/// The input keeps focus so typing a verb always works without clicking first,
+/// Escape always cancels whatever is running, and history expands over the
+/// drawing instead of reserving a strip of canvas.
 class CommandLinePane extends StatefulWidget {
   const CommandLinePane({
     super.key,
@@ -128,34 +127,30 @@ class _CommandLinePaneState extends State<CommandLinePane> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final historyHeight = math.max(
+      48.0,
+      widget.height - FanCadTokens.commandLineHeight,
+    );
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Tooltip(
-          message: widget.isExpanded
-              ? context.l10n.resize_collapse
-              : context.l10n.resize_expand,
-          waitDuration: const Duration(milliseconds: 500),
-          child: ShellSplitter(
-            axis: Axis.horizontal,
-            strong: true,
-            // Dragging the splitter up has to make the pane taller, so the
-            // delta is inverted relative to the pointer.
-            onDrag: (delta) => widget.onResize(-delta),
-            onDragEnd: widget.onResizeEnd,
-            onDoubleTap: widget.onToggleExpand,
-          ),
-        ),
-        Expanded(
-          child: Container(
-            color: tokens.surface,
-            child: Column(
-              children: [
-                Expanded(child: _buildHistory(tokens)),
-                _buildInput(tokens),
-              ],
+        if (widget.isExpanded) ...[
+          Tooltip(
+            message: context.l10n.resize_collapse,
+            waitDuration: const Duration(milliseconds: 500),
+            child: ShellSplitter(
+              axis: Axis.horizontal,
+              strong: true,
+              // Dragging the splitter up has to make the pane taller, so the
+              // delta is inverted relative to the pointer.
+              onDrag: (delta) => widget.onResize(-delta),
+              onDragEnd: widget.onResizeEnd,
+              onDoubleTap: widget.onToggleExpand,
             ),
           ),
-        ),
+          SizedBox(height: historyHeight, child: _buildHistory(tokens)),
+        ],
+        _buildInput(tokens),
       ],
     );
   }
@@ -206,12 +201,15 @@ class _CommandLinePaneState extends State<CommandLinePane> {
     final awaiting = _model.isAwaitingInput;
     return Container(
       height: FanCadTokens.commandLineHeight,
-      padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
+      padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space2),
       decoration: BoxDecoration(
-        color: tokens.surfaceRaised,
         border: Border(
           top: BorderSide(
-            color: awaiting ? tokens.accent : tokens.border,
+            color: awaiting
+                ? tokens.accent
+                : widget.isExpanded
+                ? tokens.border
+                : Colors.transparent,
             width: awaiting ? 2 : 1,
           ),
         ),
@@ -302,7 +300,6 @@ class _CommandLinePaneState extends State<CommandLinePane> {
   }
 }
 
-/// The status bar: coordinates, drafting toggles and scene statistics.
 /// One command-history row. A click puts the text back in the input so a
 /// previous verb or coordinate does not have to be retyped from memory.
 class _HistoryLine extends StatefulWidget {
@@ -442,6 +439,8 @@ class _HistoryOverflow extends StatelessWidget {
   }
 }
 
+/// Read-only drawing telemetry. Clickable drafting controls live on the
+/// canvas HUD so this row can stay a thin footer.
 class StatusBar extends StatelessWidget {
   const StatusBar({super.key, required this.workspace});
 
@@ -452,11 +451,11 @@ class StatusBar extends StatelessWidget {
     final tokens = context.tokens;
     final l10n = context.l10n;
     final tab = workspace.active;
-    final snap = workspace.snapEngine;
     final cursor = tab?.tools.cursor;
     final scene = tab?.lastScene;
 
     return Container(
+      key: const Key('status-bar'),
       height: FanCadTokens.statusBarHeight,
       decoration: BoxDecoration(
         color: tokens.surface,
@@ -469,39 +468,7 @@ class StatusBar extends StatelessWidget {
             width: 190,
             child: _CoordinateReadout(workspace: workspace, cursor: cursor),
           ),
-          StatusToggle(
-            label: l10n.snap,
-            isOn: snap.enabled,
-            tooltip: l10n.snap_tooltip,
-            onPressed: () => workspace.setSnapEnabled(!snap.enabled),
-            onContextMenu: (position) =>
-                _openSnapModeMenu(context, workspace, position),
-          ),
-          StatusToggle(
-            label: l10n.ortho,
-            isOn: snap.tracking.ortho,
-            tooltip: l10n.ortho_tooltip,
-            onPressed: () => workspace.setOrtho(!snap.tracking.ortho),
-          ),
-          StatusToggle(
-            label: l10n.polar,
-            isOn: snap.tracking.polar,
-            tooltip: l10n.polar_tooltip(
-              _polarDegrees(snap.tracking.polarIncrement),
-            ),
-            onPressed: () => workspace.setPolar(!snap.tracking.polar),
-            onContextMenu: (position) =>
-                _openPolarIncrementMenu(context, workspace, position),
-          ),
-          StatusToggle(
-            label: l10n.grid,
-            isOn: tab?.showGrid ?? false,
-            tooltip: l10n.grid_tooltip,
-            onPressed: () {
-              if (tab != null) workspace.setShowGrid(!tab.showGrid);
-            },
-          ),
-          Expanded(child: LayoutTabStrip(workspace: workspace)),
+          const Spacer(),
           if (tab != null) ...[
             _StatusAction(
               label: l10n.selected_count(tab.selection.length),
@@ -549,107 +516,6 @@ class StatusBar extends StatelessWidget {
       ),
     );
   }
-}
-
-Future<void> _openSnapModeMenu(
-  BuildContext context,
-  Workspace workspace,
-  Offset globalPosition,
-) async {
-  final tokens = context.tokens;
-  final chosen = await showMenu<Object>(
-    context: context,
-    position: RelativeRect.fromLTRB(
-      globalPosition.dx,
-      globalPosition.dy,
-      globalPosition.dx,
-      globalPosition.dy,
-    ),
-    color: tokens.surfaceOverlay,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(FanCadTokens.radius),
-      side: BorderSide(color: tokens.borderStrong),
-    ),
-    items: [
-      for (final mode in SnapMode.values)
-        PopupMenuItem<Object>(
-          value: mode,
-          height: 32,
-          child: Row(
-            children: [
-              SizedBox(
-                width: 18,
-                child: workspace.snapEngine.modes.contains(mode)
-                    ? Icon(Icons.check, size: FanCadTokens.iconSmall, color: tokens.accent)
-                    : null,
-              ),
-              const SizedBox(width: FanCadTokens.space2),
-              Text(context.l10n.snapModeLabel(mode), style: tokens.bodyStyle),
-            ],
-          ),
-        ),
-      const PopupMenuDivider(),
-      PopupMenuItem<Object>(
-        value: 'defaults',
-        height: 32,
-        child: Text(context.l10n.restore_defaults, style: tokens.bodyStyle),
-      ),
-    ],
-  );
-  if (chosen is SnapMode) {
-    workspace.toggleSnapMode(chosen);
-  } else if (chosen == 'defaults') {
-    workspace.resetSnapModes();
-  }
-}
-
-const _polarIncrements = [5, 15, 30, 45, 90];
-
-int _polarDegrees(double radians) =>
-    (radians * 180 / math.pi).round();
-
-Future<void> _openPolarIncrementMenu(
-  BuildContext context,
-  Workspace workspace,
-  Offset globalPosition,
-) async {
-  final tokens = context.tokens;
-  final current = _polarDegrees(workspace.snapEngine.tracking.polarIncrement);
-  final chosen = await showMenu<int>(
-    context: context,
-    position: RelativeRect.fromLTRB(
-      globalPosition.dx,
-      globalPosition.dy,
-      globalPosition.dx,
-      globalPosition.dy,
-    ),
-    color: tokens.surfaceOverlay,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(FanCadTokens.radius),
-      side: BorderSide(color: tokens.borderStrong),
-    ),
-    items: [
-      for (final degrees in _polarIncrements)
-        PopupMenuItem<int>(
-          value: degrees,
-          height: 32,
-          child: Row(
-            children: [
-              SizedBox(
-                width: 18,
-                child: degrees == current
-                    ? Icon(Icons.check, size: FanCadTokens.iconSmall, color: tokens.accent)
-                    : null,
-              ),
-              const SizedBox(width: FanCadTokens.space2),
-              Text('$degrees°', style: tokens.bodyStyle),
-            ],
-          ),
-        ),
-    ],
-  );
-  if (chosen == null) return;
-  workspace.setPolarIncrement(chosen * math.pi / 180);
 }
 
 class _CurrentLayerIndicator extends StatefulWidget {

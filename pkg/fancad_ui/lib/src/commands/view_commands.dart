@@ -9,6 +9,7 @@ class ViewCommands {
   const ViewCommands._();
 
   static List<CommandDescriptor> all() => [
+    _preferences(),
     _zoomExtents(),
     _zoomWindow(),
     _zoomIn(),
@@ -45,6 +46,34 @@ class ViewCommands {
   // -------------------------------------------------------------------------
   // View
   // -------------------------------------------------------------------------
+
+  static CommandDescriptor _preferences() => CommandDescriptor(
+    id: 'workbench.preferences',
+    title: 'Settings...',
+    category: _view,
+    aliases: const ['settings', 'options', 'prefs'],
+    icon: 'settings',
+    defaultKeybinding: 'ctrl+,',
+    risk: CommandRisk.readOnly,
+    aiExposure: AiExposure.hidden,
+    repeatable: false,
+    description: 'Opens the application settings dialog.',
+    params: const [
+      ParamSpec(
+        name: 'tab',
+        type: ParamType.text,
+        description: 'Settings page: general or assistant',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final tab = context.args.text('tab') ?? '';
+      context.services.revealPanel(
+        tab == 'assistant' ? 'preferences:assistant' : 'preferences',
+      );
+      return const CommandResult.ok();
+    },
+  );
 
   static CommandDescriptor _zoomExtents() => CommandDescriptor(
     id: 'view.zoomExtents',
