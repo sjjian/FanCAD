@@ -93,6 +93,219 @@ void main() {
     },
   );
 
+  testWidgets(
+    'toggling the leftover grid rebuilds without a resize',
+    (tester) async {
+      final document = CadDocument();
+      Widget canvas({required bool showGrid}) => MaterialApp(
+        home: SizedBox(
+          width: 800,
+          height: 600,
+          child: CadCanvas(
+            document: document,
+            controller: controller,
+            showGrid: showGrid,
+          ),
+        ),
+      );
+
+      CustomPainter drawingPainter() => tester
+          .widgetList<CustomPaint>(
+            find.descendant(
+              of: find.byType(CadCanvas),
+              matching: find.byType(CustomPaint),
+            ),
+          )
+          .firstWhere((paint) => paint.painter != null)
+          .painter!;
+
+      await tester.pumpWidget(canvas(showGrid: true));
+      await tester.pump();
+      expect(controller.viewport.size, const Size(800, 600));
+      final before = drawingPainter();
+
+      await tester.pumpWidget(canvas(showGrid: false));
+      await tester.pump();
+      expect(controller.viewport.size, const Size(800, 600));
+      expect(drawingPainter().shouldRepaint(before), isTrue);
+    },
+  );
+
+  testWidgets(
+    'a leftover document version rebuilds the scene without a resize',
+    (tester) async {
+      final document = CadDocument();
+      final scenes = <RenderScene>[];
+      Widget canvas() => MaterialApp(
+        home: SizedBox(
+          width: 800,
+          height: 600,
+          child: CadCanvas(
+            document: document,
+            controller: controller,
+            onSceneBuilt: scenes.add,
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(canvas());
+      await tester.pump();
+      expect(controller.viewport.size, const Size(800, 600));
+      expect(scenes, isNotEmpty);
+      expect(scenes.last.entityCount, 0);
+      final builtBefore = scenes.length;
+
+      final session = DocumentSession(id: 't', document: document);
+      addTearDown(session.dispose);
+      session.edit('LINE', (txn) {
+        txn.add(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(40, 0)),
+        );
+      });
+
+      await tester.pumpWidget(canvas());
+      await tester.pump();
+      expect(controller.viewport.size, const Size(800, 600));
+      expect(scenes.length, greaterThan(builtBefore));
+      expect(scenes.last.entityCount, 1);
+    },
+  );
+
+  testWidgets(
+    'a leftover overlay follows the document without a resize',
+    (tester) async {
+      final document = CadDocument();
+      final session = DocumentSession(id: 't', document: document);
+      addTearDown(session.dispose);
+      session.edit('LINE', (txn) {
+        txn.add(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(40, 0)),
+        );
+      });
+      const overlay = OverlayModel(selectedIds: [0]);
+
+      Widget canvas() => MaterialApp(
+        home: SizedBox(
+          width: 800,
+          height: 600,
+          child: CadCanvas(
+            document: document,
+            controller: controller,
+            overlay: overlay,
+          ),
+        ),
+      );
+
+      CustomPainter overlayPainter() {
+        final paints = tester
+            .widgetList<CustomPaint>(
+              find.descendant(
+                of: find.byType(CadCanvas),
+                matching: find.byType(CustomPaint),
+              ),
+            )
+            .where((paint) => paint.painter != null)
+            .toList();
+        expect(paints, hasLength(2));
+        return paints.last.painter!;
+      }
+
+      await tester.pumpWidget(canvas());
+      await tester.pump();
+      expect(controller.viewport.size, const Size(800, 600));
+      final before = overlayPainter();
+
+      session.edit('LINE', (txn) {
+        txn.add(
+          const LineEntity(id: 1, start: Vec2(0, 10), end: Vec2(40, 10)),
+        );
+      });
+
+      await tester.pumpWidget(canvas());
+      await tester.pump();
+      expect(controller.viewport.size, const Size(800, 600));
+      expect(overlayPainter().shouldRepaint(before), isTrue);
+    },
+  );
+
+  testWidgets(
+    'a leftover palette change rebuilds the drawing without a resize',
+    (tester) async {
+      final document = CadDocument();
+      Widget canvas({required Color background, required AciPalette palette}) =>
+          MaterialApp(
+            home: SizedBox(
+              width: 800,
+              height: 600,
+              child: CadCanvas(
+                document: document,
+                controller: controller,
+                background: background,
+                palette: palette,
+              ),
+            ),
+          );
+
+      CustomPainter drawingPainter() => tester
+          .widgetList<CustomPaint>(
+            find.descendant(
+              of: find.byType(CadCanvas),
+              matching: find.byType(CustomPaint),
+            ),
+          )
+          .firstWhere((paint) => paint.painter != null)
+          .painter!;
+
+      await tester.pumpWidget(
+        canvas(background: AciPalette.dark.background, palette: AciPalette.dark),
+      );
+      await tester.pump();
+      expect(controller.viewport.size, const Size(800, 600));
+      final before = drawingPainter();
+
+      await tester.pumpWidget(
+        canvas(
+          background: AciPalette.light.background,
+          palette: AciPalette.light,
+        ),
+      );
+      await tester.pump();
+      expect(controller.viewport.size, const Size(800, 600));
+      expect(drawingPainter().shouldRepaint(before), isTrue);
+    },
+  );
+
+  testWidgets(
+    'applyDocumentChange rebuilds a leftover scene without a resize',
+    (tester) async {
+      final scenes = <RenderScene>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SizedBox(
+            width: 800,
+            height: 600,
+            child: CadCanvas(
+              document: CadDocument(),
+              controller: controller,
+              onSceneBuilt: scenes.add,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(controller.viewport.size, const Size(800, 600));
+      expect(scenes, isNotEmpty);
+      final builtBefore = scenes.length;
+
+      tester.state<CadCanvasState>(find.byType(CadCanvas)).applyDocumentChange(
+        const DocumentChange(tablesChanged: true),
+      );
+      await tester.pump();
+      expect(controller.viewport.size, const Size(800, 600));
+      expect(scenes.length, greaterThan(builtBefore));
+    },
+  );
+
   testWidgets('the drawing is clipped so a stroke cannot cover the chrome', (
     tester,
   ) async {
