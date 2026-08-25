@@ -115,6 +115,22 @@ class CommandLineController extends ChangeNotifier {
     notifyListeners();
   }
 
+  String? _offeredInput;
+
+  /// Text a log click wants the command line to show, without submitting it.
+  String? get offeredInput => _offeredInput;
+
+  void offerInput(String text) {
+    _offeredInput = text;
+    notifyListeners();
+  }
+
+  String? takeOfferedInput() {
+    final text = _offeredInput;
+    _offeredInput = null;
+    return text;
+  }
+
   /// Registers a pending request and returns its future.
   ///
   /// Only one request can be outstanding: a command that prompts twice does so

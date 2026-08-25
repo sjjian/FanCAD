@@ -8,63 +8,79 @@ import '../state/document_tab.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import 'command_line.dart';
-import 'layout_bar.dart';
 import 'shell_widgets.dart';
 
-/// Drawing chrome that lives on the canvas, not in the window chrome.
+/// Drawing chrome that floats over the canvas as one card.
 ///
-/// Tools, the command line, layout tabs and drafting modes are things you
-/// click while looking at the drawing. Parking them in a sibling row stole
-/// canvas pixels; a [Stack] overlay keeps the same hit targets without a
-/// reserved strip. Readouts stay on [StatusBar].
+/// Operations sit on the top row, the command line on the bottom. Layout names
+/// and the command log live in the left sidebar. Readouts stay on [StatusBar].
 class CanvasHud extends StatelessWidget {
   const CanvasHud({
     super.key,
     required this.workspace,
     required this.commandFocus,
-    required this.commandHeight,
-    required this.isExpanded,
-    required this.onResize,
-    required this.onResizeEnd,
-    required this.onToggleExpand,
+    required this.onOpenHistory,
+    required this.child,
+    this.historyOpen = false,
   });
 
   final Workspace workspace;
   final FocusNode commandFocus;
-  final double commandHeight;
-  final bool isExpanded;
-  final void Function(double delta) onResize;
-  final VoidCallback onResizeEnd;
-  final VoidCallback onToggleExpand;
+  final VoidCallback onOpenHistory;
+  final bool historyOpen;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       key: const Key('canvas-hud'),
       children: [
+        child,
         Positioned(
-          left: FanCadTokens.space3,
-          top: FanCadTokens.space3,
-          child: _ToolStrip(workspace: workspace),
-        ),
-        Positioned(
-          left: FanCadTokens.space3,
-          right: FanCadTokens.space3,
+          left: 0,
+          right: 0,
           bottom: FanCadTokens.space3,
-          child: _CommandDock(
-            workspace: workspace,
-            commandFocus: commandFocus,
-            commandHeight: commandHeight,
-            isExpanded: isExpanded,
-            onResize: onResize,
-            onResizeEnd: onResizeEnd,
-            onToggleExpand: onToggleExpand,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: FractionallySizedBox(
+              widthFactor: canvasHudWidthFactor,
+              child: _HudCard(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ActionBar(workspace: workspace),
+                    const ShellHairline(),
+                    _CommandBar(
+                      workspace: workspace,
+                      commandFocus: commandFocus,
+                      historyOpen: historyOpen,
+                      onOpenHistory: onOpenHistory,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ],
     );
   }
 }
+
+/// How wide the floating card is relative to the drawing.
+@visibleForTesting
+const canvasHudWidthFactor = 2 / 3;
+
+/// Corner radius on the floating card — larger than chrome chips so it reads
+/// as a dock, not a toolbar strip.
+@visibleForTesting
+const canvasHudRadius = 16.0;
+
+/// Inset so tools and mode chips sit inside the rounded corners.
+@visibleForTesting
+const canvasHudPadding = EdgeInsets.symmetric(
+  horizontal: FanCadTokens.space3,
+);
 
 class _HudCard extends StatelessWidget {
   const _HudCard({required this.child});
@@ -78,61 +94,16 @@ class _HudCard extends StatelessWidget {
       color: tokens.surfaceOverlay,
       elevation: 8,
       shadowColor: Colors.black.withValues(alpha: 0.35),
-      borderRadius: BorderRadius.circular(FanCadTokens.radius),
+      borderRadius: BorderRadius.circular(canvasHudRadius),
       child: Container(
+        key: const Key('canvas-bottom-card'),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(FanCadTokens.radius),
+          borderRadius: BorderRadius.circular(canvasHudRadius),
           border: Border.all(color: tokens.borderStrong),
         ),
         clipBehavior: Clip.antiAlias,
+        padding: canvasHudPadding,
         child: child,
-      ),
-    );
-  }
-}
-
-class _ToolStrip extends StatelessWidget {
-  const _ToolStrip({required this.workspace});
-
-  final Workspace workspace;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final tab = workspace.active;
-    return _HudCard(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
-        child: Row(
-          key: const Key('canvas-tool-strip'),
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ShellIconButton(
-              key: const Key('canvas-tool-undo'),
-              icon: Icons.undo,
-              tooltip: _undoTooltip(l10n, tab),
-              enabled: tab?.history.canUndo ?? false,
-              onPressed: () => workspace.run('edit.undo'),
-            ),
-            ShellIconButton(
-              key: const Key('canvas-tool-redo'),
-              icon: Icons.redo,
-              tooltip: _redoTooltip(l10n, tab),
-              enabled: tab?.history.canRedo ?? false,
-              onPressed: () => workspace.run('edit.redo'),
-            ),
-            for (final tool in canvasQuickTools)
-              ShellIconButton(
-                key: Key('canvas-tool-${tool.commandId}'),
-                icon: tool.icon,
-                tooltip:
-                    '${l10n.commandTitle(tool.commandId, tool.fallback)}  ${tool.alias}',
-                enabled: tab != null,
-                isActive: workspace.runningCommand == tool.commandId,
-                onPressed: () => workspace.run(tool.commandId),
-              ),
-          ],
-        ),
       ),
     );
   }
@@ -176,68 +147,85 @@ String _redoTooltip(AppLocalizations l10n, DocumentTab? tab) {
       : '${l10n.redo_named(label)}  ${shellShortcut('Z', shift: true)}';
 }
 
-class _CommandDock extends StatelessWidget {
-  const _CommandDock({
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({required this.workspace});
+
+  final Workspace workspace;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final tab = workspace.active;
+    return SizedBox(
+      key: const Key('canvas-action-card'),
+      height: FanCadTokens.tabBarHeight,
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space1,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ShellIconButton(
+                  key: const Key('canvas-tool-undo'),
+                  icon: Icons.undo,
+                  tooltip: _undoTooltip(l10n, tab),
+                  enabled: tab?.history.canUndo ?? false,
+                  onPressed: () => workspace.run('edit.undo'),
+                ),
+                ShellIconButton(
+                  key: const Key('canvas-tool-redo'),
+                  icon: Icons.redo,
+                  tooltip: _redoTooltip(l10n, tab),
+                  enabled: tab?.history.canRedo ?? false,
+                  onPressed: () => workspace.run('edit.redo'),
+                ),
+                for (final tool in canvasQuickTools)
+                  ShellIconButton(
+                    key: Key('canvas-tool-${tool.commandId}'),
+                    icon: tool.icon,
+                    tooltip:
+                        '${l10n.commandTitle(tool.commandId, tool.fallback)}  ${tool.alias}',
+                    enabled: tab != null,
+                    isActive: workspace.runningCommand == tool.commandId,
+                    onPressed: () => workspace.run(tool.commandId),
+                  ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          _DraftingModes(workspace: workspace),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommandBar extends StatelessWidget {
+  const _CommandBar({
     required this.workspace,
     required this.commandFocus,
-    required this.commandHeight,
-    required this.isExpanded,
-    required this.onResize,
-    required this.onResizeEnd,
-    required this.onToggleExpand,
+    required this.historyOpen,
+    required this.onOpenHistory,
   });
 
   final Workspace workspace;
   final FocusNode commandFocus;
-  final double commandHeight;
-  final bool isExpanded;
-  final void Function(double delta) onResize;
-  final VoidCallback onResizeEnd;
-  final VoidCallback onToggleExpand;
+  final bool historyOpen;
+  final VoidCallback onOpenHistory;
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return _HudCard(
-      child: IntrinsicHeight(
-        child: Row(
-          key: const Key('canvas-command-dock'),
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Flexible(
-              fit: FlexFit.loose,
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: LayoutTabStrip(workspace: workspace),
-              ),
-            ),
-            VerticalDivider(
-              width: 1,
-              thickness: 1,
-              color: tokens.border,
-            ),
-            Expanded(
-              child: CommandLinePane(
-                workspace: workspace,
-                height: commandHeight,
-                isExpanded: isExpanded,
-                focusNode: commandFocus,
-                onResize: onResize,
-                onResizeEnd: onResizeEnd,
-                onToggleExpand: onToggleExpand,
-              ),
-            ),
-            VerticalDivider(
-              width: 1,
-              thickness: 1,
-              color: tokens.border,
-            ),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: _DraftingModes(workspace: workspace),
-            ),
-          ],
-        ),
+    return SizedBox(
+      key: const Key('canvas-command-dock'),
+      height: FanCadTokens.tabBarHeight,
+      child: CommandLinePane(
+        workspace: workspace,
+        focusNode: commandFocus,
+        historyOpen: historyOpen,
+        onOpenHistory: onOpenHistory,
       ),
     );
   }
@@ -265,6 +253,7 @@ class _DraftingModes extends StatelessWidget {
           onContextMenu: (position) =>
               _openSnapModeMenu(context, workspace, position),
         ),
+        const SizedBox(width: FanCadTokens.space1),
         StatusToggle(
           key: const Key('canvas-mode-ortho'),
           label: l10n.ortho,
@@ -272,6 +261,7 @@ class _DraftingModes extends StatelessWidget {
           tooltip: l10n.ortho_tooltip,
           onPressed: () => workspace.setOrtho(!snap.tracking.ortho),
         ),
+        const SizedBox(width: FanCadTokens.space1),
         StatusToggle(
           key: const Key('canvas-mode-polar'),
           label: l10n.polar,
@@ -283,6 +273,7 @@ class _DraftingModes extends StatelessWidget {
           onContextMenu: (position) =>
               _openPolarIncrementMenu(context, workspace, position),
         ),
+        const SizedBox(width: FanCadTokens.space1),
         StatusToggle(
           key: const Key('canvas-mode-grid'),
           label: l10n.grid,

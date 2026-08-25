@@ -243,6 +243,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get properties => '特性';
 
   @override
+  String get layouts => '布局';
+
+  @override
   String get commands => '命令';
 
   @override
@@ -261,7 +264,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get view_properties_hint => '查看并修改选择集';
 
   @override
+  String get view_layouts_hint => '模型空间与图纸空间';
+
+  @override
   String get view_commands_hint => '应用可执行的全部命令';
+
+  @override
+  String get view_history_hint => '已经执行过的命令';
 
   @override
   String get view_extensions_hint => '已安装扩展及其错误';
@@ -641,6 +650,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get layers_empty_workspace => '打开图纸以查看图层。';
+
+  @override
+  String get layouts_empty_workspace => '打开图纸以查看布局。';
 
   @override
   String get new_layer_current => '新建图层（并置为当前）';

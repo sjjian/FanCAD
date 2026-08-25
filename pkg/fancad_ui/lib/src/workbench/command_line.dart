@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
@@ -11,30 +9,24 @@ import '../theme/tokens.dart';
 import 'command_line_model.dart';
 import 'shell_widgets.dart';
 
-/// The command line and its optional history.
+/// The command line on the canvas dock.
 ///
 /// This is the component that decides whether the application feels like CAD.
 /// The input keeps focus so typing a verb always works without clicking first,
-/// Escape always cancels whatever is running, and history expands over the
-/// drawing instead of reserving a strip of canvas.
+/// and Escape always cancels whatever is running. The log lives in the left
+/// sidebar, not stacked above this row.
 class CommandLinePane extends StatefulWidget {
   const CommandLinePane({
     super.key,
     required this.workspace,
-    required this.height,
-    required this.onResize,
-    required this.onResizeEnd,
-    required this.onToggleExpand,
-    required this.isExpanded,
     required this.focusNode,
+    required this.onOpenHistory,
+    this.historyOpen = false,
   });
 
   final Workspace workspace;
-  final double height;
-  final void Function(double delta) onResize;
-  final VoidCallback onResizeEnd;
-  final VoidCallback onToggleExpand;
-  final bool isExpanded;
+  final VoidCallback onOpenHistory;
+  final bool historyOpen;
 
   /// Owned by the workbench so that the canvas can hand focus back here after
   /// a click, which is what keeps typed input working mid-command.
@@ -46,7 +38,6 @@ class CommandLinePane extends StatefulWidget {
 
 class _CommandLinePaneState extends State<CommandLinePane> {
   final TextEditingController _input = TextEditingController();
-  final ScrollController _scroll = ScrollController();
 
   CommandLineController get _model => widget.workspace.commandLine;
 
@@ -60,21 +51,16 @@ class _CommandLinePaneState extends State<CommandLinePane> {
   void dispose() {
     _model.removeListener(_onModelChanged);
     _input.dispose();
-    _scroll.dispose();
     super.dispose();
   }
 
   void _onModelChanged() {
     if (!mounted) return;
-    // The newest line is the one the user needs, so the pane follows the tail
-    // unless they have scrolled away to read something.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scroll.hasClients) return;
-      final position = _scroll.position;
-      if (position.maxScrollExtent - position.pixels < 80) {
-        _scroll.jumpTo(position.maxScrollExtent);
-      }
-    });
+    final offered = _model.takeOfferedInput();
+    if (offered != null) {
+      _setText(offered);
+      widget.focusNode.requestFocus();
+    }
     setState(() {});
   }
 
@@ -126,73 +112,7 @@ class _CommandLinePaneState extends State<CommandLinePane> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final historyHeight = math.max(
-      48.0,
-      widget.height - FanCadTokens.commandLineHeight,
-    );
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (widget.isExpanded) ...[
-          Tooltip(
-            message: context.l10n.resize_collapse,
-            waitDuration: const Duration(milliseconds: 500),
-            child: ShellSplitter(
-              axis: Axis.horizontal,
-              strong: true,
-              // Dragging the splitter up has to make the pane taller, so the
-              // delta is inverted relative to the pointer.
-              onDrag: (delta) => widget.onResize(-delta),
-              onDragEnd: widget.onResizeEnd,
-              onDoubleTap: widget.onToggleExpand,
-            ),
-          ),
-          SizedBox(height: historyHeight, child: _buildHistory(tokens)),
-        ],
-        _buildInput(tokens),
-      ],
-    );
-  }
-
-  Widget _buildHistory(FanCadTokens tokens) {
-    final lines = _model.lines;
-    if (lines.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: FanCadTokens.space3,
-          vertical: FanCadTokens.space2,
-        ),
-        child: Text(
-          context.l10n.command_history_hint,
-          style: tokens.labelStyle,
-        ),
-      );
-    }
-    return Scrollbar(
-      controller: _scroll,
-      thickness: 6,
-      child: ListView.builder(
-        controller: _scroll,
-        padding: const EdgeInsets.symmetric(
-          horizontal: FanCadTokens.space2,
-          vertical: FanCadTokens.space1,
-        ),
-        itemCount: lines.length,
-        itemExtent: 17,
-        itemBuilder: (context, index) {
-          final line = lines[index];
-          return _HistoryLine(
-            line: line,
-            tokens: tokens,
-            onReuse: () {
-              _setText(line.text.trim());
-              widget.focusNode.requestFocus();
-            },
-          );
-        },
-      ),
-    );
+    return _buildInput(context.tokens);
   }
 
   Widget _buildInput(FanCadTokens tokens) {
@@ -205,11 +125,7 @@ class _CommandLinePaneState extends State<CommandLinePane> {
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: awaiting
-                ? tokens.accent
-                : widget.isExpanded
-                ? tokens.border
-                : Colors.transparent,
+            color: awaiting ? tokens.accent : Colors.transparent,
             width: awaiting ? 2 : 1,
           ),
         ),
@@ -217,16 +133,13 @@ class _CommandLinePaneState extends State<CommandLinePane> {
       child: Row(
         children: [
           ShellIconButton(
-            icon: widget.isExpanded
-                ? Icons.expand_more
-                : Icons.unfold_more,
-            tooltip: widget.isExpanded
-                ? context.l10n.collapse_history
-                : context.l10n.expand_history,
+            key: const Key('command-open-history'),
+            icon: Icons.history,
+            tooltip: context.l10n.command_history,
             size: 20,
             iconSize: FanCadTokens.iconMedium,
-            isActive: widget.isExpanded,
-            onPressed: widget.onToggleExpand,
+            isActive: widget.historyOpen,
+            onPressed: widget.onOpenHistory,
           ),
           _HistoryOverflow(
             enabled: _model.lines.isNotEmpty,
@@ -435,6 +348,108 @@ class _HistoryOverflow extends StatelessWidget {
           color: enabled ? tokens.textMuted : tokens.textFaint,
         ),
       ),
+    );
+  }
+}
+
+/// The command log in the left sidebar.
+///
+/// The canvas dock only types; this panel is where a leftover LINE or an
+/// import warning can be reread and clicked back into the input.
+class CommandLogPanel extends StatefulWidget {
+  const CommandLogPanel({super.key, required this.workspace});
+
+  final Workspace workspace;
+
+  @override
+  State<CommandLogPanel> createState() => _CommandLogPanelState();
+}
+
+class _CommandLogPanelState extends State<CommandLogPanel> {
+  final ScrollController _scroll = ScrollController();
+
+  CommandLineController get _model => widget.workspace.commandLine;
+
+  @override
+  void initState() {
+    super.initState();
+    _model.addListener(_onModelChanged);
+  }
+
+  @override
+  void dispose() {
+    _model.removeListener(_onModelChanged);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onModelChanged() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) return;
+      final position = _scroll.position;
+      if (position.maxScrollExtent - position.pixels < 80) {
+        _scroll.jumpTo(position.maxScrollExtent);
+      }
+    });
+    setState(() {});
+  }
+
+  void _copy() {
+    final text = [for (final line in _model.lines) line.text].join('\n');
+    Clipboard.setData(ClipboardData(text: text));
+    widget.workspace.notify(context.l10n.copied_history);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final lines = _model.lines;
+    return Column(
+      key: const Key('command-log-panel'),
+      children: [
+        PanelHeader(
+          title: context.l10n.command_history,
+          actions: [
+            _HistoryOverflow(
+              enabled: lines.isNotEmpty,
+              onCopy: _copy,
+              onClear: _model.clear,
+            ),
+          ],
+        ),
+        Expanded(
+          child: lines.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(FanCadTokens.space4),
+                  child: Text(
+                    context.l10n.command_history_hint,
+                    style: tokens.labelStyle,
+                  ),
+                )
+              : Scrollbar(
+                  controller: _scroll,
+                  thickness: 6,
+                  child: ListView.builder(
+                    controller: _scroll,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: FanCadTokens.space2,
+                      vertical: FanCadTokens.space1,
+                    ),
+                    itemCount: lines.length,
+                    itemExtent: 22,
+                    itemBuilder: (context, index) {
+                      final line = lines[index];
+                      return _HistoryLine(
+                        line: line,
+                        tokens: tokens,
+                        onReuse: () => _model.offerInput(line.text.trim()),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }

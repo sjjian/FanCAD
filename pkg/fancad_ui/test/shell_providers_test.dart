@@ -42,6 +42,8 @@ void main() {
 
     sidebar.resize(40);
     expect(sidebar.state.width, SidebarController.minWidth);
+    sidebar.resize(240.6);
+    expect(sidebar.state.width, 241);
     sidebar.resize(900);
     expect(sidebar.state.width, SidebarController.maxWidth);
     sidebar.commitWidth();
@@ -60,6 +62,14 @@ void main() {
     sidebar.select('ai');
     expect(sidebar.state.viewId, 'layers');
     expect(sidebar.state.isOpen, isFalse);
+
+    sidebar.reveal('history');
+    expect(sidebar.state.viewId, 'history');
+    expect(sidebar.state.isOpen, isTrue);
+
+    sidebar.reveal('layouts');
+    expect(sidebar.state.viewId, 'layouts');
+    expect(sidebar.state.isOpen, isTrue);
   });
 
   test('the assistant pane opens on the right and keeps its own width', () {
@@ -75,6 +85,8 @@ void main() {
     pane.toggle();
     expect(pane.state.isOpen, isFalse);
     expect(settings.getBool(SettingsKeys.assistantOpen), isFalse);
+    pane.resize(320.4);
+    expect(pane.state.width, 320);
     pane.resize(900);
     pane.commitWidth();
     expect(

@@ -32,7 +32,7 @@ class SettingsSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: FanCadTokens.space2),
-        Divider(height: 1, color: tokens.border),
+        const ShellHairline(),
         const SizedBox(height: FanCadTokens.space3),
         ...children,
       ],

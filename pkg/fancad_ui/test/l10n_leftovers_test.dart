@@ -37,6 +37,12 @@ void main() {
     expect(en.new_chat, 'New chat');
     expect(zh.new_chat, '新会话');
     expect(zh.chat_history, '会话');
+    expect(en.view_history_hint, isNot(en.view_commands_hint));
+    expect(zh.view_history_hint, isNot(zh.view_commands_hint));
+    expect(en.view_layouts_hint, isNot(en.view_layers_hint));
+    expect(zh.view_layouts_hint, isNot(zh.view_layers_hint));
+    expect(en.layouts, 'Layouts');
+    expect(zh.layouts, '布局');
   });
 
   test('leftover thinking copy is a card title, not working text', () {

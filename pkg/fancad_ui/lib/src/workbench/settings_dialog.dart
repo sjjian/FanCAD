@@ -214,7 +214,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                 ],
               ),
             ),
-            Divider(height: 1, color: tokens.border),
+            const ShellHairline(),
             Expanded(
               child: IndexedStack(
                 index: tab == SettingsTab.general ? 0 : 1,

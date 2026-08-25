@@ -10,6 +10,7 @@ import '../l10n/l10n.dart';
 import '../panels/ai_panel.dart';
 import '../panels/extensions_panel.dart';
 import '../panels/layers_panel.dart';
+import '../panels/layouts_panel.dart';
 import '../panels/plugin_editor_panel.dart';
 import '../panels/properties_panel.dart';
 import '../state/plugin_bootstrap.dart';
@@ -28,8 +29,8 @@ import 'title_bar.dart';
 /// The application shell.
 ///
 /// Laid out as fixed chrome around one flexible canvas: title bar, activity bar,
-/// sidebar, tab strip, drawing, status bar. Command, tools and drafting modes
-/// sit on the canvas so a reserved command strip cannot steal the drawing.
+/// sidebar, tab strip, drawing, status bar. Operations and the command line
+/// share one floating card on the canvas. Layout names live in the left sidebar.
 class Workbench extends ConsumerStatefulWidget {
   const Workbench({super.key});
 
@@ -274,87 +275,121 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                     .toggle,
               ),
               Expanded(
-                child: Stack(
-                  children: [
-                    Row(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Stack(
                       children: [
-                        _ActivityBar(
-                          activeViewId: sidebar.isOpen ? sidebar.viewId : '',
-                          onSelect: ref.read(sidebarProvider.notifier).select,
+                        Row(
+                          children: [
+                            _ActivityBar(
+                              activeViewId: sidebar.isOpen
+                                  ? sidebar.viewId
+                                  : '',
+                              onSelect: ref
+                                  .read(sidebarProvider.notifier)
+                                  .select,
+                            ),
+                            if (sidebar.isOpen)
+                              SizedBox(
+                                width: sidebar.width,
+                                child: ColoredBox(
+                                  color: tokens.surface,
+                                  child: _sidebarBody(
+                                    sidebar.viewId,
+                                    workspace,
+                                  ),
+                                ),
+                              ),
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  DocumentTabStrip(workspace: workspace),
+                                  Expanded(child: _canvasArea(workspace)),
+                                ],
+                              ),
+                            ),
+                            if (assistant.isOpen)
+                              SizedBox(
+                                width: assistant.width,
+                                child: ColoredBox(
+                                  color: tokens.surface,
+                                  child: AiPanel(
+                                    controller: ref.watch(
+                                      aiControllerProvider,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                        if (sidebar.isOpen) ...[
-                          SizedBox(
-                            width: sidebar.width,
-                            child: ColoredBox(
-                              color: tokens.surface,
-                              child: _sidebarBody(sidebar.viewId, workspace),
+                        if (sidebar.isOpen)
+                          Positioned(
+                            left: ShellSplitter.overlayOrigin(
+                              FanCadTokens.activityBarWidth + sidebar.width,
                             ),
-                          ),
-                          Tooltip(
-                            message:
-                                context.l10n.resize_reset_width,
-                            waitDuration: const Duration(milliseconds: 500),
-                            child: ShellSplitter(
-                              axis: Axis.vertical,
-                              onDrag: (delta) => ref
-                                  .read(sidebarProvider.notifier)
-                                  .resize(sidebar.width + delta),
-                              onDragEnd: ref
-                                  .read(sidebarProvider.notifier)
-                                  .commitWidth,
-                              onDoubleTap: ref
-                                  .read(sidebarProvider.notifier)
-                                  .resetWidth,
-                            ),
-                          ),
-                        ],
-                        Expanded(
-                          child: Column(
-                            children: [
-                              DocumentTabStrip(workspace: workspace),
-                              Expanded(child: _canvasArea(workspace)),
-                            ],
-                          ),
-                        ),
-                        if (assistant.isOpen) ...[
-                          Tooltip(
-                            message:
-                                context.l10n.resize_reset_width,
-                            waitDuration: const Duration(milliseconds: 500),
-                            child: ShellSplitter(
-                              axis: Axis.vertical,
-                              strong: true,
-                              onDrag: (delta) => ref
-                                  .read(assistantPaneProvider.notifier)
-                                  .resize(assistant.width - delta),
-                              onDragEnd: ref
-                                  .read(assistantPaneProvider.notifier)
-                                  .commitWidth,
-                              onDoubleTap: ref
-                                  .read(assistantPaneProvider.notifier)
-                                  .resetWidth,
-                            ),
-                          ),
-                          SizedBox(
-                            width: assistant.width,
-                            child: ColoredBox(
-                              color: tokens.surface,
-                              child: AiPanel(
-                                controller: ref.watch(aiControllerProvider),
+                            top: 0,
+                            bottom: 0,
+                            width: FanCadTokens.splitterHit,
+                            child: Tooltip(
+                              message: context.l10n.resize_reset_width,
+                              waitDuration: const Duration(
+                                milliseconds: 500,
+                              ),
+                              child: ShellSplitter(
+                                key: const Key('sidebar-splitter'),
+                                axis: Axis.vertical,
+                                strong: true,
+                                onDrag: (delta) => ref
+                                    .read(sidebarProvider.notifier)
+                                    .resize(sidebar.width + delta),
+                                onDragEnd: ref
+                                    .read(sidebarProvider.notifier)
+                                    .commitWidth,
+                                onDoubleTap: ref
+                                    .read(sidebarProvider.notifier)
+                                    .resetWidth,
                               ),
                             ),
                           ),
-                        ],
+                        if (assistant.isOpen)
+                          Positioned(
+                            left: ShellSplitter.overlayOrigin(
+                              constraints.maxWidth - assistant.width,
+                            ),
+                            top: 0,
+                            bottom: 0,
+                            width: FanCadTokens.splitterHit,
+                            child: Tooltip(
+                              message: context.l10n.resize_reset_width,
+                              waitDuration: const Duration(
+                                milliseconds: 500,
+                              ),
+                              child: ShellSplitter(
+                                key: const Key('assistant-splitter'),
+                                axis: Axis.vertical,
+                                strong: true,
+                                onDrag: (delta) => ref
+                                    .read(assistantPaneProvider.notifier)
+                                    .resize(assistant.width - delta),
+                                onDragEnd: ref
+                                    .read(assistantPaneProvider.notifier)
+                                    .commitWidth,
+                                onDoubleTap: ref
+                                    .read(assistantPaneProvider.notifier)
+                                    .resetWidth,
+                              ),
+                            ),
+                          ),
+                        if (paletteOpen)
+                          CommandPalette(
+                            workspace: workspace,
+                            onDismiss: () => ref
+                                .read(paletteOpenProvider.notifier)
+                                .state = false,
+                          ),
                       ],
-                    ),
-                    if (paletteOpen)
-                      CommandPalette(
-                        workspace: workspace,
-                        onDismiss: () =>
-                            ref.read(paletteOpenProvider.notifier).state =
-                                false,
-                      ),
-                  ],
+                    );
+                  },
                 ),
               ),
               StatusBar(workspace: workspace),
@@ -387,36 +422,30 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
             tab: tab,
             commandLineFocus: _commandFocus,
           );
-    final commandPane = ref.watch(commandPaneProvider);
-    return Stack(
-      children: [
-        body,
-        CanvasHud(
-          workspace: workspace,
-          commandFocus: _commandFocus,
-          commandHeight: commandPane.height,
-          isExpanded: commandPane.isExpanded,
-          onResize: (delta) => ref
-              .read(commandPaneProvider.notifier)
-              .resize(commandPane.height + delta),
-          onResizeEnd: ref.read(commandPaneProvider.notifier).commitHeight,
-          onToggleExpand: () {
-            ref.read(commandPaneProvider.notifier).toggleExpanded();
-            ref.read(commandPaneProvider.notifier).commitHeight();
-          },
-        ),
-        Positioned(
-          right: FanCadTokens.space4,
-          top: FanCadTokens.space3,
-          child: _Notices(workspace: workspace),
-        ),
-      ],
+    final sidebar = ref.watch(sidebarProvider);
+    return CanvasHud(
+      workspace: workspace,
+      commandFocus: _commandFocus,
+      historyOpen: sidebar.isOpen && sidebar.viewId == 'history',
+      onOpenHistory: () => workspace.revealPanel('history'),
+      child: Stack(
+        children: [
+          body,
+          Positioned(
+            right: FanCadTokens.space4,
+            top: FanCadTokens.space3,
+            child: _Notices(workspace: workspace),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _sidebarBody(String viewId, Workspace workspace) => switch (viewId) {
     'layers' => LayersPanel(workspace: workspace),
     'properties' => PropertiesPanel(workspace: workspace),
+    'layouts' => LayoutsPanel(workspace: workspace),
+    'history' => CommandLogPanel(workspace: workspace),
     'commands' => _CommandListPanel(
       workspace: workspace,
       onOpenPalette: () =>
@@ -538,6 +567,8 @@ class _ActivityBar extends StatelessWidget {
   static const List<({String id, IconData icon})> _views = [
     (id: 'layers', icon: Icons.layers_outlined),
     (id: 'properties', icon: Icons.tune),
+    (id: 'layouts', icon: Icons.dashboard_outlined),
+    (id: 'history', icon: Icons.history),
     (id: 'commands', icon: Icons.terminal),
     (id: 'plugins', icon: Icons.extension_outlined),
     (id: 'editor', icon: Icons.code),
@@ -547,6 +578,11 @@ class _ActivityBar extends StatelessWidget {
     return switch (id) {
       'layers' => (label: l10n.layers, hint: l10n.view_layers_hint),
       'properties' => (label: l10n.properties, hint: l10n.view_properties_hint),
+      'layouts' => (label: l10n.layouts, hint: l10n.view_layouts_hint),
+      'history' => (
+        label: l10n.command_history,
+        hint: l10n.view_history_hint,
+      ),
       'commands' => (label: l10n.commands, hint: l10n.view_commands_hint),
       'plugins' => (label: l10n.extensions, hint: l10n.view_extensions_hint),
       _ => (label: l10n.re_editor, hint: l10n.view_editor_hint),
@@ -570,6 +606,7 @@ class _ActivityBar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
               child: ShellIconButton(
+                key: Key('activity-${view.id}'),
                 icon: view.icon,
                 tooltip: () {
                   final copy = _copy(l10n, view.id);

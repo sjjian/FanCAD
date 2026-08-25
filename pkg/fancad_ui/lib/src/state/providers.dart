@@ -183,6 +183,8 @@ class SidebarController extends StateNotifier<SidebarState> {
   static const _leftViews = {
     'layers',
     'properties',
+    'layouts',
+    'history',
     'commands',
     'plugins',
     'editor',
@@ -223,7 +225,9 @@ class SidebarController extends StateNotifier<SidebarState> {
   void toggle() => setOpen(!state.isOpen);
 
   void resize(double width) {
-    state = state.copyWith(width: width.clamp(minWidth, maxWidth));
+    state = state.copyWith(
+      width: width.roundToDouble().clamp(minWidth, maxWidth),
+    );
   }
 
   /// Persisted on drag end rather than on every frame, to avoid writing the
@@ -351,7 +355,9 @@ class AssistantPaneController extends StateNotifier<AssistantPaneState> {
   void toggle() => setOpen(!state.isOpen);
 
   void resize(double width) {
-    state = state.copyWith(width: width.clamp(minWidth, maxWidth));
+    state = state.copyWith(
+      width: width.roundToDouble().clamp(minWidth, maxWidth),
+    );
   }
 
   void commitWidth() =>

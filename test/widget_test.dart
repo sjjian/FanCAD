@@ -172,7 +172,7 @@ void main() {
     expect(find.text('ASSISTANT'), findsNothing);
   });
 
-  testWidgets('layout chips sit on the canvas, not in the status bar', (
+  testWidgets('layout chips sit in the left sidebar, not under the canvas', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1600, 1000);
@@ -185,7 +185,7 @@ void main() {
     await tester.pumpWidget(wrap(container));
     await tester.pump();
 
-    expect(find.text('Model'), findsOneWidget);
+    expect(find.text('Model'), findsNothing);
     expect(find.text('LAYOUTS'), findsNothing);
     expect(find.text('FanCAD'), findsWidgets);
     expect(
@@ -200,7 +200,25 @@ void main() {
         of: find.byKey(const Key('canvas-hud')),
         matching: find.text('Model'),
       ),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const Key('activity-layouts')));
+    await tester.pump();
+    expect(find.text('LAYOUTS'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('layouts-panel')),
+        matching: find.text('Model'),
+      ),
       findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-command-dock')),
+        matching: find.text('Model'),
+      ),
+      findsNothing,
     );
   });
 

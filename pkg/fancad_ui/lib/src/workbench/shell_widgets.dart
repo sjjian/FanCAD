@@ -6,17 +6,14 @@ import 'package:flutter/services.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 
+export '../widgets/shell_hairline.dart';
+export '../widgets/shell_splitter.dart';
+
 /// A modifier-aware shortcut label for chrome that mentions keystrokes.
 String shellShortcut(String key, {bool shift = false}) {
   final prefix = Platform.isMacOS ? '⌘' : 'Ctrl';
   return shift ? '$prefix Shift $key' : '$prefix $key';
 }
-
-/// The small widgets the shell is assembled from.
-///
-/// Gathered in one file because they are only meaningful together: a CAD shell
-/// is a dense grid of 24-pixel rows, and keeping the row, the icon button and
-/// the splitter side by side is what stops them drifting out of alignment.
 
 /// A flat square icon button, as used in the activity bar and tab strip.
 class ShellIconButton extends StatefulWidget {
@@ -177,88 +174,6 @@ class _ShellRowState extends State<ShellRow> {
   }
 }
 
-/// A draggable divider between two regions.
-///
-/// The hit area is deliberately wider than the visible line: a one-pixel target
-/// is technically a splitter and practically a source of complaint.
-class ShellSplitter extends StatefulWidget {
-  const ShellSplitter({
-    super.key,
-    required this.axis,
-    required this.onDrag,
-    this.onDragEnd,
-    this.onDoubleTap,
-    this.thickness = 1,
-    this.hitSize = FanCadTokens.splitterHit,
-    this.strong = false,
-  });
-
-  /// The axis the splitter runs along; a vertical splitter resizes horizontally.
-  final Axis axis;
-
-  final void Function(double delta) onDrag;
-  final VoidCallback? onDragEnd;
-
-  /// A double-click snaps the pane to a remembered large or small size.
-  final VoidCallback? onDoubleTap;
-  final double thickness;
-  final double hitSize;
-
-  /// A harder rule, used where two similar surfaces would otherwise merge.
-  final bool strong;
-
-  @override
-  State<ShellSplitter> createState() => _ShellSplitterState();
-}
-
-class _ShellSplitterState extends State<ShellSplitter> {
-  bool _active = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final isVertical = widget.axis == Axis.vertical;
-    return MouseRegion(
-      cursor: isVertical
-          ? SystemMouseCursors.resizeColumn
-          : SystemMouseCursors.resizeRow,
-      onEnter: (_) => setState(() => _active = true),
-      onExit: (_) => setState(() => _active = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onDoubleTap: widget.onDoubleTap,
-        onHorizontalDragUpdate: isVertical
-            ? (details) => widget.onDrag(details.delta.dx)
-            : null,
-        onHorizontalDragEnd: isVertical
-            ? (_) => widget.onDragEnd?.call()
-            : null,
-        onVerticalDragUpdate: isVertical
-            ? null
-            : (details) => widget.onDrag(details.delta.dy),
-        onVerticalDragEnd: isVertical
-            ? null
-            : (_) => widget.onDragEnd?.call(),
-        child: SizedBox(
-          width: isVertical ? widget.hitSize : null,
-          height: isVertical ? null : widget.hitSize,
-          child: Center(
-            child: Container(
-              width: isVertical ? widget.thickness : double.infinity,
-              height: isVertical ? double.infinity : widget.thickness,
-              color: _active
-                  ? tokens.accent
-                  : widget.strong
-                  ? tokens.borderStrong
-                  : tokens.border,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// The header above a panel's contents.
 class PanelHeader extends StatelessWidget {
   const PanelHeader({super.key, required this.title, this.actions = const []});
@@ -412,7 +327,10 @@ class PropertyRow extends StatelessWidget {
   }
 }
 
-/// A compact toggle used in the status bar for ortho, snap and grid.
+/// A compact drafting-mode toggle.
+///
+/// On is a slightly darker grey wash and the same ink as the rest of the
+/// card — leftover accent text made a drafting mode look like a link.
 class StatusToggle extends StatefulWidget {
   const StatusToggle({
     super.key,
@@ -457,22 +375,17 @@ class _StatusToggleState extends State<StatusToggle> {
           ),
           decoration: BoxDecoration(
             color: widget.isOn
-                ? tokens.selection
+                ? tokens.pressed
                 : _hovered
                 ? tokens.hover
                 : Colors.transparent,
-            border: Border(
-              bottom: BorderSide(
-                color: widget.isOn ? tokens.accent : Colors.transparent,
-                width: 2,
-              ),
-            ),
+            borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
           ),
           alignment: Alignment.center,
           child: Text(
             widget.label,
             style: tokens.labelStyle.copyWith(
-              color: widget.isOn ? tokens.accent : tokens.textFaint,
+              color: widget.isOn ? tokens.text : tokens.textFaint,
               fontWeight: widget.isOn ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
