@@ -70,6 +70,7 @@ String _tsTypeOf(ParamSpec param) => switch (param.type) {
   ParamType.choice =>
     param.options.map((option) => "'$option'").join(' | '),
   ParamType.json => 'Record<string, unknown>',
+  ParamType.points => 'Point[]',
 };
 
 /// Turns `draw.line` into `DrawLine`.

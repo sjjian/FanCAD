@@ -208,6 +208,12 @@ abstract class CommandServices {
   /// Reveals a panel by id, for example `layers` or `properties`.
   void revealPanel(String panelId);
 
+  /// Camera of the active view, or an empty map when the host has none.
+  ///
+  /// Used by `query.viewport` so the assistant can reuse the visible window
+  /// as a `query.entities` filter. Headless tests leave this empty.
+  Map<String, Object?> describeView() => const {};
+
   /// Asks the user to approve a set of pending changes. Returns true when the
   /// caller may proceed. Non-interactive hosts return their default policy.
   Future<bool> requestApproval(String title, String details);
@@ -235,6 +241,9 @@ class _NullServices implements CommandServices {
 
   @override
   void revealPanel(String panelId) {}
+
+  @override
+  Map<String, Object?> describeView() => const {};
 
   @override
   Future<bool> requestApproval(String title, String details) async => false;

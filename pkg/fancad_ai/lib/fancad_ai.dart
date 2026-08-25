@@ -10,4 +10,7 @@ export 'src/conversation.dart';
 export 'src/mock_provider.dart';
 export 'src/openai_provider.dart';
 export 'src/provider.dart';
+export 'src/skills/bundled.dart';
+export 'src/skills/host_tools.dart';
+export 'src/skills/skill.dart';
 export 'src/tools.dart';

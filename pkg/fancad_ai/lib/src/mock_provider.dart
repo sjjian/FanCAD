@@ -29,6 +29,6 @@ class ScriptedLlmProvider extends LlmProvider {
     final next = script[_index++];
     if (next.text.isNotEmpty) yield LlmTextDelta(next.text);
     if (next.toolCalls.isNotEmpty) yield LlmToolCalls(next.toolCalls);
-    yield LlmFinished(finishReason: next.finishReason);
+    yield LlmFinished(finishReason: next.finishReason, usage: next.usage);
   }
 }

@@ -44,23 +44,23 @@ void main() {
       );
   });
 
-  test('read-only runs free; edits and deletes still ask by default', () {
+  test('only deletes ask; leftover draw and save calls run', () {
     const policy = ApprovalPolicy();
     expect(
       policy.requiresApproval(registry.find('query.summary')!),
       isFalse,
     );
-    expect(policy.requiresApproval(registry.find('draw.line')!), isTrue);
+    expect(policy.requiresApproval(registry.find('draw.line')!), isFalse);
     expect(policy.requiresApproval(registry.find('edit.erase')!), isTrue);
-    expect(policy.requiresApproval(registry.find('file.save')!), isTrue);
+    expect(policy.requiresApproval(registry.find('file.save')!), isFalse);
 
     const auto = ApprovalPolicy(autoApproveEdits: true);
     expect(auto.requiresApproval(registry.find('draw.line')!), isFalse);
-    expect(auto.requiresApproval(registry.find('edit.erase')!), isTrue);
+    expect(auto.requiresApproval(registry.find('edit.erase')!), isFalse);
   });
 
   test('pendingOf keeps only the calls that need a decision', () {
-    const policy = ApprovalPolicy(autoApproveEdits: true);
+    const policy = ApprovalPolicy();
     expect(
       policy.pendingOf(
         const [
@@ -88,7 +88,8 @@ void main() {
     )!;
     expect(pending.calls, hasLength(1));
     expect(pending.title, 'Allow Erase?');
-    expect(pending.details, contains('ids=[4, 7]'));
+    expect(pending.details, contains('Erase'));
+    expect(pending.details, isNot(contains('ids=')));
     expect(pending.highlightIds, [4, 7]);
     expect(pending.isNotEmpty, isTrue);
   });
@@ -114,7 +115,9 @@ void main() {
       highlightIds: [1],
     );
     expect(pending.title, 'Allow 2 changes?');
-    expect(pending.details, contains('Save (path=/a.dxf)'));
+    expect(pending.details, contains('Erase'));
+    expect(pending.details, contains('Save'));
+    expect(pending.details, isNot(contains('path=')));
     expect(pending.details, contains('Affects 1 object(s).'));
   });
 }

@@ -47,4 +47,51 @@ void main() {
     expect(prompt, contains('declare const fancad: unknown;'));
     expect(prompt, contains('When writing or repairing a plugin'));
   });
+
+  test('an empty leftover selection is written as none, not omitted', () {
+    const snapshot = SessionSnapshot();
+    expect(snapshot.describe(), contains('selection: none'));
+    expect(snapshot.describe(), isNot(contains('#')));
+
+    final prompt = const DocumentContextBuilder().systemPrompt(
+      document: CadDocument(),
+      tools: const [],
+      session: const SessionSnapshot(
+        selectionCount: 2,
+        selection: [
+          SelectedObjectHint(id: 3, kind: 'line', layer: '0'),
+          SelectedObjectHint(
+            id: 5,
+            kind: 'circle',
+            layer: '0',
+            bounds: [3, 3, 7, 7],
+          ),
+        ],
+        snapEnabled: false,
+        snapModes: ['endpoint'],
+        ortho: true,
+      ),
+    );
+    expect(prompt, contains('selection: 2 objects'));
+    expect(prompt, contains('#3 line layer=0'));
+    expect(prompt, contains('#5 circle'));
+    expect(prompt, contains('snap: off (endpoint)'));
+    expect(prompt, contains('ortho: on'));
+  });
+
+  test('a leftover skill index lists names without dumping the body', () {
+    final prompt = const DocumentContextBuilder().systemPrompt(
+      document: CadDocument(),
+      tools: const [],
+      skills: const [
+        SkillSummary(
+          name: 'inspect-drawing',
+          description: 'Inspect the open drawing.',
+        ),
+      ],
+    );
+    expect(prompt, contains('inspect-drawing: Inspect the open drawing.'));
+    expect(prompt, contains('read_skill'));
+    expect(prompt, isNot(contains('Never dump the whole drawing')));
+  });
 }

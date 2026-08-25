@@ -8,6 +8,10 @@ void main() {
       'object',
     );
     expect(
+      const ParamSpec(name: 'points', type: ParamType.points).toJsonSchema()['type'],
+      'array',
+    );
+    expect(
       const ParamSpec(name: 'cell', type: ParamType.block).toJsonSchema()['type'],
       'string',
     );
