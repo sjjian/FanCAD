@@ -24,18 +24,27 @@ class PendingChangeSet {
       ? 'Allow ${commands.first.title}?'
       : 'Allow ${calls.length} changes?';
 
-  String get details {
-    final lines = <String>[];
+  /// Command titles grouped for the approval card, never leftover arguments.
+  List<String> get groupedTitles {
+    final counts = <String, int>{};
+    final order = <String>[];
     for (var i = 0; i < calls.length; i++) {
-      final command = i < commands.length ? commands[i] : null;
-      final call = calls[i];
-      final label = command?.title ?? call.name;
-      final args = call.arguments.entries
-          .where((entry) => entry.value != null)
-          .map((entry) => '${entry.key}=${entry.value}')
-          .join(', ');
-      lines.add(args.isEmpty ? label : '$label ($args)');
+      final label = i < commands.length ? commands[i].title : calls[i].name;
+      if (counts.containsKey(label)) {
+        counts[label] = counts[label]! + 1;
+      } else {
+        counts[label] = 1;
+        order.add(label);
+      }
     }
+    return [
+      for (final label in order)
+        counts[label] == 1 ? label : '$label ×${counts[label]}',
+    ];
+  }
+
+  String get details {
+    final lines = [...groupedTitles];
     if (highlightIds.isNotEmpty) {
       lines.add('Affects ${highlightIds.length} object(s).');
     }
@@ -45,27 +54,18 @@ class PendingChangeSet {
 
 /// Decides whether a tool call may run unattended.
 ///
-/// Read-only commands run. Edits run when the user has opted into auto-approve.
-/// Destructive commands, and anything marked [AiExposure.approvalRequired],
-/// always ask. The default for an unanswered question is no.
+/// Drawing and other edits run. Only [CommandRisk.destructive] tools — erase,
+/// overkill, delete layer — wait for a card in the chat. The leftover
+/// auto-approve switch skips that card too. An unanswered delete is no.
 class ApprovalPolicy {
   const ApprovalPolicy({this.autoApproveEdits = false});
 
-  /// When true, [CommandRisk.edit] tools run without asking. Destructive
-  /// tools still ask.
+  /// When true, even destructive tools run without asking.
   final bool autoApproveEdits;
 
   bool requiresApproval(CommandDescriptor command) {
-    if (command.aiExposure == AiExposure.approvalRequired) return true;
-    if (command.aiExposure == AiExposure.hidden) return true;
-    switch (command.risk) {
-      case CommandRisk.readOnly:
-        return false;
-      case CommandRisk.edit:
-        return !autoApproveEdits;
-      case CommandRisk.destructive:
-        return true;
-    }
+    if (command.risk != CommandRisk.destructive) return false;
+    return !autoApproveEdits;
   }
 
   /// Groups [calls] that need a decision. Empty when everything may run.

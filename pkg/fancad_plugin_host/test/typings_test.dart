@@ -31,6 +31,7 @@ void main() {
             ParamSpec(name: 'flag', type: ParamType.boolean),
             ParamSpec(name: 'ids', type: ParamType.selection),
             ParamSpec(name: 'extra', type: ParamType.json),
+            ParamSpec(name: 'points', type: ParamType.points),
           ],
         ),
       ],
@@ -47,6 +48,7 @@ void main() {
     expect(output, contains('flag: boolean;'));
     expect(output, contains('ids: number[];'));
     expect(output, contains('extra: Record<string, unknown>;'));
+    expect(output, contains('points: Point[];'));
   });
 
   test('an unsafe parameter name is quoted so the d.ts still parses', () {

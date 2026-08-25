@@ -1,5 +1,120 @@
 import 'package:fancad_core/fancad_core.dart';
 
+import 'skills/skill.dart';
+
+/// What the user is looking at and has picked, rebuilt every turn.
+///
+/// The statistical drawing summary is not enough: a model that cannot see the
+/// current selection will silently operate on leftover ids, and one that cannot
+/// see the viewport will query the whole file instead of the window on screen.
+class SessionSnapshot {
+  const SessionSnapshot({
+    this.selectionCount = 0,
+    this.selection = const [],
+    this.viewport,
+    this.snapEnabled = true,
+    this.snapModes = const [],
+    this.ortho = false,
+    this.polar = false,
+    this.showGrid = true,
+  });
+
+  /// How many selected objects may be listed in the prompt.
+  static const int maxListed = 32;
+
+  final int selectionCount;
+  final List<SelectedObjectHint> selection;
+  final ViewportHint? viewport;
+  final bool snapEnabled;
+  final List<String> snapModes;
+  final bool ortho;
+  final bool polar;
+  final bool showGrid;
+
+  /// Empty pick is written as `none` so the model cannot treat it as "use
+  /// whatever was selected last time".
+  String describe() {
+    final buffer = StringBuffer();
+    buffer.writeln('Session:');
+    if (selectionCount == 0) {
+      buffer.writeln('- selection: none');
+    } else {
+      final listed = selection.length;
+      buffer.writeln(
+        listed < selectionCount
+            ? '- selection: $selectionCount objects (first $listed shown)'
+            : '- selection: $selectionCount object${selectionCount == 1 ? '' : 's'}',
+      );
+      for (final item in selection) {
+        buffer.writeln('  - ${item.describe()}');
+      }
+    }
+    final view = viewport;
+    if (view == null) {
+      buffer.writeln('- viewport: unknown');
+    } else {
+      buffer.writeln('- viewport: ${view.describe()}');
+    }
+    final modes = snapModes.isEmpty ? 'none' : snapModes.join(', ');
+    buffer.writeln(
+      '- snap: ${snapEnabled ? 'on' : 'off'} ($modes)',
+    );
+    buffer.writeln('- ortho: ${ortho ? 'on' : 'off'}');
+    buffer.writeln('- polar: ${polar ? 'on' : 'off'}');
+    buffer.writeln('- grid: ${showGrid ? 'on' : 'off'}');
+    return buffer.toString().trimRight();
+  }
+}
+
+/// Compact selected-entity row for the prompt. Geometry stays on query tools.
+class SelectedObjectHint {
+  const SelectedObjectHint({
+    required this.id,
+    required this.kind,
+    required this.layer,
+    this.bounds,
+  });
+
+  final int id;
+  final String kind;
+  final String layer;
+  final List<double>? bounds;
+
+  String describe() {
+    final box = bounds;
+    final boxText = box == null || box.length < 4
+        ? ''
+        : ' bounds=[${box[0].toStringAsFixed(2)},${box[1].toStringAsFixed(2)},'
+              '${box[2].toStringAsFixed(2)},${box[3].toStringAsFixed(2)}]';
+    return '#$id $kind layer=$layer$boxText';
+  }
+}
+
+/// Camera of the active tab, as numbers the model can reuse as a query window.
+class ViewportHint {
+  const ViewportHint({
+    required this.centerX,
+    required this.centerY,
+    required this.scale,
+    this.visible,
+  });
+
+  final double centerX;
+  final double centerY;
+  final double scale;
+  final List<double>? visible;
+
+  String describe() {
+    final box = visible;
+    final visibleText = box == null || box.length < 4
+        ? 'visible unknown'
+        : 'visible [${box[0].toStringAsFixed(2)}, ${box[1].toStringAsFixed(2)}, '
+              '${box[2].toStringAsFixed(2)}, ${box[3].toStringAsFixed(2)}]';
+    return 'center (${centerX.toStringAsFixed(2)}, ${centerY.toStringAsFixed(2)}), '
+        'scale ${scale.toStringAsFixed(4)}, $visibleText';
+  }
+}
+
 /// Builds the compact document context that goes into a system prompt.
 ///
 /// A drawing with a hundred thousand entities cannot be serialised into a
@@ -18,11 +133,23 @@ class DocumentContextBuilder {
     required CadDocument document,
     required Iterable<CommandDescriptor> tools,
     String? pluginTypings,
+    SessionSnapshot? session,
+    Iterable<SkillSummary> skills = const [],
   }) {
     final buffer = StringBuffer();
     buffer.writeln(_role);
     buffer.writeln();
     buffer.writeln(summarize(document));
+    buffer.writeln();
+    buffer.writeln((session ?? const SessionSnapshot()).describe());
+    final skillList = skills.toList();
+    if (skillList.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('Available skills (call read_skill to load one):');
+      for (final skill in skillList) {
+        buffer.writeln('- ${skill.name}: ${skill.description}');
+      }
+    }
     buffer.writeln();
     buffer.writeln(_toolAdvice);
     if (pluginTypings != null && pluginTypings.isNotEmpty) {
@@ -105,14 +232,17 @@ class DocumentContextBuilder {
   static const String _role =
       'You are FanCAD\'s drafting assistant. You act only through the tools '
       'you have been given, which are the same commands a person can run from '
-      'the command line. Prefer query.summary and query.entities over guessing '
-      'what is in the drawing. Never invent entity ids. One user message is '
-      'one unit of work: batch related edits so they undo together.';
+      'the command line plus host tools such as read_skill. Prefer the session '
+      'snapshot, query.summary and query.entities over guessing what is in the '
+      'drawing. Never invent entity ids. An empty selection is none — do not '
+      'treat it as a hidden target. One user message is one unit of work: '
+      'batch related edits so they undo together.';
 
   static const String _toolAdvice =
-      'To inspect the drawing, call query_summary first, then query_entities '
-      'with a layer, kind or window filter. To change it, call the matching '
-      'draw_* or edit_* tool. To write a plugin, call plugins_scaffold, then '
-      'plugins_write, then plugins_reload; if activation fails, read the error '
-      'and rewrite the file.';
+      'Read the session snapshot before guessing. When a listed skill matches '
+      'the request, call read_skill first and follow it. For the current pick '
+      'call query_selection; for the camera call query_viewport; then '
+      'query_entities with a layer, kind or window filter. To change the '
+      'drawing, call the matching draw_* or edit_* tool and pass ids '
+      'explicitly.';
 }

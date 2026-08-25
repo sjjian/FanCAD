@@ -30,6 +30,8 @@ void main() {
     );
     expect(prompt, contains('query.summary'));
     expect(prompt, contains('query.entities'));
+    expect(prompt, contains('selection: none'));
+    expect(prompt, contains('read_skill'));
   });
 }
 

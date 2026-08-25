@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:meta/meta.dart';
 
 import '../geometry/vector.dart';
@@ -47,6 +49,9 @@ enum ParamType {
 
   /// An arbitrary JSON object, for plugin-defined payloads.
   json,
+
+  /// A list of 2D vertices, advertised as `[[x, y], ...]`.
+  points,
 }
 
 /// A single command parameter declaration.
@@ -137,6 +142,17 @@ class ParamSpec {
         schema['enum'] = options;
       case ParamType.json:
         schema['type'] = 'object';
+      case ParamType.points:
+        schema['type'] = 'array';
+        schema['minItems'] = 2;
+        schema['items'] = {
+          'type': 'array',
+          'items': {'type': 'number'},
+          'minItems': 2,
+          'maxItems': 2,
+        };
+        schema['description'] =
+            '${schema['description']} as [[x, y], [x, y], ...]';
     }
     return schema;
   }
@@ -211,6 +227,12 @@ class CommandArgs {
     return parsePoint(value);
   }
 
+  /// Leftover-safe vertex list: array, JSON string, wrapped map, or flat pairs.
+  List<Vec2> points(String name) {
+    final value = _values[name] ?? _values['vertices'];
+    return parsePoints(value);
+  }
+
   /// Accepts a list of ids, a single id, or a comma separated string.
   List<int>? ids(String name) {
     final value = _values[name];
@@ -267,6 +289,51 @@ class CommandArgs {
       }
     }
     return null;
+  }
+
+  /// Leftover vertex payloads must not collapse to an empty list silently.
+  ///
+  /// Models often send a JSON string, a `{points: ...}` wrapper, a map keyed
+  /// by index, or a flat `[x1, y1, x2, y2]` list. Those still have to become
+  /// vertices. An unreadable leftover stays empty so the command can fail
+  /// with a shape the model can correct.
+  static List<Vec2> parsePoints(Object? value) {
+    if (value == null) return const [];
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return const [];
+      try {
+        return parsePoints(jsonDecode(trimmed));
+      } catch (_) {
+        final pairs = [
+          for (final part in trimmed.split(RegExp(r'[;\s]+')))
+            if (part.contains(',')) ?parsePoint(part),
+        ];
+        return pairs;
+      }
+    }
+    if (value is Map) {
+      final nested = value['points'] ?? value['vertices'];
+      if (nested != null && !identical(nested, value)) {
+        return parsePoints(nested);
+      }
+      final keys = value.keys.map((key) => '$key').toList()..sort();
+      return [
+        for (final key in keys) ?parsePoint(value[key]),
+      ];
+    }
+    if (value is! List) return const [];
+    final asPoints = [for (final item in value) ?parsePoint(item)];
+    if (asPoints.length >= 2) return asPoints;
+    if (value.length >= 4) {
+      final flat = <Vec2>[];
+      for (var i = 0; i + 1 < value.length; i += 2) {
+        final point = parsePoint([value[i], value[i + 1]]);
+        if (point != null) flat.add(point);
+      }
+      if (flat.length >= 2) return flat;
+    }
+    return asPoints;
   }
 
   @override

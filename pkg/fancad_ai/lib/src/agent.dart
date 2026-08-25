@@ -8,6 +8,8 @@ import 'authoring.dart';
 import 'context.dart';
 import 'conversation.dart';
 import 'provider.dart';
+import 'skills/host_tools.dart';
+import 'skills/skill.dart';
 import 'tools.dart';
 
 /// How a tool is executed by the host.
@@ -54,8 +56,12 @@ class AgentLoop {
     this.askApproval,
     this.typings,
     this.onDelta,
-    this.maxRounds = 8,
+    this.onUsage,
+    this.maxRounds = 16,
     this.history,
+    this.session,
+    this.skills,
+    this.hostTools = const [],
   });
 
   final LlmProvider provider;
@@ -67,7 +73,11 @@ class AgentLoop {
   final ApprovalAsker? askApproval;
   final String? typings;
   final void Function(String delta)? onDelta;
+  final void Function(LlmUsage usage)? onUsage;
   final int maxRounds;
+  final SessionSnapshot? session;
+  final SkillRegistry? skills;
+  final List<HostTool> hostTools;
 
   /// When set, every edit this turn produced is collapsed into one undo entry.
   final UndoStack? history;
@@ -94,12 +104,18 @@ class AgentLoop {
     final convo = conversation ?? Conversation();
     convo.addUser(userMessage);
 
-    final tools = catalog.toolsOf(registry);
+    final extras = _hostTools();
+    final tools = catalog.toolsOf(
+      registry,
+      extra: [for (final tool in extras) tool.definition],
+    );
     final system = LlmMessage.system(
       contextBuilder.systemPrompt(
         document: document,
         tools: registry.aiTools(),
         pluginTypings: typings,
+        session: session,
+        skills: skills?.listSummaries() ?? const [],
       ),
     );
 
@@ -112,22 +128,16 @@ class AgentLoop {
         return _stopped(convo, collectedCalls, undoBefore);
       }
       final messages = [system, ...convo.llmMessages];
+      final request = LlmRequest(messages: messages, tools: tools);
       LlmCompletion completion;
       try {
-        completion = await provider.completeOnce(
-          LlmRequest(messages: messages, tools: tools),
-        );
+        completion = await _complete(request, convo);
       } on LlmException catch (caught) {
         error = caught.message;
         break;
       }
       if (_cancelled) {
         return _stopped(convo, collectedCalls, undoBefore);
-      }
-
-      if (completion.text.isNotEmpty) {
-        onDelta?.call(completion.text);
-        convo.addAssistant(completion.text);
       }
 
       if (!completion.wantsTools) {
@@ -219,27 +229,158 @@ class AgentLoop {
     );
   }
 
+  /// Streams tokens into the visible transcript, then falls back once if a
+  /// tool call arrived without its required arguments.
+  Future<LlmCompletion> _complete(LlmRequest request, Conversation convo) async {
+    var text = '';
+    var calls = const <LlmToolCall>[];
+    var finish = 'stop';
+    LlmUsage? usage;
+    await for (final event in provider.complete(request)) {
+      if (_cancelled) break;
+      switch (event) {
+        case LlmTextDelta delta:
+          text += delta.text;
+          convo.appendAssistantDelta(delta.text);
+          onDelta?.call(delta.text);
+        case LlmReasoningDelta delta:
+          convo.appendReasoningDelta(delta.text);
+          onDelta?.call(delta.text);
+        case LlmToolCalls tools:
+          calls = tools.calls;
+        case LlmFinished(:final finishReason, usage: final seen):
+          finish = finishReason;
+          if (seen != null) {
+            usage = seen;
+            onUsage?.call(seen);
+          }
+        case LlmError(:final message):
+          throw LlmException(message);
+      }
+    }
+
+    if (_shouldRetryTools(calls, finish)) {
+      try {
+        final fallback = await provider.completeOnce(request);
+        if (fallback.toolCalls.isNotEmpty) calls = fallback.toolCalls;
+        if (fallback.text.isNotEmpty && fallback.text != text) {
+          text = fallback.text;
+          convo.replaceLastAssistant(text);
+        }
+        finish = fallback.finishReason;
+        if (fallback.usage != null) {
+          usage = fallback.usage;
+          onUsage?.call(fallback.usage!);
+        }
+      } catch (_) {
+        // Keep the streamed calls if the one-shot retry fails.
+      }
+    }
+
+    return LlmCompletion(
+      text: text,
+      toolCalls: calls,
+      finishReason: finish,
+      usage: usage,
+    );
+  }
+
+  bool _shouldRetryTools(List<LlmToolCall> calls, String finish) {
+    if (finish == 'tool_calls' && calls.isEmpty) return true;
+    if (calls.isEmpty) return false;
+    return _toolCallsIncomplete(calls);
+  }
+
+  bool _toolCallsIncomplete(List<LlmToolCall> calls) {
+    for (final call in calls) {
+      if (call.name.isEmpty) return true;
+      if (call.arguments.length == 1 && call.arguments.containsKey('raw')) {
+        return true;
+      }
+      final command = catalog.commandFor(registry, call.name);
+      if (command != null) {
+        for (final param in command.params) {
+          if (!param.required) continue;
+          final value = call.arguments[param.name];
+          if (value == null) return true;
+          if (value is String && value.trim().isEmpty) return true;
+        }
+        continue;
+      }
+      final host = _hostTool(call.name);
+      if (host == null) continue;
+      final required = host.definition.parameters['required'];
+      if (required is! List) continue;
+      for (final key in required) {
+        final value = call.arguments['$key'];
+        if (value == null) return true;
+        if (value is String && value.trim().isEmpty) return true;
+      }
+    }
+    return false;
+  }
+
+  List<HostTool> _hostTools() {
+    if (hostTools.isNotEmpty) return hostTools;
+    final registry = skills;
+    if (registry == null) return const [];
+    return bundledHostTools(registry);
+  }
+
+  HostTool? _hostTool(String name) {
+    for (final tool in _hostTools()) {
+      if (tool.definition.name == name) return tool;
+    }
+    return null;
+  }
+
   Future<void> _runCalls(List<LlmToolCall> calls, Conversation convo) async {
     for (final call in calls) {
       if (_cancelled) return;
+      final host = _hostTool(call.name);
+      if (host != null) {
+        try {
+          final payload = await host.execute(call.arguments);
+          convo.addToolResult(
+            call: call,
+            content: jsonEncode(payload),
+            isError: payload['status'] == 'failed',
+          );
+        } catch (caught) {
+          convo.addToolResult(
+            call: call,
+            content: jsonEncode({
+              'status': 'failed',
+              'error': '$caught',
+              'message': '$caught',
+            }),
+            isError: true,
+          );
+        }
+        continue;
+      }
       final command = catalog.commandFor(registry, call.name);
       if (command == null) {
+        final message = 'Unknown tool: ${call.name}';
         convo.addToolResult(
           call: call,
           content: jsonEncode({
             'status': 'failed',
-            'message': 'Unknown tool: ${call.name}',
+            'error': message,
+            'message': message,
           }),
           isError: true,
         );
         continue;
       }
       if (command.aiExposure == AiExposure.hidden) {
+        final message = '${command.id} is not available to the assistant';
         convo.addToolResult(
           call: call,
           content: jsonEncode({
             'status': 'failed',
-            'message': '${command.id} is not available to the assistant',
+            'error': message,
+            'message': message,
           }),
           isError: true,
         );
@@ -262,7 +403,7 @@ class AgentLoop {
         convo.addToolResult(
           call: call,
           content: jsonEncode({
-            ...result.toJson(),
+            ...encodeAssistantToolResult(result, command),
             'repairHint': repair,
           }),
           isError: true,
@@ -270,10 +411,11 @@ class AgentLoop {
         continue;
       }
 
+      final payload = encodeAssistantToolResult(result, command);
       convo.addToolResult(
         call: call,
-        content: jsonEncode(result.toJson()),
-        isError: result.isFailed,
+        content: jsonEncode(payload),
+        isError: payload['status'] != 'ok',
       );
     }
   }

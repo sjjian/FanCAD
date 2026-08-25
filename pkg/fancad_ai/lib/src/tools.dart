@@ -14,6 +14,7 @@ class CommandToolCatalog {
   List<LlmTool> toolsOf(
     CommandRegistry registry, {
     bool includeApprovalRequired = true,
+    List<LlmTool> extra = const [],
   }) => [
     for (final command in registry.aiTools(
       includeApprovalRequired: includeApprovalRequired,
@@ -23,6 +24,7 @@ class CommandToolCatalog {
         description: _describe(command),
         parameters: command.toolSchema(),
       ),
+    ...extra,
   ];
 
   /// Resolves a tool name back to the command that produced it.
@@ -67,4 +69,48 @@ class CommandToolCatalog {
     }
     return buffer.toString();
   }
+}
+
+/// JSON the model reads after a command tool runs.
+///
+/// A leftover `cancelled` from a missing prompt looks like the user stopped
+/// the command, so the model retries the same call. Those become `failed`
+/// with an argument hint. A real user decline is encoded by the agent, not
+/// here.
+Map<String, Object?> encodeAssistantToolResult(
+  CommandResult result,
+  CommandDescriptor command,
+) {
+  if (result.isOk) return result.toJson();
+  final message = assistantToolErrorMessage(result, command);
+  return {
+    'status': 'failed',
+    'error': message,
+    'message': message,
+    if (result.data != null) 'data': result.data,
+  };
+}
+
+/// Human- and model-readable reason for a non-ok tool result.
+String assistantToolErrorMessage(
+  CommandResult result,
+  CommandDescriptor command,
+) {
+  final raw = result.message.trim();
+  final leftoverCancel =
+      raw.isEmpty ||
+      raw == 'Cancelled' ||
+      raw.startsWith('No value supplied for prompt');
+  if (!leftoverCancel) return raw;
+  final names = [
+    for (final param in command.params)
+      param.required ? param.name : '${param.name}?',
+  ];
+  final shape = names.isEmpty
+      ? command.toolName
+      : '${command.toolName}({${names.join(', ')}})';
+  final description = command.description.trim();
+  return description.isEmpty
+      ? 'The command did not run because its arguments were missing or invalid. Call $shape.'
+      : 'The command did not run because its arguments were missing or invalid. Call $shape. $description';
 }

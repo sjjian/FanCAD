@@ -26,4 +26,38 @@ void main() {
     expect(CommandArgs.parsePoint({'x': 1}), isNull);
     expect(CommandArgs.parsePoint([1]), isNull);
   });
+
+  test('leftover point lists still parse as vertices', () {
+    expect(
+      CommandArgs.parsePoints('[[0,0],[10,0],[10,10]]'),
+      const [Vec2.zero(), Vec2(10, 0), Vec2(10, 10)],
+    );
+    expect(
+      CommandArgs.parsePoints({
+        'vertices': [
+          {'x': 0, 'y': 0},
+          {'x': 4, 'y': 1},
+        ],
+      }),
+      const [Vec2.zero(), Vec2(4, 1)],
+    );
+    expect(
+      CommandArgs.parsePoints({'0': [0, 0], '1': [2, 3]}),
+      const [Vec2.zero(), Vec2(2, 3)],
+    );
+    expect(
+      CommandArgs.parsePoints([0, 0, 8, 0, 8, 4]),
+      const [Vec2.zero(), Vec2(8, 0), Vec2(8, 4)],
+    );
+    expect(CommandArgs.parsePoints({'leftover': true}), isEmpty);
+    expect(
+      CommandArgs({
+        'vertices': [
+          [1, 2],
+          [3, 4],
+        ],
+      }).points('points'),
+      const [Vec2(1, 2), Vec2(3, 4)],
+    );
+  });
 }

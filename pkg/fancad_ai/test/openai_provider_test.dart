@@ -19,6 +19,16 @@ void main() {
     );
   });
 
+  test('a leftover pasted key wins over the environment', () {
+    final provider = OpenAiCompatibleProvider.fromEnvironment(
+      apiKey: '  sk-pasted  ',
+      apiKeyEnvVar: 'OPENAI_API_KEY',
+      environment: const {'OPENAI_API_KEY': 'sk-env'},
+    );
+    expect(provider, isNotNull);
+    expect(provider!.apiKey, 'sk-pasted');
+  });
+
   test('fromEnvironment builds a provider from a custom env var', () {
     final provider = OpenAiCompatibleProvider.fromEnvironment(
       apiKeyEnvVar: 'FANCAD_LLM_KEY',

@@ -49,6 +49,17 @@ void main() {
         },
       ),
     );
+    registry.register(
+      CommandDescriptor(
+        id: 'edit.erase',
+        title: 'Erase',
+        risk: CommandRisk.destructive,
+        handler: (context) async {
+          ran.add('edit.erase');
+          return const CommandResult.ok();
+        },
+      ),
+    );
   });
 
   Future<CommandResult> execute(String id, Map<String, Object?> args) {
@@ -128,10 +139,10 @@ void main() {
     expect(turn.cancelled, isFalse);
   });
 
-  test('an edit tool asks for approval and does not run when declined',
+  test('a leftover draw runs without asking; a declined delete does not',
       () async {
     var asked = 0;
-    final agent = AgentLoop(
+    final draw = AgentLoop(
       provider: ScriptedLlmProvider([
         const LlmCompletion(
           toolCalls: [
@@ -145,22 +156,53 @@ void main() {
             ),
           ],
         ),
+        const LlmCompletion(text: 'Drew a line.'),
       ]),
       registry: registry,
       execute: execute,
       document: session.document,
-      askApproval: (pending) async {
+      askApproval: (_) async {
         asked++;
-        expect(pending.calls, hasLength(1));
         return false;
       },
     );
 
-    final turn = await agent.run('Draw a line');
+    final drawn = await draw.run('Draw a line');
+    expect(asked, 0);
+    expect(drawn.cancelled, isFalse);
+    expect(ran, ['draw.line']);
+    expect(session.document.entities, hasLength(1));
+
+    final erase = AgentLoop(
+      provider: ScriptedLlmProvider([
+        const LlmCompletion(
+          toolCalls: [
+            LlmToolCall(
+              id: '2',
+              name: 'edit_erase',
+              arguments: {
+                'ids': [1],
+              },
+            ),
+          ],
+        ),
+      ]),
+      registry: registry,
+      execute: execute,
+      document: session.document,
+      conversation: Conversation(),
+      askApproval: (pending) async {
+        asked++;
+        expect(pending.calls, hasLength(1));
+        expect(pending.calls.single.name, 'edit_erase');
+        return false;
+      },
+    );
+
+    final turned = await erase.run('Erase it');
     expect(asked, 1);
-    expect(turn.cancelled, isTrue);
-    expect(ran, isEmpty);
-    expect(session.document.entities, isEmpty);
+    expect(turned.cancelled, isTrue);
+    expect(ran, ['draw.line']);
   });
 
   test('an approved edit applies and one turn is one undo entry', () async {
@@ -216,7 +258,7 @@ void main() {
     expect(turn.error, isNotNull);
   });
 
-  test('declining an edit still runs the read-only remainder', () async {
+  test('declining a delete still runs the read-only remainder', () async {
     final deltas = <String>[];
     final agent = AgentLoop(
       provider: ScriptedLlmProvider([
@@ -225,15 +267,14 @@ void main() {
             LlmToolCall(id: '1', name: 'query_summary', arguments: {}),
             LlmToolCall(
               id: '2',
-              name: 'draw_line',
+              name: 'edit_erase',
               arguments: {
-                'start': [0, 0],
-                'end': [4, 0],
+                'ids': [1],
               },
             ),
           ],
         ),
-        const LlmCompletion(text: 'Counted, did not draw.'),
+        const LlmCompletion(text: 'Counted, did not erase.'),
       ]),
       registry: registry,
       execute: execute,
@@ -242,12 +283,11 @@ void main() {
       askApproval: (_) async => false,
     );
 
-    final turn = await agent.run('Summarise then draw');
+    final turn = await agent.run('Summarise then erase');
     expect(ran, ['query.summary']);
-    expect(session.document.entities, isEmpty);
     expect(turn.cancelled, isFalse);
     expect(turn.reply, contains('Counted'));
-    expect(deltas, ['Counted, did not draw.']);
+    expect(deltas, ['Counted, did not erase.']);
   });
 
   test('unknown, hidden and thrown tools become failed rows, not crashes',
