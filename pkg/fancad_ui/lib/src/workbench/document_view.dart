@@ -64,8 +64,16 @@ class _DocumentViewState extends State<DocumentView> {
   /// sessions, and the tab cannot reach into the canvas's cache, so the tab
   /// exposes a hook and the view is what ties the knot.
   void _bind(DocumentTab tab) {
-    tab.onGeometryInvalidated = (change) =>
+    tab.onGeometryInvalidated = (change) {
+      final canvas = _canvasKey.currentState;
+      if (canvas != null) {
+        canvas.applyDocumentChange(change);
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         _canvasKey.currentState?.applyDocumentChange(change);
+      });
+    };
   }
 
   /// Paper viewport interiors run VPMAX; a maximized model view runs VPMIN;
@@ -220,6 +228,13 @@ class _DocumentViewState extends State<DocumentView> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.tab,
+      builder: (context, _) => _buildView(context),
+    );
+  }
+
+  Widget _buildView(BuildContext context) {
     final tokens = context.tokens;
     final tab = widget.tab;
     final overlay = tab.tools.buildOverlay();

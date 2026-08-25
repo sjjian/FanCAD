@@ -78,19 +78,15 @@ class CadCanvas extends StatefulWidget {
 }
 
 class CadCanvasState extends State<CadCanvas> {
-  late final AciPalette _palette =
-      widget.palette ?? AciPalette(background: widget.background);
-  late final SceneBuilder _sceneBuilder = SceneBuilder(
-    palette: _palette,
-    cache: _tessellation,
-  );
+  late AciPalette _palette;
+  late SceneBuilder _sceneBuilder;
   final TessellationCache _tessellation = TessellationCache();
   final ScenePainter _scenePainter = ScenePainter(paragraphs: ParagraphCache());
-  late final OverlayPainter _overlayPainter = OverlayPainter(
-    theme: widget.overlayTheme,
-  );
+  late OverlayPainter _overlayPainter;
 
   final _SceneHolder _holder = _SceneHolder();
+  int _paintEpoch = 0;
+  int _seenVersion = -1;
 
   /// Set while a mouse-button pan is in flight (middle, right, or space+left).
   int? _panPointer;
@@ -120,7 +116,14 @@ class CadCanvasState extends State<CadCanvas> {
   @override
   void initState() {
     super.initState();
+    _bindAppearance();
     widget.controller.addListener(_onViewportChanged);
+  }
+
+  void _bindAppearance() {
+    _palette = widget.palette ?? AciPalette(background: widget.background);
+    _sceneBuilder = SceneBuilder(palette: _palette, cache: _tessellation);
+    _overlayPainter = OverlayPainter(theme: widget.overlayTheme);
   }
 
   @override
@@ -133,6 +136,19 @@ class CadCanvasState extends State<CadCanvas> {
     if (oldWidget.document != widget.document) {
       _tessellation.clear();
       _holder.invalidate();
+      _paintEpoch++;
+      _seenVersion = -1;
+    }
+    if (oldWidget.showGrid != widget.showGrid ||
+        oldWidget.onlyLayers != widget.onlyLayers) {
+      _paintEpoch++;
+    }
+    if (oldWidget.palette != widget.palette ||
+        oldWidget.background != widget.background ||
+        oldWidget.overlayTheme != widget.overlayTheme) {
+      _bindAppearance();
+      _holder.invalidate();
+      _paintEpoch++;
     }
   }
 
@@ -157,6 +173,7 @@ class CadCanvasState extends State<CadCanvas> {
       ]);
     }
     _holder.invalidate();
+    _paintEpoch++;
     if (mounted) setState(() {});
   }
 
@@ -164,6 +181,14 @@ class CadCanvasState extends State<CadCanvas> {
 
   @override
   Widget build(BuildContext context) {
+    final version = widget.document.version;
+    if (version != _seenVersion) {
+      if (_seenVersion != -1) {
+        _holder.invalidate();
+        _paintEpoch++;
+      }
+      _seenVersion = version;
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
@@ -212,6 +237,7 @@ class CadCanvasState extends State<CadCanvas> {
                           builder: _sceneBuilder,
                           painter: _scenePainter,
                           holder: _holder,
+                          paintEpoch: _paintEpoch,
                           onlyLayers: widget.onlyLayers,
                           onSceneBuilt: widget.onSceneBuilt,
                           grid: widget.showGrid
@@ -227,9 +253,11 @@ class CadCanvasState extends State<CadCanvas> {
                       child: CustomPaint(
                         painter: _OverlayLayerPainter(
                           document: widget.document,
+                          documentVersion: widget.document.version,
                           viewport: widget.controller.viewport,
                           model: widget.overlay,
                           painter: _overlayPainter,
+                          paintEpoch: _paintEpoch,
                         ),
                       ),
                     ),
@@ -408,17 +436,20 @@ class CadCanvasState extends State<CadCanvas> {
 class _SceneHolder {
   RenderScene? scene;
   ui.Picture? picture;
+  int documentVersion = -1;
 
   void invalidate() {
     scene = null;
     picture?.dispose();
     picture = null;
+    documentVersion = -1;
   }
 
-  void store(RenderScene value, ui.Picture recorded) {
+  void store(RenderScene value, ui.Picture recorded, int version) {
     picture?.dispose();
     scene = value;
     picture = recorded;
+    documentVersion = version;
   }
 }
 
@@ -437,6 +468,7 @@ class _DrawingLayerPainter extends CustomPainter {
     required this.builder,
     required this.painter,
     required this.holder,
+    required this.paintEpoch,
     required this.onlyLayers,
     required this.onSceneBuilt,
     required this.grid,
@@ -452,6 +484,7 @@ class _DrawingLayerPainter extends CustomPainter {
   final SceneBuilder builder;
   final ScenePainter painter;
   final _SceneHolder holder;
+  final int paintEpoch;
   final Set<String>? onlyLayers;
   final void Function(RenderScene scene)? onSceneBuilt;
   final _GridStyle? grid;
@@ -464,7 +497,10 @@ class _DrawingLayerPainter extends CustomPainter {
 
     final cached = holder.scene;
     final picture = holder.picture;
-    if (cached != null && picture != null && cached.canReuseFor(viewport)) {
+    if (cached != null &&
+        picture != null &&
+        holder.documentVersion == documentVersion &&
+        cached.canReuseFor(viewport)) {
       // The scene was built in the screen space of a viewport at the same zoom,
       // so a translation is an exact re-projection rather than an approximation.
       final delta = cached.translationFor(viewport);
@@ -479,7 +515,7 @@ class _DrawingLayerPainter extends CustomPainter {
 
     final scene = builder.build(document, viewport, onlyLayers: onlyLayers);
     final recorded = painter.record(scene);
-    holder.store(scene, recorded);
+    holder.store(scene, recorded, documentVersion);
     canvas.drawPicture(recorded);
     canvas.restore();
     onSceneBuilt?.call(scene);
@@ -561,22 +597,28 @@ class _DrawingLayerPainter extends CustomPainter {
   bool shouldRepaint(_DrawingLayerPainter old) =>
       old.document != document ||
       old.documentVersion != documentVersion ||
+      old.paintEpoch != paintEpoch ||
       old.viewport != viewport ||
-      old.onlyLayers != onlyLayers;
+      old.onlyLayers != onlyLayers ||
+      (old.grid == null) != (grid == null);
 }
 
 class _OverlayLayerPainter extends CustomPainter {
   _OverlayLayerPainter({
     required this.document,
+    required this.documentVersion,
     required this.viewport,
     required this.model,
     required this.painter,
+    required this.paintEpoch,
   });
 
   final CadDocument document;
+  final int documentVersion;
   final CadViewport viewport;
   final OverlayModel model;
   final OverlayPainter painter;
+  final int paintEpoch;
 
   @override
   void paint(ui.Canvas canvas, Size size) {
@@ -589,5 +631,8 @@ class _OverlayLayerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_OverlayLayerPainter old) =>
-      old.model != model || old.viewport != viewport;
+      old.model != model ||
+      old.viewport != viewport ||
+      old.documentVersion != documentVersion ||
+      old.paintEpoch != paintEpoch;
 }
