@@ -29,6 +29,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'Appearance — Light. Choose Light or Dark';
 
   @override
+  String get settings => 'Settings';
+
+  @override
+  String get settings_tooltip => 'Settings. Theme, language and assistant';
+
+  @override
+  String get settings_tab_general => 'General';
+
+  @override
+  String get settings_tab_assistant => 'Assistant';
+
+  @override
+  String get settings_appearance => 'Appearance';
+
+  @override
+  String get settings_connection => 'Connection';
+
+  @override
+  String get settings_api_key => 'API key';
+
+  @override
+  String get settings_api_key_env => 'API key environment variable';
+
+  @override
+  String get open_settings => 'Open settings';
+
+  @override
   String get new_drawing => 'New drawing';
 
   @override
@@ -829,16 +856,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clear_conversation => 'Clear conversation';
 
   @override
+  String get new_chat => 'New chat';
+
+  @override
+  String get chat_history => 'Chats';
+
+  @override
   String get click_to_change_model => 'Click to change the model or endpoint';
 
   @override
-  String get auto_approve => 'Auto-approve';
+  String get assistant_profiles => 'Configurations';
 
   @override
-  String get edits_without_asking => 'Edits run without asking';
+  String get add_assistant_profile => 'Add configuration';
 
   @override
-  String get ask_before_edits => 'Ask before the assistant edits the drawing';
+  String get remove_assistant_profile => 'Remove configuration';
+
+  @override
+  String get assistant_profile_name => 'Display name';
+
+  @override
+  String get ask_follow_up => 'Add a follow-up';
+
+  @override
+  String context_used(String used, String window) {
+    return '$used / $window';
+  }
+
+  @override
+  String get context_waiting => 'Context size appears after the first reply';
+
+  @override
+  String get auto_approve => 'Auto-approve deletes';
+
+  @override
+  String get edits_without_asking => 'Deletes run without asking';
+
+  @override
+  String get ask_before_edits => 'Ask before the assistant deletes objects';
 
   @override
   String get custom_model => 'Custom model…';
@@ -850,7 +906,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get model => 'Model';
 
   @override
-  String get model_id => 'Model id';
+  String get model_id => 'Any model id, for example deepseek-chat';
 
   @override
   String get endpoint => 'Endpoint';
@@ -860,9 +916,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Ask about the drawing, or ask the assistant to change it. It uses the same commands you do, and one reply is one undo step.';
 
   @override
-  String assistant_empty_unconfigured(String envVar) {
-    return 'Set the $envVar environment variable to talk to a model, or point the base URL at a local server.';
-  }
+  String get assistant_empty_unconfigured =>
+      'Paste an API key in Settings to talk to a model, or point the endpoint at a local server.';
 
   @override
   String get try_section => 'Try';
@@ -881,6 +936,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get working => 'Working…';
+
+  @override
+  String get thinking => 'Thinking';
+
+  @override
+  String allow_one_change(String title) {
+    return 'Allow $title?';
+  }
+
+  @override
+  String allow_n_changes(int count) {
+    return 'Allow $count changes?';
+  }
+
+  @override
+  String affects_n_objects(int count) {
+    return 'Affects $count object(s).';
+  }
 
   @override
   String get ask_assistant => 'Ask the assistant  Enter to send';
@@ -1302,6 +1375,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get command_view_regen => 'Regenerate';
 
   @override
+  String get command_workbench_preferences => 'Settings...';
+
+  @override
   String get command_select_all => 'Select All';
 
   @override
@@ -1372,6 +1448,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get command_query_entities => 'Query Entities';
+
+  @override
+  String get command_query_selection => 'Query Selection';
+
+  @override
+  String get command_query_viewport => 'Query Viewport';
 
   @override
   String get command_query_id => 'ID Point';

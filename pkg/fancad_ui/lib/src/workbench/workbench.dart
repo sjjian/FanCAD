@@ -17,19 +17,19 @@ import '../state/providers.dart';
 import '../state/settings.dart';
 import '../state/workspace.dart';
 import '../theme/tokens.dart';
+import 'canvas_hud.dart';
 import 'command_line.dart';
 import 'command_palette.dart';
 import 'document_view.dart';
+import 'settings_dialog.dart';
 import 'shell_widgets.dart';
 import 'title_bar.dart';
 
 /// The application shell.
 ///
 /// Laid out as fixed chrome around one flexible canvas: title bar, activity bar,
-/// sidebar, tab strip, drawing, command line, status bar. The proportions are
-/// deliberate — everything except the drawing has a fixed height in pixels, so
-/// the canvas gets every pixel that is left rather than being squeezed by a
-/// panel that grew.
+/// sidebar, tab strip, drawing, status bar. Command, tools and drafting modes
+/// sit on the canvas so a reserved command strip cannot steal the drawing.
 class Workbench extends ConsumerStatefulWidget {
   const Workbench({super.key});
 
@@ -56,6 +56,16 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     _panelReveals = workspace.panelReveals.listen((panelId) {
       if (panelId == 'ai') {
         ref.read(assistantPaneProvider.notifier).setOpen(true);
+        return;
+      }
+      if (isPreferencesPanel(panelId)) {
+        if (!mounted) return;
+        unawaited(
+          showSettingsDialog(
+            context,
+            initialTab: settingsTabFromPanelId(panelId),
+          ),
+        );
         return;
       }
       ref.read(sidebarProvider.notifier).reveal(panelId);
@@ -132,38 +142,84 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         title.contains('unsaved') || title.contains('discard');
     final approved = await showDialog<String>(
       context: context,
+      barrierDismissible: false,
       barrierColor: Colors.black.withValues(alpha: 0.4),
-      builder: (context) => AlertDialog(
+      builder: (context) => Dialog(
         backgroundColor: tokens.surfaceOverlay,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
           side: BorderSide(color: tokens.borderStrong),
         ),
-        title: Text(
-          request.title,
-          style: tokens.bodyStyle.copyWith(fontSize: 15),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420, maxHeight: 360),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              FanCadTokens.space4,
+              FanCadTokens.space3,
+              FanCadTokens.space4,
+              FanCadTokens.space3,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  request.title,
+                  style: tokens.bodyStyle.copyWith(fontSize: 15),
+                ),
+                const SizedBox(height: FanCadTokens.space3),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 220),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final line in request.details.split('\n'))
+                          if (line.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: FanCadTokens.space1,
+                              ),
+                              child: Text(line, style: tokens.bodyStyle),
+                            ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: FanCadTokens.space3),
+                Row(
+                  children: [
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop('cancel'),
+                      child: Text(context.l10n.cancel, style: tokens.bodyStyle),
+                    ),
+                    if (unsaved)
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop('discard'),
+                        child: Text(
+                          context.l10n.dont_save,
+                          style: tokens.bodyStyle.copyWith(
+                            color: tokens.danger,
+                          ),
+                        ),
+                      ),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pop(
+                        unsaved ? 'save' : 'continue',
+                      ),
+                      child: Text(
+                        unsaved
+                            ? context.l10n.save
+                            : context.l10n.continue_action,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
-        content: Text(request.details, style: tokens.labelStyle),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop('cancel'),
-            child: Text(context.l10n.cancel, style: tokens.bodyStyle),
-          ),
-          if (unsaved)
-            TextButton(
-              onPressed: () => Navigator.of(context).pop('discard'),
-              child: Text(
-                context.l10n.dont_save,
-                style: tokens.bodyStyle.copyWith(color: tokens.danger),
-              ),
-            ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(
-              unsaved ? 'save' : 'continue',
-            ),
-            child: Text(unsaved ? context.l10n.save : context.l10n.continue_action),
-          ),
-        ],
       ),
     );
     workspace.setPendingHighlights(const []);
@@ -194,7 +250,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     final tokens = context.tokens;
     final sidebar = ref.watch(sidebarProvider);
     final assistant = ref.watch(assistantPaneProvider);
-    final commandPane = ref.watch(commandPaneProvider);
     final paletteOpen = ref.watch(paletteOpenProvider);
 
     return CallbackShortcuts(
@@ -217,12 +272,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                 onToggleAssistant: ref
                     .read(assistantPaneProvider.notifier)
                     .toggle,
-                onSetTheme: ref
-                    .read(themeBrightnessProvider.notifier)
-                    .setBrightness,
-                onSetLanguage: ref
-                    .read(languageProvider.notifier)
-                    .setLanguage,
               ),
               Expanded(
                 child: Stack(
@@ -264,29 +313,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                             children: [
                               DocumentTabStrip(workspace: workspace),
                               Expanded(child: _canvasArea(workspace)),
-                              SizedBox(
-                                height: commandPane.height,
-                                child: CommandLinePane(
-                                  workspace: workspace,
-                                  height: commandPane.height,
-                                  isExpanded: commandPane.isExpanded,
-                                  focusNode: _commandFocus,
-                                  onResize: (delta) => ref
-                                      .read(commandPaneProvider.notifier)
-                                      .resize(commandPane.height + delta),
-                                  onResizeEnd: ref
-                                      .read(commandPaneProvider.notifier)
-                                      .commitHeight,
-                                  onToggleExpand: () {
-                                    ref
-                                        .read(commandPaneProvider.notifier)
-                                        .toggleExpanded();
-                                    ref
-                                        .read(commandPaneProvider.notifier)
-                                        .commitHeight();
-                                  },
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -315,9 +341,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                               color: tokens.surface,
                               child: AiPanel(
                                 controller: ref.watch(aiControllerProvider),
-                                onClose: () => ref
-                                    .read(assistantPaneProvider.notifier)
-                                    .setOpen(false),
                               ),
                             ),
                           ),
@@ -364,9 +387,24 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
             tab: tab,
             commandLineFocus: _commandFocus,
           );
+    final commandPane = ref.watch(commandPaneProvider);
     return Stack(
       children: [
         body,
+        CanvasHud(
+          workspace: workspace,
+          commandFocus: _commandFocus,
+          commandHeight: commandPane.height,
+          isExpanded: commandPane.isExpanded,
+          onResize: (delta) => ref
+              .read(commandPaneProvider.notifier)
+              .resize(commandPane.height + delta),
+          onResizeEnd: ref.read(commandPaneProvider.notifier).commitHeight,
+          onToggleExpand: () {
+            ref.read(commandPaneProvider.notifier).toggleExpanded();
+            ref.read(commandPaneProvider.notifier).commitHeight();
+          },
+        ),
         Positioned(
           right: FanCadTokens.space4,
           top: FanCadTokens.space3,
@@ -417,6 +455,10 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       ...chord(
         LogicalKeyboardKey.keyB,
         ref.read(sidebarProvider.notifier).toggle,
+      ),
+      ...chord(
+        LogicalKeyboardKey.comma,
+        () => workspace.run('workbench.preferences'),
       ),
       ...chord(LogicalKeyboardKey.keyN, () => workspace.run('file.new')),
       ...chord(LogicalKeyboardKey.keyO, () => workspace.run('file.open')),

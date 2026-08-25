@@ -109,6 +109,9 @@ class SettingsStore extends ChangeNotifier {
   }
 
   void _scheduleFlush() {
+    // An in-memory store has nowhere to write; a timer would only fail tests
+    // that change settings and then tear down before the debounce elapses.
+    if (file == null) return;
     _flush?.cancel();
     _flush = Timer(flushDelay, () {
       // Fire and forget: a failed settings write must not surface as an
@@ -158,6 +161,11 @@ class SettingsKeys {
   static const String polarIncrement = 'draft.polarIncrement';
   static const String aiBaseUrl = 'ai.baseUrl';
   static const String aiModel = 'ai.model';
+  static const String aiApiKey = 'ai.apiKey';
   static const String aiApiKeyRef = 'ai.apiKeyEnvVar';
   static const String aiAutoApprove = 'ai.autoApproveEdits';
+  static const String aiProfiles = 'ai.profiles';
+  static const String aiActiveProfile = 'ai.activeProfile';
+  static const String aiChats = 'ai.chats';
+  static const String aiActiveChat = 'ai.activeChat';
 }

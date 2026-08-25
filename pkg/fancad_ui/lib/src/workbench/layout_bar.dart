@@ -6,12 +6,11 @@ import '../state/workspace.dart';
 import '../theme/tokens.dart';
 import 'shell_widgets.dart';
 
-/// Model / paper chips in the status bar.
+/// Model / paper chips on the canvas command dock.
 ///
 /// The document already stores layouts and `layout.set` already switches the
 /// active block. Without this strip a paper tab is invisible: the user has a
-/// sheet and viewports, but no way to open them from the shell. Sitting in
-/// the status bar keeps a dedicated 32px row from eating the canvas.
+/// sheet and viewports, but no way to open them from the shell.
 class LayoutTabStrip extends StatelessWidget {
   const LayoutTabStrip({super.key, required this.workspace});
 
@@ -19,7 +18,6 @@ class LayoutTabStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final tab = workspace.active;
     if (tab == null) return const SizedBox.shrink();
     final layouts = [...tab.document.layouts]..sort(_compareLayouts);
@@ -31,26 +29,17 @@ class LayoutTabStrip extends StatelessWidget {
       height: FanCadTokens.statusBarHeight,
       child: Row(
         children: [
-          Container(
-            width: 1,
-            height: 12,
-            color: tokens.borderStrong,
-          ),
-          Expanded(
+          Flexible(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              shrinkWrap: true,
               padding: const EdgeInsets.symmetric(
                 horizontal: FanCadTokens.space1,
               ),
-              itemCount: layouts.length + 1,
+              itemCount: layouts.length,
               separatorBuilder: (_, _) =>
                   const SizedBox(width: FanCadTokens.space1),
               itemBuilder: (context, index) {
-                if (index == layouts.length) {
-                  return _AddLayoutChip(
-                    onTap: () => workspace.run('layout.new'),
-                  );
-                }
                 final layout = layouts[index];
                 return _LayoutChip(
                   layout: layout,
@@ -92,6 +81,10 @@ class LayoutTabStrip extends StatelessWidget {
                 );
               },
             ),
+          ),
+          _AddLayoutChip(
+            key: const Key('layout-new-tab'),
+            onTap: () => workspace.run('layout.new'),
           ),
         ],
       ),
@@ -208,6 +201,7 @@ class _LayoutChipState extends State<_LayoutChip> {
           onDoubleTap: widget.onRename,
           onSecondaryTap: _openMenu,
           child: Container(
+            key: Key('layout-tab-${layout.name}'),
             alignment: Alignment.center,
             padding: const EdgeInsets.only(
               left: FanCadTokens.space2,
@@ -274,7 +268,7 @@ class _LayoutChipState extends State<_LayoutChip> {
 }
 
 class _AddLayoutChip extends StatefulWidget {
-  const _AddLayoutChip({required this.onTap});
+  const _AddLayoutChip({super.key, required this.onTap});
 
   final VoidCallback onTap;
 

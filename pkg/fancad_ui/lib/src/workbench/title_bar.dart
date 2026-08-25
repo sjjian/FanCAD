@@ -14,9 +14,8 @@ import 'shell_widgets.dart';
 
 /// The custom title bar.
 ///
-/// Replaces the OS chrome so the menus, the quick-access tools and the window
-/// buttons share one 32-pixel row. On a CAD application that row is worth having:
-/// vertical space is the scarcest thing on screen.
+/// Replaces the OS chrome so file actions, window buttons and the assistant
+/// toggle share one 32-pixel row. Drawing tools live on the canvas.
 ///
 /// macOS keeps the native traffic lights on a hidden title bar, so the first
 /// icon is inset and the Windows-style buttons stay off that platform.
@@ -26,16 +25,12 @@ class TitleBar extends StatelessWidget {
     required this.workspace,
     required this.onTogglePalette,
     required this.onToggleAssistant,
-    required this.onSetTheme,
-    required this.onSetLanguage,
     this.assistantOpen = false,
   });
 
   final Workspace workspace;
   final VoidCallback onTogglePalette;
   final VoidCallback onToggleAssistant;
-  final ValueChanged<Brightness> onSetTheme;
-  final ValueChanged<String> onSetLanguage;
   final bool assistantOpen;
 
   /// Space before the first title-bar control.
@@ -78,6 +73,7 @@ class TitleBar extends StatelessWidget {
     final nativeLights = Platform.isMacOS;
 
     return Container(
+      key: const Key('title-bar'),
       height: FanCadTokens.titleBarHeight,
       decoration: BoxDecoration(
         color: tokens.surfaceRaised,
@@ -110,31 +106,6 @@ class TitleBar extends StatelessWidget {
             onPressed: () => workspace.run('file.save'),
           ),
           _FileMenu(workspace: workspace),
-          const _Divider(),
-          ShellIconButton(
-            icon: Icons.undo,
-            tooltip: _undoTooltip(l10n, tab),
-            enabled: tab?.history.canUndo ?? false,
-            onPressed: () => workspace.run('edit.undo'),
-          ),
-          ShellIconButton(
-            icon: Icons.redo,
-            tooltip: _redoTooltip(l10n, tab),
-            enabled: tab?.history.canRedo ?? false,
-            onPressed: () => workspace.run('edit.redo'),
-          ),
-          const _Divider(),
-          // The drawing tools that earn a permanent home. Everything else is a
-          // palette search away, which is the point of having a registry.
-          for (final tool in _quickTools)
-            ShellIconButton(
-              icon: tool.icon,
-              tooltip:
-                  '${l10n.commandTitle(tool.commandId, tool.fallback)}  ${tool.alias}',
-              enabled: tab != null,
-              isActive: workspace.runningCommand == tool.commandId,
-              onPressed: () => workspace.run(tool.commandId),
-            ),
           Expanded(
             child: _DragArea(
               child: Center(
@@ -151,9 +122,10 @@ class TitleBar extends StatelessWidget {
             tooltip: '${l10n.command_palette}  ${shellShortcut('P', shift: true)}',
             onPressed: onTogglePalette,
           ),
-          _AppearanceMenu(
-            onSetTheme: onSetTheme,
-            onSetLanguage: onSetLanguage,
+          ShellIconButton(
+            icon: Icons.settings_outlined,
+            tooltip: '${l10n.settings_tooltip}  ${shellShortcut(',')}',
+            onPressed: () => workspace.run('workbench.preferences'),
           ),
           ShellIconButton(
             icon: Icons.auto_awesome_outlined,
@@ -174,162 +146,6 @@ class TitleBar extends StatelessWidget {
     );
   }
 
-  /// Naming what will be undone turns a guess into a decision.
-  static String _undoTooltip(AppLocalizations l10n, DocumentTab? tab) {
-    final label = tab?.history.nextUndoLabel;
-    return label == null
-        ? l10n.nothing_to_undo
-        : '${l10n.undo_named(label)}  ${shellShortcut('Z')}';
-  }
-
-  static String _redoTooltip(AppLocalizations l10n, DocumentTab? tab) {
-    final label = tab?.history.nextRedoLabel;
-    return label == null
-        ? l10n.nothing_to_redo
-        : '${l10n.redo_named(label)}  ${shellShortcut('Z', shift: true)}';
-  }
-
-  static const List<
-    ({String commandId, IconData icon, String alias, String fallback})
-  >
-  _quickTools = [
-    (
-      commandId: 'draw.line',
-      icon: Icons.show_chart,
-      alias: 'L',
-      fallback: 'Line',
-    ),
-    (
-      commandId: 'draw.circle',
-      icon: Icons.circle_outlined,
-      alias: 'C',
-      fallback: 'Circle',
-    ),
-    (
-      commandId: 'edit.move',
-      icon: Icons.open_with,
-      alias: 'M',
-      fallback: 'Move',
-    ),
-  ];
-}
-
-/// Dark / Light is a choice, not a coin flip — a checked menu says which
-/// appearance is current and that the setting is kept across launches.
-class _AppearanceMenu extends StatelessWidget {
-  const _AppearanceMenu({
-    required this.onSetTheme,
-    required this.onSetLanguage,
-  });
-
-  final ValueChanged<Brightness> onSetTheme;
-  final ValueChanged<String> onSetLanguage;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final l10n = context.l10n;
-    final current = tokens.isDark ? Brightness.dark : Brightness.light;
-    final language = Localizations.maybeLocaleOf(context)?.languageCode ??
-        FanCadLanguage.english;
-    return PopupMenuButton<String>(
-      tooltip: tokens.isDark
-          ? l10n.appearance_dark_tooltip
-          : l10n.appearance_light_tooltip,
-      padding: EdgeInsets.zero,
-      offset: const Offset(0, FanCadTokens.titleBarHeight - 8),
-      color: tokens.surfaceOverlay,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(FanCadTokens.radius),
-        side: BorderSide(color: tokens.borderStrong),
-      ),
-      onSelected: (value) {
-        if (value.startsWith('theme:')) {
-          onSetTheme(
-            value == 'theme:light' ? Brightness.light : Brightness.dark,
-          );
-          return;
-        }
-        if (value.startsWith('language:')) {
-          onSetLanguage(value.substring('language:'.length));
-        }
-      },
-      itemBuilder: (context) => [
-        _checked(
-          tokens,
-          'theme:dark',
-          Icons.dark_mode_outlined,
-          l10n.theme_dark,
-          current == Brightness.dark,
-        ),
-        _checked(
-          tokens,
-          'theme:light',
-          Icons.light_mode_outlined,
-          l10n.theme_light,
-          current == Brightness.light,
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem<String>(
-          enabled: false,
-          height: 28,
-          child: Text(l10n.language, style: tokens.sectionTitleStyle),
-        ),
-        _checked(
-          tokens,
-          'language:en',
-          Icons.translate_outlined,
-          'English',
-          language == FanCadLanguage.english,
-        ),
-        _checked(
-          tokens,
-          'language:zh',
-          Icons.translate_outlined,
-          '简体中文',
-          language == FanCadLanguage.chinese,
-        ),
-      ],
-      child: SizedBox(
-        width: 28,
-        height: 28,
-        child: Icon(
-          current == Brightness.dark
-              ? Icons.dark_mode_outlined
-              : Icons.light_mode_outlined,
-          size: FanCadTokens.iconMedium,
-          color: tokens.textMuted,
-        ),
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _checked(
-    FanCadTokens tokens,
-    String value,
-    IconData icon,
-    String label,
-    bool selected,
-  ) {
-    return PopupMenuItem<String>(
-      value: value,
-      height: 32,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 18,
-            child: selected
-                ? Icon(Icons.check, size: FanCadTokens.iconSmall, color: tokens.accent)
-                : null,
-          ),
-          const SizedBox(width: FanCadTokens.space2),
-          Icon(icon, size: FanCadTokens.iconSmall, color: tokens.textMuted),
-          const SizedBox(width: FanCadTokens.space2),
-          Text(label, style: tokens.bodyStyle),
-        ],
-      ),
-    );
-  }
 }
 
 /// Overflow for Save As, recent files and Close — the actions that do not
@@ -542,9 +358,10 @@ class DocumentTabStrip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
+          Flexible(
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
+              shrinkWrap: true,
               itemCount: tabs.length,
               itemBuilder: (context, index) => _Tab(
                 workspace: workspace,
@@ -559,12 +376,13 @@ class DocumentTabStrip extends StatelessWidget {
               ),
             ),
           ),
-          if (tabs.length > 1) _OpenDrawingsMenu(workspace: workspace),
           ShellIconButton(
+            key: const Key('document-new-tab'),
             icon: Icons.add,
             tooltip: '${context.l10n.new_drawing}  ${shellShortcut('N')}',
             onPressed: () => workspace.run('file.new'),
           ),
+          if (tabs.length > 1) _OpenDrawingsMenu(workspace: workspace),
           const SizedBox(width: FanCadTokens.space1),
         ],
       ),
@@ -676,6 +494,7 @@ class _TabState extends State<_Tab> {
           _openMenu(details.globalPosition);
         },
         child: Container(
+          key: Key('document-tab-${tab.session.id}'),
           padding: const EdgeInsets.only(
             left: FanCadTokens.space3,
             right: FanCadTokens.space1,

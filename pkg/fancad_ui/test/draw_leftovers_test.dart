@@ -53,4 +53,27 @@ void main() {
     expect(result.message, contains('coincide'));
     expect(workspace.active!.document.entityCount, 0);
   });
+
+  test('leftover polyline vertices still draw; empty points fail, not cancel',
+      () async {
+    final drawn = await run('draw.polyline', {
+      'points': {
+        'vertices': [
+          [0, 0],
+          [20, 0],
+          [20, 8],
+        ],
+      },
+    });
+    expect(drawn.status, CommandStatus.ok, reason: drawn.message);
+    expect(
+      workspace.active!.document.entities.whereType<PolylineEntity>(),
+      hasLength(1),
+    );
+
+    final empty = await run('draw.polyline', {'points': <Object?>[]});
+    expect(empty.status, CommandStatus.failed);
+    expect(empty.message, contains('[[x, y]'));
+    expect(empty.status, isNot(CommandStatus.cancelled));
+  });
 }

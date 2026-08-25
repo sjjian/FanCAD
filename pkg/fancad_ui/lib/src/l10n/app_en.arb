@@ -24,6 +24,42 @@
   "@appearance_light_tooltip": {
     "description": "appearance light tooltip"
   },
+  "settings": "Settings",
+  "@settings": {
+    "description": "settings dialog title"
+  },
+  "settings_tooltip": "Settings. Theme, language and assistant",
+  "@settings_tooltip": {
+    "description": "settings title-bar tooltip"
+  },
+  "settings_tab_general": "General",
+  "@settings_tab_general": {
+    "description": "settings general tab"
+  },
+  "settings_tab_assistant": "Assistant",
+  "@settings_tab_assistant": {
+    "description": "settings assistant tab"
+  },
+  "settings_appearance": "Appearance",
+  "@settings_appearance": {
+    "description": "settings appearance section"
+  },
+  "settings_connection": "Connection",
+  "@settings_connection": {
+    "description": "settings assistant connection section"
+  },
+  "settings_api_key": "API key",
+  "@settings_api_key": {
+    "description": "settings api key"
+  },
+  "settings_api_key_env": "API key environment variable",
+  "@settings_api_key_env": {
+    "description": "settings api key env var"
+  },
+  "open_settings": "Open settings",
+  "@open_settings": {
+    "description": "open settings"
+  },
   "new_drawing": "New drawing",
   "@new_drawing": {
     "description": "new drawing"
@@ -1174,19 +1210,63 @@
   "@clear_conversation": {
     "description": "clear conversation"
   },
+  "new_chat": "New chat",
+  "@new_chat": {
+    "description": "new chat"
+  },
+  "chat_history": "Chats",
+  "@chat_history": {
+    "description": "chat history"
+  },
   "click_to_change_model": "Click to change the model or endpoint",
   "@click_to_change_model": {
     "description": "click to change model"
   },
-  "auto_approve": "Auto-approve",
+  "assistant_profiles": "Configurations",
+  "@assistant_profiles": {
+    "description": "assistant profiles"
+  },
+  "add_assistant_profile": "Add configuration",
+  "@add_assistant_profile": {
+    "description": "add assistant profile"
+  },
+  "remove_assistant_profile": "Remove configuration",
+  "@remove_assistant_profile": {
+    "description": "remove assistant profile"
+  },
+  "assistant_profile_name": "Display name",
+  "@assistant_profile_name": {
+    "description": "assistant profile name"
+  },
+  "ask_follow_up": "Add a follow-up",
+  "@ask_follow_up": {
+    "description": "ask follow up"
+  },
+  "context_used": "{used} / {window}",
+  "@context_used": {
+    "description": "context used",
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "window": {
+        "type": "String"
+      }
+    }
+  },
+  "context_waiting": "Context size appears after the first reply",
+  "@context_waiting": {
+    "description": "context waiting"
+  },
+  "auto_approve": "Auto-approve deletes",
   "@auto_approve": {
     "description": "auto approve"
   },
-  "edits_without_asking": "Edits run without asking",
+  "edits_without_asking": "Deletes run without asking",
   "@edits_without_asking": {
     "description": "edits without asking"
   },
-  "ask_before_edits": "Ask before the assistant edits the drawing",
+  "ask_before_edits": "Ask before the assistant deletes objects",
   "@ask_before_edits": {
     "description": "ask before edits"
   },
@@ -1202,7 +1282,7 @@
   "@model": {
     "description": "model"
   },
-  "model_id": "Model id",
+  "model_id": "Any model id, for example deepseek-chat",
   "@model_id": {
     "description": "model id"
   },
@@ -1214,14 +1294,9 @@
   "@assistant_empty_configured": {
     "description": "assistant empty configured"
   },
-  "assistant_empty_unconfigured": "Set the {envVar} environment variable to talk to a model, or point the base URL at a local server.",
+  "assistant_empty_unconfigured": "Paste an API key in Settings to talk to a model, or point the endpoint at a local server.",
   "@assistant_empty_unconfigured": {
-    "description": "assistant empty unconfigured",
-    "placeholders": {
-      "envVar": {
-        "type": "String"
-      }
-    }
+    "description": "assistant empty unconfigured"
   },
   "try_section": "Try",
   "@try_section": {
@@ -1246,6 +1321,37 @@
   "working": "Working…",
   "@working": {
     "description": "working"
+  },
+  "thinking": "Thinking",
+  "@thinking": {
+    "description": "thinking"
+  },
+  "allow_one_change": "Allow {title}?",
+  "@allow_one_change": {
+    "description": "allow one change",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "allow_n_changes": "Allow {count} changes?",
+  "@allow_n_changes": {
+    "description": "allow n changes",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "affects_n_objects": "Affects {count} object(s).",
+  "@affects_n_objects": {
+    "description": "affects n objects",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "ask_assistant": "Ask the assistant  Enter to send",
   "@ask_assistant": {
@@ -1806,6 +1912,10 @@
   "@command_view_regen": {
     "description": "command view regen"
   },
+  "command_workbench_preferences": "Settings...",
+  "@command_workbench_preferences": {
+    "description": "command workbench preferences"
+  },
   "command_select_all": "Select All",
   "@command_select_all": {
     "description": "command select all"
@@ -1901,6 +2011,14 @@
   "command_query_entities": "Query Entities",
   "@command_query_entities": {
     "description": "command query entities"
+  },
+  "command_query_selection": "Query Selection",
+  "@command_query_selection": {
+    "description": "command query selection"
+  },
+  "command_query_viewport": "Query Viewport",
+  "@command_query_viewport": {
+    "description": "command query viewport"
   },
   "command_query_id": "ID Point",
   "@command_query_id": {

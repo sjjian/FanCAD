@@ -1,4 +1,7 @@
+import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_dwg/fancad_dwg.dart';
 import 'package:fancad_ui/fancad_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -41,5 +44,45 @@ void main() {
       TitleBar.chromeTitle(tabCount: 2, activeTitle: 'part.dwg', dirty: true),
       '● part.dwg — FanCAD',
     );
+  });
+
+  testWidgets('new-tab leftover sits after the last drawing, not the strip end', (
+    tester,
+  ) async {
+    final workspace = Workspace(
+      commands: CommandRegistry(),
+      importer: DrawingImporter(backend: MemoryDrawingBackend()),
+      settings: SettingsStore.inMemory(),
+    );
+    addTearDown(workspace.dispose);
+    workspace.newDocument();
+
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FanCadTheme.dark(),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            child: ListenableBuilder(
+              listenable: workspace,
+              builder: (_, _) => DocumentTabStrip(workspace: workspace),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final tab = tester.getRect(
+      find.byKey(Key('document-tab-${workspace.tabs.single.session.id}')),
+    );
+    final plus = tester.getRect(find.byKey(const Key('document-new-tab')));
+    expect(plus.left - tab.right, lessThan(8));
+    expect(plus.left, lessThan(400));
   });
 }

@@ -55,6 +55,38 @@ void main() {
     expect(record['start'], [0.0, 0.0]);
   });
 
+  test('query.selection reports none or the current pick', () async {
+    final empty = await run('query.selection');
+    expect(empty.status, CommandStatus.ok);
+    expect(empty.data!['count'], 0);
+    expect(empty.message, contains('Nothing is selected'));
+
+    final created = await run('draw.circle', {
+      'center': [2, 2],
+      'radius': 1,
+    });
+    final id = (created.data!['ids']! as List).first as int;
+    workspace.active!.selection.replace([id]);
+
+    final picked = await run('query.selection');
+    expect(picked.status, CommandStatus.ok);
+    expect(picked.data!['count'], 1);
+    final record = (picked.data!['entities']! as List).single as Map;
+    expect(record['id'], id);
+    expect(record['kind'], 'circle');
+    expect(record['radius'], closeTo(1, 1e-9));
+  });
+
+  test('query.viewport returns the active camera window', () async {
+    workspace.active!.viewport.setSize(const Size(800, 600), 1);
+    final result = await run('query.viewport');
+    expect(result.status, CommandStatus.ok, reason: result.message);
+    expect(result.data!['scale'], isA<num>());
+    expect(result.data!['center'], isA<List>());
+    expect(result.data!['visible'], isA<List>());
+    expect((result.data!['visible']! as List), hasLength(4));
+  });
+
   test(
     'layers reports the current layer and how many objects sit on it',
     () async {

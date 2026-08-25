@@ -135,7 +135,7 @@ class DrawCommands {
     params: const [
       ParamSpec(
         name: 'points',
-        type: ParamType.json,
+        type: ParamType.points,
         description: 'Array of [x, y] vertices',
         required: false,
       ),
@@ -149,7 +149,7 @@ class DrawCommands {
     ],
     handler: (context) async {
       final layer = context.document.currentLayer;
-      final supplied = _pointList(context.args['points']);
+      final supplied = context.args.points('points');
       if (supplied.length >= 2) {
         return _commit(context, 'Polyline', [
           PolylineEntity.fromPoints(
@@ -159,6 +159,11 @@ class DrawCommands {
             closed: context.args.boolean('closed') ?? false,
           ),
         ]);
+      }
+      if (!context.input.isInteractive) {
+        return const CommandResult.failed(
+          'Polyline needs points as [[x, y], [x, y], ...] with at least two vertices.',
+        );
       }
 
       final points = <Vec2>[];
@@ -216,14 +221,14 @@ class DrawCommands {
       ),
       ParamSpec(
         name: 'points',
-        type: ParamType.json,
+        type: ParamType.points,
         description: 'Array of [x, y] points',
         required: false,
       ),
     ],
     handler: (context) async {
       final layer = context.document.currentLayer;
-      final supplied = _pointList(context.args['points']);
+      final supplied = context.args.points('points');
       final useFit = _splineUsesFit(context.args.text('method'));
       if (supplied.length >= 2) {
         final spline = useFit
@@ -243,6 +248,11 @@ class DrawCommands {
           );
         }
         return _commit(context, 'Spline', [spline]);
+      }
+      if (!context.input.isInteractive) {
+        return const CommandResult.failed(
+          'Spline needs points as [[x, y], [x, y], ...] with at least two vertices.',
+        );
       }
 
       final method = context.args.text('method') ??
@@ -1462,7 +1472,7 @@ class DrawCommands {
     params: const [
       ParamSpec(
         name: 'points',
-        type: ParamType.json,
+        type: ParamType.points,
         description: 'Array of [x, y] vertices, first is the arrow tip',
         required: false,
       ),
@@ -2421,7 +2431,7 @@ class DrawCommands {
       ),
       ParamSpec(
         name: 'points',
-        type: ParamType.json,
+        type: ParamType.points,
         description: 'Array of next [x, y] origins to chain',
         required: false,
       ),
@@ -2525,7 +2535,7 @@ class DrawCommands {
       ),
       ParamSpec(
         name: 'points',
-        type: ParamType.json,
+        type: ParamType.points,
         description: 'Array of next [x, y] origins to chain',
         required: false,
       ),
@@ -2962,10 +2972,5 @@ class DrawCommands {
     );
   }
 
-  static List<Vec2> _pointList(Object? value) {
-    if (value is! List) return const [];
-    return [
-      for (final item in value) ?CommandArgs.parsePoint(item),
-    ];
-  }
+  static List<Vec2> _pointList(Object? value) => CommandArgs.parsePoints(value);
 }

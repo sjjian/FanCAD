@@ -555,6 +555,7 @@ class ShellTextField extends StatelessWidget {
     this.onSubmitted,
     this.onChanged,
     this.style,
+    this.obscureText = false,
     this.autofocus = false,
     this.prefix,
     this.suffix,
@@ -567,6 +568,7 @@ class ShellTextField extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
   final TextStyle? style;
+  final bool obscureText;
   final bool autofocus;
   final Widget? prefix;
   final Widget? suffix;
@@ -584,6 +586,7 @@ class ShellTextField extends StatelessWidget {
             controller: controller,
             focusNode: focusNode,
             autofocus: autofocus,
+            obscureText: obscureText,
             style: effective,
             cursorColor: tokens.accent,
             cursorWidth: 1.5,
