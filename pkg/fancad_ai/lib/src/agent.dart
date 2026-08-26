@@ -14,10 +14,7 @@ import 'tools.dart';
 
 /// How a tool is executed by the host.
 typedef ToolExecutor =
-    Future<CommandResult> Function(
-      String commandId,
-      Map<String, Object?> args,
-    );
+    Future<CommandResult> Function(String commandId, Map<String, Object?> args);
 
 /// One completed agent turn.
 class AgentTurn {
@@ -62,6 +59,7 @@ class AgentLoop {
     this.session,
     this.skills,
     this.hostTools = const [],
+    this.authoring = const NoActivationRepair(),
   });
 
   final LlmProvider provider;
@@ -78,13 +76,13 @@ class AgentLoop {
   final SessionSnapshot? session;
   final SkillRegistry? skills;
   final List<HostTool> hostTools;
+  final ActivationRepair authoring;
 
   /// When set, every edit this turn produced is collapsed into one undo entry.
   final UndoStack? history;
 
   final CommandToolCatalog catalog = const CommandToolCatalog();
   final DocumentContextBuilder contextBuilder = const DocumentContextBuilder();
-  final PluginAuthoring authoring = const PluginAuthoring();
 
   bool _cancelled = false;
 
@@ -231,7 +229,10 @@ class AgentLoop {
 
   /// Streams tokens into the visible transcript, then falls back once if a
   /// tool call arrived without its required arguments.
-  Future<LlmCompletion> _complete(LlmRequest request, Conversation convo) async {
+  Future<LlmCompletion> _complete(
+    LlmRequest request,
+    Conversation convo,
+  ) async {
     var text = '';
     var calls = const <LlmToolCall>[];
     var finish = 'stop';

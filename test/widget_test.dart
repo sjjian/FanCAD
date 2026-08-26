@@ -1,6 +1,6 @@
+import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_dwg/fancad_dwg.dart';
-import 'package:fancad_ui/fancad_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -53,7 +53,9 @@ void main() {
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
   });
 
-  testWidgets('switching to Simplified Chinese localizes chrome', (tester) async {
+  testWidgets('switching to Simplified Chinese localizes chrome', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1600, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -237,10 +239,7 @@ void main() {
     container.read(paletteOpenProvider.notifier).state = true;
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Search commands, aliases or categories'),
-      findsOneWidget,
-    );
+    expect(find.text('Search commands, aliases or categories'), findsOneWidget);
 
     // Searched rather than scrolled to, because the palette's list is lazily
     // built and a command far down the alphabet would not be mounted yet.
