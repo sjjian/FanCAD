@@ -111,18 +111,13 @@ class _DocumentViewState extends State<DocumentView> {
               if (descriptor == null) return running;
               return l10n.commandTitle(descriptor.id, descriptor.title);
             }();
-      showMenu<String>(
+      showShellMenu<String>(
         context: context,
         position: RelativeRect.fromLTRB(
           global.dx,
           global.dy,
           global.dx + 1,
           global.dy + 1,
-        ),
-        color: tokens.surfaceOverlay,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FanCadTokens.radius),
-          side: BorderSide(color: tokens.borderStrong),
         ),
         items: [
           if (runningTitle != null)
@@ -277,30 +272,33 @@ class _DocumentViewState extends State<DocumentView> {
         child: Column(
           children: [
             if (hiddenCount > 0)
-              _VisibilityBanner(
+              ShellBanner(
+                tone: ShellTone.warning,
                 icon: Icons.visibility_off_outlined,
                 message: hiddenCount == 1
                     ? context.l10n.one_object_hidden
                     : context.l10n.many_objects_hidden(hiddenCount),
                 action: context.l10n.show_all,
-                onShowAll: () =>
+                onAction: () =>
                     widget.workspace.run('view.unisolateObjects'),
               )
             else if (hiddenLayers > 0)
-              _VisibilityBanner(
+              ShellBanner(
+                tone: ShellTone.warning,
                 icon: Icons.layers_outlined,
                 message: hiddenLayers == 1
                     ? context.l10n.one_layer_off
                     : context.l10n.many_layers_off(hiddenLayers),
                 action: context.l10n.show_all_layers,
-                onShowAll: () => widget.workspace.run('layer.showAll'),
+                onAction: () => widget.workspace.run('layer.showAll'),
               )
             else if (currentLayer != null && currentLayer.locked)
-              _VisibilityBanner(
+              ShellBanner(
+                tone: ShellTone.warning,
                 icon: Icons.lock_outline,
                 message: context.l10n.current_layer_locked(currentLayer.name),
                 action: context.l10n.unlock,
-                onShowAll: () => widget.workspace.run(
+                onAction: () => widget.workspace.run(
                   'layer.toggleLock',
                   args: {'name': currentLayer.name},
                 ),
@@ -351,53 +349,6 @@ class _DocumentViewState extends State<DocumentView> {
               ),
                 ],
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Isolate, Hide and layer-off leave geometry in the file but off the
-/// canvas. A strip here is the way back when the Layers panel is not open.
-class _VisibilityBanner extends StatelessWidget {
-  const _VisibilityBanner({
-    required this.icon,
-    required this.message,
-    required this.action,
-    required this.onShowAll,
-  });
-
-  final IconData icon;
-  final String message;
-  final String action;
-  final VoidCallback onShowAll;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Material(
-      color: tokens.warning.withValues(alpha: tokens.isDark ? 0.16 : 0.12),
-      child: Container(
-        height: FanCadTokens.tabBarHeight,
-        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: tokens.border)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: FanCadTokens.iconMedium, color: tokens.warning),
-            const SizedBox(width: FanCadTokens.space2),
-            Expanded(
-              child: Text(
-                message,
-                style: tokens.bodyStyle.copyWith(color: tokens.text),
-              ),
-            ),
-            TextButton(
-              onPressed: onShowAll,
-              child: Text(action),
             ),
           ],
         ),

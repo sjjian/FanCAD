@@ -298,19 +298,9 @@ Future<void> _openSnapModeMenu(
   Offset globalPosition,
 ) async {
   final tokens = context.tokens;
-  final chosen = await showMenu<Object>(
+  final chosen = await showShellMenu<Object>(
     context: context,
-    position: RelativeRect.fromLTRB(
-      globalPosition.dx,
-      globalPosition.dy,
-      globalPosition.dx,
-      globalPosition.dy,
-    ),
-    color: tokens.surfaceOverlay,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(FanCadTokens.radius),
-      side: BorderSide(color: tokens.borderStrong),
-    ),
+    position: shellMenuPosition(globalPosition),
     items: [
       for (final mode in SnapMode.values)
         PopupMenuItem<Object>(
@@ -355,19 +345,9 @@ Future<void> _openPolarIncrementMenu(
 ) async {
   final tokens = context.tokens;
   final current = _polarDegrees(workspace.snapEngine.tracking.polarIncrement);
-  final chosen = await showMenu<int>(
+  final chosen = await showShellMenu<int>(
     context: context,
-    position: RelativeRect.fromLTRB(
-      globalPosition.dx,
-      globalPosition.dy,
-      globalPosition.dx,
-      globalPosition.dy,
-    ),
-    color: tokens.surfaceOverlay,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(FanCadTokens.radius),
-      side: BorderSide(color: tokens.borderStrong),
-    ),
+    position: shellMenuPosition(globalPosition),
     items: [
       for (final degrees in _polarIncrements)
         PopupMenuItem<int>(

@@ -6,7 +6,6 @@ import '../l10n/l10n.dart';
 import '../state/ai_controller.dart';
 import '../state/providers.dart';
 import '../theme/tokens.dart';
-import 'settings_controls.dart';
 import 'shell_widgets.dart';
 
 /// Pages inside the settings dialog.
@@ -197,19 +196,41 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
               ),
               child: Row(
                 children: [
-                  _SettingsNavTab(
+                  ShellTab(
                     key: const Key('settings-tab-general'),
-                    label: l10n.settings_tab_general,
+                    style: ShellTabStyle.underline,
                     selected: tab == SettingsTab.general,
                     onTap: () => _openSettingsTab?.value = SettingsTab.general,
+                    child: Text(
+                      l10n.settings_tab_general,
+                      style: tokens.bodyStyle.copyWith(
+                        color: tab == SettingsTab.general
+                            ? tokens.accent
+                            : tokens.textMuted,
+                        fontWeight: tab == SettingsTab.general
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: FanCadTokens.space4),
-                  _SettingsNavTab(
+                  ShellTab(
                     key: const Key('settings-tab-assistant'),
-                    label: l10n.settings_tab_assistant,
+                    style: ShellTabStyle.underline,
                     selected: tab == SettingsTab.assistant,
                     onTap: () =>
                         _openSettingsTab?.value = SettingsTab.assistant,
+                    child: Text(
+                      l10n.settings_tab_assistant,
+                      style: tokens.bodyStyle.copyWith(
+                        color: tab == SettingsTab.assistant
+                            ? tokens.accent
+                            : tokens.textMuted,
+                        fontWeight: tab == SettingsTab.assistant
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -234,54 +255,6 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsNavTab extends StatelessWidget {
-  const _SettingsNavTab({
-    super.key,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Padding(
-          padding: const EdgeInsets.only(top: FanCadTokens.space1),
-          child: IntrinsicWidth(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  label,
-                  style: tokens.bodyStyle.copyWith(
-                    color: selected ? tokens.accent : tokens.textMuted,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  height: 2,
-                  color: selected ? tokens.accent : Colors.transparent,
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -399,9 +372,9 @@ class _AssistantPage extends ConsumerWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     for (final profile in ai.profiles)
-                      _ProfileChip(
+                      ShellBadge(
                         key: Key('settings-profile-${profile.id}'),
-                        label: profile.displayName,
+                        text: profile.displayName,
                         selected: profile.id == ai.activeProfile.id,
                         onTap: () => onSelectProfile(profile.id),
                       ),
@@ -490,48 +463,6 @@ class _AssistantPage extends ConsumerWidget {
           ],
         );
       },
-    );
-  }
-}
-
-class _ProfileChip extends StatelessWidget {
-  const _ProfileChip({
-    super.key,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Material(
-      color: selected ? tokens.selection : tokens.surfaceRaised,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(FanCadTokens.radius),
-        side: BorderSide(color: selected ? tokens.accent : tokens.border),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(FanCadTokens.radius),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: FanCadTokens.space2,
-            vertical: FanCadTokens.space1,
-          ),
-          child: Text(
-            label,
-            style: tokens.monoStyle.copyWith(
-              fontSize: 11,
-              color: selected ? tokens.text : tokens.textMuted,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

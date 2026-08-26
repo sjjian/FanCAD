@@ -353,11 +353,11 @@ class _PaletteRow extends StatelessWidget {
                       ],
                       if (isLastUsed) ...[
                         const SizedBox(width: FanCadTokens.space2),
-                        _Badge(text: l10n.last_badge),
+                        ShellBadge(text: l10n.last_badge),
                       ],
                       if (!descriptor.isBuiltIn) ...[
                         const SizedBox(width: FanCadTokens.space2),
-                        _Badge(text: descriptor.extensionId),
+                        ShellBadge(text: descriptor.extensionId),
                       ],
                     ],
                   ),
@@ -383,31 +383,6 @@ class _PaletteRow extends StatelessWidget {
               ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-      decoration: BoxDecoration(
-        color: tokens.accent.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Text(
-        text,
-        style: tokens.labelStyle.copyWith(
-          fontSize: 9.5,
-          color: tokens.accent,
         ),
       ),
     );

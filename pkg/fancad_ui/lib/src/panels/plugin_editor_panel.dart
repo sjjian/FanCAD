@@ -283,17 +283,17 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
 
   Widget _editorBody(FanCadTokens tokens, List<PluginHandle> plugins) {
     if (widget.host == null) {
-      return _EditorEmpty(message: context.l10n.editor_unavailable);
+      return ShellEmpty(message: context.l10n.editor_unavailable);
     }
     if (plugins.isEmpty) {
-      return _EditorEmpty(
+      return ShellEmpty(
         message: context.l10n.create_extension_first,
         actionLabel: context.l10n.create_extension,
         onAction: () => widget.workspace.run('plugins.scaffold'),
       );
     }
     if (_pluginId == null) {
-      return _EditorEmpty(message: context.l10n.choose_extension);
+      return ShellEmpty(message: context.l10n.choose_extension);
     }
     return TextField(
       controller: _body,
@@ -312,48 +312,3 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
   }
 }
 
-class _EditorEmpty extends StatelessWidget {
-  const _EditorEmpty({
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(FanCadTokens.space4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              message,
-              style: tokens.labelStyle,
-              textAlign: TextAlign.center,
-            ),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: FanCadTokens.space3),
-              ShellRow(
-                onTap: onAction,
-                height: FanCadTokens.rowHeight,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: FanCadTokens.space2,
-                ),
-                child: Text(
-                  actionLabel!,
-                  style: tokens.bodyStyle.copyWith(color: tokens.accent),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}

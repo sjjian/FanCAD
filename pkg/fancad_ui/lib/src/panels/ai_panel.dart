@@ -191,7 +191,9 @@ class _AiPanelState extends State<AiPanel> {
                 ),
         ),
         if (controller.error != null)
-          _ErrorBanner(
+          ShellBanner(
+            tone: ShellTone.danger,
+            inset: true,
             message: controller.error!,
             onDismiss: controller.clearError,
           ),
@@ -302,58 +304,39 @@ class _ChatSessionTabState extends State<_ChatSessionTab> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        onTertiaryTapUp: (_) => widget.onClose(),
-        child: Container(
-          key: Key('assistant-session-${widget.chat.id}'),
-          constraints: const BoxConstraints(minWidth: 72, maxWidth: 160),
-          padding: const EdgeInsets.only(
-            left: FanCadTokens.space2,
-            right: FanCadTokens.space1,
-          ),
-          decoration: BoxDecoration(
-            color: widget.isActive
-                ? tokens.selection
-                : _hovered
-                ? tokens.hover
-                : Colors.transparent,
-            border: Border(
-              right: BorderSide(color: tokens.border),
-              top: BorderSide(
-                color: widget.isActive ? tokens.accent : Colors.transparent,
-                width: 2,
+    return ShellTab(
+      key: Key('assistant-session-${widget.chat.id}'),
+      selected: widget.isActive,
+      onTap: widget.onTap,
+      onClose: widget.onClose,
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+      constraints: const BoxConstraints(minWidth: 72, maxWidth: 160),
+      padding: const EdgeInsets.only(
+        left: FanCadTokens.space2,
+        right: FanCadTokens.space1,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              widget.title,
+              style: tokens.bodyStyle.copyWith(
+                fontSize: 12,
+                color: widget.isActive ? tokens.text : tokens.textMuted,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.title,
-                  style: tokens.bodyStyle.copyWith(
-                    fontSize: 12,
-                    color: widget.isActive ? tokens.text : tokens.textMuted,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (_hovered || widget.isActive)
-                ShellIconButton(
-                  key: Key('assistant-session-close-${widget.chat.id}'),
-                  icon: Icons.close,
-                  size: 18,
-                  iconSize: FanCadTokens.iconSmall,
-                  tooltip: context.l10n.close,
-                  onPressed: widget.onClose,
-                ),
-            ],
-          ),
-        ),
+          if (_hovered || widget.isActive)
+            ShellIconButton(
+              key: Key('assistant-session-close-${widget.chat.id}'),
+              icon: Icons.close,
+              size: 18,
+              iconSize: FanCadTokens.iconSmall,
+              tooltip: context.l10n.close,
+              onPressed: widget.onClose,
+            ),
+        ],
       ),
     );
   }
@@ -414,55 +397,6 @@ class _EmptyAssistant extends StatelessWidget {
             ),
         ],
       ],
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message, required this.onDismiss});
-
-  final String message;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(
-        FanCadTokens.space2,
-        0,
-        FanCadTokens.space2,
-        FanCadTokens.space2,
-      ),
-      padding: const EdgeInsets.only(left: FanCadTokens.space3),
-      decoration: BoxDecoration(
-        color: tokens.danger.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(FanCadTokens.radius),
-        border: Border.all(color: tokens.danger.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, size: 14, color: tokens.danger),
-          const SizedBox(width: FanCadTokens.space2),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: FanCadTokens.space2),
-              child: Text(
-                message,
-                style: tokens.labelStyle.copyWith(color: tokens.danger),
-              ),
-            ),
-          ),
-          ShellIconButton(
-            icon: Icons.close,
-            size: 20,
-            iconSize: FanCadTokens.iconSmall,
-            tooltip: context.l10n.dismiss,
-            onPressed: onDismiss,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1061,6 +995,8 @@ class _ProfilePicker extends StatelessWidget {
       tooltip: context.l10n.click_to_change_model,
       enabled: enabled,
       padding: EdgeInsets.zero,
+      color: tokens.surfaceOverlay,
+      shape: shellOverlayShape(tokens),
       onSelected: onSelect,
       itemBuilder: (context) => [
         for (final item in profiles)

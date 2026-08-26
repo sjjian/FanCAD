@@ -313,10 +313,7 @@ class _HistoryOverflow extends StatelessWidget {
       enabled: enabled,
       offset: const Offset(0, -8),
       color: tokens.surfaceOverlay,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(FanCadTokens.radius),
-        side: BorderSide(color: tokens.borderStrong),
-      ),
+      shape: shellOverlayShape(tokens),
       onSelected: (value) {
         switch (value) {
           case 'copy':
@@ -485,7 +482,7 @@ class StatusBar extends StatelessWidget {
           ),
           const Spacer(),
           if (tab != null) ...[
-            _StatusAction(
+            ShellTextButton(
               label: l10n.selected_count(tab.selection.length),
               tooltip: tab.selection.isEmpty
                   ? l10n.nothing_selected
@@ -493,7 +490,7 @@ class StatusBar extends StatelessWidget {
               enabled: tab.selection.isNotEmpty,
               onPressed: () => workspace.revealPanel('properties'),
             ),
-            _StatusAction(
+            ShellTextButton(
               label: l10n.objects_count(tab.document.entityCount),
               tooltip: tab.document.entityCount == 0
                   ? l10n.drawing_empty
@@ -501,7 +498,7 @@ class StatusBar extends StatelessWidget {
               enabled: tab.document.entityCount > 0,
               onPressed: () => workspace.run('select.all'),
             ),
-            _StatusAction(
+            ShellTextButton(
               label:
                   '1:${(1 / tab.viewport.viewport.scale).toStringAsFixed(2)}',
               tooltip: l10n.zoom_extents_tooltip,
@@ -629,19 +626,9 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
   ) async {
     final tokens = context.tokens;
     final workspace = widget.workspace;
-    final chosen = await showMenu<String>(
+    final chosen = await showShellMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(
-        globalPosition.dx,
-        globalPosition.dy,
-        globalPosition.dx,
-        globalPosition.dy,
-      ),
-      color: tokens.surfaceOverlay,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(FanCadTokens.radius),
-        side: BorderSide(color: tokens.borderStrong),
-      ),
+      position: shellMenuPosition(globalPosition),
       items: [
         PopupMenuItem(
           value: 'visible',
@@ -676,63 +663,6 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
       case 'manage':
         workspace.revealPanel('layers');
     }
-  }
-}
-
-/// A status-bar count that does something, so it looks like SNAP rather than
-/// a dead label someone only discovers by accident.
-class _StatusAction extends StatefulWidget {
-  const _StatusAction({
-    required this.label,
-    required this.tooltip,
-    required this.onPressed,
-    this.enabled = true,
-  });
-
-  final String label;
-  final String tooltip;
-  final VoidCallback onPressed;
-  final bool enabled;
-
-  @override
-  State<_StatusAction> createState() => _StatusActionState();
-}
-
-class _StatusActionState extends State<_StatusAction> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        cursor: widget.enabled
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.basic,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.enabled ? widget.onPressed : null,
-          child: Container(
-            height: FanCadTokens.statusBarHeight,
-            padding: const EdgeInsets.symmetric(
-              horizontal: FanCadTokens.space2,
-            ),
-            color: widget.enabled && _hovered
-                ? tokens.hover
-                : Colors.transparent,
-            alignment: Alignment.center,
-            child: Text(
-              widget.label,
-              style: tokens.labelStyle.copyWith(
-                color: widget.enabled ? tokens.text : tokens.textMuted,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 
