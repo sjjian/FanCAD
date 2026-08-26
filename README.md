@@ -29,21 +29,29 @@ are being built in.
 
 ## Repository layout
 
-This is a Dart workspace: one Flutter application at the root, with the
-substance in layered packages under `pkg/`.
+This is a Dart workspace: one Flutter application at the root, with
+product-agnostic libraries under `pkg/`. Product orchestration lives in
+`lib/{storage,services,business}`. Dependency direction is
+`business → services → storage → pkg/*`. `pkg` must not import
+`package:fancad/...`.
 
-| Package | Depends on | What lives there |
-| --- | --- | --- |
-| `fancad_core` | nothing | Geometry, the document model, the transaction system, the command registry. Pure Dart, no Flutter, so it runs on background isolates and under plain `dart test`. |
-| `fancad_dwg` | core | DWG and DXF interoperability: the C shim over LibreDWG, the FCB columnar transfer format, the disk cache. |
-| `fancad_render` | core | The viewport: batched tessellation, spatial culling, level-of-detail curve caching, the canvas widget. |
-| `fancad_plugin_host` | core | The extension host: manifests, contribution registries, the sandboxed JavaScript runtime, hot reload. |
-| `fancad_ai` | core | Provider abstraction, the agent loop, document context building, change approval. |
-| `fancad_ui` | all of the above | The design system and application shell. |
+| Layer | What lives there |
+| --- | --- |
+| `lib/storage` | Disk and key-value I/O: settings, recent files, assistant sessions. No command orchestration. |
+| `lib/services` | Composition: open documents, plugin host wiring, the AI loop, Riverpod. No widgets. |
+| `lib/business` | Commands, workbench, panels, theme, l10n, bundled assistant skills. Pages talk to `Workspace.run` and existing providers, not to `settings.json` or `FcbCache`. |
+| `pkg/fancad_core` | Geometry, the document model, the transaction system, the command registry. Pure Dart. |
+| `pkg/fancad_dwg` | DWG and DXF interoperability: LibreDWG shim, FCB, the disk cache. |
+| `pkg/fancad_render` | The viewport: tessellation, culling, the canvas widget. |
+| `pkg/fancad_plugin_host` | The extension runtime: manifests, sandboxed JavaScript, transport. |
+| `pkg/fancad_ai` | Provider abstraction, the agent loop, skill registry, change approval. |
 
-The dependency direction is strictly downwards. In particular nothing above
-`fancad_dwg` knows that LibreDWG exists; everything goes through the
-`DrawingBackend` interface.
+CAD verbs stay `CommandDescriptor`s in `lib/business/commands/`. They are not
+rewritten as `*Services`; `Workspace.run` / `runHeadless` is the only way
+the UI, plugins and the model invoke them.
+
+Nothing above `fancad_dwg` knows that LibreDWG exists; everything goes
+through the `DrawingBackend` interface.
 
 ## Building
 
@@ -57,6 +65,7 @@ Tests:
 ```bash
 dart test pkg/fancad_core       # pure Dart
 dart test pkg/fancad_dwg
+dart test pkg/fancad_ai
 flutter test                    # widget and render tests
 ```
 
