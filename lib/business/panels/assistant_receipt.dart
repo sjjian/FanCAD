@@ -1,42 +1,31 @@
 import 'dart:convert';
 
 import 'package:fancad_ai/fancad_ai.dart';
-import 'package:meta/meta.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'assistant_receipt.freezed.dart';
 
 /// A command-line style reading of one tool result.
 ///
 /// The model still receives the raw JSON. This is only what the panel shows.
-@immutable
-class AssistantReceipt {
-  const AssistantReceipt({
-    required this.verb,
-    required this.summary,
-    required this.status,
-    required this.raw,
-    this.toolName,
-    this.isError = false,
-    this.count = 1,
-  });
+@freezed
+abstract class AssistantReceipt with _$AssistantReceipt {
+  const AssistantReceipt._();
 
-  final String verb;
-  final String summary;
-  final String status;
-  final String raw;
-  final String? toolName;
-  final bool isError;
-  final int count;
+  const factory AssistantReceipt({
+    required String verb,
+    required String summary,
+    required String status,
+    required String raw,
+    String? toolName,
+    @Default(false) bool isError,
+    @Default(1) int count,
+  }) = _AssistantReceipt;
 
   bool get isOk => status == 'ok';
 
-  AssistantReceipt merge(AssistantReceipt other) => AssistantReceipt(
-    verb: verb,
-    summary: summary,
-    status: status,
-    raw: raw,
-    toolName: toolName,
-    isError: isError,
-    count: count + other.count,
-  );
+  AssistantReceipt merge(AssistantReceipt other) =>
+      copyWith(count: count + other.count);
 
   String get headline {
     final name = count > 1 ? '$verb ×$count' : verb;
@@ -115,28 +104,24 @@ AssistantReceipt parseAssistantReceipt(ChatMessage message) {
 }
 
 /// One row in the assistant history list.
-@immutable
-class AssistantLogEntry {
-  const AssistantLogEntry._({required this.role, this.message, this.receipt});
+@freezed
+sealed class AssistantLogEntry with _$AssistantLogEntry {
+  const AssistantLogEntry._();
 
-  factory AssistantLogEntry.message(ChatMessage message) =>
-      AssistantLogEntry._(role: message.role, message: message);
-
-  factory AssistantLogEntry.receipt(AssistantReceipt receipt) =>
-      AssistantLogEntry._(role: ChatRole.tool, receipt: receipt);
-
-  final ChatRole role;
-  final ChatMessage? message;
-  final AssistantReceipt? receipt;
+  const factory AssistantLogEntry.message(ChatMessage message) =
+      AssistantLogMessage;
+  const factory AssistantLogEntry.receipt(AssistantReceipt receipt) =
+      AssistantLogReceipt;
 
   bool canMerge(AssistantReceipt next) {
-    final current = receipt;
-    if (current == null || role != ChatRole.tool) return false;
-    if (current.toolName == null || current.toolName != next.toolName) {
-      return false;
-    }
-    if (current.isOk && next.isOk) return true;
-    return current.status == 'cancelled' && next.status == 'cancelled';
+    return switch (this) {
+      AssistantLogReceipt(:final receipt) =>
+        receipt.toolName != null &&
+            receipt.toolName == next.toolName &&
+            ((receipt.isOk && next.isOk) ||
+                (receipt.status == 'cancelled' && next.status == 'cancelled')),
+      AssistantLogMessage() => false,
+    };
   }
 }
 
@@ -171,9 +156,10 @@ List<AssistantLogEntry> groupAssistantLog(List<ChatMessage> messages) {
       continue;
     }
     final receipt = parseAssistantReceipt(message);
-    if (entries.isNotEmpty && entries.last.canMerge(receipt)) {
-      final last = entries.removeLast();
-      entries.add(AssistantLogEntry.receipt(last.receipt!.merge(receipt)));
+    final last = entries.isEmpty ? null : entries.last;
+    if (last is AssistantLogReceipt && last.canMerge(receipt)) {
+      entries.removeLast();
+      entries.add(AssistantLogEntry.receipt(last.receipt.merge(receipt)));
     } else {
       entries.add(AssistantLogEntry.receipt(receipt));
     }

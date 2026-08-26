@@ -1,6 +1,15 @@
 import 'package:fancad/fancad.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+ProviderContainer containerOf(SettingsStore settings) {
+  final container = ProviderContainer(
+    overrides: [settingsProvider.overrideWithValue(settings)],
+  );
+  addTearDown(container.dispose);
+  return container;
+}
 
 void main() {
   test('selecting the open sidebar icon collapses it, as VS Code does', () {
@@ -9,19 +18,17 @@ void main() {
       SettingsKeys.sidebarOpen: true,
       SettingsKeys.sidebarWidth: 240,
     });
-    final sidebar = SidebarController(settings);
-    addTearDown(sidebar.dispose);
+    final sidebar = containerOf(settings).read(sidebarProvider.notifier);
     expect(sidebar.state.viewId, 'layers');
     expect(sidebar.state.isOpen, isTrue);
     expect(sidebar.state.width, 240);
-    expect(SidebarController.defaultWidth, FanCadTokens.sidePanelWidth);
-    expect(SidebarController.minWidth, FanCadTokens.sidePanelMinWidth);
+    expect(Sidebar.defaultWidth, FanCadTokens.sidePanelWidth);
+    expect(Sidebar.minWidth, FanCadTokens.sidePanelMinWidth);
 
-    final narrow = SidebarController(
+    final narrow = containerOf(
       SettingsStore.inMemory({SettingsKeys.sidebarWidth: 40}),
-    );
-    addTearDown(narrow.dispose);
-    expect(narrow.state.width, SidebarController.minWidth);
+    ).read(sidebarProvider.notifier);
+    expect(narrow.state.width, Sidebar.minWidth);
 
     sidebar.select('layers');
     expect(sidebar.state.isOpen, isFalse);
@@ -41,23 +48,22 @@ void main() {
     expect(sidebar.state.isOpen, isFalse);
 
     sidebar.resize(40);
-    expect(sidebar.state.width, SidebarController.minWidth);
+    expect(sidebar.state.width, Sidebar.minWidth);
     sidebar.resize(240.6);
     expect(sidebar.state.width, 241);
     sidebar.resize(900);
-    expect(sidebar.state.width, SidebarController.maxWidth);
+    expect(sidebar.state.width, Sidebar.maxWidth);
     sidebar.commitWidth();
     expect(
       settings.getDouble(SettingsKeys.sidebarWidth),
-      SidebarController.maxWidth,
+      Sidebar.maxWidth,
     );
   });
 
   test('a leftover assistant view does not occupy the left sidebar', () {
-    final sidebar = SidebarController(
+    final sidebar = containerOf(
       SettingsStore.inMemory({SettingsKeys.sidebarView: 'ai'}),
-    );
-    addTearDown(sidebar.dispose);
+    ).read(sidebarProvider.notifier);
     expect(sidebar.state.viewId, 'layers');
     sidebar.select('ai');
     expect(sidebar.state.viewId, 'layers');
@@ -77,10 +83,9 @@ void main() {
       SettingsKeys.assistantOpen: true,
       SettingsKeys.assistantWidth: 40,
     });
-    final pane = AssistantPaneController(settings);
-    addTearDown(pane.dispose);
+    final pane = containerOf(settings).read(assistantPaneProvider.notifier);
     expect(pane.state.isOpen, isTrue);
-    expect(pane.state.width, AssistantPaneController.minWidth);
+    expect(pane.state.width, AssistantPane.minWidth);
 
     pane.toggle();
     expect(pane.state.isOpen, isFalse);
@@ -91,34 +96,33 @@ void main() {
     pane.commitWidth();
     expect(
       settings.getDouble(SettingsKeys.assistantWidth),
-      AssistantPaneController.maxWidth,
+      AssistantPane.maxWidth,
     );
     pane.resetWidth();
-    expect(pane.state.width, AssistantPaneController.defaultWidth);
+    expect(pane.state.width, AssistantPane.defaultWidth);
   });
 
   test('a stored pane height below the input row is lifted to collapsed', () {
-    final pane = CommandPaneController(
+    final pane = containerOf(
       SettingsStore.inMemory({SettingsKeys.commandPaneHeight: 12}),
-    );
-    addTearDown(pane.dispose);
-    expect(pane.state.height, CommandPaneController.collapsedHeight);
+    ).read(commandPaneProvider.notifier);
+    expect(pane.state.height, CommandPane.collapsedHeight);
   });
 
   test('the command pane default leaves the canvas most of the window', () {
     expect(
-      CommandPaneController.collapsedHeight,
+      CommandPane.collapsedHeight,
       FanCadTokens.splitterHit + FanCadTokens.commandLineHeight,
     );
-    expect(CommandPaneController.defaultHeight, 84);
-    expect(CommandPaneController.expandedHeight, 200);
+    expect(CommandPane.defaultHeight, 84);
+    expect(CommandPane.expandedHeight, 200);
     expect(
-      CommandPaneController.defaultHeight,
-      lessThan(CommandPaneController.expandedHeight),
+      CommandPane.defaultHeight,
+      lessThan(CommandPane.expandedHeight),
     );
     expect(
-      CommandPaneController.collapsedHeight,
-      lessThan(CommandPaneController.defaultHeight),
+      CommandPane.collapsedHeight,
+      lessThan(CommandPane.defaultHeight),
     );
   });
 
@@ -126,39 +130,36 @@ void main() {
     final settings = SettingsStore.inMemory({
       SettingsKeys.commandPaneHeight: 100,
     });
-    final pane = CommandPaneController(settings);
-    addTearDown(pane.dispose);
+    final pane = containerOf(settings).read(commandPaneProvider.notifier);
     expect(pane.state.height, 100);
     expect(pane.state.isExpanded, isFalse);
 
     pane.resize(10);
-    expect(pane.state.height, CommandPaneController.minHeight);
+    expect(pane.state.height, CommandPane.minHeight);
     pane.resize(800);
-    expect(pane.state.height, CommandPaneController.maxHeight);
+    expect(pane.state.height, CommandPane.maxHeight);
     pane.commitHeight();
     expect(
       settings.getDouble(SettingsKeys.commandPaneHeight),
-      CommandPaneController.maxHeight,
+      CommandPane.maxHeight,
     );
 
     pane.toggleExpanded();
     expect(pane.state.isExpanded, isTrue);
-    expect(pane.state.height, CommandPaneController.expandedHeight);
+    expect(pane.state.height, CommandPane.expandedHeight);
     pane.toggleExpanded();
     expect(pane.state.isExpanded, isFalse);
-    expect(pane.state.height, CommandPaneController.collapsedHeight);
+    expect(pane.state.height, CommandPane.collapsedHeight);
   });
 
   test('theme brightness restores from settings and persists a toggle', () {
-    final light = ThemeModeController(
+    final light = containerOf(
       SettingsStore.inMemory({SettingsKeys.themeBrightness: 'light'}),
-    );
-    addTearDown(light.dispose);
+    ).read(themeBrightnessProvider.notifier);
     expect(light.state, Brightness.light);
 
     final settings = SettingsStore.inMemory();
-    final dark = ThemeModeController(settings);
-    addTearDown(dark.dispose);
+    final dark = containerOf(settings).read(themeBrightnessProvider.notifier);
     expect(dark.state, Brightness.dark);
     dark.toggle();
     expect(dark.state, Brightness.light);
@@ -169,8 +170,7 @@ void main() {
 
   test('language defaults to English and persists a supported switch', () {
     final settings = SettingsStore.inMemory();
-    final language = LanguageController(settings);
-    addTearDown(language.dispose);
+    final language = containerOf(settings).read(languageProvider.notifier);
     expect(language.state, FanCadLanguage.english);
 
     language.setLanguage(FanCadLanguage.chinese);
@@ -179,10 +179,9 @@ void main() {
   });
 
   test('a leftover language code is treated as English', () {
-    final leftover = LanguageController(
+    final leftover = containerOf(
       SettingsStore.inMemory({SettingsKeys.language: 'fr'}),
-    );
-    addTearDown(leftover.dispose);
+    ).read(languageProvider.notifier);
     expect(leftover.state, FanCadLanguage.english);
 
     leftover.setLanguage('not-a-locale');
@@ -190,10 +189,9 @@ void main() {
   });
 
   test('regional Chinese leftovers collapse to zh', () {
-    final leftover = LanguageController(
+    final leftover = containerOf(
       SettingsStore.inMemory({SettingsKeys.language: 'zh_CN'}),
-    );
-    addTearDown(leftover.dispose);
+    ).read(languageProvider.notifier);
     expect(leftover.state, FanCadLanguage.chinese);
   });
 }

@@ -13,7 +13,7 @@ void main() {
     final created = Workspace(
       commands: CommandRegistry(),
       importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      settings: settings ?? SettingsStore.inMemory(),
+      drawing: DrawingSettings(settings ?? SettingsStore.inMemory()),
     );
     addTearDown(created.dispose);
     return created;
@@ -166,7 +166,7 @@ void main() {
       ws.setPendingHighlights(const [3]);
 
       expect(ws.snapEngine.enabled, isFalse);
-      expect(ws.settings.getBool(SettingsKeys.snapEnabled), isFalse);
+      expect(ws.drawing.snapEnabled, isFalse);
       expect(ws.snapEngine.tracking.polar, isFalse);
       expect(ws.snapEngine.tracking.polarIncrement, 0.5);
       expect(tab.showGrid, isTrue);

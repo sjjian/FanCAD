@@ -113,8 +113,14 @@ void main() {
     ];
     final entries = groupAssistantLog(messages);
     expect(entries, hasLength(3));
-    expect(entries[1].receipt!.headline, 'ELLIPSE ×2  Add ellipse');
-    expect(entries[2].receipt!.headline, 'LINE  Add line');
+    expect(
+      (entries[1] as AssistantLogReceipt).receipt.headline,
+      'ELLIPSE ×2  Add ellipse',
+    );
+    expect(
+      (entries[2] as AssistantLogReceipt).receipt.headline,
+      'LINE  Add line',
+    );
   });
 
   test('leftover declined calls of one tool collapse', () {
@@ -143,11 +149,11 @@ void main() {
     ]);
     expect(entries, hasLength(3));
     expect(
-      entries[1].receipt!.headline,
+      (entries[1] as AssistantLogReceipt).receipt.headline,
       'ELLIPSE ×2  The user declined this change.',
     );
     expect(
-      entries[2].receipt!.headline,
+      (entries[2] as AssistantLogReceipt).receipt.headline,
       'CIRCLE  The user declined this change.',
     );
   });

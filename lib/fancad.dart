@@ -1,4 +1,4 @@
-/// FanCAD application library: storage, services and business layers.
+/// FanCAD application library: models, storage views, services and business.
 library;
 
 export 'business/ai/authoring.dart';
@@ -48,6 +48,8 @@ export 'business/workbench/settings_dialog.dart';
 export 'business/workbench/shell_widgets.dart';
 export 'business/workbench/title_bar.dart';
 export 'business/workbench/workbench.dart';
+export 'models/assistant_chat.dart';
+export 'models/assistant_profile.dart';
 export 'services/ai_controller.dart';
 export 'services/document_tab.dart';
 export 'services/plugin/host_call.dart';
@@ -56,6 +58,9 @@ export 'services/plugin_delegate.dart';
 export 'services/providers.dart';
 export 'services/session_snapshot.dart';
 export 'services/workspace.dart';
-export 'storage/assistant_chat.dart';
-export 'storage/assistant_profile.dart';
+export 'storage/app_settings.dart';
+export 'storage/assistant_settings.dart';
+export 'storage/drawing_settings.dart';
+export 'storage/plugin_settings.dart';
 export 'storage/settings.dart';
+export 'storage/shell_settings.dart';

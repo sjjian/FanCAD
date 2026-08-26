@@ -8,9 +8,9 @@ import 'package:flutter/foundation.dart';
 
 import '../business/ai/authoring.dart';
 import '../business/ai/skills/bundled.dart';
-import '../storage/assistant_chat.dart';
-import '../storage/assistant_profile.dart';
-import '../storage/settings.dart';
+import '../models/assistant_chat.dart';
+import '../models/assistant_profile.dart';
+import '../storage/assistant_settings.dart';
 import 'session_snapshot.dart';
 import 'workspace.dart';
 
@@ -19,13 +19,13 @@ import 'workspace.dart';
 /// The controller is a [ChangeNotifier] so the panel can rebuild on every
 /// streamed token without the rest of the shell knowing an agent exists.
 class AiController extends ChangeNotifier {
-  AiController({required this.workspace, required this.settings, this.host})
-    : _chats = AssistantChats.read(settings) {
-    _activeChatId = AssistantChats.activeId(settings, _chats);
+  AiController({required this.workspace, required this.assistant, this.host})
+    : _chats = assistant.loadChats() {
+    _activeChatId = assistant.activeChatId(_chats);
   }
 
   final Workspace workspace;
-  final SettingsStore settings;
+  final AssistantSettings assistant;
   final PluginHost? host;
 
   final List<AssistantChat> _chats;
@@ -56,9 +56,9 @@ class AiController extends ChangeNotifier {
 
   bool get isConfigured => _provider() != null;
 
-  List<AssistantProfile> get profiles => AssistantProfiles.read(settings);
+  List<AssistantProfile> get profiles => assistant.loadProfiles();
 
-  AssistantProfile get activeProfile => AssistantProfiles.activeOf(settings);
+  AssistantProfile get activeProfile => assistant.activeProfile;
 
   String get model => activeProfile.model;
 
@@ -66,12 +66,11 @@ class AiController extends ChangeNotifier {
 
   String get apiKey => activeProfile.apiKey;
 
-  String get apiKeyRef =>
-      settings.getString(SettingsKeys.aiApiKeyRef, fallback: 'OPENAI_API_KEY');
+  String get apiKeyRef => assistant.apiKeyRef;
 
   void setDraft(String value) {
     if (value == _chat.draft) return;
-    _chat.draft = value;
+    _patchChat((chat) => chat.copyWith(draft: value));
     notifyListeners();
   }
 
@@ -89,7 +88,7 @@ class AiController extends ChangeNotifier {
 
   void setAutoApprove(bool value) {
     if (value == autoApprove) return;
-    settings.set(SettingsKeys.aiAutoApprove, value);
+    assistant.setAutoApprove(value);
     notifyListeners();
   }
 
@@ -102,7 +101,7 @@ class AiController extends ChangeNotifier {
   void setApiKeyRef(String value) {
     final next = value.trim();
     if (next.isEmpty || next == apiKeyRef) return;
-    settings.set(SettingsKeys.aiApiKeyRef, next);
+    assistant.setApiKeyRef(next);
     notifyListeners();
   }
 
@@ -137,14 +136,13 @@ class AiController extends ChangeNotifier {
     _persist(all, activeId: nextId);
   }
 
-  bool get autoApprove => settings.getBool(SettingsKeys.aiAutoApprove);
+  bool get autoApprove => assistant.autoApprove;
 
   void clear() {
     _active?.cancel();
     _settlePending(false);
     conversation.clear();
-    _chat.title = '';
-    _chat.usage = null;
+    _patchChat((chat) => chat.copyWith(title: '', usage: null));
     _error = null;
     _persistChats();
     _notify();
@@ -187,9 +185,7 @@ class AiController extends ChangeNotifier {
     _settlePending(false);
     if (_chats.length <= 1) {
       conversation.clear();
-      _chat.title = '';
-      _chat.usage = null;
-      _chat.draft = '';
+      _patchChat((chat) => chat.copyWith(title: '', usage: null, draft: ''));
       _error = null;
       _persistChats();
       _notify();
@@ -244,11 +240,16 @@ class AiController extends ChangeNotifier {
       return;
     }
 
-    _chat.draft = '';
-    if (_chat.title.trim().isEmpty) {
-      _chat.title = titleFromUserMessage(message);
-    }
-    _chat.updatedAt = DateTime.now();
+    _patchChat((chat) {
+      final titled = chat.title.trim().isEmpty
+          ? titleFromUserMessage(message)
+          : chat.title;
+      return chat.copyWith(
+        draft: '',
+        title: titled,
+        updatedAt: DateTime.now(),
+      );
+    });
     _busy = true;
     _error = null;
     notifyListeners();
@@ -280,7 +281,7 @@ class AiController extends ChangeNotifier {
       askApproval: _askApproval,
       onDelta: (_) => notifyListeners(),
       onUsage: (usage) {
-        _chat.usage = usage;
+        _patchChat((chat) => chat.copyWith(usage: usage));
         notifyListeners();
       },
     );
@@ -369,17 +370,7 @@ class AiController extends ChangeNotifier {
   }
 
   void _persist(List<AssistantProfile> all, {required String activeId}) {
-    settings.set(SettingsKeys.aiProfiles, [
-      for (final profile in all) profile.toJson(),
-    ]);
-    settings.set(SettingsKeys.aiActiveProfile, activeId);
-    final current = all.firstWhere(
-      (profile) => profile.id == activeId,
-      orElse: () => all.first,
-    );
-    settings.set(SettingsKeys.aiModel, current.model);
-    settings.set(SettingsKeys.aiBaseUrl, current.baseUrl);
-    settings.set(SettingsKeys.aiApiKey, current.apiKey);
+    assistant.saveProfiles(all, activeId: activeId);
     notifyListeners();
   }
 
@@ -391,12 +382,21 @@ class AiController extends ChangeNotifier {
 
   @visibleForTesting
   void debugSetUsage(LlmUsage? usage) {
-    _chat.usage = usage;
+    _patchChat((chat) => chat.copyWith(usage: usage));
     notifyListeners();
   }
 
+  void _patchChat(AssistantChat Function(AssistantChat chat) update) {
+    final current = _chat;
+    final next = update(current);
+    if (identical(next, current)) return;
+    final index = _chats.indexWhere((chat) => chat.id == current.id);
+    if (index < 0) return;
+    _chats[index] = next;
+  }
+
   void _persistChats() {
-    while (_chats.length > AssistantChats.cap) {
+    while (_chats.length > AssistantSettings.chatCap) {
       AssistantChat? oldest;
       for (final chat in _chats) {
         if (chat.id == _activeChatId) continue;
@@ -407,9 +407,6 @@ class AiController extends ChangeNotifier {
       if (oldest == null) break;
       _chats.remove(oldest);
     }
-    settings.set(SettingsKeys.aiChats, [
-      for (final chat in _chats) chat.toJson(),
-    ]);
-    settings.set(SettingsKeys.aiActiveChat, _activeChatId);
+    assistant.saveChats(_chats, activeId: _activeChatId);
   }
 }

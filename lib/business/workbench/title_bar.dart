@@ -7,7 +7,6 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../services/document_tab.dart';
 import '../../services/workspace.dart';
-import '../../storage/settings.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 import 'shell_widgets.dart';
@@ -162,7 +161,7 @@ class _FileMenu extends StatelessWidget {
     final tokens = context.tokens;
     final l10n = context.l10n;
     final tab = workspace.active;
-    final recent = workspace.settings.getStringList(SettingsKeys.recentFiles);
+    final recent = workspace.recentFiles;
     return PopupMenuButton<String>(
       tooltip: l10n.more_file_actions,
       padding: EdgeInsets.zero,

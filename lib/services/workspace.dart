@@ -5,12 +5,15 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_dwg/fancad_dwg.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/foundation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:path/path.dart' as p;
 
 import '../business/workbench/command_line_model.dart';
 import '../business/workbench/interactive_input.dart';
-import '../storage/settings.dart';
+import '../storage/drawing_settings.dart';
 import 'document_tab.dart';
+
+part 'workspace.freezed.dart';
 
 /// A request for the user to approve a set of pending changes.
 ///
@@ -45,13 +48,13 @@ class ApprovalRequest {
 }
 
 /// A toast-style notification.
-@immutable
-class Notice {
-  const Notice(this.message, {this.isError = false, required this.at});
-
-  final String message;
-  final bool isError;
-  final DateTime at;
+@freezed
+abstract class Notice with _$Notice {
+  const factory Notice(
+    String message, {
+    @Default(false) bool isError,
+    required DateTime at,
+  }) = _Notice;
 }
 
 /// The application state: open documents, the command registry, and the wiring
@@ -65,27 +68,26 @@ class Workspace extends ChangeNotifier implements CommandServices {
   Workspace({
     required this.commands,
     required this.importer,
-    required this.settings,
+    required this.drawing,
     CommandLineController? commandLine,
   }) : commandLine = commandLine ?? CommandLineController() {
     snapEngine = SnapEngine(
-      enabled: settings.getBool(SettingsKeys.snapEnabled, fallback: true),
+      enabled: drawing.snapEnabled,
       modes: _restoreSnapModes(),
       tracking: TrackingSettings(
-        ortho: settings.getBool(SettingsKeys.orthoMode),
-        polar: settings.getBool(SettingsKeys.polarMode, fallback: true),
-        polarIncrement: settings.getDouble(
-          SettingsKeys.polarIncrement,
-          fallback: 0.7853981633974483,
-        ),
+        ortho: drawing.ortho,
+        polar: drawing.polar,
+        polarIncrement: drawing.polarIncrement(),
       ),
     );
   }
 
   final CommandRegistry commands;
   final DrawingImporter importer;
-  final SettingsStore settings;
+  final DrawingSettings drawing;
   final CommandLineController commandLine;
+
+  List<String> get recentFiles => drawing.recentFiles;
 
   /// Snapping is application-wide rather than per-tab, because the toggles live
   /// in the status bar and users expect them to stay put when switching tabs.
@@ -197,7 +199,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
         ),
       );
       tab.viewport.zoomToExtents(result.document);
-      settings.pushRecent(SettingsKeys.recentFiles, stored);
+      drawing.pushRecent(stored);
       commandLine.writeSuccess(
         'Opened ${result.entityCount} entities in '
         '${result.totalTime.inMilliseconds} ms'
@@ -245,7 +247,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
       final outcome = await importer.save(target, tab.document);
       final written = _fileIdentity(outcome.path);
       tab.markSaved(written);
-      settings.pushRecent(SettingsKeys.recentFiles, written);
+      drawing.pushRecent(written);
       if (outcome.usedFallback && outcome.plan.reason.isNotEmpty) {
         notify(outcome.plan.reason);
       }
@@ -260,7 +262,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   DocumentTab _adopt(DocumentTab tab) {
     _tabs.add(tab);
     _activeIndex = _tabs.length - 1;
-    tab.setShowGrid(settings.getBool(SettingsKeys.showGrid, fallback: true));
+    tab.setShowGrid(drawing.showGrid);
     tab.addListener(notifyListeners);
     notifyListeners();
     return tab;
@@ -277,33 +279,33 @@ class Workspace extends ChangeNotifier implements CommandServices {
   /// Drops the recent-files list. Missing paths otherwise stay in the File
   /// menu and on the empty workspace until the user restarts.
   void clearRecentFiles() {
-    settings.set(SettingsKeys.recentFiles, <String>[]);
+    drawing.setRecentFiles(const []);
     notifyListeners();
   }
 
   /// Drops recent paths whose files are gone, so the File menu and empty
   /// workspace stop offering drawings that cannot be opened.
   int pruneMissingRecentFiles() {
-    final recent = settings.getStringList(SettingsKeys.recentFiles);
+    final recent = drawing.recentFiles;
     final kept = [
       for (final path in recent)
         if (File(path).existsSync()) path,
     ];
     if (kept.length == recent.length) return 0;
-    settings.set(SettingsKeys.recentFiles, kept);
+    drawing.setRecentFiles(kept);
     notifyListeners();
     return recent.length - kept.length;
   }
 
   void _dropRecent(String path) {
     final identity = _fileIdentity(path);
-    final recent = settings.getStringList(SettingsKeys.recentFiles);
+    final recent = drawing.recentFiles;
     final kept = [
       for (final item in recent)
         if (_fileIdentity(item) != identity) item,
     ];
     if (kept.length == recent.length) return;
-    settings.set(SettingsKeys.recentFiles, kept);
+    drawing.setRecentFiles(kept);
     notifyListeners();
   }
 
@@ -556,7 +558,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   // -------------------------------------------------------------------------
 
   Set<SnapMode> _restoreSnapModes() {
-    final saved = settings.getStringList(SettingsKeys.snapModes);
+    final saved = drawing.snapModes;
     if (saved.isEmpty) return {...SnapMode.defaults};
     return {for (final name in saved) ?SnapMode.parse(name)};
   }
@@ -574,38 +576,38 @@ class Workspace extends ChangeNotifier implements CommandServices {
   }
 
   void _persistSnapModes() {
-    settings.set(SettingsKeys.snapModes, [
+    drawing.setSnapModes([
       for (final each in snapEngine.modes) each.name,
     ]);
   }
 
   void setSnapEnabled(bool value) {
     snapEngine.enabled = value;
-    settings.set(SettingsKeys.snapEnabled, value);
+    drawing.setSnapEnabled(value);
     notifyListeners();
   }
 
   void setOrtho(bool value) {
     snapEngine.tracking = snapEngine.tracking.copyWith(ortho: value);
-    settings.set(SettingsKeys.orthoMode, value);
+    drawing.setOrtho(value);
     notifyListeners();
   }
 
   void setPolar(bool value) {
     snapEngine.tracking = snapEngine.tracking.copyWith(polar: value);
-    settings.set(SettingsKeys.polarMode, value);
+    drawing.setPolar(value);
     notifyListeners();
   }
 
   void setShowGrid(bool value) {
-    settings.set(SettingsKeys.showGrid, value);
+    drawing.setShowGrid(value);
     active?.setShowGrid(value);
     notifyListeners();
   }
 
   void setPolarIncrement(double radians) {
     snapEngine.tracking = snapEngine.tracking.copyWith(polarIncrement: radians);
-    settings.set(SettingsKeys.polarIncrement, radians);
+    drawing.setPolarIncrement(radians);
     notifyListeners();
   }
 

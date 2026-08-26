@@ -2,9 +2,9 @@ import 'package:fancad_ai/fancad_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../models/assistant_chat.dart';
+import '../../models/assistant_profile.dart';
 import '../../services/ai_controller.dart';
-import '../../storage/assistant_chat.dart';
-import '../../storage/assistant_profile.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 import '../workbench/shell_widgets.dart';
@@ -146,30 +146,33 @@ class _AiPanelState extends State<AiPanel> {
                         if (index < entries.length) {
                           final entry = entries[index];
                           final live = busy && index == entries.length - 1;
-                          if (entry.role == ChatRole.user) {
-                            return _UserBlock(
-                              text: entry.message!.text,
-                              onCopy: () => _copy(entry.message!.text),
-                            );
-                          }
-                          if (entry.role == ChatRole.reasoning) {
-                            return _ThinkingBlock(
-                              text: entry.message!.text,
-                              live: live && showWorking == false,
-                              onCopy: () => _copy(entry.message!.text),
-                            );
-                          }
-                          if (entry.role == ChatRole.assistant) {
-                            return _AssistantBlock(
-                              text: entry.message!.text,
-                              live: live && showCaret,
-                              onCopy: () => _copy(entry.message!.text),
-                            );
-                          }
-                          return _ToolCard(
-                            receipt: entry.receipt!,
-                            onCopy: () => _copy(entry.receipt!.raw),
-                          );
+                          return switch (entry) {
+                            AssistantLogMessage(:final message)
+                                when message.role == ChatRole.user =>
+                              _UserBlock(
+                                text: message.text,
+                                onCopy: () => _copy(message.text),
+                              ),
+                            AssistantLogMessage(:final message)
+                                when message.role == ChatRole.reasoning =>
+                              _ThinkingBlock(
+                                text: message.text,
+                                live: live && showWorking == false,
+                                onCopy: () => _copy(message.text),
+                              ),
+                            AssistantLogMessage(:final message)
+                                when message.role == ChatRole.assistant =>
+                              _AssistantBlock(
+                                text: message.text,
+                                live: live && showCaret,
+                                onCopy: () => _copy(message.text),
+                              ),
+                            AssistantLogReceipt(:final receipt) => _ToolCard(
+                              receipt: receipt,
+                              onCopy: () => _copy(receipt.raw),
+                            ),
+                            AssistantLogMessage() => const SizedBox.shrink(),
+                          };
                         }
                         if (showWorking && index == entries.length) {
                           return _WorkingLine(label: context.l10n.working);

@@ -14,7 +14,7 @@ void main() {
     final created = Workspace(
       commands: CommandRegistry(),
       importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      settings: settings ?? SettingsStore.inMemory(),
+      drawing: DrawingSettings(settings ?? SettingsStore.inMemory()),
     );
     addTearDown(created.dispose);
     return created;
@@ -26,7 +26,7 @@ void main() {
     store.set(SettingsKeys.aiApiKey, '');
     final created = AiController(
       workspace: workspace(settings: store),
-      settings: store,
+      assistant: AssistantSettings(store),
     );
     addTearDown(created.dispose);
     return created;
@@ -48,8 +48,8 @@ void main() {
     expect(ai.baseUrl, 'http://127.0.0.1:9/v1');
     expect(ai.autoApprove, isTrue);
     expect(ai.apiKey, 'sk-test');
-    expect(ai.settings.getString(SettingsKeys.aiModel), 'deepseek-chat');
-    expect(ai.settings.getString(SettingsKeys.aiApiKey), 'sk-test');
+    expect(ai.assistant.activeProfile.model, 'deepseek-chat');
+    expect(ai.assistant.activeProfile.apiKey, 'sk-test');
     expect(ticks, 5);
   });
 
@@ -70,7 +70,7 @@ void main() {
     expect(ai.model, 'deepseek-chat');
     expect(ai.baseUrl, 'https://api.deepseek.com/v1');
     expect(ai.apiKey, 'sk-one');
-    expect(ai.settings.getString(SettingsKeys.aiModel), 'deepseek-chat');
+    expect(ai.assistant.activeProfile.model, 'deepseek-chat');
 
     ai.debugSetBusy(true);
     ai.selectProfile(ai.profiles.last.id);
@@ -96,7 +96,7 @@ void main() {
     );
     ai.selectSession(leftover.id);
     expect(ai.messages.single.text, 'draw a turtle');
-    expect(ai.settings.getString(SettingsKeys.aiActiveChat), leftover.id);
+    expect(ai.assistant.activeChatId(ai.chats), leftover.id);
   });
 
   test('a leftover stored chat is the active thread', () {

@@ -64,9 +64,9 @@ Future<void> showSettingsDialog(
 
 /// The application-wide settings surface.
 ///
-/// Writes go straight to [SettingsStore] so a theme or language change is
-/// visible before the dialog closes. There is no Save: the store already
-/// debounces to disk, and a discarded draft would fight that.
+/// Writes go through the shell and assistant views so a theme or language
+/// change is visible before the dialog closes. There is no Save: the store
+/// already debounces to disk, and a discarded draft would fight that.
 class SettingsDialog extends ConsumerStatefulWidget {
   const SettingsDialog({super.key, required this.tab});
 
