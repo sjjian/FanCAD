@@ -10,13 +10,15 @@ workspace:
   - pkg/fancad_core
   - pkg/fancad_dwg
   - pkg/fancad_render
-  - pkg/fancad_ui
   - pkg/fancad_plugin_host
   - pkg/fancad_ai
 
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
 
   fancad_core:
     path: pkg/fancad_core
@@ -24,8 +26,6 @@ dependencies:
     path: pkg/fancad_dwg
   fancad_render:
     path: pkg/fancad_render
-  fancad_ui:
-    path: pkg/fancad_ui
   fancad_plugin_host:
     path: pkg/fancad_plugin_host
   fancad_ai:
@@ -33,10 +33,12 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^2.6.1
+  flutter_markdown: ^0.7.7+1
   window_manager: ^0.4.3
   path: ^1.9.0
   path_provider: ^2.1.5
   file_selector: ^1.0.3
+  meta: ^1.16.0
 
 dev_dependencies:
   flutter_test:
@@ -52,5 +54,6 @@ hooks:
 
 flutter:
   uses-material-design: true
+  generate: true
   assets:
     - extensions/

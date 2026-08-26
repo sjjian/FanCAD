@@ -1,12 +1,16 @@
 import 'dart:io';
 
 import 'package:fancad_dwg/fancad_dwg.dart';
-import 'package:fancad_ui/fancad_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
+
+import 'business/app.dart';
+import 'services/plugin_bootstrap.dart';
+import 'services/providers.dart';
+import 'storage/settings.dart';
 
 /// Application entry point.
 ///
@@ -105,52 +109,4 @@ Future<void> _configureWindow() async {
     await windowManager.show();
     await windowManager.focus();
   });
-}
-
-class FanCadApp extends ConsumerStatefulWidget {
-  const FanCadApp({super.key, this.initialFiles = const []});
-
-  final List<String> initialFiles;
-
-  @override
-  ConsumerState<FanCadApp> createState() => _FanCadAppState();
-}
-
-class _FanCadAppState extends ConsumerState<FanCadApp> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _openInitialFiles());
-  }
-
-  Future<void> _openInitialFiles() async {
-    final workspace = ref.read(workspaceProvider);
-    for (final path in widget.initialFiles) {
-      await workspace.openFile(path);
-    }
-    if (workspace.tabs.isEmpty) {
-      // Land on a usable drawing rather than on an empty shell, but only when
-      // nothing was requested on the command line.
-      workspace.newDocument(title: 'Drawing1');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final brightness = ref.watch(themeBrightnessProvider);
-    final language = ref.watch(languageProvider);
-    return MaterialApp(
-      title: 'FanCAD',
-      debugShowCheckedModeBanner: false,
-      theme: FanCadTheme.light(),
-      darkTheme: FanCadTheme.dark(),
-      themeMode: brightness == Brightness.dark
-          ? ThemeMode.dark
-          : ThemeMode.light,
-      locale: Locale(language),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: const Workbench(),
-    );
-  }
 }

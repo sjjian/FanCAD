@@ -55,6 +55,16 @@ class PluginHandle {
   };
 }
 
+/// Builds the handler that serves plugin-to-host `fancad.*` calls.
+///
+/// The application supplies this so the product-named bridge lives outside
+/// this package. Tests that omit it get [HostBridge].
+typedef HostCallFactory =
+    HostCallHandler Function({
+      required PluginHostDelegate delegate,
+      required PluginManifest? Function(String pluginId) manifests,
+    });
+
 /// Loads plugins, registers what they contribute, and routes calls to them.
 ///
 /// The invariant worth stating: a plugin's commands appear in the registry as
@@ -71,13 +81,16 @@ class PluginHost {
     this.hostVersion = '0.1.0',
     this.activationTimeout = const Duration(seconds: 10),
     this.invokeTimeout = const Duration(seconds: 30),
-  }) : contributions = contributions ?? ContributionRegistry();
+    HostCallFactory? createHostCall,
+  }) : contributions = contributions ?? ContributionRegistry(),
+       createHostCall = createHostCall ?? _defaultHostCall;
 
   final CommandRegistry registry;
   final PluginHostDelegate delegate;
   final PluginTransport transport;
   final ContributionRegistry contributions;
   final String hostVersion;
+  final HostCallFactory createHostCall;
 
   /// How long a plugin gets to evaluate and activate.
   final Duration activationTimeout;
@@ -90,12 +103,19 @@ class PluginHost {
   final StreamController<PluginHost> _changes =
       StreamController<PluginHost>.broadcast(sync: true);
 
-  late final HostBridge _bridge = HostBridge(
+  late final HostCallHandler _hostCall = createHostCall(
     delegate: delegate,
     manifests: (id) => _plugins[id]?.manifest,
   );
 
   bool _started = false;
+
+  static HostCallHandler _defaultHostCall({
+    required PluginHostDelegate delegate,
+    required PluginManifest? Function(String pluginId) manifests,
+  }) {
+    return HostBridge(delegate: delegate, manifests: manifests).call;
+  }
 
   /// Fires when a plugin's state changes.
   Stream<PluginHost> get changes => _changes.stream;
@@ -106,7 +126,7 @@ class PluginHost {
   Future<void> start() async {
     if (_started) return;
     _started = true;
-    await transport.start(_bridge.call);
+    await transport.start(_hostCall);
     // A dead worker is not fatal: built-in commands keep working, and the
     // extensions panel shows what stopped.
     transport.died.listen(_onWorkerDied);
@@ -181,11 +201,8 @@ class PluginHost {
               extensionId: manifest.id,
               // Activation is lazy and happens here: the first invocation of a
               // contributed command is what brings its plugin to life.
-              handler: (context) => _runContributedCommand(
-                manifest.id,
-                command.id,
-                context,
-              ),
+              handler: (context) =>
+                  _runContributedCommand(manifest.id, command.id, context),
             ),
         ]),
       );
@@ -224,10 +241,7 @@ class PluginHost {
       final source = await _readEntryPoint(handle.manifest);
       final result = await transport.request(
         WorkerMethod.load,
-        params: {
-          'manifest': handle.manifest.toJson(),
-          'source': source,
-        },
+        params: {'manifest': handle.manifest.toJson(), 'source': source},
         timeout: activationTimeout,
       );
       _reconcile(handle, result);
@@ -242,7 +256,8 @@ class PluginHost {
       // keystroke, so a timeout costs it its place until the user re-enables it.
       if (error.code == RpcErrorCode.timeout) {
         handle.state = PluginState.disabled;
-        handle.error = 'Disabled after failing to activate within '
+        handle.error =
+            'Disabled after failing to activate within '
             '${activationTimeout.inSeconds}s: ${error.message}';
       }
       _notify();
@@ -355,7 +370,9 @@ class PluginHost {
         // The handler is still running and cannot be stopped. Telling it to
         // cancel unblocks it if it is merely waiting on us.
         transport.notify(WorkerMethod.cancel, {'pluginId': pluginId});
-        handle.log.add('$commandId timed out after ${invokeTimeout.inSeconds}s');
+        handle.log.add(
+          '$commandId timed out after ${invokeTimeout.inSeconds}s',
+        );
       }
       handle.log.add('$commandId failed: ${error.message}');
       _notify();
@@ -539,13 +556,14 @@ class PluginHost {
     await File(p.join(directory.path, PluginManifest.fileName)).writeAsString(
       const JsonEncoder.withIndent('  ').convert(manifest.toJson()),
     );
-    await File(p.join(directory.path, manifest.entryPoint)).writeAsString(
-      source ?? _defaultSource(effectiveCommands.first.id),
-    );
+    await File(
+      p.join(directory.path, manifest.entryPoint),
+    ).writeAsString(source ?? _defaultSource(effectiveCommands.first.id));
     return manifest;
   }
 
-  static String _defaultSource(String commandId) => '''
+  static String _defaultSource(String commandId) =>
+      '''
 fancad.commands.register("$commandId", async (args) => {
   const summary = await fancad.document.summary();
   await fancad.window.showMessage(
