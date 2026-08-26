@@ -1,5 +1,7 @@
 # FanCAD
 
+[English](README.md) | [中文](README.zh.md)
+
 An AI-native, plugin-everything 2D CAD application for the desktop, written in
 Flutter.
 
@@ -27,31 +29,133 @@ was written by the model thirty seconds ago and hot-loaded from disk.
 Early. See `pkg/` for what exists; the roadmap below reflects the order things
 are being built in.
 
-## Repository layout
+## Architecture
 
 This is a Dart workspace: one Flutter application at the root, with
 product-agnostic libraries under `pkg/`. Product orchestration lives in
-`lib/{storage,services,business}`. Dependency direction is
-`business → services → storage → pkg/*`. `pkg` must not import
-`package:fancad/...`.
+`lib/{models,storage,services,business}`. Dependency direction is
+`business → services → (models + storage views) → SettingsStore → pkg/*`.
+`pkg` must not import `package:fancad/...`.
+
+```mermaid
+flowchart TB
+  subgraph ui [lib/business]
+    workbench[Workbench panels theme l10n]
+    commands[CommandDescriptors]
+  end
+
+  subgraph services [lib/services]
+    providers["@Riverpod providers"]
+    workspace[Workspace]
+    ai[AiController]
+    plugins[PluginDelegate / PluginHost]
+    shell[Sidebar CommandPane AssistantPane Theme Language]
+  end
+
+  subgraph models [lib/models Freezed]
+    chat[AssistantChat]
+    profile[AssistantProfile]
+  end
+
+  subgraph storage [lib/storage]
+    views[DrawingSettings AssistantSettings ShellSettings PluginSettings]
+    app[AppSettings]
+    store[SettingsStore]
+    json["settings.json"]
+  end
+
+  subgraph pkg [pkg]
+    core[fancad_core]
+    dwg[fancad_dwg]
+    render[fancad_render]
+    host[fancad_plugin_host]
+    agent[fancad_ai]
+  end
+
+  workbench --> providers
+  workbench -->|"Workspace.run"| workspace
+  commands --> workspace
+  providers --> workspace
+  providers --> ai
+  providers --> plugins
+  providers --> shell
+  workspace --> views
+  ai --> views
+  ai --> chat
+  ai --> profile
+  plugins --> views
+  shell --> views
+  views --> store
+  app --> views
+  store --> json
+  workspace --> core
+  workspace --> dwg
+  workspace --> render
+  plugins --> host
+  ai --> agent
+  commands --> core
+```
 
 | Layer | What lives there |
 | --- | --- |
-| `lib/storage` | Disk and key-value I/O: settings, recent files, assistant sessions. No command orchestration. |
-| `lib/services` | Composition: open documents, plugin host wiring, the AI loop, Riverpod. No widgets. |
-| `lib/business` | Commands, workbench, panels, theme, l10n, bundled assistant skills. Pages talk to `Workspace.run` and existing providers, not to `settings.json` or `FcbCache`. |
+| `lib/models` | Product shapes and JSON, defined with Freezed. No disk I/O. |
+| `lib/storage` | `SettingsStore` plus composed views over the same bag. No command orchestration. |
+| `lib/services` | Open documents, plugin host wiring, the AI loop. Riverpod is annotated (`@Riverpod`) and generated. Services take views, not the raw store. No widgets. |
+| `lib/business` | Commands, workbench, panels, theme, l10n, bundled assistant skills. Pages talk to `Workspace.run` and existing providers, not to `storage` or `FcbCache`. |
 | `pkg/fancad_core` | Geometry, the document model, the transaction system, the command registry. Pure Dart. |
 | `pkg/fancad_dwg` | DWG and DXF interoperability: LibreDWG shim, FCB, the disk cache. |
 | `pkg/fancad_render` | The viewport: tessellation, culling, the canvas widget. |
 | `pkg/fancad_plugin_host` | The extension runtime: manifests, sandboxed JavaScript, transport. |
 | `pkg/fancad_ai` | Provider abstraction, the agent loop, skill registry, change approval. |
 
+### Preferences
+
+One `settings.json` bag. `main.dart` opens `SettingsStore`; `providers.dart`
+splits it into `AppSettings`. Each service asks for the view it needs.
+Drawings are not stored here: DWG/DXF go through `fancad_dwg`, and the import
+cache lives in `cache/`.
+
+```mermaid
+flowchart LR
+  json["settings.json"] --> store[SettingsStore]
+  store --> app[AppSettings]
+  app --> drawing[DrawingSettings]
+  app --> assistant[AssistantSettings]
+  app --> shellView[ShellSettings]
+  app --> pluginView[PluginSettings]
+  drawing --> workspace[Workspace]
+  assistant --> ai[AiController]
+  shellView --> shell[Sidebar / panes / theme / language]
+  pluginView --> delegate[WorkspacePluginDelegate]
+```
+
+### Commands
+
 CAD verbs stay `CommandDescriptor`s in `lib/business/commands/`. They are not
-rewritten as `*Services`; `Workspace.run` / `runHeadless` is the only way
-the UI, plugins and the model invoke them.
+rewritten as `*Services`. The UI, plugins and the model all go through
+`Workspace.run` / `runHeadless`.
+
+```mermaid
+flowchart LR
+  ui[toolbar / command line / panel]
+  plugin[plugin]
+  model[assistant]
+  ws[Workspace.run / runHeadless]
+  reg[CommandRegistry]
+  core[fancad_core document + undo]
+
+  ui --> ws
+  plugin --> ws
+  model --> ws
+  ws --> reg
+  reg --> core
+```
 
 Nothing above `fancad_dwg` knows that LibreDWG exists; everything goes
 through the `DrawingBackend` interface.
+
+Freezed models and annotated Riverpod providers are generated. After editing
+`@freezed` or `@Riverpod` sources, run `dart run build_runner build`.
 
 ## Building
 
@@ -67,6 +171,12 @@ dart test pkg/fancad_core       # pure Dart
 dart test pkg/fancad_dwg
 dart test pkg/fancad_ai
 flutter test                    # widget and render tests
+```
+
+Codegen, after changing a Freezed model or a `@Riverpod` provider:
+
+```bash
+dart run build_runner build
 ```
 
 ### DWG support is compiled from the LibreDWG submodule
