@@ -51,6 +51,10 @@ void main() {
       ),
     );
 
+    expect(
+      tester.widget(find.byKey(Key('assistant-session-${ai.activeChat.id}'))),
+      isA<ShellTab>(),
+    );
     final tab = tester.getRect(
       find.byKey(Key('assistant-session-${ai.activeChat.id}')),
     );

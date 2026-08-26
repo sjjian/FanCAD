@@ -78,6 +78,12 @@ void main() {
       ),
     );
 
+    expect(
+      tester.widget(
+        find.byKey(Key('document-tab-${workspace.tabs.single.session.id}')),
+      ),
+      isA<ShellTab>(),
+    );
     final tab = tester.getRect(
       find.byKey(Key('document-tab-${workspace.tabs.single.session.id}')),
     );

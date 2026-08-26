@@ -84,7 +84,7 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
         ),
         Expanded(
           child: host == null
-              ? _PanelMessage(context.l10n.extensions_unavailable)
+              ? ShellEmpty(message: context.l10n.extensions_unavailable)
               : StreamBuilder<PluginHost>(
                   stream: host.changes,
                   builder: (context, _) => Column(
@@ -102,8 +102,8 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
   Widget _buildList(BuildContext context, PluginHost host) {
     final plugins = host.plugins;
     if (plugins.isEmpty) {
-      return _PanelMessage(
-        context.l10n.no_extensions_installed,
+      return ShellEmpty(
+        message: context.l10n.no_extensions_installed,
         actionLabel: context.l10n.create_extension,
         onAction: () => widget.workspace.run('plugins.scaffold'),
       );
@@ -185,7 +185,16 @@ class _ExtensionTile extends StatelessWidget {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: _StateDot(state: handle.state, tokens: tokens),
+                    child: ShellDot(
+                      color: switch (handle.state) {
+                        PluginState.active => tokens.success,
+                        PluginState.activating => tokens.accent,
+                        PluginState.failed => tokens.danger,
+                        PluginState.disabled => tokens.textMuted,
+                        PluginState.installed => tokens.textMuted,
+                      },
+                      tooltip: _stateLabel(context.l10n, handle.state),
+                    ),
                   ),
                   const SizedBox(width: FanCadTokens.space2),
                   Expanded(
@@ -382,68 +391,6 @@ String _stateLabel(AppLocalizations l10n, PluginState state) => switch (state) {
   PluginState.disabled => l10n.plugin_disabled,
   PluginState.installed => l10n.plugin_installed,
 };
-
-class _StateDot extends StatelessWidget {
-  const _StateDot({required this.state, required this.tokens});
-
-  final PluginState state;
-  final FanCadTokens tokens;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (state) {
-      PluginState.active => tokens.success,
-      PluginState.activating => tokens.accent,
-      PluginState.failed => tokens.danger,
-      PluginState.disabled => tokens.textMuted,
-      PluginState.installed => tokens.textMuted,
-    };
-    return Tooltip(
-      message: _stateLabel(context.l10n, state),
-      child: Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      ),
-    );
-  }
-}
-
-class _PanelMessage extends StatelessWidget {
-  const _PanelMessage(this.message, {this.actionLabel, this.onAction});
-
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.all(FanCadTokens.space4),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(message, style: tokens.labelStyle, textAlign: TextAlign.center),
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: FanCadTokens.space3),
-            ShellRow(
-              onTap: onAction,
-              height: FanCadTokens.rowHeight,
-              padding: const EdgeInsets.symmetric(
-                horizontal: FanCadTokens.space2,
-              ),
-              child: Text(
-                actionLabel!,
-                style: tokens.bodyStyle.copyWith(color: tokens.accent),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
 class _ExtensionFooter extends StatelessWidget {
   const _ExtensionFooter({required this.host});

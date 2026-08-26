@@ -914,7 +914,6 @@ class _NoticeToastState extends State<_NoticeToast> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final notice = widget.notice;
     return MouseRegion(
       onEnter: (_) {
@@ -925,58 +924,13 @@ class _NoticeToastState extends State<_NoticeToast> {
         setState(() => _hovered = false);
         _arm();
       },
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Material(
-          color: tokens.surfaceOverlay,
-          elevation: 8,
-          shadowColor: Colors.black.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(FanCadTokens.radius),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: FanCadTokens.space3,
-              vertical: FanCadTokens.space2,
-            ),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(FanCadTokens.radius),
-              border: Border.all(
-                color: notice.isError ? tokens.danger : tokens.borderStrong,
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  notice.isError
-                      ? Icons.error_outline
-                      : Icons.check_circle_outline,
-                  size: FanCadTokens.iconMedium,
-                  color: notice.isError ? tokens.danger : tokens.success,
-                ),
-                const SizedBox(width: FanCadTokens.space2),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _copy,
-                    child: Tooltip(
-                      message: context.l10n.copy_and_dismiss,
-                      waitDuration: const Duration(milliseconds: 500),
-                      child: Text(notice.message, style: tokens.bodyStyle),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: FanCadTokens.space2),
-                ShellIconButton(
-                  icon: Icons.close,
-                  size: 18,
-                  iconSize: FanCadTokens.iconSmall,
-                  tooltip: context.l10n.dismiss,
-                  onPressed: () =>
-                      widget.workspace.dismissNotice(notice),
-                ),
-              ],
-            ),
-          ),
-        ),
+      child: ShellToast(
+        message: notice.message,
+        tone: notice.isError ? ShellTone.danger : ShellTone.success,
+        onTap: _copy,
+        tapTooltip: context.l10n.copy_and_dismiss,
+        onDismiss: () => widget.workspace.dismissNotice(notice),
+        dismissTooltip: context.l10n.dismiss,
       ),
     );
   }

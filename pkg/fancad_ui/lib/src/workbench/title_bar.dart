@@ -170,10 +170,7 @@ class _FileMenu extends StatelessWidget {
       padding: EdgeInsets.zero,
       offset: const Offset(0, FanCadTokens.titleBarHeight - 8),
       color: tokens.surfaceOverlay,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(FanCadTokens.radius),
-        side: BorderSide(color: tokens.borderStrong),
-      ),
+      shape: shellOverlayShape(tokens),
       onSelected: (value) {
         if (value.startsWith('recent:')) {
           workspace.run(
@@ -410,10 +407,7 @@ class _OpenDrawingsMenu extends StatelessWidget {
       padding: EdgeInsets.zero,
       offset: const Offset(0, FanCadTokens.tabBarHeight - 6),
       color: tokens.surfaceOverlay,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(FanCadTokens.radius),
-        side: BorderSide(color: tokens.borderStrong),
-      ),
+      shape: shellOverlayShape(tokens),
       onSelected: workspace.activate,
       itemBuilder: (context) => [
         for (var i = 0; i < tabs.length; i++)
@@ -486,101 +480,78 @@ class _TabState extends State<_Tab> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final tab = widget.tab;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        onTertiaryTapUp: (_) => widget.onClose(),
-        onSecondaryTapDown: (details) {
-          widget.onTap();
-          _openMenu(details.globalPosition);
-        },
-        child: Container(
-          key: Key('document-tab-${tab.session.id}'),
-          padding: const EdgeInsets.only(
-            left: FanCadTokens.space3,
-            right: FanCadTokens.space1,
-          ),
-          decoration: BoxDecoration(
-            color: widget.isActive
-                ? tokens.selection
-                : _hovered
-                ? tokens.hover
-                : Colors.transparent,
-            border: Border(
-              right: BorderSide(color: tokens.border),
-              top: BorderSide(
-                color: widget.isActive ? tokens.accent : Colors.transparent,
-                width: 2,
+    return ShellTab(
+      key: Key('document-tab-${tab.session.id}'),
+      selected: widget.isActive,
+      onTap: widget.onTap,
+      onClose: widget.onClose,
+      onSecondaryTapDown: (position) {
+        widget.onTap();
+        _openMenu(position);
+      },
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+      child: Row(
+        children: [
+          if (tab.diagnostics.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: FanCadTokens.space1),
+              child: GestureDetector(
+                onTap: () => _showImportWarnings(),
+                child: Tooltip(
+                  message: context.l10n.import_warnings_tooltip(
+                    tab.diagnostics.length,
+                  ),
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    size: FanCadTokens.iconSmall,
+                    color: tokens.warning,
+                  ),
+                ),
+              ),
+            ),
+          Tooltip(
+            message: tab.isDirty
+                ? tab.filePath == null
+                      ? context.l10n.unsaved_drawing
+                      : context.l10n.unsaved_changes_path(tab.filePath!)
+                : tab.filePath ?? context.l10n.unsaved_drawing,
+            waitDuration: const Duration(milliseconds: 500),
+            child: Text(
+              tab.title,
+              style: tokens.bodyStyle.copyWith(
+                color: widget.isActive ? tokens.text : tokens.textMuted,
               ),
             ),
           ),
-          child: Row(
-            children: [
-              if (tab.diagnostics.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(right: FanCadTokens.space1),
-                  child: GestureDetector(
-                    onTap: () => _showImportWarnings(),
-                    child: Tooltip(
-                      message: context.l10n.import_warnings_tooltip(
-                        tab.diagnostics.length,
-                      ),
-                      child: Icon(
-                        Icons.warning_amber_rounded,
-                        size: FanCadTokens.iconSmall,
-                        color: tokens.warning,
+          const SizedBox(width: FanCadTokens.space2),
+          // The unsaved dot becomes the close button on hover, which keeps
+          // the tab width from jumping as the pointer moves across it.
+          SizedBox(
+            width: 18,
+            child: _hovered || widget.isActive
+                ? ShellIconButton(
+                    icon: Icons.close,
+                    size: 18,
+                    iconSize: FanCadTokens.iconSmall,
+                    tooltip: tab.isDirty
+                        ? '${context.l10n.close_unsaved}  ${shellShortcut('W')}'
+                        : '${context.l10n.close}  ${shellShortcut('W')}',
+                    onPressed: widget.onClose,
+                  )
+                : tab.isDirty
+                ? Center(
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: tokens.textMuted,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                  ),
-                ),
-              Tooltip(
-                message: tab.isDirty
-                    ? tab.filePath == null
-                          ? context.l10n.unsaved_drawing
-                          : context.l10n.unsaved_changes_path(tab.filePath!)
-                    : tab.filePath ?? context.l10n.unsaved_drawing,
-                waitDuration: const Duration(milliseconds: 500),
-                child: Text(
-                  tab.title,
-                  style: tokens.bodyStyle.copyWith(
-                    color: widget.isActive ? tokens.text : tokens.textMuted,
-                  ),
-                ),
-              ),
-              const SizedBox(width: FanCadTokens.space2),
-              // The unsaved dot becomes the close button on hover, which keeps
-              // the tab width from jumping as the pointer moves across it.
-              SizedBox(
-                width: 18,
-                child: _hovered || widget.isActive
-                    ? ShellIconButton(
-                        icon: Icons.close,
-                        size: 18,
-                        iconSize: FanCadTokens.iconSmall,
-                        tooltip: tab.isDirty
-                            ? '${context.l10n.close_unsaved}  ${shellShortcut('W')}'
-                            : '${context.l10n.close}  ${shellShortcut('W')}',
-                        onPressed: widget.onClose,
-                      )
-                    : tab.isDirty
-                    ? Center(
-                        child: Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            color: tokens.textMuted,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
+                  )
+                : const SizedBox.shrink(),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -592,19 +563,9 @@ class _TabState extends State<_Tab> {
     final tab = widget.tab;
     final others = workspace.tabs.length > 1;
     final path = tab.filePath;
-    final chosen = await showMenu<String>(
+    final chosen = await showShellMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(
-        globalPosition.dx,
-        globalPosition.dy,
-        globalPosition.dx,
-        globalPosition.dy,
-      ),
-      color: tokens.surfaceOverlay,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(FanCadTokens.radius),
-        side: BorderSide(color: tokens.borderStrong),
-      ),
+      position: shellMenuPosition(globalPosition),
       items: [
         PopupMenuItem(
           value: 'close',

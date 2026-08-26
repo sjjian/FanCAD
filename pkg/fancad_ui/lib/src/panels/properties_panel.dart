@@ -72,9 +72,22 @@ class PropertiesPanel extends StatelessWidget {
         ),
         Expanded(
           child: entities.isEmpty
-              ? _EmptySelection(
-                  objectCount: tab.document.entityCount,
-                  onSelectAll: tab.document.entityCount == 0
+              ? ShellEmpty(
+                  message: tab.document.entityCount == 0
+                      ? context.l10n.drawing_empty_inspect
+                      : context.l10n.click_object_inspect,
+                  messageStyle: context.tokens.bodyStyle,
+                  detail: tab.document.entityCount == 0
+                      ? null
+                      : tab.document.entityCount == 1
+                      ? context.l10n.objects_in_drawing_one
+                      : context.l10n.objects_in_drawing_many(
+                          tab.document.entityCount,
+                        ),
+                  actionLabel: tab.document.entityCount == 0
+                      ? null
+                      : context.l10n.select_all,
+                  onAction: tab.document.entityCount == 0
                       ? null
                       : () => workspace.run('select.all'),
                 )
@@ -360,65 +373,6 @@ class PropertiesPanel extends StatelessWidget {
     return '$text mm';
   }
 
-  static Widget _placeholder(BuildContext context, String message) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(FanCadTokens.space4),
-      child: Text(
-        message,
-        style: context.tokens.labelStyle,
-        textAlign: TextAlign.center,
-      ),
-    ),
-  );
-}
-
-class _EmptySelection extends StatelessWidget {
-  const _EmptySelection({required this.objectCount, this.onSelectAll});
-
-  final int objectCount;
-  final VoidCallback? onSelectAll;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(FanCadTokens.space4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              objectCount == 0
-                  ? context.l10n.drawing_empty_inspect
-                  : context.l10n.click_object_inspect,
-              style: tokens.bodyStyle,
-              textAlign: TextAlign.center,
-            ),
-            if (onSelectAll != null) ...[
-              const SizedBox(height: FanCadTokens.space3),
-              Text(
-                objectCount == 1
-                    ? context.l10n.objects_in_drawing_one
-                    : context.l10n.objects_in_drawing_many(objectCount),
-                style: tokens.labelStyle,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: FanCadTokens.space2),
-              ShellRow(
-                onTap: onSelectAll,
-                height: FanCadTokens.rowHeight,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: FanCadTokens.space2,
-                ),
-                child: Text(
-                  context.l10n.select_all,
-                  style: tokens.bodyStyle.copyWith(color: tokens.accent),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+  static Widget _placeholder(BuildContext context, String message) =>
+      ShellEmpty(message: message);
 }

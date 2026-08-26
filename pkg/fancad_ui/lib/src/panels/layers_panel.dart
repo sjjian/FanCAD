@@ -44,7 +44,7 @@ class _LayersPanelState extends State<LayersPanel> {
       return Column(
         children: [
           PanelHeader(title: context.l10n.layers),
-          Expanded(child: _Empty(message: context.l10n.layers_empty_workspace)),
+          Expanded(child: ShellEmpty(message: context.l10n.layers_empty_workspace)),
         ],
       );
     }
@@ -130,7 +130,7 @@ class _LayersPanelState extends State<LayersPanel> {
         ),
         Expanded(
           child: visible.isEmpty
-              ? _Empty(
+              ? ShellEmpty(
                   message: _filter.isEmpty
                       ? context.l10n.no_layers
                       : context.l10n.no_layers_match(
@@ -273,7 +273,7 @@ class _LayerRowState extends State<_LayerRow> {
     final box = context.findRenderObject();
     if (box is! RenderBox) return;
     final origin = box.localToGlobal(Offset(box.size.width - 4, 0));
-    showMenu<String>(
+    showShellMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
         origin.dx,
@@ -422,20 +422,3 @@ class _LayerRowState extends State<_LayerRow> {
   }
 }
 
-class _Empty extends StatelessWidget {
-  const _Empty({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(FanCadTokens.space4),
-      child: Text(
-        message,
-        style: context.tokens.labelStyle,
-        textAlign: TextAlign.center,
-      ),
-    ),
-  );
-}

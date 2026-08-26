@@ -203,6 +203,10 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('layouts-panel')), findsOneWidget);
     expect(find.byKey(const Key('layout-tab-Model')), findsOneWidget);
+    expect(
+      tester.widget(find.byKey(const Key('layout-tab-Model'))),
+      isA<ShellTab>(),
+    );
     expect(find.byKey(const Key('layout-new-tab')), findsOneWidget);
     expect(
       find.descendant(

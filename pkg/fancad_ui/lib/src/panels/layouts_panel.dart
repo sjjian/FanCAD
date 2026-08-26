@@ -28,7 +28,7 @@ class LayoutsPanel extends StatelessWidget {
             actions: const [_AddLayoutButton(enabled: false)],
           ),
           Expanded(
-            child: _Empty(message: context.l10n.layouts_empty_workspace),
+            child: ShellEmpty(message: context.l10n.layouts_empty_workspace),
           ),
         ],
       );
@@ -49,7 +49,7 @@ class LayoutsPanel extends StatelessWidget {
         ),
         Expanded(
           child: layouts.isEmpty
-              ? _Empty(message: context.l10n.layouts_empty_workspace)
+              ? ShellEmpty(message: context.l10n.layouts_empty_workspace)
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(
                     vertical: FanCadTokens.space1,
@@ -110,20 +110,6 @@ class LayoutsPanel extends StatelessWidget {
   }
 }
 
-class _Empty extends StatelessWidget {
-  const _Empty({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(FanCadTokens.space4),
-      child: Text(message, style: context.tokens.labelStyle),
-    );
-  }
-}
-
 class _AddLayoutButton extends StatelessWidget {
   const _AddLayoutButton({this.onTap, this.enabled = true});
 
@@ -177,7 +163,7 @@ class _LayoutRowState extends State<_LayoutRow> {
     final box = context.findRenderObject();
     if (box is! RenderBox) return;
     final origin = box.localToGlobal(Offset(box.size.width - 4, 0));
-    showMenu<String>(
+    showShellMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
         origin.dx,
@@ -233,74 +219,59 @@ class _LayoutRowState extends State<_LayoutRow> {
                   ? l10n.viewport_one
                   : l10n.viewport_many(layout.viewports.length),
           ].join(' · ');
-    return Tooltip(
-      message: [
+    return ShellTab(
+      key: Key('layout-tab-${layout.name}'),
+      style: ShellTabStyle.row,
+      selected: widget.selected,
+      onTap: widget.onSelect,
+      onDoubleTap: widget.onRename,
+      onSecondaryTap: _openMenu,
+      onHoverChanged: (hovered) => setState(() => _hovered = hovered),
+      tooltip: [
         paper,
         if (widget.isMaximized) l10n.viewport_maximised,
         if (!layout.isModelSpace) l10n.layout_right_click,
       ].join('\n'),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onSelect,
-          onDoubleTap: widget.onRename,
-          onSecondaryTap: _openMenu,
-          child: Container(
-            key: Key('layout-tab-${layout.name}'),
-            height: FanCadTokens.tabBarHeight,
-            padding: const EdgeInsets.symmetric(
-              horizontal: FanCadTokens.space3,
-            ),
-            color: widget.selected
-                ? tokens.selection
-                : _hovered
-                ? tokens.hover
-                : Colors.transparent,
-            child: Row(
-              children: [
-                Icon(
-                  layout.isModelSpace
-                      ? Icons.grid_on_outlined
-                      : Icons.description_outlined,
-                  size: FanCadTokens.iconSmall,
-                  color: widget.selected ? tokens.accent : tokens.textMuted,
-                ),
-                const SizedBox(width: FanCadTokens.space2),
-                Expanded(
-                  child: Text(
-                    layout.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: tokens.labelStyle.copyWith(
-                      color: widget.selected ? tokens.text : tokens.textMuted,
-                      fontWeight: widget.selected
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                    ),
-                  ),
-                ),
-                if (widget.isMaximized) ...[
-                  const SizedBox(width: FanCadTokens.space1),
-                  Icon(
-                    Icons.fullscreen,
-                    size: FanCadTokens.iconSmall,
-                    color: tokens.accent,
-                  ),
-                ],
-                if (widget.onDelete != null && (_hovered || widget.selected))
-                  ShellIconButton(
-                    icon: Icons.close,
-                    size: 18,
-                    iconSize: FanCadTokens.iconSmall,
-                    tooltip: l10n.delete_layout,
-                    destructive: true,
-                    onPressed: widget.onDelete,
-                  ),
-              ],
+      child: Row(
+        children: [
+          Icon(
+            layout.isModelSpace
+                ? Icons.grid_on_outlined
+                : Icons.description_outlined,
+            size: FanCadTokens.iconSmall,
+            color: widget.selected ? tokens.accent : tokens.textMuted,
+          ),
+          const SizedBox(width: FanCadTokens.space2),
+          Expanded(
+            child: Text(
+              layout.name,
+              overflow: TextOverflow.ellipsis,
+              style: tokens.labelStyle.copyWith(
+                color: widget.selected ? tokens.text : tokens.textMuted,
+                fontWeight: widget.selected
+                    ? FontWeight.w600
+                    : FontWeight.w400,
+              ),
             ),
           ),
-        ),
+          if (widget.isMaximized) ...[
+            const SizedBox(width: FanCadTokens.space1),
+            Icon(
+              Icons.fullscreen,
+              size: FanCadTokens.iconSmall,
+              color: tokens.accent,
+            ),
+          ],
+          if (widget.onDelete != null && (_hovered || widget.selected))
+            ShellIconButton(
+              icon: Icons.close,
+              size: 18,
+              iconSize: FanCadTokens.iconSmall,
+              tooltip: l10n.delete_layout,
+              destructive: true,
+              onPressed: widget.onDelete,
+            ),
+        ],
       ),
     );
   }

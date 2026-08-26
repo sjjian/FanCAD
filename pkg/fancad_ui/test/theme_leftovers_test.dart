@@ -109,6 +109,40 @@ void main() {
     expect(box.color, FanCadTokens.dark.borderStrong);
   });
 
+  testWidgets('a leftover icon button stays 28 and a tab uses selection', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FanCadTheme.dark(),
+        home: Scaffold(
+          body: Row(
+            children: [
+              ShellIconButton(icon: Icons.add, onPressed: () {}),
+              ShellTab(
+                selected: true,
+                onTap: () {},
+                child: const Text('Model'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(tester.getSize(find.byType(ShellIconButton)).width, 28);
+    expect(tester.getSize(find.byType(ShellIconButton)).height, 28);
+    final tab = tester.widget<ShellTab>(find.byType(ShellTab));
+    expect(tab.selected, isTrue);
+    expect(tab.style, ShellTabStyle.strip);
+    final fill = tester.widget<Container>(
+      find.descendant(
+        of: find.byType(ShellTab),
+        matching: find.byType(Container),
+      ),
+    );
+    expect((fill.decoration! as BoxDecoration).color, FanCadTokens.dark.selection);
+  });
+
   test('dark and light type styles keep token colours and tabular figures', () {
     const dark = FanCadTokens.dark;
     const light = FanCadTokens.light;
@@ -120,5 +154,73 @@ void main() {
     expect(dark.monoStyle.fontFamily, FanCadTokens.monoFontFamily);
     expect(dark.monoStyle.fontFeatures, const [FontFeature.tabularFigures()]);
     expect(FanCadTokens.uiFontFamily, isNull);
+  });
+
+  testWidgets('a leftover empty state is a centered message', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FanCadTheme.dark(),
+        home: const Scaffold(
+          body: ShellEmpty(message: 'Nothing here'),
+        ),
+      ),
+    );
+    expect(find.text('Nothing here'), findsOneWidget);
+    expect(find.byType(ShellEmpty), findsOneWidget);
+  });
+
+  testWidgets('a leftover badge is an accent tag and a chip when tapped', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FanCadTheme.dark(),
+        home: Scaffold(
+          body: Row(
+            children: [
+              const ShellBadge(text: 'LAST'),
+              ShellBadge(text: 'default', selected: true, onTap: () {}),
+              const ShellDot(color: Color(0xFF22C55E)),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.text('LAST'), findsOneWidget);
+    expect(find.text('default'), findsOneWidget);
+    expect(find.byType(ShellBadge), findsNWidgets(2));
+    expect(find.byType(ShellDot), findsOneWidget);
+  });
+
+  testWidgets('a leftover banner and toast keep warning and success tones', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FanCadTheme.dark(),
+        home: const Scaffold(
+          body: Column(
+            children: [
+              ShellBanner(
+                tone: ShellTone.warning,
+                message: 'Layer off',
+                action: 'Show',
+              ),
+              ShellToast(message: 'Saved', tone: ShellTone.success),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Layer off'), findsOneWidget);
+    expect(find.text('Saved'), findsOneWidget);
+    expect(tester.widget<ShellBanner>(find.byType(ShellBanner)).tone, ShellTone.warning);
+    expect(tester.widget<ShellToast>(find.byType(ShellToast)).tone, ShellTone.success);
+  });
+
+  test('a leftover menu overlay uses the strong border radius', () {
+    final shape = shellOverlayShape(FanCadTokens.dark) as RoundedRectangleBorder;
+    expect(shape.side.color, FanCadTokens.dark.borderStrong);
+    expect(shape.borderRadius, BorderRadius.circular(FanCadTokens.radius));
   });
 }
