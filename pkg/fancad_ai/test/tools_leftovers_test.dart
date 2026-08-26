@@ -71,7 +71,13 @@ void main() {
       );
     final tools = const CommandToolCatalog().toolsOf(
       registry,
-      extra: [readSkillTool(bundledSkillRegistry()).definition],
+      extra: [
+        readSkillTool(
+          InMemorySkillRegistry({
+            'demo': const Skill(name: 'demo', description: 'd', body: 'b'),
+          }),
+        ).definition,
+      ],
     );
     expect(tools.map((tool) => tool.name), ['query_selection', 'read_skill']);
     expect(registry.find('read_skill'), isNull);
@@ -83,11 +89,7 @@ void main() {
       title: 'Polyline',
       description: 'Draws a connected sequence of segments.',
       params: const [
-        ParamSpec(
-          name: 'points',
-          type: ParamType.points,
-          required: false,
-        ),
+        ParamSpec(name: 'points', type: ParamType.points, required: false),
       ],
       handler: (_) async => const CommandResult.ok(),
     );

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_dwg/fancad_dwg.dart';
+import 'package:fancad_dwg/src/sample_drawing.dart';
 import 'package:test/test.dart';
 
 /// The FCB format is a contract between C and Dart, so its Dart implementation
@@ -151,7 +152,9 @@ void main() {
     );
 
     final restored = FcbReader(FcbWriter().write(document)).decode().document;
-    final layout = restored.layouts.firstWhere((item) => item.name == 'Layout1');
+    final layout = restored.layouts.firstWhere(
+      (item) => item.name == 'Layout1',
+    );
     expect(layout.plotRotation, 90);
     expect(layout.plotWindow, const Bounds2(5, 6, 55, 46));
     expect(layout.plotScale, closeTo(0.5, 1e-12));
@@ -234,9 +237,7 @@ void main() {
 
       final source = File('${temporary.path}/drawing.dwg')
         ..writeAsBytesSync(Uint8List(128));
-      final cache = FcbCache(
-        directory: Directory('${temporary.path}/cache'),
-      );
+      final cache = FcbCache(directory: Directory('${temporary.path}/cache'));
       final key = FcbCache.keyFor(source.path, fcbVersion: fcbVersion);
       expect(cache.read(key), isNull);
 
@@ -301,19 +302,21 @@ void main() {
       expect(result.entityCount, document.entityCount);
     });
 
-    test('falls back from DWG to DXF when the backend cannot write DWG',
-        () async {
-      final importer = DrawingImporter(backend: _NoBackend());
-      final dir = Directory.systemTemp.createTempSync('fancad_save');
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final outcome = await importer.save(
-        '${dir.path}/out.dwg',
-        SampleDrawings.mechanicalPart(),
-      );
-      expect(outcome.usedFallback, isTrue);
-      expect(outcome.path.endsWith('.dxf'), isTrue);
-      expect(File(outcome.path).existsSync(), isTrue);
-    });
+    test(
+      'falls back from DWG to DXF when the backend cannot write DWG',
+      () async {
+        final importer = DrawingImporter(backend: _NoBackend());
+        final dir = Directory.systemTemp.createTempSync('fancad_save');
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final outcome = await importer.save(
+          '${dir.path}/out.dwg',
+          SampleDrawings.mechanicalPart(),
+        );
+        expect(outcome.usedFallback, isTrue);
+        expect(outcome.path.endsWith('.dxf'), isTrue);
+        expect(File(outcome.path).existsSync(), isTrue);
+      },
+    );
   });
 }
 

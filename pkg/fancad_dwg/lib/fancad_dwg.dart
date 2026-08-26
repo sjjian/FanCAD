@@ -11,11 +11,9 @@ export 'src/dxf/reader.dart' show DxfReader;
 export 'src/dxf/writer.dart' show DxfWriter;
 export 'src/export/fidelity.dart';
 export 'src/export/save_strategy.dart';
-export 'src/fcb/format.dart'
-    show FcbFormatException, fcbMagic, fcbVersion;
+export 'src/fcb/format.dart' show FcbFormatException, fcbMagic, fcbVersion;
 export 'src/fcb/reader.dart' show FcbDecodeResult, FcbReader;
 export 'src/fcb/writer.dart' show FcbWriter;
 export 'src/fcb_cache.dart';
 export 'src/importer.dart';
 export 'src/native_backend.dart';
-export 'src/sample_drawing.dart';

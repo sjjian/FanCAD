@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_dwg/fancad_dwg.dart';
+import 'package:fancad_dwg/src/sample_drawing.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -33,9 +34,7 @@ void main() {
       transaction.add(
         LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(10, 0)),
       );
-      transaction.add(
-        CircleEntity(id: 0, center: const Vec2(5, 5), radius: 2),
-      );
+      transaction.add(CircleEntity(id: 0, center: const Vec2(5, 5), radius: 2));
       transaction.add(
         PolylineEntity.fromPoints(
           id: 0,
@@ -53,27 +52,17 @@ void main() {
     final restored = const DxfReader().readString(dxf);
     final report = const FidelityAuditor().compare(original, restored);
     expect(report.isClean, isTrue, reason: report.summary);
-    expect(
-      restored.entities.whereType<PolylineEntity>().single.vertexCount,
-      3,
-    );
+    expect(restored.entities.whereType<PolylineEntity>().single.vertexCount, 3);
   });
 
   test('splines, leaders, images and array inserts survive DXF', () {
     final original = CadDocument();
-    original.putBlock(
-      const BlockRecord(name: 'CELL', entityIds: []),
-    );
+    original.putBlock(const BlockRecord(name: 'CELL', entityIds: []));
     original
       ..addEntity(
         SplineEntity(
           id: 0,
-          controlPoints: Float64List.fromList([
-            0, 0,
-            10, 20,
-            20, 0,
-            30, 10,
-          ]),
+          controlPoints: Float64List.fromList([0, 0, 10, 20, 20, 0, 30, 10]),
           knots: const [0, 0, 0, 0, 1, 1, 1, 1],
         ),
       )
@@ -138,11 +127,7 @@ void main() {
   test('paper layouts and viewports survive DXF', () {
     final original = CadDocument();
     original.addEntity(
-      const LineEntity(
-        id: 0,
-        start: Vec2.zero(),
-        end: Vec2(80, 0),
-      ),
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(80, 0)),
     );
     original.addLayout(
       const Layout(
@@ -169,11 +154,7 @@ void main() {
       ),
     );
     original.addEntity(
-      const LineEntity(
-        id: 0,
-        start: Vec2(10, 10),
-        end: Vec2(50, 10),
-      ),
+      const LineEntity(id: 0, start: Vec2(10, 10), end: Vec2(50, 10)),
       blockName: '*Paper_Space',
     );
 
@@ -185,7 +166,10 @@ void main() {
     expect(dxf, contains('A3'));
 
     final restored = const DxfReader().readString(dxf);
-    expect(restored.layouts.map((item) => item.name), containsAll(['Model', 'A3']));
+    expect(
+      restored.layouts.map((item) => item.name),
+      containsAll(['Model', 'A3']),
+    );
     final paper = restored.layouts.firstWhere((item) => item.name == 'A3');
     expect(paper.paperWidth, closeTo(420, 1e-9));
     expect(paper.paperHeight, closeTo(297, 1e-9));
@@ -201,15 +185,9 @@ void main() {
     expect(paper.viewports.single.frozenLayers, ['DIMS']);
     expect(paper.viewports.single.paperBounds, const Bounds2(20, 20, 220, 170));
 
-    expect(
-      restored.entitiesOf(restored.modelSpaceBlockName),
-      hasLength(1),
-    );
+    expect(restored.entitiesOf(restored.modelSpaceBlockName), hasLength(1));
     expect(restored.entitiesOf('*Paper_Space'), hasLength(1));
-    expect(
-      const FidelityAuditor().compare(original, restored).isClean,
-      isTrue,
-    );
+    expect(const FidelityAuditor().compare(original, restored).isClean, isTrue);
   });
 
   test('an xref block keeps its path through DXF', () {
@@ -377,10 +355,7 @@ void main() {
     expect(style.widthFactor, closeTo(0.8, 1e-12));
     expect(style.obliqueAngle, closeTo(0.2, 1e-12));
     expect(style.backwards, isTrue);
-    expect(
-      restored.entities.whereType<TextEntity>().single.styleName,
-      'TITLE',
-    );
+    expect(restored.entities.whereType<TextEntity>().single.styleName, 'TITLE');
   });
 
   test('entity and layer line weights survive DXF', () {
@@ -461,9 +436,7 @@ void main() {
           patternLength: 42,
         ),
       )
-      ..putLayer(
-        const LayerDef(name: 'AXIS', lineType: 'CENTER'),
-      )
+      ..putLayer(const LayerDef(name: 'AXIS', lineType: 'CENTER'))
       ..addEntity(
         const LineEntity(
           id: 0,
@@ -495,9 +468,7 @@ void main() {
           proxyBounds: Bounds2(10, 10, 20, 20),
         ),
       )
-      ..addEntity(
-        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(5, 0)),
-      );
+      ..addEntity(const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(5, 0)));
 
     final dxf = const DxfWriter().writeString(original);
     expect(dxf, contains('LINE'));

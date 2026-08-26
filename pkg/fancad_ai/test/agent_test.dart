@@ -367,6 +367,7 @@ void main() {
       document: session.document,
       typings: 'declare const fancad: FanCadApi;',
       policy: const ApprovalPolicy(autoApproveEdits: true),
+      authoring: const _RepairOnActivate(),
     );
 
     await reload.run('Reload the plugin');
@@ -396,4 +397,21 @@ void main() {
     expect(stopped.error, contains('Stopped after 1'));
     expect(ran, ['query.summary']);
   });
+}
+
+class _RepairOnActivate implements ActivationRepair {
+  const _RepairOnActivate();
+
+  @override
+  bool isActivationFailure(CommandResult result) =>
+      result.isFailed && result.message.contains('activate');
+
+  @override
+  String repairPrompt({
+    required String pluginId,
+    required String error,
+    String? source,
+    String? typings,
+  }) =>
+      'Fix $pluginId with plugins.write. $error';
 }
