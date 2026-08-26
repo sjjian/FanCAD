@@ -10,7 +10,7 @@ void main() {
     final created = Workspace(
       commands: CommandRegistry(),
       importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      settings: settings ?? SettingsStore.inMemory(),
+      drawing: DrawingSettings(settings ?? SettingsStore.inMemory()),
     );
     addTearDown(created.dispose);
     return created;
@@ -20,7 +20,7 @@ void main() {
     final ws = workspace();
     final delegate = WorkspacePluginDelegate(
       workspace: () => ws,
-      settings: ws.settings,
+      plugins: PluginSettings(SettingsStore.inMemory()),
     );
     expect(delegate.session, isNull);
 
@@ -47,7 +47,7 @@ void main() {
       ws.newDocument();
       final delegate = WorkspacePluginDelegate(
         workspace: () => ws,
-        settings: ws.settings,
+        plugins: PluginSettings(SettingsStore.inMemory()),
       );
 
       final result = await delegate.runCommand(
@@ -64,7 +64,7 @@ void main() {
     final ws = workspace();
     final delegate = WorkspacePluginDelegate(
       workspace: () => ws,
-      settings: ws.settings,
+      plugins: PluginSettings(SettingsStore.inMemory()),
     );
 
     delegate.showMessage('demo', 'hello');
@@ -79,7 +79,7 @@ void main() {
     final ws = workspace();
     final delegate = WorkspacePluginDelegate(
       workspace: () => ws,
-      settings: ws.settings,
+      plugins: PluginSettings(SettingsStore.inMemory()),
     );
 
     for (var i = 0; i < 501; i++) {
@@ -95,7 +95,7 @@ void main() {
     final ws = workspace();
     final delegate = WorkspacePluginDelegate(
       workspace: () => ws,
-      settings: ws.settings,
+      plugins: PluginSettings(SettingsStore.inMemory()),
     );
     expect(await delegate.prompt('demo', const {'text': '?'}), isNull);
 
@@ -109,7 +109,7 @@ void main() {
     final ws = workspace(settings: settings);
     final delegate = WorkspacePluginDelegate(
       workspace: () => ws,
-      settings: settings,
+      plugins: PluginSettings(settings),
     );
 
     await delegate.writeStorage('demo', 'token', 'abc');

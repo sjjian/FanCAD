@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 
-import '../storage/settings.dart';
+import '../storage/plugin_settings.dart';
 import 'workspace.dart';
 
 /// Connects the extension host to the running application.
@@ -15,7 +15,7 @@ import 'workspace.dart';
 class WorkspacePluginDelegate implements PluginHostDelegate {
   WorkspacePluginDelegate({
     required Workspace Function() workspace,
-    required this.settings,
+    required this.plugins,
   }) : _workspace = workspace;
 
   /// Resolved on demand rather than injected.
@@ -27,7 +27,7 @@ class WorkspacePluginDelegate implements PluginHostDelegate {
 
   Workspace get workspace => _workspace();
 
-  final SettingsStore settings;
+  final PluginSettings plugins;
 
   /// Log lines, newest last, keyed by plugin id. Read by the extensions panel.
   final Map<String, List<String>> logs = {};
@@ -87,13 +87,10 @@ class WorkspacePluginDelegate implements PluginHostDelegate {
   // preferences visible rather than orphaned in a directory nobody reads.
   @override
   Future<Object?> readStorage(String pluginId, String key) async =>
-      settings.values[_storageKey(pluginId, key)];
+      plugins.read(pluginId, key);
 
   @override
   Future<void> writeStorage(String pluginId, String key, Object? value) async {
-    settings.set(_storageKey(pluginId, key), value);
+    plugins.write(pluginId, key, value);
   }
-
-  String _storageKey(String pluginId, String key) =>
-      'plugins.storage.$pluginId.$key';
 }

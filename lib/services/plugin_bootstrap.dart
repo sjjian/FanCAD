@@ -2,8 +2,11 @@ import 'dart:async';
 
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'providers.dart';
+
+part 'plugin_bootstrap.g.dart';
 
 /// Brings the extension host up after the shell is on screen.
 ///
@@ -96,16 +99,17 @@ class PluginBootstrap {
 }
 
 /// Owns the bootstrap for the application's lifetime.
-final pluginBootstrapProvider = Provider<PluginBootstrap>((ref) {
+@Riverpod(keepAlive: true)
+PluginBootstrap pluginBootstrap(Ref ref) {
   final bootstrap = PluginBootstrap(
     ref: ref,
     bundledDirectories: ref.watch(bundledPluginDirectoriesProvider),
   );
   ref.onDispose(bootstrap.dispose);
   return bootstrap;
-});
+}
 
 /// Folders of extensions shipped with the application.
-final bundledPluginDirectoriesProvider = Provider<List<String>>(
-  (ref) => const [],
-);
+@Riverpod(keepAlive: true)
+List<String> bundledPluginDirectories(Ref ref) =>
+    const [];

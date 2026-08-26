@@ -1,28 +1,42 @@
 import 'package:fancad_ai/fancad_ai.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'settings.dart';
+part 'assistant_chat.freezed.dart';
 
 /// One assistant thread. The pane shows [conversation]; leftover chats
-/// are stored in settings so a new session does not wipe the last one.
-class AssistantChat {
-  AssistantChat({
-    required this.id,
-    this.title = '',
+/// are stored so a new session does not wipe the last one.
+@freezed
+abstract class AssistantChat with _$AssistantChat {
+  const AssistantChat._();
+
+  const factory AssistantChat.raw({
+    required String id,
+    @Default('') String title,
+    required DateTime updatedAt,
+    required Conversation conversation,
+    LlmUsage? usage,
+    @Default('') String draft,
+  }) = _AssistantChat;
+
+  factory AssistantChat({
+    required String id,
+    String title = '',
     DateTime? updatedAt,
     Conversation? conversation,
-    this.usage,
-    this.draft = '',
-  }) : updatedAt = updatedAt ?? DateTime.now(),
-       conversation = conversation ?? Conversation();
+    LlmUsage? usage,
+    String draft = '',
+  }) {
+    return AssistantChat.raw(
+      id: id,
+      title: title,
+      updatedAt: updatedAt ?? DateTime.now(),
+      conversation: conversation ?? Conversation(),
+      usage: usage,
+      draft: draft,
+    );
+  }
 
   static const String defaultId = 'default';
-
-  final String id;
-  String title;
-  DateTime updatedAt;
-  final Conversation conversation;
-  LlmUsage? usage;
-  String draft;
 
   bool get isEmpty =>
       conversation.visible.isEmpty && conversation.llmMessages.isEmpty;
@@ -57,31 +71,6 @@ class AssistantChat {
       conversation: Conversation.fromJson(raw),
       draft: raw['draft'] is String ? raw['draft'] as String : '',
     );
-  }
-}
-
-/// Leftover `ai.chats` becomes a list; a missing key is one empty thread.
-class AssistantChats {
-  const AssistantChats._();
-
-  static const int cap = 20;
-
-  static List<AssistantChat> read(SettingsStore settings) {
-    final raw = settings.values[SettingsKeys.aiChats];
-    if (raw is List && raw.isNotEmpty) {
-      final parsed = <AssistantChat>[];
-      for (final item in raw) {
-        if (item is Map) parsed.add(AssistantChat.fromJson(item));
-      }
-      if (parsed.isNotEmpty) return parsed;
-    }
-    return [AssistantChat(id: AssistantChat.defaultId)];
-  }
-
-  static String activeId(SettingsStore settings, List<AssistantChat> chats) {
-    final id = settings.getString(SettingsKeys.aiActiveChat);
-    if (chats.any((chat) => chat.id == id)) return id;
-    return chats.first.id;
   }
 }
 

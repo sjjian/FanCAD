@@ -8,14 +8,15 @@ void main() {
       SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
       SettingsKeys.aiApiKey: 'sk-leftover',
     });
-    final profiles = AssistantProfiles.read(settings);
+    final assistant = AssistantSettings(settings);
+    final profiles = assistant.loadProfiles();
     expect(profiles, hasLength(1));
     expect(profiles.single.id, AssistantProfile.defaultId);
     expect(profiles.single.model, 'deepseek-chat');
     expect(profiles.single.baseUrl, 'https://api.deepseek.com/v1');
     expect(profiles.single.apiKey, 'sk-leftover');
     expect(profiles.single.displayName, 'deepseek-chat');
-    expect(AssistantProfiles.activeOf(settings).id, AssistantProfile.defaultId);
+    expect(assistant.activeProfile.id, AssistantProfile.defaultId);
   });
 
   test('a leftover token count is compact, not a raw integer dump', () {

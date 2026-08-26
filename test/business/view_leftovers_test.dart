@@ -12,7 +12,7 @@ void main() {
     workspace = Workspace(
       commands: CommandRegistry(),
       importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      settings: SettingsStore.inMemory(),
+      drawing: DrawingSettings(SettingsStore.inMemory()),
     );
     registerBuiltinCommands(
       workspace.commands,

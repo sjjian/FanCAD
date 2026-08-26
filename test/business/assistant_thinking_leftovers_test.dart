@@ -15,9 +15,9 @@ void main() {
     final workspace = Workspace(
       commands: CommandRegistry(),
       importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      settings: settings,
+      drawing: DrawingSettings(settings),
     );
-    final created = AiController(workspace: workspace, settings: settings);
+    final created = AiController(workspace: workspace, assistant: AssistantSettings(settings));
     addTearDown(created.dispose);
     addTearDown(workspace.dispose);
     return created;

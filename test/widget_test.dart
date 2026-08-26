@@ -236,7 +236,7 @@ void main() {
     await tester.pumpWidget(wrap(container));
     await tester.pump();
 
-    container.read(paletteOpenProvider.notifier).state = true;
+    container.read(paletteOpenProvider.notifier).setOpen(true);
     await tester.pumpAndSettle();
 
     expect(find.text('Search commands, aliases or categories'), findsOneWidget);

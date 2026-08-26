@@ -34,13 +34,13 @@ void main() {
     workspace = Workspace(
       commands: CommandRegistry(),
       importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      settings: SettingsStore.inMemory(),
+      drawing: DrawingSettings(SettingsStore.inMemory()),
     );
     host = PluginHost(
       registry: workspace.commands,
       delegate: WorkspacePluginDelegate(
         workspace: () => workspace,
-        settings: workspace.settings,
+        plugins: PluginSettings(SettingsStore.inMemory()),
       ),
       transport: LocalTransport(engineFactory: scriptedEngine()),
     );

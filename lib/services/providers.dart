@@ -3,17 +3,24 @@ import 'package:fancad_dwg/fancad_dwg.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../business/commands/builtins.dart';
 import '../business/commands/file_commands.dart';
 import '../business/commands/plugin_commands.dart';
 import '../business/l10n/locale.dart';
 import '../business/theme/tokens.dart';
+import '../storage/app_settings.dart';
 import '../storage/settings.dart';
+import '../storage/shell_settings.dart';
 import 'ai_controller.dart';
 import 'plugin/host_call.dart';
 import 'plugin_delegate.dart';
 import 'workspace.dart';
+
+part 'providers.freezed.dart';
+part 'providers.g.dart';
 
 /// Riverpod wiring for the application.
 ///
@@ -23,41 +30,49 @@ import 'workspace.dart';
 /// worth fearing starts that way.
 
 /// Provided by the app at startup, after settings have been loaded from disk.
-final settingsProvider = Provider<SettingsStore>(
-  (ref) => throw StateError('settingsProvider must be overridden at startup'),
-);
+@Riverpod(keepAlive: true)
+SettingsStore settings(Ref ref) =>
+    throw StateError('settingsProvider must be overridden at startup');
+
+/// The same bag, split into the views services actually ask for.
+@Riverpod(keepAlive: true)
+AppSettings appSettings(Ref ref) =>
+    AppSettings(ref.watch(settingsProvider));
 
 /// The on-disk FCB cache, or null when no cache directory is available.
 ///
 /// Overridden at startup once the platform support directory is known, and left
 /// null in tests so that a test run never touches a real cache.
-final fcbCacheProvider = Provider<FcbCache?>((ref) => null);
+@Riverpod(keepAlive: true)
+FcbCache? fcbCache(Ref ref) => null;
 
 /// The drawing importer. Overridden in tests with a stub backend.
-final importerProvider = Provider<DrawingImporter>(
-  (ref) => DrawingImporter(cache: ref.watch(fcbCacheProvider)),
-);
+@Riverpod(keepAlive: true)
+DrawingImporter importer(Ref ref) =>
+    DrawingImporter(cache: ref.watch(fcbCacheProvider));
 
-final commandRegistryProvider = Provider<CommandRegistry>((ref) {
+@Riverpod(keepAlive: true)
+CommandRegistry commandRegistry(Ref ref) {
   final registry = CommandRegistry();
   ref.onDispose(registry.dispose);
   return registry;
-});
+}
 
 /// The application state.
 ///
-/// A plain [Provider] over a [ChangeNotifier] rather than a
+/// A generated [Provider] over a [ChangeNotifier] rather than a
 /// `ChangeNotifierProvider`, because there must be exactly one owner of its
 /// disposal and the registration below has to be torn down first. Widgets
 /// subscribe with a `ListenableBuilder`, which also keeps rebuilds scoped to the
 /// part of the shell that actually changed — during a drag the workspace
 /// notifies dozens of times a second, and rebuilding the whole tree at that rate
 /// is the difference between a smooth pan and a stuttering one.
-final Provider<Workspace> workspaceProvider = Provider((ref) {
+@Riverpod(keepAlive: true)
+Workspace workspace(Ref ref) {
   final workspace = Workspace(
     commands: ref.watch(commandRegistryProvider),
     importer: ref.watch(importerProvider),
-    settings: ref.watch(settingsProvider),
+    drawing: ref.watch(appSettingsProvider).drawing,
   );
 
   // The file commands are the one group that has to act on the workspace
@@ -70,8 +85,7 @@ final Provider<Workspace> workspaceProvider = Provider((ref) {
       closeActive: ({bool force = false}) =>
           workspace.closeTab(workspace.activeIndex, force: force),
       saveActive: (path) => workspace.saveActive(path),
-      recentFiles: () =>
-          workspace.settings.getStringList(SettingsKeys.recentFiles),
+      recentFiles: () => workspace.recentFiles,
     ),
     pluginCommands: ref.watch(pluginCommandsProvider),
   );
@@ -81,18 +95,20 @@ final Provider<Workspace> workspaceProvider = Provider((ref) {
     workspace.dispose();
   });
   return workspace;
-});
+}
 
 /// Where user extensions live. Overridden at startup with a real path, and left
 /// empty in tests so that a test run never scans the user's real folder.
-final pluginsDirectoryProvider = Provider<String>((ref) => '');
+@Riverpod(keepAlive: true)
+String pluginsDirectory(Ref ref) => '';
 
 /// The extension host, or null when this session has no extensions folder.
 ///
 /// Null rather than a host with nowhere to load from: it keeps a test run from
 /// spawning a worker isolate, and it gives the extensions panel something
 /// honest to say instead of showing an empty list that will never fill.
-final Provider<PluginHost?> pluginHostProvider = Provider((ref) {
+@Riverpod(keepAlive: true)
+PluginHost? pluginHost(Ref ref) {
   if (ref.watch(pluginsDirectoryProvider).isEmpty) return null;
   final host = PluginHost(
     registry: ref.watch(commandRegistryProvider),
@@ -102,77 +118,55 @@ final Provider<PluginHost?> pluginHostProvider = Provider((ref) {
   );
   ref.onDispose(host.dispose);
   return host;
-});
+}
 
 /// The transport plugins run over. Overridden in tests with [LocalTransport].
-final pluginTransportProvider = Provider<PluginTransport>(
-  (ref) => IsolateTransport(),
-);
+@Riverpod(keepAlive: true)
+PluginTransport pluginTransport(Ref ref) => IsolateTransport();
 
-final Provider<WorkspacePluginDelegate> pluginDelegateProvider = Provider((
-  ref,
-) {
+@Riverpod(keepAlive: true)
+WorkspacePluginDelegate pluginDelegate(Ref ref) {
   return WorkspacePluginDelegate(
     workspace: () => ref.read(workspaceProvider),
-    settings: ref.watch(settingsProvider),
+    plugins: ref.watch(appSettingsProvider).plugins,
   );
-});
+}
 
 /// The assistant session. Created even when no key is configured so the panel
 /// can explain how to set one up.
-final Provider<AiController> aiControllerProvider = Provider((ref) {
+@Riverpod(keepAlive: true)
+AiController aiController(Ref ref) {
   final controller = AiController(
     workspace: ref.watch(workspaceProvider),
-    settings: ref.watch(settingsProvider),
+    assistant: ref.watch(appSettingsProvider).assistant,
     host: ref.watch(pluginHostProvider),
   );
   ref.onDispose(controller.dispose);
   return controller;
-});
+}
 
 /// The extension management commands, or null when there is no plugins folder.
-final Provider<PluginCommands?> pluginCommandsProvider = Provider((ref) {
+@Riverpod(keepAlive: true)
+PluginCommands? pluginCommands(Ref ref) {
   final directory = ref.watch(pluginsDirectoryProvider);
   final host = ref.watch(pluginHostProvider);
   if (directory.isEmpty || host == null) return null;
   return PluginCommands(host: host, pluginsDirectory: directory);
-});
-
-/// Which sidebar view is showing, and whether the sidebar is open at all.
-class SidebarState {
-  const SidebarState({
-    this.viewId = 'layers',
-    this.isOpen = true,
-    this.width = FanCadTokens.sidePanelWidth,
-  });
-
-  final String viewId;
-  final bool isOpen;
-  final double width;
-
-  SidebarState copyWith({String? viewId, bool? isOpen, double? width}) =>
-      SidebarState(
-        viewId: viewId ?? this.viewId,
-        isOpen: isOpen ?? this.isOpen,
-        width: width ?? this.width,
-      );
 }
 
-class SidebarController extends StateNotifier<SidebarState> {
-  SidebarController(this._settings)
-    : super(
-        SidebarState(
-          viewId: _leftViewId(
-            _settings.getString(SettingsKeys.sidebarView, fallback: 'layers'),
-          ),
-          isOpen: _settings.getBool(SettingsKeys.sidebarOpen, fallback: true),
-          width: _settings
-              .getDouble(SettingsKeys.sidebarWidth, fallback: defaultWidth)
-              .clamp(minWidth, maxWidth),
-        ),
-      );
+/// Which sidebar view is showing, and whether the sidebar is open at all.
+@freezed
+abstract class SidebarState with _$SidebarState {
+  const factory SidebarState({
+    @Default('layers') String viewId,
+    @Default(true) bool isOpen,
+    @Default(FanCadTokens.sidePanelWidth) double width,
+  }) = _SidebarState;
+}
 
-  final SettingsStore _settings;
+@Riverpod(keepAlive: true)
+class Sidebar extends _$Sidebar {
+  ShellSettings get _shell => ref.read(appSettingsProvider).shell;
 
   static const double defaultWidth = FanCadTokens.sidePanelWidth;
   static const double minWidth = FanCadTokens.sidePanelMinWidth;
@@ -188,6 +182,16 @@ class SidebarController extends StateNotifier<SidebarState> {
     'editor',
   };
 
+  @override
+  SidebarState build() {
+    final shell = ref.watch(appSettingsProvider).shell;
+    return SidebarState(
+      viewId: _leftViewId(shell.sidebarView()),
+      isOpen: shell.sidebarOpen(),
+      width: shell.sidebarWidth(fallback: defaultWidth).clamp(minWidth, maxWidth),
+    );
+  }
+
   /// Assistant used to live here; a leftover setting must not open an empty
   /// left pane after the chat moved to the right.
   static String _leftViewId(String viewId) =>
@@ -201,23 +205,23 @@ class SidebarController extends StateNotifier<SidebarState> {
       return;
     }
     state = state.copyWith(viewId: left, isOpen: true);
-    _settings
-      ..set(SettingsKeys.sidebarView, left)
-      ..set(SettingsKeys.sidebarOpen, true);
+    _shell
+      ..setSidebarView(left)
+      ..setSidebarOpen(true);
   }
 
   /// Brings a view forward without toggling, for `revealPanel`.
   void reveal(String viewId) {
     final left = _leftViewId(viewId);
     state = state.copyWith(viewId: left, isOpen: true);
-    _settings
-      ..set(SettingsKeys.sidebarView, left)
-      ..set(SettingsKeys.sidebarOpen, true);
+    _shell
+      ..setSidebarView(left)
+      ..setSidebarOpen(true);
   }
 
   void setOpen(bool value) {
     state = state.copyWith(isOpen: value);
-    _settings.set(SettingsKeys.sidebarOpen, value);
+    _shell.setSidebarOpen(value);
   }
 
   void toggle() => setOpen(!state.isOpen);
@@ -230,7 +234,7 @@ class SidebarController extends StateNotifier<SidebarState> {
 
   /// Persisted on drag end rather than on every frame, to avoid writing the
   /// settings file sixty times a second.
-  void commitWidth() => _settings.set(SettingsKeys.sidebarWidth, state.width);
+  void commitWidth() => _shell.setSidebarWidth(state.width);
 
   /// Double-clicking the sash puts the pane back where it started, instead of
   /// hunting for a comfortable width after a drag went too far.
@@ -240,41 +244,18 @@ class SidebarController extends StateNotifier<SidebarState> {
   }
 }
 
-final sidebarProvider = StateNotifierProvider<SidebarController, SidebarState>(
-  (ref) => SidebarController(ref.watch(settingsProvider)),
-);
-
 /// Height of the command line pane, and whether the history is expanded.
-class CommandPaneState {
-  const CommandPaneState({
-    this.height = CommandPaneController.defaultHeight,
-    this.isExpanded = false,
-  });
-
-  final double height;
-  final bool isExpanded;
-
-  CommandPaneState copyWith({double? height, bool? isExpanded}) =>
-      CommandPaneState(
-        height: height ?? this.height,
-        isExpanded: isExpanded ?? this.isExpanded,
-      );
+@freezed
+abstract class CommandPaneState with _$CommandPaneState {
+  const factory CommandPaneState({
+    @Default(84) double height,
+    @Default(false) bool isExpanded,
+  }) = _CommandPaneState;
 }
 
-class CommandPaneController extends StateNotifier<CommandPaneState> {
-  CommandPaneController(this._settings)
-    : super(
-        CommandPaneState(
-          height: _settings
-              .getDouble(
-                SettingsKeys.commandPaneHeight,
-                fallback: defaultHeight,
-              )
-              .clamp(minHeight, maxHeight),
-        ),
-      );
-
-  final SettingsStore _settings;
+@Riverpod(keepAlive: true)
+class CommandPane extends _$CommandPane {
+  ShellSettings get _shell => ref.read(appSettingsProvider).shell;
 
   /// Splitter plus the input row. History is given no pixels, so collapse
   /// looks like a single command line rather than a half-empty console.
@@ -290,12 +271,22 @@ class CommandPaneController extends StateNotifier<CommandPaneState> {
   static const double minHeight = collapsedHeight;
   static const double maxHeight = 420;
 
+  @override
+  CommandPaneState build() {
+    return CommandPaneState(
+      height: ref
+          .watch(appSettingsProvider)
+          .shell
+          .commandPaneHeight(fallback: defaultHeight)
+          .clamp(minHeight, maxHeight),
+    );
+  }
+
   void resize(double height) {
     state = state.copyWith(height: height.clamp(minHeight, maxHeight));
   }
 
-  void commitHeight() =>
-      _settings.set(SettingsKeys.commandPaneHeight, state.height);
+  void commitHeight() => _shell.setCommandPaneHeight(state.height);
 
   void toggleExpanded() => state = state.copyWith(
     isExpanded: !state.isExpanded,
@@ -303,51 +294,37 @@ class CommandPaneController extends StateNotifier<CommandPaneState> {
   );
 }
 
-final commandPaneProvider =
-    StateNotifierProvider<CommandPaneController, CommandPaneState>(
-      (ref) => CommandPaneController(ref.watch(settingsProvider)),
-    );
-
 /// The assistant chat, docked on the right so it can stay open next to Layers.
-class AssistantPaneState {
-  const AssistantPaneState({
-    this.isOpen = false,
-    this.width = AssistantPaneController.defaultWidth,
-  });
-
-  final bool isOpen;
-  final double width;
-
-  AssistantPaneState copyWith({bool? isOpen, double? width}) =>
-      AssistantPaneState(
-        isOpen: isOpen ?? this.isOpen,
-        width: width ?? this.width,
-      );
+@freezed
+abstract class AssistantPaneState with _$AssistantPaneState {
+  const factory AssistantPaneState({
+    @Default(false) bool isOpen,
+    @Default(320) double width,
+  }) = _AssistantPaneState;
 }
 
-class AssistantPaneController extends StateNotifier<AssistantPaneState> {
-  AssistantPaneController(this._settings)
-    : super(
-        AssistantPaneState(
-          isOpen: _settings.getBool(
-            SettingsKeys.assistantOpen,
-            fallback: false,
-          ),
-          width: _settings
-              .getDouble(SettingsKeys.assistantWidth, fallback: defaultWidth)
-              .clamp(minWidth, maxWidth),
-        ),
-      );
-
-  final SettingsStore _settings;
+@Riverpod(keepAlive: true)
+class AssistantPane extends _$AssistantPane {
+  ShellSettings get _shell => ref.read(appSettingsProvider).shell;
 
   static const double defaultWidth = 320;
   static const double minWidth = FanCadTokens.sidePanelMinWidth;
   static const double maxWidth = FanCadTokens.sidePanelMaxWidth;
 
+  @override
+  AssistantPaneState build() {
+    final shell = ref.watch(appSettingsProvider).shell;
+    return AssistantPaneState(
+      isOpen: shell.assistantOpen(),
+      width: shell
+          .assistantWidth(fallback: defaultWidth)
+          .clamp(minWidth, maxWidth),
+    );
+  }
+
   void setOpen(bool value) {
     state = state.copyWith(isOpen: value);
-    _settings.set(SettingsKeys.assistantOpen, value);
+    _shell.setAssistantOpen(value);
   }
 
   void toggle() => setOpen(!state.isOpen);
@@ -358,7 +335,7 @@ class AssistantPaneController extends StateNotifier<AssistantPaneState> {
     );
   }
 
-  void commitWidth() => _settings.set(SettingsKeys.assistantWidth, state.width);
+  void commitWidth() => _shell.setAssistantWidth(state.width);
 
   void resetWidth() {
     state = state.copyWith(width: defaultWidth);
@@ -366,25 +343,28 @@ class AssistantPaneController extends StateNotifier<AssistantPaneState> {
   }
 }
 
-final assistantPaneProvider =
-    StateNotifierProvider<AssistantPaneController, AssistantPaneState>(
-      (ref) => AssistantPaneController(ref.watch(settingsProvider)),
-    );
-
 /// Whether the command palette overlay is showing.
-final paletteOpenProvider = StateProvider<bool>((ref) => false);
+@Riverpod(keepAlive: true)
+class PaletteOpen extends _$PaletteOpen {
+  @override
+  bool build() => false;
+
+  void setOpen(bool value) => state = value;
+
+  void toggle() => state = !state;
+}
 
 /// The theme mode, persisted across launches.
-class ThemeModeController extends StateNotifier<Brightness> {
-  ThemeModeController(this._settings)
-    : super(
-        _settings.getString(SettingsKeys.themeBrightness, fallback: 'dark') ==
-                'light'
-            ? Brightness.light
-            : Brightness.dark,
-      );
+@Riverpod(keepAlive: true)
+class ThemeBrightness extends _$ThemeBrightness {
+  ShellSettings get _shell => ref.read(appSettingsProvider).shell;
 
-  final SettingsStore _settings;
+  @override
+  Brightness build() {
+    return ref.watch(appSettingsProvider).shell.themeBrightness() == 'light'
+        ? Brightness.light
+        : Brightness.dark;
+  }
 
   void toggle() {
     setBrightness(
@@ -395,38 +375,29 @@ class ThemeModeController extends StateNotifier<Brightness> {
   void setBrightness(Brightness value) {
     if (state == value) return;
     state = value;
-    _settings.set(SettingsKeys.themeBrightness, state.name);
+    _shell.setThemeBrightness(state.name);
   }
 }
 
-final themeBrightnessProvider =
-    StateNotifierProvider<ThemeModeController, Brightness>(
-      (ref) => ThemeModeController(ref.watch(settingsProvider)),
-    );
-
 /// UI language. Stored as `en` / `zh`, matching OpenHare. Unknown leftovers
 /// fall back to English so a corrupt settings file cannot blank the shell.
-class LanguageController extends StateNotifier<String> {
-  LanguageController(this._settings)
-    : super(
-        FanCadLanguage.parse(
-          _settings.getString(
-            SettingsKeys.language,
-            fallback: FanCadLanguage.english,
-          ),
-        ),
-      );
+@Riverpod(keepAlive: true)
+class Language extends _$Language {
+  ShellSettings get _shell => ref.read(appSettingsProvider).shell;
 
-  final SettingsStore _settings;
+  @override
+  String build() {
+    return FanCadLanguage.parse(
+      ref.watch(appSettingsProvider).shell.language(
+        fallback: FanCadLanguage.english,
+      ),
+    );
+  }
 
   void setLanguage(String value) {
     final language = FanCadLanguage.parse(value);
     if (state == language) return;
     state = language;
-    _settings.set(SettingsKeys.language, state);
+    _shell.setLanguage(state);
   }
 }
-
-final languageProvider = StateNotifierProvider<LanguageController, String>(
-  (ref) => LanguageController(ref.watch(settingsProvider)),
-);

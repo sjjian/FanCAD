@@ -3,17 +3,20 @@ import 'dart:math' as math;
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'command_line_model.freezed.dart';
 
 /// The severity of a command-history line, which decides its colour.
 enum HistoryLevel { normal, prompt, success, warning, error }
 
 /// One line in the command history pane.
-@immutable
-class HistoryLine {
-  const HistoryLine(this.text, {this.level = HistoryLevel.normal});
-
-  final String text;
-  final HistoryLevel level;
+@freezed
+abstract class HistoryLine with _$HistoryLine {
+  const factory HistoryLine(
+    String text, {
+    @Default(HistoryLevel.normal) HistoryLevel level,
+  }) = _HistoryLine;
 }
 
 /// A request for a typed value that the command line is currently waiting on.

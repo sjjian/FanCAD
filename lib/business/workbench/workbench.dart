@@ -9,7 +9,6 @@ import 'package:window_manager/window_manager.dart';
 import '../../services/plugin_bootstrap.dart';
 import '../../services/providers.dart';
 import '../../services/workspace.dart';
-import '../../storage/settings.dart';
 import '../l10n/l10n.dart';
 import '../panels/ai_panel.dart';
 import '../panels/extensions_panel.dart';
@@ -266,9 +265,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
               TitleBar(
                 workspace: workspace,
                 assistantOpen: assistant.isOpen,
-                onTogglePalette: () => ref
-                    .read(paletteOpenProvider.notifier)
-                    .update((open) => !open),
+                onTogglePalette: () =>
+                    ref.read(paletteOpenProvider.notifier).toggle(),
                 onToggleAssistant: ref
                     .read(assistantPaneProvider.notifier)
                     .toggle,
@@ -377,8 +375,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                           CommandPalette(
                             workspace: workspace,
                             onDismiss: () =>
-                                ref.read(paletteOpenProvider.notifier).state =
-                                    false,
+                                ref.read(paletteOpenProvider.notifier).setOpen(false),
                           ),
                       ],
                     );
@@ -397,15 +394,13 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     final tab = workspace.active;
     final body = tab == null
         ? EmptyWorkspace(
-            recentFiles: workspace.settings.getStringList(
-              SettingsKeys.recentFiles,
-            ),
+            recentFiles: workspace.recentFiles,
             onOpenRecent: (path) =>
                 workspace.run('file.open', args: {'path': path}),
             onOpen: () => workspace.run('file.open'),
             onNew: () => workspace.run('file.new'),
             onShowCommands: () =>
-                ref.read(paletteOpenProvider.notifier).state = true,
+                ref.read(paletteOpenProvider.notifier).setOpen(true),
           )
         : DocumentView(
             // Keyed by tab so switching tabs gets a fresh canvas state rather
@@ -441,7 +436,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     'history' => CommandLogPanel(workspace: workspace),
     'commands' => _CommandListPanel(
       workspace: workspace,
-      onOpenPalette: () => ref.read(paletteOpenProvider.notifier).state = true,
+      onOpenPalette: () =>
+          ref.read(paletteOpenProvider.notifier).setOpen(true),
     ),
     'plugins' => ExtensionsPanel(
       workspace: workspace,
@@ -470,7 +466,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     return {
       ...chord(
         LogicalKeyboardKey.keyP,
-        () => ref.read(paletteOpenProvider.notifier).update((open) => !open),
+        () => ref.read(paletteOpenProvider.notifier).toggle(),
         shift: true,
       ),
       ...chord(
