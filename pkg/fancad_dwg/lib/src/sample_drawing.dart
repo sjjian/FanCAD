@@ -3,12 +3,10 @@ import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
 
-/// Drawings generated in code.
+/// Drawings generated in code for package tests.
 ///
-/// Two reasons these ship with the package rather than living in a test
-/// fixture: the application needs something to show when no DWG backend is
-/// available, and performance work needs a drawing whose entity count can be
-/// dialled up to a million on demand.
+/// Not part of the public `fancad_dwg` API. Performance work needs a drawing
+/// whose entity count can be dialled up on demand.
 class SampleDrawings {
   const SampleDrawings._();
 
@@ -109,14 +107,30 @@ class SampleDrawings {
         props: outline,
         closed: true,
         vertices: Float64List.fromList([
-          fillet, 0, 0,
-          width - fillet, 0, quarterBulge,
-          width, fillet, 0,
-          width, height - fillet, quarterBulge,
-          width - fillet, height, 0,
-          fillet, height, quarterBulge,
-          0, height - fillet, 0,
-          0, fillet, quarterBulge,
+          fillet,
+          0,
+          0,
+          width - fillet,
+          0,
+          quarterBulge,
+          width,
+          fillet,
+          0,
+          width,
+          height - fillet,
+          quarterBulge,
+          width - fillet,
+          height,
+          0,
+          fillet,
+          height,
+          quarterBulge,
+          0,
+          height - fillet,
+          0,
+          0,
+          fillet,
+          quarterBulge,
         ]),
       ),
     );
@@ -214,11 +228,16 @@ class SampleDrawings {
           id: 0,
           props: notes,
           controlPoints: Float64List.fromList([
-            10, height + 18,
-            40, height + 34,
-            80, height + 6,
-            120, height + 30,
-            150, height + 14,
+            10,
+            height + 18,
+            40,
+            height + 34,
+            80,
+            height + 6,
+            120,
+            height + 30,
+            150,
+            height + 14,
           ]),
           knots: const [0, 0, 0, 0, 0.5, 1, 1, 1, 1],
         ),
@@ -232,10 +251,14 @@ class SampleDrawings {
         loops: [
           HatchLoop(
             vertices: Float64List.fromList([
-              width - 46, 12,
-              width - 12, 12,
-              width - 12, 30,
-              width - 46, 30,
+              width - 46,
+              12,
+              width - 12,
+              12,
+              width - 12,
+              30,
+              width - 46,
+              30,
             ]),
           ),
         ],
@@ -303,40 +326,38 @@ class SampleDrawings {
         layer: 'STRESS',
         color: CadColor.indexed(1 + (i % 7)),
       );
-      entities.add(
-        switch (i % 4) {
-          0 => LineEntity(
-            id: i + 1,
-            props: props,
-            start: Vec2(x, y),
-            end: Vec2(x + 8, y + 8),
-          ),
-          1 => CircleEntity(
-            id: i + 1,
-            props: props,
-            center: Vec2(x + 4, y + 4),
-            radius: 3.5,
-          ),
-          2 => ArcEntity(
-            id: i + 1,
-            props: props,
-            center: Vec2(x + 4, y + 4),
-            radius: 4,
-            startAngle: random.nextDouble() * math.pi,
-            endAngle: math.pi + random.nextDouble() * math.pi,
-          ),
-          _ => PolylineEntity.fromPoints(
-            id: i + 1,
-            props: props,
-            points: [
-              Vec2(x, y + 2),
-              Vec2(x + 3, y + 7),
-              Vec2(x + 6, y + 1),
-              Vec2(x + 9, y + 6),
-            ],
-          ),
-        },
-      );
+      entities.add(switch (i % 4) {
+        0 => LineEntity(
+          id: i + 1,
+          props: props,
+          start: Vec2(x, y),
+          end: Vec2(x + 8, y + 8),
+        ),
+        1 => CircleEntity(
+          id: i + 1,
+          props: props,
+          center: Vec2(x + 4, y + 4),
+          radius: 3.5,
+        ),
+        2 => ArcEntity(
+          id: i + 1,
+          props: props,
+          center: Vec2(x + 4, y + 4),
+          radius: 4,
+          startAngle: random.nextDouble() * math.pi,
+          endAngle: math.pi + random.nextDouble() * math.pi,
+        ),
+        _ => PolylineEntity.fromPoints(
+          id: i + 1,
+          props: props,
+          points: [
+            Vec2(x, y + 2),
+            Vec2(x + 3, y + 7),
+            Vec2(x + 6, y + 1),
+            Vec2(x + 9, y + 6),
+          ],
+        ),
+      });
     }
     for (final entity in entities) {
       document.registerImportedEntity(entity);

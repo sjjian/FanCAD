@@ -1,5 +1,5 @@
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_dwg/fancad_dwg.dart';
+import 'package:fancad_dwg/src/sample_drawing.dart';
 import 'package:test/test.dart';
 
 void main() {

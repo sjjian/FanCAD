@@ -1,6 +1,6 @@
-import 'package:fancad_ai/fancad_ai.dart';
+import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const authoring = PluginAuthoring();
