@@ -726,6 +726,41 @@ void main() {
       );
     });
 
+    test('line-spline refine lands on the curve, not just a chord', () {
+      final controls = Float64List.fromList([0, 0, 1, 3, 3, 3, 4, 0]);
+      const knots = [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0];
+      final hits = Intersect.lineSpline(
+        const Vec2(-1, 1),
+        const Vec2(5, 1),
+        controls,
+        knots: knots,
+        degree: 3,
+        tolerance: 0.4,
+      );
+      // y = 9t(1-t) = 1 on this clamped cubic.
+      final roots = [
+        (9 - math.sqrt(45)) / 18,
+        (9 + math.sqrt(45)) / 18,
+      ];
+      final expected = [
+        for (final t in roots)
+          Flatten.bsplineEvaluate(
+            controlPoints: controls,
+            knots: knots,
+            degree: 3,
+            t: t,
+          )!,
+      ];
+      expect(hits, hasLength(2));
+      for (final hit in hits) {
+        expect(hit.y, closeTo(1, 1e-9));
+        expect(
+          expected.map((point) => point.distanceTo(hit)).reduce(math.min),
+          lessThan(1e-6),
+        );
+      }
+    });
+
     test('circle-ellipse includes the two-circle case', () {
       final hits = Intersect.circleEllipse(
         const Vec2(1, 0),

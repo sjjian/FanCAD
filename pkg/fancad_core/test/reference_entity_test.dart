@@ -62,6 +62,8 @@ void main() {
   test('ray and xline grips move the origin without inventing a box', () {
     const ray = RayEntity(id: 1, origin: Vec2.zero(), direction: Vec2(1, 0));
     expect(ray.computeBounds(), const Bounds2(0, 0, 0, 0));
+    expect(ray.indexBounds().maxX, greaterThan(1e6));
+    expect(ray.indexBounds().minX, closeTo(0, 1e-9));
     expect((ray.withGrip(0, const Vec2(2, 3)) as RayEntity).origin, const Vec2(2, 3));
     expect(
       (ray.withGrip(1, const Vec2(0, 4)) as RayEntity).direction,

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:test/test.dart';
 
@@ -280,7 +282,7 @@ void main() {
       expect(await input.point('s'), const Vec2.zero());
       expect(await input.pointOrNull('e'), const Vec2(4, 0));
       expect(await input.distance('d'), 4);
-      expect(await input.angle('a'), 90);
+      expect(await input.angle('a'), closeTo(math.pi / 2, 1e-12));
       expect(await input.number('n'), 2.5);
       expect(await input.integer('i'), 3);
       expect(await input.text('t'), 'A');

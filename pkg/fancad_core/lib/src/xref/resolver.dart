@@ -36,11 +36,17 @@ class XrefResolver {
     }
 
     final remap = <int, int>{};
-    final copied = <int>[];
+    final staged = <CadEntity>[];
     for (final entity in foreign.activeEntities) {
       final id = host.allocateId();
       remap[entity.id] = id;
-      copied.add(transaction.add(entity.withId(id), blockName: name));
+      staged.add(entity.withId(id));
+    }
+    final copied = <int>[];
+    for (final entity in staged) {
+      copied.add(
+        transaction.add(entity.remappedIds(remap), blockName: name),
+      );
     }
 
     transaction.putBlock(

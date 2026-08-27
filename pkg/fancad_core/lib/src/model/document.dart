@@ -310,7 +310,7 @@ class CadDocument implements BlockLookup, StyleResolver {
         entityIds: [...block.entityIds, stored.id],
       );
     }
-    _indexOf(target).insert(stored.id, boundsOfEntity(stored));
+    _indexOf(target).insert(stored.id, indexBoundsOf(stored));
     _blockBounds.remove(target);
     _version++;
     return stored;
@@ -341,7 +341,7 @@ class CadDocument implements BlockLookup, StyleResolver {
       ids.insert(at, entity.id);
       _blocks[blockName] = block.copyWith(entityIds: ids);
     }
-    _indexOf(blockName).insert(entity.id, boundsOfEntity(entity));
+    _indexOf(blockName).insert(entity.id, indexBoundsOf(entity));
     _blockBounds.remove(blockName);
     _version++;
     return entity;
@@ -381,7 +381,7 @@ class CadDocument implements BlockLookup, StyleResolver {
     _entities[entity.id] = entity;
     final owner = _ownerOf[entity.id];
     if (owner != null) {
-      _indexOf(owner).update(entity.id, boundsOfEntity(entity));
+      _indexOf(owner).update(entity.id, indexBoundsOf(entity));
       _blockBounds.remove(owner);
     }
     _version++;
@@ -582,7 +582,7 @@ class CadDocument implements BlockLookup, StyleResolver {
       final entries = <int, Bounds2>{};
       for (final id in block.entityIds) {
         final entity = _entities[id];
-        if (entity != null) entries[id] = boundsOfEntity(entity);
+        if (entity != null) entries[id] = indexBoundsOf(entity);
       }
       index.bulkLoad(entries);
     }
@@ -614,6 +614,13 @@ class CadDocument implements BlockLookup, StyleResolver {
   List<CadEntity> get activeEntities => entitiesOf(currentBlockName);
 
   Bounds2 boundsOfEntity(CadEntity entity) => entity.computeBounds(
+    blocks: this,
+    tolerance: defaultTolerance,
+  );
+
+  /// Spatial-index box. Construction lines use a long reach so window
+  /// selection can find them; Zoom Extents still reads [boundsOfEntity].
+  Bounds2 indexBoundsOf(CadEntity entity) => entity.indexBounds(
     blocks: this,
     tolerance: defaultTolerance,
   );
@@ -765,12 +772,14 @@ class CadDocument implements BlockLookup, StyleResolver {
     required double tolerance,
     Bounds2? clip,
     Mat3 transform = const Mat3.identity(),
+    double Function(String text, double height)? measureWidth,
   }) => EmitContext(
     tolerance: tolerance,
     transform: transform,
     blocks: this,
     styles: this,
     clip: clip,
+    measureWidth: measureWidth,
   );
 
   /// Drops every cached index and bounds. Used after a bulk import.
@@ -791,7 +800,7 @@ class CadDocument implements BlockLookup, StyleResolver {
       for (final id in block.entityIds) {
         _ownerOf[id] = block.name;
         final entity = _entities[id];
-        if (entity != null) entries[id] = boundsOfEntity(entity);
+        if (entity != null) entries[id] = indexBoundsOf(entity);
       }
       final index = SpatialIndex();
       index.bulkLoad(entries);

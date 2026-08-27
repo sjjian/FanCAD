@@ -153,6 +153,7 @@ class Transaction {
         index: document.entityIndexOf(id),
       ),
     );
+    _detachOrphans({id});
     return true;
   }
 
@@ -239,6 +240,28 @@ class Transaction {
     }
   }
 
+  /// Clears [sourceIds] when every measured object is gone so the dimension
+  /// stays a frozen last measurement instead of a live association to a
+  /// missing handle.
+  void _detachOrphans(Set<int> removedIds) {
+    if (removedIds.isEmpty) return;
+    for (final entity in document.entities.toList()) {
+      if (entity is! DimensionEntity || entity.sourceIds.isEmpty) continue;
+      if (!entity.sourceIds.any(removedIds.contains)) continue;
+      final remaining = [
+        for (final id in entity.sourceIds)
+          if (document.entity(id) != null) id,
+      ];
+      if (remaining.length == entity.sourceIds.length) continue;
+      _run(
+        ModifyEntityPatch(
+          before: entity,
+          after: entity.copyWith(sourceIds: remaining),
+        ),
+      );
+    }
+  }
+
   static bool _samePoints(List<Vec2> a, List<Vec2> b) {
     for (var i = 0; i < a.length; i++) {
       if (a[i].distanceTo(b[i]) > 1e-9) return false;
@@ -249,6 +272,7 @@ class Transaction {
   /// Copies entities through [matrix], returning the new ids.
   List<int> duplicate(Iterable<int> ids, Mat3 matrix) {
     final created = <int>[];
+    final remap = <int, int>{};
     for (final id in ids.toList()) {
       final source = document.entity(id);
       if (source == null) continue;
@@ -256,7 +280,16 @@ class Transaction {
       final copy = matrix.isIdentity
           ? source.withId(0)
           : source.transformed(matrix).withId(0);
-      created.add(add(copy, blockName: owner));
+      final newId = add(copy, blockName: owner);
+      remap[id] = newId;
+      created.add(newId);
+    }
+    for (final newId in created) {
+      final entity = document.entity(newId);
+      if (entity == null) continue;
+      final remapped = entity.remappedIds(remap);
+      if (identical(remapped, entity)) continue;
+      _run(ModifyEntityPatch(before: entity, after: remapped));
     }
     return created;
   }
@@ -335,6 +368,7 @@ class Transaction {
     final after = before.withGrip(gripIndex, target);
     if (identical(after, before)) return false;
     _run(ModifyEntityPatch(before: before, after: after));
+    _regenAssociated({id});
     return true;
   }
 
@@ -444,6 +478,11 @@ class Transaction {
   /// Finalizes the transaction. Returns null when nothing changed.
   CommittedTransaction? commit() {
     assert(!_committed, 'Transaction already committed');
+    // applyRaw / AI patch lists skip the per-call hooks, so a last pass
+    // catches associated dimensions that still need to follow their sources.
+    final touched = {..._change.modified, ..._change.removed};
+    _regenAssociated(touched);
+    _detachOrphans({..._change.removed});
     _committed = true;
     if (_forward.isEmpty) return null;
     return CommittedTransaction(

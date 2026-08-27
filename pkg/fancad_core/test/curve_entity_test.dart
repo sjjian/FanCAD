@@ -104,6 +104,19 @@ void main() {
     final half = PolylineSink();
     arc.emit(context, half);
     expect(half.closedFlags.single, isFalse);
+
+    const oval = EllipseEntity(
+      id: 3,
+      center: Vec2.zero(),
+      majorAxis: Vec2(10, 0),
+      ratio: 0.5,
+    );
+    final stretched = oval.transformed(const Mat3.scaling(1, 4));
+    expect(stretched.ratio, closeTo(0.5, 1e-9));
+    expect(stretched.majorLength, closeTo(20, 1e-9));
+    final same = oval.transformed(const Mat3.identity());
+    expect(same.majorAxis.x, closeTo(10, 1e-9));
+    expect(same.ratio, closeTo(0.5, 1e-9));
   });
 
   test('a spline grip edits one control point and an empty curve is silent', () {

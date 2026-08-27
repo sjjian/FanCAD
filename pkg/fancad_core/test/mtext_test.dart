@@ -171,10 +171,11 @@ void main() {
 
       final sink = PolylineSink();
       text.emit(const EmitContext(tolerance: 0.1), sink);
-      expect(sink.texts.single.text, 'Hello\nworld');
-      expect(sink.texts.single.hAlign, TextHAlign.right);
-      expect(sink.texts.single.vAlign, TextVAlign.top);
-      expect(sink.texts.single.isMultiline, isTrue);
+      expect(sink.texts.map((run) => run.text), ['Hello', 'world']);
+      expect(sink.texts.every((run) => !run.isMultiline), isTrue);
+      expect(sink.texts.first.hAlign, TextHAlign.right);
+      expect(sink.texts.first.vAlign, TextVAlign.top);
+      expect(sink.texts.last.origin.y, lessThan(sink.texts.first.origin.y));
 
       expect(text.grips(), const [Vec2(2, 3)]);
       expect(

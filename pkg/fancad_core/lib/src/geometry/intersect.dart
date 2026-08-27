@@ -384,7 +384,10 @@ class Intersect {
   }
 
   /// Samples a spline the way [Flatten.bspline] does, then intersects it
-  /// with the line [p1]–[p2].
+  /// with the line [p1]–[p2] and pulls each hit back onto the real curve.
+  ///
+  /// The flatten is still the search; the refine is a bisection on signed
+  /// distance so TRIM and snaps land on the spline, not on a chord.
   static List<Vec2> lineSpline(
     Vec2 p1,
     Vec2 p2,
@@ -404,7 +407,143 @@ class Intersect {
       tolerance: tolerance,
       closed: closed,
     );
-    return linePolyline(p1, p2, xy, closed: closed, infinite: infinite);
+    final count = xy.length ~/ 2;
+    if (count < 2) return const [];
+    final n = controlPoints.length ~/ 2;
+    final canRefine =
+        n > degree &&
+        degree >= 1 &&
+        knots.length == n + degree + 1 &&
+        knots[n] > knots[degree];
+    final tMin = canRefine ? knots[degree] : 0.0;
+    final tMax = canRefine ? knots[n] : 0.0;
+    final lastIndex = count - 1;
+    final out = <Vec2>[];
+    final segments = closed ? count : count - 1;
+    for (var i = 0; i < segments; i++) {
+      final a = Vec2(xy[i * 2], xy[i * 2 + 1]);
+      final next = (i + 1) % count;
+      final b = Vec2(xy[next * 2], xy[next * 2 + 1]);
+      final hit = infinite
+          ? lineLine(p1, p2, a, b)
+          : segmentSegment(p1, p2, a, b);
+      if (hit == null) continue;
+      if (infinite && distanceToSegment(hit, a, b) > 1e-6) continue;
+      final wraps = closed && next == 0;
+      var point = hit;
+      if (canRefine && !wraps) {
+        final t0 = tMin + (tMax - tMin) * i / lastIndex;
+        final t1 = i + 1 == lastIndex
+            ? tMax - 1e-12
+            : tMin + (tMax - tMin) * (i + 1) / lastIndex;
+        final chord = b - a;
+        final along = chord.lengthSquared < epsilon
+            ? 0.0
+            : ((hit - a).dot(chord) / chord.lengthSquared).clamp(0.0, 1.0);
+        point =
+            _refineLineSplineHit(
+              p1,
+              p2,
+              controlPoints,
+              knots,
+              degree,
+              weights,
+              tMin,
+              tMax,
+              t0 + along * (t1 - t0),
+            ) ??
+            hit;
+      }
+      point = _projectOntoLine(p1, p2, point);
+      if (!infinite && distanceToSegment(point, p1, p2) > 1e-6) continue;
+      if (!_containsPoint(out, point)) out.add(point);
+    }
+    return out;
+  }
+
+  static Vec2 _projectOntoLine(Vec2 p1, Vec2 p2, Vec2 point) {
+    final d = p2 - p1;
+    final lengthSquared = d.lengthSquared;
+    if (lengthSquared < epsilon) return p1;
+    return p1 + d * ((point - p1).dot(d) / lengthSquared);
+  }
+
+  static Vec2? _refineLineSplineHit(
+    Vec2 p1,
+    Vec2 p2,
+    Float64List controlPoints,
+    List<double> knots,
+    int degree,
+    List<double> weights,
+    double tMin,
+    double tMax,
+    double tGuess,
+  ) {
+    final dir = p2 - p1;
+    if (dir.lengthSquared < epsilon) return null;
+    final span = tMax - tMin;
+    if (span <= 0) return null;
+    double side(Vec2 p) => (p - p1).cross(dir);
+    Vec2? eval(double t) => Flatten.bsplineEvaluate(
+      controlPoints: controlPoints,
+      knots: knots,
+      degree: degree,
+      t: t,
+      weights: weights,
+    );
+    var t = tGuess.clamp(tMin, tMax - 1e-12);
+    for (var i = 0; i < 16; i++) {
+      final p = eval(t);
+      if (p == null) break;
+      final f = side(p);
+      if (f.abs() < 1e-12) return p;
+      final dt = math.max(span * 1e-5, 1e-8);
+      final plus = eval((t + dt).clamp(tMin, tMax - 1e-12));
+      final minus = eval((t - dt).clamp(tMin, tMax - 1e-12));
+      if (plus == null || minus == null) break;
+      final fp = (side(plus) - side(minus)) / (2 * dt);
+      if (fp.abs() < 1e-14) break;
+      t = (t - f / fp).clamp(tMin, tMax - 1e-12);
+    }
+    final newton = eval(t);
+    if (newton != null && side(newton).abs() < 1e-8) return newton;
+
+    // Coarse flatten can put the true crossing outside the hit chord.
+    // Walk a neighbourhood of the guess until the signed distance flips.
+    final pad = math.max(span * 0.05, 1e-6);
+    var lo = (tGuess - pad).clamp(tMin, tMax - 1e-12);
+    var hi = (tGuess + pad).clamp(tMin, tMax - 1e-12);
+    var a = eval(lo);
+    var b = eval(hi);
+    if (a == null || b == null) return newton;
+    var sa = side(a);
+    var sb = side(b);
+    if (sa * sb > 0) {
+      lo = tMin;
+      hi = tMax - 1e-12;
+      a = eval(lo);
+      b = eval(hi);
+      if (a == null || b == null) return newton;
+      sa = side(a);
+      sb = side(b);
+      if (sa * sb > 0) return newton;
+    }
+    if (sa.abs() < 1e-14) return a;
+    if (sb.abs() < 1e-14) return b;
+    for (var i = 0; i < 24; i++) {
+      final mid = 0.5 * (lo + hi);
+      final p = eval(mid);
+      if (p == null) return newton;
+      final sm = side(p);
+      if (sm.abs() < 1e-14) return p;
+      if (sa * sm <= 0) {
+        hi = mid;
+      } else {
+        lo = mid;
+        sa = sm;
+      }
+    }
+    return eval(0.5 * (lo + hi)) ?? newton;
   }
 
   /// `|Q + cos(t) A + sin(t) B|² = r²` as a quartic in `tan(t/2)`.

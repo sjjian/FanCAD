@@ -183,6 +183,7 @@ class Construct {
         id: id,
         props: resolved,
         styleName: previous.styleName,
+        sourceIds: previous.sourceIds,
       );
     }
     if (type != 0 || points.length < 3) return null;
@@ -199,6 +200,7 @@ class Construct {
       id: id,
       props: resolved,
       styleName: previous.styleName,
+      sourceIds: previous.sourceIds,
     );
   }
 
@@ -240,6 +242,7 @@ class Construct {
         id: id,
         props: resolved,
         styleName: previous.styleName,
+        sourceIds: previous.sourceIds,
       );
     }
     if (type != 0 || points.length < 3) return null;
@@ -255,6 +258,7 @@ class Construct {
         id: id,
         props: resolved,
         styleName: previous.styleName,
+        sourceIds: previous.sourceIds,
       );
     }
     final dir = points[2].x >= mid.x ? 1.0 : -1.0;
@@ -265,6 +269,7 @@ class Construct {
       id: id,
       props: resolved,
       styleName: previous.styleName,
+      sourceIds: previous.sourceIds,
     );
   }
 
@@ -2131,6 +2136,47 @@ class Construct {
     return growEnd() ?? growStart();
   }
 
+  /// Flattens [spline] so TRIM / EXTEND / OFFSET share one centreline.
+  static PolylineEntity? _splineAsPolyline(SplineEntity spline) {
+    final xy = _flattenSpline(spline);
+    final points = <Vec2>[
+      for (var i = 0; i + 1 < xy.length; i += 2) Vec2(xy[i], xy[i + 1]),
+    ];
+    if (points.length < 2) return null;
+    return PolylineEntity.fromPoints(
+      id: spline.id,
+      props: spline.props,
+      points: points,
+      closed: spline.closed,
+    );
+  }
+
+  /// Shortens [spline] at [crossings]. A NURBS split is not a NURBS of the
+  /// same knots, so the kept span is a polyline — the same bargain OFFSET
+  /// already makes.
+  static PolylineEntity? trimSpline(
+    SplineEntity spline,
+    List<Vec2> crossings,
+    Vec2 pick,
+  ) {
+    final polyline = _splineAsPolyline(spline);
+    if (polyline == null) return null;
+    return trimPolyline(polyline, crossings, pick);
+  }
+
+  /// Grows an open [spline] until an end meets [edges]. Closed loops have
+  /// nowhere to grow. The result is a polyline, same as [trimSpline].
+  static PolylineEntity? extendSpline(
+    SplineEntity spline,
+    List<CadEntity> edges, [
+    Vec2? pick,
+  ]) {
+    if (spline.closed) return null;
+    final polyline = _splineAsPolyline(spline);
+    if (polyline == null) return null;
+    return extendPolyline(polyline, edges, pick);
+  }
+
   /// Every crossing of [target] with [edge], for TRIM.
   static List<Vec2> crossingsAlong(CadEntity target, CadEntity edge) {
     return switch (target) {
@@ -2328,7 +2374,15 @@ class Construct {
     final xy = _flattenSpline(spline);
     switch (edge) {
       case LineEntity(:final start, :final end):
-        return Intersect.linePolyline(start, end, xy, closed: spline.closed);
+        return Intersect.lineSpline(
+          start,
+          end,
+          spline.controlPoints,
+          knots: spline.knots,
+          degree: spline.degree,
+          weights: spline.weights,
+          closed: spline.closed,
+        );
       case CircleEntity(:final center, :final radius):
         return Intersect.circlePolyline(
           center,

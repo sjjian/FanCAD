@@ -175,6 +175,18 @@ void main() {
       expect(next!.measurement, closeTo(14, 1e-9));
     });
 
+    test('continues an associated dimension with the same sources', () {
+      final first = Construct.linearDimension(
+        const Vec2.zero(),
+        const Vec2(10, 0),
+        const Vec2(5, 4),
+        sourceIds: const [7],
+      )!;
+      final next = Construct.continueDimension(first, const Vec2(24, 0));
+      expect(next, isNotNull);
+      expect(next!.sourceIds, [7]);
+    });
+
     test('continues an aligned dimension along the same offset', () {
       final first = Construct.alignedDimension(
         const Vec2(0, 0),
@@ -963,6 +975,33 @@ void main() {
       final trimmed = Construct.trimLine(cutter, hits, const Vec2(0, 0));
       expect(trimmed, isNotNull);
       expect(trimmed!.length, closeTo(10, 1e-6));
+    });
+
+    test('trims and extends a spline through its flattened centreline', () {
+      final spline = Construct.splineFromControls(const [
+        Vec2.zero(),
+        Vec2(10, 0),
+        Vec2(20, 0),
+      ])!;
+      final cutter = line(10, -5, 10, 5);
+      final hits = Construct.crossingsAlong(spline, cutter);
+      expect(hits, isNotEmpty);
+      final trimmed = Construct.trimSpline(spline, hits, const Vec2(2, 0));
+      expect(trimmed, isNotNull);
+      expect(
+        Construct.lengthOf(trimmed!),
+        lessThan(Construct.lengthOf(spline) - 1),
+      );
+
+      final short = Construct.splineFromControls(const [
+        Vec2.zero(),
+        Vec2(3, 0),
+        Vec2(6, 0),
+      ])!;
+      final wall = line(12, -4, 12, 4);
+      final grown = Construct.extendSpline(short, [wall]);
+      expect(grown, isNotNull);
+      expect(Construct.lengthOf(grown!), greaterThan(Construct.lengthOf(short)));
     });
 
     test('offsets a circle outwards or inwards by the pick side', () {
