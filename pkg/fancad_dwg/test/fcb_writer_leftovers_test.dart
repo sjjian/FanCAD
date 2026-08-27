@@ -23,4 +23,21 @@ void main() {
     final second = FcbWriter().write(FcbReader(first).decode().document);
     expect(second, first);
   });
+
+  test('dimension source ids survive a write-read trip', () {
+    final document = CadDocument();
+    document.addEntity(
+      const DimensionEntity(
+        id: 1,
+        definitionPoints: [Vec2.zero(), Vec2(10, 0), Vec2(5, 3)],
+        textPosition: Vec2(5, 3),
+        measurement: 10,
+        sourceIds: [7, 8],
+      ),
+    );
+    final restored = FcbReader(FcbWriter().write(document)).decode().document;
+    final dim = restored.entity(1)! as DimensionEntity;
+    expect(dim.sourceIds, [7, 8]);
+    expect(dim.measurement, 10);
+  });
 }

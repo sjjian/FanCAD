@@ -1,4 +1,9 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'package:fancad_core/fancad_core.dart';
+import 'package:json_annotation/json_annotation.dart';
+
+part 'fidelity.g.dart';
 
 /// A comparison of two drawings, used as a save-round-trip audit.
 ///
@@ -6,6 +11,7 @@ import 'package:fancad_core/fancad_core.dart';
 /// disappear, did a sheet vanish, did a layer drop. A perfect byte match is
 /// not the goal — DWG and DXF will never be byte-identical to the original —
 /// but a missing entity or a missing paper tab is a bug, not a rounding error.
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 class FidelityReport {
   const FidelityReport({
     required this.sourceEntities,
@@ -26,28 +32,44 @@ class FidelityReport {
     this.notes = const [],
   });
 
+  @JsonKey()
   final int sourceEntities;
+  @JsonKey()
   final int targetEntities;
+  @JsonKey()
   final Map<String, int> missingByKind;
+  @JsonKey()
   final Map<String, int> extraByKind;
+  @JsonKey(includeToJson: false)
   final Bounds2 sourceExtents;
+  @JsonKey(includeToJson: false)
   final Bounds2 targetExtents;
+  @JsonKey()
   final List<String> missingLayers;
 
   /// Entity-count deltas keyed by layout block (`*Model_Space`, `*Paper_Space`).
+  @JsonKey()
   final Map<String, int> missingBySpace;
+  @JsonKey()
   final Map<String, int> extraBySpace;
 
+  @JsonKey()
   final List<String> missingLayouts;
+  @JsonKey()
   final List<String> extraLayouts;
 
   /// Named tabs that survived but changed paper size or viewports.
+  @JsonKey()
   final List<String> layoutMismatches;
 
   /// External-reference blocks that disappeared, appeared, or changed path.
+  @JsonKey()
   final List<String> missingXrefs;
+  @JsonKey()
   final List<String> extraXrefs;
+  @JsonKey()
   final List<String> xrefMismatches;
+  @JsonKey(toJson: _omitEmptyNotes)
   final List<String> notes;
 
   bool get isClean =>
@@ -113,24 +135,14 @@ class FidelityReport {
   }
 
   Map<String, Object?> toJson() => {
-    'sourceEntities': sourceEntities,
-    'targetEntities': targetEntities,
-    'missingByKind': missingByKind,
-    'extraByKind': extraByKind,
-    'missingLayers': missingLayers,
-    'missingBySpace': missingBySpace,
-    'extraBySpace': extraBySpace,
-    'missingLayouts': missingLayouts,
-    'extraLayouts': extraLayouts,
-    'layoutMismatches': layoutMismatches,
-    'missingXrefs': missingXrefs,
-    'extraXrefs': extraXrefs,
-    'xrefMismatches': xrefMismatches,
+    ..._$FidelityReportToJson(this),
     'clean': isClean,
     'summary': summary,
-    if (notes.isNotEmpty) 'notes': notes,
   };
 }
+
+List<String>? _omitEmptyNotes(List<String> notes) =>
+    notes.isEmpty ? null : notes;
 
 /// Builds a [FidelityReport] from two documents.
 class FidelityAuditor {

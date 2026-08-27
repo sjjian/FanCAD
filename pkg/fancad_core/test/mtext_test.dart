@@ -109,7 +109,24 @@ void main() {
       expect(strokes, isNotEmpty);
       expect(strokes.first.length, greaterThanOrEqualTo(2));
       expect(font.glyph(65)?.name, 'A');
+      expect(font.measureWidth('A', height: 10), closeTo(10, 1e-9));
+      expect(font.measureWidth('AA', height: 10), closeTo(20, 1e-9));
     });
+  });
+
+  test('MTEXT wrapping uses a supplied measured width', () {
+    final runs = MTextLayout(
+      measureWidth: (text, height) => text.length * height,
+    ).layout(
+      const MTextEntity(
+        id: 1,
+        position: Vec2.zero(),
+        content: 'aa bb',
+        height: 10,
+        rectangleWidth: 25,
+      ),
+    );
+    expect(runs.map((run) => run.text), ['aa', 'bb']);
   });
 
   group('MTextEntity', () {

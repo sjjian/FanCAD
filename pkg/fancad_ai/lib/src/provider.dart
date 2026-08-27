@@ -1,7 +1,13 @@
+// ignore_for_file: invalid_annotation_target
+
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+
+part 'provider.g.dart';
 
 /// A message in an LLM conversation.
 @immutable
+@JsonSerializable(includeIfNull: false)
 class LlmMessage {
   const LlmMessage({
     required this.role,
@@ -35,51 +41,31 @@ class LlmMessage {
   }) : role = LlmRole.tool,
        toolCalls = const [];
 
+  @JsonKey(fromJson: _llmRoleFromJson, toJson: _llmRoleToJson)
   final LlmRole role;
+  @JsonKey(fromJson: _stringOrEmpty, toJson: _omitEmptyString)
   final String content;
+  @JsonKey(
+    name: 'tool_calls',
+    fromJson: _toolCallsFromJson,
+    toJson: _toolCallsToJson,
+  )
   final List<LlmToolCall> toolCalls;
+  @JsonKey(name: 'tool_call_id')
   final String? toolCallId;
   final String? name;
 
-  Map<String, Object?> toJson() => {
-    'role': role.name,
-    if (content.isNotEmpty) 'content': content,
-    if (toolCalls.isNotEmpty)
-      'tool_calls': [for (final call in toolCalls) call.toJson()],
-    if (toolCallId != null) 'tool_call_id': toolCallId,
-    if (name != null) 'name': name,
-  };
+  Map<String, Object?> toJson() => _$LlmMessageToJson(this);
 
-  factory LlmMessage.fromJson(Map<dynamic, dynamic> raw) {
-    final roleName = '${raw['role'] ?? 'user'}';
-    final role = LlmRole.values.firstWhere(
-      (item) => item.name == roleName,
-      orElse: () => LlmRole.user,
-    );
-    final calls = <LlmToolCall>[];
-    final rawCalls = raw['tool_calls'];
-    if (rawCalls is List) {
-      for (final item in rawCalls) {
-        if (item is Map) calls.add(LlmToolCall.fromJson(item));
-      }
-    }
-    final content = raw['content'];
-    return LlmMessage(
-      role: role,
-      content: content is String ? content : '',
-      toolCalls: calls,
-      toolCallId: raw['tool_call_id'] is String
-          ? raw['tool_call_id'] as String
-          : null,
-      name: raw['name'] is String ? raw['name'] as String : null,
-    );
-  }
+  factory LlmMessage.fromJson(Map<dynamic, dynamic> raw) =>
+      _$LlmMessageFromJson(Map<String, dynamic>.from(raw));
 }
 
 enum LlmRole { system, user, assistant, tool }
 
 /// A function the model asked to call.
 @immutable
+@JsonSerializable(createFactory: false, createToJson: false)
 class LlmToolCall {
   const LlmToolCall({
     required this.id,
@@ -91,18 +77,12 @@ class LlmToolCall {
   final String name;
   final Map<String, Object?> arguments;
 
-  Map<String, Object?> toJson() => {
-    'id': id,
-    'type': 'function',
-    'function': {'name': name, 'arguments': arguments},
-  };
+  Map<String, Object?> toJson() => _llmToolCallToWire(this);
 
   factory LlmToolCall.fromJson(Map<dynamic, dynamic> raw) {
     final function = raw['function'];
     final fromFn = function is Map;
-    final name = fromFn
-        ? '${function['name'] ?? ''}'
-        : '${raw['name'] ?? ''}';
+    final name = fromFn ? '${function['name'] ?? ''}' : '${raw['name'] ?? ''}';
     final args = fromFn ? function['arguments'] : raw['arguments'];
     return LlmToolCall(
       id: '${raw['id'] ?? ''}',
@@ -112,16 +92,9 @@ class LlmToolCall {
   }
 }
 
-Map<String, Object?> _argumentsFromJson(Object? raw) {
-  if (raw is Map<String, Object?>) return raw;
-  if (raw is Map) {
-    return {for (final entry in raw.entries) '${entry.key}': entry.value};
-  }
-  return {};
-}
-
 /// A tool advertised to the model, usually generated from a command.
 @immutable
+@JsonSerializable(createFactory: false)
 class LlmTool {
   const LlmTool({
     required this.name,
@@ -135,12 +108,47 @@ class LlmTool {
 
   Map<String, Object?> toJson() => {
     'type': 'function',
-    'function': {
-      'name': name,
-      'description': description,
-      'parameters': parameters,
-    },
+    'function': _$LlmToolToJson(this),
   };
+}
+
+LlmRole _llmRoleFromJson(Object? raw) {
+  final roleName = '${raw ?? 'user'}';
+  return LlmRole.values.firstWhere(
+    (item) => item.name == roleName,
+    orElse: () => LlmRole.user,
+  );
+}
+
+String _llmRoleToJson(LlmRole role) => role.name;
+
+String _stringOrEmpty(Object? raw) => raw is String ? raw : '';
+
+String? _omitEmptyString(String value) => value.isEmpty ? null : value;
+
+List<LlmToolCall> _toolCallsFromJson(Object? raw) {
+  if (raw is! List) return const [];
+  return [
+    for (final item in raw)
+      if (item is Map) LlmToolCall.fromJson(item),
+  ];
+}
+
+List<Map<String, Object?>>? _toolCallsToJson(List<LlmToolCall> calls) =>
+    calls.isEmpty ? null : [for (final call in calls) call.toJson()];
+
+Map<String, Object?> _llmToolCallToWire(LlmToolCall call) => {
+  'id': call.id,
+  'type': 'function',
+  'function': {'name': call.name, 'arguments': call.arguments},
+};
+
+Map<String, Object?> _argumentsFromJson(Object? raw) {
+  if (raw is Map<String, Object?>) return raw;
+  if (raw is Map) {
+    return {for (final entry in raw.entries) '${entry.key}': entry.value};
+  }
+  return {};
 }
 
 /// One request to a language model.

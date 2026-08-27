@@ -1,12 +1,16 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'assistant_profile.freezed.dart';
+part 'assistant_profile.g.dart';
 
 /// One assistant connection: model, endpoint and key.
 @freezed
 abstract class AssistantProfile with _$AssistantProfile {
   const AssistantProfile._();
 
+  @JsonSerializable()
   const factory AssistantProfile({
     required String id,
     @Default('') String label,
@@ -27,29 +31,24 @@ abstract class AssistantProfile with _$AssistantProfile {
     return modelName.isEmpty ? defaultModel : modelName;
   }
 
-  Map<String, Object?> toJson() => {
-    'id': id,
-    'label': label,
-    'model': model,
-    'baseUrl': baseUrl,
-    'apiKey': apiKey,
-  };
+  factory AssistantProfile.fromJson(Map<Object?, Object?> raw) =>
+      _$AssistantProfileFromJson(_assistantProfileWire(raw));
+}
 
-  factory AssistantProfile.fromJson(Map<Object?, Object?> raw) {
-    String read(String key, [String fallback = '']) {
-      final value = raw[key];
-      return value is String ? value : fallback;
-    }
-
-    final id = read('id').trim();
-    return AssistantProfile(
-      id: id.isEmpty ? defaultId : id,
-      label: read('label'),
-      model: read('model', defaultModel),
-      baseUrl: read('baseUrl', defaultBaseUrl),
-      apiKey: read('apiKey'),
-    );
+Map<String, dynamic> _assistantProfileWire(Map<Object?, Object?> raw) {
+  String read(String key, [String fallback = '']) {
+    final value = raw[key];
+    return value is String ? value : fallback;
   }
+
+  final id = read('id').trim();
+  return {
+    'id': id.isEmpty ? AssistantProfile.defaultId : id,
+    'label': read('label'),
+    'model': read('model', AssistantProfile.defaultModel),
+    'baseUrl': read('baseUrl', AssistantProfile.defaultBaseUrl),
+    'apiKey': read('apiKey'),
+  };
 }
 
 /// Compact token label for the composer ring, leftover `12400` → `12.4k`.

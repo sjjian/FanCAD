@@ -16,6 +16,7 @@ class ViewCommands {
     _zoomOut(),
     _zoomSelected(),
     _regen(),
+    _units(),
     _selectAll(),
     _selectNone(),
     _selectInvert(),
@@ -181,6 +182,53 @@ class ViewCommands {
     handler: (context) async {
       context.services.invalidate();
       return const CommandResult.ok(message: 'Display regenerated.');
+    },
+  );
+
+  static CommandDescriptor _units() => CommandDescriptor(
+    id: 'view.units',
+    title: 'Units',
+    category: _view,
+    aliases: const ['units', 'insunits'],
+    description:
+        'Sets the drawing insertion units written to \$INSUNITS. '
+        'Coordinates stay in these units; the value is what importers and '
+        'queries use to convert.',
+    params: const [
+      ParamSpec(
+        name: 'units',
+        type: ParamType.text,
+        description: 'Unit name or DXF code: mm, cm, m, in, ft, 4, …',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final current = context.document.insUnits;
+      final raw = await context.resolveText(
+        'units',
+        'UNITS  Enter insertion units <${current.label}>:',
+        defaultValue: current.label,
+      );
+      final parsed = InsUnits.parse(raw);
+      if (parsed == null) {
+        return CommandResult.failed(
+          '"$raw" is not a drawing unit. Use mm, cm, m, in, ft, or a '
+          'DXF code 0–7.',
+        );
+      }
+      if (parsed == current) {
+        return CommandResult.ok(
+          message: 'Insertion units are already ${parsed.label}.',
+        );
+      }
+      final committed = context.edit('Units', (transaction) {
+        transaction.setHeaderVariable(r'$INSUNITS', '${parsed.code}');
+      });
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Insertion units set to ${parsed.label}.',
+        transaction: committed,
+      );
     },
   );
 

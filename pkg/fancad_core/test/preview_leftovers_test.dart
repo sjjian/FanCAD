@@ -29,6 +29,9 @@ void main() {
       const track = OverlayTrackingLine(Vec2.zero(), math.pi / 2, label: '90');
       expect(track.label, '90');
       expect(track.angle, math.pi / 2);
+
+      const mark = OverlayPoint(Vec2(2, 3));
+      expect(mark.at, const Vec2(2, 3));
     },
   );
 

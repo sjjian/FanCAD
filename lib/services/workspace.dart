@@ -73,6 +73,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   }) : commandLine = commandLine ?? CommandLineController() {
     snapEngine = SnapEngine(
       enabled: drawing.snapEnabled,
+      snapToGrid: drawing.showGrid,
       modes: _restoreSnapModes(),
       tracking: TrackingSettings(
         ortho: drawing.ortho,
@@ -271,6 +272,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   void activate(int index) {
     if (index < 0 || index >= _tabs.length || index == _activeIndex) return;
     _activeIndex = index;
+    snapEngine.snapToGrid = _tabs[index].showGrid;
     notifyListeners();
   }
 
@@ -602,6 +604,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   void setShowGrid(bool value) {
     drawing.setShowGrid(value);
     active?.setShowGrid(value);
+    snapEngine.snapToGrid = value;
     notifyListeners();
   }
 

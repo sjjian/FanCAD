@@ -1,5 +1,8 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'dart:async';
 
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 import '../geometry/bounds.dart';
@@ -11,6 +14,8 @@ import '../session/session.dart';
 import '../txn/patch.dart';
 import '../txn/transaction.dart';
 import 'param.dart';
+
+part 'command.g.dart';
 
 /// How risky a command is, which decides whether an AI turn may run it
 /// unattended.
@@ -40,6 +45,7 @@ enum AiExposure {
 
 /// The outcome of running a command.
 @immutable
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 class CommandResult {
   const CommandResult({
     required this.status,
@@ -62,7 +68,9 @@ class CommandResult {
       data = null,
       transaction = null;
 
+  @JsonKey(toJson: _statusName)
   final CommandStatus status;
+  @JsonKey(toJson: omitEmptyString)
   final String message;
 
   /// Structured payload. Returned verbatim to plugins and, for AI tool calls,
@@ -72,9 +80,11 @@ class CommandResult {
   /// JSON serialisation on its way to a plugin or a model, and a named field is
   /// the difference between a result the caller can read and one it has to
   /// guess at.
+  @JsonKey()
   final Map<String, Object?>? data;
 
   /// The transaction this command produced, when it changed the drawing.
+  @JsonKey(name: 'change', includeIfNull: false, toJson: _transactionChange)
   final CommittedTransaction? transaction;
 
   bool get isOk => status == CommandStatus.ok;
@@ -88,25 +98,30 @@ class CommandResult {
     transaction: value,
   );
 
-  Map<String, Object?> toJson() => {
-    'status': status.name,
-    if (message.isNotEmpty) 'message': message,
-    if (data != null) 'data': data,
-    if (transaction != null)
-      'change': {
-        'label': transaction!.label,
-        'summary': transaction!.summarize(),
-        'added': transaction!.change.added,
-        'removed': transaction!.change.removed,
-        'modified': transaction!.change.modified,
-      },
-  };
+  Map<String, Object?> toJson() => _$CommandResultToJson(this);
 
   @override
   String toString() => 'CommandResult(${status.name}: $message)';
 }
 
 enum CommandStatus { ok, cancelled, failed }
+
+/// A point pick that can also accept a keyword at the same prompt.
+///
+/// This is what makes `Specify next point or [Undo/Close]:` one question
+/// instead of two: the pointer supplies a [point], the command line can supply
+/// either a coordinate or a [keyword], and Escape still finishes.
+@immutable
+class PointOrKeyword {
+  const PointOrKeyword.point(this.point) : keyword = null;
+  const PointOrKeyword.keyword(this.keyword) : point = null;
+
+  final Vec2? point;
+  final String? keyword;
+
+  bool get isPoint => point != null;
+  bool get isKeyword => keyword != null;
+}
 
 /// Raised when the user or the host cancels a running command.
 class CommandCancelled implements Exception {
@@ -138,6 +153,23 @@ abstract class CommandInput {
 
   /// Picks a point, returning null instead of throwing when cancelled.
   Future<Vec2?> pointOrNull(String message, {Vec2? basePoint});
+
+  /// Picks a point or one of [keywords] at the same prompt.
+  ///
+  /// Returns null when the user finishes or cancels, the same way
+  /// [pointOrNull] does. A typed unique prefix of a keyword wins over a
+  /// coordinate, so `u` is Undo and `10,20` is still a point.
+  Future<PointOrKeyword?> pointOrKeyword(
+    String message, {
+    Vec2? basePoint,
+    List<String> keywords = const [],
+  });
+
+  /// The last point the user picked, including a selection click.
+  ///
+  /// Commands such as TTR use this as the side hint; scripted callers leave it
+  /// null and fall back to the entity itself.
+  Vec2? get lastPick;
 
   /// A length, entered numerically or by picking a second point.
   Future<double> distance(String message, {Vec2? basePoint});
@@ -322,11 +354,27 @@ class CommandContext {
 typedef CommandHandler =
     FutureOr<CommandResult> Function(CommandContext context);
 
+String _statusName(CommandStatus status) => status.name;
+
+String? omitEmptyString(String value) => value.isEmpty ? null : value;
+
+Map<String, Object?>? _transactionChange(CommittedTransaction? transaction) {
+  if (transaction == null) return null;
+  return {
+    'label': transaction.label,
+    'summary': transaction.summarize(),
+    'added': transaction.change.added,
+    'removed': transaction.change.removed,
+    'modified': transaction.change.modified,
+  };
+}
+
 /// A registered command.
 ///
 /// This single declaration is simultaneously a command palette entry, a
 /// command-line verb, a keybinding target, a plugin API surface and an AI tool.
 @immutable
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 class CommandDescriptor {
   const CommandDescriptor({
     required this.id,
@@ -346,41 +394,55 @@ class CommandDescriptor {
   });
 
   /// Dotted, namespaced identifier, for example `draw.line`.
+  @JsonKey()
   final String id;
 
   /// Human-readable name for the palette.
+  @JsonKey()
   final String title;
 
+  @JsonKey(includeToJson: false)
   final CommandHandler handler;
+  @JsonKey()
   final String category;
 
   /// Longer explanation. Doubles as the tool description sent to the model, so
   /// it should read as instructions rather than as UI copy.
+  @JsonKey(toJson: omitEmptyString)
   final String description;
 
+  @JsonKey(toJson: _paramsToJson)
   final List<ParamSpec> params;
 
   /// Command-line abbreviations, mirroring AutoCAD's aliases such as `L` for
   /// line or `CO` for copy.
+  @JsonKey(toJson: _omitEmptyStringList)
   final List<String> aliases;
 
+  @JsonKey(toJson: _riskName)
   final CommandRisk risk;
+  @JsonKey(includeToJson: false)
   final AiExposure aiExposure;
 
   /// Icon identifier resolved by the UI layer.
+  @JsonKey(includeToJson: false)
   final String? icon;
 
   /// A keybinding such as `ctrl+shift+p`.
+  @JsonKey(includeToJson: false)
   final String? defaultKeybinding;
 
   /// Context expression that gates availability, for example
   /// `hasSelection && !readOnly`.
+  @JsonKey(includeToJson: false)
   final String? when;
 
   /// The plugin that contributed this command; empty for built-ins.
+  @JsonKey(toJson: omitEmptyString)
   final String extensionId;
 
   /// Whether pressing Enter on an empty command line repeats it.
+  @JsonKey(includeToJson: false)
   final bool repeatable;
 
   bool get isBuiltIn => extensionId.isEmpty;
@@ -408,26 +470,24 @@ class CommandDescriptor {
     'parameters': toolSchema(),
   };
 
-  Map<String, Object?> toJson() => {
-    'id': id,
-    'title': title,
-    'category': category,
-    if (description.isNotEmpty) 'description': description,
-    if (aliases.isNotEmpty) 'aliases': aliases,
-    'risk': risk.name,
-    'params': [
-      for (final param in params)
-        {
-          'name': param.name,
-          'type': param.type.name,
-          'required': param.required,
-          if (param.description.isNotEmpty) 'description': param.description,
-          if (param.options.isNotEmpty) 'options': param.options,
-        },
-    ],
-    if (extensionId.isNotEmpty) 'extensionId': extensionId,
-  };
+  Map<String, Object?> toJson() => _$CommandDescriptorToJson(this);
 
   @override
   String toString() => 'CommandDescriptor($id)';
 }
+
+List<Map<String, Object?>> _paramsToJson(List<ParamSpec> params) => [
+  for (final param in params)
+    {
+      'name': param.name,
+      'type': param.type.name,
+      'required': param.required,
+      if (param.description.isNotEmpty) 'description': param.description,
+      if (param.options.isNotEmpty) 'options': param.options,
+    },
+];
+
+List<String>? _omitEmptyStringList(List<String> values) =>
+    values.isEmpty ? null : values;
+
+String _riskName(CommandRisk risk) => risk.name;

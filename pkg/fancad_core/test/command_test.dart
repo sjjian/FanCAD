@@ -314,6 +314,35 @@ void main() {
       );
     });
 
+    test('pointOrKeyword returns a point, a keyword, or null', () async {
+      final input = ArgsCommandInput(
+        args: CommandArgs({
+          'start': [0, 0],
+          'end': [4, 0],
+          'action': 'u',
+        }),
+        params: const [
+          ParamSpec.point('start'),
+          ParamSpec.point('end'),
+          ParamSpec(name: 'action', type: ParamType.text),
+        ],
+      );
+      final first = await input.pointOrKeyword('first');
+      expect(first!.point, const Vec2.zero());
+      expect(input.lastPick, const Vec2.zero());
+      final second = await input.pointOrKeyword(
+        'next',
+        keywords: const ['Undo', 'Close'],
+      );
+      expect(second!.point, const Vec2(4, 0));
+      final undo = await input.pointOrKeyword(
+        'next',
+        keywords: const ['Undo', 'Close'],
+      );
+      expect(undo!.keyword, 'Undo');
+      expect(await input.pointOrKeyword('done'), isNull);
+    });
+
     test('matchKeyword requires a unique prefix', () {
       expect(
         ArgsCommandInput.matchKeyword('ce', ['center', 'end']),

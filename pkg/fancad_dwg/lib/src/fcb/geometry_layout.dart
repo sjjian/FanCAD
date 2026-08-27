@@ -33,7 +33,7 @@
 /// hatch      ints [loopCount, (isOuter, pointCount) * loopCount]
 ///            geom [patternAngle, patternScale, points...]
 ///            strings [patternName]                        flag: solidFill
-/// dimension  ints [dimensionType, definitionPointCount]
+/// dimension  ints [dimensionType, definitionPointCount, sourceId...]
 ///            geom [textX, textY, measurement, defPoint(x, y)...]
 ///            strings [blockName, overrideText, styleName]
 /// leader     geom [x, y] * n

@@ -530,8 +530,9 @@ class FcbWriter {
           intOffset: _ints.addAll([
             entity.dimensionType,
             entity.definitionPoints.length,
+            ...entity.sourceIds,
           ]),
-          intCount: 2,
+          intCount: 2 + entity.sourceIds.length,
           stringOffset: stringOffset,
           stringCount: stringCount,
         );

@@ -1,7 +1,12 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'dart:convert';
 
 import 'package:fancad_core/fancad_core.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+
+part 'manifest.g.dart';
 
 /// Raised when a plugin manifest is missing, malformed or contradictory.
 ///
@@ -307,6 +312,7 @@ class KeybindingContribution {
 /// evaluated, so a plugin that never activates still costs nothing but is
 /// still discoverable.
 @immutable
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 class PluginManifest {
   const PluginManifest({
     required this.id,
@@ -326,28 +332,42 @@ class PluginManifest {
   });
 
   /// Globally unique, conventionally `publisher.name`.
+  @JsonKey()
   final String id;
 
+  @JsonKey()
   final String name;
+  @JsonKey()
   final String version;
 
   /// The JavaScript file to evaluate, relative to [directory].
+  @JsonKey(name: 'main')
   final String entryPoint;
 
+  @JsonKey(toJson: _omitEmptyString)
   final String publisher;
+  @JsonKey(toJson: _omitEmptyString)
   final String description;
 
   /// The `engines.fancad` range this plugin claims to support.
+  @JsonKey(name: 'engines', toJson: _hostConstraintToJson)
   final String hostConstraint;
 
+  @JsonKey(name: 'activationEvents', toJson: _activationToJson)
   final List<ActivationEvent> activation;
+  @JsonKey(toJson: _permissionsToJson)
   final Set<PluginPermission> permissions;
+  @JsonKey(includeToJson: false)
   final List<CommandContribution> commands;
+  @JsonKey(includeToJson: false)
   final List<PanelContribution> panels;
+  @JsonKey(includeToJson: false)
   final List<MenuContribution> menus;
+  @JsonKey(includeToJson: false)
   final List<KeybindingContribution> keybindings;
 
   /// Absolute path to the plugin folder. Empty for manifests parsed in memory.
+  @JsonKey(includeToJson: false)
   final String directory;
 
   /// The manifest file name looked for during discovery.
@@ -449,40 +469,15 @@ class PluginManifest {
   }
 
   Map<String, Object?> toJson() => {
-    'id': id,
-    'name': name,
-    'version': version,
-    'main': entryPoint,
-    if (publisher.isNotEmpty) 'publisher': publisher,
-    if (description.isNotEmpty) 'description': description,
-    if (hostConstraint.isNotEmpty) 'engines': {'fancad': hostConstraint},
-    if (activation.isNotEmpty)
-      'activationEvents': [for (final event in activation) event.wireName],
-    if (permissions.isNotEmpty)
-      'permissions': [for (final value in permissions) value.wireName],
+    ..._$PluginManifestToJson(this),
     'contributes': {
       if (commands.isNotEmpty)
         'commands': [
-          for (final command in commands)
-            {
-              'id': command.id,
-              'title': command.title,
-              'category': command.category,
-              if (command.description.isNotEmpty)
-                'description': command.description,
-              if (command.aliases.isNotEmpty) 'aliases': command.aliases,
-              'risk': command.risk.name,
-            },
+          for (final command in commands) _commandContributionToJson(command),
         ],
       if (panels.isNotEmpty)
         'panels': [
-          for (final panel in panels)
-            {
-              'id': panel.id,
-              'title': panel.title,
-              'location': panel.location.name,
-              if (panel.icon != null) 'icon': panel.icon,
-            },
+          for (final panel in panels) _panelContributionToJson(panel),
         ],
     },
   };
@@ -651,3 +646,32 @@ List<Map<String, Object?>> _mapList(Object? raw, String where) {
         throw ManifestException('$where: expected an array of objects'),
   ];
 }
+
+String? _omitEmptyString(String value) => value.isEmpty ? null : value;
+
+Map<String, String>? _hostConstraintToJson(String value) =>
+    value.isEmpty ? null : {'fancad': value};
+
+List<String>? _activationToJson(List<ActivationEvent> events) =>
+    events.isEmpty ? null : [for (final event in events) event.wireName];
+
+List<String>? _permissionsToJson(Set<PluginPermission> permissions) =>
+    permissions.isEmpty
+    ? null
+    : [for (final value in permissions) value.wireName];
+
+Map<String, Object?> _commandContributionToJson(CommandContribution command) => {
+  'id': command.id,
+  'title': command.title,
+  'category': command.category,
+  if (command.description.isNotEmpty) 'description': command.description,
+  if (command.aliases.isNotEmpty) 'aliases': command.aliases,
+  'risk': command.risk.name,
+};
+
+Map<String, Object?> _panelContributionToJson(PanelContribution panel) => {
+  'id': panel.id,
+  'title': panel.title,
+  'location': panel.location.name,
+  if (panel.icon != null) 'icon': panel.icon,
+};

@@ -371,18 +371,23 @@ class HostBridge {
   }
 
   EntityProps _mergeProps(EntityProps base, Map<String, Object?> patch) {
+    var next = base;
     final layer = patch['layer'];
-    final color = patch['color'];
-    return base.copyWith(
-      layer: layer is String ? layer : null,
-      color: color == null ? null : cadColorFromJson(color),
-      lineType: patch['lineType'] is String
-          ? patch['lineType'] as String
-          : null,
-      lineWeight: (patch['lineWeight'] as num?)?.toInt(),
-      lineTypeScale: (patch['lineTypeScale'] as num?)?.toDouble(),
-      visible: patch['visible'] as bool?,
-    );
+    if (layer is String) next = next.copyWith(layer: layer);
+    if (patch.containsKey('color')) {
+      next = next.copyWith(color: cadColorFromJson(patch['color']));
+    }
+    final lineType = patch['lineType'];
+    if (lineType is String) next = next.copyWith(lineType: lineType);
+    final lineWeight = (patch['lineWeight'] as num?)?.toInt();
+    if (lineWeight != null) next = next.copyWith(lineWeight: lineWeight);
+    final lineTypeScale = (patch['lineTypeScale'] as num?)?.toDouble();
+    if (lineTypeScale != null) {
+      next = next.copyWith(lineTypeScale: lineTypeScale);
+    }
+    final visible = patch['visible'];
+    if (visible is bool) next = next.copyWith(visible: visible);
+    return next;
   }
 
   List<int> _idsOf(Object? raw) => [

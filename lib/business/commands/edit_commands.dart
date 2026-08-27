@@ -3564,14 +3564,15 @@ class EditCommands {
       final target = context.document.entity(targetId);
       if (target is! LineEntity &&
           target is! PolylineEntity &&
-          target is! ArcEntity) {
+          target is! ArcEntity &&
+          target is! EllipseEntity) {
         context.input.write(
-          '$verb supports lines, polylines and arcs; '
+          '$verb supports lines, polylines, arcs and ellipses; '
           '${target?.kind.name ?? 'that object'} was skipped.',
         );
         if (suppliedTarget != null) {
           return CommandResult.failed(
-            '$verb supports lines, polylines and arcs.',
+            '$verb supports lines, polylines, arcs and ellipses.',
           );
         }
         continue;
@@ -3596,6 +3597,11 @@ class EditCommands {
             suppliedPick,
           ),
           ArcEntity() => Construct.extendArc(entity, edges, suppliedPick),
+          EllipseEntity() => Construct.extendEllipse(
+            entity,
+            edges,
+            suppliedPick,
+          ),
           _ => null,
         };
       } else {
@@ -3609,6 +3615,9 @@ class EditCommands {
             switch (entity) {
               LineEntity(:final midpoint) => midpoint,
               ArcEntity(:final midPoint) => midPoint,
+              EllipseEntity() => entity.pointAt(
+                entity.startParam + entity.sweep / 2,
+              ),
               PolylineEntity() =>
                 Construct.dividePolyline(entity, 2).firstOrNull ??
                     entity.vertexAt(0),
@@ -3618,6 +3627,7 @@ class EditCommands {
           LineEntity() => Construct.trimLine(entity, crossings, pick),
           PolylineEntity() => Construct.trimPolyline(entity, crossings, pick),
           ArcEntity() => Construct.trimArc(entity, crossings, pick),
+          EllipseEntity() => Construct.trimEllipse(entity, crossings, pick),
           _ => null,
         };
       }

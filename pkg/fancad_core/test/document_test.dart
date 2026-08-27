@@ -33,7 +33,7 @@ void main() {
       expect(sheet.hasCustomPlotPlacement, isFalse);
       expect(sheet.viewportIndexAt(50, 50), 0);
       expect(sheet.viewportIndexAt(0, 0), isNull);
-      expect(sheet.copyWith(clearPlotWindow: true).plotWindow, isNull);
+      expect(sheet.copyWith(plotWindow: null).plotWindow, isNull);
       expect(sheet.copyWith(plotFit: true).hasCustomPlotPlacement, isTrue);
       expect(sheet.toString(), contains('A3'));
     });

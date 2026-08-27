@@ -284,6 +284,7 @@ void main() {
       expect(dim!.measurement, closeTo(5, 1e-9));
       expect(dim.dimensionType, 4);
       expect(dim.displayText, 'R5.00');
+      expect(dim.sourceIds, [1]);
     });
 
     test('accepts an arc and refuses a line', () {
@@ -302,6 +303,68 @@ void main() {
         Construct.radiusDimension(line(0, 0, 10, 0), const Vec2(5, 0)),
         isNull,
       );
+    });
+  });
+
+  group('regenDimension', () {
+    test('a linear dimension follows a moved line and keeps its offset', () {
+      const source = LineEntity(id: 7, start: Vec2.zero(), end: Vec2(10, 0));
+      final dim = Construct.linearDimension(
+        source.start,
+        source.end,
+        const Vec2(5, 4),
+        sourceIds: const [7],
+      )!;
+      expect(dim.measurement, closeTo(10, 1e-9));
+
+      const moved = LineEntity(id: 7, start: Vec2(0, 2), end: Vec2(14, 2));
+      final next = Construct.regenDimension(dim, [moved], sourcesMoved: true)!;
+      expect(next.measurement, closeTo(14, 1e-9));
+      expect(next.sourceIds, [7]);
+      expect(next.definitionPoints[0], const Vec2(0, 2));
+      expect(next.definitionPoints[1], const Vec2(14, 2));
+      expect(next.definitionPoints[2].y, closeTo(6, 1e-9));
+    });
+
+    test('moving only the dimension keeps origins on the source', () {
+      const source = LineEntity(id: 7, start: Vec2.zero(), end: Vec2(10, 0));
+      final dim = Construct.linearDimension(
+        source.start,
+        source.end,
+        const Vec2(5, 4),
+        id: 8,
+        sourceIds: const [7],
+      )!;
+      final dragged = dim.transformed(const Mat3.translation(0, 3));
+      final next = Construct.regenDimension(
+        dragged,
+        const [source],
+        sourcesMoved: false,
+      )!;
+      expect(next.measurement, closeTo(10, 1e-9));
+      expect(next.definitionPoints[0], const Vec2.zero());
+      expect(next.definitionPoints[1], const Vec2(10, 0));
+      expect(next.definitionPoints[2].y, closeTo(7, 1e-9));
+    });
+
+    test('a radius dimension rereads a stretched circle', () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+      final dim = Construct.radiusDimension(circle, const Vec2(8, 0))!;
+      const grown = CircleEntity(id: 1, center: Vec2.zero(), radius: 8);
+      final next = Construct.regenDimension(dim, const [grown])!;
+      expect(next.measurement, closeTo(8, 1e-9));
+      expect(next.displayText, 'R8.00');
+      expect(next.sourceIds, [1]);
+    });
+
+    test('missing sources leave the last measurement in place', () {
+      const dim = DimensionEntity(
+        id: 2,
+        definitionPoints: [Vec2.zero(), Vec2(10, 0), Vec2(5, 3)],
+        measurement: 10,
+        sourceIds: [99],
+      );
+      expect(Construct.regenDimension(dim, const []), same(dim));
     });
   });
 
@@ -871,6 +934,35 @@ void main() {
 
       final below = Construct.offset(source, 2, const Vec2(5, -5));
       expect((below! as LineEntity).start.y, closeTo(-2, 1e-9));
+    });
+
+    test('offsets an ellipse by growing both axes', () {
+      const source = EllipseEntity(
+        id: 1,
+        center: Vec2.zero(),
+        majorAxis: Vec2(10, 0),
+        ratio: 0.5,
+      );
+      final outer = Construct.offset(source, 2, const Vec2(20, 0));
+      expect(outer, isA<EllipseEntity>());
+      final oval = outer! as EllipseEntity;
+      expect(oval.majorLength, closeTo(12, 1e-9));
+      expect(oval.majorLength * oval.ratio, closeTo(7, 1e-9));
+    });
+
+    test('a line crossing an ellipse is a TRIM cut', () {
+      const oval = EllipseEntity(
+        id: 1,
+        center: Vec2.zero(),
+        majorAxis: Vec2(10, 0),
+        ratio: 1,
+      );
+      final cutter = line(-20, 0, 20, 0);
+      final hits = Construct.crossingsAlong(cutter, oval);
+      expect(hits.length, 2);
+      final trimmed = Construct.trimLine(cutter, hits, const Vec2(0, 0));
+      expect(trimmed, isNotNull);
+      expect(trimmed!.length, closeTo(10, 1e-6));
     });
 
     test('offsets a circle outwards or inwards by the pick side', () {

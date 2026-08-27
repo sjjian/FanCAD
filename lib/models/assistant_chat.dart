@@ -1,21 +1,27 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'assistant_chat.freezed.dart';
+part 'assistant_chat.g.dart';
 
 /// One assistant thread. The pane shows [conversation]; leftover chats
 /// are stored so a new session does not wipe the last one.
-@freezed
+@Freezed(fromJson: false, toJson: false)
 abstract class AssistantChat with _$AssistantChat {
   const AssistantChat._();
 
+  @JsonSerializable(createFactory: false, ignoreUnannotated: true)
   const factory AssistantChat.raw({
-    required String id,
-    @Default('') String title,
-    required DateTime updatedAt,
+    @JsonKey() required String id,
+    @JsonKey() @Default('') String title,
+    @JsonKey() required DateTime updatedAt,
+    @JsonKey(includeToJson: false, includeFromJson: false)
     required Conversation conversation,
+    @JsonKey(includeToJson: false, includeFromJson: false)
     LlmUsage? usage,
-    @Default('') String draft,
+    @JsonKey() @Default('') String draft,
   }) = _AssistantChat;
 
   factory AssistantChat({
@@ -52,10 +58,7 @@ abstract class AssistantChat with _$AssistantChat {
   }
 
   Map<String, Object?> toJson() => {
-    'id': id,
-    'title': title,
-    'updatedAt': updatedAt.toIso8601String(),
-    'draft': draft,
+    ..._$AssistantChatToJson(this as _AssistantChat),
     ...conversation.toJson(),
   };
 

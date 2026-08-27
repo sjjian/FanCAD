@@ -1,12 +1,19 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'dart:async';
+
+import 'package:json_annotation/json_annotation.dart';
 
 import '../txn/patch.dart';
 import 'command.dart';
 import 'disposable.dart';
 import 'param.dart';
 
+part 'registry.g.dart';
+
 /// A record of one command execution, for the command history pane and for AI
 /// context ("what did the user just do?").
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 class CommandInvocation {
   CommandInvocation({
     required this.commandId,
@@ -15,21 +22,24 @@ class CommandInvocation {
     this.args = const {},
   });
 
+  @JsonKey(name: 'command')
   final String commandId;
+  @JsonKey(toJson: _sourceName)
   final ChangeSource source;
+  @JsonKey(name: 'at')
   final DateTime startedAt;
+  @JsonKey(toJson: _omitEmptyArgs)
   final Map<String, Object?> args;
 
+  @JsonKey(includeToJson: false)
   CommandResult? result;
+  @JsonKey(includeToJson: false)
   Duration? duration;
 
   bool get isRunning => result == null;
 
   Map<String, Object?> toJson() => {
-    'command': commandId,
-    'source': source.name,
-    'at': startedAt.toIso8601String(),
-    if (args.isNotEmpty) 'args': args,
+    ..._$CommandInvocationToJson(this),
     if (result != null) 'status': result!.status.name,
     if (result != null && result!.message.isNotEmpty)
       'message': result!.message,
@@ -39,6 +49,11 @@ class CommandInvocation {
   @override
   String toString() => 'CommandInvocation($commandId)';
 }
+
+String _sourceName(ChangeSource source) => source.name;
+
+Map<String, Object?>? _omitEmptyArgs(Map<String, Object?> args) =>
+    args.isEmpty ? null : args;
 
 /// Raised when a command id is registered twice.
 class DuplicateCommandException implements Exception {

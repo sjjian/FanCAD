@@ -44,4 +44,11 @@ void main() {
     expect(unfit.scale, 1);
     expect(unfit.size, Size.zero);
   });
+
+  test('grid step stays on the 1-2-5 sequence the snap engine uses', () {
+    expect(niceGridStep(12), 20);
+    expect(niceGridStep(0), 1);
+    const view = CadViewport(center: Vec2.zero(), scale: 1, size: size);
+    expect(referenceGridStep(view), niceGridStep(view.pixelsToWorld(12)));
+  });
 }
