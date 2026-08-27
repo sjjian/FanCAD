@@ -28,6 +28,43 @@ void main() {
     expect(insert.position, const Vec2(5, 6));
   });
 
+  test('attaching remaps associative dimension source ids', () {
+    final host = CadDocument();
+    final foreign = CadDocument();
+    final line = foreign.addEntity(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+    );
+    foreign.addEntity(
+      Construct.linearDimension(
+        const Vec2.zero(),
+        const Vec2(10, 0),
+        const Vec2(5, 3),
+        sourceIds: [line.id],
+      )!,
+    );
+    final session = DocumentSession(id: 't', document: host);
+
+    session.edit('Attach xref', (transaction) {
+      const XrefResolver().attach(
+        host: host,
+        foreign: foreign,
+        path: '/tmp/assoc.dxf',
+        transaction: transaction,
+      );
+    });
+
+    final dims = host.entities.whereType<DimensionEntity>().toList();
+    expect(dims, hasLength(1));
+    expect(dims.single.sourceIds, isNotEmpty);
+    expect(host.entity(dims.single.sourceIds.single), isA<LineEntity>());
+    expect(
+      host.blocks.values.any(
+        (block) => block.isXref && block.entityIds.contains(dims.single.id),
+      ),
+      isTrue,
+    );
+  });
+
   test('reattaching the same xref keeps the existing insert', () {
     final host = CadDocument();
     final first = CadDocument()

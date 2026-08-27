@@ -238,6 +238,15 @@ void main() {
       expect(document.extents.maxY, closeTo(0, 1e-9));
     });
 
+    test('a ray is findable far away without stretching extents', () {
+      final document = CadDocument();
+      final ray = document.addEntity(
+        const RayEntity(id: 0, origin: Vec2.zero(), direction: Vec2(1, 0)),
+      );
+      expect(document.extents, const Bounds2(0, 0, 0, 0));
+      expect(document.queryVisible(const Bounds2(1000, -1, 1001, 1)), [ray.id]);
+    });
+
     test('queryVisible skips hidden entities and respects the index', () {
       final document = CadDocument();
       final visible = document.addEntity(

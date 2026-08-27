@@ -260,6 +260,7 @@ class EmitContext {
     this.inheritedStyle = ResolvedStyle.fallback,
     this.depth = 0,
     this.clip,
+    this.measureWidth,
   });
 
   /// Maximum allowed deviation when discretizing curves, in model units.
@@ -281,6 +282,10 @@ class EmitContext {
   /// Optional model-space cull box. Block references outside it may skip
   /// recursing into their definition.
   final Bounds2? clip;
+
+  /// Measured advance of a text run, used by MTEXT wrapping. Null falls
+  /// back to 0.6 em per character when no SHX is loaded.
+  final double Function(String text, double height)? measureWidth;
 
   static const int maxDepth = 32;
 
@@ -321,6 +326,7 @@ class EmitContext {
     inheritedStyle: style,
     depth: depth + 1,
     clip: clip,
+    measureWidth: measureWidth,
   );
 
   EmitContext withTolerance(double value) => EmitContext(
@@ -331,6 +337,7 @@ class EmitContext {
     inheritedStyle: inheritedStyle,
     depth: depth,
     clip: clip,
+    measureWidth: measureWidth,
   );
 }
 

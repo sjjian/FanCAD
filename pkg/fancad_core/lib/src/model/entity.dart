@@ -12,6 +12,7 @@ import '../geometry/flatten.dart';
 import '../geometry/matrix.dart';
 import '../geometry/vector.dart';
 import '../hatch/generator.dart';
+import '../text/mtext_layout.dart';
 import 'geometry_sink.dart';
 import 'json_converters.dart';
 import 'style.dart';
@@ -82,6 +83,13 @@ sealed class CadEntity {
   /// does not support that grip.
   CadEntity withGrip(int index, Vec2 target);
 
+  /// Rewrites stored entity ids after a copy or xref remap.
+  ///
+  /// [ids] maps the old handle to the new one. Missing keys stay as they
+  /// are, so a copied dimension can keep pointing at a source that was not
+  /// in the copy set.
+  CadEntity remappedIds(Map<int, int> ids) => this;
+
   /// Type-specific JSON payload, merged into [toJson] by the base class.
   Map<String, Object?> geometryToJson();
 
@@ -99,6 +107,16 @@ sealed class CadEntity {
     );
     return sink.bounds;
   }
+
+  /// Box used by the spatial index for window and crossing selection.
+  ///
+  /// Same as [computeBounds] for ordinary geometry. Construction lines
+  /// override this so they can be found far from the origin without
+  /// stretching Zoom Extents.
+  Bounds2 indexBounds({
+    BlockLookup blocks = BlockLookup.empty,
+    double tolerance = 1e-3,
+  }) => computeBounds(blocks: blocks, tolerance: tolerance);
 
   Map<String, Object?> toJson() => {
     'id': id,
@@ -586,15 +604,17 @@ final class CircleEntity extends CadEntity {
         radius: radius * scaleX,
       );
     }
-    // A non-uniform scale turns a circle into an ellipse.
-    return EllipseEntity(
-      id: id,
-      props: props,
-      center: matrix.transform(center),
-      majorAxis: matrix.transformDirection(Vec2(radius, 0)),
-      ratio: scaleY / scaleX,
-      startParam: 0,
-      endParam: math.pi * 2,
+    // A non-uniform scale turns a circle into an ellipse. Recover principal
+    // axes so SCALE Y > X does not produce a ratio greater than 1.
+    return _affineEllipse(
+      EllipseEntity(
+        id: id,
+        props: props,
+        center: center,
+        majorAxis: Vec2(radius, 0),
+        ratio: 1,
+      ),
+      matrix,
     );
   }
 
@@ -768,6 +788,82 @@ final class ArcEntity extends CadEntity {
   Map<String, Object?> geometryToJson() => _$ArcEntityToJson(this);
 }
 
+/// Rebuilds an ellipse after an affine map from its transformed conjugate
+/// diameters. [ratio] stays ≤ 1; an elliptical arc keeps the image of its
+/// start, mid and end so the sweep does not flip.
+EllipseEntity _affineEllipse(EllipseEntity source, Mat3 matrix) {
+  final center = matrix.transform(source.center);
+  final axisA = matrix.transformDirection(source.majorAxis);
+  final axisB = matrix.transformDirection(source.minorAxis);
+  final uu = axisA.dot(axisA);
+  final vv = axisB.dot(axisB);
+  final uv = axisA.dot(axisB);
+  final h = (uu + vv) / 2;
+  final g = (uu - vv) / 2;
+  final r = math.sqrt(g * g + uv * uv);
+  final majorLen = math.sqrt(math.max(0.0, h + r));
+  final minorLen = math.sqrt(math.max(0.0, h - r));
+  if (majorLen < 1e-20) {
+    return EllipseEntity(
+      id: source.id,
+      props: source.props,
+      center: center,
+      majorAxis: axisA,
+      ratio: source.ratio,
+      startParam: source.startParam,
+      endParam: source.endParam,
+    );
+  }
+  final alpha = 0.5 * math.atan2(2 * uv, uu - vv);
+  var major = Vec2(math.cos(alpha), math.sin(alpha)) * majorLen;
+  if (major.dot(axisA) < 0) major = -major;
+  final ratio = (minorLen / majorLen).clamp(0.0, 1.0);
+  if (source.isFullEllipse) {
+    return EllipseEntity(
+      id: source.id,
+      props: source.props,
+      center: center,
+      majorAxis: major,
+      ratio: ratio,
+    );
+  }
+  final frame = EllipseEntity(
+    id: 0,
+    center: center,
+    majorAxis: major,
+    ratio: ratio,
+  );
+  final start = matrix.transform(source.startPoint);
+  final end = matrix.transform(source.endPoint);
+  final mid = matrix.transform(
+    source.pointAt(source.startParam + source.sweep / 2),
+  );
+  var startParam = frame.paramOf(start);
+  var endParam = frame.paramOf(end);
+  final trial = EllipseEntity(
+    id: 0,
+    center: center,
+    majorAxis: major,
+    ratio: ratio,
+    startParam: startParam,
+    endParam: endParam,
+  );
+  if (!trial.containsParam(trial.paramOf(mid))) {
+    final swap = startParam;
+    startParam = endParam;
+    endParam = swap;
+  }
+  return EllipseEntity(
+    id: source.id,
+    props: source.props,
+    center: center,
+    majorAxis: major,
+    ratio: ratio,
+    startParam: startParam,
+    endParam: endParam,
+  );
+}
+
 /// An ellipse or elliptical arc. Angles are ellipse parameters, as in DWG.
 @JsonSerializable(createFactory: false, ignoreUnannotated: true)
 final class EllipseEntity extends CadEntity {
@@ -891,15 +987,7 @@ final class EllipseEntity extends CadEntity {
   );
 
   @override
-  EllipseEntity transformed(Mat3 matrix) => EllipseEntity(
-    id: id,
-    props: props,
-    center: matrix.transform(center),
-    majorAxis: matrix.transformDirection(majorAxis),
-    ratio: ratio,
-    startParam: startParam,
-    endParam: endParam,
-  );
+  EllipseEntity transformed(Mat3 matrix) => _affineEllipse(this, matrix);
 
   @override
   List<Vec2> grips() => [
@@ -1320,20 +1408,30 @@ final class MTextEntity extends CadEntity {
     final scale = context.transform.isIdentity
         ? 1.0
         : context.transform.meanScale;
-    sink.text(
-      TextGeometry(
-        text: plainText,
-        origin: context.apply(position),
-        height: height * scale,
-        rotation: rotation + context.transform.rotation,
-        styleName: styleName,
-        rectangleWidth: rectangleWidth * scale,
-        hAlign: hAlign,
-        vAlign: vAlign,
-        isMultiline: true,
-      ),
-      context.styleFor(props),
-    );
+    final runs = MTextLayout(measureWidth: context.measureWidth).layout(this);
+    if (runs.isEmpty) return;
+    final style = context.styleFor(props);
+    final worldRotation = rotation + context.transform.rotation;
+    for (final run in runs) {
+      if (run.text.isEmpty) continue;
+      final local = run.origin - position;
+      final origin = rotation.abs() < 1e-12
+          ? run.origin
+          : position + local.rotated(rotation);
+      sink.text(
+        TextGeometry(
+          text: run.text,
+          origin: context.apply(origin),
+          height: run.height * scale,
+          rotation: worldRotation,
+          styleName: run.font.isEmpty ? styleName : run.font,
+          rectangleWidth: 0,
+          hAlign: hAlign,
+          vAlign: vAlign,
+        ),
+        style,
+      );
+    }
   }
 
   @override
@@ -1473,6 +1571,22 @@ final class DimensionEntity extends CadEntity {
     return points[0].distanceTo(points[1]);
   }
 
+  /// Degrees shown on an angular dimension.
+  ///
+  /// Definition points are `[vertex, first, second]`. The sweep is the
+  /// counter-clockwise sector from the first arm to the second.
+  static double measuredAngle(List<Vec2> points) {
+    if (points.length < 3) return 0;
+    final vertex = points[0];
+    if (points[1].distanceTo(vertex) < 1e-12 ||
+        points[2].distanceTo(vertex) < 1e-12) {
+      return 0;
+    }
+    final start = (points[1] - vertex).angle;
+    final end = (points[2] - vertex).angle;
+    return angularSweep(start, end) * 180 / math.pi;
+  }
+
   bool get hasRenderedBlock => blockName.isNotEmpty;
 
   /// Measurement text using two decimal places. Regenerated graphics use
@@ -1564,22 +1678,34 @@ final class DimensionEntity extends CadEntity {
   );
 
   @override
-  DimensionEntity transformed(Mat3 matrix) => DimensionEntity(
-    id: id,
-    props: props,
-    // The cached block geometry is no longer valid once the definition points
-    // move, so drop it and let the fallback or a regeneration pass rebuild it.
-    blockName: matrix.isIdentity ? blockName : '',
-    definitionPoints: [
+  DimensionEntity transformed(Mat3 matrix) {
+    final points = [
       for (final p in definitionPoints) matrix.transform(p),
-    ],
-    textPosition: matrix.transform(textPosition),
-    measurement: measurement * matrix.meanScale,
-    overrideText: overrideText,
-    styleName: styleName,
-    dimensionType: dimensionType,
-    sourceIds: sourceIds,
-  );
+    ];
+    final family = dimensionType & 0x0F;
+    // Angles are not lengths: SCALE must not turn 45° into 90°. Linear and
+    // aligned values are reread from the new origins. Radial still scales
+    // by the mean factor because the chord is a seat, not the radius.
+    final nextMeasurement = switch (family) {
+      2 => measuredAngle(points),
+      0 || 1 => measuredLength(points, dimensionType),
+      _ => measurement * matrix.meanScale,
+    };
+    return DimensionEntity(
+      id: id,
+      props: props,
+      // The cached block geometry is no longer valid once the definition points
+      // move, so drop it and let the fallback or a regeneration pass rebuild it.
+      blockName: matrix.isIdentity ? blockName : '',
+      definitionPoints: points,
+      textPosition: matrix.transform(textPosition),
+      measurement: nextMeasurement > 1e-12 ? nextMeasurement : measurement,
+      overrideText: overrideText,
+      styleName: styleName,
+      dimensionType: dimensionType,
+      sourceIds: sourceIds,
+    );
+  }
 
   @override
   List<Vec2> grips() => [...definitionPoints, textPosition];
@@ -1603,19 +1729,36 @@ final class DimensionEntity extends CadEntity {
     if (index < 0 || index >= definitionPoints.length) return this;
     final points = [...definitionPoints];
     points[index] = target;
-    final length = measuredLength(points, dimensionType);
+    final family = dimensionType & 0x0F;
+    final nextMeasurement = switch (family) {
+      2 => measuredAngle(points),
+      0 || 1 => measuredLength(points, dimensionType),
+      _ => measurement,
+    };
     return DimensionEntity(
       id: id,
       props: props,
       blockName: '',
       definitionPoints: points,
       textPosition: textPosition,
-      measurement: length > 1e-12 ? length : measurement,
+      measurement: nextMeasurement > 1e-12 ? nextMeasurement : measurement,
       overrideText: overrideText,
       styleName: styleName,
       dimensionType: dimensionType,
       sourceIds: sourceIds,
     );
+  }
+
+  @override
+  DimensionEntity remappedIds(Map<int, int> ids) {
+    if (sourceIds.isEmpty) return this;
+    final next = [for (final id in sourceIds) ids[id] ?? id];
+    for (var i = 0; i < next.length; i++) {
+      if (next[i] != sourceIds[i]) {
+        return copyWith(sourceIds: next);
+      }
+    }
+    return this;
   }
 
   @override
@@ -2141,6 +2284,16 @@ final class RayEntity extends CadEntity {
   }) => Bounds2(origin.x, origin.y, origin.x, origin.y);
 
   @override
+  Bounds2 indexBounds({
+    BlockLookup blocks = BlockLookup.empty,
+    double tolerance = 1e-3,
+  }) {
+    final unit = direction.normalized();
+    if (unit.length == 0) return computeBounds();
+    return Bounds2.fromPoints([origin, origin + unit * _extent]);
+  }
+
+  @override
   RayEntity withId(int id) =>
       RayEntity(id: id, props: props, origin: origin, direction: direction);
 
@@ -2216,6 +2369,19 @@ final class XLineEntity extends CadEntity {
     BlockLookup blocks = BlockLookup.empty,
     double tolerance = 1e-3,
   }) => Bounds2(origin.x, origin.y, origin.x, origin.y);
+
+  @override
+  Bounds2 indexBounds({
+    BlockLookup blocks = BlockLookup.empty,
+    double tolerance = 1e-3,
+  }) {
+    final unit = direction.normalized();
+    if (unit.length == 0) return computeBounds();
+    return Bounds2.fromPoints([
+      origin - unit * _extent,
+      origin + unit * _extent,
+    ]);
+  }
 
   @override
   XLineEntity withId(int id) =>

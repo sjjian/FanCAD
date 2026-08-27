@@ -63,6 +63,21 @@ void main() {
     );
   });
 
+  test('a collinear overlap still closes the room around the pick', () {
+    final loops = Construct.boundaryFromPick(
+      [
+        line(0, 0, 10, 0),
+        line(3, 0, 7, 0),
+        line(10, 0, 10, 10),
+        line(10, 10, 0, 10),
+        line(0, 10, 0, 0),
+      ],
+      const Vec2(5, 5),
+    );
+    expect(loops, hasLength(1));
+    expect(Construct.areaOf(HatchEntity(id: 0, loops: loops)), closeTo(100, 1e-6));
+  });
+
   test('a pick outside every loop finds nothing', () {
     expect(
       Construct.boundaryFromPick(

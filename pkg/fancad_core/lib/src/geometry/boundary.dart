@@ -183,9 +183,15 @@ class Boundary {
           raw[j].a,
           raw[j].b,
         );
-        if (hit == null) continue;
-        _addCut(cuts[i], hit);
-        _addCut(cuts[j], hit);
+        if (hit != null) {
+          _addCut(cuts[i], hit);
+          _addCut(cuts[j], hit);
+          continue;
+        }
+        // Collinear overlaps produce no crossing, but the shared span
+        // still has to become graph vertices or the face walk misses
+        // rooms that share a wall.
+        _splitCollinear(raw[i], raw[j], cuts[i], cuts[j]);
       }
     }
 
@@ -210,6 +216,29 @@ class Boundary {
       if (point.distanceSquaredTo(hit) < 1e-16) return;
     }
     cuts.add(hit);
+  }
+
+  /// Inserts the interior projections of two collinear overlapping segments.
+  static void _splitCollinear(_Seg a, _Seg b, List<Vec2> cutsA, List<Vec2> cutsB) {
+    final da = a.b - a.a;
+    final db = b.b - b.a;
+    final la = da.lengthSquared;
+    final lb = db.lengthSquared;
+    if (la < 1e-20 || lb < 1e-20) return;
+    final parallel = da.cross(db).abs();
+    if (parallel > 1e-8 * math.sqrt(la * lb)) return;
+    if ((b.a - a.a).cross(da).abs() > 1e-8 * math.sqrt(la)) return;
+
+    void project(Vec2 point, Vec2 origin, Vec2 delta, double lengthSquared, List<Vec2> cuts) {
+      final t = (point - origin).dot(delta) / lengthSquared;
+      if (t <= 1e-9 || t >= 1 - 1e-9) return;
+      _addCut(cuts, origin + delta * t);
+    }
+
+    project(b.a, a.a, da, la, cutsA);
+    project(b.b, a.a, da, la, cutsA);
+    project(a.a, b.a, db, lb, cutsB);
+    project(a.b, b.a, db, lb, cutsB);
   }
 
   static List<_Face> _facesOf(List<_Seg> segments) {

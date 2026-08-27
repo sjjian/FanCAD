@@ -3517,6 +3517,21 @@ class EditCommands {
     ];
   }
 
+  static Vec2 _splinePick(SplineEntity spline) {
+    final xy = Flatten.bspline(
+      controlPoints: spline.controlPoints,
+      knots: spline.knots,
+      degree: spline.degree,
+      weights: spline.weights,
+      tolerance: 1e-3,
+      closed: spline.closed,
+    );
+    if (xy.length < 2) return const Vec2.zero();
+    final index = (xy.length ~/ 4) * 2;
+    final clamped = index.clamp(0, xy.length - 2);
+    return Vec2(xy[clamped], xy[clamped + 1]);
+  }
+
   static Future<CommandResult> _trimOrExtend(
     CommandContext context, {
     required bool extend,
@@ -3565,23 +3580,26 @@ class EditCommands {
       if (target is! LineEntity &&
           target is! PolylineEntity &&
           target is! ArcEntity &&
-          target is! EllipseEntity) {
+          target is! EllipseEntity &&
+          target is! SplineEntity) {
         context.input.write(
-          '$verb supports lines, polylines, arcs and ellipses; '
+          '$verb supports lines, polylines, arcs, ellipses and splines; '
           '${target?.kind.name ?? 'that object'} was skipped.',
         );
         if (suppliedTarget != null) {
           return CommandResult.failed(
-            '$verb supports lines, polylines, arcs and ellipses.',
+            '$verb supports lines, polylines, arcs, ellipses and splines.',
           );
         }
         continue;
       }
-      if (extend && target is PolylineEntity && target.closed) {
-        context.input.write('EXTEND cannot change a closed polyline.');
+      if (extend &&
+          ((target is PolylineEntity && target.closed) ||
+              (target is SplineEntity && target.closed))) {
+        context.input.write('EXTEND cannot change a closed curve.');
         if (suppliedTarget != null) {
           return const CommandResult.failed(
-            'EXTEND cannot change a closed polyline.',
+            'EXTEND cannot change a closed curve.',
           );
         }
         continue;
@@ -3598,6 +3616,11 @@ class EditCommands {
           ),
           ArcEntity() => Construct.extendArc(entity, edges, suppliedPick),
           EllipseEntity() => Construct.extendEllipse(
+            entity,
+            edges,
+            suppliedPick,
+          ),
+          SplineEntity() => Construct.extendSpline(
             entity,
             edges,
             suppliedPick,
@@ -3621,6 +3644,7 @@ class EditCommands {
               PolylineEntity() =>
                 Construct.dividePolyline(entity, 2).firstOrNull ??
                     entity.vertexAt(0),
+              SplineEntity() => _splinePick(entity),
               _ => const Vec2(0, 0),
             };
         result = switch (entity) {
@@ -3628,6 +3652,7 @@ class EditCommands {
           PolylineEntity() => Construct.trimPolyline(entity, crossings, pick),
           ArcEntity() => Construct.trimArc(entity, crossings, pick),
           EllipseEntity() => Construct.trimEllipse(entity, crossings, pick),
+          SplineEntity() => Construct.trimSpline(entity, crossings, pick),
           _ => null,
         };
       }

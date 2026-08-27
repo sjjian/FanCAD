@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../geometry/bounds.dart';
 import '../geometry/vector.dart';
 import '../model/preview.dart';
@@ -128,7 +130,8 @@ class ArgsCommandInput implements CommandInput {
     final value = _take({ParamType.angle, ParamType.number});
     final parsed = _asDouble(value);
     if (parsed == null) _missing(message);
-    return parsed;
+    // ParamType.angle is degrees on the wire, radians internally.
+    return parsed * math.pi / 180;
   }
 
   @override
