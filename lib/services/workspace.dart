@@ -468,17 +468,22 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   /// Cancels whatever is running, as Escape does.
   ///
-  /// Escape has to mean the same thing everywhere — abandon the current command
-  /// and clear the selection — so it is one method rather than a behaviour each
-  /// widget reimplements.
+  /// Escape has to mean the same thing everywhere — abandon the current
+  /// command, an in-flight grip or window drag, or the selection — so it is
+  /// one method rather than a behaviour each widget reimplements. The window
+  /// itself is never part of that: Escape must not restore a maximised frame.
   void cancelActive() {
     final tab = active;
+    if (tab != null && tab.viewport.revertInteraction()) {
+      notifyListeners();
+      return;
+    }
+    if (tab != null && tab.tools.cancelGesture()) {
+      notifyListeners();
+      return;
+    }
     if (commandLine.isAwaitingInput) {
       commandLine.cancelPending();
-    } else if (tab != null && tab.tools.isPrompting) {
-      tab.tools.cancel();
-    } else if (tab != null && tab.selection.isNotEmpty) {
-      tab.selection.clear();
     } else {
       tab?.tools.cancel();
     }
@@ -578,9 +583,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   }
 
   void _persistSnapModes() {
-    drawing.setSnapModes([
-      for (final each in snapEngine.modes) each.name,
-    ]);
+    drawing.setSnapModes([for (final each in snapEngine.modes) each.name]);
   }
 
   void setSnapEnabled(bool value) {

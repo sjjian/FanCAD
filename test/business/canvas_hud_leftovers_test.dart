@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fancad/fancad.dart';
 import 'package:fancad_io/fancad_io.dart';
 import 'package:flutter/material.dart';
@@ -268,4 +270,57 @@ void main() {
       isTrue,
     );
   });
+
+  testWidgets(
+    'a long prompt and keyword chips stay inside a narrow command dock',
+    (tester) async {
+      final container = makeContainer();
+      addTearDown(container.dispose);
+      final workspace = container.read(workspaceProvider);
+      final focus = FocusNode();
+      addTearDown(focus.dispose);
+
+      unawaited(
+        workspace.commandLine.request(
+          PendingEntry(
+            message: 'Specify next point or [Undo/Close/Width/Help]:',
+            completer: Completer<Object?>(),
+            accept: (raw) => raw,
+            keywords: const ['Undo', 'Close', 'Width', 'Help'],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: FanCadTheme.dark(),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: 336,
+                  height: FanCadTokens.tabBarHeight,
+                  child: CommandLinePane(
+                    workspace: workspace,
+                    focusNode: focus,
+                    onOpenHistory: () {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(CommandLinePane), findsOneWidget);
+      expect(find.text('Undo'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+    },
+  );
 }
