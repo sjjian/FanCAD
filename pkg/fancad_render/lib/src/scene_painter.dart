@@ -45,9 +45,13 @@ class ScenePainter {
     }
 
     for (final batch in scene.lineBatches) {
+      final width = batch.key.strokeWidth;
       _strokePaint
         ..color = batch.key.color
-        ..strokeWidth = batch.key.strokeWidth;
+        ..strokeWidth = width
+        // Hairlines stay aliased so ACI 7 is a real white or black pixel
+        // instead of a grey blend against the canvas.
+        ..isAntiAlias = width > 1;
       canvas.drawRawPoints(
         ui.PointMode.lines,
         batch.vertices.view,

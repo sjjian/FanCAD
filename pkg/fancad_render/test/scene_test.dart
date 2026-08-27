@@ -514,8 +514,8 @@ void main() {
 
   group('AciPalette', () {
     test('index 7 follows the background', () {
-      expect(AciPalette.dark.indexed(7).computeLuminance(), greaterThan(0.5));
-      expect(AciPalette.light.indexed(7).computeLuminance(), lessThan(0.5));
+      expect(AciPalette.dark.indexed(7), const Color(0xFFFFFFFF));
+      expect(AciPalette.light.indexed(7), const Color(0xFF000000));
     });
 
     test('the primaries are the colours CAD users expect', () {

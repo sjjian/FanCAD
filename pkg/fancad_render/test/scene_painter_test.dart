@@ -93,4 +93,28 @@ void main() {
     expect(cache.length, 2);
     second.dispose();
   });
+
+  test('a hairline ACI 7 is a pure white pixel on a dark canvas', () async {
+    final document = CadDocument()
+      ..addEntity(
+        const LineEntity(id: 1, start: Vec2(-20, 0), end: Vec2(20, 0)),
+      );
+    const view = CadViewport(
+      center: Vec2.zero(),
+      scale: 1,
+      size: Size(40, 40),
+    );
+    final scene = SceneBuilder(palette: AciPalette.dark).build(document, view);
+    final picture = ScenePainter().record(scene);
+    final image = await picture.toImage(40, 40);
+    final bytes = await image.toByteData();
+    expect(bytes, isNotNull);
+    // The line sits on the horizontal mid-pixel of a 40×40 view.
+    final offset = ((20 * 40) + 20) * 4;
+    expect(bytes!.getUint8(offset), 255);
+    expect(bytes.getUint8(offset + 1), 255);
+    expect(bytes.getUint8(offset + 2), 255);
+    image.dispose();
+    picture.dispose();
+  });
 }

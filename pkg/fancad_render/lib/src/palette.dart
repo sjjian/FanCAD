@@ -117,9 +117,10 @@ class AciPalette {
     return _lift(Color(0xFF000000 | _table[index]));
   }
 
-  /// Index 7, resolved against the background.
+  /// Index 7, resolved against the background: white on a dark canvas,
+  /// black on a light one.
   Color get foreground =>
-      _isDarkBackground ? const Color(0xFFE6E6E6) : const Color(0xFF1A1A1A);
+      _isDarkBackground ? const Color(0xFFFFFFFF) : const Color(0xFF000000);
 
   /// Raises the luminance of colours that would vanish into the background.
   ///

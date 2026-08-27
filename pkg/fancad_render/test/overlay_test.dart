@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+import 'dart:ui';
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,5 +52,30 @@ void main() {
 
     expect(const OverlayTheme().gripSize, 7);
     expect(const OverlayTheme().snapSize, 9);
+  });
+
+  test('a hovered or selected outline is dashed instead of one solid stroke', () {
+    final dashes = dashOutline(
+      Float32List.fromList(const [0, 0, 21, 0]),
+      on: 4,
+      off: 3,
+    );
+    expect(dashes.length, greaterThan(4));
+    expect(dashes[0], 0);
+    expect(dashes[2], 4);
+    expect(dashes[4], 7);
+  });
+
+  test('selection dashes stay light on a dark canvas and dark on a light one',
+      () {
+    final dark = const OverlayTheme().withCanvas(const Color(0xFF1B1D21));
+    expect(dark.selectionMask.value, 0xFF1B1D21);
+    expect(dark.selectionStroke.value, 0xFFFFFFFF);
+    expect(dark.preview.value, 0xFFFFFFFF);
+
+    final light = const OverlayTheme().withCanvas(const Color(0xFFF7F8FA));
+    expect(light.selectionMask.value, 0xFFF7F8FA);
+    expect(light.selectionStroke.value, 0xFF000000);
+    expect(light.preview.value, 0xFF000000);
   });
 }
