@@ -1,9 +1,15 @@
+// ignore_for_file: invalid_annotation_target
+
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 import 'provider.dart';
 
+part 'conversation.g.dart';
+
 /// One visible item in the assistant panel.
 @immutable
+@JsonSerializable(includeIfNull: false)
 class ChatMessage {
   const ChatMessage({
     required this.role,
@@ -12,32 +18,33 @@ class ChatMessage {
     this.isError = false,
   });
 
+  @JsonKey(fromJson: _chatRoleFromJson, toJson: _chatRoleToJson)
   final ChatRole role;
+  @JsonKey(fromJson: _stringOrEmpty)
   final String text;
   final String? toolName;
+  @JsonKey(toJson: _omitFalse)
   final bool isError;
 
-  Map<String, Object?> toJson() => {
-    'role': role.name,
-    'text': text,
-    if (toolName != null) 'toolName': toolName,
-    if (isError) 'isError': true,
-  };
+  Map<String, Object?> toJson() => _$ChatMessageToJson(this);
 
-  factory ChatMessage.fromJson(Map<dynamic, dynamic> raw) {
-    final roleName = '${raw['role'] ?? 'assistant'}';
-    final role = ChatRole.values.firstWhere(
-      (item) => item.name == roleName,
-      orElse: () => ChatRole.assistant,
-    );
-    return ChatMessage(
-      role: role,
-      text: raw['text'] is String ? raw['text'] as String : '',
-      toolName: raw['toolName'] is String ? raw['toolName'] as String : null,
-      isError: raw['isError'] == true,
-    );
-  }
+  factory ChatMessage.fromJson(Map<dynamic, dynamic> raw) =>
+      _$ChatMessageFromJson(Map<String, dynamic>.from(raw));
 }
+
+ChatRole _chatRoleFromJson(Object? raw) {
+  final roleName = '${raw ?? 'assistant'}';
+  return ChatRole.values.firstWhere(
+    (item) => item.name == roleName,
+    orElse: () => ChatRole.assistant,
+  );
+}
+
+String _chatRoleToJson(ChatRole role) => role.name;
+
+String _stringOrEmpty(Object? raw) => raw is String ? raw : '';
+
+bool? _omitFalse(bool value) => value ? true : null;
 
 enum ChatRole { user, assistant, tool, system, reasoning }
 
@@ -46,10 +53,13 @@ enum ChatRole { user, assistant, tool, system, reasoning }
 /// Holds both the messages shown in the panel and the messages sent back to
 /// the model. Those are not the same list: a tool result is collapsed in the
 /// UI and expanded for the next completion.
+@JsonSerializable(createFactory: false)
 class Conversation {
   Conversation();
 
+  @JsonKey(name: 'llm', toJson: _llmListToJson)
   final List<LlmMessage> llmMessages = [];
+  @JsonKey(toJson: _chatListToJson)
   final List<ChatMessage> visible = [];
 
   void addUser(String text) {
@@ -166,27 +176,38 @@ class Conversation {
     visible.clear();
   }
 
-  Map<String, Object?> toJson() => {
-    'visible': [for (final item in visible) item.toJson()],
-    'llm': [for (final item in llmMessages) item.toJson()],
-  };
+  Map<String, Object?> toJson() => _$ConversationToJson(this);
 
   factory Conversation.fromJson(Map<dynamic, dynamic> raw) {
     final conversation = Conversation();
-    final visible = raw['visible'];
-    if (visible is List) {
-      for (final item in visible) {
-        if (item is Map) conversation.visible.add(ChatMessage.fromJson(item));
-      }
-    }
-    final llm = raw['llm'];
-    if (llm is List) {
-      for (final item in llm) {
-        if (item is Map) conversation.llmMessages.add(LlmMessage.fromJson(item));
-      }
-    }
+    conversation.visible.addAll(_chatListFromJson(raw['visible']));
+    conversation.llmMessages.addAll(_llmListFromJson(raw['llm']));
     return conversation;
   }
+}
+
+List<Map<String, Object?>> _chatListToJson(List<ChatMessage> items) => [
+  for (final item in items) item.toJson(),
+];
+
+List<Map<String, Object?>> _llmListToJson(List<LlmMessage> items) => [
+  for (final item in items) item.toJson(),
+];
+
+List<ChatMessage> _chatListFromJson(Object? raw) {
+  if (raw is! List) return const [];
+  return [
+    for (final item in raw)
+      if (item is Map) ChatMessage.fromJson(item),
+  ];
+}
+
+List<LlmMessage> _llmListFromJson(Object? raw) {
+  if (raw is! List) return const [];
+  return [
+    for (final item in raw)
+      if (item is Map) LlmMessage.fromJson(item),
+  ];
 }
 
 /// Leftover `<think>` fences in ordinary content become a thinking card.

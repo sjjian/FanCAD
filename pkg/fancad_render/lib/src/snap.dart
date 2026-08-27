@@ -74,6 +74,9 @@ enum SnapOrigin {
 
   /// Both: the polar direction crossed a snapped point.
   trackingAndOsnap,
+
+  /// Locked onto a reference-grid intersection.
+  grid,
 }
 
 /// The outcome of resolving one cursor position.
@@ -175,6 +178,7 @@ class SnapEngine {
     this.modes = SnapMode.defaults,
     this.tracking = const TrackingSettings(),
     this.enabled = true,
+    this.snapToGrid = false,
     this.aperturePixels = 12,
     this.trackingApertureDegrees = 3,
   });
@@ -184,6 +188,12 @@ class SnapEngine {
 
   /// Master switch, toggled by F3 the way every CAD user expects.
   bool enabled;
+
+  /// When set, a miss on object snap and tracking lands on the reference grid.
+  ///
+  /// Tied to the GRID toggle so the lines on screen are the same points the
+  /// cursor will accept.
+  bool snapToGrid;
 
   /// How close, in pixels, the cursor must be for a snap to fire.
   final double aperturePixels;
@@ -247,10 +257,32 @@ class SnapEngine {
       }
     }
 
+    if (snapToGrid) {
+      final grid = _gridSnap(viewport, cursor);
+      if (grid != null) {
+        return SnapResult(
+          point: grid,
+          origin: SnapOrigin.grid,
+          marker: SnapMarker(kind: SnapMarkerKind.grid, point: grid),
+          trackingLabel: basePoint == null ? '' : _readout(basePoint, grid),
+        );
+      }
+    }
+
     return SnapResult(
       point: cursor,
       origin: SnapOrigin.free,
       trackingLabel: basePoint == null ? '' : _readout(basePoint, cursor),
+    );
+  }
+
+  /// The nearest grid intersection, using the same spacing the canvas paints.
+  Vec2? _gridSnap(CadViewport viewport, Vec2 cursor) {
+    final step = referenceGridStep(viewport);
+    if (step <= 0) return null;
+    return Vec2(
+      (cursor.x / step).roundToDouble() * step,
+      (cursor.y / step).roundToDouble() * step,
     );
   }
 

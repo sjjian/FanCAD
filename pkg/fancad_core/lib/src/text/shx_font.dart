@@ -98,6 +98,32 @@ class ShxFont {
     return polylines;
   }
 
+  /// Advance width of [text] at [height], using the same cursor rules as
+  /// [layout]. Missing glyphs take the 0.6 em fallback so wrapping still
+  /// terminates.
+  double measureWidth(
+    String text, {
+    required double height,
+    double widthFactor = 1,
+  }) {
+    if (text.isEmpty || height <= 0) return 0;
+    final scale = above == 0 ? height : height / above;
+    var cursor = 0.0;
+    for (final unit in text.runes) {
+      final glyph = this.glyph(unit) ?? this.glyph(0x3F);
+      if (glyph == null) {
+        cursor += height * 0.6 * widthFactor;
+        continue;
+      }
+      var maxX = 0.0;
+      for (final command in glyph.commands) {
+        if (command.to.x > maxX) maxX = command.to.x;
+      }
+      cursor += (maxX == 0 ? above : maxX) * widthFactor;
+    }
+    return cursor * scale;
+  }
+
   /// Parses a binary SHX buffer. Unknown or truncated files produce an empty
   /// font rather than throwing: a missing font must not prevent a drawing
   /// from opening.

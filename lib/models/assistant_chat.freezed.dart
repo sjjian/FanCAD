@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AssistantChat {
 
- String get id; String get title; DateTime get updatedAt; Conversation get conversation; LlmUsage? get usage; String get draft;
+@JsonKey() String get id;@JsonKey() String get title;@JsonKey() DateTime get updatedAt;@JsonKey(includeToJson: false, includeFromJson: false) Conversation get conversation;@JsonKey(includeToJson: false, includeFromJson: false) LlmUsage? get usage;@JsonKey() String get draft;
 /// Create a copy of AssistantChat
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -45,7 +45,7 @@ abstract mixin class $AssistantChatCopyWith<$Res>  {
   factory $AssistantChatCopyWith(AssistantChat value, $Res Function(AssistantChat) _then) = _$AssistantChatCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, DateTime updatedAt, Conversation conversation, LlmUsage? usage, String draft
+@JsonKey() String id,@JsonKey() String title,@JsonKey() DateTime updatedAt,@JsonKey(includeToJson: false, includeFromJson: false) Conversation conversation,@JsonKey(includeToJson: false, includeFromJson: false) LlmUsage? usage,@JsonKey() String draft
 });
 
 
@@ -155,7 +155,7 @@ return raw(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String id,  String title,  DateTime updatedAt,  Conversation conversation,  LlmUsage? usage,  String draft)?  raw,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function(@JsonKey()  String id, @JsonKey()  String title, @JsonKey()  DateTime updatedAt, @JsonKey(includeToJson: false, includeFromJson: false)  Conversation conversation, @JsonKey(includeToJson: false, includeFromJson: false)  LlmUsage? usage, @JsonKey()  String draft)?  raw,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AssistantChat() when raw != null:
 return raw(_that.id,_that.title,_that.updatedAt,_that.conversation,_that.usage,_that.draft);case _:
@@ -176,7 +176,7 @@ return raw(_that.id,_that.title,_that.updatedAt,_that.conversation,_that.usage,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String id,  String title,  DateTime updatedAt,  Conversation conversation,  LlmUsage? usage,  String draft)  raw,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function(@JsonKey()  String id, @JsonKey()  String title, @JsonKey()  DateTime updatedAt, @JsonKey(includeToJson: false, includeFromJson: false)  Conversation conversation, @JsonKey(includeToJson: false, includeFromJson: false)  LlmUsage? usage, @JsonKey()  String draft)  raw,}) {final _that = this;
 switch (_that) {
 case _AssistantChat():
 return raw(_that.id,_that.title,_that.updatedAt,_that.conversation,_that.usage,_that.draft);case _:
@@ -196,7 +196,7 @@ return raw(_that.id,_that.title,_that.updatedAt,_that.conversation,_that.usage,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String id,  String title,  DateTime updatedAt,  Conversation conversation,  LlmUsage? usage,  String draft)?  raw,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function(@JsonKey()  String id, @JsonKey()  String title, @JsonKey()  DateTime updatedAt, @JsonKey(includeToJson: false, includeFromJson: false)  Conversation conversation, @JsonKey(includeToJson: false, includeFromJson: false)  LlmUsage? usage, @JsonKey()  String draft)?  raw,}) {final _that = this;
 switch (_that) {
 case _AssistantChat() when raw != null:
 return raw(_that.id,_that.title,_that.updatedAt,_that.conversation,_that.usage,_that.draft);case _:
@@ -209,16 +209,16 @@ return raw(_that.id,_that.title,_that.updatedAt,_that.conversation,_that.usage,_
 
 /// @nodoc
 
-
+@JsonSerializable(createFactory: false, ignoreUnannotated: true)
 class _AssistantChat extends AssistantChat {
-  const _AssistantChat({required this.id, this.title = '', required this.updatedAt, required this.conversation, this.usage, this.draft = ''}): super._();
+  const _AssistantChat({@JsonKey() required this.id, @JsonKey() this.title = '', @JsonKey() required this.updatedAt, @JsonKey(includeToJson: false, includeFromJson: false) required this.conversation, @JsonKey(includeToJson: false, includeFromJson: false) this.usage, @JsonKey() this.draft = ''}): super._();
   
 
-@override final  String id;
+@override@JsonKey() final  String id;
 @override@JsonKey() final  String title;
-@override final  DateTime updatedAt;
-@override final  Conversation conversation;
-@override final  LlmUsage? usage;
+@override@JsonKey() final  DateTime updatedAt;
+@override@JsonKey(includeToJson: false, includeFromJson: false) final  Conversation conversation;
+@override@JsonKey(includeToJson: false, includeFromJson: false) final  LlmUsage? usage;
 @override@JsonKey() final  String draft;
 
 /// Create a copy of AssistantChat
@@ -251,7 +251,7 @@ abstract mixin class _$AssistantChatCopyWith<$Res> implements $AssistantChatCopy
   factory _$AssistantChatCopyWith(_AssistantChat value, $Res Function(_AssistantChat) _then) = __$AssistantChatCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, DateTime updatedAt, Conversation conversation, LlmUsage? usage, String draft
+@JsonKey() String id,@JsonKey() String title,@JsonKey() DateTime updatedAt,@JsonKey(includeToJson: false, includeFromJson: false) Conversation conversation,@JsonKey(includeToJson: false, includeFromJson: false) LlmUsage? usage,@JsonKey() String draft
 });
 
 

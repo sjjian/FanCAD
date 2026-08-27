@@ -11,6 +11,7 @@ part of 'assistant_profile.dart';
 
 // dart format off
 T _$identity<T>(T value) => value;
+
 /// @nodoc
 mixin _$AssistantProfile {
 
@@ -21,6 +22,8 @@ mixin _$AssistantProfile {
 @pragma('vm:prefer-inline')
 $AssistantProfileCopyWith<AssistantProfile> get copyWith => _$AssistantProfileCopyWithImpl<AssistantProfile>(this as AssistantProfile, _$identity);
 
+  /// Serializes this AssistantProfile to a JSON map.
+  Map<String, dynamic> toJson();
 
 
 @override
@@ -28,7 +31,7 @@ bool operator ==(Object other) {
   return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantProfile&&(identical(other.id, id) || other.id == id)&&(identical(other.label, label) || other.label == label)&&(identical(other.model, model) || other.model == model)&&(identical(other.baseUrl, baseUrl) || other.baseUrl == baseUrl)&&(identical(other.apiKey, apiKey) || other.apiKey == apiKey));
 }
 
-
+@JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode => Object.hash(runtimeType,id,label,model,baseUrl,apiKey);
 
@@ -208,10 +211,10 @@ return $default(_that.id,_that.label,_that.model,_that.baseUrl,_that.apiKey);cas
 
 /// @nodoc
 
-
+@JsonSerializable()
 class _AssistantProfile extends AssistantProfile {
   const _AssistantProfile({required this.id, this.label = '', this.model = 'gpt-4o-mini', this.baseUrl = 'https://api.openai.com/v1', this.apiKey = ''}): super._();
-  
+  factory _AssistantProfile.fromJson(Map<String, dynamic> json) => _$AssistantProfileFromJson(json);
 
 @override final  String id;
 @override@JsonKey() final  String label;
@@ -225,14 +228,17 @@ class _AssistantProfile extends AssistantProfile {
 @pragma('vm:prefer-inline')
 _$AssistantProfileCopyWith<_AssistantProfile> get copyWith => __$AssistantProfileCopyWithImpl<_AssistantProfile>(this, _$identity);
 
-
+@override
+Map<String, dynamic> toJson() {
+  return _$AssistantProfileToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {
   return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantProfile&&(identical(other.id, id) || other.id == id)&&(identical(other.label, label) || other.label == label)&&(identical(other.model, model) || other.model == model)&&(identical(other.baseUrl, baseUrl) || other.baseUrl == baseUrl)&&(identical(other.apiKey, apiKey) || other.apiKey == apiKey));
 }
 
-
+@JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode => Object.hash(runtimeType,id,label,model,baseUrl,apiKey);
 

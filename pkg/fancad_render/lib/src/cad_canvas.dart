@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:fancad_core/fancad_core.dart';
@@ -529,8 +528,7 @@ class _DrawingLayerPainter extends CustomPainter {
     if (!viewport.isUsable) return;
     final style = grid!;
     // Aim for roughly one line every 12 pixels, snapped to a 1, 2, 5 sequence.
-    final target = viewport.pixelsToWorld(12);
-    final magnitude = _niceStep(target);
+    final magnitude = referenceGridStep(viewport);
     final minorPixels = magnitude * viewport.scale;
     if (minorPixels < 4) return;
 
@@ -577,20 +575,6 @@ class _DrawingLayerPainter extends CustomPainter {
         ..drawLine(Offset(0, origin.dy), Offset(size.width, origin.dy), axis)
         ..drawLine(Offset(origin.dx, 0), Offset(origin.dx, size.height), axis);
     }
-  }
-
-  /// The smallest 1, 2 or 5 times a power of ten that is at least [value].
-  ///
-  /// Grid spacing has to be a number a person can do arithmetic with, which is
-  /// why it snaps to this sequence rather than to the raw pixel target.
-  static double _niceStep(double value) {
-    if (!value.isFinite || value <= 0) return 1;
-    final exponent = (math.log(value) / math.ln10).floor();
-    final decade = math.pow(10, exponent).toDouble();
-    for (final multiple in const [1.0, 2.0, 5.0]) {
-      if (decade * multiple >= value) return decade * multiple;
-    }
-    return decade * 10;
   }
 
   @override

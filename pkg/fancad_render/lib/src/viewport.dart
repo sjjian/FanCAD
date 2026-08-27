@@ -188,3 +188,23 @@ class CadViewport {
       'CadViewport(center: $center, scale: ${scale.toStringAsPrecision(4)}, '
       'size: ${size.width.round()}x${size.height.round()})';
 }
+
+/// World-unit spacing of the reference grid at the current zoom.
+///
+/// Matches the painted grid so snap and display stay on the same intersections.
+double referenceGridStep(CadViewport viewport) =>
+    niceGridStep(viewport.pixelsToWorld(12));
+
+/// The smallest 1, 2 or 5 times a power of ten that is at least [value].
+///
+/// Grid spacing has to be a number a person can do arithmetic with, which is
+/// why it snaps to this sequence rather than to the raw pixel target.
+double niceGridStep(double value) {
+  if (!value.isFinite || value <= 0) return 1;
+  final exponent = (math.log(value) / math.ln10).floor();
+  final decade = math.pow(10, exponent).toDouble();
+  for (final multiple in const [1.0, 2.0, 5.0]) {
+    if (decade * multiple >= value) return decade * multiple;
+  }
+  return decade * 10;
+}

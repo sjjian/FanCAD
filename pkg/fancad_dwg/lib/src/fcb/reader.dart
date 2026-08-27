@@ -867,6 +867,9 @@ class FcbReader {
           overrideText: stringAt(1),
           styleName: stringAt(2).isEmpty ? 'Standard' : stringAt(2),
           dimensionType: ints.isNotEmpty ? ints[0] : 0,
+          sourceIds: [
+            for (var i = 2; i < ints.length; i++) ints[i],
+          ],
         );
 
       case FcbType.leader:

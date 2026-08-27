@@ -1,6 +1,9 @@
 include: package:lints/recommended.yaml
 
 analyzer:
+  exclude:
+    - '**/*.freezed.dart'
+    - '**/*.g.dart'
   language:
     strict-casts: true
     strict-raw-types: true

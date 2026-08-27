@@ -36,6 +36,9 @@ class InteractiveCommandInput implements CommandInput {
   /// rubber banding are both measured from.
   Vec2? lastPoint;
 
+  @override
+  Vec2? get lastPick => lastPoint;
+
   PreviewBuilder? _preview;
   List<Vec2> _markers = const [];
 
@@ -119,6 +122,63 @@ class InteractiveCommandInput implements CommandInput {
       onAbandonPointer: () => tools.cancel(),
     );
     if (resolved != null) lastPoint = resolved;
+    return resolved;
+  }
+
+  @override
+  Future<PointOrKeyword?> pointOrKeyword(
+    String message, {
+    Vec2? basePoint,
+    List<String> keywords = const [],
+  }) async {
+    final supplied = CommandArgs.parsePoint(_preSupplied({ParamType.point}));
+    if (supplied != null) {
+      lastPoint = supplied;
+      return PointOrKeyword.point(supplied);
+    }
+
+    final anchor = basePoint ?? lastPoint;
+    final label = keywords.isEmpty
+        ? message
+        : '$message [${keywords.join('/')}]';
+    final tool = PointPromptTool(
+      message: label,
+      anchor: anchor,
+      preview: _preview,
+      markers: _markers,
+    );
+    final typed = commandLine.request(
+      PendingEntry(
+        message: label,
+        completer: Completer<Object?>(),
+        keywords: keywords,
+        accept: (raw) {
+          final matched = ArgsCommandInput.matchKeyword(raw, keywords);
+          if (matched != null) return PointOrKeyword.keyword(matched);
+          final point = CoordinateParser.parse(raw, base: anchor);
+          return point == null ? null : PointOrKeyword.point(point);
+        },
+      ),
+    );
+
+    final resolved = await _race<PointOrKeyword>(
+      fromPointer: () {
+        tools.push(tool);
+        return tool.result.then(PointOrKeyword.point);
+      },
+      fromKeyboard: typed,
+      convert: (value) {
+        if (value is PointOrKeyword) return value;
+        if (value is Vec2) return PointOrKeyword.point(value);
+        if (value is String) {
+          final matched = ArgsCommandInput.matchKeyword(value, keywords);
+          return matched == null ? null : PointOrKeyword.keyword(matched);
+        }
+        return null;
+      },
+      onAbandonPointer: () => tools.cancel(),
+    );
+    if (resolved != null && resolved.isPoint) lastPoint = resolved.point;
     return resolved;
   }
 
@@ -294,19 +354,32 @@ class InteractiveCommandInput implements CommandInput {
     final label = defaultOption == null
         ? '$message [${options.join('/')}]'
         : '$message [${options.join('/')}] <$defaultOption>';
-    final value = await commandLine.request(
-      PendingEntry(
+    PreviewHoldTool? hold;
+    if (_preview != null || _markers.isNotEmpty) {
+      hold = PreviewHoldTool(
         message: label,
-        completer: Completer<Object?>(),
-        keywords: options,
-        allowEmpty: defaultOption != null,
-        accept: (raw) => raw.isEmpty
-            ? defaultOption
-            : ArgsCommandInput.matchKeyword(raw, options),
-      ),
-    );
-    if (value is! String) throw const CommandCancelled();
-    return value;
+        preview: _preview,
+        markers: _markers,
+      );
+      tools.push(hold);
+    }
+    try {
+      final value = await commandLine.request(
+        PendingEntry(
+          message: label,
+          completer: Completer<Object?>(),
+          keywords: options,
+          allowEmpty: defaultOption != null,
+          accept: (raw) => raw.isEmpty
+              ? defaultOption
+              : ArgsCommandInput.matchKeyword(raw, options),
+        ),
+      );
+      if (value is! String) throw const CommandCancelled();
+      return value;
+    } finally {
+      if (hold != null) tools.finishTool();
+    }
   }
 
   @override
@@ -376,6 +449,7 @@ class InteractiveCommandInput implements CommandInput {
       onAbandonPointer: () => tools.cancel(),
     );
     if (resolved == null) throw const CommandCancelled();
+    if (tool.lastClick != null) lastPoint = tool.lastClick;
     if (resolved.isNotEmpty) tools.selection.replace(resolved);
     return resolved;
   }

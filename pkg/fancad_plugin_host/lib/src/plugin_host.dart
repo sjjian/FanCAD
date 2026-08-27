@@ -1,8 +1,11 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:fancad_core/fancad_core.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:path/path.dart' as p;
 
 import 'contributions.dart';
@@ -10,6 +13,8 @@ import 'host_bridge.dart';
 import 'manifest.dart';
 import 'protocol.dart';
 import 'transport.dart';
+
+part 'plugin_host.g.dart';
 
 /// Where a plugin is in its lifecycle.
 enum PluginState {
@@ -45,14 +50,35 @@ class PluginHandle {
   String get id => manifest.id;
   bool get isActive => state == PluginState.active;
 
-  Map<String, Object?> toJson() => {
-    'id': id,
-    'name': manifest.name,
-    'version': manifest.version,
-    'state': state.name,
-    if (error != null) 'error': error,
-    'commands': [for (final command in manifest.commands) command.id],
-  };
+  Map<String, Object?> toJson() => _PluginHandleJson(
+    id: id,
+    name: manifest.name,
+    version: manifest.version,
+    state: state.name,
+    error: error,
+    commands: [for (final command in manifest.commands) command.id],
+  ).toJson();
+}
+
+@JsonSerializable(createFactory: false, includeIfNull: false)
+class _PluginHandleJson {
+  const _PluginHandleJson({
+    required this.id,
+    required this.name,
+    required this.version,
+    required this.state,
+    this.error,
+    required this.commands,
+  });
+
+  final String id;
+  final String name;
+  final String version;
+  final String state;
+  final String? error;
+  final List<String> commands;
+
+  Map<String, Object?> toJson() => _$PluginHandleJsonToJson(this);
 }
 
 /// Builds the handler that serves plugin-to-host `fancad.*` calls.

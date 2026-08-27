@@ -29,7 +29,11 @@ class MTextRun {
 /// loses line breaks and stacking, which is why this exists as a real
 /// layout step rather than as a regex.
 class MTextLayout {
-  const MTextLayout();
+  const MTextLayout({this.measureWidth});
+
+  /// Optional measured width of a run. When null, wrapping uses 0.6 em per
+  /// character — close enough for a missing font, wrong for a real SHX.
+  final double Function(String text, double height)? measureWidth;
 
   List<MTextRun> layout(MTextEntity entity) {
     final paragraphs = _parse(entity.content);
@@ -49,12 +53,16 @@ class MTextLayout {
       final words = paragraph.text.split(RegExp(r'\s+'));
       var line = StringBuffer();
       // A conservative width estimate: 0.6 em per character, which is what
-      // SHX simplex measures at and close enough for wrapping decisions.
+      // SHX simplex measures at and close enough for wrapping decisions
+      // when no font is supplied. A real [measureWidth] wins.
       final em = entity.height * 0.6;
+      double widthOf(String text) => measureWidth != null
+          ? measureWidth!(text, entity.height)
+          : text.length * em;
       for (final word in words) {
         if (word.isEmpty) continue;
         final candidate = line.isEmpty ? word : '$line $word';
-        if (candidate.length * em > width && line.isNotEmpty) {
+        if (widthOf(candidate) > width && line.isNotEmpty) {
           runs.add(
             _runAt(
               entity,

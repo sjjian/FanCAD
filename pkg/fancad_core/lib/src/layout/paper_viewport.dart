@@ -1,43 +1,54 @@
-import 'package:meta/meta.dart';
+// ignore_for_file: invalid_annotation_target
+
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../geometry/bounds.dart';
 import '../geometry/matrix.dart';
 import '../geometry/vector.dart';
+
+part 'paper_viewport.freezed.dart';
+part 'paper_viewport.g.dart';
 
 /// A window on a paper-space layout that looks into model space.
 ///
 /// Paper space without viewports is just a sheet. The viewports are what
 /// make a layout a drawing: each one is a scaled, clipped view of the
 /// model, and print walks them in order.
-@immutable
-class PaperViewport {
-  const PaperViewport({
-    required this.paperBounds,
-    required this.modelCenter,
-    this.scale = 1,
-    this.rotation = 0,
-    this.isOn = true,
-    this.locked = false,
-    this.layer = '0',
-    this.frozenLayers = const [],
-  });
+@freezed
+abstract class PaperViewport with _$PaperViewport {
+  const PaperViewport._();
 
-  /// The rectangle on the sheet, in millimetres of paper space.
-  final Bounds2 paperBounds;
+  @JsonSerializable(includeIfNull: false)
+  const factory PaperViewport({
+    /// The rectangle on the sheet, in millimetres of paper space.
+    @JsonKey(name: 'paper', fromJson: _paperBoundsFromJson, toJson: _paperBoundsToJson)
+    required Bounds2 paperBounds,
 
-  /// The model-space point that sits at the centre of [paperBounds].
-  final Vec2 modelCenter;
+    /// The model-space point that sits at the centre of [paperBounds].
+    @JsonKey(name: 'center', fromJson: _modelCenterFromJson, toJson: _modelCenterToJson)
+    required Vec2 modelCenter,
 
-  /// Model units per paper unit. 1 = 1:1, 0.1 = 1:10.
-  final double scale;
-  final double rotation;
-  final bool isOn;
-  final bool locked;
-  final String layer;
+    /// Model units per paper unit. 1 = 1:1, 0.1 = 1:10.
+    @Default(1) double scale,
+    @JsonKey(toJson: _omitZero)
+    @Default(0)
+    double rotation,
+    @JsonKey(name: 'on', toJson: _omitTrue)
+    @Default(true)
+    bool isOn,
+    @JsonKey(toJson: _omitFalse)
+    @Default(false)
+    bool locked,
+    @JsonKey(toJson: _omitLayerZero)
+    @Default('0')
+    String layer,
 
-  /// Layer names frozen in this window only (VPLAYER). Empty means every
-  /// visible model layer still shows through.
-  final List<String> frozenLayers;
+    /// Layer names frozen in this window only (VPLAYER). Empty means every
+    /// visible model layer still shows through.
+    @JsonKey(name: 'frozen', fromJson: _frozenFromJson, toJson: _frozenToJson)
+    @Default([])
+    List<String> frozenLayers,
+  }) = _PaperViewport;
 
   /// Whether [layer] is frozen in this viewport.
   bool hidesLayer(String layer) {
@@ -120,74 +131,50 @@ class PaperViewport {
     );
   }
 
-  PaperViewport copyWith({
-    Bounds2? paperBounds,
-    Vec2? modelCenter,
-    double? scale,
-    double? rotation,
-    bool? isOn,
-    bool? locked,
-    String? layer,
-    List<String>? frozenLayers,
-  }) => PaperViewport(
-    paperBounds: paperBounds ?? this.paperBounds,
-    modelCenter: modelCenter ?? this.modelCenter,
-    scale: scale ?? this.scale,
-    rotation: rotation ?? this.rotation,
-    isOn: isOn ?? this.isOn,
-    locked: locked ?? this.locked,
-    layer: layer ?? this.layer,
-    frozenLayers: frozenLayers ?? this.frozenLayers,
-  );
+  factory PaperViewport.fromJson(Map<String, Object?> json) =>
+      _$PaperViewportFromJson(Map<String, dynamic>.from(json));
+}
 
-  Map<String, Object?> toJson() => {
-    'paper': [
-      paperBounds.minX,
-      paperBounds.minY,
-      paperBounds.maxX,
-      paperBounds.maxY,
-    ],
-    'center': [modelCenter.x, modelCenter.y],
-    'scale': scale,
-    if (rotation != 0) 'rotation': rotation,
-    if (!isOn) 'on': false,
-    if (locked) 'locked': true,
-    if (layer != '0') 'layer': layer,
-    if (frozenLayers.isNotEmpty) 'frozen': frozenLayers,
-  };
-
-  factory PaperViewport.fromJson(Map<String, Object?> json) {
-    final paper = json['paper'];
-    final center = json['center'];
-    return PaperViewport(
-      paperBounds: paper is List && paper.length >= 4
-          ? Bounds2(
-              (paper[0] as num).toDouble(),
-              (paper[1] as num).toDouble(),
-              (paper[2] as num).toDouble(),
-              (paper[3] as num).toDouble(),
-            )
-          : const Bounds2(0, 0, 100, 80),
-      modelCenter: center is List && center.length >= 2
-          ? Vec2(
-              (center[0] as num).toDouble(),
-              (center[1] as num).toDouble(),
-            )
-          : const Vec2.zero(),
-      scale: (json['scale'] as num?)?.toDouble() ?? 1,
-      rotation: (json['rotation'] as num?)?.toDouble() ?? 0,
-      isOn: json['on'] as bool? ?? true,
-      locked: json['locked'] as bool? ?? false,
-      layer: json['layer'] as String? ?? '0',
-      frozenLayers: _frozenFromJson(json['frozen']),
+Bounds2 _paperBoundsFromJson(Object? json) {
+  if (json is List && json.length >= 4) {
+    return Bounds2(
+      (json[0] as num).toDouble(),
+      (json[1] as num).toDouble(),
+      (json[2] as num).toDouble(),
+      (json[3] as num).toDouble(),
     );
   }
-
-  static List<String> _frozenFromJson(Object? value) {
-    if (value is! List) return const [];
-    return [
-      for (final item in value)
-        if (item is String && item.trim().isNotEmpty) item.trim(),
-    ];
-  }
+  return const Bounds2(0, 0, 100, 80);
 }
+
+List<double> _paperBoundsToJson(Bounds2 bounds) => [
+  bounds.minX,
+  bounds.minY,
+  bounds.maxX,
+  bounds.maxY,
+];
+
+Vec2 _modelCenterFromJson(Object? json) {
+  if (json is List && json.length >= 2) {
+    return Vec2((json[0] as num).toDouble(), (json[1] as num).toDouble());
+  }
+  return const Vec2.zero();
+}
+
+List<double> _modelCenterToJson(Vec2 center) => [center.x, center.y];
+
+List<String> _frozenFromJson(Object? value) {
+  if (value is! List) return const [];
+  return [
+    for (final item in value)
+      if (item is String && item.trim().isNotEmpty) item.trim(),
+  ];
+}
+
+List<String>? _frozenToJson(List<String> layers) =>
+    layers.isEmpty ? null : layers;
+
+Object? _omitZero(double value) => value == 0 ? null : value;
+Object? _omitTrue(bool value) => value ? null : value;
+Object? _omitFalse(bool value) => value ? value : null;
+Object? _omitLayerZero(String value) => value == '0' ? null : value;

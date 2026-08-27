@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 
+import '../geometry/construct.dart';
 import '../geometry/matrix.dart';
 import '../geometry/vector.dart';
 import '../model/document.dart';
@@ -81,6 +82,7 @@ class Transaction {
 
   DocumentChange _change = const DocumentChange();
   bool _committed = false;
+  bool _regenerating = false;
 
   bool get isEmpty => _forward.isEmpty;
   bool get isNotEmpty => _forward.isNotEmpty;
@@ -170,6 +172,9 @@ class Transaction {
     if (before == null) return false;
     if (identical(before, entity)) return false;
     _run(ModifyEntityPatch(before: before, after: entity));
+    if (entity is! DimensionEntity) {
+      _regenAssociated({entity.id});
+    }
     return true;
   }
 
@@ -182,17 +187,63 @@ class Transaction {
     _run(
       ModifyEntityPatch(before: before, after: before.transformed(matrix)),
     );
+    _regenAssociated({id});
     return true;
   }
 
   /// Applies a geometric transform to several entities.
   int transformAll(Iterable<int> ids, Mat3 matrix) {
     if (matrix.isIdentity) return 0;
+    final list = ids.toList();
     var count = 0;
-    for (final id in ids.toList()) {
-      if (transform(id, matrix)) count++;
+    _regenerating = true;
+    try {
+      for (final id in list) {
+        if (transform(id, matrix)) count++;
+      }
+    } finally {
+      _regenerating = false;
     }
+    if (count > 0) _regenAssociated(list.toSet());
     return count;
+  }
+
+  void _regenAssociated(Set<int> movedIds) {
+    if (_regenerating || movedIds.isEmpty) return;
+    _regenerating = true;
+    try {
+      for (final entity in document.entities.toList()) {
+        if (entity is! DimensionEntity || entity.sourceIds.isEmpty) continue;
+        final sourcesMoved = entity.sourceIds.any(movedIds.contains);
+        if (!sourcesMoved && !movedIds.contains(entity.id)) continue;
+        final sources = <CadEntity>[
+          for (final id in entity.sourceIds) ?document.entity(id),
+        ];
+        if (sources.isEmpty) continue;
+        final next = Construct.regenDimension(
+          entity,
+          sources,
+          sourcesMoved: sourcesMoved,
+        );
+        if (next == null || identical(next, entity)) continue;
+        if (next.measurement == entity.measurement &&
+            next.definitionPoints.length == entity.definitionPoints.length &&
+            _samePoints(next.definitionPoints, entity.definitionPoints) &&
+            next.textPosition == entity.textPosition) {
+          continue;
+        }
+        _run(ModifyEntityPatch(before: entity, after: next));
+      }
+    } finally {
+      _regenerating = false;
+    }
+  }
+
+  static bool _samePoints(List<Vec2> a, List<Vec2> b) {
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].distanceTo(b[i]) > 1e-9) return false;
+    }
+    return true;
   }
 
   /// Copies entities through [matrix], returning the new ids.

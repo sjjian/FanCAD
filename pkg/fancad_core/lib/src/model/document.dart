@@ -1,4 +1,4 @@
-import 'package:meta/meta.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../geometry/bounds.dart';
 import '../geometry/matrix.dart';
@@ -8,91 +8,74 @@ import 'entity.dart';
 import 'geometry_sink.dart';
 import 'spatial_index.dart';
 import 'style.dart';
+import 'units.dart';
+
+part 'document.freezed.dart';
 
 /// A block definition: a named, reusable collection of entities.
-@immutable
-class BlockRecord {
-  const BlockRecord({
-    required this.name,
-    this.basePoint = const Vec2.zero(),
-    this.entityIds = const [],
-    this.isLayoutBlock = false,
-    this.isAnonymous = false,
-    this.description = '',
-    this.xrefPath = '',
-  });
+@freezed
+abstract class BlockRecord with _$BlockRecord {
+  const BlockRecord._();
 
-  final String name;
-  final Vec2 basePoint;
-  final List<int> entityIds;
+  const factory BlockRecord({
+    required String name,
+    @Default(Vec2.zero()) Vec2 basePoint,
+    @Default([]) List<int> entityIds,
 
-  /// True for `*Model_Space` and `*Paper_Space*`, which are containers rather
-  /// than insertable blocks.
-  final bool isLayoutBlock;
+    /// True for `*Model_Space` and `*Paper_Space*`, which are containers rather
+    /// than insertable blocks.
+    @Default(false) bool isLayoutBlock,
 
-  /// True for generated blocks such as the `*D` dimension geometry blocks and
-  /// `*U` hatch blocks, which are hidden from the block picker.
-  final bool isAnonymous;
-  final String description;
+    /// True for generated blocks such as the `*D` dimension geometry blocks and
+    /// `*U` hatch blocks, which are hidden from the block picker.
+    @Default(false) bool isAnonymous,
+    @Default('') String description,
 
-  /// Non-empty when this block is an external reference.
-  final String xrefPath;
+    /// Non-empty when this block is an external reference.
+    @Default('') String xrefPath,
+  }) = _BlockRecord;
 
   bool get isXref => xrefPath.isNotEmpty;
-
-  BlockRecord copyWith({
-    String? name,
-    Vec2? basePoint,
-    List<int>? entityIds,
-    bool? isLayoutBlock,
-    bool? isAnonymous,
-    String? description,
-    String? xrefPath,
-  }) => BlockRecord(
-    name: name ?? this.name,
-    basePoint: basePoint ?? this.basePoint,
-    entityIds: entityIds ?? this.entityIds,
-    isLayoutBlock: isLayoutBlock ?? this.isLayoutBlock,
-    isAnonymous: isAnonymous ?? this.isAnonymous,
-    description: description ?? this.description,
-    xrefPath: xrefPath ?? this.xrefPath,
-  );
 
   @override
   String toString() => 'BlockRecord($name, ${entityIds.length} entities)';
 }
 
 /// A model or paper space layout.
-@immutable
-class Layout {
-  const Layout({
-    required this.name,
-    required this.blockName,
-    this.isModelSpace = false,
-    this.tabOrder = 0,
-    this.paperWidth = 297,
-    this.paperHeight = 210,
-    this.plotRotation = 0,
-    this.plotWindow,
-    this.plotScale = 1,
-    this.plotFit = false,
-    this.plotOffsetX = 0,
-    this.plotOffsetY = 0,
-    this.viewports = const [],
-  });
+@freezed
+abstract class Layout with _$Layout {
+  const Layout._();
 
-  final String name;
-  final String blockName;
-  final bool isModelSpace;
-  final int tabOrder;
+  const factory Layout({
+    required String name,
+    required String blockName,
+    @Default(false) bool isModelSpace,
+    @Default(0) int tabOrder,
 
-  /// Paper size in millimetres.
-  final double paperWidth;
-  final double paperHeight;
+    /// Paper size in millimetres.
+    @Default(297) double paperWidth,
+    @Default(210) double paperHeight,
 
-  /// Plot twist in degrees: 0, 90, 180 or 270. The sheet on screen stays
-  /// put; only SVG/PDF output rotates.
-  final int plotRotation;
+    /// Plot twist in degrees: 0, 90, 180 or 270. The sheet on screen stays
+    /// put; only SVG/PDF output rotates.
+    @Default(0) int plotRotation,
+
+    /// Optional plot window. Null means the full sheet, or model extents.
+    Bounds2? plotWindow,
+
+    /// Drawing units per plotted millimetre. Ignored when [plotFit] is set.
+    @Default(1) double plotScale,
+
+    /// Scale the plot window (or extents) to fill the sheet.
+    @Default(false) bool plotFit,
+
+    /// Shift of the scaled content on the sheet, in millimetres.
+    @Default(0) double plotOffsetX,
+    @Default(0) double plotOffsetY,
+
+    /// Windows into model space. Empty on the model tab itself.
+    @Default([]) List<PaperViewport> viewports,
+  }) = _Layout;
 
   /// Snaps an angle to the four plot orientations AutoCAD offers.
   static int normalizePlotRotation(num degrees) {
@@ -100,22 +83,6 @@ class Layout {
     if (quarter < 0) quarter += 4;
     return quarter * 90;
   }
-
-  /// Optional plot window. Null means the full sheet, or model extents.
-  final Bounds2? plotWindow;
-
-  /// Drawing units per plotted millimetre. Ignored when [plotFit] is set.
-  final double plotScale;
-
-  /// Scale the plot window (or extents) to fill the sheet.
-  final bool plotFit;
-
-  /// Shift of the scaled content on the sheet, in millimetres.
-  final double plotOffsetX;
-  final double plotOffsetY;
-
-  /// Windows into model space. Empty on the model tab itself.
-  final List<PaperViewport> viewports;
 
   bool get hasCustomPlotPlacement =>
       plotFit ||
@@ -131,37 +98,6 @@ class Layout {
     return null;
   }
 
-  Layout copyWith({
-    String? name,
-    String? blockName,
-    bool? isModelSpace,
-    int? tabOrder,
-    double? paperWidth,
-    double? paperHeight,
-    int? plotRotation,
-    Bounds2? plotWindow,
-    bool clearPlotWindow = false,
-    double? plotScale,
-    bool? plotFit,
-    double? plotOffsetX,
-    double? plotOffsetY,
-    List<PaperViewport>? viewports,
-  }) => Layout(
-    name: name ?? this.name,
-    blockName: blockName ?? this.blockName,
-    isModelSpace: isModelSpace ?? this.isModelSpace,
-    tabOrder: tabOrder ?? this.tabOrder,
-    paperWidth: paperWidth ?? this.paperWidth,
-    paperHeight: paperHeight ?? this.paperHeight,
-    plotRotation: plotRotation ?? this.plotRotation,
-    plotWindow: clearPlotWindow ? null : (plotWindow ?? this.plotWindow),
-    plotScale: plotScale ?? this.plotScale,
-    plotFit: plotFit ?? this.plotFit,
-    plotOffsetX: plotOffsetX ?? this.plotOffsetX,
-    plotOffsetY: plotOffsetY ?? this.plotOffsetY,
-    viewports: viewports ?? this.viewports,
-  );
-
   @override
   String toString() => 'Layout($name -> $blockName)';
 }
@@ -169,26 +105,22 @@ class Layout {
 /// The result of applying a change to the document, describing exactly which
 /// entities moved so that the renderer and the spatial index can update
 /// incrementally instead of rebuilding.
-@immutable
-class DocumentChange {
-  const DocumentChange({
-    this.added = const [],
-    this.removed = const [],
-    this.modified = const [],
-    this.tablesChanged = false,
-    this.structureChanged = false,
-  });
+@freezed
+abstract class DocumentChange with _$DocumentChange {
+  const DocumentChange._();
 
-  final List<int> added;
-  final List<int> removed;
-  final List<int> modified;
+  const factory DocumentChange({
+    @Default([]) List<int> added,
+    @Default([]) List<int> removed,
+    @Default([]) List<int> modified,
 
-  /// A symbol table (layers, line types, styles) changed, so resolved styles
-  /// must be recomputed even for untouched entities.
-  final bool tablesChanged;
+    /// A symbol table (layers, line types, styles) changed, so resolved styles
+    /// must be recomputed even for untouched entities.
+    @Default(false) bool tablesChanged,
 
-  /// Blocks or layouts changed, so any cached block geometry is stale.
-  final bool structureChanged;
+    /// Blocks or layouts changed, so any cached block geometry is stale.
+    @Default(false) bool structureChanged,
+  }) = _DocumentChange;
 
   bool get isEmpty =>
       added.isEmpty &&
@@ -308,6 +240,11 @@ class CadDocument implements BlockLookup, StyleResolver {
 
   /// Tolerance used when the caller does not supply one, in model units.
   double defaultTolerance = 1e-3;
+
+  /// Insertion units recorded in `$INSUNITS`. Missing or unknown codes are
+  /// [InsUnits.unitless], the DXF default.
+  InsUnits get insUnits =>
+      InsUnits.fromHeader(_headerVariables[r'$INSUNITS']);
 
   Iterable<CadEntity> get entities => _entities.values;
   int get entityCount => _entities.length;

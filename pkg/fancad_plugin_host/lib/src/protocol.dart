@@ -1,6 +1,11 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'dart:async';
 
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+
+part 'protocol.g.dart';
 
 /// The method names the host sends into the plugin worker.
 abstract final class WorkerMethod {
@@ -83,6 +88,7 @@ abstract final class RpcErrorCode {
 /// A null [id] marks a notification: fire and forget, no reply expected. This
 /// is what lets events flow to plugins without the host waiting on every one.
 @immutable
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 class RpcRequest {
   const RpcRequest({
     required this.method,
@@ -93,17 +99,18 @@ class RpcRequest {
   const RpcRequest.notification(this.method, [this.params = const {}])
     : id = null;
 
+  @JsonKey()
   final String method;
+  @JsonKey(toJson: _omitEmptyParams)
   final Map<String, Object?> params;
+  @JsonKey()
   final int? id;
 
   bool get isNotification => id == null;
 
   Map<String, Object?> toJson() => {
     'jsonrpc': '2.0',
-    'method': method,
-    if (params.isNotEmpty) 'params': params,
-    if (id != null) 'id': id,
+    ..._$RpcRequestToJson(this),
   };
 
   static RpcRequest fromJson(Map<String, Object?> json) {
@@ -125,6 +132,9 @@ class RpcRequest {
   @override
   String toString() => 'RpcRequest($method, id: $id)';
 }
+
+Map<String, Object?>? _omitEmptyParams(Map<String, Object?> params) =>
+    params.isEmpty ? null : params;
 
 /// A JSON-RPC response: exactly one of [result] or [error] is set.
 @immutable
@@ -162,6 +172,7 @@ class RpcResponse {
 
 /// The error payload of a failed response.
 @immutable
+@JsonSerializable(includeIfNull: false)
 class RpcError {
   const RpcError(this.code, this.message, {this.data});
 
@@ -171,17 +182,13 @@ class RpcError {
   /// Extra context: a JavaScript stack, the offending permission, and so on.
   final Object? data;
 
-  Map<String, Object?> toJson() => {
-    'code': code,
-    'message': message,
-    if (data != null) 'data': data,
-  };
+  Map<String, Object?> toJson() => _$RpcErrorToJson(this);
 
-  static RpcError fromJson(Map<String, Object?> json) => RpcError(
-    (json['code'] as num?)?.toInt() ?? RpcErrorCode.internalError,
-    json['message'] as String? ?? 'Unknown error',
-    data: json['data'],
-  );
+  static RpcError fromJson(Map<String, Object?> json) => _$RpcErrorFromJson({
+    'code': json['code'] ?? RpcErrorCode.internalError,
+    'message': json['message'] ?? 'Unknown error',
+    'data': json['data'],
+  });
 
   @override
   String toString() => 'RpcError($code: $message)';

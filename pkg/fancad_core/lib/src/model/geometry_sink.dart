@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:meta/meta.dart';
 
 import '../geometry/bounds.dart';
@@ -7,70 +8,31 @@ import '../geometry/matrix.dart';
 import '../geometry/vector.dart';
 import 'style.dart';
 
+part 'geometry_sink.freezed.dart';
+
 /// A style with every inheritance sentinel already resolved.
 ///
 /// This is the batching key for the renderer: primitives that share a
 /// [ResolvedStyle] can be merged into a single draw call, which is what keeps
 /// large drawings interactive.
-@immutable
-class ResolvedStyle {
-  const ResolvedStyle({
-    required this.layer,
-    required this.color,
-    required this.lineType,
-    required this.lineWeight,
-    this.lineTypeScale = 1,
-    this.transparency = 0,
-  });
+@freezed
+abstract class ResolvedStyle with _$ResolvedStyle {
+  const ResolvedStyle._();
+
+  const factory ResolvedStyle({
+    required String layer,
+    required CadColor color,
+    required String lineType,
+    required int lineWeight,
+    @Default(1) double lineTypeScale,
+    @Default(0) int transparency,
+  }) = _ResolvedStyle;
 
   static const ResolvedStyle fallback = ResolvedStyle(
     layer: '0',
     color: CadColor.indexed(7),
     lineType: 'Continuous',
     lineWeight: LineWeight.zero,
-  );
-
-  final String layer;
-  final CadColor color;
-  final String lineType;
-  final int lineWeight;
-  final double lineTypeScale;
-  final int transparency;
-
-  ResolvedStyle copyWith({
-    String? layer,
-    CadColor? color,
-    String? lineType,
-    int? lineWeight,
-    double? lineTypeScale,
-    int? transparency,
-  }) => ResolvedStyle(
-    layer: layer ?? this.layer,
-    color: color ?? this.color,
-    lineType: lineType ?? this.lineType,
-    lineWeight: lineWeight ?? this.lineWeight,
-    lineTypeScale: lineTypeScale ?? this.lineTypeScale,
-    transparency: transparency ?? this.transparency,
-  );
-
-  @override
-  bool operator ==(Object other) =>
-      other is ResolvedStyle &&
-      other.layer == layer &&
-      other.color == color &&
-      other.lineType == lineType &&
-      other.lineWeight == lineWeight &&
-      other.lineTypeScale == lineTypeScale &&
-      other.transparency == transparency;
-
-  @override
-  int get hashCode => Object.hash(
-    layer,
-    color,
-    lineType,
-    lineWeight,
-    lineTypeScale,
-    transparency,
   );
 }
 

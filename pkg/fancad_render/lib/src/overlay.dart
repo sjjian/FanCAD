@@ -253,6 +253,15 @@ class OverlayPainter {
         } else {
           canvas.drawRect(rect, _stroke);
         }
+      case OverlayPoint(:final at):
+        _paintSnap(
+          canvas,
+          SnapMarker(kind: SnapMarkerKind.node, point: at),
+          view,
+        );
+        _stroke
+          ..color = theme.preview
+          ..strokeWidth = 1;
       case OverlayTrackingLine(:final origin, :final angle):
         final screenOrigin = view.toScreen(origin);
         final reach = view.size.width + view.size.height;

@@ -105,6 +105,27 @@ void main() {
       expect(hatch.patternAngle, closeTo(math.pi / 2, 1e-9));
     });
 
+    test('hatch fills the face around an internal point', () async {
+      await drawLine(0, 0, 10, 0);
+      await drawLine(10, 0, 10, 10);
+      await drawLine(10, 10, 0, 10);
+      await drawLine(0, 10, 0, 0);
+
+      final result = await run('draw.hatch', {
+        'inside': [5, 5],
+        'pattern': 'SOLID',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final hatch = document.entities.whereType<HatchEntity>().single;
+      expect(hatch.solid, isTrue);
+      expect(hatch.loops, isNotEmpty);
+      expect(
+        Intersect.polygonContains(hatch.loops.first.vertices, const Vec2(5, 5)),
+        isTrue,
+      );
+    });
+
     test('hatch refuses a non-positive scale', () async {
       final created = await run('draw.rectangle', {
         'corner1': [0, 0],
@@ -710,6 +731,7 @@ void main() {
       expect(dim.measurement, closeTo(10, 1e-9));
       expect(dim.definitionPoints[0], const Vec2(0, 0));
       expect(dim.definitionPoints[1], const Vec2(10, 4));
+      expect(dim.sourceIds, [line]);
     });
 
     test('aligned dimension can take its origins from a line', () async {
@@ -1105,6 +1127,14 @@ void main() {
 
       expect(document.entities.first.props.layer, 'WALLS');
     });
+
+    test('UNITS writes \$INSUNITS as a first-class drawing unit', () async {
+      expect(document.insUnits, InsUnits.unitless);
+      final result = await run('view.units', {'units': 'mm'});
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.insUnits, InsUnits.millimeters);
+      expect(document.headerVariables[r'$INSUNITS'], '4');
+    });
   });
 
   group('editing', () {
@@ -1121,6 +1151,28 @@ void main() {
       final moved = document.entity(id)! as LineEntity;
       expect(moved.start, const Vec2(0, 5));
       expect(moved.end, const Vec2(10, 5));
+    });
+
+    test('moving a measured line updates the associative dimension', () async {
+      final line = await drawLine(0, 0, 10, 0);
+      final drawn = await run('draw.dimLinear', {
+        'target': line,
+        'dimLine': [5, 4],
+      });
+      expect(drawn.status, CommandStatus.ok, reason: drawn.message);
+      final dimId = (drawn.data!['ids']! as List).first as int;
+
+      final moved = await run('edit.move', {
+        'ids': [line],
+        'from': [0, 0],
+        'to': [4, 0],
+      });
+      expect(moved.status, CommandStatus.ok, reason: moved.message);
+      final dim = document.entity(dimId)! as DimensionEntity;
+      expect(dim.measurement, closeTo(10, 1e-9));
+      expect(dim.definitionPoints[0], const Vec2(4, 0));
+      expect(dim.definitionPoints[1], const Vec2(14, 0));
+      expect(dim.definitionPoints[2].y, closeTo(4, 1e-9));
     });
 
     test('stretch moves vertices inside the crossing window', () async {

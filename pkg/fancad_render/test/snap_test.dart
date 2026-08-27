@@ -65,6 +65,24 @@ void main() {
     expect(skipped.isSnapped, isFalse);
   });
 
+  test('GRID lock lands on the same intersections the canvas paints', () {
+    final empty = CadDocument();
+    final engine = SnapEngine(modes: {}, snapToGrid: true);
+    final step = referenceGridStep(view);
+    expect(step, greaterThan(0));
+
+    final result = engine.resolve(empty, view, const Vec2(1.2, 0.4));
+    expect(result.origin, SnapOrigin.grid);
+    expect(result.marker!.kind, SnapMarkerKind.grid);
+    expect(result.point.x % step, closeTo(0, 1e-9));
+    expect(result.point.y % step, closeTo(0, 1e-9));
+
+    engine.snapToGrid = false;
+    final free = engine.resolve(empty, view, const Vec2(1.2, 0.4));
+    expect(free.origin, SnapOrigin.free);
+    expect(free.point, const Vec2(1.2, 0.4));
+  });
+
   test('ortho tracking projects the cursor and intersection wins on a crossing', () {
     final empty = CadDocument();
     final ortho = SnapEngine(

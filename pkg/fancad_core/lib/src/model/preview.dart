@@ -58,6 +58,13 @@ class OverlayRect extends OverlayShape {
   final bool crossing;
 }
 
+/// A point marker, used when placing a POINT or previewing DIVIDE / MEASURE.
+class OverlayPoint extends OverlayShape {
+  const OverlayPoint(this.at);
+
+  final Vec2 at;
+}
+
 /// A tracking guide, drawn to the edges of the viewport.
 class OverlayTrackingLine extends OverlayShape {
   const OverlayTrackingLine(this.origin, this.angle, {this.label = ''});

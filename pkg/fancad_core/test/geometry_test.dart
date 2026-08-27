@@ -687,6 +687,59 @@ void main() {
       );
       expect(Intersect.polylineCrossesRect(Float64List(0), 0, 0, 1, 1), isFalse);
     });
+
+    test('line-ellipse hits are the unit-circle hits mapped back', () {
+      final axis = Intersect.lineEllipse(
+        const Vec2(-4, 0),
+        const Vec2(4, 0),
+        const Vec2.zero(),
+        const Vec2(2, 0),
+        0.5,
+      );
+      expect(axis.length, 2);
+      final xs = axis.map((p) => p.x).toList()..sort();
+      expect(xs[0], closeTo(-2, 1e-9));
+      expect(xs[1], closeTo(2, 1e-9));
+      expect(axis.every((p) => p.y.abs() < 1e-9), isTrue);
+
+      final chord = Intersect.lineEllipse(
+        const Vec2(-4, 0.5),
+        const Vec2(4, 0.5),
+        const Vec2.zero(),
+        const Vec2(2, 0),
+        0.5,
+      );
+      expect(chord.length, 2);
+      for (final hit in chord) {
+        expect(hit.y, closeTo(0.5, 1e-9));
+        expect(hit.x.abs(), closeTo(math.sqrt(3), 1e-8));
+      }
+      expect(
+        Intersect.segmentEllipse(
+          const Vec2(3, -1),
+          const Vec2(3, 1),
+          const Vec2.zero(),
+          const Vec2(2, 0),
+          0.5,
+        ),
+        isEmpty,
+      );
+    });
+
+    test('circle-ellipse includes the two-circle case', () {
+      final hits = Intersect.circleEllipse(
+        const Vec2(1, 0),
+        1,
+        const Vec2.zero(),
+        const Vec2(1, 0),
+        1,
+      );
+      expect(hits.length, 2);
+      for (final hit in hits) {
+        expect(hit.x, closeTo(0.5, 1e-6));
+        expect(hit.y.abs(), closeTo(math.sqrt(3) / 2, 1e-6));
+      }
+    });
   });
 
   group('Flatten extras', () {

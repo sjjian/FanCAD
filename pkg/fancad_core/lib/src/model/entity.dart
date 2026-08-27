@@ -1,6 +1,9 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 import '../annotation/dimension.dart';
@@ -10,7 +13,10 @@ import '../geometry/matrix.dart';
 import '../geometry/vector.dart';
 import '../hatch/generator.dart';
 import 'geometry_sink.dart';
+import 'json_converters.dart';
 import 'style.dart';
+
+part 'entity.g.dart';
 
 /// The discriminator used on the wire and in query filters.
 enum EntityKind {
@@ -50,7 +56,9 @@ sealed class CadEntity {
 
   /// Stable identity. Values imported from DWG reuse the file handle so that
   /// a save round trip preserves cross-references.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   final int id;
+  @JsonKey(includeFromJson: false, includeToJson: false)
   final EntityProps props;
 
   EntityKind get kind;
@@ -214,6 +222,7 @@ sealed class CadEntity {
         overrideText: json['text'] as String? ?? '',
         styleName: json['style'] as String? ?? 'Standard',
         dimensionType: (json['dimensionType'] as num?)?.toInt() ?? 0,
+        sourceIds: _idList(json['sourceIds']),
       ),
       EntityKind.leader => LeaderEntity(
         id: id,
@@ -265,6 +274,7 @@ sealed class CadEntity {
 // ---------------------------------------------------------------------------
 
 /// A straight segment between two points.
+@JsonSerializable(createFactory: false, ignoreUnannotated: true)
 final class LineEntity extends CadEntity {
   const LineEntity({
     required super.id,
@@ -273,7 +283,9 @@ final class LineEntity extends CadEntity {
     required this.end,
   });
 
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 start;
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 end;
 
   double get length => start.distanceTo(end);
@@ -329,16 +341,14 @@ final class LineEntity extends CadEntity {
   };
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'start': [start.x, start.y],
-    'end': [end.x, end.y],
-  };
+  Map<String, Object?> geometryToJson() => _$LineEntityToJson(this);
 }
 
 /// A lightweight polyline with optional per-vertex bulges.
 ///
 /// [vertices] is interleaved `[x, y, bulge, ...]`, matching the LWPOLYLINE
 /// layout so that DWG import needs no re-packing.
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 final class PolylineEntity extends CadEntity {
   const PolylineEntity({
     required super.id,
@@ -368,8 +378,11 @@ final class PolylineEntity extends CadEntity {
     );
   }
 
+  @JsonKey(toJson: vertexBufferToJson)
   final Float64List vertices;
+  @JsonKey()
   final bool closed;
+  @JsonKey(name: 'width', toJson: omitZero)
   final double constantWidth;
 
   int get vertexCount => vertices.length ~/ 3;
@@ -506,17 +519,11 @@ final class PolylineEntity extends CadEntity {
   }
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'vertices': [
-      for (var i = 0; i < vertexCount; i++)
-        [vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]],
-    ],
-    'closed': closed,
-    if (constantWidth != 0) 'width': constantWidth,
-  };
+  Map<String, Object?> geometryToJson() => _$PolylineEntityToJson(this);
 }
 
 /// A full circle.
+@JsonSerializable(createFactory: false, ignoreUnannotated: true)
 final class CircleEntity extends CadEntity {
   const CircleEntity({
     required super.id,
@@ -525,7 +532,9 @@ final class CircleEntity extends CadEntity {
     required this.radius,
   });
 
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 center;
+  @JsonKey()
   final double radius;
 
   @override
@@ -609,13 +618,11 @@ final class CircleEntity extends CadEntity {
         );
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'center': [center.x, center.y],
-    'radius': radius,
-  };
+  Map<String, Object?> geometryToJson() => _$CircleEntityToJson(this);
 }
 
 /// A circular arc, swept counter-clockwise from [startAngle] to [endAngle].
+@JsonSerializable(createFactory: false, ignoreUnannotated: true)
 final class ArcEntity extends CadEntity {
   const ArcEntity({
     required super.id,
@@ -626,9 +633,13 @@ final class ArcEntity extends CadEntity {
     required this.endAngle,
   });
 
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 center;
+  @JsonKey()
   final double radius;
+  @JsonKey()
   final double startAngle;
+  @JsonKey()
   final double endAngle;
 
   double get sweep => angularSweep(startAngle, endAngle);
@@ -754,15 +765,11 @@ final class ArcEntity extends CadEntity {
   };
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'center': [center.x, center.y],
-    'radius': radius,
-    'startAngle': startAngle,
-    'endAngle': endAngle,
-  };
+  Map<String, Object?> geometryToJson() => _$ArcEntityToJson(this);
 }
 
 /// An ellipse or elliptical arc. Angles are ellipse parameters, as in DWG.
+@JsonSerializable(createFactory: false, ignoreUnannotated: true)
 final class EllipseEntity extends CadEntity {
   const EllipseEntity({
     required super.id,
@@ -774,12 +781,17 @@ final class EllipseEntity extends CadEntity {
     this.endParam = math.pi * 2,
   });
 
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 center;
 
   /// Vector from the centre to the end of the major axis.
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 majorAxis;
+  @JsonKey()
   final double ratio;
+  @JsonKey()
   final double startParam;
+  @JsonKey()
   final double endParam;
 
   /// DWG treats equal parameters as a full ellipse. `endParam` defaults to
@@ -790,6 +802,50 @@ final class EllipseEntity extends CadEntity {
     final delta =
         (normalizeAngle(endParam) - normalizeAngle(startParam)).abs();
     return delta < eps || (math.pi * 2 - delta).abs() < eps;
+  }
+
+  double get majorLength => majorAxis.length;
+
+  /// The minor-axis vector, perpendicular to [majorAxis] and scaled by [ratio].
+  Vec2 get minorAxis => majorAxis.perpendicular * ratio;
+
+  /// Parameter sweep. A full ellipse is `2π`, not the 0 that equal
+  /// start/end parameters would otherwise compute.
+  double get sweep => isFullEllipse ? math.pi * 2 : angularSweep(startParam, endParam);
+
+  Vec2 get startPoint => pointAt(startParam);
+  Vec2 get endPoint => pointAt(endParam);
+
+  /// The point at ellipse parameter [param], matching DWG (not a true angle).
+  Vec2 pointAt(double param) =>
+      center + majorAxis * math.cos(param) + minorAxis * math.sin(param);
+
+  /// Maps [world] into the unit-circle space of this ellipse.
+  ///
+  /// The ellipse becomes `u² + v² = 1`, which is how line and circle
+  /// intersections stay closed-form instead of falling back to flattening.
+  Vec2 toUnit(Vec2 world) {
+    final delta = world - center;
+    final major = majorAxis;
+    final minor = minorAxis;
+    final det = major.cross(minor);
+    if (det.abs() < 1e-18) return const Vec2.zero();
+    return Vec2(delta.cross(minor) / det, major.cross(delta) / det);
+  }
+
+  Vec2 fromUnit(Vec2 unit) =>
+      center + majorAxis * unit.x + minorAxis * unit.y;
+
+  /// The ellipse parameter of [world], `atan2` of the unit-space coordinates.
+  double paramOf(Vec2 world) {
+    final unit = toUnit(world);
+    return math.atan2(unit.y, unit.x);
+  }
+
+  /// Whether [param] lies on this ellipse or elliptical arc.
+  bool containsParam(double param) {
+    if (isFullEllipse) return true;
+    return angularSweep(startParam, param) <= sweep + 1e-9;
   }
 
   @override
@@ -888,16 +944,11 @@ final class EllipseEntity extends CadEntity {
         );
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'center': [center.x, center.y],
-    'majorAxis': [majorAxis.x, majorAxis.y],
-    'ratio': ratio,
-    'startParam': startParam,
-    'endParam': endParam,
-  };
+  Map<String, Object?> geometryToJson() => _$EllipseEntityToJson(this);
 }
 
 /// A NURBS curve.
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 final class SplineEntity extends CadEntity {
   const SplineEntity({
     required super.id,
@@ -911,14 +962,20 @@ final class SplineEntity extends CadEntity {
   });
 
   /// Interleaved `[x, y, ...]`.
+  @JsonKey(toJson: pointBufferToJson)
   final Float64List controlPoints;
+  @JsonKey(toJson: doubleListToJsonIfNotEmpty)
   final List<double> knots;
+  @JsonKey(toJson: doubleListToJsonIfNotEmpty)
   final List<double> weights;
+  @JsonKey()
   final int degree;
+  @JsonKey(toJson: omitFalse)
   final bool closed;
 
   /// Interleaved `[x, y, ...]` fit points, when the spline was defined by
   /// interpolation rather than by control points. Preserved for round-tripping.
+  @JsonKey(toJson: optionalPointBufferToJson)
   final Float64List? fitPoints;
 
   Float64List get fitPointBuffer => fitPoints ?? _emptyBuffer;
@@ -1007,24 +1064,11 @@ final class SplineEntity extends CadEntity {
   }
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'controlPoints': [
-      for (var i = 0; i < controlPointCount; i++)
-        [controlPoints[i * 2], controlPoints[i * 2 + 1]],
-    ],
-    'degree': degree,
-    if (knots.isNotEmpty) 'knots': knots,
-    if (weights.isNotEmpty) 'weights': weights,
-    if (closed) 'closed': closed,
-    if (fitPointBuffer.isNotEmpty)
-      'fitPoints': [
-        for (var i = 0; i < fitPointBuffer.length ~/ 2; i++)
-          [fitPointBuffer[i * 2], fitPointBuffer[i * 2 + 1]],
-      ],
-  };
+  Map<String, Object?> geometryToJson() => _$SplineEntityToJson(this);
 }
 
 /// A node point.
+@JsonSerializable(createFactory: false, ignoreUnannotated: true)
 final class PointEntity extends CadEntity {
   const PointEntity({
     required super.id,
@@ -1032,6 +1076,7 @@ final class PointEntity extends CadEntity {
     required this.position,
   });
 
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 position;
 
   @override
@@ -1069,9 +1114,7 @@ final class PointEntity extends CadEntity {
       PointEntity(id: id, props: props, position: target);
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'position': [position.x, position.y],
-  };
+  Map<String, Object?> geometryToJson() => _$PointEntityToJson(this);
 }
 
 // ---------------------------------------------------------------------------
@@ -1079,6 +1122,7 @@ final class PointEntity extends CadEntity {
 // ---------------------------------------------------------------------------
 
 /// Single-line text.
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 final class TextEntity extends CadEntity {
   const TextEntity({
     required super.id,
@@ -1094,14 +1138,23 @@ final class TextEntity extends CadEntity {
     this.vAlign = TextVAlign.baseline,
   });
 
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 position;
+  @JsonKey(name: 'text')
   final String content;
+  @JsonKey()
   final double height;
+  @JsonKey(toJson: omitZero)
   final double rotation;
+  @JsonKey(name: 'style')
   final String styleName;
+  @JsonKey(toJson: omitOne)
   final double widthFactor;
+  @JsonKey(name: 'oblique', toJson: omitZero)
   final double obliqueAngle;
+  @JsonKey(toJson: _omitHAlign)
   final TextHAlign hAlign;
+  @JsonKey(toJson: _omitVAlign)
   final TextVAlign vAlign;
 
   TextGeometry toGeometry(EmitContext context) => TextGeometry(
@@ -1205,20 +1258,11 @@ final class TextEntity extends CadEntity {
   );
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'position': [position.x, position.y],
-    'text': content,
-    'height': height,
-    if (rotation != 0) 'rotation': rotation,
-    'style': styleName,
-    if (widthFactor != 1) 'widthFactor': widthFactor,
-    if (obliqueAngle != 0) 'oblique': obliqueAngle,
-    if (hAlign != TextHAlign.left) 'hAlign': hAlign.name,
-    if (vAlign != TextVAlign.baseline) 'vAlign': vAlign.name,
-  };
+  Map<String, Object?> geometryToJson() => _$TextEntityToJson(this);
 }
 
 /// Multi-line, formatted text.
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 final class MTextEntity extends CadEntity {
   const MTextEntity({
     required super.id,
@@ -1232,17 +1276,24 @@ final class MTextEntity extends CadEntity {
     this.attachment = 1,
   });
 
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 position;
 
   /// Raw MTEXT content, which may still contain formatting codes such as
   /// `\P` and `{\fArial|b1;...}`.
+  @JsonKey(name: 'text')
   final String content;
+  @JsonKey()
   final double height;
+  @JsonKey(toJson: omitZero)
   final double rotation;
+  @JsonKey(name: 'style')
   final String styleName;
+  @JsonKey(toJson: omitZero)
   final double rectangleWidth;
 
   /// AutoCAD attachment point, 1 = top-left through 9 = bottom-right.
+  @JsonKey(toJson: _omitAttachment)
   final int attachment;
 
   /// Strips MTEXT inline formatting down to plain text for layout and search.
@@ -1353,15 +1404,7 @@ final class MTextEntity extends CadEntity {
   );
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'position': [position.x, position.y],
-    'text': content,
-    'height': height,
-    if (rotation != 0) 'rotation': rotation,
-    'style': styleName,
-    if (rectangleWidth != 0) 'rectangleWidth': rectangleWidth,
-    if (attachment != 1) 'attachment': attachment,
-  };
+  Map<String, Object?> geometryToJson() => _$MTextEntityToJson(this);
 }
 
 /// A dimension.
@@ -1370,6 +1413,7 @@ final class MTextEntity extends CadEntity {
 /// block. Rendering that block is exact and cheap, so it is the primary path;
 /// the definition points are kept so the geometry can be regenerated after an
 /// edit or when the block is missing.
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 final class DimensionEntity extends CadEntity {
   const DimensionEntity({
     required super.id,
@@ -1381,20 +1425,35 @@ final class DimensionEntity extends CadEntity {
     this.overrideText = '',
     this.styleName = 'Standard',
     this.dimensionType = 0,
+    this.sourceIds = const [],
   });
 
   /// The anonymous block holding the pre-rendered geometry.
+  @JsonKey(toJson: omitEmptyString)
   final String blockName;
+  @JsonKey(toJson: vec2ListToJson)
   final List<Vec2> definitionPoints;
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 textPosition;
+  @JsonKey()
   final double measurement;
 
   /// `''` uses the measured value, `' '` suppresses the text entirely.
+  @JsonKey(name: 'text', toJson: omitEmptyString)
   final String overrideText;
+  @JsonKey(name: 'style')
   final String styleName;
 
   /// DXF group code 70, low 4 bits identify the dimension family.
+  @JsonKey(toJson: omitZero)
   final int dimensionType;
+
+  /// Entity ids this dimension measures. Empty means a free (non-associative)
+  /// placement: two picked points, not a live object.
+  @JsonKey(toJson: idListToJsonIfNotEmpty)
+  final List<int> sourceIds;
+
+  bool get isAssociative => sourceIds.isNotEmpty;
 
   /// Length shown on a linear or aligned dimension.
   ///
@@ -1442,6 +1501,7 @@ final class DimensionEntity extends CadEntity {
     String? overrideText,
     String? styleName,
     int? dimensionType,
+    List<int>? sourceIds,
   }) => DimensionEntity(
     id: id ?? this.id,
     props: props ?? this.props,
@@ -1452,6 +1512,7 @@ final class DimensionEntity extends CadEntity {
     overrideText: overrideText ?? this.overrideText,
     styleName: styleName ?? this.styleName,
     dimensionType: dimensionType ?? this.dimensionType,
+    sourceIds: sourceIds ?? this.sourceIds,
   );
 
   @override
@@ -1485,6 +1546,7 @@ final class DimensionEntity extends CadEntity {
     overrideText: overrideText,
     styleName: styleName,
     dimensionType: dimensionType,
+    sourceIds: sourceIds,
   );
 
   @override
@@ -1498,6 +1560,7 @@ final class DimensionEntity extends CadEntity {
     overrideText: overrideText,
     styleName: styleName,
     dimensionType: dimensionType,
+    sourceIds: sourceIds,
   );
 
   @override
@@ -1515,6 +1578,7 @@ final class DimensionEntity extends CadEntity {
     overrideText: overrideText,
     styleName: styleName,
     dimensionType: dimensionType,
+    sourceIds: sourceIds,
   );
 
   @override
@@ -1533,6 +1597,7 @@ final class DimensionEntity extends CadEntity {
         overrideText: overrideText,
         styleName: styleName,
         dimensionType: dimensionType,
+        sourceIds: sourceIds,
       );
     }
     if (index < 0 || index >= definitionPoints.length) return this;
@@ -1549,24 +1614,16 @@ final class DimensionEntity extends CadEntity {
       overrideText: overrideText,
       styleName: styleName,
       dimensionType: dimensionType,
+      sourceIds: sourceIds,
     );
   }
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    if (blockName.isNotEmpty) 'blockName': blockName,
-    'definitionPoints': [
-      for (final p in definitionPoints) [p.x, p.y],
-    ],
-    'textPosition': [textPosition.x, textPosition.y],
-    'measurement': measurement,
-    if (overrideText.isNotEmpty) 'text': overrideText,
-    'style': styleName,
-    if (dimensionType != 0) 'dimensionType': dimensionType,
-  };
+  Map<String, Object?> geometryToJson() => _$DimensionEntityToJson(this);
 }
 
 /// A leader line, optionally with an arrow head.
+@JsonSerializable(createFactory: false, ignoreUnannotated: true)
 final class LeaderEntity extends CadEntity {
   const LeaderEntity({
     required super.id,
@@ -1577,8 +1634,11 @@ final class LeaderEntity extends CadEntity {
   });
 
   /// Interleaved `[x, y, ...]`.
+  @JsonKey(toJson: pointBufferToJson)
   final Float64List vertices;
+  @JsonKey(name: 'arrowHead')
   final bool hasArrowHead;
+  @JsonKey(name: 'style')
   final String styleName;
 
   @override
@@ -1658,14 +1718,7 @@ final class LeaderEntity extends CadEntity {
   }
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'vertices': [
-      for (var i = 0; i < vertices.length ~/ 2; i++)
-        [vertices[i * 2], vertices[i * 2 + 1]],
-    ],
-    'arrowHead': hasArrowHead,
-    'style': styleName,
-  };
+  Map<String, Object?> geometryToJson() => _$LeaderEntityToJson(this);
 }
 
 // ---------------------------------------------------------------------------
@@ -1688,6 +1741,7 @@ class HatchLoop {
 }
 
 /// A filled or pattern-hatched region.
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 final class HatchEntity extends CadEntity {
   const HatchEntity({
     required super.id,
@@ -1699,10 +1753,15 @@ final class HatchEntity extends CadEntity {
     this.patternScale = 1,
   });
 
+  @JsonKey(toJson: _hatchLoopsToJson)
   final List<HatchLoop> loops;
+  @JsonKey(name: 'pattern')
   final String patternName;
+  @JsonKey()
   final bool solid;
+  @JsonKey(toJson: omitZero)
   final double patternAngle;
+  @JsonKey(toJson: omitOne)
   final double patternScale;
 
   @override
@@ -1823,25 +1882,11 @@ final class HatchEntity extends CadEntity {
   }
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'loops': [
-      for (final loop in loops)
-        {
-          'outer': loop.isOuter,
-          'points': [
-            for (var i = 0; i < loop.pointCount; i++)
-              [loop.vertices[i * 2], loop.vertices[i * 2 + 1]],
-          ],
-        },
-    ],
-    'pattern': patternName,
-    'solid': solid,
-    if (patternAngle != 0) 'patternAngle': patternAngle,
-    if (patternScale != 1) 'patternScale': patternScale,
-  };
+  Map<String, Object?> geometryToJson() => _$HatchEntityToJson(this);
 }
 
 /// A block reference, optionally arrayed (MINSERT).
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 final class InsertEntity extends CadEntity {
   const InsertEntity({
     required super.id,
@@ -1856,13 +1901,21 @@ final class InsertEntity extends CadEntity {
     this.rowSpacing = 0,
   });
 
+  @JsonKey()
   final String blockName;
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 position;
+  @JsonKey(toJson: scaleToJson)
   final Vec2 scale;
+  @JsonKey(toJson: omitZero)
   final double rotation;
+  @JsonKey(toJson: omitOne)
   final int columnCount;
+  @JsonKey(toJson: omitOne)
   final int rowCount;
+  @JsonKey(toJson: omitZero)
   final double columnSpacing;
+  @JsonKey(toJson: omitZero)
   final double rowSpacing;
 
   bool get isArray => columnCount > 1 || rowCount > 1;
@@ -1986,19 +2039,11 @@ final class InsertEntity extends CadEntity {
   );
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'blockName': blockName,
-    'position': [position.x, position.y],
-    if (scale != const Vec2(1, 1)) 'scale': [scale.x, scale.y],
-    if (rotation != 0) 'rotation': rotation,
-    if (columnCount != 1) 'columnCount': columnCount,
-    if (rowCount != 1) 'rowCount': rowCount,
-    if (columnSpacing != 0) 'columnSpacing': columnSpacing,
-    if (rowSpacing != 0) 'rowSpacing': rowSpacing,
-  };
+  Map<String, Object?> geometryToJson() => _$InsertEntityToJson(this);
 }
 
 /// A filled triangle or quadrilateral (SOLID / 3DFACE).
+@JsonSerializable(createFactory: false, ignoreUnannotated: true)
 final class SolidEntity extends CadEntity {
   const SolidEntity({
     required super.id,
@@ -2006,6 +2051,7 @@ final class SolidEntity extends CadEntity {
     required this.corners,
   });
 
+  @JsonKey(toJson: vec2ListToJson)
   final List<Vec2> corners;
 
   @override
@@ -2050,14 +2096,11 @@ final class SolidEntity extends CadEntity {
   }
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'corners': [
-      for (final corner in corners) [corner.x, corner.y],
-    ],
-  };
+  Map<String, Object?> geometryToJson() => _$SolidEntityToJson(this);
 }
 
 /// A semi-infinite construction line.
+@JsonSerializable(createFactory: false, ignoreUnannotated: true)
 final class RayEntity extends CadEntity {
   const RayEntity({
     required super.id,
@@ -2066,7 +2109,9 @@ final class RayEntity extends CadEntity {
     required this.direction,
   });
 
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 origin;
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 direction;
 
   /// Construction lines are unbounded, so they are clipped to a large multiple
@@ -2130,13 +2175,11 @@ final class RayEntity extends CadEntity {
         );
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'origin': [origin.x, origin.y],
-    'direction': [direction.x, direction.y],
-  };
+  Map<String, Object?> geometryToJson() => _$RayEntityToJson(this);
 }
 
 /// An infinite construction line.
+@JsonSerializable(createFactory: false, ignoreUnannotated: true)
 final class XLineEntity extends CadEntity {
   const XLineEntity({
     required super.id,
@@ -2145,7 +2188,9 @@ final class XLineEntity extends CadEntity {
     required this.direction,
   });
 
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 origin;
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 direction;
 
   static const double _extent = 1e7;
@@ -2207,13 +2252,11 @@ final class XLineEntity extends CadEntity {
         );
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'origin': [origin.x, origin.y],
-    'direction': [direction.x, direction.y],
-  };
+  Map<String, Object?> geometryToJson() => _$XLineEntityToJson(this);
 }
 
 /// A referenced raster image.
+@JsonSerializable(createFactory: false, ignoreUnannotated: true)
 final class ImageEntity extends CadEntity {
   const ImageEntity({
     required super.id,
@@ -2224,9 +2267,13 @@ final class ImageEntity extends CadEntity {
     required this.vVector,
   });
 
+  @JsonKey()
   final String reference;
+  @JsonKey(toJson: vec2ToJson)
   final Vec2 origin;
+  @JsonKey(name: 'u', toJson: vec2ToJson)
   final Vec2 uVector;
+  @JsonKey(name: 'v', toJson: vec2ToJson)
   final Vec2 vVector;
 
   @override
@@ -2296,12 +2343,7 @@ final class ImageEntity extends CadEntity {
       : this;
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'reference': reference,
-    'origin': [origin.x, origin.y],
-    'u': [uVector.x, uVector.y],
-    'v': [vVector.x, vVector.y],
-  };
+  Map<String, Object?> geometryToJson() => _$ImageEntityToJson(this);
 }
 
 /// An entity the importer could not translate.
@@ -2309,6 +2351,7 @@ final class ImageEntity extends CadEntity {
 /// Keeping these as first-class citizens matters for a professional tool: an
 /// unsupported object must still appear in the drawing tree, occupy space, and
 /// survive a save rather than silently disappearing.
+@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
 final class UnknownEntity extends CadEntity {
   const UnknownEntity({
     required super.id,
@@ -2318,7 +2361,9 @@ final class UnknownEntity extends CadEntity {
   });
 
   /// The DWG type name, so the UI can explain what was skipped.
+  @JsonKey()
   final String originalType;
+  @JsonKey(toJson: proxyBoundsToJson)
   final Bounds2 proxyBounds;
 
   @override
@@ -2364,14 +2409,7 @@ final class UnknownEntity extends CadEntity {
   UnknownEntity withGrip(int index, Vec2 target) => this;
 
   @override
-  Map<String, Object?> geometryToJson() => {
-    'originalType': originalType,
-    if (proxyBounds.isNotEmpty)
-      'proxyBounds': [
-        [proxyBounds.minX, proxyBounds.minY],
-        [proxyBounds.maxX, proxyBounds.maxY],
-      ],
-  };
+  Map<String, Object?> geometryToJson() => _$UnknownEntityToJson(this);
 }
 
 // ---------------------------------------------------------------------------
@@ -2433,57 +2471,19 @@ String stripMTextFormatting(String raw) {
   return buffer.toString();
 }
 
-Vec2 _point(Object? value, {Vec2 fallback = const Vec2.zero()}) {
-  if (value is List && value.length >= 2) {
-    final x = value[0];
-    final y = value[1];
-    if (x is num && y is num) return Vec2(x.toDouble(), y.toDouble());
-  }
-  if (value is Map) {
-    final x = value['x'];
-    final y = value['y'];
-    if (x is num && y is num) return Vec2(x.toDouble(), y.toDouble());
-  }
-  return fallback;
-}
+Vec2 _point(Object? value, {Vec2 fallback = const Vec2.zero()}) =>
+    vec2FromJson(value, fallback: fallback);
 
-List<Vec2> _pointList(Object? value) {
-  if (value is! List) return const [];
-  return [for (final item in value) _point(item)];
-}
+List<Vec2> _pointList(Object? value) => vec2ListFromJson(value);
 
-Float64List _pointBuffer(Object? value) {
-  final points = _pointList(value);
-  final out = Float64List(points.length * 2);
-  for (var i = 0; i < points.length; i++) {
-    out[i * 2] = points[i].x;
-    out[i * 2 + 1] = points[i].y;
-  }
-  return out;
-}
+Float64List _pointBuffer(Object? value) => pointBufferFromJson(value);
 
 /// Parses `[[x, y, bulge], ...]` into the interleaved LWPOLYLINE layout.
-Float64List _vertexBuffer(Object? value) {
-  if (value is! List) return Float64List(0);
-  final out = Float64List(value.length * 3);
-  for (var i = 0; i < value.length; i++) {
-    final item = value[i];
-    if (item is List && item.length >= 2) {
-      out[i * 3] = (item[0] as num).toDouble();
-      out[i * 3 + 1] = (item[1] as num).toDouble();
-      out[i * 3 + 2] = item.length > 2 ? (item[2] as num).toDouble() : 0;
-    }
-  }
-  return out;
-}
+Float64List _vertexBuffer(Object? value) => vertexBufferFromJson(value);
 
-List<double> _doubleList(Object? value) {
-  if (value is! List) return const [];
-  return [
-    for (final item in value)
-      if (item is num) item.toDouble(),
-  ];
-}
+List<double> _doubleList(Object? value) => doubleListFromJson(value);
+
+List<int> _idList(Object? value) => idListFromJson(value);
 
 List<HatchLoop> _loopList(Object? value) {
   if (value is! List) return const [];
@@ -2491,21 +2491,27 @@ List<HatchLoop> _loopList(Object? value) {
     for (final item in value)
       if (item is Map<String, Object?>)
         HatchLoop(
-          vertices: _pointBuffer(item['points']),
+          vertices: pointBufferFromJson(item['points']),
           isOuter: item['outer'] as bool? ?? true,
         ),
   ];
 }
 
-T _enumOf<T extends Enum>(List<T> values, Object? raw, T fallback) {
-  if (raw is String) {
-    for (final value in values) {
-      if (value.name == raw) return value;
-    }
-  }
-  if (raw is num) {
-    final index = raw.toInt();
-    if (index >= 0 && index < values.length) return values[index];
-  }
-  return fallback;
-}
+List<Map<String, Object?>> _hatchLoopsToJson(List<HatchLoop> loops) => [
+  for (final loop in loops)
+    {
+      'outer': loop.isOuter,
+      'points': pointBufferToJson(loop.vertices),
+    },
+];
+
+String? _omitHAlign(TextHAlign value) =>
+    enumToJsonIfNot(value, TextHAlign.left);
+
+String? _omitVAlign(TextVAlign value) =>
+    enumToJsonIfNot(value, TextVAlign.baseline);
+
+int? _omitAttachment(int value) => value == 1 ? null : value;
+
+T _enumOf<T extends Enum>(List<T> values, Object? raw, T fallback) =>
+    enumFromJson(values, raw, fallback);

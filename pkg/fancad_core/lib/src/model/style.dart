@@ -1,104 +1,55 @@
+// ignore_for_file: invalid_annotation_target
+
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:meta/meta.dart';
+
+part 'style.freezed.dart';
+part 'style.g.dart';
 
 /// The common attribute block carried by every entity.
 ///
 /// Kept separate from geometry so that a property edit (change layer, change
 /// colour) produces a patch that does not touch the geometry payload.
-@immutable
-class EntityProps {
-  const EntityProps({
-    this.layer = '0',
-    this.color = const CadColor.byLayer(),
-    this.lineType = 'ByLayer',
-    this.lineWeight = LineWeight.byLayer,
-    this.lineTypeScale = 1,
-    this.transparency = -1,
-    this.visible = true,
-    this.elevation = 0,
-  });
+@freezed
+abstract class EntityProps with _$EntityProps {
+  const EntityProps._();
+
+  @JsonSerializable(includeIfNull: false)
+  const factory EntityProps({
+    @Default('0') String layer,
+    @JsonKey(fromJson: cadColorFromJson, toJson: cadColorToJson)
+    @Default(CadColor.byLayer())
+    CadColor color,
+
+    /// A line type name, or the literal `ByLayer` / `ByBlock` sentinels.
+    @JsonKey(toJson: _omitByLayerName)
+    @Default('ByLayer')
+    String lineType,
+    @JsonKey(toJson: _omitByLayerWeight)
+    @Default(LineWeight.byLayer)
+    int lineWeight,
+    @JsonKey(toJson: _omitOne)
+    @Default(1)
+    double lineTypeScale,
+
+    /// -1 means inherit from the layer.
+    @JsonKey(toJson: _omitMinusOne)
+    @Default(-1)
+    int transparency,
+    @JsonKey(toJson: _omitTrue)
+    @Default(true)
+    bool visible,
+
+    /// Z offset preserved for DWG round-tripping in this 2D application.
+    @JsonKey(toJson: _omitZero)
+    @Default(0)
+    double elevation,
+  }) = _EntityProps;
 
   static const EntityProps defaults = EntityProps();
 
-  final String layer;
-  final CadColor color;
-
-  /// A line type name, or the literal `ByLayer` / `ByBlock` sentinels.
-  final String lineType;
-  final int lineWeight;
-  final double lineTypeScale;
-
-  /// -1 means inherit from the layer.
-  final int transparency;
-  final bool visible;
-
-  /// Z offset preserved for DWG round-tripping in this 2D application.
-  final double elevation;
-
-  EntityProps copyWith({
-    String? layer,
-    CadColor? color,
-    String? lineType,
-    int? lineWeight,
-    double? lineTypeScale,
-    int? transparency,
-    bool? visible,
-    double? elevation,
-  }) => EntityProps(
-    layer: layer ?? this.layer,
-    color: color ?? this.color,
-    lineType: lineType ?? this.lineType,
-    lineWeight: lineWeight ?? this.lineWeight,
-    lineTypeScale: lineTypeScale ?? this.lineTypeScale,
-    transparency: transparency ?? this.transparency,
-    visible: visible ?? this.visible,
-    elevation: elevation ?? this.elevation,
-  );
-
-  Map<String, Object?> toJson() => {
-    'layer': layer,
-    'color': _colorToJson(color),
-    if (lineType != 'ByLayer') 'lineType': lineType,
-    if (lineWeight != LineWeight.byLayer) 'lineWeight': lineWeight,
-    if (lineTypeScale != 1) 'lineTypeScale': lineTypeScale,
-    if (transparency != -1) 'transparency': transparency,
-    if (!visible) 'visible': visible,
-    if (elevation != 0) 'elevation': elevation,
-  };
-
-  static EntityProps fromJson(Map<String, Object?> json) => EntityProps(
-    layer: json['layer'] as String? ?? '0',
-    color: _colorFromJson(json['color']),
-    lineType: json['lineType'] as String? ?? 'ByLayer',
-    lineWeight: (json['lineWeight'] as num?)?.toInt() ?? LineWeight.byLayer,
-    lineTypeScale: (json['lineTypeScale'] as num?)?.toDouble() ?? 1,
-    transparency: (json['transparency'] as num?)?.toInt() ?? -1,
-    visible: json['visible'] as bool? ?? true,
-    elevation: (json['elevation'] as num?)?.toDouble() ?? 0,
-  );
-
-  @override
-  bool operator ==(Object other) =>
-      other is EntityProps &&
-      other.layer == layer &&
-      other.color == color &&
-      other.lineType == lineType &&
-      other.lineWeight == lineWeight &&
-      other.lineTypeScale == lineTypeScale &&
-      other.transparency == transparency &&
-      other.visible == visible &&
-      other.elevation == elevation;
-
-  @override
-  int get hashCode => Object.hash(
-    layer,
-    color,
-    lineType,
-    lineWeight,
-    lineTypeScale,
-    transparency,
-    visible,
-    elevation,
-  );
+  factory EntityProps.fromJson(Map<String, Object?> json) =>
+      _$EntityPropsFromJson(Map<String, dynamic>.from(json));
 }
 
 /// Colours cross the plugin and AI boundary as JSON, so the encoding is part
@@ -131,6 +82,14 @@ CadColor _colorFromJson(Object? value) {
 /// Public helpers so other libraries can reuse the wire encoding.
 Object? cadColorToJson(CadColor color) => _colorToJson(color);
 CadColor cadColorFromJson(Object? value) => _colorFromJson(value);
+
+Object? _omitByLayerName(String value) => value == 'ByLayer' ? null : value;
+Object? _omitByLayerWeight(int value) =>
+    value == LineWeight.byLayer ? null : value;
+Object? _omitOne(double value) => value == 1 ? null : value;
+Object? _omitMinusOne(int value) => value == -1 ? null : value;
+Object? _omitTrue(bool value) => value ? null : value;
+Object? _omitZero(double value) => value == 0 ? null : value;
 
 /// Sentinel line weight values, matching DXF group code 370 semantics.
 class LineWeight {
@@ -213,59 +172,29 @@ class CadColor {
 }
 
 /// A layer definition.
-@immutable
-class LayerDef {
-  const LayerDef({
-    required this.name,
-    this.color = const CadColor.indexed(7),
-    this.lineType = 'Continuous',
-    this.lineWeight = LineWeight.byDefault,
-    this.visible = true,
-    this.frozen = false,
-    this.locked = false,
-    this.plottable = true,
-    this.transparency = 0,
-  });
+@freezed
+abstract class LayerDef with _$LayerDef {
+  const LayerDef._();
 
-  final String name;
-  final CadColor color;
-  final String lineType;
-  final int lineWeight;
-  final bool visible;
-  final bool frozen;
-  final bool locked;
-  final bool plottable;
+  const factory LayerDef({
+    required String name,
+    @Default(CadColor.indexed(7)) CadColor color,
+    @Default('Continuous') String lineType,
+    @Default(LineWeight.byDefault) int lineWeight,
+    @Default(true) bool visible,
+    @Default(false) bool frozen,
+    @Default(false) bool locked,
+    @Default(true) bool plottable,
 
-  /// 0 = opaque, 90 = nearly invisible, matching the AutoCAD scale.
-  final int transparency;
+    /// 0 = opaque, 90 = nearly invisible, matching the AutoCAD scale.
+    @Default(0) int transparency,
+  }) = _LayerDef;
 
   /// Whether entities on this layer participate in rendering and selection.
   bool get isEffectivelyVisible => visible && !frozen;
 
   /// Whether entities on this layer may be edited.
   bool get isEditable => !locked && isEffectivelyVisible;
-
-  LayerDef copyWith({
-    String? name,
-    CadColor? color,
-    String? lineType,
-    int? lineWeight,
-    bool? visible,
-    bool? frozen,
-    bool? locked,
-    bool? plottable,
-    int? transparency,
-  }) => LayerDef(
-    name: name ?? this.name,
-    color: color ?? this.color,
-    lineType: lineType ?? this.lineType,
-    lineWeight: lineWeight ?? this.lineWeight,
-    visible: visible ?? this.visible,
-    frozen: frozen ?? this.frozen,
-    locked: locked ?? this.locked,
-    plottable: plottable ?? this.plottable,
-    transparency: transparency ?? this.transparency,
-  );
 
   @override
   String toString() => 'LayerDef($name)';
@@ -275,14 +204,16 @@ class LayerDef {
 ///
 /// [pattern] holds alternating dash / gap lengths in drawing units; a negative
 /// value is a gap, a zero is a dot. An empty pattern means a solid line.
-@immutable
-class LineTypeDef {
-  const LineTypeDef({
-    required this.name,
-    this.description = '',
-    this.pattern = const [],
-    this.patternLength = 0,
-  });
+@freezed
+abstract class LineTypeDef with _$LineTypeDef {
+  const LineTypeDef._();
+
+  const factory LineTypeDef({
+    required String name,
+    @Default('') String description,
+    @Default([]) List<double> pattern,
+    @Default(0) double patternLength,
+  }) = _LineTypeDef;
 
   static const LineTypeDef continuous = LineTypeDef(
     name: 'Continuous',
@@ -359,11 +290,6 @@ class LineTypeDef {
     return null;
   }
 
-  final String name;
-  final String description;
-  final List<double> pattern;
-  final double patternLength;
-
   bool get isSolid => pattern.isEmpty || patternLength <= 0;
 
   /// Dash lengths as positive magnitudes, starting with a drawn segment.
@@ -381,35 +307,28 @@ class LineTypeDef {
 }
 
 /// A text style definition.
-@immutable
-class TextStyleDef {
-  const TextStyleDef({
-    required this.name,
-    this.fontFamily = 'txt',
-    this.bigFontFamily = '',
-    this.height = 0,
-    this.widthFactor = 1,
-    this.obliqueAngle = 0,
-    this.backwards = false,
-    this.upsideDown = false,
-  });
+@freezed
+abstract class TextStyleDef with _$TextStyleDef {
+  const TextStyleDef._();
+
+  const factory TextStyleDef({
+    required String name,
+
+    /// The SHX or TTF font name recorded in the drawing.
+    @Default('txt') String fontFamily,
+
+    /// The secondary font used for CJK glyphs in SHX-based styles.
+    @Default('') String bigFontFamily,
+
+    /// A fixed height, or 0 when the height comes from each text entity.
+    @Default(0) double height,
+    @Default(1) double widthFactor,
+    @Default(0) double obliqueAngle,
+    @Default(false) bool backwards,
+    @Default(false) bool upsideDown,
+  }) = _TextStyleDef;
 
   static const TextStyleDef standard = TextStyleDef(name: 'Standard');
-
-  final String name;
-
-  /// The SHX or TTF font name recorded in the drawing.
-  final String fontFamily;
-
-  /// The secondary font used for CJK glyphs in SHX-based styles.
-  final String bigFontFamily;
-
-  /// A fixed height, or 0 when the height comes from each text entity.
-  final double height;
-  final double widthFactor;
-  final double obliqueAngle;
-  final bool backwards;
-  final bool upsideDown;
 
   /// SHX fonts need a dedicated stroke-font renderer; until that lands the
   /// renderer substitutes a TTF face for these styles.
@@ -424,31 +343,23 @@ class TextStyleDef {
 
 /// A dimension style. Only the subset needed to draw and regenerate linear
 /// dimensions is modelled for now.
-@immutable
-class DimStyleDef {
-  const DimStyleDef({
-    required this.name,
-    this.textHeight = 2.5,
-    this.arrowSize = 2.5,
-    this.extensionLineOffset = 0.625,
-    this.extensionLineExtend = 1.25,
-    this.textGap = 0.625,
-    this.scale = 1,
-    this.decimalPlaces = 2,
-    this.textStyle = 'Standard',
-  });
+@freezed
+abstract class DimStyleDef with _$DimStyleDef {
+  const DimStyleDef._();
+
+  const factory DimStyleDef({
+    required String name,
+    @Default(2.5) double textHeight,
+    @Default(2.5) double arrowSize,
+    @Default(0.625) double extensionLineOffset,
+    @Default(1.25) double extensionLineExtend,
+    @Default(0.625) double textGap,
+    @Default(1) double scale,
+    @Default(2) int decimalPlaces,
+    @Default('Standard') String textStyle,
+  }) = _DimStyleDef;
 
   static const DimStyleDef standard = DimStyleDef(name: 'Standard');
-
-  final String name;
-  final double textHeight;
-  final double arrowSize;
-  final double extensionLineOffset;
-  final double extensionLineExtend;
-  final double textGap;
-  final double scale;
-  final int decimalPlaces;
-  final String textStyle;
 
   /// Overall scale used when regenerating geometry. Non-positive values
   /// collapse to 1 so a broken style cannot hide the dimension.
@@ -465,28 +376,6 @@ class DimStyleDef {
     if (decimalPlaces > 8) return 8;
     return decimalPlaces;
   }
-
-  DimStyleDef copyWith({
-    String? name,
-    double? textHeight,
-    double? arrowSize,
-    double? extensionLineOffset,
-    double? extensionLineExtend,
-    double? textGap,
-    double? scale,
-    int? decimalPlaces,
-    String? textStyle,
-  }) => DimStyleDef(
-    name: name ?? this.name,
-    textHeight: textHeight ?? this.textHeight,
-    arrowSize: arrowSize ?? this.arrowSize,
-    extensionLineOffset: extensionLineOffset ?? this.extensionLineOffset,
-    extensionLineExtend: extensionLineExtend ?? this.extensionLineExtend,
-    textGap: textGap ?? this.textGap,
-    scale: scale ?? this.scale,
-    decimalPlaces: decimalPlaces ?? this.decimalPlaces,
-    textStyle: textStyle ?? this.textStyle,
-  );
 
   @override
   String toString() => 'DimStyleDef($name)';

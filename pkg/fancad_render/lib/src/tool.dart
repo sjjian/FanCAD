@@ -525,6 +525,9 @@ class SelectionPromptTool extends PromptTool<List<int>> {
   Vec2? _windowStart;
   Vec2? _windowEnd;
 
+  /// The last click that selected something, so TTR can remember the side.
+  Vec2? lastClick;
+
   @override
   String get id => 'prompt.selection';
 
@@ -559,6 +562,7 @@ class SelectionPromptTool extends PromptTool<List<int>> {
       filter: filter,
     );
     if (hit == null) return true;
+    lastClick = point;
     if (single) {
       complete(host, [hit.entityId]);
       return true;
@@ -636,6 +640,58 @@ class SelectionPromptTool extends PromptTool<List<int>> {
     final end = _windowEnd;
     if (start == null || end == null) return const [];
     return [OverlayRect(start, end, crossing: end.x < start.x)];
+  }
+}
+
+/// Shows a command's preview and markers while a keyword or confirm waits.
+///
+/// Clicks stay on the canvas so the user can look at the proposed points; the
+/// answer still comes from the command line (or a keyword chip).
+class PreviewHoldTool extends CadTool {
+  PreviewHoldTool({
+    required this.message,
+    this.preview,
+    this.markers = const [],
+  });
+
+  final String message;
+  final PreviewBuilder? preview;
+  final List<Vec2> markers;
+  Vec2? hover;
+
+  @override
+  String get id => 'prompt.preview';
+
+  @override
+  String get promptText => message;
+
+  @override
+  bool get wantsSnap => false;
+
+  @override
+  void onMove(ToolHost host, Vec2 point, SnapResult snap) {
+    hover = point;
+  }
+
+  @override
+  bool onClick(
+    ToolHost host,
+    Vec2 point,
+    SnapResult snap,
+    PointerDownEvent event,
+  ) {
+    return true;
+  }
+
+  @override
+  List<Vec2> buildMarkers(ToolHost host) => markers;
+
+  @override
+  List<OverlayShape> buildPreview(ToolHost host) {
+    final cursor = hover;
+    final builder = preview;
+    if (cursor == null || builder == null) return const [];
+    return builder(cursor);
   }
 }
 

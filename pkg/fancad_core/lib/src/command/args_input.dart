@@ -34,6 +34,7 @@ class ArgsCommandInput implements CommandInput {
   final Set<String> _consumed = {};
 
   bool _cancelled = false;
+  Vec2? _lastPick;
 
   @override
   bool get isInteractive => false;
@@ -65,17 +66,53 @@ class ArgsCommandInput implements CommandInput {
       throw CommandCancelled('No value supplied for prompt: "$message"');
 
   @override
+  Vec2? get lastPick => _lastPick;
+
+  @override
   Future<Vec2> point(String message, {Vec2? basePoint}) async {
     final value = _take({ParamType.point});
     final parsed = CommandArgs.parsePoint(value);
     if (parsed == null) _missing(message);
+    _lastPick = parsed;
     return parsed;
   }
 
   @override
   Future<Vec2?> pointOrNull(String message, {Vec2? basePoint}) async {
     final value = _take({ParamType.point});
-    return CommandArgs.parsePoint(value);
+    final parsed = CommandArgs.parsePoint(value);
+    if (parsed != null) _lastPick = parsed;
+    return parsed;
+  }
+
+  @override
+  Future<PointOrKeyword?> pointOrKeyword(
+    String message, {
+    Vec2? basePoint,
+    List<String> keywords = const [],
+  }) async {
+    final pointParam = _nextParam({ParamType.point});
+    if (pointParam != null) {
+      _consumed.add(pointParam.name);
+      final value = args[pointParam.name] ?? pointParam.defaultValue;
+      final parsed = CommandArgs.parsePoint(value);
+      if (parsed != null) {
+        _lastPick = parsed;
+        return PointOrKeyword.point(parsed);
+      }
+      final raw = value?.toString();
+      if (raw != null) {
+        final matched = matchKeyword(raw, keywords);
+        if (matched != null) return PointOrKeyword.keyword(matched);
+      }
+      return null;
+    }
+    final choice = _take({ParamType.choice, ParamType.text});
+    if (choice != null) {
+      final matched = matchKeyword(choice.toString(), keywords);
+      if (matched != null) return PointOrKeyword.keyword(matched);
+    }
+    return null;
   }
 
   @override

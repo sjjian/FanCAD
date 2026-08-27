@@ -753,17 +753,20 @@ class ProCommands {
         );
       }
 
-      final updated = layout.copyWith(
+      var updated = layout.copyWith(
         paperWidth: width,
         paperHeight: height,
         plotRotation: rotation,
-        plotWindow: nextWindow,
-        clearPlotWindow: clearWindow,
         plotScale: scale,
         plotFit: fit,
         plotOffsetX: offsetX,
         plotOffsetY: offsetY,
       );
+      if (clearWindow) {
+        updated = updated.copyWith(plotWindow: null);
+      } else if (nextWindow != null) {
+        updated = updated.copyWith(plotWindow: nextWindow);
+      }
       final committed = context.edit('Page Setup', (transaction) {
         transaction.putLayout(updated);
         if (context.document.activeLayoutName != layout.name) {

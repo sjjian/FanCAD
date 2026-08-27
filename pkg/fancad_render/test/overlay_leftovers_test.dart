@@ -50,6 +50,7 @@ void main() {
         OverlayArc(center: Vec2(0, 0), radius: 3),
         OverlayRect(Vec2(-2, -2), Vec2(2, 2), crossing: true),
         OverlayTrackingLine(Vec2.zero(), 0),
+        OverlayPoint(Vec2(1, 1)),
       ],
     );
 

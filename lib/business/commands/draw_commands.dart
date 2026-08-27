@@ -76,30 +76,52 @@ class DrawCommands {
     handler: (context) async {
       final layer = context.document.currentLayer;
       final points = <Vec2>[];
+      final created = <CadEntity>[];
 
       // The first point has no rubber band to draw, so the preview only
-      // becomes interesting from the second prompt onwards.
-      final first = await context.input.pointOrNull(
-        'LINE  Specify first point:',
-      );
-      if (first == null) return const CommandResult.cancelled();
-      points.add(first);
-
-      final created = <CadEntity>[];
+      // becomes interesting from the second prompt onwards. Undo and Close
+      // share that prompt so a mistyped vertex does not cancel the command.
       while (true) {
+        final keywords = _vertexKeywords(points.length);
         context.input
           ..setMarkers(List.of(points))
           ..setPreview(
-            (cursor) => [
-              if (points.length > 1) OverlayPolyline(List.of(points)),
-              OverlayLine(points.last, cursor),
-            ],
+            points.isEmpty
+                ? null
+                : (cursor) => [
+                    if (points.length > 1) OverlayPolyline(List.of(points)),
+                    OverlayLine(points.last, cursor),
+                  ],
           );
-        final next = await context.input.pointOrNull(
-          'LINE  Specify next point (Escape to finish):',
+        final pick = await context.input.pointOrKeyword(
+          points.isEmpty
+              ? 'LINE  Specify first point:'
+              : 'LINE  Specify next point (Escape to finish):',
+          keywords: keywords,
         );
+        if (pick == null) break;
+        if (pick.keyword == 'Undo') {
+          if (created.isNotEmpty) created.removeLast();
+          if (points.isNotEmpty) points.removeLast();
+          continue;
+        }
+        if (pick.keyword == 'Close') {
+          if (points.length >= 3 &&
+              points.last.distanceTo(points.first) > 1e-12) {
+            created.add(
+              LineEntity(
+                id: 0,
+                props: EntityProps(layer: layer),
+                start: points.last,
+                end: points.first,
+              ),
+            );
+          }
+          break;
+        }
+        final next = pick.point;
         if (next == null) break;
-        if (next.distanceTo(points.last) > 1e-12) {
+        if (points.isNotEmpty && next.distanceTo(points.last) > 1e-12) {
           created.add(
             LineEntity(
               id: 0,
@@ -112,7 +134,7 @@ class DrawCommands {
         points.add(next);
         // A non-interactive caller supplied exactly two points and has no way
         // to answer a third prompt, so one segment is the whole command.
-        if (!context.input.isInteractive) break;
+        if (!context.input.isInteractive && points.length >= 2) break;
       }
       context.input
         ..setPreview(null)
@@ -167,7 +189,9 @@ class DrawCommands {
       }
 
       final points = <Vec2>[];
+      var closed = context.args.boolean('closed') ?? false;
       while (true) {
+        final keywords = _vertexKeywords(points.length);
         context.input
           ..setMarkers(List.of(points))
           ..setPreview(
@@ -180,11 +204,22 @@ class DrawCommands {
                       OverlayLine(points.first, cursor, dashed: true),
                   ],
           );
-        final next = await context.input.pointOrNull(
+        final pick = await context.input.pointOrKeyword(
           points.isEmpty
               ? 'PLINE  Specify start point:'
               : 'PLINE  Specify next point (Escape to finish):',
+          keywords: keywords,
         );
+        if (pick == null) break;
+        if (pick.keyword == 'Undo') {
+          if (points.isNotEmpty) points.removeLast();
+          continue;
+        }
+        if (pick.keyword == 'Close') {
+          if (points.length >= 3) closed = true;
+          break;
+        }
+        final next = pick.point;
         if (next == null) break;
         points.add(next);
       }
@@ -198,6 +233,7 @@ class DrawCommands {
           id: 0,
           props: EntityProps(layer: layer),
           points: points,
+          closed: closed,
         ),
       ]);
     },
@@ -266,6 +302,7 @@ class DrawCommands {
       final kind = fit ? 'fit' : 'control';
       final points = <Vec2>[];
       while (true) {
+        final keywords = [if (points.isNotEmpty) 'Undo'];
         context.input
           ..setMarkers(List.of(points))
           ..setPreview(
@@ -273,11 +310,18 @@ class DrawCommands {
                 ? null
                 : (cursor) => _splineOverlay([...points, cursor], fit: fit),
           );
-        final next = await context.input.pointOrNull(
+        final pick = await context.input.pointOrKeyword(
           points.isEmpty
               ? 'SPLINE  Specify first $kind point:'
               : 'SPLINE  Specify next $kind point (Escape to finish):',
+          keywords: keywords,
         );
+        if (pick == null) break;
+        if (pick.keyword == 'Undo') {
+          if (points.isNotEmpty) points.removeLast();
+          continue;
+        }
+        final next = pick.point;
         if (next == null) break;
         points.add(next);
       }
@@ -572,6 +616,8 @@ class DrawCommands {
       final secondId = context.args.integer('second');
       final int id1;
       final int id2;
+      Vec2? firstSide;
+      Vec2? secondSide;
       if (firstId != null && secondId != null) {
         id1 = firstId;
         id2 = secondId;
@@ -584,6 +630,7 @@ class DrawCommands {
         );
         if (firstPick.isEmpty) return const CommandResult.cancelled();
         id1 = firstPick.first;
+        firstSide = context.input.lastPick;
         final secondPick = await context.input.selection(
           'CIRCLE  Select second tangent object:',
           useExistingSelection: false,
@@ -591,6 +638,7 @@ class DrawCommands {
         );
         if (secondPick.isEmpty) return const CommandResult.cancelled();
         id2 = secondPick.first;
+        secondSide = context.input.lastPick;
       }
 
       final first = context.document.entity(id1);
@@ -599,12 +647,40 @@ class DrawCommands {
         return const CommandResult.failed('A tangent object no longer exists.');
       }
 
-      final pick1 = context.args.point('pick1') ?? _tangentPick(first);
-      final pick2 = context.args.point('pick2') ?? _tangentPick(second);
+      final pick1 =
+          context.args.point('pick1') ?? firstSide ?? _tangentPick(first);
+      final pick2 =
+          context.args.point('pick2') ?? secondSide ?? _tangentPick(second);
 
+      context.input
+        ..setMarkers([pick1, pick2])
+        ..setPreview((cursor) {
+          final radius = pick1.distanceTo(cursor);
+          if (radius <= 0) return const <OverlayShape>[];
+          final preview = Construct.circleTangentRadius(
+            first,
+            second,
+            radius,
+            pick1,
+            pick2,
+          );
+          if (preview == null) {
+            return [OverlayLine(pick1, cursor)];
+          }
+          return [
+            OverlayArc(center: preview.center, radius: preview.radius),
+            OverlayLine(pick1, cursor),
+          ];
+        });
       final radius =
           context.args.number('radius') ??
-          await context.input.distance('CIRCLE  Specify radius:');
+          await context.input.distance(
+            'CIRCLE  Specify radius:',
+            basePoint: pick1,
+          );
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
       if (radius <= 0) {
         return const CommandResult.failed('The radius must be positive.');
       }
@@ -1057,7 +1133,9 @@ class DrawCommands {
     description: 'Places a point marker.',
     params: const [ParamSpec.point('at', description: 'Where to place it')],
     handler: (context) async {
+      context.input.setPreview((cursor) => [OverlayPoint(cursor)]);
       final at = await context.resolvePoint('at', 'POINT  Specify a location:');
+      context.input.setPreview(null);
       return _commit(context, 'Point', [
         PointEntity(
           id: 0,
@@ -1140,6 +1218,13 @@ class DrawCommands {
       if (points.isEmpty) {
         return const CommandResult.failed('Nothing to place.');
       }
+      if (!await _acceptPointPlacement(
+        context,
+        'DIVIDE  Place ${points.length} point(s)?',
+        points,
+      )) {
+        return const CommandResult.cancelled();
+      }
       final layer = context.document.currentLayer;
       return _commit(context, 'Divide', [
         for (final at in points)
@@ -1210,6 +1295,7 @@ class DrawCommands {
 
       final pick =
           context.args.point('pick') ??
+          context.input.lastPick ??
           switch (target) {
             LineEntity(:final start) => start,
             PolylineEntity() => target.vertexAt(0),
@@ -1217,20 +1303,36 @@ class DrawCommands {
             CircleEntity(:final center) => center,
             _ => const Vec2(0, 0),
           };
-      final spacing =
-          context.args.number('spacing') ??
-          await context.input.number('MEASURE  Specify segment length:');
-      if (spacing <= 0) {
-        return const CommandResult.failed('The spacing must be positive.');
-      }
-
-      final points = switch (target) {
+      List<Vec2> measured(double spacing) => switch (target) {
         LineEntity() => Construct.measureLine(target, spacing, pick),
         PolylineEntity() => Construct.measurePolyline(target, spacing, pick),
         ArcEntity() => Construct.measureArc(target, spacing, pick),
         CircleEntity() => Construct.measureCircle(target, spacing, pick),
         _ => const <Vec2>[],
       };
+      if (context.args.number('spacing') == null) {
+        context.input
+          ..setMarkers([pick])
+          ..setPreview((cursor) {
+            final spacing = pick.distanceTo(cursor);
+            if (spacing <= 0) return const <OverlayShape>[];
+            return [for (final at in measured(spacing)) OverlayPoint(at)];
+          });
+      }
+      final spacing =
+          context.args.number('spacing') ??
+          await context.input.distance(
+            'MEASURE  Specify segment length:',
+            basePoint: pick,
+          );
+      context.input
+        ..setPreview(null)
+        ..setMarkers(const []);
+      if (spacing <= 0) {
+        return const CommandResult.failed('The spacing must be positive.');
+      }
+
+      final points = measured(spacing);
       if (points.isEmpty) {
         return const CommandResult.failed(
           'The object is shorter than the spacing, so nothing was placed.',
@@ -1512,6 +1614,7 @@ class DrawCommands {
       if (points.length < 2) {
         points = [];
         while (true) {
+          final keywords = [if (points.isNotEmpty) 'Undo'];
           context.input
             ..setMarkers(List.of(points))
             ..setPreview(
@@ -1522,11 +1625,18 @@ class DrawCommands {
                       OverlayLine(points.last, cursor),
                     ],
             );
-          final next = await context.input.pointOrNull(
+          final pick = await context.input.pointOrKeyword(
             points.isEmpty
                 ? 'LEADER  Specify first leader point:'
                 : 'LEADER  Specify next point (Escape to finish):',
+            keywords: keywords,
           );
+          if (pick == null) break;
+          if (pick.keyword == 'Undo') {
+            if (points.isNotEmpty) points.removeLast();
+            continue;
+          }
+          final next = pick.point;
           if (next == null) break;
           if (points.isEmpty || next.distanceTo(points.last) > 1e-12) {
             points.add(next);
@@ -1575,9 +1685,21 @@ class DrawCommands {
     category: _category,
     aliases: const ['h', 'hatch'],
     description:
-        'Fills the area enclosed by selected closed polylines or circles.',
+        'Fills the area around an internal point, or around selected '
+        'closed boundaries. Four lines that meet still count as a boundary.',
     params: const [
-      ParamSpec.selection('ids', description: 'Closed boundaries to fill'),
+      ParamSpec(
+        name: 'inside',
+        type: ParamType.point,
+        description: 'A point inside the area to fill',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'ids',
+        type: ParamType.selection,
+        description: 'Closed boundaries to fill, or the curves to search',
+        required: false,
+      ),
       ParamSpec(
         name: 'pattern',
         type: ParamType.text,
@@ -1601,35 +1723,21 @@ class DrawCommands {
       ),
     ],
     handler: (context) async {
-      final ids = await context.resolveSelection(
-        'ids',
-        'HATCH  Select closed boundaries:',
-      );
-      if (ids.isEmpty) return const CommandResult.cancelled();
-
       final pattern = context.args.text('pattern') ?? 'SOLID';
       final scale = context.args.number('scale') ?? 1;
       if (scale <= 0) {
         return const CommandResult.failed('Hatch scale must be positive.');
       }
       final angle = (context.args.number('angle') ?? 0) * math.pi / 180;
-      final loops = <HatchLoop>[];
-      for (final id in ids) {
-        final entity = context.document.entity(id);
-        if (entity == null) continue;
-        // Only genuinely closed geometry can bound a fill; hatching an open
-        // polyline silently produces nonsense, so it is refused per entity.
-        final sink = PolylineSink();
-        entity.emit(context.document.emitContext(tolerance: 0.05), sink);
-        for (var i = 0; i < sink.polylines.length; i++) {
-          if (!sink.closedFlags[i]) continue;
-          if (sink.polylines[i].length < 6) continue;
-          loops.add(HatchLoop(vertices: sink.polylines[i]));
-        }
-      }
+      final loops = await _hatchLoops(context);
+      if (loops == null) return const CommandResult.cancelled();
       if (loops.isEmpty) {
-        return const CommandResult.failed(
-          'None of the selected objects form a closed boundary.',
+        final usedPick = context.args.point('inside') != null;
+        final usedIds = (context.args.ids('ids') ?? []).isNotEmpty;
+        return CommandResult.failed(
+          usedIds && !usedPick
+              ? 'None of the selected objects form a closed boundary.'
+              : 'No closed boundary encloses that point.',
         );
       }
       return _commit(context, 'Hatch', [
@@ -1645,6 +1753,79 @@ class DrawCommands {
       ]);
     },
   );
+
+  /// Resolves hatch loops from an internal pick, or from selected closed
+  /// entities when the caller already knows the rings.
+  static Future<List<HatchLoop>?> _hatchLoops(CommandContext context) async {
+    final inside = context.args.point('inside');
+    final idsArg = context.args.ids('ids');
+
+    if (inside != null) {
+      return Construct.boundaryFromPick(
+        _hatchCandidates(context, idsArg),
+        inside,
+      );
+    }
+
+    if (idsArg != null && idsArg.isNotEmpty) {
+      return _loopsFromClosed(context, idsArg);
+    }
+
+    if (!context.input.isInteractive) {
+      return const [];
+    }
+
+    final answer = await context.input.pointOrKeyword(
+      'HATCH  Specify internal point or [Select]:',
+      keywords: const ['Select'],
+    );
+    if (answer == null) return null;
+    if (answer.isPoint) {
+      return Construct.boundaryFromPick(
+        context.document.activeEntities,
+        answer.point!,
+      );
+    }
+    final ids = await context.input.selection(
+      'HATCH  Select closed boundaries:',
+    );
+    if (ids.isEmpty) return null;
+    return _loopsFromClosed(context, ids);
+  }
+
+  static Iterable<CadEntity> _hatchCandidates(
+    CommandContext context,
+    List<int>? ids,
+  ) {
+    if (ids != null && ids.isNotEmpty) {
+      return [
+        for (final id in ids)
+          if (context.document.entity(id) != null) context.document.entity(id)!,
+      ];
+    }
+    return context.document.activeEntities;
+  }
+
+  static List<HatchLoop> _loopsFromClosed(
+    CommandContext context,
+    List<int> ids,
+  ) {
+    final loops = <HatchLoop>[];
+    for (final id in ids) {
+      final entity = context.document.entity(id);
+      if (entity == null) continue;
+      // Only genuinely closed geometry can bound a fill; hatching an open
+      // polyline silently produces nonsense, so it is refused per entity.
+      final sink = PolylineSink();
+      entity.emit(context.document.emitContext(tolerance: 0.05), sink);
+      for (var i = 0; i < sink.polylines.length; i++) {
+        if (!sink.closedFlags[i]) continue;
+        if (sink.polylines[i].length < 6) continue;
+        loops.add(HatchLoop(vertices: sink.polylines[i]));
+      }
+    }
+    return loops;
+  }
 
   static CommandDescriptor _dimLinear() => CommandDescriptor(
     id: 'draw.dimLinear',
@@ -1689,6 +1870,9 @@ class DrawCommands {
       }
       final first = origins.first;
       final second = origins.second;
+      final sourceIds = origins.sourceId == null
+          ? const <int>[]
+          : [origins.sourceId!];
       context.input.setPreview(
         (cursor) => _dimLinearOverlay(first, second, cursor),
       );
@@ -1704,6 +1888,7 @@ class DrawCommands {
         dimLine,
         props: EntityProps(layer: context.document.currentLayer),
         styleName: _dimStyleName(context),
+        sourceIds: sourceIds,
       );
       if (entity == null) {
         return const CommandResult.failed(
@@ -1770,6 +1955,9 @@ class DrawCommands {
       }
       final first = origins.first;
       final second = origins.second;
+      final sourceIds = origins.sourceId == null
+          ? const <int>[]
+          : [origins.sourceId!];
       context.input.setPreview(
         (cursor) => _dimAlignedOverlay(first, second, cursor),
       );
@@ -1785,6 +1973,7 @@ class DrawCommands {
         dimLine,
         props: EntityProps(layer: context.document.currentLayer),
         styleName: _dimStyleName(context),
+        sourceIds: sourceIds,
       );
       if (entity == null) {
         return const CommandResult.failed(
@@ -1812,7 +2001,8 @@ class DrawCommands {
   }
 
   /// Two extension-line origins: a line's endpoints, or two picked points.
-  static Future<({Vec2 first, Vec2 second, String? error})> _resolveDimOrigins(
+  static Future<({Vec2 first, Vec2 second, int? sourceId, String? error})>
+      _resolveDimOrigins(
     CommandContext context, {
     required String command,
     required String needs,
@@ -1824,10 +2014,16 @@ class DrawCommands {
         return (
           first: const Vec2.zero(),
           second: const Vec2.zero(),
+          sourceId: null,
           error: '$command from an object needs $needs.',
         );
       }
-      return (first: target.start, second: target.end, error: null);
+      return (
+        first: target.start,
+        second: target.end,
+        sourceId: target.id,
+        error: null,
+      );
     }
     final first = await context.resolvePoint(
       'first',
@@ -1838,7 +2034,7 @@ class DrawCommands {
       '$command  Specify second extension line origin:',
       basePoint: first,
     );
-    return (first: first, second: second, error: null);
+    return (first: first, second: second, sourceId: null, error: null);
   }
 
   static CommandDescriptor _dimRadius() => CommandDescriptor(
@@ -2921,6 +3117,27 @@ class DrawCommands {
             : textStyle,
       ),
     );
+  }
+
+  static List<String> _vertexKeywords(int count) => [
+    if (count >= 1) 'Undo',
+    if (count >= 3) 'Close',
+  ];
+
+  static Future<bool> _acceptPointPlacement(
+    CommandContext context,
+    String message,
+    List<Vec2> points,
+  ) async {
+    if (!context.input.isInteractive) return true;
+    context.input
+      ..setMarkers(List.of(points))
+      ..setPreview((_) => [for (final at in points) OverlayPoint(at)]);
+    final accepted = await context.input.confirm(message, defaultValue: true);
+    context.input
+      ..setPreview(null)
+      ..setMarkers(const []);
+    return accepted;
   }
 
   /// Adds [entities] in one transaction and reports what happened.

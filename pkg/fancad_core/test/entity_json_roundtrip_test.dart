@@ -87,6 +87,7 @@ void main() {
         measurement: 10,
         overrideText: '10',
         dimensionType: 1,
+        sourceIds: [3],
       ),
       LeaderEntity(
         id: 10,
