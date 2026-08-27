@@ -8,7 +8,7 @@ environment:
 
 workspace:
   - pkg/fancad_core
-  - pkg/fancad_dwg
+  - pkg/fancad_io
   - pkg/fancad_render
   - pkg/fancad_plugin_host
   - pkg/fancad_ai
@@ -22,8 +22,8 @@ dependencies:
 
   fancad_core:
     path: pkg/fancad_core
-  fancad_dwg:
-    path: pkg/fancad_dwg
+  fancad_io:
+    path: pkg/fancad_io
   fancad_render:
     path: pkg/fancad_render
   fancad_plugin_host:
@@ -54,9 +54,9 @@ dev_dependencies:
 
 hooks:
   user_defines:
-    fancad_dwg:
+    fancad_io:
       # Optional. Leave empty to compile the LibreDWG submodule in
-      # pkg/fancad_dwg/native/third_party/libredwg.
+      # pkg/fancad_io/native/third_party/libredwg.
       libredwg_root: ''
 
 flutter:

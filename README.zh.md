@@ -57,7 +57,7 @@ flowchart TB
 
   subgraph pkg [pkg]
     core[fancad_core]
-    dwg[fancad_dwg]
+    io[fancad_io]
     render[fancad_render]
     host[fancad_plugin_host]
     agent[fancad_ai]
@@ -80,7 +80,7 @@ flowchart TB
   app --> views
   store --> json
   workspace --> core
-  workspace --> dwg
+  workspace --> io
   workspace --> render
   plugins --> host
   ai --> agent
@@ -94,7 +94,7 @@ flowchart TB
 | `lib/services` | 打开文档、插件宿主、AI 循环。Riverpod 用 `@Riverpod` 注解生成。服务拿 view，不拿原始 store。不建 Widget。 |
 | `lib/business` | 命令、工作台、面板、主题、文案、随包助手技能。页面只通过 `Workspace.run` 和已有 provider 做事，不碰 `storage` 或 `FcbCache`。 |
 | `pkg/fancad_core` | 几何、文档模型、事务、命令注册表。纯 Dart。 |
-| `pkg/fancad_dwg` | DWG / DXF：LibreDWG shim、FCB、磁盘缓存。 |
+| `pkg/fancad_io` | 开图 / 存图：DWG / DXF、LibreDWG shim、FCB、磁盘缓存。 |
 | `pkg/fancad_render` | 视口：剖分、裁剪、画布。 |
 | `pkg/fancad_plugin_host` | 扩展运行时：清单、沙箱 JavaScript、传输。 |
 | `pkg/fancad_ai` | 供应商抽象、agent 循环、技能注册表、变更审批。 |
@@ -103,7 +103,7 @@ flowchart TB
 
 一份 `settings.json`。`main.dart` 打开 `SettingsStore`；`providers.dart`
 拆成 `AppSettings`。每个服务只问自己那份 view。图纸不走这里：DWG/DXF 经
-`fancad_dwg`，导入缓存在 `cache/`。
+`fancad_io`，导入缓存在 `cache/`。
 
 ```mermaid
 flowchart LR
@@ -140,7 +140,7 @@ flowchart LR
   reg --> core
 ```
 
-`fancad_dwg` 之上不知道 LibreDWG 的存在，一律走 `DrawingBackend`。
+`fancad_io` 之上不知道 LibreDWG 的存在，一律走 `DrawingBackend`。
 
 Freezed 模型和注解式 Riverpod 由代码生成。改了 `@freezed` 或 `@Riverpod`
 之后跑 `dart run build_runner build`。
@@ -156,7 +156,7 @@ flutter run -d macos      # 或 -d windows、-d linux
 
 ```bash
 dart test pkg/fancad_core       # 纯 Dart
-dart test pkg/fancad_dwg
+dart test pkg/fancad_io
 dart test pkg/fancad_ai
 flutter test                    # widget 与渲染测试
 ```
@@ -170,8 +170,8 @@ dart run build_runner build
 ### DWG 从 LibreDWG 子模块编进来
 
 DWG 解析来自 [GNU LibreDWG](https://www.gnu.org/software/libredwg/) 0.13.3，
-钉在 `pkg/fancad_dwg/native/third_party/libredwg` 这个 git submodule。构建
-hook 把它编成静态 PIC 库，链进 `libfancad_dwg`，运行时不加载 Homebrew 或
+钉在 `pkg/fancad_io/native/third_party/libredwg` 这个 git submodule。构建
+hook 把它编成静态 PIC 库，链进 `libfancad_io`，运行时不加载 Homebrew 或
 系统里的 dylib。
 
 克隆时带上 submodule，或在已有目录里初始化：
@@ -194,7 +194,7 @@ git submodule update --init --recursive
 从零写解析器。贡献者需要知道：只要还链着 LibreDWG 后端，就不能发行闭源
 fork。
 
-接缝是 `pkg/fancad_dwg/lib/src/backend.dart` 里的 `DrawingBackend`。它之上
+接缝是 `pkg/fancad_io/lib/src/backend.dart` 里的 `DrawingBackend`。它之上
 不依赖 LibreDWG，换一个许可不同的后端不必动应用的其余部分。
 
 ## 路线图

@@ -37,7 +37,7 @@ jobs:
       - name: Test the pure-Dart packages
         run: |
           dart test pkg/fancad_core
-          dart test pkg/fancad_dwg
+          dart test pkg/fancad_io
           dart test pkg/fancad_ai
 
       - name: Test the Flutter packages
@@ -103,4 +103,4 @@ jobs:
       - run: flutter pub get
 
       - name: Confirm the LibreDWG submodule backend is linked
-        run: dart test pkg/fancad_dwg --tags native --run-skipped
+        run: dart test pkg/fancad_io --tags native --run-skipped
