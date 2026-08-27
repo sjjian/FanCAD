@@ -649,6 +649,45 @@ static void import_hatch_paths(import_state *s, Dwg_Entity_HATCH *hatch,
   *int_count = 1 + loops * 2;
 }
 
+static void append_one_attrib(import_state *s, Dwg_Object *ao,
+                              uint32_t *string_count) {
+  Dwg_Entity_ATTRIB *a;
+  char *tag;
+  char *value;
+  int owned_tag = 0;
+  int owned_value = 0;
+  if (!ao || ao->fixedtype != DWG_TYPE_ATTRIB || !ao->tio.entity) return;
+  a = ao->tio.entity->tio.ATTRIB;
+  if (!a) return;
+  tag = dyn_text(a, "ATTRIB", "tag", &owned_tag);
+  value = dyn_text(a, "ATTRIB", "text_value", &owned_value);
+  fcb_append_string(s->b, tag ? tag : "");
+  fcb_append_string(s->b, value ? value : "");
+  *string_count += 2;
+  dyn_text_free(tag, owned_tag);
+  dyn_text_free(value, owned_value);
+}
+
+static void append_insert_attribs(import_state *s, Dwg_Object_Ref **refs,
+                                  BITCODE_BL count, Dwg_Object_Ref *first,
+                                  uint32_t *string_count) {
+  BITCODE_BL i;
+  if (refs && count) {
+    for (i = 0; i < count; i++) {
+      append_one_attrib(s, refs[i] ? dwg_ref_object(s->dwg, refs[i]) : NULL,
+                        string_count);
+    }
+    return;
+  }
+  if (first) {
+    Dwg_Object *ao = dwg_ref_object(s->dwg, first);
+    while (ao && ao->fixedtype == DWG_TYPE_ATTRIB) {
+      append_one_attrib(s, ao, string_count);
+      ao = dwg_next_entity(ao);
+    }
+  }
+}
+
 /* Translates one entity. Returns non-zero when a record was written. */
 static int import_entity(import_state *s, const Dwg_Object *obj,
                          uint32_t owner_block) {
@@ -844,6 +883,54 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       return 1;
     }
 
+    case DWG_TYPE_ATTDEF: {
+      Dwg_Entity_ATTDEF *o = ent->tio.ATTDEF;
+      int64_t ints[3];
+      char *value;
+      char *tag;
+      char *prompt;
+      char *style_name = NULL;
+      int owned_value;
+      int owned_tag;
+      int owned_prompt;
+      int owned_style = 0;
+      Dwg_Object_Ref *style_ref;
+      if (!o) return 0;
+      value = dyn_text(o, "ATTDEF", "default_value", &owned_value);
+      tag = dyn_text(o, "ATTDEF", "tag", &owned_tag);
+      prompt = dyn_text(o, "ATTDEF", "prompt", &owned_prompt);
+      style_ref = o->style;
+      if (style_ref && style_ref->obj &&
+          style_ref->obj->supertype == DWG_SUPERTYPE_OBJECT &&
+          style_ref->obj->tio.object->tio.STYLE) {
+        style_name = dyn_text(style_ref->obj->tio.object->tio.STYLE, "STYLE",
+                              "name", &owned_style);
+      }
+      coords_push2(g, o->ins_pt.x, o->ins_pt.y);
+      coords_push(g, o->height);
+      coords_push(g, o->rotation);
+      coords_push(g, o->width_factor == 0.0 ? 1.0 : o->width_factor);
+      coords_push(g, o->oblique_angle);
+      ints[0] = (int64_t)o->horiz_alignment;
+      ints[1] = (int64_t)o->vert_alignment;
+      ints[2] = (int64_t)o->flags;
+      box_add(&bounds, o->ins_pt.x, o->ins_pt.y);
+      e.int_offset = fcb_add_ints(s->b, ints, 3);
+      e.int_count = 3;
+      e.string_offset = fcb_append_string(s->b, value ? value : "");
+      fcb_append_string(s->b, style_name ? style_name : "Standard");
+      fcb_append_string(s->b, tag ? tag : "");
+      fcb_append_string(s->b, prompt ? prompt : "");
+      e.string_count = 4;
+      attach_geometry(s, &e);
+      commit(s, &e, &bounds, owner_block, FCB_TYPE_ATTDEF);
+      dyn_text_free(value, owned_value);
+      dyn_text_free(tag, owned_tag);
+      dyn_text_free(prompt, owned_prompt);
+      dyn_text_free(style_name, owned_style);
+      return 1;
+    }
+
     case DWG_TYPE_MTEXT: {
       Dwg_Entity_MTEXT *o = ent->tio.MTEXT;
       int64_t attachment;
@@ -925,6 +1012,15 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       e.int_count = 2;
       e.string_offset = fcb_append_string(s->b, s->block_names[block]);
       e.string_count = 1;
+      if (obj->fixedtype == DWG_TYPE_MINSERT) {
+        Dwg_Entity_MINSERT *m = ent->tio.MINSERT;
+        append_insert_attribs(s, m->attribs, m->num_owned, m->first_attrib,
+                              &e.string_count);
+      } else {
+        Dwg_Entity_INSERT *m = ent->tio.INSERT;
+        append_insert_attribs(s, m->attribs, m->num_owned, m->first_attrib,
+                              &e.string_count);
+      }
       attach_geometry(s, &e);
       commit(s, &e, &bounds, owner_block, FCB_TYPE_INSERT);
       return 1;
@@ -1417,7 +1513,6 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
         obj->fixedtype == DWG_TYPE_VERTEX_PFACE_FACE ||
         obj->fixedtype == DWG_TYPE_SEQEND ||
         obj->fixedtype == DWG_TYPE_ATTRIB ||
-        obj->fixedtype == DWG_TYPE_ATTDEF ||
         obj->fixedtype == DWG_TYPE_VIEWPORT) {
       continue;
     }
@@ -1453,7 +1548,6 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
         obj->fixedtype == DWG_TYPE_VERTEX_PFACE_FACE ||
         obj->fixedtype == DWG_TYPE_SEQEND ||
         obj->fixedtype == DWG_TYPE_ATTRIB ||
-        obj->fixedtype == DWG_TYPE_ATTDEF ||
         obj->fixedtype == DWG_TYPE_VIEWPORT) {
       continue;
     }

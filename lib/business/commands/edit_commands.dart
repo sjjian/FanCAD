@@ -53,6 +53,7 @@ class EditCommands {
     _dimensionText(),
     _dimTedit(),
     _textContent(),
+    _attedit(),
     _justifyText(),
     _matchProp(),
   ];
@@ -1849,6 +1850,11 @@ class EditCommands {
             props: EntityProps(layer: context.document.currentLayer),
             blockName: name,
             position: base,
+            attributes: {
+              for (final entity in members)
+                if (entity is AttdefEntity && entity.defaultValue.isNotEmpty)
+                  entity.tag: entity.defaultValue,
+            },
           ),
         );
       });
@@ -1948,6 +1954,7 @@ class EditCommands {
         context.input.setPreview(null);
       }
       final layer = EntityProps(layer: context.document.currentLayer);
+      final attributes = await _attributeValues(context, block.name);
       final created = [
         for (final at in points)
           InsertEntity(
@@ -1957,6 +1964,7 @@ class EditCommands {
             position: at,
             scale: Vec2(scale, scale),
             rotation: rotation,
+            attributes: attributes,
           ),
       ];
       final committed = context.edit('Insert', (transaction) {
@@ -1980,6 +1988,33 @@ class EditCommands {
     OverlayLine(cursor - const Vec2(2, 0), cursor + const Vec2(2, 0)),
     OverlayLine(cursor - const Vec2(0, 2), cursor + const Vec2(0, 2)),
   ];
+
+  static Future<Map<String, String>> _attributeValues(
+    CommandContext context,
+    String blockName,
+  ) async {
+    final attributes = <String, String>{};
+    for (final def in context.document.attdefsOf(blockName)) {
+      if (!def.asksOnInsert) {
+        if (def.defaultValue.isNotEmpty) attributes[def.tag] = def.defaultValue;
+        continue;
+      }
+      final provided = context.args.text(def.tag);
+      if (provided != null) {
+        attributes[def.tag] = provided;
+        continue;
+      }
+      if (!context.input.isInteractive) {
+        if (def.defaultValue.isNotEmpty) attributes[def.tag] = def.defaultValue;
+        continue;
+      }
+      attributes[def.tag] = await context.input.text(
+        'INSERT  ${def.prompt.isEmpty ? def.tag : def.prompt}:',
+        defaultValue: def.defaultValue,
+      );
+    }
+    return attributes;
+  }
 
   static BlockRecord? _insertableBlock(CadDocument document, String name) {
     final key = name.toUpperCase();
@@ -2106,6 +2141,7 @@ class EditCommands {
         'at',
         'MINSERT  Specify insertion point:',
       );
+      final attributes = await _attributeValues(context, block.name);
       final committed = context.edit('MInsert', (transaction) {
         transaction.add(
           InsertEntity(
@@ -2119,6 +2155,7 @@ class EditCommands {
             rowCount: rows,
             columnSpacing: columnSpacing,
             rowSpacing: rowSpacing,
+            attributes: attributes,
           ),
         );
       });
@@ -3181,6 +3218,8 @@ class EditCommands {
         TextEntity(:final content) => content,
         MTextEntity(:final content) => content,
         DimensionEntity(:final overrideText) => overrideText,
+        AttdefEntity(:final defaultValue) => defaultValue,
+        AttribEntity(:final value) => value,
         _ => '',
       };
       final text = context.args.has('text')
@@ -3205,6 +3244,26 @@ class EditCommands {
             MTextEntity() when entity.content != text => entity.withContent(
               text,
             ),
+            AttdefEntity() when entity.defaultValue != text => AttdefEntity(
+              id: entity.id,
+              props: entity.props,
+              position: entity.position,
+              tag: entity.tag,
+              prompt: entity.prompt,
+              defaultValue: text,
+              height: entity.height,
+              rotation: entity.rotation,
+              styleName: entity.styleName,
+              widthFactor: entity.widthFactor,
+              obliqueAngle: entity.obliqueAngle,
+              hAlign: entity.hAlign,
+              vAlign: entity.vAlign,
+              invisible: entity.invisible,
+              constant: entity.constant,
+              verify: entity.verify,
+              preset: entity.preset,
+            ),
+            AttribEntity() when entity.value != text => entity.withValue(text),
             DimensionEntity() when entity.overrideText != text =>
               DimensionEntity(
                 id: entity.id,
@@ -3231,6 +3290,105 @@ class EditCommands {
         status: CommandStatus.ok,
         message: 'Edited ${committed.change.modified.length} text object(s).',
         transaction: committed,
+      );
+    },
+  );
+
+  static CommandDescriptor _attedit() => CommandDescriptor(
+    id: 'edit.attedit',
+    title: 'Edit Attributes',
+    category: _category,
+    aliases: const ['attedit', 'eattedit'],
+    description:
+        'Changes the values on a block reference. Constant tags stay as '
+        'the definition wrote them.',
+    params: const [
+      ParamSpec.selection('ids'),
+      ParamSpec(
+        name: 'tag',
+        type: ParamType.text,
+        description: 'Attribute tag to change',
+        required: false,
+      ),
+      ParamSpec(
+        name: 'value',
+        type: ParamType.text,
+        description: 'New value for that tag',
+        required: false,
+      ),
+    ],
+    handler: (context) async {
+      final ids = await context.resolveSelection(
+        'ids',
+        'ATTEDIT  Select a block reference:',
+      );
+      final inserts = [
+        for (final id in ids)
+          if (context.document.entity(id) is InsertEntity)
+            context.document.entity(id)! as InsertEntity,
+      ];
+      if (inserts.isEmpty) {
+        return const CommandResult.failed(
+          'ATTEDIT needs a block reference.',
+        );
+      }
+      final tag = context.args.text('tag')?.trim();
+      final value = context.args.text('value');
+      final updates = <InsertEntity>[];
+      for (final insert in inserts) {
+        final defs = context.document.attdefsOf(insert.blockName);
+        if (defs.isEmpty) continue;
+        final next = Map<String, String>.from(insert.attributes);
+        if (tag != null && tag.isNotEmpty) {
+          AttdefEntity? def;
+          for (final each in defs) {
+            if (each.tag.toUpperCase() == tag.toUpperCase()) def = each;
+          }
+          if (def == null || def.constant) continue;
+          next[def.tag] = value ??
+              await context.input.text(
+                'ATTEDIT  ${def.prompt.isEmpty ? def.tag : def.prompt}:',
+                defaultValue: insert.attributeValue(def.tag, def.defaultValue),
+              );
+        } else {
+          for (final def in defs) {
+            if (def.constant) continue;
+            next[def.tag] = await context.input.text(
+              'ATTEDIT  ${def.prompt.isEmpty ? def.tag : def.prompt}:',
+              defaultValue: insert.attributeValue(def.tag, def.defaultValue),
+            );
+          }
+        }
+        var changed = next.length != insert.attributes.length;
+        if (!changed) {
+          for (final entry in next.entries) {
+            if (insert.attributes[entry.key] != entry.value) {
+              changed = true;
+              break;
+            }
+          }
+        }
+        if (changed) updates.add(insert.withAttributes(next));
+      }
+      if (updates.isEmpty) {
+        return const CommandResult.failed(
+          'Nothing changed, or that block has no attributes.',
+        );
+      }
+      final written = context.edit('Attedit', (transaction) {
+        for (final insert in updates) {
+          transaction.modify(insert);
+        }
+      });
+      if (written == null) {
+        return const CommandResult.failed(
+          'The attributes were not changed; the objects may be on a locked layer.',
+        );
+      }
+      return CommandResult(
+        status: CommandStatus.ok,
+        message: 'Edited attributes on ${written.change.modified.length} insert(s).',
+        transaction: written,
       );
     },
   );
@@ -3826,7 +3984,18 @@ class EditCommands {
             for (final id in ids) {
               final member = document.entity(id);
               if (member == null) continue;
-              result.add(member.transformed(transform).withId(0));
+              if (member is AttdefEntity) {
+                result.add(
+                  member
+                      .toAttrib(
+                        entity.attributeValue(member.tag, member.defaultValue),
+                      )
+                      .transformed(transform)
+                      .withId(0),
+                );
+              } else {
+                result.add(member.transformed(transform).withId(0));
+              }
             }
           }
         }

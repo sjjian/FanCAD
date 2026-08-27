@@ -466,9 +466,13 @@ class FcbWriter {
         );
 
       case InsertEntity():
-        final (stringOffset, stringCount) = _strings.internRun([
-          entity.blockName,
-        ]);
+        final names = <String>[entity.blockName];
+        for (final entry in entity.attributes.entries) {
+          names
+            ..add(entry.key)
+            ..add(entry.value);
+        }
+        final (stringOffset, stringCount) = _strings.internRun(names);
         return _Payload(
           geomOffset: _doubles.addAll([
             entity.position.x,
@@ -482,6 +486,59 @@ class FcbWriter {
           geomCount: 7,
           intOffset: _ints.addAll([entity.columnCount, entity.rowCount]),
           intCount: 2,
+          stringOffset: stringOffset,
+          stringCount: stringCount,
+        );
+
+      case AttdefEntity():
+        final (stringOffset, stringCount) = _strings.internRun([
+          entity.defaultValue,
+          entity.styleName,
+          entity.tag,
+          entity.prompt,
+        ]);
+        return _Payload(
+          geomOffset: _doubles.addAll([
+            entity.position.x,
+            entity.position.y,
+            entity.height,
+            entity.rotation,
+            entity.widthFactor,
+            entity.obliqueAngle,
+          ]),
+          geomCount: 6,
+          intOffset: _ints.addAll([
+            entity.hAlign.index,
+            entity.vAlign.index,
+            entity.flags,
+          ]),
+          intCount: 3,
+          stringOffset: stringOffset,
+          stringCount: stringCount,
+        );
+
+      case AttribEntity():
+        final (stringOffset, stringCount) = _strings.internRun([
+          entity.value,
+          entity.styleName,
+          entity.tag,
+        ]);
+        return _Payload(
+          geomOffset: _doubles.addAll([
+            entity.position.x,
+            entity.position.y,
+            entity.height,
+            entity.rotation,
+            entity.widthFactor,
+            entity.obliqueAngle,
+          ]),
+          geomCount: 6,
+          intOffset: _ints.addAll([
+            entity.hAlign.index,
+            entity.vAlign.index,
+            entity.invisible ? 1 : 0,
+          ]),
+          intCount: 3,
           stringOffset: stringOffset,
           stringCount: stringCount,
         );
@@ -1059,6 +1116,8 @@ class FcbWriter {
     EntityKind.ray => FcbType.ray,
     EntityKind.xline => FcbType.xline,
     EntityKind.image => FcbType.image,
+    EntityKind.attdef => FcbType.attdef,
+    EntityKind.attrib => FcbType.attrib,
     EntityKind.unknown => FcbType.unknown,
   };
 }

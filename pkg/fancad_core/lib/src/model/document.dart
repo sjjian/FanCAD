@@ -613,6 +613,12 @@ class CadDocument implements BlockLookup, StyleResolver {
   /// Entities of the active layout, in draw order.
   List<CadEntity> get activeEntities => entitiesOf(currentBlockName);
 
+  /// ATTDEFs in [blockName], in draw order.
+  List<AttdefEntity> attdefsOf(String blockName) => [
+    for (final entity in entitiesOf(blockName))
+      if (entity is AttdefEntity) entity,
+  ];
+
   Bounds2 boundsOfEntity(CadEntity entity) => entity.computeBounds(
     blocks: this,
     tolerance: defaultTolerance,

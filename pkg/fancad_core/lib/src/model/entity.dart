@@ -38,6 +38,8 @@ enum EntityKind {
   ray,
   xline,
   image,
+  attdef,
+  attrib,
   unknown;
 
   static EntityKind parse(String value) => EntityKind.values.firstWhere(
@@ -220,6 +222,49 @@ sealed class CadEntity {
         rowCount: (json['rowCount'] as num?)?.toInt() ?? 1,
         columnSpacing: (json['columnSpacing'] as num?)?.toDouble() ?? 0,
         rowSpacing: (json['rowSpacing'] as num?)?.toDouble() ?? 0,
+        attributes: _stringMap(json['attributes']),
+      ),
+      EntityKind.attdef => AttdefEntity(
+        id: id,
+        props: props,
+        position: _point(json['position']),
+        tag: json['tag'] as String? ?? '',
+        prompt: json['prompt'] as String? ?? '',
+        defaultValue: json['text'] as String? ?? '',
+        height: (json['height'] as num?)?.toDouble() ?? 2.5,
+        rotation: (json['rotation'] as num?)?.toDouble() ?? 0,
+        styleName: json['style'] as String? ?? 'Standard',
+        widthFactor: (json['widthFactor'] as num?)?.toDouble() ?? 1,
+        obliqueAngle: (json['oblique'] as num?)?.toDouble() ?? 0,
+        hAlign: _enumOf(TextHAlign.values, json['hAlign'], TextHAlign.left),
+        vAlign: _enumOf(
+          TextVAlign.values,
+          json['vAlign'],
+          TextVAlign.baseline,
+        ),
+        invisible: json['invisible'] as bool? ?? false,
+        constant: json['constant'] as bool? ?? false,
+        verify: json['verify'] as bool? ?? false,
+        preset: json['preset'] as bool? ?? false,
+      ),
+      EntityKind.attrib => AttribEntity(
+        id: id,
+        props: props,
+        position: _point(json['position']),
+        tag: json['tag'] as String? ?? '',
+        value: json['text'] as String? ?? '',
+        height: (json['height'] as num?)?.toDouble() ?? 2.5,
+        rotation: (json['rotation'] as num?)?.toDouble() ?? 0,
+        styleName: json['style'] as String? ?? 'Standard',
+        widthFactor: (json['widthFactor'] as num?)?.toDouble() ?? 1,
+        obliqueAngle: (json['oblique'] as num?)?.toDouble() ?? 0,
+        hAlign: _enumOf(TextHAlign.values, json['hAlign'], TextHAlign.left),
+        vAlign: _enumOf(
+          TextVAlign.values,
+          json['vAlign'],
+          TextVAlign.baseline,
+        ),
+        invisible: json['invisible'] as bool? ?? false,
       ),
       EntityKind.hatch => HatchEntity(
         id: id,
@@ -2042,6 +2087,7 @@ final class InsertEntity extends CadEntity {
     this.rowCount = 1,
     this.columnSpacing = 0,
     this.rowSpacing = 0,
+    this.attributes = const {},
   });
 
   @JsonKey()
@@ -2061,7 +2107,14 @@ final class InsertEntity extends CadEntity {
   @JsonKey(toJson: omitZero)
   final double rowSpacing;
 
+  /// Tag → value for ATTDEFs in [blockName]. Missing tags use the definition
+  /// default, so an empty map is a freshly inserted title block.
+  final Map<String, String> attributes;
+
   bool get isArray => columnCount > 1 || rowCount > 1;
+
+  String attributeValue(String tag, [String fallback = '']) =>
+      attributes[tag] ?? fallback;
 
   /// The local-to-parent transform of a single array cell.
   Mat3 transformFor(int column, int row) {
@@ -2094,7 +2147,7 @@ final class InsertEntity extends CadEntity {
         }
         context.blocks.emitBlock(
           blockName,
-          context.descend(local, style),
+          context.descend(local, style).withAttributeValues(attributes),
           sink,
         );
       }
@@ -2131,6 +2184,7 @@ final class InsertEntity extends CadEntity {
     rowCount: rowCount,
     columnSpacing: columnSpacing,
     rowSpacing: rowSpacing,
+    attributes: attributes,
   );
 
   @override
@@ -2145,6 +2199,21 @@ final class InsertEntity extends CadEntity {
     rowCount: rowCount,
     columnSpacing: columnSpacing,
     rowSpacing: rowSpacing,
+    attributes: attributes,
+  );
+
+  InsertEntity withAttributes(Map<String, String> attributes) => InsertEntity(
+    id: id,
+    props: props,
+    blockName: blockName,
+    position: position,
+    scale: scale,
+    rotation: rotation,
+    columnCount: columnCount,
+    rowCount: rowCount,
+    columnSpacing: columnSpacing,
+    rowSpacing: rowSpacing,
+    attributes: attributes,
   );
 
   @override
@@ -2162,6 +2231,7 @@ final class InsertEntity extends CadEntity {
     rowCount: rowCount,
     columnSpacing: columnSpacing * matrix.meanScale,
     rowSpacing: rowSpacing * matrix.meanScale,
+    attributes: attributes,
   );
 
   @override
@@ -2179,10 +2249,377 @@ final class InsertEntity extends CadEntity {
     rowCount: rowCount,
     columnSpacing: columnSpacing,
     rowSpacing: rowSpacing,
+    attributes: attributes,
   );
 
   @override
-  Map<String, Object?> geometryToJson() => _$InsertEntityToJson(this);
+  Map<String, Object?> geometryToJson() => {
+    ..._$InsertEntityToJson(this),
+    if (attributes.isNotEmpty) 'attributes': attributes,
+  };
+}
+
+/// An attribute definition that lives in a block (ATTDEF).
+///
+/// Title blocks and schedules are blocks whose variable fields are these
+/// definitions. Inserting the block copies each tag's current value onto the
+/// reference; editing the definition itself still shows the default.
+final class AttdefEntity extends CadEntity {
+  const AttdefEntity({
+    required super.id,
+    super.props = EntityProps.defaults,
+    required this.position,
+    required this.tag,
+    this.prompt = '',
+    this.defaultValue = '',
+    this.height = 2.5,
+    this.rotation = 0,
+    this.styleName = 'Standard',
+    this.widthFactor = 1,
+    this.obliqueAngle = 0,
+    this.hAlign = TextHAlign.left,
+    this.vAlign = TextVAlign.baseline,
+    this.invisible = false,
+    this.constant = false,
+    this.verify = false,
+    this.preset = false,
+  });
+
+  final Vec2 position;
+  final String tag;
+  final String prompt;
+  final String defaultValue;
+  final double height;
+  final double rotation;
+  final String styleName;
+  final double widthFactor;
+  final double obliqueAngle;
+  final TextHAlign hAlign;
+  final TextVAlign vAlign;
+  final bool invisible;
+  final bool constant;
+  final bool verify;
+  final bool preset;
+
+  int get flags =>
+      (invisible ? 1 : 0) |
+      (constant ? 2 : 0) |
+      (verify ? 4 : 0) |
+      (preset ? 8 : 0);
+
+  bool get asksOnInsert => !constant && !preset;
+
+  String get displayText => defaultValue.isEmpty ? tag : defaultValue;
+
+  AttribEntity toAttrib(String value) => AttribEntity(
+    id: 0,
+    props: props,
+    position: position,
+    tag: tag,
+    value: value,
+    height: height,
+    rotation: rotation,
+    styleName: styleName,
+    widthFactor: widthFactor,
+    obliqueAngle: obliqueAngle,
+    hAlign: hAlign,
+    vAlign: vAlign,
+    invisible: invisible,
+  );
+
+  @override
+  EntityKind get kind => EntityKind.attdef;
+
+  @override
+  void emit(EmitContext context, GeometrySink sink) {
+    final throughInsert = context.attributeValues != null;
+    if (throughInsert && invisible) return;
+    final text = throughInsert
+        ? (context.attributeValues![tag] ?? defaultValue)
+        : displayText;
+    if (text.isEmpty) return;
+    final scale = context.transform.isIdentity
+        ? 1.0
+        : context.transform.meanScale;
+    sink.text(
+      TextGeometry(
+        text: text,
+        origin: context.apply(position),
+        height: height * scale,
+        rotation: rotation + context.transform.rotation,
+        styleName: styleName,
+        widthFactor: widthFactor,
+        obliqueAngle: obliqueAngle,
+        hAlign: hAlign,
+        vAlign: vAlign,
+      ),
+      context.styleFor(props),
+    );
+  }
+
+  @override
+  AttdefEntity withId(int id) => AttdefEntity(
+    id: id,
+    props: props,
+    position: position,
+    tag: tag,
+    prompt: prompt,
+    defaultValue: defaultValue,
+    height: height,
+    rotation: rotation,
+    styleName: styleName,
+    widthFactor: widthFactor,
+    obliqueAngle: obliqueAngle,
+    hAlign: hAlign,
+    vAlign: vAlign,
+    invisible: invisible,
+    constant: constant,
+    verify: verify,
+    preset: preset,
+  );
+
+  @override
+  AttdefEntity withProps(EntityProps props) => AttdefEntity(
+    id: id,
+    props: props,
+    position: position,
+    tag: tag,
+    prompt: prompt,
+    defaultValue: defaultValue,
+    height: height,
+    rotation: rotation,
+    styleName: styleName,
+    widthFactor: widthFactor,
+    obliqueAngle: obliqueAngle,
+    hAlign: hAlign,
+    vAlign: vAlign,
+    invisible: invisible,
+    constant: constant,
+    verify: verify,
+    preset: preset,
+  );
+
+  @override
+  AttdefEntity transformed(Mat3 matrix) => AttdefEntity(
+    id: id,
+    props: props,
+    position: matrix.transform(position),
+    tag: tag,
+    prompt: prompt,
+    defaultValue: defaultValue,
+    height: height * matrix.meanScale,
+    rotation: rotation + matrix.rotation,
+    styleName: styleName,
+    widthFactor: widthFactor,
+    obliqueAngle: obliqueAngle,
+    hAlign: hAlign,
+    vAlign: vAlign,
+    invisible: invisible,
+    constant: constant,
+    verify: verify,
+    preset: preset,
+  );
+
+  @override
+  List<Vec2> grips() => [position];
+
+  @override
+  AttdefEntity withGrip(int index, Vec2 target) => AttdefEntity(
+    id: id,
+    props: props,
+    position: target,
+    tag: tag,
+    prompt: prompt,
+    defaultValue: defaultValue,
+    height: height,
+    rotation: rotation,
+    styleName: styleName,
+    widthFactor: widthFactor,
+    obliqueAngle: obliqueAngle,
+    hAlign: hAlign,
+    vAlign: vAlign,
+    invisible: invisible,
+    constant: constant,
+    verify: verify,
+    preset: preset,
+  );
+
+  @override
+  Map<String, Object?> geometryToJson() => {
+    'position': vec2ToJson(position),
+    'tag': tag,
+    if (prompt.isNotEmpty) 'prompt': prompt,
+    if (defaultValue.isNotEmpty) 'text': defaultValue,
+    'height': height,
+    if (rotation != 0) 'rotation': rotation,
+    if (styleName != 'Standard') 'style': styleName,
+    if (widthFactor != 1) 'widthFactor': widthFactor,
+    if (obliqueAngle != 0) 'oblique': obliqueAngle,
+    if (hAlign != TextHAlign.left) 'hAlign': hAlign.name,
+    if (vAlign != TextVAlign.baseline) 'vAlign': vAlign.name,
+    if (invisible) 'invisible': true,
+    if (constant) 'constant': true,
+    if (verify) 'verify': true,
+    if (preset) 'preset': true,
+  };
+}
+
+/// A concrete attribute value, usually produced by exploding an insert.
+final class AttribEntity extends CadEntity {
+  const AttribEntity({
+    required super.id,
+    super.props = EntityProps.defaults,
+    required this.position,
+    required this.tag,
+    required this.value,
+    this.height = 2.5,
+    this.rotation = 0,
+    this.styleName = 'Standard',
+    this.widthFactor = 1,
+    this.obliqueAngle = 0,
+    this.hAlign = TextHAlign.left,
+    this.vAlign = TextVAlign.baseline,
+    this.invisible = false,
+  });
+
+  final Vec2 position;
+  final String tag;
+  final String value;
+  final double height;
+  final double rotation;
+  final String styleName;
+  final double widthFactor;
+  final double obliqueAngle;
+  final TextHAlign hAlign;
+  final TextVAlign vAlign;
+  final bool invisible;
+
+  AttribEntity withValue(String value) => AttribEntity(
+    id: id,
+    props: props,
+    position: position,
+    tag: tag,
+    value: value,
+    height: height,
+    rotation: rotation,
+    styleName: styleName,
+    widthFactor: widthFactor,
+    obliqueAngle: obliqueAngle,
+    hAlign: hAlign,
+    vAlign: vAlign,
+    invisible: invisible,
+  );
+
+  @override
+  EntityKind get kind => EntityKind.attrib;
+
+  @override
+  void emit(EmitContext context, GeometrySink sink) {
+    if (invisible || value.isEmpty) return;
+    final scale = context.transform.isIdentity
+        ? 1.0
+        : context.transform.meanScale;
+    sink.text(
+      TextGeometry(
+        text: value,
+        origin: context.apply(position),
+        height: height * scale,
+        rotation: rotation + context.transform.rotation,
+        styleName: styleName,
+        widthFactor: widthFactor,
+        obliqueAngle: obliqueAngle,
+        hAlign: hAlign,
+        vAlign: vAlign,
+      ),
+      context.styleFor(props),
+    );
+  }
+
+  @override
+  AttribEntity withId(int id) => AttribEntity(
+    id: id,
+    props: props,
+    position: position,
+    tag: tag,
+    value: value,
+    height: height,
+    rotation: rotation,
+    styleName: styleName,
+    widthFactor: widthFactor,
+    obliqueAngle: obliqueAngle,
+    hAlign: hAlign,
+    vAlign: vAlign,
+    invisible: invisible,
+  );
+
+  @override
+  AttribEntity withProps(EntityProps props) => AttribEntity(
+    id: id,
+    props: props,
+    position: position,
+    tag: tag,
+    value: value,
+    height: height,
+    rotation: rotation,
+    styleName: styleName,
+    widthFactor: widthFactor,
+    obliqueAngle: obliqueAngle,
+    hAlign: hAlign,
+    vAlign: vAlign,
+    invisible: invisible,
+  );
+
+  @override
+  AttribEntity transformed(Mat3 matrix) => AttribEntity(
+    id: id,
+    props: props,
+    position: matrix.transform(position),
+    tag: tag,
+    value: value,
+    height: height * matrix.meanScale,
+    rotation: rotation + matrix.rotation,
+    styleName: styleName,
+    widthFactor: widthFactor,
+    obliqueAngle: obliqueAngle,
+    hAlign: hAlign,
+    vAlign: vAlign,
+    invisible: invisible,
+  );
+
+  @override
+  List<Vec2> grips() => [position];
+
+  @override
+  AttribEntity withGrip(int index, Vec2 target) => AttribEntity(
+    id: id,
+    props: props,
+    position: target,
+    tag: tag,
+    value: value,
+    height: height,
+    rotation: rotation,
+    styleName: styleName,
+    widthFactor: widthFactor,
+    obliqueAngle: obliqueAngle,
+    hAlign: hAlign,
+    vAlign: vAlign,
+    invisible: invisible,
+  );
+
+  @override
+  Map<String, Object?> geometryToJson() => {
+    'position': vec2ToJson(position),
+    'tag': tag,
+    if (value.isNotEmpty) 'text': value,
+    'height': height,
+    if (rotation != 0) 'rotation': rotation,
+    if (styleName != 'Standard') 'style': styleName,
+    if (widthFactor != 1) 'widthFactor': widthFactor,
+    if (obliqueAngle != 0) 'oblique': obliqueAngle,
+    if (hAlign != TextHAlign.left) 'hAlign': hAlign.name,
+    if (vAlign != TextVAlign.baseline) 'vAlign': vAlign.name,
+    if (invisible) 'invisible': true,
+  };
 }
 
 /// A filled triangle or quadrilateral (SOLID / 3DFACE).
@@ -2670,6 +3107,14 @@ List<Map<String, Object?>> _hatchLoopsToJson(List<HatchLoop> loops) => [
       'points': pointBufferToJson(loop.vertices),
     },
 ];
+
+Map<String, String> _stringMap(Object? value) {
+  if (value is! Map) return const {};
+  return {
+    for (final entry in value.entries)
+      if (entry.key is String) entry.key as String: '${entry.value ?? ''}',
+  };
+}
 
 String? _omitHAlign(TextHAlign value) =>
     enumToJsonIfNot(value, TextHAlign.left);

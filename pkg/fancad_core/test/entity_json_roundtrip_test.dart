@@ -62,6 +62,23 @@ void main() {
         rowCount: 3,
         columnSpacing: 8,
         rowSpacing: 6,
+        attributes: {'NO': 'A-01'},
+      ),
+      const AttdefEntity(
+        id: 16,
+        position: Vec2(2, 3),
+        tag: 'NO',
+        prompt: 'Drawing number',
+        defaultValue: 'A-00',
+        height: 3.5,
+        invisible: true,
+      ),
+      const AttribEntity(
+        id: 17,
+        position: Vec2(4, 5),
+        tag: 'NO',
+        value: 'A-01',
+        height: 3.5,
       ),
       HatchEntity(
         id: 8,

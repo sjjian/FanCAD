@@ -339,6 +339,18 @@ void main() {
           uVector: const Vec2(1, 0),
           vVector: const Vec2(0, 1),
         ),
+        const AttdefEntity(
+          id: 19,
+          position: Vec2(1, 2),
+          tag: 'NO',
+          defaultValue: 'A-00',
+        ),
+        const AttribEntity(
+          id: 20,
+          position: Vec2(1, 2),
+          tag: 'NO',
+          value: 'A-01',
+        ),
         UnknownEntity(id: 18, originalType: 'ACAD_PROXY'),
       ];
 

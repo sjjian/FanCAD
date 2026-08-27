@@ -805,6 +805,10 @@ class FcbReader {
 
       case FcbType.insert:
         if (geom.length < 7) return null;
+        final attributes = <String, String>{};
+        for (var i = 1; i + 1 < stringCount; i += 2) {
+          attributes[stringAt(i)] = stringAt(i + 1);
+        }
         return InsertEntity(
           id: id,
           props: props,
@@ -816,6 +820,48 @@ class FcbReader {
           rowCount: ints.length > 1 ? math.max(1, ints[1]) : 1,
           columnSpacing: geom[5],
           rowSpacing: geom[6],
+          attributes: attributes,
+        );
+
+      case FcbType.attdef:
+        if (geom.length < 6) return null;
+        final flags = ints.length > 2 ? ints[2] : 0;
+        return AttdefEntity(
+          id: id,
+          props: props,
+          position: Vec2(geom[0], geom[1]),
+          defaultValue: stringAt(0),
+          styleName: stringAt(1).isEmpty ? 'Standard' : stringAt(1),
+          tag: stringAt(2),
+          prompt: stringAt(3),
+          height: geom[2],
+          rotation: geom[3],
+          widthFactor: geom[4] == 0 ? 1 : geom[4],
+          obliqueAngle: geom[5],
+          hAlign: _enumAt(TextHAlign.values, ints, 0, TextHAlign.left),
+          vAlign: _enumAt(TextVAlign.values, ints, 1, TextVAlign.baseline),
+          invisible: flags & 1 != 0,
+          constant: flags & 2 != 0,
+          verify: flags & 4 != 0,
+          preset: flags & 8 != 0,
+        );
+
+      case FcbType.attrib:
+        if (geom.length < 6) return null;
+        return AttribEntity(
+          id: id,
+          props: props,
+          position: Vec2(geom[0], geom[1]),
+          value: stringAt(0),
+          styleName: stringAt(1).isEmpty ? 'Standard' : stringAt(1),
+          tag: stringAt(2),
+          height: geom[2],
+          rotation: geom[3],
+          widthFactor: geom[4] == 0 ? 1 : geom[4],
+          obliqueAngle: geom[5],
+          hAlign: _enumAt(TextHAlign.values, ints, 0, TextHAlign.left),
+          vAlign: _enumAt(TextVAlign.values, ints, 1, TextVAlign.baseline),
+          invisible: ints.length > 2 && ints[2] != 0,
         );
 
       case FcbType.hatch:

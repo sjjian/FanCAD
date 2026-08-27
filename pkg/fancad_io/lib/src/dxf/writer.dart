@@ -58,7 +58,7 @@ class DxfWriter {
       // sections does not double the model.
       if (block.name != document.modelSpaceBlockName) {
         for (final entity in document.entitiesOf(block.name)) {
-          _entity(pair, entity, paperSpace: block.isLayoutBlock);
+          _entity(pair, entity, document, paperSpace: block.isLayoutBlock);
         }
         if (block.isLayoutBlock) {
           _viewports(pair, document, block.name);
@@ -71,7 +71,7 @@ class DxfWriter {
     pair(0, 'SECTION');
     pair(2, 'ENTITIES');
     for (final entity in document.entitiesOf(document.modelSpaceBlockName)) {
-      _entity(pair, entity);
+      _entity(pair, entity, document);
     }
     pair(0, 'ENDSEC');
 
@@ -244,7 +244,8 @@ class DxfWriter {
 
   void _entity(
     void Function(int, Object) pair,
-    CadEntity entity, {
+    CadEntity entity,
+    CadDocument document, {
     bool paperSpace = false,
   }) {
     switch (entity) {
@@ -324,6 +325,20 @@ class DxfWriter {
           pair(71, entity.rowCount);
           pair(44, entity.columnSpacing);
           pair(45, entity.rowSpacing);
+        }
+        final defs = document.attdefsOf(entity.blockName);
+        if (defs.isNotEmpty || entity.attributes.isNotEmpty) {
+          pair(66, 1);
+          for (final def in defs) {
+            _attribPairs(
+              pair,
+              def
+                  .toAttrib(entity.attributeValue(def.tag, def.defaultValue))
+                  .transformed(entity.transformFor(0, 0)),
+              paperSpace: paperSpace,
+            );
+          }
+          pair(0, 'SEQEND');
         }
       case EllipseEntity():
         pair(0, 'ELLIPSE');
@@ -430,6 +445,22 @@ class DxfWriter {
           pair(20, entity.vertices[i * 2 + 1]);
           pair(30, 0);
         }
+      case AttdefEntity():
+        pair(0, 'ATTDEF');
+        _common(pair, entity, paperSpace: paperSpace);
+        pair(10, entity.position.x);
+        pair(20, entity.position.y);
+        pair(40, entity.height);
+        pair(1, entity.defaultValue);
+        pair(2, entity.tag);
+        pair(3, entity.prompt);
+        pair(70, entity.flags);
+        if (entity.rotation != 0) {
+          pair(50, entity.rotation * 180 / math.pi);
+        }
+        pair(7, entity.styleName);
+      case AttribEntity():
+        _attribPairs(pair, entity, paperSpace: paperSpace);
       case ImageEntity():
         pair(0, 'IMAGE');
         _common(pair, entity, paperSpace: paperSpace);
@@ -448,6 +479,25 @@ class DxfWriter {
         // origin would move every unsupported object onto 0,0.
         break;
     }
+  }
+
+  void _attribPairs(
+    void Function(int, Object) pair,
+    AttribEntity entity, {
+    required bool paperSpace,
+  }) {
+    pair(0, 'ATTRIB');
+    _common(pair, entity, paperSpace: paperSpace);
+    pair(10, entity.position.x);
+    pair(20, entity.position.y);
+    pair(40, entity.height);
+    pair(1, entity.value);
+    pair(2, entity.tag);
+    pair(70, entity.invisible ? 1 : 0);
+    if (entity.rotation != 0) {
+      pair(50, entity.rotation * 180 / math.pi);
+    }
+    pair(7, entity.styleName);
   }
 
   void _common(

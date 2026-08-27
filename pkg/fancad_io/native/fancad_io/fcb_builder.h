@@ -61,6 +61,8 @@
 #define FCB_TYPE_RAY 15
 #define FCB_TYPE_XLINE 16
 #define FCB_TYPE_IMAGE 17
+#define FCB_TYPE_ATTDEF 18
+#define FCB_TYPE_ATTRIB 19
 
 /* Entity flags. */
 #define FCB_FLAG_CLOSED (1u << 0)

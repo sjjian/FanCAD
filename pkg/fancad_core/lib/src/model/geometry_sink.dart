@@ -261,6 +261,7 @@ class EmitContext {
     this.depth = 0,
     this.clip,
     this.measureWidth,
+    this.attributeValues,
   });
 
   /// Maximum allowed deviation when discretizing curves, in model units.
@@ -286,6 +287,10 @@ class EmitContext {
   /// Measured advance of a text run, used by MTEXT wrapping. Null falls
   /// back to 0.6 em per character when no SHX is loaded.
   final double Function(String text, double height)? measureWidth;
+
+  /// Tag → value while emitting a block through an insert. Null means the
+  /// block is being drawn as a definition, so ATTDEFs show their defaults.
+  final Map<String, String>? attributeValues;
 
   static const int maxDepth = 32;
 
@@ -327,6 +332,7 @@ class EmitContext {
     depth: depth + 1,
     clip: clip,
     measureWidth: measureWidth,
+    attributeValues: attributeValues,
   );
 
   EmitContext withTolerance(double value) => EmitContext(
@@ -338,6 +344,19 @@ class EmitContext {
     depth: depth,
     clip: clip,
     measureWidth: measureWidth,
+    attributeValues: attributeValues,
+  );
+
+  EmitContext withAttributeValues(Map<String, String> values) => EmitContext(
+    tolerance: tolerance,
+    transform: transform,
+    blocks: blocks,
+    styles: styles,
+    inheritedStyle: inheritedStyle,
+    depth: depth,
+    clip: clip,
+    measureWidth: measureWidth,
+    attributeValues: values,
   );
 }
 

@@ -488,6 +488,35 @@ class DxfReader {
           attachment: int.tryParse(v[71] ?? '1') ?? 1,
           styleName: v[7] ?? 'Standard',
         );
+      case 'ATTDEF':
+        final flags = int.tryParse(v[70] ?? '0') ?? 0;
+        return AttdefEntity(
+          id: id,
+          props: props,
+          position: Vec2(n(10), n(20)),
+          defaultValue: v[1] ?? '',
+          tag: v[2] ?? '',
+          prompt: v[3] ?? '',
+          height: n(40, 2.5),
+          rotation: n(50) * math.pi / 180,
+          styleName: v[7] ?? 'Standard',
+          invisible: flags & 1 != 0,
+          constant: flags & 2 != 0,
+          verify: flags & 4 != 0,
+          preset: flags & 8 != 0,
+        );
+      case 'ATTRIB':
+        return AttribEntity(
+          id: id,
+          props: props,
+          position: Vec2(n(10), n(20)),
+          value: v[1] ?? '',
+          tag: v[2] ?? '',
+          height: n(40, 2.5),
+          rotation: n(50) * math.pi / 180,
+          styleName: v[7] ?? 'Standard',
+          invisible: (int.tryParse(v[70] ?? '0') ?? 0) & 1 != 0,
+        );
       case 'INSERT':
         return InsertEntity(
           id: id,

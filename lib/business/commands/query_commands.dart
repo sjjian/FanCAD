@@ -568,9 +568,20 @@ class QueryCommands {
         record
           ..['text'] = content
           ..['position'] = [position.x, position.y];
-      case InsertEntity(:final blockName, :final position):
+      case InsertEntity(:final blockName, :final position, :final attributes):
         record
           ..['block'] = blockName
+          ..['position'] = [position.x, position.y];
+        if (attributes.isNotEmpty) record['attributes'] = attributes;
+      case AttdefEntity(:final tag, :final defaultValue, :final position):
+        record
+          ..['tag'] = tag
+          ..['text'] = defaultValue
+          ..['position'] = [position.x, position.y];
+      case AttribEntity(:final tag, :final value, :final position):
+        record
+          ..['tag'] = tag
+          ..['text'] = value
           ..['position'] = [position.x, position.y];
       case PointEntity(:final position):
         record['position'] = [position.x, position.y];
