@@ -31,6 +31,7 @@ class OverlayModel {
   final List<int> selectedIds;
 
   /// Entities under the cursor, or entities an AI change is about to touch.
+  /// Drawn dashed, same as [selectedIds], not as a solid glow.
   final List<int> highlightedIds;
 
   final List<Vec2> grips;
@@ -86,6 +87,8 @@ class OverlayTheme {
     this.preview = const ui.Color(0xFFE0E0E0),
     this.tracking = const ui.Color(0xFF6BE38F),
     this.crosshair = const ui.Color(0x66FFFFFF),
+    this.selectionStroke = const ui.Color(0xFFFFFFFF),
+    this.selectionMask = const ui.Color(0xFF1B1D21),
     this.gripSize = 7,
     this.snapSize = 9,
     this.crosshairSize = 14,
@@ -100,10 +103,40 @@ class OverlayTheme {
   final ui.Color tracking;
   final ui.Color crosshair;
 
+  /// Selected entities are redrawn dashed in this colour, after the original
+  /// solid stroke is covered by [selectionMask].
+  final ui.Color selectionStroke;
+  final ui.Color selectionMask;
+
   /// Grip and marker sizes in logical pixels, so they stay constant on screen.
   final double gripSize;
   final double snapSize;
   final double crosshairSize;
+
+  /// Covers the original solid stroke with the canvas colour and picks a
+  /// dash colour that stays readable on it.
+  OverlayTheme withCanvas(ui.Color canvas) {
+    final dark = canvas.computeLuminance() < 0.5;
+    return OverlayTheme(
+      selection: selection,
+      highlight: highlight,
+      grip: grip,
+      hotGrip: hotGrip,
+      snap: snap,
+      tracking: tracking,
+      crosshair: crosshair,
+      preview: dark
+          ? const ui.Color(0xFFFFFFFF)
+          : const ui.Color(0xFF000000),
+      selectionStroke: dark
+          ? const ui.Color(0xFFFFFFFF)
+          : const ui.Color(0xFF000000),
+      selectionMask: canvas,
+      gripSize: gripSize,
+      snapSize: snapSize,
+      crosshairSize: crosshairSize,
+    );
+  }
 }
 
 /// Draws an [OverlayModel].
@@ -132,8 +165,9 @@ class OverlayPainter {
         model.highlightedIds,
         viewport,
         document,
-        theme.highlight,
-        3,
+        theme.selectionStroke,
+        1.2,
+        dashed: true,
       );
     }
     if (model.selectedIds.isNotEmpty) {
@@ -142,8 +176,9 @@ class OverlayPainter {
         model.selectedIds,
         viewport,
         document,
-        theme.selection,
-        2.5,
+        theme.selectionStroke,
+        1.2,
+        dashed: true,
       );
     }
 
@@ -168,19 +203,22 @@ class OverlayPainter {
     }
   }
 
-  /// Re-emits the selected entities and strokes them in the highlight colour.
+  /// Re-emits the selected entities and strokes them on top of the drawing.
   ///
-  /// Re-emitting rather than caching a highlight is deliberate: selection
-  /// changes constantly and a stale highlight outline is worse than a slightly
-  /// more expensive one.
+  /// Re-emitting rather than caching an outline is deliberate: hover and
+  /// selection change constantly and a stale outline is worse than a slightly
+  /// more expensive one. Both are drawn dashed, like AutoCAD, so the original
+  /// solid stroke is covered first and the dashes sit in its place rather than
+  /// on top of a second colour.
   void _paintEntityOutlines(
     ui.Canvas canvas,
     List<int> ids,
     CadViewport viewport,
     CadDocument document,
     ui.Color color,
-    double width,
-  ) {
+    double width, {
+    bool dashed = false,
+  }) {
     final sink = _OutlineSink(viewport);
     Picker.emitInActiveLayout(
       document,
@@ -189,16 +227,24 @@ class OverlayPainter {
       tolerance: viewport.tolerance,
       visible: viewport.visibleBounds,
     );
-    if (sink.buffer.isEmpty) return;
+    if (sink.length == 0) return;
+    final solid = Float32List.sublistView(sink.buffer, 0, sink.length);
+    if (dashed) {
+      _stroke
+        ..color = theme.selectionMask
+        ..strokeWidth = 2.6
+        ..strokeCap = StrokeCap.round;
+      canvas.drawRawPoints(ui.PointMode.lines, solid, _stroke);
+    }
+    final points = dashed ? dashOutline(solid) : solid;
+    if (points.isEmpty) return;
     _stroke
       ..color = color
       ..strokeWidth = width
-      ..strokeCap = StrokeCap.round;
-    canvas.drawRawPoints(
-      ui.PointMode.lines,
-      Float32List.sublistView(sink.buffer, 0, sink.length),
-      _stroke,
-    );
+      ..strokeCap = dashed ? StrokeCap.butt : StrokeCap.round
+      ..isAntiAlias = !dashed;
+    canvas.drawRawPoints(ui.PointMode.lines, points, _stroke);
+    _stroke.isAntiAlias = true;
     _stroke.strokeCap = StrokeCap.butt;
   }
 
@@ -312,23 +358,13 @@ class OverlayPainter {
   }
 
   void _paintGrip(ui.Canvas canvas, ui.Offset at, {required bool hot}) {
-    final half = theme.gripSize / 2;
     final rect = ui.Rect.fromCenter(
       center: at,
       width: theme.gripSize,
       height: theme.gripSize,
     );
-    if (hot) {
-      _fill.color = theme.hotGrip;
-      canvas.drawRect(rect, _fill);
-    } else {
-      _fill.color = const ui.Color(0xCC101214);
-      canvas.drawRect(rect, _fill);
-      _stroke
-        ..color = theme.grip
-        ..strokeWidth = 1.4;
-      canvas.drawRect(rect.deflate(half * 0.1), _stroke);
-    }
+    _fill.color = hot ? theme.hotGrip : theme.grip;
+    canvas.drawRect(rect, _fill);
   }
 
   /// Snap markers use the glyph shapes CAD users already read fluently: a
@@ -430,6 +466,56 @@ class OverlayPainter {
         _stroke,
       );
   }
+}
+
+/// Turns solid screen-space segments into a short dash pattern.
+///
+/// Dash lengths are in pixels so the selected look stays the same at every
+/// zoom, which is what the user is reading, not the drawing units.
+@visibleForTesting
+Float32List dashOutline(
+  Float32List src, {
+  double on = 4,
+  double off = 3,
+}) {
+  if (src.length < 4 || on <= 0) return src;
+  var buffer = Float32List(src.length * 2);
+  var length = 0;
+
+  void add(double x0, double y0, double x1, double y1) {
+    if (length + 4 > buffer.length) {
+      buffer = Float32List(buffer.length * 2)..setRange(0, length, buffer);
+    }
+    buffer[length++] = x0;
+    buffer[length++] = y0;
+    buffer[length++] = x1;
+    buffer[length++] = y1;
+  }
+
+  for (var i = 0; i + 3 < src.length; i += 4) {
+    final x0 = src[i];
+    final y0 = src[i + 1];
+    final x1 = src[i + 2];
+    final y1 = src[i + 3];
+    final dx = x1 - x0;
+    final dy = y1 - y0;
+    final total = math.sqrt(dx * dx + dy * dy);
+    if (total <= 0) continue;
+    final ux = dx / total;
+    final uy = dy / total;
+    var travelled = 0.0;
+    while (travelled < total) {
+      final end = math.min(travelled + on, total);
+      add(
+        x0 + ux * travelled,
+        y0 + uy * travelled,
+        x0 + ux * end,
+        y0 + uy * end,
+      );
+      travelled = end + off;
+    }
+  }
+  return Float32List.sublistView(buffer, 0, length);
 }
 
 /// Collects screen-space segments for the selection outline.
