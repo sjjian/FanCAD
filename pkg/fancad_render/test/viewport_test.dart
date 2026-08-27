@@ -132,4 +132,29 @@ void main() {
       expect(notifications, 2);
     });
   });
+
+  group('trackpadPinchFactor', () {
+    test('a missing or zero interval stays 1:1', () {
+      expect(trackpadPinchFactor(1.4, null), 1.4);
+      expect(trackpadPinchFactor(1.4, Duration.zero), 1.4);
+      expect(trackpadPinchFactor(1, const Duration(milliseconds: 8)), 1);
+      expect(trackpadPinchFactor(0, const Duration(milliseconds: 8)), 1);
+    });
+
+    test('the same ratio covers more when the pinch is faster', () {
+      const raw = 1.02;
+      final slow = trackpadPinchFactor(raw, const Duration(milliseconds: 80));
+      final fast = trackpadPinchFactor(raw, const Duration(milliseconds: 8));
+      expect(slow, closeTo(raw, 1e-9));
+      expect(fast, greaterThan(slow));
+    });
+
+    test('a fast pinch out also travels further', () {
+      const raw = 0.98;
+      final slow = trackpadPinchFactor(raw, const Duration(milliseconds: 80));
+      final fast = trackpadPinchFactor(raw, const Duration(milliseconds: 8));
+      expect(slow, closeTo(raw, 1e-9));
+      expect(fast, lessThan(slow));
+    });
+  });
 }

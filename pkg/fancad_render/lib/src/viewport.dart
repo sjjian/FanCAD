@@ -208,3 +208,26 @@ double niceGridStep(double value) {
   }
   return decade * 10;
 }
+
+/// Maps one trackpad pinch step to a zoom factor. Faster pinches travel further.
+///
+/// [rawRatio] is this event's scale over the previous one. [dt] is the time
+/// since that previous event; a missing or zero interval stays 1:1 so the
+/// first sample of a gesture does not jump.
+double trackpadPinchFactor(double rawRatio, Duration? dt) {
+  if (!rawRatio.isFinite || rawRatio <= 0) return 1;
+  if (rawRatio == 1) return 1;
+  if (dt == null || dt <= Duration.zero) return rawRatio;
+
+  var seconds = dt.inMicroseconds / 1e6;
+  seconds = seconds.clamp(4 / 1000, 80 / 1000);
+  final speed = math.log(rawRatio).abs() / seconds;
+  const slow = 0.4;
+  const fast = 3.0;
+  const minGain = 1.0;
+  const maxGain = 2.2;
+  final t = ((speed - slow) / (fast - slow)).clamp(0.0, 1.0);
+  final smooth = t * t * (3 - 2 * t);
+  final gain = minGain + (maxGain - minGain) * smooth;
+  return math.pow(rawRatio, gain).toDouble();
+}

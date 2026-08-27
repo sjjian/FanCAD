@@ -51,7 +51,48 @@ void main() {
     await tester.sendEventToBinding(pointer.panZoomEnd());
     await tester.pump();
 
+    // The first sample has no dt, so the raw scale is applied 1:1.
     expect(controller.viewport.scale, closeTo(before * 2, 1e-9));
+  });
+
+  testWidgets('a fast trackpad pinch covers more than the raw scale', (
+    tester,
+  ) async {
+    final location = await pumpCanvas(tester);
+    final before = controller.viewport.scale;
+
+    final pointer = TestPointer(1, PointerDeviceKind.trackpad);
+    await tester.sendEventToBinding(pointer.panZoomStart(location));
+    await tester.sendEventToBinding(
+      pointer.panZoomUpdate(
+        location,
+        scale: 1.1,
+        timeStamp: const Duration(milliseconds: 16),
+      ),
+    );
+    await tester.pump();
+    expect(controller.viewport.scale, closeTo(before * 1.1, 1e-9));
+    final afterFirst = controller.viewport.scale;
+
+    await tester.sendEventToBinding(
+      pointer.panZoomUpdate(
+        location,
+        scale: 1.4,
+        timeStamp: const Duration(milliseconds: 24),
+      ),
+    );
+    await tester.sendEventToBinding(pointer.panZoomEnd());
+    await tester.pump();
+
+    const raw = 1.4 / 1.1;
+    expect(
+      controller.viewport.scale,
+      closeTo(
+        afterFirst * trackpadPinchFactor(raw, const Duration(milliseconds: 8)),
+        1e-6,
+      ),
+    );
+    expect(controller.viewport.scale, greaterThan(afterFirst * raw));
   });
 
   testWidgets('a two-finger trackpad drag pans the view', (tester) async {
@@ -150,5 +191,38 @@ void main() {
     await tester.pump();
 
     expect(controller.viewport.center.x, isNot(closeTo(before.x, 1e-9)));
+  });
+
+  testWidgets('revertInteraction restores the camera and stops a live pan', (
+    tester,
+  ) async {
+    final location = await pumpCanvas(tester);
+    final origin = controller.viewport.center;
+
+    final pointer = TestPointer(
+      1,
+      PointerDeviceKind.mouse,
+      null,
+      kSecondaryMouseButton,
+    );
+    await tester.sendEventToBinding(pointer.down(location));
+    await tester.sendEventToBinding(
+      pointer.move(location + const Offset(30, 0)),
+    );
+    await tester.pump();
+    expect(controller.isInteracting, isTrue);
+    expect(controller.viewport.center.x, isNot(closeTo(origin.x, 1e-9)));
+
+    controller.revertInteraction();
+    await tester.pump();
+    expect(controller.isInteracting, isFalse);
+    expect(controller.viewport.center.x, closeTo(origin.x, 1e-9));
+
+    await tester.sendEventToBinding(
+      pointer.move(location + const Offset(80, 0)),
+    );
+    await tester.pump();
+    expect(controller.viewport.center.x, closeTo(origin.x, 1e-9));
+    await tester.sendEventToBinding(pointer.up());
   });
 }
