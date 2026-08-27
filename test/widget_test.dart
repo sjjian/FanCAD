@@ -1,7 +1,9 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
+import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -275,6 +277,67 @@ void main() {
       isA<LineEntity>().having((line) => line.length, 'length', 10),
     );
   });
+
+  testWidgets('escape cancels even when chrome has focus', (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final container = makeContainer();
+    addTearDown(container.dispose);
+    final workspace = container.read(workspaceProvider)..newDocument();
+    workspace.active!.session.edit('LINE', (transaction) {
+      transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+      );
+    });
+    workspace.active!.selection.replace([
+      workspace.active!.document.entities.single.id,
+    ]);
+
+    await tester.pumpWidget(wrap(container));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('activity-layers')));
+    await tester.pump();
+    expect(workspace.active!.selection.ids, isNotEmpty);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(workspace.active!.selection.ids, isEmpty);
+  });
+
+  testWidgets(
+    'escape clears a selection after the canvas takes command-line focus',
+    (tester) async {
+      tester.view.physicalSize = const Size(1600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final container = makeContainer();
+      addTearDown(container.dispose);
+      final workspace = container.read(workspaceProvider)..newDocument();
+      workspace.active!.session.edit('LINE', (transaction) {
+        transaction.add(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+        );
+      });
+      workspace.active!.selection.replace([
+        workspace.active!.document.entities.single.id,
+      ]);
+
+      await tester.pumpWidget(wrap(container));
+      await tester.pump();
+
+      await tester.tap(find.byType(CadCanvas));
+      await tester.pump();
+      expect(workspace.active!.selection.ids, isNotEmpty);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(workspace.active!.selection.ids, isEmpty);
+    },
+  );
 
   test('every registered command has a description for the model', () {
     final container = makeContainer();

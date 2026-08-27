@@ -45,10 +45,23 @@ class _CommandLinePaneState extends State<CommandLinePane> {
   void initState() {
     super.initState();
     _model.addListener(_onModelChanged);
+    // The canvas focuses this node, not the wrapping Focus widget, so Escape
+    // has to be handled on the node that actually owns focus.
+    widget.focusNode.onKeyEvent = _onKey;
+  }
+
+  @override
+  void didUpdateWidget(CommandLinePane oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      oldWidget.focusNode.onKeyEvent = null;
+      widget.focusNode.onKeyEvent = _onKey;
+    }
   }
 
   @override
   void dispose() {
+    widget.focusNode.onKeyEvent = null;
     _model.removeListener(_onModelChanged);
     _input.dispose();
     super.dispose();
@@ -154,57 +167,84 @@ class _CommandLinePaneState extends State<CommandLinePane> {
           ),
           const SizedBox(width: FanCadTokens.space1),
           if (prompt.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: FanCadTokens.space2),
-              child: Tooltip(
-                message: prompt,
-                waitDuration: const Duration(milliseconds: 500),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: Text(
-                    prompt,
-                    style: tokens.monoStyle.copyWith(
-                      color: awaiting ? tokens.accent : tokens.textMuted,
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.only(right: FanCadTokens.space2),
+                child: Tooltip(
+                  message: prompt,
+                  waitDuration: const Duration(milliseconds: 500),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Text(
+                      prompt,
+                      style: tokens.monoStyle.copyWith(
+                        color: awaiting ? tokens.accent : tokens.textMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
             ),
           Expanded(
-            child: Focus(
-              onKeyEvent: _onKey,
-              child: ShellTextField(
-                controller: _input,
-                focusNode: widget.focusNode,
-                hintText: awaiting
-                    ? context.l10n.hint_click_or_type
-                    : prompt.isEmpty
-                    ? context.l10n.hint_type_command
-                    : null,
-                onSubmitted: _submit,
-              ),
-            ),
-          ),
-          for (final keyword in keywords.take(6))
-            Padding(
-              padding: const EdgeInsets.only(left: FanCadTokens.space1),
-              child: PromptKeywordChip(
-                label: keyword,
-                onPressed: () => _submit(keyword),
-              ),
-            ),
-          if (awaiting || widget.workspace.isBusy)
-            Padding(
-              padding: const EdgeInsets.only(left: FanCadTokens.space1),
-              child: PromptKeywordChip(
-                label: context.l10n.cancel,
-                muted: true,
-                onPressed: () {
+            child: CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.escape): () {
                   widget.workspace.cancelActive();
                   _input.clear();
                 },
+              },
+              child: Focus(
+                canRequestFocus: false,
+                skipTraversal: true,
+                onKeyEvent: _onKey,
+                child: ShellTextField(
+                  controller: _input,
+                  focusNode: widget.focusNode,
+                  hintText: awaiting
+                      ? context.l10n.hint_click_or_type
+                      : prompt.isEmpty
+                      ? context.l10n.hint_type_command
+                      : null,
+                  onSubmitted: _submit,
+                ),
+              ),
+            ),
+          ),
+          if (keywords.isNotEmpty || awaiting || widget.workspace.isBusy)
+            Flexible(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final keyword in keywords.take(6))
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: FanCadTokens.space1,
+                        ),
+                        child: PromptKeywordChip(
+                          label: keyword,
+                          onPressed: () => _submit(keyword),
+                        ),
+                      ),
+                    if (awaiting || widget.workspace.isBusy)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: FanCadTokens.space1,
+                        ),
+                        child: PromptKeywordChip(
+                          label: context.l10n.cancel,
+                          muted: true,
+                          onPressed: () {
+                            widget.workspace.cancelActive();
+                            _input.clear();
+                          },
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
         ],

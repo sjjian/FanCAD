@@ -42,6 +42,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   /// to it on every click, which is what makes typing mid-command work.
   final FocusNode _commandFocus = FocusNode(debugLabel: 'command-line');
 
+  static const _escapeChannel = MethodChannel('fancad/escape');
+
   StreamSubscription<String>? _panelReveals;
   StreamSubscription<ApprovalRequest>? _approvals;
   bool _listeningForWindowClose = false;
@@ -50,6 +52,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_onHardwareEscape);
+    _escapeChannel.setMethodCallHandler(_onNativeEscape);
     // Subscribed in initState rather than in build so a rebuild does not
     // register a second listener and pop two dialogs for one request.
     final workspace = ref.read(workspaceProvider);
@@ -82,6 +86,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onHardwareEscape);
+    _escapeChannel.setMethodCallHandler(null);
     if (_listeningForWindowClose) {
       windowManager.removeListener(this);
     }
@@ -89,6 +95,21 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     _approvals?.cancel();
     _commandFocus.dispose();
     super.dispose();
+  }
+
+  /// Text fields on macOS swallow Escape before Focus.onKeyEvent. This runs
+  /// earlier, so a canvas click that focused the command line still cancels.
+  bool _onHardwareEscape(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (event.logicalKey != LogicalKeyboardKey.escape) return false;
+    if (ref.read(paletteOpenProvider)) return false;
+    ref.read(workspaceProvider).cancelActive();
+    return true;
+  }
+
+  Future<void> _onNativeEscape(MethodCall call) async {
+    if (call.method != 'escape') return;
+    ref.read(workspaceProvider).cancelActive();
   }
 
   Future<void> _bindWindowClose() async {
@@ -255,6 +276,16 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       bindings: _shortcuts(workspace),
       child: Focus(
         autofocus: true,
+        onKeyEvent: (node, event) {
+          // Handle Escape here so a click on chrome cannot let the key fall
+          // through to the OS, which would leave native fullscreen.
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (event.logicalKey != LogicalKeyboardKey.escape) {
+            return KeyEventResult.ignored;
+          }
+          workspace.cancelActive();
+          return KeyEventResult.handled;
+        },
         // Material rather than a bare ColoredBox because the shell hosts
         // Material descendants — text fields, tooltips, dialogs — and they
         // require an ancestor to paint on.
@@ -374,8 +405,9 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                         if (paletteOpen)
                           CommandPalette(
                             workspace: workspace,
-                            onDismiss: () =>
-                                ref.read(paletteOpenProvider.notifier).setOpen(false),
+                            onDismiss: () => ref
+                                .read(paletteOpenProvider.notifier)
+                                .setOpen(false),
                           ),
                       ],
                     );
@@ -436,8 +468,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     'history' => CommandLogPanel(workspace: workspace),
     'commands' => _CommandListPanel(
       workspace: workspace,
-      onOpenPalette: () =>
-          ref.read(paletteOpenProvider.notifier).setOpen(true),
+      onOpenPalette: () => ref.read(paletteOpenProvider.notifier).setOpen(true),
     ),
     'plugins' => ExtensionsPanel(
       workspace: workspace,

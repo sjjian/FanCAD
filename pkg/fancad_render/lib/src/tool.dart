@@ -90,6 +90,13 @@ abstract class CadTool {
   /// Called when the user presses Escape or another tool takes over.
   void onCancel(ToolHost host) {}
 
+  /// An in-flight grip, window or first-corner pick that Escape should drop
+  /// before it cancels the whole tool or the selection.
+  bool get hasCancellableGesture => false;
+
+  /// Drops [hasCancellableGesture] without finishing or cancelling the tool.
+  void onCancelGesture(ToolHost host) {}
+
   /// Preview geometry drawn on the overlay, in drawing coordinates.
   List<OverlayShape> buildPreview(ToolHost host) => const [];
 
@@ -214,6 +221,7 @@ class ToolController extends ChangeNotifier
 
   /// Cancels the current tool, as Escape does.
   void cancel() {
+    _clearPointer();
     final previous = _tool;
     if (previous == null) return;
     previous.onCancel(this);
@@ -224,6 +232,32 @@ class ToolController extends ChangeNotifier
     }
     _emitPrompt();
     notifyListeners();
+  }
+
+  /// True while the tool has a grip, window or first-corner pick in flight.
+  ///
+  /// A bare pointer drag does not count. Point prompts complete on click, and
+  /// treating the rubber-band move as a gesture would let Escape drop the
+  /// drag and leave the command waiting.
+  bool get hasCancellableGesture => _tool?.hasCancellableGesture ?? false;
+
+  /// Drops the in-flight pointer gesture and keeps the current tool.
+  ///
+  /// Escape uses this first so a window drag or grip stretch dies without
+  /// also cancelling the command or the selection.
+  bool cancelGesture() {
+    final active = hasCancellableGesture;
+    _clearPointer();
+    if (!active) return false;
+    _tool?.onCancelGesture(this);
+    notifyListeners();
+    return true;
+  }
+
+  void _clearPointer() {
+    _dragging = false;
+    _pressScreen = null;
+    _pressWorld = null;
   }
 
   @override
@@ -325,7 +359,7 @@ class ToolController extends ChangeNotifier
   /// makes rather than something each tool has to remember.
   bool handleKey(LogicalKeyboardKey key) {
     if (key == LogicalKeyboardKey.escape) {
-      cancel();
+      if (!cancelGesture()) cancel();
       return true;
     }
     final tool = _tool;
@@ -366,10 +400,14 @@ class ToolController extends ChangeNotifier
       for (final index in selection.viewportIndices)
         if (index >= 0 && index < document.activeLayout.viewports.length)
           OverlayPolyline(
-            _viewportCorners(document.activeLayout.viewports[index].paperBounds),
+            _viewportCorners(
+              document.activeLayout.viewports[index].paperBounds,
+            ),
             closed: true,
           ),
-      if (snapResult != null && snapResult.trackingAngle != null && base != null)
+      if (snapResult != null &&
+          snapResult.trackingAngle != null &&
+          base != null)
         OverlayTrackingLine(
           base,
           snapResult.trackingAngle!,
@@ -621,11 +659,22 @@ class SelectionPromptTool extends PromptTool<List<int>> {
         HardwareKeyboard.instance.isControlPressed) {
       _picked
         ..clear()
-        ..addAll([for (final entity in host.document.activeEntities) entity.id]);
+        ..addAll([
+          for (final entity in host.document.activeEntities) entity.id,
+        ]);
       host.prompt(promptText);
       return true;
     }
     return false;
+  }
+
+  @override
+  bool get hasCancellableGesture => _windowStart != null;
+
+  @override
+  void onCancelGesture(ToolHost host) {
+    _windowStart = null;
+    _windowEnd = null;
   }
 
   @override
@@ -722,6 +771,15 @@ class WindowPromptTool extends PromptTool<Bounds2> {
     }
     complete(host, Bounds2.fromCorners(first, point));
     return true;
+  }
+
+  @override
+  bool get hasCancellableGesture => _first != null;
+
+  @override
+  void onCancelGesture(ToolHost host) {
+    _first = null;
+    host.prompt(message);
   }
 
   @override

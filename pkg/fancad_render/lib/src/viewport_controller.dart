@@ -14,17 +14,17 @@ class ViewportController extends ChangeNotifier {
   ViewportController({CadViewport? initial})
     : _viewport =
           initial ??
-          const CadViewport(
-            center: Vec2.zero(),
-            scale: 1,
-            size: Size.zero,
-          );
+          const CadViewport(center: Vec2.zero(), scale: 1, size: Size.zero);
 
   CadViewport _viewport;
 
   /// Set while a pan or zoom gesture is in flight, so the renderer can prefer
   /// reusing the last scene over building an exact one.
   bool _interacting = false;
+
+  /// Viewport as it was when the current pan/pinch began, so Escape can put
+  /// the camera back.
+  CadViewport? _interactionOrigin;
 
   /// Pending fit request, applied once the widget reports a real size.
   Bounds2? _pendingFit;
@@ -67,13 +67,33 @@ class ViewportController extends ChangeNotifier {
   void beginInteraction() {
     if (_interacting) return;
     _interacting = true;
+    _interactionOrigin = _viewport;
     notifyListeners();
   }
 
   void endInteraction() {
     if (!_interacting) return;
     _interacting = false;
+    _interactionOrigin = null;
     notifyListeners();
+  }
+
+  /// Restores the camera from the start of the current pan or pinch.
+  ///
+  /// Returns true only when the camera actually moved. A two-finger rest that
+  /// never panned must not consume Escape — that key still has to cancel a
+  /// command or the selection.
+  bool revertInteraction() {
+    if (!_interacting) return false;
+    final origin = _interactionOrigin;
+    _interacting = false;
+    _interactionOrigin = null;
+    final changed = origin != null && origin != _viewport;
+    if (changed) {
+      _viewport = origin;
+    }
+    notifyListeners();
+    return changed;
   }
 
   void panBy(Offset screenDelta) {

@@ -11,8 +11,30 @@ class MainFlutterWindow: NSWindow {
     RegisterGeneratedPlugins(registry: flutterViewController)
     FileDialogChannel.register(
       with: flutterViewController.registrar(forPlugin: "FileDialogChannel").messenger)
+    EscapeChannel.register(
+      with: flutterViewController.registrar(forPlugin: "EscapeChannel").messenger)
 
     super.awakeFromNib()
+  }
+
+  /// AppKit maps Escape to `cancelOperation:`. The window's default
+  /// implementation leaves fullscreen. A focused Flutter text field often
+  /// never delivers the key to Dart either, so tell the engine directly.
+  override func cancelOperation(_ sender: Any?) {
+    EscapeChannel.notify()
+  }
+}
+
+/// Escape from AppKit when Flutter's text field ate the keyDown.
+enum EscapeChannel {
+  private static var channel: FlutterMethodChannel?
+
+  static func register(with messenger: FlutterBinaryMessenger) {
+    channel = FlutterMethodChannel(name: "fancad/escape", binaryMessenger: messenger)
+  }
+
+  static func notify() {
+    channel?.invokeMethod("escape", arguments: nil)
   }
 }
 

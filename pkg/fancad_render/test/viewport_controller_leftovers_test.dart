@@ -33,6 +33,34 @@ void main() {
     },
   );
 
+  test('revertInteraction puts the camera back and ends the gesture', () {
+    final controller = ViewportController();
+    addTearDown(controller.dispose);
+    controller.setSize(size, 1);
+    final origin = controller.viewport;
+
+    controller.beginInteraction();
+    controller.panBy(const Offset(40, 0));
+    expect(controller.viewport.center, isNot(origin.center));
+
+    expect(controller.revertInteraction(), isTrue);
+    expect(controller.isInteracting, isFalse);
+    expect(controller.viewport.center.x, closeTo(origin.center.x, 1e-12));
+    expect(controller.viewport.center.y, closeTo(origin.center.y, 1e-12));
+
+    expect(controller.revertInteraction(), isFalse);
+    expect(controller.viewport.center.x, closeTo(origin.center.x, 1e-12));
+  });
+
+  test('a two-finger rest that never moved does not count as a revert', () {
+    final controller = ViewportController();
+    addTearDown(controller.dispose);
+    controller.setSize(size, 1);
+    controller.beginInteraction();
+    expect(controller.revertInteraction(), isFalse);
+    expect(controller.isInteracting, isFalse);
+  });
+
   test('zoom buttons and centerOn move the camera without a pending fit', () {
     final controller = ViewportController();
     addTearDown(controller.dispose);

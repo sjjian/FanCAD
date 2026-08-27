@@ -35,8 +35,7 @@ class SelectionTool extends CadTool {
   /// The grip under the cursor, drawn filled so the user knows it is live.
   int _hotGrip = -1;
 
-  bool get isEditingGrip =>
-      _gripEntity != null || _gripLayoutViewport != null;
+  bool get isEditingGrip => _gripEntity != null || _gripLayoutViewport != null;
 
   @override
   String get promptText => isEditingGrip
@@ -267,11 +266,21 @@ class SelectionTool extends CadTool {
   }
 
   @override
+  bool get hasCancellableGesture {
+    if (_windowStart != null) return true;
+    if (!isEditingGrip) return false;
+    final origin = _gripOrigin;
+    final target = _gripTarget;
+    // A grip click that has not moved yet is not a stretch. Escape should
+    // drop the selection, not just leave stretch mode.
+    return origin != null && target != null && origin.distanceTo(target) > 1e-9;
+  }
+
+  @override
+  void onCancelGesture(ToolHost host) => _reset();
+
+  @override
   void onCancel(ToolHost host) {
-    if (isEditingGrip) {
-      _reset();
-      return;
-    }
     _reset();
     host.selection.clear();
   }

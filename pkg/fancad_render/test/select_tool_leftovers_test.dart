@@ -86,6 +86,20 @@ void main() {
     expect(line.end, const Vec2(10, 0));
   });
 
+  test('escape during a window drag drops the box', () {
+    final env = sessionWithLine();
+    final controller = controllerFor(env.session);
+    controller.onPointerDown(const Vec2(20, 20), down(const Offset(20, 20)));
+    controller.onPointerMove(const Vec2(40, 40), move(const Offset(40, 40)));
+    final tool = controller.activeTool as SelectionTool;
+    expect(controller.hasCancellableGesture, isTrue);
+    expect(tool.buildPreview(controller), isNotEmpty);
+
+    expect(controller.handleKey(LogicalKeyboardKey.escape), isTrue);
+    expect(controller.hasCancellableGesture, isFalse);
+    expect(tool.buildPreview(controller), isEmpty);
+  });
+
   test('escape during a grip drag restores the original geometry', () {
     final env = sessionWithLine();
     final controller = controllerFor(env.session);
@@ -101,5 +115,17 @@ void main() {
     expect(line.start, const Vec2.zero());
     expect(line.end, const Vec2(10, 0));
     expect(env.session.selection.ids, [env.id]);
+  });
+
+  test('escape on an unmoved grip click clears the selection', () {
+    final env = sessionWithLine();
+    final controller = controllerFor(env.session);
+    controller.onPointerDown(const Vec2(5, 0), down(Offset.zero));
+    controller.onPointerDown(const Vec2(0, 0), down(Offset.zero));
+    expect((controller.activeTool as SelectionTool).isEditingGrip, isTrue);
+    expect(controller.hasCancellableGesture, isFalse);
+
+    expect(controller.handleKey(LogicalKeyboardKey.escape), isTrue);
+    expect(env.session.selection.ids, isEmpty);
   });
 }

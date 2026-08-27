@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_render/fancad_render.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -244,4 +247,151 @@ void main() {
     expect(result.isOk, isTrue);
     expect(ws.tabs, isEmpty);
   });
+
+  test('cancelActive drops a selection the way Escape should', () {
+    final ws = workspace();
+    final tab = ws.newDocument();
+    tab.session.edit('LINE', (transaction) {
+      transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+    });
+    tab.selection.replace([tab.document.entities.single.id]);
+    ws.cancelActive();
+    expect(tab.selection.ids, isEmpty);
+  });
+
+  test(
+    'cancelActive still drops a selection after a rest that never panned',
+    () {
+      final ws = workspace();
+      final tab = ws.newDocument();
+      tab.session.edit('LINE', (transaction) {
+        transaction.add(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+        );
+      });
+      tab.selection.replace([tab.document.entities.single.id]);
+      tab.viewport.setSize(const Size(800, 600), 1);
+      tab.viewport.beginInteraction();
+
+      ws.cancelActive();
+      expect(tab.viewport.isInteracting, isFalse);
+      expect(tab.selection.ids, isEmpty);
+    },
+  );
+
+  test('cancelActive puts the camera back during a pan', () {
+    final ws = workspace();
+    final tab = ws.newDocument();
+    tab.viewport.setSize(const Size(800, 600), 1);
+    final origin = tab.viewport.viewport.center;
+    tab.viewport.beginInteraction();
+    tab.viewport.panBy(const Offset(40, 0));
+    expect(tab.viewport.viewport.center, isNot(origin));
+
+    ws.cancelActive();
+    expect(tab.viewport.isInteracting, isFalse);
+    expect(tab.viewport.viewport.center.x, closeTo(origin.x, 1e-12));
+    expect(tab.viewport.viewport.center.y, closeTo(origin.y, 1e-12));
+  });
+
+  test(
+    'cancelActive drops a typed prompt without clearing the selection',
+    () async {
+      final ws = workspace();
+      final tab = ws.newDocument();
+      tab.session.edit('LINE', (transaction) {
+        transaction.add(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+        );
+      });
+      final id = tab.document.entities.single.id;
+      tab.selection.replace([id]);
+
+      final pending = ws.commandLine.request(
+        PendingEntry(
+          message: 'Number of sides:',
+          completer: Completer<Object?>(),
+          accept: (raw) => raw,
+        ),
+      );
+      expect(ws.commandLine.isAwaitingInput, isTrue);
+
+      ws.cancelActive();
+      await expectLater(pending, throwsA(isA<CommandCancelled>()));
+      expect(ws.commandLine.isAwaitingInput, isFalse);
+      expect(tab.selection.ids, [id]);
+    },
+  );
+
+  test('cancelActive abandons LINE at the first point', () async {
+    final ws = workspace();
+    registerBuiltinCommands(
+      ws.commands,
+      fileCommands: FileCommands(
+        openFile: (_) async => false,
+        newDocument: ws.newDocument,
+        closeActive: ({bool force = false}) =>
+            ws.closeTab(ws.activeIndex, force: force),
+        saveActive: (path) async => path,
+        recentFiles: () => const [],
+      ),
+    );
+    final tab = ws.newDocument();
+
+    final running = ws.run('draw.line');
+    await Future<void>.delayed(Duration.zero);
+    expect(ws.commandLine.isAwaitingInput, isTrue);
+    expect(tab.tools.activeTool, isA<PointPromptTool>());
+
+    ws.cancelActive();
+    final result = await running;
+    expect(result.isCancelled, isTrue);
+    expect(tab.document.entityCount, 0);
+  });
+
+  test(
+    'cancelActive abandons LINE after a leftover drag on the next point',
+    () async {
+      final ws = workspace();
+      registerBuiltinCommands(
+        ws.commands,
+        fileCommands: FileCommands(
+          openFile: (_) async => false,
+          newDocument: ws.newDocument,
+          closeActive: ({bool force = false}) =>
+              ws.closeTab(ws.activeIndex, force: force),
+          saveActive: (path) async => path,
+          recentFiles: () => const [],
+        ),
+      );
+      final tab = ws.newDocument();
+      tab.viewport.viewport = const CadViewport(
+        center: Vec2(5, 0),
+        scale: 1,
+        size: Size(800, 600),
+      );
+
+      final running = ws.run('draw.line');
+      await Future<void>.delayed(Duration.zero);
+      tab.tools.onPointerDown(
+        Vec2.zero(),
+        const PointerDownEvent(pointer: 1, buttons: kPrimaryMouseButton),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(tab.tools.activeTool, isA<PointPromptTool>());
+
+      tab.tools.onPointerMove(
+        const Vec2(10, 0),
+        const PointerMoveEvent(pointer: 1, position: Offset(20, 0)),
+      );
+      expect(tab.tools.hasCancellableGesture, isFalse);
+
+      ws.cancelActive();
+      final result = await running;
+      expect(result.isCancelled, isTrue);
+      expect(tab.document.entityCount, 0);
+    },
+  );
 }
