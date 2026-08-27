@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_dwg/fancad_dwg.dart';
+import 'package:fancad_io/fancad_io.dart';
 
 /// Layout, print, xref and fidelity commands.
 class ProCommands {

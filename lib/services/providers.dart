@@ -1,5 +1,5 @@
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_dwg/fancad_dwg.dart';
+import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

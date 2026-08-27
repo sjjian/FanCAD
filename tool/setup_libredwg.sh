@@ -12,6 +12,6 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 git submodule update --init --recursive -- \
-  pkg/fancad_dwg/native/third_party/libredwg
-echo "LibreDWG submodule is ready at pkg/fancad_dwg/native/third_party/libredwg"
+  pkg/fancad_io/native/third_party/libredwg
+echo "LibreDWG submodule is ready at pkg/fancad_io/native/third_party/libredwg"
 echo "The next flutter/dart build will compile it as a static library."

@@ -66,7 +66,7 @@ flowchart TB
 
   subgraph pkg [pkg]
     core[fancad_core]
-    dwg[fancad_dwg]
+    io[fancad_io]
     render[fancad_render]
     host[fancad_plugin_host]
     agent[fancad_ai]
@@ -89,7 +89,7 @@ flowchart TB
   app --> views
   store --> json
   workspace --> core
-  workspace --> dwg
+  workspace --> io
   workspace --> render
   plugins --> host
   ai --> agent
@@ -103,7 +103,7 @@ flowchart TB
 | `lib/services` | Open documents, plugin host wiring, the AI loop. Riverpod is annotated (`@Riverpod`) and generated. Services take views, not the raw store. No widgets. |
 | `lib/business` | Commands, workbench, panels, theme, l10n, bundled assistant skills. Pages talk to `Workspace.run` and existing providers, not to `storage` or `FcbCache`. |
 | `pkg/fancad_core` | Geometry, the document model, the transaction system, the command registry. Pure Dart. |
-| `pkg/fancad_dwg` | DWG and DXF interoperability: LibreDWG shim, FCB, the disk cache. |
+| `pkg/fancad_io` | Drawing I/O: DWG/DXF, LibreDWG shim, FCB, the disk cache. |
 | `pkg/fancad_render` | The viewport: tessellation, culling, the canvas widget. |
 | `pkg/fancad_plugin_host` | The extension runtime: manifests, sandboxed JavaScript, transport. |
 | `pkg/fancad_ai` | Provider abstraction, the agent loop, skill registry, change approval. |
@@ -112,7 +112,7 @@ flowchart TB
 
 One `settings.json` bag. `main.dart` opens `SettingsStore`; `providers.dart`
 splits it into `AppSettings`. Each service asks for the view it needs.
-Drawings are not stored here: DWG/DXF go through `fancad_dwg`, and the import
+Drawings are not stored here: DWG/DXF go through `fancad_io`, and the import
 cache lives in `cache/`.
 
 ```mermaid
@@ -151,7 +151,7 @@ flowchart LR
   reg --> core
 ```
 
-Nothing above `fancad_dwg` knows that LibreDWG exists; everything goes
+Nothing above `fancad_io` knows that LibreDWG exists; everything goes
 through the `DrawingBackend` interface.
 
 Freezed models and annotated Riverpod providers are generated. After editing
@@ -168,7 +168,7 @@ Tests:
 
 ```bash
 dart test pkg/fancad_core       # pure Dart
-dart test pkg/fancad_dwg
+dart test pkg/fancad_io
 dart test pkg/fancad_ai
 flutter test                    # widget and render tests
 ```
@@ -183,8 +183,8 @@ dart run build_runner build
 
 DWG parsing comes from [GNU LibreDWG](https://www.gnu.org/software/libredwg/)
 0.13.3, pinned as a git submodule at
-`pkg/fancad_dwg/native/third_party/libredwg`. The build hook compiles it as a
-static PIC library and links it into `libfancad_dwg`, so the application does
+`pkg/fancad_io/native/third_party/libredwg`. The build hook compiles it as a
+static PIC library and links it into `libfancad_io`, so the application does
 not load a Homebrew or system dylib at runtime.
 
 Clone with submodules, or initialize them after a plain clone:
@@ -210,7 +210,7 @@ or writing a DWG parser from scratch. Contributors should be aware that
 distributing a closed-source fork of this application is not possible while the
 LibreDWG backend is linked.
 
-The seam is `DrawingBackend` in `pkg/fancad_dwg/lib/src/backend.dart`. Nothing
+The seam is `DrawingBackend` in `pkg/fancad_io/lib/src/backend.dart`. Nothing
 above it depends on LibreDWG, so a differently licensed backend can be
 substituted without touching the rest of the application.
 
