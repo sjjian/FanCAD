@@ -1477,6 +1477,8 @@ class Construct {
           RayEntity() ||
           XLineEntity() ||
           ImageEntity() ||
+          AttdefEntity() ||
+          AttribEntity() ||
           UnknownEntity():
         return null;
     }

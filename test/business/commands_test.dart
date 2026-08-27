@@ -2100,6 +2100,47 @@ void main() {
       expect(placed.rotation, closeTo(math.pi / 2, 1e-9));
     });
 
+    test('insert stores attribute values and attedit changes them', () async {
+      final created = await run('draw.attdef', {
+        'tag': 'NO',
+        'prompt': 'Drawing number',
+        'value': 'A-00',
+        'at': [2, 3],
+        'height': 2.5,
+      });
+      expect(created.status, CommandStatus.ok, reason: created.message);
+      final defId = (created.data!['ids']! as List).first as int;
+
+      await run('edit.block', {
+        'ids': [defId],
+        'name': 'TITLE',
+        'base': [0, 0],
+      });
+
+      final inserted = await run('edit.insert', {
+        'name': 'TITLE',
+        'at': [10, 0],
+        'NO': 'A-01',
+      });
+      expect(inserted.status, CommandStatus.ok, reason: inserted.message);
+      final insertId = (inserted.data!['ids']! as List).first as int;
+      expect(
+        (document.entity(insertId)! as InsertEntity).attributes['NO'],
+        'A-01',
+      );
+
+      final edited = await run('edit.attedit', {
+        'ids': [insertId],
+        'tag': 'NO',
+        'value': 'A-02',
+      });
+      expect(edited.status, CommandStatus.ok, reason: edited.message);
+      expect(
+        (document.entity(insertId)! as InsertEntity).attributes['NO'],
+        'A-02',
+      );
+    });
+
     test('insert stamps a block at several points', () async {
       final a = await drawLine(0, 0, 2, 0);
       await run('edit.block', {

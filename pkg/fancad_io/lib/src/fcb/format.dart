@@ -274,6 +274,8 @@ class FcbType {
   static const int ray = 15;
   static const int xline = 16;
   static const int image = 17;
+  static const int attdef = 18;
+  static const int attrib = 19;
 }
 
 /// Entity flag bits.

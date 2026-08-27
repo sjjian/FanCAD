@@ -40,4 +40,37 @@ void main() {
     expect(dim.sourceIds, [7, 8]);
     expect(dim.measurement, 10);
   });
+
+  test('attdef and insert attributes survive a write-read trip', () {
+    final document = CadDocument()
+      ..putBlock(const BlockRecord(name: 'TITLE', entityIds: []));
+    document.addEntity(
+      const AttdefEntity(
+        id: 1,
+        position: Vec2(2, 3),
+        tag: 'NO',
+        prompt: 'Number',
+        defaultValue: 'A-00',
+        height: 3,
+        constant: true,
+      ),
+      blockName: 'TITLE',
+    );
+    document.addEntity(
+      const InsertEntity(
+        id: 2,
+        blockName: 'TITLE',
+        position: Vec2(10, 0),
+        attributes: {'NO': 'A-01'},
+      ),
+    );
+    final restored = FcbReader(FcbWriter().write(document)).decode().document;
+    final def = restored.entity(1)! as AttdefEntity;
+    expect(def.tag, 'NO');
+    expect(def.prompt, 'Number');
+    expect(def.defaultValue, 'A-00');
+    expect(def.constant, isTrue);
+    final insert = restored.entity(2)! as InsertEntity;
+    expect(insert.attributes, {'NO': 'A-01'});
+  });
 }

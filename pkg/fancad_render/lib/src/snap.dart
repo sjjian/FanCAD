@@ -493,6 +493,8 @@ class SnapEngine {
         offer(SnapMode.node, position);
       case TextEntity(:final position):
       case MTextEntity(:final position):
+      case AttdefEntity(:final position):
+      case AttribEntity(:final position):
         offer(SnapMode.node, position);
       case SolidEntity(:final corners):
         for (final corner in corners) {
