@@ -111,6 +111,7 @@ class CadCanvasState extends State<CadCanvas> {
   /// wheel-only handler looks like "the canvas cannot zoom".
   int? _trackpadPointer;
   double _lastTrackpadScale = 1;
+  Duration? _lastTrackpadTime;
 
   @override
   void initState() {
@@ -122,7 +123,9 @@ class CadCanvasState extends State<CadCanvas> {
   void _bindAppearance() {
     _palette = widget.palette ?? AciPalette(background: widget.background);
     _sceneBuilder = SceneBuilder(palette: _palette, cache: _tessellation);
-    _overlayPainter = OverlayPainter(theme: widget.overlayTheme);
+    _overlayPainter = OverlayPainter(
+      theme: widget.overlayTheme.withCanvas(widget.background),
+    );
   }
 
   @override
@@ -157,7 +160,24 @@ class CadCanvasState extends State<CadCanvas> {
     super.dispose();
   }
 
-  void _onViewportChanged() => setState(() {});
+  bool _wasInteracting = false;
+
+  void _onViewportChanged() {
+    // Escape restores the camera through [ViewportController.revertInteraction]
+    // and clears isInteracting. Drop the local pan/pinch so further moves
+    // cannot keep dragging a cancelled gesture.
+    final interacting = widget.controller.isInteracting;
+    if (_wasInteracting && !interacting) {
+      _panPointer = null;
+      _panDragging = false;
+      _panIsSecondary = false;
+      _trackpadPointer = null;
+      _lastTrackpadScale = 1;
+      _lastTrackpadTime = null;
+    }
+    _wasInteracting = interacting;
+    setState(() {});
+  }
 
   /// Drops cached geometry for entities that changed. Called by the shell when
   /// the document reports a change.
@@ -345,6 +365,7 @@ class CadCanvasState extends State<CadCanvas> {
     if (_trackpadPointer == null) return;
     _trackpadPointer = null;
     _lastTrackpadScale = 1;
+    _lastTrackpadTime = null;
     widget.controller.endInteraction();
   }
 
@@ -382,6 +403,7 @@ class CadCanvasState extends State<CadCanvas> {
   void _handlePanZoomStart(PointerPanZoomStartEvent event) {
     _trackpadPointer = event.pointer;
     _lastTrackpadScale = 1;
+    _lastTrackpadTime = null;
     widget.controller.beginInteraction();
   }
 
@@ -389,8 +411,15 @@ class CadCanvasState extends State<CadCanvas> {
     if (_trackpadPointer != event.pointer) return;
     final scale = event.scale;
     if (scale > 0 && scale != _lastTrackpadScale) {
-      widget.controller.zoomBy(scale / _lastTrackpadScale, event.localPosition);
+      final raw = scale / _lastTrackpadScale;
+      final last = _lastTrackpadTime;
+      final dt = last == null ? null : event.timeStamp - last;
+      widget.controller.zoomBy(
+        trackpadPinchFactor(raw, dt),
+        event.localPosition,
+      );
       _lastTrackpadScale = scale;
+      _lastTrackpadTime = event.timeStamp;
     }
     final delta = event.localPanDelta;
     if (delta == Offset.zero) return;
