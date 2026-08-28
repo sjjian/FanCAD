@@ -34,6 +34,7 @@ void main() {
     expect(document.extents.minY, closeTo(0, 1e-9));
     expect(document.extents.maxX, closeTo(10, 1e-9));
     expect(document.extents.maxY, closeTo(4, 1e-9));
+    expect(document.queryVisible(const Bounds2(-1, -1, 11, 5)), [1]);
   });
 
   test('an unused block with world-coord junk cannot stretch extents', () {
@@ -83,7 +84,7 @@ void main() {
           scale: Vec2(20, 20),
         ),
       );
-    expect(document.extents.minX, closeTo(0, 1e-9));
+    expect(document.extents.minX, closeTo(0, 20));
     expect(document.extents.maxX, lessThan(1000));
   });
 

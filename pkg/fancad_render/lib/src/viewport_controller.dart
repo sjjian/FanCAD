@@ -114,7 +114,7 @@ class ViewportController extends ChangeNotifier {
   /// Frames [bounds]. Defers until the widget has a size, so this can be
   /// called immediately after opening a file.
   void zoomTo(Bounds2 bounds, {double margin = 0.06}) {
-    if (bounds.isEmpty) return;
+    if (bounds.isEmpty || !bounds.isFinite) return;
     if (_viewport.size.isEmpty) {
       _pendingFit = bounds;
       return;

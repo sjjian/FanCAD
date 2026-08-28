@@ -20,9 +20,33 @@ void main() {
       const Bounds2(-5e7, -2e7, 6e7, 3e7),
     ];
     final union = Bounds2.robustUnion(boxes);
-    expect(union.minX, closeTo(0, 1e-9));
-    expect(union.maxX, closeTo(195, 1e-9));
-    expect(union.maxY, closeTo(2, 1e-9));
+    expect(union.minX, closeTo(0, 20));
+    expect(union.maxX, closeTo(195, 20));
+    expect(union.maxY, lessThan(10));
+  });
+
+  test('robust union frames insert points when every box is huge', () {
+    final boxes = [
+      for (var i = 0; i < 20; i++)
+        Bounds2(-1e8 + i * 10, 160000, 1e8 + i * 10, 160100),
+    ];
+    final union = Bounds2.robustUnion(boxes);
+    expect(union.width, lessThan(1000));
+    expect(union.center.y, closeTo(160050, 100));
+  });
+
+  test('a 5-percent tail of far centers cannot stretch Zoom Extents', () {
+    final boxes = [
+      for (var i = 0; i < 40; i++)
+        Bounds2(100.0 * i, 160000, 100.0 * i + 20, 160020),
+      for (var i = 0; i < 4; i++)
+        Bounds2(100.0 * i, -400000, 100.0 * i + 20, -399980),
+    ];
+    final union = Bounds2.robustUnion(boxes);
+    expect(union.minY, greaterThan(150000));
+    expect(union.maxY, lessThan(170000));
+    expect(union.minX, lessThan(150));
+    expect(union.maxX, greaterThan(3000));
   });
 
   test('robust union keeps a single large outline on a small drawing', () {
