@@ -7,6 +7,7 @@ import '../../services/workspace.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 import 'command_line_model.dart';
+import 'dynamic_input_hud.dart';
 import 'shell_widgets.dart';
 
 /// The command line on the canvas dock.
@@ -72,7 +73,9 @@ class _CommandLinePaneState extends State<CommandLinePane> {
     final offered = _model.takeOfferedInput();
     if (offered != null) {
       _setText(offered);
-      widget.focusNode.requestFocus();
+      if (widget.workspace.active?.tools.showDynamicInput != true) {
+        widget.focusNode.requestFocus();
+      }
     }
     setState(() {});
   }
@@ -113,6 +116,11 @@ class _CommandLinePaneState extends State<CommandLinePane> {
         }
         return KeyEventResult.ignored;
       default:
+        if (DynamicInputHud.isTypeInCharacter(event.character) &&
+            widget.workspace.active?.tools.offerHudTypeIn(event.character!) ==
+                true) {
+          return KeyEventResult.handled;
+        }
         return KeyEventResult.ignored;
     }
   }

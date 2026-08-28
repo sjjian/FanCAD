@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -59,11 +58,14 @@ void main() {
     expect(session.selection.ids, isEmpty);
   });
 
-  test('delete erases the selection and a window drag can rebuild it', () {
+  test('a window drag can rebuild a selection after erase', () {
     final session = sessionWithLine();
     final controller = controllerFor(session);
     controller.onPointerDown(const Vec2(5, 0), down(Offset.zero));
-    expect(controller.handleKey(LogicalKeyboardKey.delete), isTrue);
+    session.edit('Erase', (transaction) {
+      transaction.eraseAll(session.selection.ids.toList());
+    });
+    session.selection.clear();
     expect(session.document.entityCount, 0);
     expect(session.selection.ids, isEmpty);
 

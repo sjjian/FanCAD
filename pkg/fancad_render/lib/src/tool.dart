@@ -6,6 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
 import 'cad_canvas.dart';
+import 'dynamic_input.dart';
 import 'overlay.dart';
 import 'picking.dart';
 import 'snap.dart';
@@ -37,6 +38,9 @@ abstract class ToolHost {
 
   /// Hands control back to the default tool.
   void finishTool();
+
+  /// Polar locks for the cursor HUD. Empty when no field is locked.
+  DynamicInput get dynamicInput;
 }
 
 /// An interactive mode that owns the pointer.
@@ -63,8 +67,17 @@ abstract class CadTool {
   /// The base point a rubber band and tracking are measured from.
   Vec2? get basePoint => null;
 
+  /// Whether the cursor HUD may lock distance / angle from [basePoint].
+  ///
+  /// Window corners and the first point of a command stay off; a second
+  /// point or a live grip stretch stay on.
+  bool get wantsDynamicInput => false;
+
   /// Entities the snap engine should ignore, typically the ones being dragged.
   Set<int> get snapExclusions => const {};
+
+  /// Commits [point] as if the user clicked it, used by the dynamic-input HUD.
+  void acceptResolvedPoint(ToolHost host, Vec2 point) {}
 
   void onActivate(ToolHost host) {}
   void onDeactivate() {}
@@ -138,11 +151,18 @@ class ToolController extends ChangeNotifier
   @override
   final Picker picker;
 
+  @override
+  final DynamicInput dynamicInput = DynamicInput();
+
   /// Receives command-history lines. The shell wires this to the command line.
   final void Function(String message)? onWrite;
 
   /// Receives the transient prompt.
   final void Function(String message)? onPrompt;
+
+  /// Optional shell hook so a digit typed in the command line can jump into
+  /// the cursor HUD without the command line swallowing it.
+  void Function(String character)? onHudTypeIn;
 
   CadTool? _tool;
   CadTool? _defaultTool;
@@ -185,6 +205,22 @@ class ToolController extends ChangeNotifier
   /// command is mid-flight.
   bool get isPrompting => _tool != null && _tool != _defaultTool;
 
+  /// Whether the cursor HUD should be shown for the current tool and cursor.
+  bool get showDynamicInput =>
+      _tool != null &&
+      _tool!.wantsDynamicInput &&
+      _tool!.basePoint != null &&
+      _cursor != null;
+
+  /// Sends [character] to the cursor HUD when it is visible.
+  bool offerHudTypeIn(String character) {
+    if (!showDynamicInput) return false;
+    final handler = onHudTypeIn;
+    if (handler == null) return false;
+    handler(character);
+    return true;
+  }
+
   set defaultTool(CadTool? value) {
     _defaultTool = value;
     if (_tool == null && value != null) {
@@ -201,6 +237,7 @@ class ToolController extends ChangeNotifier
       if (previous != _defaultTool) previous.onCancel(this);
       previous.onDeactivate();
     }
+    dynamicInput.reset();
     _tool = tool;
     tool.onActivate(this);
     _emitPrompt();
@@ -213,6 +250,7 @@ class ToolController extends ChangeNotifier
     final previous = _tool;
     if (previous == null || previous == _defaultTool) return;
     previous.onDeactivate();
+    dynamicInput.reset();
     _tool = _defaultTool;
     _defaultTool?.onActivate(this);
     _emitPrompt();
@@ -230,6 +268,7 @@ class ToolController extends ChangeNotifier
       _tool = _defaultTool;
       _defaultTool?.onActivate(this);
     }
+    dynamicInput.reset();
     _emitPrompt();
     notifyListeners();
   }
@@ -250,6 +289,7 @@ class ToolController extends ChangeNotifier
     _clearPointer();
     if (!active) return false;
     _tool?.onCancelGesture(this);
+    dynamicInput.reset();
     notifyListeners();
     return true;
   }
@@ -277,14 +317,71 @@ class ToolController extends ChangeNotifier
 
   SnapResult _resolve(Vec2 raw) {
     final tool = _tool;
-    if (tool == null || !tool.wantsSnap) return SnapResult.free(raw);
-    return snapEngine.resolve(
-      document,
-      viewport,
-      raw,
-      basePoint: tool.basePoint,
-      excludedIds: tool.snapExclusions,
+    final snapped = tool == null || !tool.wantsSnap
+        ? SnapResult.free(raw)
+        : snapEngine.resolve(
+            document,
+            viewport,
+            raw,
+            basePoint: tool.basePoint,
+            excludedIds: tool.snapExclusions,
+          );
+    return _constrain(tool, snapped);
+  }
+
+  SnapResult _constrain(CadTool? tool, SnapResult snapped) {
+    if (tool == null || !tool.wantsDynamicInput) return snapped;
+    final base = tool.basePoint;
+    if (base == null) return snapped;
+    final constrained = dynamicInput.constrain(base, snapped.point);
+    if ((constrained - snapped.point).lengthSquared < 1e-16) {
+      if (dynamicInput.lockedAngle == null) return snapped;
+      return SnapResult(
+        point: snapped.point,
+        origin: snapped.origin,
+        marker: snapped.marker,
+        trackingAngle: dynamicInput.lockedAngle,
+        trackingLabel: snapped.trackingLabel,
+      );
+    }
+    return SnapResult(
+      point: constrained,
+      origin: snapped.origin,
+      marker: null,
+      trackingAngle: dynamicInput.lockedAngle ?? snapped.trackingAngle,
+      trackingLabel: snapped.trackingLabel,
     );
+  }
+
+  /// Re-projects the last cursor after the HUD changes a lock.
+  void applyDynamicLocks() {
+    final cursor = _cursor;
+    if (cursor == null) {
+      notifyListeners();
+      return;
+    }
+    final resolved = _constrain(_tool, _snap ?? SnapResult.free(cursor));
+    _cursor = resolved.point;
+    _snap = resolved;
+    final tool = _tool;
+    if (tool != null) {
+      if (_dragging) {
+        tool.onDragUpdate(this, resolved.point, resolved);
+      } else {
+        tool.onMove(this, resolved.point, resolved);
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Commits the current (already constrained) cursor as a click would.
+  bool acceptDynamicPoint([Vec2? point]) {
+    final tool = _tool;
+    final resolved = point ?? _cursor;
+    if (tool == null || resolved == null) return false;
+    tool.acceptResolvedPoint(this, resolved);
+    notifyListeners();
+    return true;
   }
 
   @override
@@ -407,6 +504,7 @@ class ToolController extends ChangeNotifier
           ),
       if (snapResult != null &&
           snapResult.trackingAngle != null &&
+          TrackingSettings.isCardinalAngle(snapResult.trackingAngle!) &&
           base != null)
         OverlayTrackingLine(
           base,
@@ -434,6 +532,7 @@ class ToolController extends ChangeNotifier
     _session = session;
     _cursor = null;
     _snap = null;
+    dynamicInput.reset();
     notifyListeners();
   }
 
@@ -521,6 +620,12 @@ class PointPromptTool extends PromptTool<Vec2> {
 
   @override
   Vec2? get basePoint => anchor;
+
+  @override
+  bool get wantsDynamicInput => anchor != null;
+
+  @override
+  void acceptResolvedPoint(ToolHost host, Vec2 point) => complete(host, point);
 
   @override
   bool onClick(

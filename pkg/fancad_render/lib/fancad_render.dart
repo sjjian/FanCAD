@@ -13,6 +13,7 @@ library;
 export 'src/batch.dart'
     show BatchKey, FillBatch, ImageItem, LineBatch, PointBatch, TextItem;
 export 'src/cad_canvas.dart';
+export 'src/dynamic_input.dart';
 export 'src/overlay.dart';
 export 'src/palette.dart';
 export 'src/picking.dart';
