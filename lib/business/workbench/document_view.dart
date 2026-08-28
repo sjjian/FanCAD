@@ -7,14 +7,15 @@ import '../../services/document_tab.dart';
 import '../../services/workspace.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
+import 'dynamic_input_hud.dart';
 import 'shell_widgets.dart';
 
 /// The drawing area for one tab.
 ///
 /// Thin on purpose: the canvas widget owns rendering and the tool controller owns
-/// interaction, so all this does is connect them and make sure the keyboard ends
-/// up at the command line. Anything more here would be logic that the headless
-/// and AI paths could not reach.
+/// interaction, so all this does is connect them and route typing. A point
+/// prompt with a base point sends keys to the cursor HUD; everything else
+/// lands on the command line.
 class DocumentView extends StatefulWidget {
   const DocumentView({
     super.key,
@@ -26,8 +27,7 @@ class DocumentView extends StatefulWidget {
   final Workspace workspace;
   final DocumentTab tab;
 
-  /// Typing anywhere over the canvas should land in the command line, so the
-  /// canvas forwards focus rather than competing for it.
+  /// Typing over the canvas lands here unless the dynamic-input HUD is up.
   final FocusNode commandLineFocus;
 
   @override
@@ -36,6 +36,10 @@ class DocumentView extends StatefulWidget {
 
 class _DocumentViewState extends State<DocumentView> {
   final GlobalKey<CadCanvasState> _canvasKey = GlobalKey<CadCanvasState>();
+  final GlobalKey<DynamicInputHudState> _dynHudKey =
+      GlobalKey<DynamicInputHudState>();
+  final FocusNode _dynDistanceFocus = FocusNode(debugLabel: 'dyn-distance');
+  final FocusNode _dynAngleFocus = FocusNode(debugLabel: 'dyn-angle');
 
   @override
   void initState() {
@@ -48,6 +52,7 @@ class _DocumentViewState extends State<DocumentView> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.tab != widget.tab) {
       oldWidget.tab.onGeometryInvalidated = null;
+      oldWidget.tab.tools.onHudTypeIn = null;
       _bind(widget.tab);
     }
   }
@@ -55,6 +60,9 @@ class _DocumentViewState extends State<DocumentView> {
   @override
   void dispose() {
     widget.tab.onGeometryInvalidated = null;
+    widget.tab.tools.onHudTypeIn = null;
+    _dynDistanceFocus.dispose();
+    _dynAngleFocus.dispose();
     super.dispose();
   }
 
@@ -64,6 +72,9 @@ class _DocumentViewState extends State<DocumentView> {
   /// sessions, and the tab cannot reach into the canvas's cache, so the tab
   /// exposes a hook and the view is what ties the knot.
   void _bind(DocumentTab tab) {
+    tab.tools.onHudTypeIn = (character) {
+      _dynHudKey.currentState?.takeTyping(character);
+    };
     tab.onGeometryInvalidated = (change) {
       final canvas = _canvasKey.currentState;
       if (canvas != null) {
@@ -127,7 +138,7 @@ class _DocumentViewState extends State<DocumentView> {
             _item('__properties__', l10n.properties, null, tokens),
             _item('view.zoomSelected', l10n.zoom_to_selection, null, tokens),
             const PopupMenuDivider(),
-            _item('edit.erase', l10n.erase, 'Del', tokens),
+            _item('edit.erase', l10n.erase, 'E', tokens),
             _item('edit.move', l10n.move, 'M', tokens),
             _item('edit.copy', l10n.copy, 'CO', tokens),
             _item('view.isolateObjects', l10n.isolate, null, tokens),
@@ -254,20 +265,23 @@ class _DocumentViewState extends State<DocumentView> {
           widget.workspace.cancelActive();
           return KeyEventResult.handled;
         }
-        // Delete on a selection is the one keystroke users expect to work
-        // without the command line having focus.
-        if ((event.logicalKey == LogicalKeyboardKey.delete ||
-                event.logicalKey == LogicalKeyboardKey.backspace) &&
-            tab.selection.isNotEmpty) {
-          widget.workspace.run('edit.erase');
-          return KeyEventResult.handled;
+        if (tab.tools.showDynamicInput &&
+            DynamicInputHud.isTypeInCharacter(event.character)) {
+          final hud = _dynHudKey.currentState;
+          if (hud != null && !hud.hasFieldFocus) {
+            hud.takeTyping(event.character!);
+            return KeyEventResult.handled;
+          }
         }
         return tab.tools.handleKey(event.logicalKey)
             ? KeyEventResult.handled
             : KeyEventResult.ignored;
       },
       child: Listener(
-        onPointerDown: (_) => widget.commandLineFocus.requestFocus(),
+        onPointerDown: (_) {
+          if (tab.tools.showDynamicInput) return;
+          widget.commandLineFocus.requestFocus();
+        },
         child: Column(
           children: [
             if (hiddenCount > 0)
@@ -319,22 +333,51 @@ class _DocumentViewState extends State<DocumentView> {
                     onDoubleClick: _onDoubleClick,
                     onlyLayers: tab.isolatedLayers,
                   ),
-                  ListenableBuilder(
-                    listenable: Listenable.merge([
-                      widget.workspace,
-                      widget.workspace.commandLine,
-                    ]),
-                    builder: (context, _) => _CanvasPromptHud(
-                      workspace: widget.workspace,
-                      onKeyword: (keyword) {
-                        final remaining = widget.workspace.commandLine.submit(
-                          keyword,
+                  Positioned.fill(
+                    child: ListenableBuilder(
+                      listenable: Listenable.merge([
+                        widget.workspace,
+                        widget.workspace.commandLine,
+                        tab.tools,
+                        tab.viewport,
+                      ]),
+                      builder: (context, _) {
+                        final prompt =
+                            widget.workspace.commandLine.promptText;
+                        final toolPrompt =
+                            tab.tools.activeTool?.promptText ?? '';
+                        return Stack(
+                          children: [
+                            if (!tab.tools.showDynamicInput)
+                              _CanvasPromptHud(
+                                workspace: widget.workspace,
+                                onKeyword: (keyword) {
+                                  final remaining = widget
+                                      .workspace
+                                      .commandLine
+                                      .submit(keyword);
+                                  if (remaining != null) {
+                                    widget.workspace.submitCommandLine(
+                                      remaining,
+                                    );
+                                  }
+                                },
+                                onCancel: widget.workspace.cancelActive,
+                              ),
+                            if (tab.tools.showDynamicInput)
+                              DynamicInputHud(
+                                key: _dynHudKey,
+                                tools: tab.tools,
+                                viewport: tab.viewport.viewport,
+                                prompt: prompt.isNotEmpty
+                                    ? prompt
+                                    : toolPrompt,
+                                distanceFocus: _dynDistanceFocus,
+                                angleFocus: _dynAngleFocus,
+                              ),
+                          ],
                         );
-                        if (remaining != null) {
-                          widget.workspace.submitCommandLine(remaining);
-                        }
                       },
-                      onCancel: widget.workspace.cancelActive,
                     ),
                   ),
                   if (tab.document.entityCount == 0 &&

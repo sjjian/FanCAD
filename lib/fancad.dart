@@ -42,6 +42,7 @@ export 'business/workbench/command_line.dart';
 export 'business/workbench/command_line_model.dart';
 export 'business/workbench/command_palette.dart';
 export 'business/workbench/document_view.dart';
+export 'business/workbench/dynamic_input_hud.dart';
 export 'business/workbench/interactive_input.dart';
 export 'business/workbench/settings_controls.dart';
 export 'business/workbench/settings_dialog.dart';

@@ -51,6 +51,14 @@ class SelectionTool extends CadTool {
   Vec2? get basePoint => _gripOrigin;
 
   @override
+  bool get wantsDynamicInput => isEditingGrip;
+
+  @override
+  void acceptResolvedPoint(ToolHost host, Vec2 point) {
+    if (isEditingGrip) _commitGrip(host, point);
+  }
+
+  @override
   Set<int> get snapExclusions => {?_gripEntity};
 
   @override
@@ -71,6 +79,10 @@ class SelectionTool extends CadTool {
 
   @override
   void onMove(ToolHost host, Vec2 point, SnapResult snap) {
+    if (isEditingGrip) {
+      _gripTarget = point;
+      return;
+    }
     final grip = host.picker.pickGripAmong(
       host.document,
       host.selection.ids,
@@ -106,6 +118,7 @@ class SelectionTool extends CadTool {
       viewportIndices: host.selection.viewportIndices,
     );
     if (grip != null && !isEditingGrip) {
+      host.dynamicInput.reset();
       _gripEntity = grip.isViewportFrame ? null : grip.entityId;
       _gripLayoutViewport = grip.viewportIndex;
       _gripIndex = grip.gripIndex;
@@ -232,37 +245,6 @@ class SelectionTool extends CadTool {
       transaction.moveGrip(id, index, modelPoint);
     });
     host.prompt(promptText);
-  }
-
-  @override
-  bool onKey(ToolHost host, LogicalKeyboardKey key) {
-    if (key == LogicalKeyboardKey.delete ||
-        key == LogicalKeyboardKey.backspace) {
-      final viewports = host.selection.viewportIndices.toList()..sort();
-      if (viewports.isNotEmpty) {
-        final layout = host.document.activeLayout;
-        host.session.edit('Erase viewport', (transaction) {
-          final next = [...layout.viewports];
-          for (final index in viewports.reversed) {
-            if (index >= 0 && index < next.length) next.removeAt(index);
-          }
-          transaction.putLayout(layout.copyWith(viewports: next));
-        });
-        host.selection.clear();
-        return true;
-      }
-      final ids = host.selection.ids.toList();
-      if (ids.isEmpty) return false;
-      final committed = host.session.edit('Erase', (transaction) {
-        transaction.eraseAll(ids);
-      });
-      if (committed != null) {
-        host.write('Erased ${committed.change.removed.length} object(s).');
-      }
-      host.selection.clear();
-      return true;
-    }
-    return false;
   }
 
   @override

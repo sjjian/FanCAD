@@ -125,7 +125,11 @@ class TrackingSettings {
   /// Constrains to horizontal and vertical only.
   final bool ortho;
 
-  /// Constrains to multiples of [polarIncrement].
+  /// Constrains to the horizontal and vertical axes, as a magnet.
+  ///
+  /// [polarIncrement] is kept for settings, but polar rays are only the
+  /// four cardinals. A 45° increment would otherwise draw an axis on a
+  /// small angle change, which is not how this drafting aid is used.
   final bool polar;
   final double polarIncrement;
 
@@ -146,17 +150,32 @@ class TrackingSettings {
     additionalAngles: additionalAngles ?? this.additionalAngles,
   );
 
+  /// Whether [radians] is horizontal or vertical.
+  static bool isCardinalAngle(double radians, {double epsilon = 1e-6}) {
+    final angle = normalizeAngle(radians);
+    for (final cardinal in _cardinals) {
+      final diff = (angle - cardinal).abs();
+      final gap = math.min(diff, math.pi * 2 - diff);
+      if (gap <= epsilon) return true;
+    }
+    return false;
+  }
+
+  static const List<double> _cardinals = [
+    0,
+    math.pi / 2,
+    math.pi,
+    math.pi * 3 / 2,
+  ];
+
   /// Every angle this configuration snaps to, in `[0, 2*pi)`.
   List<double> candidateAngles() {
     final angles = <double>[];
     if (ortho) {
-      angles.addAll([0, math.pi / 2, math.pi, math.pi * 3 / 2]);
+      angles.addAll(_cardinals);
     }
     if (polar && polarIncrement > 0) {
-      final steps = (math.pi * 2 / polarIncrement).round();
-      for (var i = 0; i < steps; i++) {
-        angles.add(i * polarIncrement);
-      }
+      angles.addAll(_cardinals);
     }
     for (final angle in additionalAngles) {
       angles.add(normalizeAngle(angle));
@@ -180,7 +199,7 @@ class SnapEngine {
     this.enabled = true,
     this.snapToGrid = false,
     this.aperturePixels = 12,
-    this.trackingApertureDegrees = 3,
+    this.trackingAperturePixels = 6,
   });
 
   Set<SnapMode> modes;
@@ -198,8 +217,10 @@ class SnapEngine {
   /// How close, in pixels, the cursor must be for a snap to fire.
   final double aperturePixels;
 
-  /// The angular window within which a tracking angle engages.
-  final double trackingApertureDegrees;
+  /// How close, in pixels, the cursor must sit to a horizontal or vertical
+  /// ray before polar tracking engages. Narrower than object snap so a
+  /// small down-right move can leave the axis.
+  final double trackingAperturePixels;
 
   /// Resolves [cursor] against the drawing.
   ///
@@ -246,7 +267,7 @@ class SnapEngine {
 
     // 2. No geometry under the cursor: fall back to a tracking constraint.
     if (basePoint != null && tracking.isActive) {
-      final projected = _project(basePoint, cursor);
+      final projected = _project(basePoint, cursor, viewport);
       if (projected != null) {
         return SnapResult(
           point: projected.point,
@@ -691,35 +712,36 @@ class SnapEngine {
     }
   }
 
-  /// Projects [cursor] onto the nearest tracking angle from [basePoint].
-  _Projection? _project(Vec2 basePoint, Vec2 cursor) {
+  /// Projects [cursor] onto the nearest tracking ray from [basePoint].
+  ///
+  /// Polar is a screen-space magnet: the cursor must sit within
+  /// [aperturePixels] of the ray. Ortho is a hard constraint and always
+  /// projects, even when the pointer is far from the axis.
+  _Projection? _project(Vec2 basePoint, Vec2 cursor, CadViewport viewport) {
     final angles = tracking.candidateAngles();
     if (angles.isEmpty) return null;
     final delta = cursor - basePoint;
-    final length = delta.length;
-    if (length < 1e-12) return null;
-    final cursorAngle = normalizeAngle(delta.angle);
-    final window = trackingApertureDegrees * math.pi / 180;
+    if (delta.lengthSquared < 1e-24) return null;
+    final window = viewport.pixelsToWorld(trackingAperturePixels);
 
     var bestAngle = angles.first;
-    var bestGap = double.infinity;
+    var bestAlong = 0.0;
+    var bestPerp = double.infinity;
     for (final angle in angles) {
-      final gap = _angularDistance(cursorAngle, angle);
-      if (gap < bestGap) {
-        bestGap = gap;
+      final dir = Vec2.polar(angle, 1);
+      final along = delta.dot(dir);
+      if (along <= 0) continue;
+      final perp = (delta - dir * along).length;
+      if (perp < bestPerp) {
+        bestPerp = perp;
+        bestAlong = along;
         bestAngle = angle;
       }
     }
-    // Ortho is a hard constraint rather than a magnet: with ortho on, the
-    // cursor is always projected, which is what makes it usable for drawing
-    // long runs of orthogonal lines.
-    if (!tracking.ortho && bestGap > window) return null;
-    // Project along the axis so the pointer's distance from the base is
-    // preserved in the tracked direction, not scaled by the angle.
-    final projected = length * math.cos(bestGap);
-    if (projected <= 0) return null;
+    if (bestPerp.isInfinite) return null;
+    if (!tracking.ortho && bestPerp > window) return null;
     return _Projection(
-      point: basePoint + Vec2.polar(bestAngle, projected),
+      point: basePoint + Vec2.polar(bestAngle, bestAlong),
       angle: bestAngle,
     );
   }

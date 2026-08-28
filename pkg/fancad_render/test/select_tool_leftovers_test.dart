@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:fancad_core/fancad_core.dart';
@@ -40,6 +41,18 @@ void main() {
     addTearDown(controller.dispose);
     return controller;
   }
+
+  test('delete does not erase a leftover selection', () {
+    final env = sessionWithLine();
+    final controller = controllerFor(env.session);
+    controller.onPointerDown(const Vec2(5, 0), down(Offset.zero));
+    expect(env.session.selection.ids, hasLength(1));
+
+    expect(controller.handleKey(LogicalKeyboardKey.delete), isFalse);
+    expect(controller.handleKey(LogicalKeyboardKey.backspace), isFalse);
+    expect(env.session.document.entityCount, 1);
+    expect(env.session.selection.ids, [env.id]);
+  });
 
   test('escape clears a selection instead of leaving it stuck', () {
     final env = sessionWithLine();
@@ -115,6 +128,24 @@ void main() {
     expect(line.start, const Vec2.zero());
     expect(line.end, const Vec2(10, 0));
     expect(env.session.selection.ids, [env.id]);
+  });
+
+  test('a locked angle keeps a grip target on the ray', () {
+    final env = sessionWithLine();
+    final controller = controllerFor(env.session);
+    controller.onPointerDown(const Vec2(5, 0), down(Offset.zero));
+    controller.onPointerDown(const Vec2(0, 0), down(Offset.zero));
+    expect((controller.activeTool as SelectionTool).isEditingGrip, isTrue);
+    expect(controller.showDynamicInput, isTrue);
+
+    controller.dynamicInput.lockedAngle = 0;
+    controller.onPointerMove(const Vec2(4, 6), move(const Offset(4, 6)));
+    controller.onPointerDown(const Vec2(4, 6), down(const Offset(4, 6)));
+
+    final line = env.session.document.entities.single as LineEntity;
+    expect(line.start.y, closeTo(0, 1e-9));
+    expect(line.start.x, closeTo(math.sqrt(16 + 36), 1e-9));
+    expect(line.end, const Vec2(10, 0));
   });
 
   test('escape on an unmoved grip click clears the selection', () {

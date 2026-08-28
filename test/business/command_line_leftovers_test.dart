@@ -13,6 +13,10 @@ void main() {
     expect(CoordinateParser.parse('@<45', base: Vec2.zero()), isNull);
     expect(CoordinateParser.parseAngle('180'), closeTo(math.pi, 1e-12));
     expect(CoordinateParser.parseDistance('inf'), isNull);
+    expect(
+      CoordinateParser.parse('@10<45', base: Vec2.zero())!.x,
+      closeTo(10 * math.cos(math.pi / 4), 1e-9),
+    );
   });
 
   test(
