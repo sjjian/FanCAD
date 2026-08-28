@@ -39,7 +39,7 @@ class SpatialIndex {
     if (_removed.isEmpty) return box;
     var exact = const Bounds2.empty();
     for (final entry in _boxes.values) {
-      exact = exact.union(entry);
+      if (_indexable(entry)) exact = exact.union(entry);
     }
     return exact;
   }
@@ -49,9 +49,9 @@ class SpatialIndex {
   bool contains(int id) => _boxes.containsKey(id);
 
   void insert(int id, Bounds2 box) {
-    if (box.isEmpty) {
-      // Still track it so queries by id work; a degenerate box simply never
-      // matches a window query.
+    if (!_indexable(box)) {
+      // Still track it so queries by id work; a degenerate or NaN box
+      // simply never matches a window query.
       _boxes[id] = box;
       _removed.remove(id);
       return;
@@ -98,7 +98,7 @@ class SpatialIndex {
     _root = null;
     final entries = <_Node>[];
     for (final entry in _boxes.entries) {
-      if (entry.value.isEmpty) continue;
+      if (!_indexable(entry.value)) continue;
       entries.add(_Node.leaf(entry.key, entry.value));
     }
     if (entries.isEmpty) return;
@@ -146,7 +146,9 @@ class SpatialIndex {
       _searchNode(root, query, result);
     }
     for (final entry in _staged.entries) {
-      if (entry.value.intersects(query)) result.add(entry.key);
+      if (_indexable(entry.value) && entry.value.intersects(query)) {
+        result.add(entry.key);
+      }
     }
     return result;
   }
@@ -183,6 +185,11 @@ class SpatialIndex {
 
   /// Every id, including those with degenerate bounds.
   Iterable<int> get ids => _boxes.keys;
+
+  /// Empty and NaN/Inf boxes stay in [_boxes] for id lookups, but they
+  /// must not enter the packed tree: a single NaN leaf unions into a NaN
+  /// root, and `intersects` then rejects every window.
+  static bool _indexable(Bounds2 box) => box.isFinite && box.isNotEmpty;
 }
 
 class _Node {
