@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'fcb/format.dart';
+
 /// A disk cache of FCB buffers, keyed by source file identity.
 ///
 /// Parsing a large DWG is the slowest step in opening a drawing, and it is
@@ -20,11 +22,16 @@ class FcbCache {
   /// Identity of a source file: path, size and modification time. A content
   /// hash would be more precise but would require reading the whole file,
   /// which defeats the purpose of the cache.
-  static String keyFor(String sourcePath, {required int fcbVersion}) {
+  static String keyFor(
+    String sourcePath, {
+    required int fcbVersion,
+    int importRevision = fcbImportRevision,
+  }) {
     final file = File(sourcePath);
     final stat = file.statSync();
     return _hash(
       '$fcbVersion|'
+      '$importRevision|'
       '${file.absolute.path}|'
       '${stat.size}|'
       '${stat.modified.microsecondsSinceEpoch}',

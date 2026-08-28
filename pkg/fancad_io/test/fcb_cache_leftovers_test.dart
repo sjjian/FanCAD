@@ -16,6 +16,23 @@ void main() {
     expect(Directory('${root.path}/nested').existsSync(), isFalse);
   });
 
+  test('an import-revision bump cannot reuse a stale FCB buffer', () {
+    final root = Directory.systemTemp.createTempSync('fancad-cache-rev');
+    addTearDown(() => root.deleteSync(recursive: true));
+    final source = File('${root.path}/a.dwg')..writeAsBytesSync([1, 2, 3]);
+    final previous = FcbCache.keyFor(
+      source.path,
+      fcbVersion: fcbVersion,
+      importRevision: 1,
+    );
+    final current = FcbCache.keyFor(
+      source.path,
+      fcbVersion: fcbVersion,
+      importRevision: fcbImportRevision,
+    );
+    expect(current, isNot(previous));
+  });
+
   test('clear drops cached buffers and ignores leftover scratch files', () {
     final dir = Directory.systemTemp.createTempSync('fancad-cache-clear');
     addTearDown(() => dir.deleteSync(recursive: true));
