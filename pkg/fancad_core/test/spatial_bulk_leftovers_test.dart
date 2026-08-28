@@ -12,4 +12,15 @@ void main() {
     expect(index.search(const Bounds2(-10, -10, 10, 10)), isEmpty);
     expect(index.searchPoint(0, 0, 1), isEmpty);
   });
+
+  test('a NaN box cannot hide neighbours from a window query', () {
+    final index = SpatialIndex()
+      ..bulkLoad({
+        1: const Bounds2(0, 0, 1, 1),
+        2: const Bounds2(0, double.nan, 1, 1),
+        3: const Bounds2(10, 10, 11, 11),
+      });
+    expect(index.search(const Bounds2(-1, -1, 2, 2)), [1]);
+    expect(index.search(const Bounds2(9, 9, 12, 12)), [3]);
+  });
 }

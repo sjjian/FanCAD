@@ -31,4 +31,21 @@ void main() {
     expect(scene.entityCount, 1);
     expect(scene.lineBatches, hasLength(1));
   });
+
+  test('a NaN neighbour cannot empty the scene', () {
+    final document = CadDocument()
+      ..addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+      )
+      ..addEntity(
+        const LineEntity(
+          id: 1,
+          start: Vec2(-1e41, 0),
+          end: Vec2(-1e41, double.nan),
+        ),
+      );
+    final scene = SceneBuilder(palette: AciPalette.dark).build(document, view);
+    expect(scene.entityCount, 1);
+    expect(scene.lineBatches, hasLength(1));
+  });
 }
