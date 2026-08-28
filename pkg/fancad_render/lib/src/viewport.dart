@@ -26,7 +26,7 @@ class CadViewport {
     double margin = 0.05,
     double devicePixelRatio = 1,
   }) {
-    if (bounds.isEmpty || size.isEmpty) {
+    if (bounds.isEmpty || !bounds.isFinite || size.isEmpty) {
       return CadViewport(
         center: const Vec2.zero(),
         scale: 1,

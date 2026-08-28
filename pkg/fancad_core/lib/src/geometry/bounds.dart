@@ -58,6 +58,11 @@ class Bounds2 {
   bool get isEmpty => maxX < minX || maxY < minY;
   bool get isNotEmpty => !isEmpty;
 
+  /// False for the empty identity and for any NaN/Inf corner. Zoom Extents
+  /// uses this so a corrupt point cannot collapse the camera.
+  bool get isFinite =>
+      minX.isFinite && minY.isFinite && maxX.isFinite && maxY.isFinite;
+
   double get width => isEmpty ? 0 : maxX - minX;
   double get height => isEmpty ? 0 : maxY - minY;
   double get area => width * height;
@@ -83,6 +88,47 @@ class Bounds2 {
       math.max(maxX, other.maxX),
       math.max(maxY, other.maxY),
     );
+  }
+
+  /// Unions [boxes], dropping outliers that would poison Zoom Extents.
+  ///
+  /// A handful of inserts whose block definition was stored in world
+  /// coordinates can otherwise stretch the camera to millions of units.
+  /// Small drawings are left alone so a single large outline still frames.
+  static Bounds2 robustUnion(Iterable<Bounds2> boxes) {
+    final finite = [
+      for (final box in boxes)
+        if (box.isFinite && box.isNotEmpty) box,
+    ];
+    var drawn = const Bounds2.empty();
+    if (finite.length < 12) {
+      for (final box in finite) {
+        drawn = drawn.union(box);
+      }
+      return drawn;
+    }
+    final xs = [for (final box in finite) box.center.x]..sort();
+    final ys = [for (final box in finite) box.center.y]..sort();
+    final xLo = _percentile(xs, 0.05);
+    final xHi = _percentile(xs, 0.95);
+    final yLo = _percentile(ys, 0.05);
+    final yHi = _percentile(ys, 0.95);
+    final coreW = math.max(xHi - xLo, 1.0);
+    final coreH = math.max(yHi - yLo, 1.0);
+    final maxSpan = 8 * math.max(coreW, coreH);
+    for (final box in finite) {
+      if (box.diagonal > maxSpan) continue;
+      final center = box.center;
+      if (center.x < xLo - coreW || center.x > xHi + coreW) continue;
+      if (center.y < yLo - coreH || center.y > yHi + coreH) continue;
+      drawn = drawn.union(box);
+    }
+    if (drawn.isEmpty) {
+      for (final box in finite) {
+        drawn = drawn.union(box);
+      }
+    }
+    return drawn;
   }
 
   Bounds2 inflated(double amount) => isEmpty
@@ -148,4 +194,10 @@ class Bounds2 {
   String toString() => isEmpty
       ? 'Bounds2.empty'
       : 'Bounds2($minX, $minY .. $maxX, $maxY)';
+}
+
+double _percentile(List<double> sorted, double p) {
+  if (sorted.isEmpty) return 0;
+  final index = ((sorted.length - 1) * p).round().clamp(0, sorted.length - 1);
+  return sorted[index];
 }

@@ -397,19 +397,44 @@ class FcbReader {
       final first = _view.getUint32(at + FcbBlock.entityFirst, Endian.little);
       final length = _view.getUint32(at + FcbBlock.entityCount, Endian.little);
       final ids = <int>[];
+      final seen = <int>{};
       for (var k = first; k < first + length && k < entities.length; k++) {
-        ids.add(entities[k].id);
+        if (seen.add(entities[k].id)) ids.add(entities[k].id);
+      }
+      final isLayout = flags & FcbBlockFlags.layout != 0;
+      final isAnonymous = flags & FcbBlockFlags.anonymous != 0;
+      var origin = Vec2(
+        _view.getFloat64(at + FcbBlock.baseX, Endian.little),
+        _view.getFloat64(at + FcbBlock.baseY, Endian.little),
+      );
+      // Standard arrow blocks (_Oblique, _Close, …) are sometimes stored
+      // with world-coordinate members and a zero base. Insert then multiplies
+      // that offset by DIMASZ and blows Zoom Extents. Shift the base to the
+      // definition so the tick sits on the insertion point.
+      if (!isLayout &&
+          !isAnonymous &&
+          names[i].startsWith('_') &&
+          origin == const Vec2.zero()) {
+        var box = const Bounds2.empty();
+        for (final id in ids) {
+          final entity = document.entity(id);
+          if (entity == null) continue;
+          final piece = entity.computeBounds();
+          if (piece.isFinite) box = box.union(piece);
+        }
+        if (box.isFinite &&
+            box.isNotEmpty &&
+            box.center.length > 10 * (box.diagonal + 1)) {
+          origin = box.min;
+        }
       }
       document.putBlock(
         BlockRecord(
           name: names[i],
-          basePoint: Vec2(
-            _view.getFloat64(at + FcbBlock.baseX, Endian.little),
-            _view.getFloat64(at + FcbBlock.baseY, Endian.little),
-          ),
+          basePoint: origin,
           entityIds: ids,
-          isLayoutBlock: flags & FcbBlockFlags.layout != 0,
-          isAnonymous: flags & FcbBlockFlags.anonymous != 0,
+          isLayoutBlock: isLayout,
+          isAnonymous: isAnonymous,
           description: _string(
             _view.getUint32(at + FcbBlock.description, Endian.little),
           ),

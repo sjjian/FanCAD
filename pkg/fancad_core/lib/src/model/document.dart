@@ -638,13 +638,16 @@ class CadDocument implements BlockLookup, StyleResolver {
   /// paper even when the layout block itself is empty. Viewports sit on that
   /// sheet and are already inside the paper rectangle.
   Bounds2 get extents {
-    var drawn = const Bounds2.empty();
+    final boxes = <Bounds2>[];
     for (final entity in activeEntities) {
       if (!entity.props.visible || !isLayerVisible(entity.props.layer)) {
         continue;
       }
-      drawn = drawn.union(boundsOfEntity(entity));
+      final box = boundsOfEntity(entity);
+      if (!box.isFinite) continue;
+      boxes.add(box);
     }
+    final drawn = Bounds2.robustUnion(boxes);
     if (activeLayout.isModelSpace) return drawn;
     final sheet = Bounds2(0, 0, activeLayout.paperWidth, activeLayout.paperHeight);
     return drawn.isEmpty ? sheet : sheet.union(drawn);
@@ -693,9 +696,12 @@ class CadDocument implements BlockLookup, StyleResolver {
       if (!entity.props.visible || !isLayerVisible(entity.props.layer)) {
         continue;
       }
-      box = box.union(
-        entity.computeBounds(blocks: this, tolerance: defaultTolerance),
+      final piece = entity.computeBounds(
+        blocks: this,
+        tolerance: defaultTolerance,
       );
+      if (!piece.isFinite) continue;
+      box = box.union(piece);
     }
     if (block.basePoint != const Vec2.zero() && box.isNotEmpty) {
       box = box.transformed(

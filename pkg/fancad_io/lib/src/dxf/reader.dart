@@ -112,6 +112,10 @@ class DxfReader {
       document.putBlock(
         BlockRecord(
           name: entry.key,
+          basePoint: Vec2(
+            double.tryParse(values[10] ?? '0') ?? 0,
+            double.tryParse(values[20] ?? '0') ?? 0,
+          ),
           entityIds: entry.value,
           isLayoutBlock: entry.key.toUpperCase().contains('MODEL_SPACE') ||
               entry.key.toUpperCase().contains('PAPER_SPACE') ||
