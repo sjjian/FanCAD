@@ -109,26 +109,45 @@ class Bounds2 {
     }
     final xs = [for (final box in finite) box.center.x]..sort();
     final ys = [for (final box in finite) box.center.y]..sort();
-    final xLo = _percentile(xs, 0.05);
-    final xHi = _percentile(xs, 0.95);
-    final yLo = _percentile(ys, 0.05);
-    final yHi = _percentile(ys, 0.95);
-    final coreW = math.max(xHi - xLo, 1.0);
-    final coreH = math.max(yHi - yLo, 1.0);
-    final maxSpan = 8 * math.max(coreW, coreH);
+    final xMed = _percentile(xs, 0.5);
+    final yMed = _percentile(ys, 0.5);
+    // A 5th-percentile tail of world-coord *D boxes sat at y ≈ -400k on a
+    // strip whose real work is at y ≈ 168k, so Zoom Extents framed a
+    // million-unit window and every line became a sub-pixel hair.
+    final xMad = _percentile(
+      [for (final x in xs) (x - xMed).abs()]..sort(),
+      0.5,
+    );
+    final yMad = _percentile(
+      [for (final y in ys) (y - yMed).abs()]..sort(),
+      0.5,
+    );
+    final core = Bounds2(
+      _clusterLow(xs, xMed, xMad),
+      _clusterLow(ys, yMed, yMad),
+      _clusterHigh(xs, xMed, xMad),
+      _clusterHigh(ys, yMed, yMad),
+    );
     for (final box in finite) {
-      if (box.diagonal > maxSpan) continue;
-      final center = box.center;
-      if (center.x < xLo - coreW || center.x > xHi + coreW) continue;
-      if (center.y < yLo - coreH || center.y > yHi + coreH) continue;
+      if (!core.containsPoint(box.center.x, box.center.y)) continue;
       drawn = drawn.union(box);
     }
-    if (drawn.isEmpty) {
-      for (final box in finite) {
-        drawn = drawn.union(box);
-      }
+    if (drawn.isFinite &&
+        drawn.isNotEmpty &&
+        drawn.width <= core.width * 2 &&
+        drawn.height <= core.height * 2) {
+      return drawn;
     }
-    return drawn;
+    if (drawn.isFinite && drawn.isNotEmpty) {
+      final clipped = Bounds2(
+        math.max(drawn.minX, core.minX),
+        math.max(drawn.minY, core.minY),
+        math.min(drawn.maxX, core.maxX),
+        math.min(drawn.maxY, core.maxY),
+      );
+      if (clipped.isFinite && clipped.isNotEmpty) return clipped;
+    }
+    return core;
   }
 
   Bounds2 inflated(double amount) => isEmpty
@@ -200,4 +219,27 @@ double _percentile(List<double> sorted, double p) {
   if (sorted.isEmpty) return 0;
   final index = ((sorted.length - 1) * p).round().clamp(0, sorted.length - 1);
   return sorted[index];
+}
+
+/// Low edge of the main cluster on one axis.
+///
+/// A long drawing uses the 5th–95th percentile. When that span is much
+/// larger than 8 median-absolute-deviations, the tail is junk and the
+/// MAD fence wins (the process strip at y ≈ 168k vs a *D tail at -400k).
+double _clusterLow(List<double> sorted, double median, double mad) {
+  final percentile = _percentile(sorted, 0.05);
+  final reach = 8 * math.max(mad, 1.0);
+  if (_percentile(sorted, 0.95) - percentile > reach * 2) {
+    return median - reach;
+  }
+  return percentile;
+}
+
+double _clusterHigh(List<double> sorted, double median, double mad) {
+  final percentile = _percentile(sorted, 0.95);
+  final reach = 8 * math.max(mad, 1.0);
+  if (percentile - _percentile(sorted, 0.05) > reach * 2) {
+    return median + reach;
+  }
+  return percentile;
 }
