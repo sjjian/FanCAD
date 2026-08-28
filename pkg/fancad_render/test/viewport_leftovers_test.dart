@@ -43,6 +43,14 @@ void main() {
     final unfit = CadViewport.fit(const Bounds2(0, 0, 10, 10), Size.zero);
     expect(unfit.scale, 1);
     expect(unfit.size, Size.zero);
+
+    final poisoned = CadViewport.fit(
+      const Bounds2(-1e41, double.nan, -1e41, double.nan),
+      size,
+    );
+    expect(poisoned.scale, 1);
+    expect(poisoned.center, const Vec2.zero());
+    expect(poisoned.isUsable, isTrue);
   });
 
   test('grid step stays on the 1-2-5 sequence the snap engine uses', () {

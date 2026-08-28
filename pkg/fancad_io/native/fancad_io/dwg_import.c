@@ -308,8 +308,14 @@ typedef struct {
   handle_map layer_index;
   handle_map linetype_index;
   handle_map block_index;
+  /* Entity handle → owning block index, from BLOCK_HEADER.entities.
+   * ownerhandle is often 0 on R2004 files, so the owned list is the
+   * authority for which block a LINE actually belongs to. */
+  handle_map entity_block;
   /* Block name per index, so INSERT can reference blocks by name. */
   char **block_names;
+  double *block_base_x;
+  double *block_base_y;
   uint32_t block_count;
   uint32_t model_space_block;
   coords staging;
@@ -480,6 +486,139 @@ static void import_textstyles(import_state *s) {
   }
 }
 
+static int block_name_taken(const import_state *s, uint32_t count,
+                            const char *name) {
+  uint32_t i;
+  for (i = 0; i < count; i++) {
+    if (strcmp(s->block_names[i], name) == 0) return 1;
+  }
+  return 0;
+}
+
+/* LibreDWG often reports every anonymous dimension block as "*D". The handle
+ * suffix keeps them distinct so DIMENSION.block still resolves, and so the
+ * Dart block map does not keep only the last one. */
+static char *unique_block_name(import_state *s, uint32_t count,
+                               const char *name, uint64_t handle) {
+  char buffer[320];
+  if (!name || !name[0]) name = "*Unnamed";
+  if (!block_name_taken(s, count, name)) return strdup(name);
+  snprintf(buffer, sizeof(buffer), "%s$%llx", name,
+           (unsigned long long)handle);
+  if (!block_name_taken(s, count, buffer)) return strdup(buffer);
+  snprintf(buffer, sizeof(buffer), "%s$%llx_%u", name,
+           (unsigned long long)handle, count);
+  return strdup(buffer);
+}
+
+static int is_structural_entity(Dwg_Object_Type type);
+
+/* Relative OFFSETOBJHANDLE refs need the BLOCK_HEADER as the base; plain
+ * dwg_ref_object leaves absolute_ref at 0 and the owned LINE never lands
+ * in the block. */
+static Dwg_Object *resolve_ref(Dwg_Data *dwg, Dwg_Object_Ref *ref,
+                               const Dwg_Object *from) {
+  Dwg_Object *obj;
+  if (!ref) return NULL;
+  obj = dwg_ref_object(dwg, ref);
+  if (obj) return obj;
+  if (from) {
+    obj = dwg_ref_object_relative(dwg, ref, from);
+    if (obj) return obj;
+  }
+  if (ref->absolute_ref) {
+    return dwg_resolve_handle_silent(dwg, ref->absolute_ref);
+  }
+  return NULL;
+}
+
+static int is_layout_block(const import_state *s, uint32_t block) {
+  const char *name;
+  if (block == s->model_space_block) return 1;
+  if (block >= s->block_count) return 0;
+  name = s->block_names[block];
+  return name && (strcmp(name, "*Model_Space") == 0 ||
+                  strncmp(name, "*Paper_Space", 12) == 0);
+}
+
+static void claim_owned_entity(import_state *s, Dwg_Object *child,
+                               uint32_t block) {
+  uint64_t handle;
+  uint32_t existing;
+  if (!child || !child->handle.value) return;
+  if (child->supertype != DWG_SUPERTYPE_ENTITY) return;
+  if (is_structural_entity(child->fixedtype)) return;
+  handle = (uint64_t)child->handle.value;
+  existing = hmap_get(&s->entity_block, handle, 0xFFFFFFFFu);
+  /* Named-block lists on this R2004 file overlap: a later *D header
+   * repeats an earlier hard-owned LINE. The first named owner wins;
+   * layout lists (*Model_Space / *Paper_Space) may still be replaced. */
+  if (existing != 0xFFFFFFFFu && !is_layout_block(s, existing)) return;
+  hmap_put(&s->entity_block, handle, block);
+}
+
+static int index_owned_entities(import_state *s) {
+  uint32_t i;
+  uint32_t k;
+  Dwg_Version_Type version = s->dwg->header.version;
+  if (!hmap_init(&s->entity_block, s->dwg->num_objects)) return 0;
+  for (i = 0; i < s->dwg->num_objects; i++) {
+    Dwg_Object *obj = &s->dwg->object[i];
+    Dwg_Object_BLOCK_HEADER *header;
+    uint32_t block;
+    if (obj->supertype != DWG_SUPERTYPE_OBJECT) continue;
+    if (obj->fixedtype != DWG_TYPE_BLOCK_HEADER) continue;
+    header = obj->tio.object->tio.BLOCK_HEADER;
+    if (!header) continue;
+    block = hmap_get(&s->block_index, (uint64_t)obj->handle.value,
+                     0xFFFFFFFFu);
+    if (block == 0xFFFFFFFFu) continue;
+    if (header->entities && header->num_owned) {
+      for (k = 0; k < header->num_owned; k++) {
+        claim_owned_entity(s, resolve_ref(s->dwg, header->entities[k], obj),
+                           block);
+      }
+      continue;
+    }
+    /* R13–R2000 store a first/last chain. On R2004+ dwg_next_entity walks
+     * the whole object table, so it must not be used as a fallback. */
+    if (version >= R_13b1 && version <= R_2000) {
+      Dwg_Object *child = resolve_ref(s->dwg, header->first_entity, obj);
+      Dwg_Object *last = resolve_ref(s->dwg, header->last_entity, obj);
+      uint32_t guard = 0;
+      if (!child || !last) continue;
+      while (child && guard++ < 1000000u) {
+        claim_owned_entity(s, child, block);
+        if (child == last) break;
+        child = dwg_next_entity(child);
+      }
+    }
+  }
+  return 1;
+}
+
+static uint32_t owner_block(const import_state *s, const Dwg_Object *obj) {
+  uint32_t owned;
+  uint32_t by_header;
+  if (!obj->tio.entity) return s->model_space_block;
+  owned = hmap_get(&s->entity_block, (uint64_t)obj->handle.value,
+                   0xFFFFFFFFu);
+  if (owned != 0xFFFFFFFFu && owned < s->block_count) return owned;
+  by_header = hmap_get(&s->block_index,
+                       ref_handle(obj->tio.entity->ownerhandle),
+                       0xFFFFFFFFu);
+  if (by_header != 0xFFFFFFFFu && by_header < s->block_count) return by_header;
+  return s->model_space_block;
+}
+
+static int is_structural_entity(Dwg_Object_Type type) {
+  return type == DWG_TYPE_VERTEX_2D || type == DWG_TYPE_VERTEX_3D ||
+         type == DWG_TYPE_VERTEX_MESH || type == DWG_TYPE_VERTEX_PFACE ||
+         type == DWG_TYPE_VERTEX_PFACE_FACE || type == DWG_TYPE_SEQEND ||
+         type == DWG_TYPE_ATTRIB || type == DWG_TYPE_BLOCK ||
+         type == DWG_TYPE_ENDBLK || type == DWG_TYPE_VIEWPORT;
+}
+
 /* Collects block headers and assigns each one an index. Model space is placed
  * first so that a reader can start drawing before the whole table arrives. */
 static int import_block_headers(import_state *s) {
@@ -497,7 +636,9 @@ static int import_block_headers(import_state *s) {
   }
   if (capacity == 0) capacity = 1;
   s->block_names = (char **)calloc(capacity, sizeof(char *));
-  if (!s->block_names) return 0;
+  s->block_base_x = (double *)calloc(capacity, sizeof(double));
+  s->block_base_y = (double *)calloc(capacity, sizeof(double));
+  if (!s->block_names || !s->block_base_x || !s->block_base_y) return 0;
 
   model_ref = dwg_model_space_ref(s->dwg);
   model_handle = ref_handle(model_ref);
@@ -522,7 +663,11 @@ static int import_block_headers(import_state *s) {
       if (count >= capacity) continue;
 
       name = dyn_text(header, "BLOCK_HEADER", "name", &owned);
-      s->block_names[count] = name && *name ? strdup(name) : strdup("*Unnamed");
+      s->block_names[count] = unique_block_name(
+          s, count, name && *name ? name : "*Unnamed",
+          (uint64_t)obj->handle.value);
+      s->block_base_x[count] = header->base_pt.x;
+      s->block_base_y[count] = header->base_pt.y;
       if (is_model) s->model_space_block = count;
       hmap_put(&s->block_index, (uint64_t)obj->handle.value, count);
       count++;
@@ -1398,9 +1543,7 @@ static void import_paper_viewports(import_state *s,
     if (vp->id == 1) continue;
     if (vp->width <= 0.0 || vp->height <= 0.0) continue;
 
-    owner = hmap_get(&s->block_index, ref_handle(obj->tio.entity->ownerhandle),
-                     s->model_space_block);
-    if (owner >= s->block_count) owner = s->model_space_block;
+    owner = owner_block(s, obj);
 
     layout_index = UINT32_MAX;
     for (j = 0; j < layout_count; j++) {
@@ -1447,13 +1590,17 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
   uint32_t *bucket_counts = NULL;
   uint32_t *bucket_cursors = NULL;
   uint32_t *ordered = NULL;
+  uint32_t *candidates = NULL;
   uint32_t *layout_blocks = NULL;
+  handle_map seen_handles;
   uint32_t entity_total = 0;
+  uint32_t candidate_count = 0;
   uint32_t status = FC_STATUS_OK;
   char message[256];
 
   memset(&dwg, 0, sizeof(dwg));
   memset(&state, 0, sizeof(state));
+  memset(&seen_handles, 0, sizeof(seen_handles));
 
   result = dwg_read_file((char *)path, &dwg);
   /* LibreDWG returns a bitmask of severities; anything up to
@@ -1489,6 +1636,10 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
     status = FC_STATUS_OUT_OF_MEMORY;
     goto cleanup;
   }
+  if (!index_owned_entities(&state)) {
+    status = FC_STATUS_OUT_OF_MEMORY;
+    goto cleanup;
+  }
 
   /* Entities are grouped by owning block with a counting sort so that the
    * output is in block order and, within a block, in file order, which is the
@@ -1500,29 +1651,42 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
     goto cleanup;
   }
 
+  /* LibreDWG can list the same handle more than once after sort_ents.
+   * The FCB entity id is that handle, so duplicates collapse in Dart and
+   * inflate block entity_count. */
+  if (!hmap_init(&seen_handles, dwg.num_objects)) {
+    status = FC_STATUS_OUT_OF_MEMORY;
+    goto cleanup;
+  }
+  candidates = (uint32_t *)calloc(dwg.num_objects ? dwg.num_objects : 1,
+                                  sizeof(uint32_t));
+  if (!candidates) {
+    status = FC_STATUS_OUT_OF_MEMORY;
+    goto cleanup;
+  }
   for (i = 0; i < dwg.num_objects; i++) {
     Dwg_Object *obj = &dwg.object[i];
-    uint32_t owner;
+    uint64_t handle;
     if (obj->supertype != DWG_SUPERTYPE_ENTITY || !obj->tio.entity) continue;
     /* Vertices and sequence-end markers belong to their parent polyline.
-     * VIEWPORTs are paper windows, written after the layout table. */
-    if (obj->fixedtype == DWG_TYPE_VERTEX_2D ||
-        obj->fixedtype == DWG_TYPE_VERTEX_3D ||
-        obj->fixedtype == DWG_TYPE_VERTEX_MESH ||
-        obj->fixedtype == DWG_TYPE_VERTEX_PFACE ||
-        obj->fixedtype == DWG_TYPE_VERTEX_PFACE_FACE ||
-        obj->fixedtype == DWG_TYPE_SEQEND ||
-        obj->fixedtype == DWG_TYPE_ATTRIB ||
-        obj->fixedtype == DWG_TYPE_VIEWPORT) {
+     * BLOCK/ENDBLK are the old entity-stream brackets; the block table is
+     * BLOCK_HEADER. VIEWPORTs are paper windows, written after the layout
+     * table. */
+    if (is_structural_entity(obj->fixedtype)) continue;
+    handle = (uint64_t)obj->handle.value;
+    if (handle &&
+        hmap_get(&seen_handles, handle, 0xFFFFFFFFu) != 0xFFFFFFFFu) {
       continue;
     }
-    owner = hmap_get(&state.block_index,
-                     ref_handle(obj->tio.entity->ownerhandle),
-                     state.model_space_block);
-    if (owner >= state.block_count) owner = state.model_space_block;
-    bucket_counts[owner]++;
-    entity_total++;
+    if (handle) hmap_put(&seen_handles, handle, 1);
+    candidates[candidate_count++] = i;
   }
+
+  for (i = 0; i < candidate_count; i++) {
+    uint32_t owner = owner_block(&state, &dwg.object[candidates[i]]);
+    bucket_counts[owner]++;
+  }
+  entity_total = candidate_count;
 
   ordered = (uint32_t *)calloc(entity_total ? entity_total : 1,
                                sizeof(uint32_t));
@@ -1537,25 +1701,9 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
       running += bucket_counts[i];
     }
   }
-  for (i = 0; i < dwg.num_objects; i++) {
-    Dwg_Object *obj = &dwg.object[i];
-    uint32_t owner;
-    if (obj->supertype != DWG_SUPERTYPE_ENTITY || !obj->tio.entity) continue;
-    if (obj->fixedtype == DWG_TYPE_VERTEX_2D ||
-        obj->fixedtype == DWG_TYPE_VERTEX_3D ||
-        obj->fixedtype == DWG_TYPE_VERTEX_MESH ||
-        obj->fixedtype == DWG_TYPE_VERTEX_PFACE ||
-        obj->fixedtype == DWG_TYPE_VERTEX_PFACE_FACE ||
-        obj->fixedtype == DWG_TYPE_SEQEND ||
-        obj->fixedtype == DWG_TYPE_ATTRIB ||
-        obj->fixedtype == DWG_TYPE_VIEWPORT) {
-      continue;
-    }
-    owner = hmap_get(&state.block_index,
-                     ref_handle(obj->tio.entity->ownerhandle),
-                     state.model_space_block);
-    if (owner >= state.block_count) owner = state.model_space_block;
-    ordered[bucket_cursors[owner]++] = i;
+  for (i = 0; i < candidate_count; i++) {
+    uint32_t owner = owner_block(&state, &dwg.object[candidates[i]]);
+    ordered[bucket_cursors[owner]++] = candidates[i];
   }
 
   /* Emit entities block by block, recording each block's contiguous range. */
@@ -1572,10 +1720,11 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
       cursor += count;
 
       {
-        Dwg_Object_BLOCK_HEADER *header = NULL;
         fcb_block record;
         memset(&record, 0, sizeof(record));
         record.name = fcb_intern(b, state.block_names[block]);
+        record.base_x = state.block_base_x[block];
+        record.base_y = state.block_base_y[block];
         record.entity_first = first;
         record.entity_count = b->entity_count - first;
         if (block == state.model_space_block) {
@@ -1588,7 +1737,6 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
             record.flags |= FCB_BLOCK_ANONYMOUS;
           }
         }
-        (void)header;
         fcb_add_block(b, &record);
       }
     }
@@ -1638,7 +1786,12 @@ cleanup:
   free(bucket_counts);
   free(bucket_cursors);
   free(ordered);
+  free(candidates);
   free(layout_blocks);
+  hmap_dispose(&seen_handles);
+  hmap_dispose(&state.entity_block);
+  free(state.block_base_x);
+  free(state.block_base_y);
   if (state.block_names) {
     for (i = 0; i < state.block_count; i++) free(state.block_names[i]);
     free(state.block_names);

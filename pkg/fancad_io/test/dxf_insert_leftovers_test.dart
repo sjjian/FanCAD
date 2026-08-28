@@ -116,4 +116,42 @@ EOF
     expect(image.uVector, const Vec2(1, 0));
     expect(image.vVector, const Vec2(0, 1));
   });
+
+  test('a BLOCK base point is the insertion origin, not discarded', () {
+    final document = reader.readString('''
+  0
+SECTION
+  2
+BLOCKS
+  0
+BLOCK
+  2
+TICK
+ 10
+100
+ 20
+50
+  0
+LINE
+ 10
+100
+ 20
+50
+ 11
+101
+ 21
+50
+  0
+ENDBLK
+  0
+ENDSEC
+  0
+EOF
+''');
+    expect(document.blocks['TICK']!.basePoint, const Vec2(100, 50));
+    expect(
+      document.entities.whereType<UnknownEntity>(),
+      isEmpty,
+    );
+  });
 }

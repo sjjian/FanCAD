@@ -73,4 +73,73 @@ void main() {
     final insert = restored.entity(2)! as InsertEntity;
     expect(insert.attributes, {'NO': 'A-01'});
   });
+
+  test('a distant _Oblique definition reseats onto its geometry', () {
+    final document = CadDocument()
+      ..putBlock(const BlockRecord(name: '_Oblique'))
+      ..addEntity(
+        const LineEntity(
+          id: 1,
+          start: Vec2(161481, -377618),
+          end: Vec2(161481, -378589),
+        ),
+        blockName: '_Oblique',
+      )
+      ..addEntity(
+        const InsertEntity(
+          id: 2,
+          blockName: '_Oblique',
+          position: Vec2(10, 20),
+          scale: Vec2(15, 15),
+        ),
+      );
+    final restored = FcbReader(FcbWriter().write(document)).decode().document;
+    final base = restored.blocks['_Oblique']!.basePoint;
+    expect(base.x, closeTo(161481, 1));
+    expect(base.y, closeTo(-378589, 1));
+    expect(restored.extents.minX, closeTo(10, 1));
+    expect(restored.extents.maxX, lessThan(100));
+  });
+
+  test('anonymous dimension blocks with distinct names all survive FCB', () {
+    final document = CadDocument()
+      ..putBlock(
+        const BlockRecord(name: '*D\$aa', entityIds: [], isAnonymous: true),
+      )
+      ..putBlock(
+        const BlockRecord(name: '*D\$bb', entityIds: [], isAnonymous: true),
+      );
+    document.addEntity(
+      const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+      blockName: '*D\$aa',
+    );
+    document.addEntity(
+      const LineEntity(id: 2, start: Vec2(20, 0), end: Vec2(30, 0)),
+      blockName: '*D\$bb',
+    );
+    document.addEntity(
+      const DimensionEntity(
+        id: 3,
+        blockName: '*D\$aa',
+        textPosition: Vec2(5, 2),
+        measurement: 10,
+      ),
+    );
+    document.addEntity(
+      const DimensionEntity(
+        id: 4,
+        blockName: '*D\$bb',
+        textPosition: Vec2(25, 2),
+        measurement: 10,
+      ),
+    );
+
+    final restored = FcbReader(FcbWriter().write(document)).decode().document;
+    expect(restored.blocks['*D\$aa']?.entityIds, [1]);
+    expect(restored.blocks['*D\$bb']?.entityIds, [2]);
+    expect(
+      restored.entities.whereType<DimensionEntity>().map((d) => d.blockName),
+      containsAll(['*D\$aa', '*D\$bb']),
+    );
+  });
 }

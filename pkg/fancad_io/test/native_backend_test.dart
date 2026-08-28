@@ -104,6 +104,42 @@ void main() {
     expect(paper.single.paperHeight, closeTo(297, 1));
   });
 
+  test('BLOCK/ENDBLK stay out of the entity list and base points survive', () async {
+    final directory = Directory.systemTemp.createTempSync('fancad-block');
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    final document = CadDocument()
+      ..putBlock(const BlockRecord(name: 'TICK', basePoint: Vec2(100, 50)))
+      ..addEntity(
+        const LineEntity(id: 1, start: Vec2(100, 50), end: Vec2(101, 50)),
+        blockName: 'TICK',
+      )
+      ..addEntity(
+        const InsertEntity(
+          id: 2,
+          blockName: 'TICK',
+          position: Vec2(10, 20),
+        ),
+      );
+
+    final dxfPath = '${directory.path}/tick.dxf';
+    final dwgPath = '${directory.path}/tick.dwg';
+    await const DxfWriter().writeFile(dxfPath, document);
+    await backend.exportDwgFromDxf(dxfPath, dwgPath, targetVersion: 2000);
+
+    final opened = await DrawingImporter(backend: backend).open(dwgPath);
+    expect(
+      opened.document.entities
+          .whereType<UnknownEntity>()
+          .map((entity) => entity.originalType),
+      isNot(anyOf(contains('BLOCK'), contains('ENDBLK'))),
+    );
+    expect(
+      opened.document.blocks['TICK']?.basePoint,
+      const Vec2(100, 50),
+    );
+  });
+
   test('a missing file fails cleanly rather than crashing', () {
     expect(
       () => backend.readToFcb('/definitely/not/a/drawing.dwg'),
