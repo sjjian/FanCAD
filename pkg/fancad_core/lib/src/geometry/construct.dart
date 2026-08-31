@@ -3209,10 +3209,11 @@ class Construct {
     );
   }
 
-  /// Reverses the direction of a line or polyline.
+  /// Reverses the direction of a line, polyline, spline, or arc.
   ///
   /// Vertex order flips, and each bulge is negated and moved onto the segment
-  /// that now runs the other way, so the drawn curve stays the same.
+  /// that now runs the other way, so the drawn curve stays the same. An arc
+  /// becomes that two-vertex polyline because the arc type cannot run clockwise.
   static CadEntity? reverse(CadEntity entity) => entity.reversed();
 
   /// Joins [entities] whose endpoints meet into one polyline.

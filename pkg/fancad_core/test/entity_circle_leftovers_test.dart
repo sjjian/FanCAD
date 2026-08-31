@@ -16,6 +16,11 @@ void main() {
     );
   });
 
+  test('reversing a circle cannot invent a start', () {
+    const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+    expect(circle.reversed(), isNull);
+  });
+
   test('a vanished circle cannot invent a stroke', () {
     final sink = PolylineSink();
     const CircleEntity(

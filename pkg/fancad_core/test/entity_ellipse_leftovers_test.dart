@@ -12,6 +12,16 @@ void main() {
     expect(ellipse.offsetBy(4, const Vec2.zero()), isNull);
   });
 
+  test('reversing a full ellipse cannot invent a start', () {
+    const ellipse = EllipseEntity(
+      id: 1,
+      center: Vec2.zero(),
+      majorAxis: Vec2(4, 0),
+      ratio: 0.5,
+    );
+    expect(ellipse.reversed(), isNull);
+  });
+
   test('a window miss cannot invent an ellipse stretch', () {
     const ellipse = EllipseEntity(
       id: 1,

@@ -167,7 +167,9 @@ sealed class CadEntity {
         : null;
   }
 
-  /// Reverses direction. Lines and polylines override; others return null.
+  /// Reverses direction. Lines, polylines and splines stay the same type;
+  /// an arc becomes a two-vertex polyline so the curve can run clockwise
+  /// without a clockwise flag. Circles and ellipses return null.
   CadEntity? reversed() => null;
 
   /// Path length for the measurement tools. Zero when the type has no length.

@@ -11,15 +11,7 @@ void main() {
     expect(Construct.reverse(collapsed), isNull);
   });
 
-  test('an arc or a lone vertex cannot invent a reverse', () {
-    const arc = ArcEntity(
-      id: 2,
-      center: Vec2.zero(),
-      radius: 10,
-      startAngle: 0,
-      endAngle: 1.5,
-    );
-    expect(Construct.reverse(arc), isNull);
+  test('a lone vertex cannot invent a reverse', () {
     expect(
       Construct.reverse(
         PolylineEntity.fromPoints(

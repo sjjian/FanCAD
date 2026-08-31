@@ -191,6 +191,26 @@ final class ArcEntity extends CadEntity {
     return changed ? result : null;
   }
 
+  /// Same curve, opposite start. The model is always counter-clockwise, so
+  /// swapping the angles would draw the complementary sweep; a negative
+  /// bulge keeps the pixels and flips the traversal, matching JOIN.
+  @override
+  CadEntity? reversed() {
+    if (radius <= 0 || sweep < 1e-12) return null;
+    return PolylineEntity(
+      id: id,
+      props: props,
+      vertices: Float64List.fromList([
+        endPoint.x,
+        endPoint.y,
+        -math.tan(sweep / 4),
+        startPoint.x,
+        startPoint.y,
+        0,
+      ]),
+    );
+  }
+
   @override
   double get pathLength => radius * sweep;
 

@@ -227,6 +227,21 @@ final class SplineEntity extends CadEntity {
   }
 
   @override
+  CadEntity? reversed() {
+    if (controlPointCount < 2 && fitPointCount < 2) return null;
+    return SplineEntity(
+      id: id,
+      props: props,
+      controlPoints: _reversePointBuffer(controlPoints),
+      knots: _reverseKnots(knots),
+      weights: weights.isEmpty ? const [] : weights.reversed.toList(),
+      degree: degree,
+      closed: closed,
+      fitPoints: fitPoints == null ? null : _reversePointBuffer(fitPoints!),
+    );
+  }
+
+  @override
   double get pathLength {
     final xy = _centreline(1e-3);
     var total = 0.0;
@@ -256,4 +271,22 @@ class _SplineGeom {
   final List<double> knots;
   final List<double> weights;
   final int degree;
+}
+
+Float64List _reversePointBuffer(Float64List xy) {
+  final out = Float64List(xy.length);
+  final count = xy.length ~/ 2;
+  for (var i = 0; i < count; i++) {
+    final source = count - 1 - i;
+    out[i * 2] = xy[source * 2];
+    out[i * 2 + 1] = xy[source * 2 + 1];
+  }
+  return out;
+}
+
+List<double> _reverseKnots(List<double> knots) {
+  if (knots.isEmpty) return const [];
+  final lo = knots.first;
+  final hi = knots.last;
+  return [for (var i = knots.length - 1; i >= 0; i--) lo + hi - knots[i]];
 }
