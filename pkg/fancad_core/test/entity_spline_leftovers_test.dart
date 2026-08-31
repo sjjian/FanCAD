@@ -41,6 +41,43 @@ void main() {
     expect(sink.isEmpty, isTrue);
   });
 
+  test('reversing a spline keeps the fit points and swaps the ends', () {
+    const fits = [Vec2.zero(), Vec2(2, 3), Vec2(5, 1), Vec2(8, 0)];
+    final spline = Construct.splineFromFit(fits)!;
+    final reversed = spline.reversed();
+    expect(reversed, isA<SplineEntity>());
+    final next = reversed as SplineEntity;
+    expect(next.fitPointCount, fits.length);
+    expect(next.fitPointBuffer[0], closeTo(fits.last.x, 1e-9));
+    expect(next.fitPointBuffer[1], closeTo(fits.last.y, 1e-9));
+    expect(
+      next.fitPointBuffer[next.fitPointBuffer.length - 2],
+      closeTo(fits.first.x, 1e-9),
+    );
+    expect(
+      next.fitPointBuffer[next.fitPointBuffer.length - 1],
+      closeTo(fits.first.y, 1e-9),
+    );
+    expect(
+      Flatten.bsplineEvaluate(
+        controlPoints: next.controlPoints,
+        knots: next.knots,
+        degree: next.degree,
+        t: 0,
+      )!.distanceTo(fits.last),
+      lessThan(1e-6),
+    );
+    expect(
+      Flatten.bsplineEvaluate(
+        controlPoints: next.controlPoints,
+        knots: next.knots,
+        degree: next.degree,
+        t: 1,
+      )!.distanceTo(fits.first),
+      lessThan(1e-6),
+    );
+  });
+
   test('a window miss cannot invent a spline stretch', () {
     final spline = SplineEntity(
       id: 1,
