@@ -153,6 +153,7 @@ class Conversation {
     required LlmToolCall call,
     required String content,
     bool isError = false,
+    String? toolName,
   }) {
     llmMessages.add(
       LlmMessage.tool(
@@ -165,7 +166,7 @@ class Conversation {
       ChatMessage(
         role: ChatRole.tool,
         text: content,
-        toolName: call.name,
+        toolName: toolName ?? call.name,
         isError: isError,
       ),
     );

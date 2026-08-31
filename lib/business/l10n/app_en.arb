@@ -40,9 +40,57 @@
   "@settings_tab_assistant": {
     "description": "settings assistant tab"
   },
+  "settings_tab_mcp": "MCP",
+  "@settings_tab_mcp": {
+    "description": "settings MCP tab"
+  },
   "settings_appearance": "Appearance",
   "@settings_appearance": {
     "description": "settings appearance section"
+  },
+  "settings_mcp": "MCP",
+  "@settings_mcp": {
+    "description": "settings MCP section"
+  },
+  "settings_mcp_enable": "Network",
+  "@settings_mcp_enable": {
+    "description": "settings MCP enable toggle"
+  },
+  "settings_mcp_on": "Cursor and Claude Desktop connect at the URL below",
+  "@settings_mcp_on": {
+    "description": "settings MCP enabled hint"
+  },
+  "settings_mcp_off": "External MCP clients cannot attach",
+  "@settings_mcp_off": {
+    "description": "settings MCP disabled hint"
+  },
+  "settings_mcp_url": "URL",
+  "@settings_mcp_url": {
+    "description": "settings MCP URL label"
+  },
+  "settings_mcp_local": "Local only",
+  "@settings_mcp_local": {
+    "description": "settings MCP local-only toggle"
+  },
+  "settings_mcp_local_on": "Only this computer can connect",
+  "@settings_mcp_local_on": {
+    "description": "settings MCP local enabled hint"
+  },
+  "settings_mcp_local_off": "Other machines can connect; the allowlist is optional",
+  "@settings_mcp_local_off": {
+    "description": "settings MCP local disabled hint"
+  },
+  "settings_mcp_port": "Port",
+  "@settings_mcp_port": {
+    "description": "settings MCP port"
+  },
+  "settings_mcp_allowlist": "Allowlist",
+  "@settings_mcp_allowlist": {
+    "description": "settings MCP IP allowlist"
+  },
+  "settings_mcp_allowlist_hint": "Optional, comma-separated IPs",
+  "@settings_mcp_allowlist_hint": {
+    "description": "settings MCP allowlist hint"
   },
   "settings_connection": "Connection",
   "@settings_connection": {

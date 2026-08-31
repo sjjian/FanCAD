@@ -1,5 +1,6 @@
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 import 'package:test/test.dart';
 
 CommandDescriptor _command({
@@ -64,8 +65,16 @@ void main() {
     expect(
       policy.pendingOf(
         const [
-          LlmToolCall(id: '1', name: 'query_summary', arguments: {}),
-          LlmToolCall(id: '2', name: 'draw_line', arguments: {}),
+          LlmToolCall(
+            id: '1',
+            name: fancadToolName,
+            arguments: {'action': 'run', 'path': 'query.summary'},
+          ),
+          LlmToolCall(
+            id: '2',
+            name: fancadToolName,
+            arguments: {'action': 'run', 'path': 'draw.line'},
+          ),
         ],
         registry,
       ),
@@ -74,12 +83,20 @@ void main() {
 
     final pending = policy.pendingOf(
       const [
-        LlmToolCall(id: '1', name: 'query_summary', arguments: {}),
+        LlmToolCall(
+          id: '1',
+          name: fancadToolName,
+          arguments: {'action': 'run', 'path': 'query.summary'},
+        ),
         LlmToolCall(
           id: '2',
-          name: 'edit_erase',
+          name: fancadToolName,
           arguments: {
-            'ids': [4, 7],
+            'action': 'run',
+            'path': 'edit.erase',
+            'args': {
+              'ids': [4, 7],
+            },
           },
         ),
         LlmToolCall(id: '3', name: 'unknown_tool', arguments: {}),

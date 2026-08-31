@@ -1,0 +1,17 @@
+name: fancad_ops
+description: "Progressive capability catalog: one list/help/schema/run entry for AI and MCP."
+version: 0.1.0
+publish_to: 'none'
+resolution: workspace
+
+environment:
+  sdk: ^3.10.3
+
+dependencies:
+  fancad_core:
+    path: ../fancad_core
+  meta: ^1.16.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^6.0.0

@@ -40,9 +40,57 @@
   "@settings_tab_assistant": {
     "description": "settings assistant tab"
   },
+  "settings_tab_mcp": "MCP",
+  "@settings_tab_mcp": {
+    "description": "settings MCP tab"
+  },
   "settings_appearance": "外观",
   "@settings_appearance": {
     "description": "settings appearance section"
+  },
+  "settings_mcp": "MCP",
+  "@settings_mcp": {
+    "description": "settings MCP section"
+  },
+  "settings_mcp_enable": "网络接入",
+  "@settings_mcp_enable": {
+    "description": "settings MCP enable toggle"
+  },
+  "settings_mcp_on": "用下面的地址接入 Cursor 或 Claude Desktop",
+  "@settings_mcp_on": {
+    "description": "settings MCP enabled hint"
+  },
+  "settings_mcp_off": "外部 MCP 客户端无法接入",
+  "@settings_mcp_off": {
+    "description": "settings MCP disabled hint"
+  },
+  "settings_mcp_url": "地址",
+  "@settings_mcp_url": {
+    "description": "settings MCP URL label"
+  },
+  "settings_mcp_local": "仅本地",
+  "@settings_mcp_local": {
+    "description": "settings MCP local-only toggle"
+  },
+  "settings_mcp_local_on": "只有这台电脑可以连接",
+  "@settings_mcp_local_on": {
+    "description": "settings MCP local enabled hint"
+  },
+  "settings_mcp_local_off": "其他机器可以连接，白名单可选",
+  "@settings_mcp_local_off": {
+    "description": "settings MCP local disabled hint"
+  },
+  "settings_mcp_port": "端口",
+  "@settings_mcp_port": {
+    "description": "settings MCP port"
+  },
+  "settings_mcp_allowlist": "IP 白名单",
+  "@settings_mcp_allowlist": {
+    "description": "settings MCP IP allowlist"
+  },
+  "settings_mcp_allowlist_hint": "可选，逗号分隔",
+  "@settings_mcp_allowlist_hint": {
+    "description": "settings MCP allowlist hint"
   },
   "settings_connection": "连接",
   "@settings_connection": {

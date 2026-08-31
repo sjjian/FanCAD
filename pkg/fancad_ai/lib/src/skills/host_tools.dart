@@ -1,3 +1,6 @@
+import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
+
 import '../provider.dart';
 import 'skill.dart';
 
@@ -13,13 +16,14 @@ class HostTool {
   execute;
 }
 
-const readSkillToolName = 'read_skill';
+/// Catalog id for [readSkillTool]. Dotted so `help skill` lists it.
+const skillReadId = 'skill.read';
 
-/// Builds the `read_skill` host tool against [registry].
+/// Builds the `skill.read` host operation against [registry].
 HostTool readSkillTool(SkillRegistry registry) {
   return HostTool(
     definition: const LlmTool(
-      name: readSkillToolName,
+      name: skillReadId,
       description:
           'Load full skill instructions by name. Call this when a listed '
           'skill matches the user request, then follow the workflow.',
@@ -40,7 +44,7 @@ HostTool readSkillTool(SkillRegistry registry) {
       if (name.isEmpty) {
         return {
           'status': 'failed',
-          'message': 'read_skill requires a name.',
+          'message': 'skill.read requires a name.',
         };
       }
       final skill = registry.read(name);
@@ -67,3 +71,37 @@ HostTool readSkillTool(SkillRegistry registry) {
 List<HostTool> bundledHostTools(SkillRegistry skills) => [
   readSkillTool(skills),
 ];
+
+/// Host tools as catalog operations so they share list/help/run with commands.
+class HostOperationProvider implements OperationProvider {
+  HostOperationProvider(this.tools);
+
+  final List<HostTool> tools;
+
+  @override
+  Iterable<Operation> operations() sync* {
+    for (final tool in tools) {
+      yield operationFromHostTool(tool);
+    }
+  }
+}
+
+Operation operationFromHostTool(HostTool tool) {
+  final id = tool.definition.name;
+  return Operation(
+    id: id,
+    group: groupOf(id),
+    groupTitle: 'Skill',
+    title: id,
+    description: tool.definition.description,
+    params: const [
+      ParamSpec(
+        name: 'name',
+        type: ParamType.text,
+        description: 'Skill name, for example inspect-drawing or annotate',
+      ),
+    ],
+    risk: CommandRisk.readOnly,
+    execute: tool.execute,
+  );
+}

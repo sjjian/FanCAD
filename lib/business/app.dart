@@ -21,7 +21,10 @@ class _FanCadAppState extends ConsumerState<FanCadApp> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _openInitialFiles());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(opsHostProvider);
+      _openInitialFiles();
+    });
   }
 
   Future<void> _openInitialFiles() async {

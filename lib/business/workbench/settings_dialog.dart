@@ -1,15 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/ai_controller.dart';
+import '../../services/ops_host.dart';
 import '../../services/providers.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 import 'shell_widgets.dart';
 
 /// Pages inside the settings dialog.
-enum SettingsTab { general, assistant }
+enum SettingsTab { general, assistant, mcp }
 
 const _settingsRouteName = 'fancad.settings';
 
@@ -25,9 +27,11 @@ void debugResetSettingsDialog() {
 }
 
 SettingsTab settingsTabFromPanelId(String panelId) {
-  return panelId == 'preferences:assistant'
-      ? SettingsTab.assistant
-      : SettingsTab.general;
+  return switch (panelId) {
+    'preferences:assistant' => SettingsTab.assistant,
+    'preferences:mcp' => SettingsTab.mcp,
+    _ => SettingsTab.general,
+  };
 }
 
 bool isPreferencesPanel(String panelId) =>
@@ -81,16 +85,23 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   late final TextEditingController _model;
   late final TextEditingController _endpoint;
   late final TextEditingController _apiKey;
+  late final TextEditingController _mcpPort;
+  late final TextEditingController _mcpAllowlist;
   late final AiController _ai;
+  late final McpConfig _mcp;
 
   @override
   void initState() {
     super.initState();
     _ai = ref.read(aiControllerProvider);
+    _mcp = ref.read(mcpConfigProvider.notifier);
     _label = TextEditingController(text: _ai.activeProfile.label);
     _model = TextEditingController(text: _ai.model);
     _endpoint = TextEditingController(text: _ai.baseUrl);
     _apiKey = TextEditingController(text: _ai.apiKey);
+    final bind = ref.read(mcpConfigProvider);
+    _mcpPort = TextEditingController(text: '${bind.port}');
+    _mcpAllowlist = TextEditingController(text: bind.allowlist.join(', '));
     widget.tab.addListener(_onTab);
   }
 
@@ -98,15 +109,23 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   void dispose() {
     widget.tab.removeListener(_onTab);
     _flushAssistantFields();
+    _flushMcpFields();
     _label.dispose();
     _model.dispose();
     _endpoint.dispose();
     _apiKey.dispose();
+    _mcpPort.dispose();
+    _mcpAllowlist.dispose();
     super.dispose();
   }
 
   void _onTab() {
     if (mounted) setState(() {});
+  }
+
+  void _flushMcpFields() {
+    _mcp.setPortFromText(_mcpPort.text);
+    _mcp.setAllowlistFromText(_mcpAllowlist.text);
   }
 
   void _flushAssistantFields() {
@@ -197,41 +216,26 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
               ),
               child: Row(
                 children: [
-                  ShellTab(
-                    key: const Key('settings-tab-general'),
-                    style: ShellTabStyle.underline,
+                  _SettingsTabButton(
+                    tabKey: const Key('settings-tab-general'),
+                    label: l10n.settings_tab_general,
                     selected: tab == SettingsTab.general,
                     onTap: () => _openSettingsTab?.value = SettingsTab.general,
-                    child: Text(
-                      l10n.settings_tab_general,
-                      style: tokens.bodyStyle.copyWith(
-                        color: tab == SettingsTab.general
-                            ? tokens.accent
-                            : tokens.textMuted,
-                        fontWeight: tab == SettingsTab.general
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                    ),
                   ),
                   const SizedBox(width: FanCadTokens.space4),
-                  ShellTab(
-                    key: const Key('settings-tab-assistant'),
-                    style: ShellTabStyle.underline,
+                  _SettingsTabButton(
+                    tabKey: const Key('settings-tab-assistant'),
+                    label: l10n.settings_tab_assistant,
                     selected: tab == SettingsTab.assistant,
                     onTap: () =>
                         _openSettingsTab?.value = SettingsTab.assistant,
-                    child: Text(
-                      l10n.settings_tab_assistant,
-                      style: tokens.bodyStyle.copyWith(
-                        color: tab == SettingsTab.assistant
-                            ? tokens.accent
-                            : tokens.textMuted,
-                        fontWeight: tab == SettingsTab.assistant
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                    ),
+                  ),
+                  const SizedBox(width: FanCadTokens.space4),
+                  _SettingsTabButton(
+                    tabKey: const Key('settings-tab-mcp'),
+                    label: l10n.settings_tab_mcp,
+                    selected: tab == SettingsTab.mcp,
+                    onTap: () => _openSettingsTab?.value = SettingsTab.mcp,
                   ),
                 ],
               ),
@@ -239,7 +243,11 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
             const ShellHairline(),
             Expanded(
               child: IndexedStack(
-                index: tab == SettingsTab.general ? 0 : 1,
+                index: switch (tab) {
+                  SettingsTab.general => 0,
+                  SettingsTab.assistant => 1,
+                  SettingsTab.mcp => 2,
+                },
                 children: [
                   _GeneralPage(),
                   _AssistantPage(
@@ -252,10 +260,47 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                     onAddProfile: _addProfile,
                     onRemoveProfile: _removeProfile,
                   ),
+                  _McpPage(
+                    port: _mcpPort,
+                    allowlist: _mcpAllowlist,
+                    onCommit: _flushMcpFields,
+                  ),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsTabButton extends StatelessWidget {
+  const _SettingsTabButton({
+    required this.tabKey,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Key tabKey;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return ShellTab(
+      key: tabKey,
+      style: ShellTabStyle.underline,
+      selected: selected,
+      onTap: onTap,
+      child: Text(
+        label,
+        style: tokens.bodyStyle.copyWith(
+          color: selected ? tokens.accent : tokens.textMuted,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
         ),
       ),
     );
@@ -325,6 +370,130 @@ class _GeneralPage extends ConsumerWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _McpPage extends ConsumerWidget {
+  const _McpPage({
+    required this.port,
+    required this.allowlist,
+    required this.onCommit,
+  });
+
+  final TextEditingController port;
+  final TextEditingController allowlist;
+  final VoidCallback onCommit;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    final bind = ref.watch(mcpConfigProvider);
+    final endpoint = ref.watch(mcpEndpointProvider);
+    final localHint = bind.local
+        ? l10n.settings_mcp_local_on
+        : l10n.settings_mcp_local_off;
+    return ListView(
+      padding: const EdgeInsets.all(FanCadTokens.space4),
+      children: [
+        SettingsSection(
+          title: l10n.settings_mcp,
+          children: [
+            SettingsToggle(
+              key: const Key('settings-mcp-enabled'),
+              label: l10n.settings_mcp_enable,
+              value: bind.enabled,
+              onChanged: ref.read(mcpConfigProvider.notifier).setEnabled,
+              description: bind.enabled
+                  ? l10n.settings_mcp_on
+                  : l10n.settings_mcp_off,
+              tooltip: bind.enabled
+                  ? l10n.settings_mcp_on
+                  : l10n.settings_mcp_off,
+            ),
+            SettingsToggle(
+              key: const Key('settings-mcp-local'),
+              label: l10n.settings_mcp_local,
+              value: bind.local,
+              onChanged: ref.read(mcpConfigProvider.notifier).setLocal,
+              description: localHint,
+              tooltip: localHint,
+            ),
+            SettingsLabeledRow(
+              label: l10n.settings_mcp_port,
+              child: SettingsTextField(
+                key: const Key('settings-mcp-port'),
+                controller: port,
+                hintText: '17830',
+                style: tokens.monoStyle,
+                onSubmitted: (_) => onCommit(),
+              ),
+            ),
+            SettingsLabeledRow(
+              label: l10n.settings_mcp_allowlist,
+              child: SettingsTextField(
+                key: const Key('settings-mcp-allowlist'),
+                controller: allowlist,
+                hintText: l10n.settings_mcp_allowlist_hint,
+                style: tokens.monoStyle,
+                onSubmitted: (_) => onCommit(),
+              ),
+            ),
+            _CopyableMcpUrl(endpoint: endpoint),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CopyableMcpUrl extends StatefulWidget {
+  const _CopyableMcpUrl({required this.endpoint});
+
+  final McpClientEndpoint endpoint;
+
+  @override
+  State<_CopyableMcpUrl> createState() => _CopyableMcpUrlState();
+}
+
+class _CopyableMcpUrlState extends State<_CopyableMcpUrl> {
+  bool _copied = false;
+
+  Future<void> _copy(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    setState(() => _copied = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    final url = widget.endpoint.url;
+    final config = widget.endpoint.clientConfig;
+    return SettingsLabeledRow(
+      label: l10n.settings_mcp_url,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              url,
+              key: const Key('settings-mcp-url'),
+              style: tokens.monoStyle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          ShellIconButton(
+            key: const Key('settings-mcp-copy'),
+            icon: Icons.copy,
+            tooltip: _copied ? l10n.copied_text(url) : l10n.click_to_copy,
+            iconSize: FanCadTokens.iconSmall,
+            onPressed: () => _copy(config),
+          ),
+        ],
+      ),
     );
   }
 }

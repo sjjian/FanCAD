@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,9 +16,11 @@ import '../business/commands/plugin_commands.dart';
 import '../business/l10n/locale.dart';
 import '../business/theme/tokens.dart';
 import '../storage/app_settings.dart';
+import '../storage/mcp_settings.dart';
 import '../storage/settings.dart';
 import '../storage/shell_settings.dart';
 import 'ai_controller.dart';
+import 'ops_host.dart';
 import 'plugin/host_call.dart';
 import 'plugin_delegate.dart';
 import 'workspace.dart';
@@ -129,6 +135,48 @@ WorkspacePluginDelegate pluginDelegate(Ref ref) {
   return WorkspacePluginDelegate(
     workspace: () => ref.read(workspaceProvider),
     plugins: ref.watch(appSettingsProvider).plugins,
+  );
+}
+
+/// Localhost ops socket + lock file, or null when MCP is disabled.
+///
+/// An in-memory settings store has no support directory. Starting a listener
+/// then would write `~/.fancad/mcp.lock` from a test and steal the real app's
+/// slot. Production always opens a file-backed store.
+@Riverpod(keepAlive: true)
+FanCadOpsHost? opsHost(Ref ref) {
+  final bind = ref.watch(mcpConfigProvider);
+  if (!bind.enabled) return null;
+  final support = ref.watch(settingsProvider).file?.parent.path;
+  if (support == null || support.isEmpty) return null;
+  final paths = <String>{
+    defaultMcpLockPath(),
+    '$support${Platform.pathSeparator}mcp.lock',
+  }.toList();
+  final mcp = ref.watch(appSettingsProvider).mcp;
+  final host = FanCadOpsHost(
+    workspace: ref.watch(workspaceProvider),
+    lockPaths: paths,
+    port: bind.port,
+    bindHost: bind.bindHost,
+    allowlist: bind.local ? const [] : bind.allowlist,
+    token: mcp.ensureToken(),
+  );
+  unawaited(host.start());
+  ref.onDispose(() {
+    unawaited(host.stop());
+  });
+  return host;
+}
+
+/// URL and token shown in settings for a Cursor MCP client.
+@Riverpod(keepAlive: true)
+McpClientEndpoint mcpEndpoint(Ref ref) {
+  final bind = ref.watch(mcpConfigProvider);
+  final mcp = ref.watch(appSettingsProvider).mcp;
+  return McpClientEndpoint(
+    url: fancadMcpUrl(host: bind.advertisedHost, port: bind.port),
+    token: mcp.ensureToken(),
   );
 }
 
@@ -376,6 +424,80 @@ class ThemeBrightness extends _$ThemeBrightness {
     if (state == value) return;
     state = value;
     _shell.setThemeBrightness(state.name);
+  }
+}
+
+/// MCP listen settings the settings tab and [opsHost] share.
+@Riverpod(keepAlive: true)
+class McpConfig extends _$McpConfig {
+  McpSettings get _mcp => ref.read(appSettingsProvider).mcp;
+
+  @override
+  McpBind build() {
+    final mcp = ref.watch(appSettingsProvider).mcp;
+    return McpBind(
+      enabled: mcp.enabled,
+      port: mcp.port,
+      local: mcp.local,
+      allowlist: mcp.allowlist,
+    );
+  }
+
+  void setEnabled(bool value) {
+    if (state.enabled == value) return;
+    state = McpBind(
+      enabled: value,
+      port: state.port,
+      local: state.local,
+      allowlist: state.allowlist,
+    );
+    _mcp.setEnabled(value);
+  }
+
+  void setPort(int value) {
+    final port = parseMcpPort('$value', fallback: state.port);
+    if (state.port == port) return;
+    state = McpBind(
+      enabled: state.enabled,
+      port: port,
+      local: state.local,
+      allowlist: state.allowlist,
+    );
+    _mcp.setPort(port);
+  }
+
+  void setPortFromText(String raw) => setPort(parseMcpPort(raw, fallback: state.port));
+
+  void setLocal(bool value) {
+    if (state.local == value) return;
+    state = McpBind(
+      enabled: state.enabled,
+      port: state.port,
+      local: value,
+      allowlist: state.allowlist,
+    );
+    _mcp.setLocal(value);
+  }
+
+  void setAllowlist(List<String> value) {
+    if (_sameAllowlist(state.allowlist, value)) return;
+    state = McpBind(
+      enabled: state.enabled,
+      port: state.port,
+      local: state.local,
+      allowlist: value,
+    );
+    _mcp.setAllowlist(value);
+  }
+
+  void setAllowlistFromText(String raw) => setAllowlist(parseMcpAllowlist(raw));
+
+  static bool _sameAllowlist(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }
 

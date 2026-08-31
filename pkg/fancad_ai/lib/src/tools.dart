@@ -1,74 +1,41 @@
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 
 import 'provider.dart';
 
-/// Maps the command registry onto LLM tool definitions.
-///
-/// There is no second catalogue. A command that is registered — built-in or
-/// contributed by a plugin — is a tool the moment [AiExposure] allows it.
-/// That is what "command registry as AI toolset" means in practice.
+/// The one tool the model is given. Commands are discovered through help/run.
+LlmTool get fancadLlmTool => const LlmTool(
+  name: fancadToolName,
+  description: fancadToolDescription,
+  parameters: fancadToolParameters,
+);
+
+/// Resolves a `fancad` path back to a command and collects highlight ids.
 class CommandToolCatalog {
   const CommandToolCatalog();
 
-  /// Tools the model may call, generated from [registry].
-  List<LlmTool> toolsOf(
-    CommandRegistry registry, {
-    bool includeApprovalRequired = true,
-    List<LlmTool> extra = const [],
-  }) => [
-    for (final command in registry.aiTools(
-      includeApprovalRequired: includeApprovalRequired,
-    ))
-      LlmTool(
-        name: command.toolName,
-        description: _describe(command),
-        parameters: command.toolSchema(),
-      ),
-    ...extra,
-  ];
+  List<LlmTool> toolsOf(CommandRegistry registry) => [fancadLlmTool];
 
-  /// Resolves a tool name back to the command that produced it.
-  CommandDescriptor? commandFor(CommandRegistry registry, String toolName) =>
-      registry.findByToolName(toolName);
+  /// Resolves a dotted id or command-line alias.
+  CommandDescriptor? commandFor(CommandRegistry registry, String path) =>
+      registry.find(path);
+}
 
-  /// Entity ids a tool call is about to touch, used to highlight a preview.
-  static List<int> highlightIdsOf(Map<String, Object?> arguments) {
-    final ids = <int>{};
-    for (final key in const ['ids', 'id', 'target', 'selection']) {
-      _collectIds(arguments[key], ids);
-    }
-    return ids.toList();
-  }
+/// The command a `fancad` run refers to. Other tool names are unknown.
+CommandDescriptor? commandForCall(
+  CommandRegistry registry,
+  LlmToolCall call,
+) {
+  if (call.name != fancadToolName) return null;
+  final path = '${call.arguments['path'] ?? ''}'.trim();
+  if (path.isEmpty) return null;
+  return const CommandToolCatalog().commandFor(registry, path);
+}
 
-  static void _collectIds(Object? value, Set<int> into) {
-    if (value is int) {
-      into.add(value);
-    } else if (value is num) {
-      into.add(value.toInt());
-    } else if (value is String) {
-      final parsed = int.tryParse(value);
-      if (parsed != null) into.add(parsed);
-    } else if (value is List) {
-      for (final item in value) {
-        _collectIds(item, into);
-      }
-    } else if (value is Map) {
-      final id = value['id'];
-      if (id != null) _collectIds(id, into);
-    }
-  }
-
-  static String _describe(CommandDescriptor command) {
-    final buffer = StringBuffer();
-    buffer.write(command.description.isEmpty ? command.title : command.description);
-    if (command.aliases.isNotEmpty) {
-      buffer.write(' Aliases: ${command.aliases.join(', ')}.');
-    }
-    if (command.risk == CommandRisk.destructive) {
-      buffer.write(' Destructive: requires approval.');
-    }
-    return buffer.toString();
-  }
+/// Arguments that belong to the inner command, not the wrapper tool.
+Map<String, Object?> runArgumentsOf(LlmToolCall call) {
+  if (call.name != fancadToolName) return const {};
+  return asObjectMap(call.arguments['args']);
 }
 
 /// JSON the model reads after a command tool runs.
@@ -107,8 +74,8 @@ String assistantToolErrorMessage(
       param.required ? param.name : '${param.name}?',
   ];
   final shape = names.isEmpty
-      ? command.toolName
-      : '${command.toolName}({${names.join(', ')}})';
+      ? 'fancad({action: run, path: ${command.id}})'
+      : 'fancad({action: run, path: ${command.id}, args: {${names.join(', ')}}})';
   final description = command.description.trim();
   return description.isEmpty
       ? 'The command did not run because its arguments were missing or invalid. Call $shape.'

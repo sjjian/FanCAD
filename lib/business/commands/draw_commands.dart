@@ -7,7 +7,7 @@ import 'package:fancad_core/fancad_core.dart';
 /// Every one of these is written as a straight-line script against
 /// [CommandInput]. That is the whole trick: the same twenty lines are the
 /// interactive LINE command, the scriptable `draw.line` plugin API, and the
-/// `draw_line` tool the language model calls, with no branch anywhere for which
+/// `fancad` run path `draw.line`, with no branch anywhere for which
 /// caller it is serving.
 class DrawCommands {
   const DrawCommands._();

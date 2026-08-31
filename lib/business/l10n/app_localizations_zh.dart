@@ -39,7 +39,43 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings_tab_assistant => '助手';
 
   @override
+  String get settings_tab_mcp => 'MCP';
+
+  @override
   String get settings_appearance => '外观';
+
+  @override
+  String get settings_mcp => 'MCP';
+
+  @override
+  String get settings_mcp_enable => '网络接入';
+
+  @override
+  String get settings_mcp_on => '用下面的地址接入 Cursor 或 Claude Desktop';
+
+  @override
+  String get settings_mcp_off => '外部 MCP 客户端无法接入';
+
+  @override
+  String get settings_mcp_url => '地址';
+
+  @override
+  String get settings_mcp_local => '仅本地';
+
+  @override
+  String get settings_mcp_local_on => '只有这台电脑可以连接';
+
+  @override
+  String get settings_mcp_local_off => '其他机器可以连接，白名单可选';
+
+  @override
+  String get settings_mcp_port => '端口';
+
+  @override
+  String get settings_mcp_allowlist => 'IP 白名单';
+
+  @override
+  String get settings_mcp_allowlist_hint => '可选，逗号分隔';
 
   @override
   String get settings_connection => '连接';

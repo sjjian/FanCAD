@@ -158,11 +158,83 @@ abstract class AppLocalizations {
   /// **'Assistant'**
   String get settings_tab_assistant;
 
+  /// settings MCP tab
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get settings_tab_mcp;
+
   /// settings appearance section
   ///
   /// In en, this message translates to:
   /// **'Appearance'**
   String get settings_appearance;
+
+  /// settings MCP section
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get settings_mcp;
+
+  /// settings MCP enable toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Network'**
+  String get settings_mcp_enable;
+
+  /// settings MCP enabled hint
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor and Claude Desktop connect at the URL below'**
+  String get settings_mcp_on;
+
+  /// settings MCP disabled hint
+  ///
+  /// In en, this message translates to:
+  /// **'External MCP clients cannot attach'**
+  String get settings_mcp_off;
+
+  /// settings MCP URL label
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get settings_mcp_url;
+
+  /// settings MCP local-only toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Local only'**
+  String get settings_mcp_local;
+
+  /// settings MCP local enabled hint
+  ///
+  /// In en, this message translates to:
+  /// **'Only this computer can connect'**
+  String get settings_mcp_local_on;
+
+  /// settings MCP local disabled hint
+  ///
+  /// In en, this message translates to:
+  /// **'Other machines can connect; the allowlist is optional'**
+  String get settings_mcp_local_off;
+
+  /// settings MCP port
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get settings_mcp_port;
+
+  /// settings MCP IP allowlist
+  ///
+  /// In en, this message translates to:
+  /// **'Allowlist'**
+  String get settings_mcp_allowlist;
+
+  /// settings MCP allowlist hint
+  ///
+  /// In en, this message translates to:
+  /// **'Optional, comma-separated IPs'**
+  String get settings_mcp_allowlist_hint;
 
   /// settings assistant connection section
   ///

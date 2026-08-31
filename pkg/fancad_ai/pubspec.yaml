@@ -10,6 +10,8 @@ environment:
 dependencies:
   fancad_core:
     path: ../fancad_core
+  fancad_ops:
+    path: ../fancad_ops
   http: ^1.2.2
   json_annotation: ^4.9.0
   meta: ^1.16.0

@@ -168,4 +168,9 @@ class SettingsKeys {
   static const String aiActiveProfile = 'ai.activeProfile';
   static const String aiChats = 'ai.chats';
   static const String aiActiveChat = 'ai.activeChat';
+  static const String mcpEnabled = 'mcp.enabled';
+  static const String mcpPort = 'mcp.port';
+  static const String mcpToken = 'mcp.token';
+  static const String mcpLocal = 'mcp.local';
+  static const String mcpAllowlist = 'mcp.allowlist';
 }
