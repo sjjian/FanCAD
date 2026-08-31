@@ -6,8 +6,10 @@ import 'dart:ui' show Offset;
 import 'package:fancad_core/fancad_core.dart';
 
 import 'batch.dart';
+import 'drawing_font.dart';
 import 'palette.dart';
 import 'tessellation_cache.dart';
+import 'text_cache.dart';
 import 'viewport.dart';
 
 /// A frame's worth of geometry, reduced to a handful of draw calls.
@@ -100,11 +102,19 @@ class RenderScene {
 /// lines spread over a dozen layers becomes roughly a dozen `drawRawPoints`
 /// calls rather than 200,000 `drawLine` calls.
 class SceneBuilder {
-  SceneBuilder({required this.palette, TessellationCache? cache})
-    : cache = cache ?? TessellationCache();
+  SceneBuilder({
+    required this.palette,
+    TessellationCache? cache,
+    ParagraphCache? paragraphs,
+    DrawingFontMap? fonts,
+  }) : cache = cache ?? TessellationCache(),
+       paragraphs = paragraphs ?? ParagraphCache(),
+       fonts = fonts ?? const DrawingFontMap();
 
   final AciPalette palette;
   final TessellationCache cache;
+  final ParagraphCache paragraphs;
+  final DrawingFontMap fonts;
 
   /// Entities whose on-screen bounding box is smaller than this collapse to a
   /// single pixel. At a zoomed-out view of a large drawing this removes most of
@@ -112,9 +122,11 @@ class SceneBuilder {
   /// been made out anyway.
   static const double minimumPixelSize = 1.5;
 
-  /// Text smaller than this is drawn as a bar instead of glyphs, which is both
-  /// faster and closer to what the eye actually resolves.
-  static const double minimumTextPixels = 4.5;
+  /// Text below a physical pixel is drawn as a bar. CAD drawings use thin
+  /// stroke fonts whose labels remain useful at two to four pixels high, so
+  /// replacing all sub-4.5 px text hid most annotations at sheet overview
+  /// zooms.
+  static const double minimumTextPixels = 1;
 
   /// How far beyond the visible area geometry is built, as a fraction of the
   /// viewport. A third of a screen is enough that a flick pan stays inside the
@@ -140,6 +152,7 @@ class SceneBuilder {
     final sink = BatchingSink(
       viewport: viewport,
       palette: palette,
+      fonts: fonts,
       lineTypes: {
         for (final lineType in document.lineTypes.values)
           if (!lineType.isSolid) lineType.name: lineType.dashArray,
@@ -152,6 +165,15 @@ class SceneBuilder {
     final context = document.emitContext(
       tolerance: tolerance,
       clip: visible,
+      measureWidth: (text, height) => paragraphs.measureWidth(
+        text,
+        height: height,
+        fontFamily: fonts.resolve(
+          styleFont: 'txt',
+          bigFont: '',
+          text: text,
+        ),
+      ),
     );
     var drawn = 0;
     var culled = 0;
@@ -179,6 +201,7 @@ class SceneBuilder {
             tolerance: scale < 1e-12 ? tolerance : tolerance / scale,
             clip: viewportWindow.modelWindow,
             transform: viewportWindow.modelToPaper(),
+            measureWidth: context.measureWidth,
           );
           final model = _emitBlock(
             document: document,
@@ -266,10 +289,14 @@ class SceneBuilder {
       }
       if (bounds.isNotEmpty &&
           !_isPointLike(entity) &&
+          entity.kind != EntityKind.insert &&
           bounds.width < minimumWorldSize &&
           bounds.height < minimumWorldSize) {
         // Collapse rather than drop: a field of tiny blocks should still read
-        // as a grey mass, not as blank paper.
+        // as a grey mass, not as blank paper. Inserts are left alone — a
+        // collapsed block is a single pixel, but hover re-emits the whole
+        // definition as a dashed outline, which is how a title frame can
+        // appear only while the cursor is over it.
         final center = context.apply(bounds.center);
         sink.point(
           center.x,
@@ -289,7 +316,7 @@ class SceneBuilder {
           cache.obtain(
             entity,
             bucket,
-            (recorder) => entity.emit(context, recorder),
+            (recorder) => entity.emit(context.withoutClip(), recorder),
           ),
         );
       } else {
@@ -327,6 +354,7 @@ class BatchingSink implements GeometrySink {
   BatchingSink({
     required this.viewport,
     required this.palette,
+    this.fonts = const DrawingFontMap(),
     this.lineTypes = const {},
     this.globalLineTypeScale = 1,
     this.colorOverride,
@@ -335,6 +363,7 @@ class BatchingSink implements GeometrySink {
 
   final CadViewport viewport;
   final AciPalette palette;
+  final DrawingFontMap fonts;
 
   /// Dash patterns in drawing units, by line type name. Solid line types are
   /// simply absent.
@@ -692,6 +721,20 @@ class BatchingSink implements GeometrySink {
         vAlign: geometry.vAlign.index,
         wrapWidth: geometry.rectangleWidth * viewport.scale,
         isMultiline: geometry.isMultiline,
+        widthFactor: geometry.widthFactor,
+        obliqueAngle: geometry.obliqueAngle,
+        tracking: geometry.tracking,
+        fontFamily: fonts.resolve(
+          styleFont: geometry.fontFamily,
+          bigFont: geometry.bigFontFamily,
+          text: geometry.text,
+        ),
+        boxAnchor: geometry.anchor == TextAnchor.box,
+        backwards: geometry.backwards,
+        upsideDown: geometry.upsideDown,
+        underline: geometry.underline,
+        overline: geometry.overline,
+        strike: geometry.strike,
       ),
     );
   }

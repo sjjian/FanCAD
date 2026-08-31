@@ -532,6 +532,7 @@ class SnapEngine {
         }
       case DimensionEntity() ||
           LeaderEntity() ||
+          MLeaderEntity() ||
           RayEntity() ||
           XLineEntity() ||
           ImageEntity() ||
