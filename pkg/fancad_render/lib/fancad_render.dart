@@ -10,6 +10,7 @@
 /// interactive command is written against.
 library;
 
+export 'src/drawing_font.dart';
 export 'src/batch.dart'
     show BatchKey, FillBatch, ImageItem, LineBatch, PointBatch, TextItem;
 export 'src/cad_canvas.dart';

@@ -155,6 +155,16 @@ class TextItem {
     required this.vAlign,
     this.wrapWidth = 0,
     this.isMultiline = false,
+    this.widthFactor = 1,
+    this.obliqueAngle = 0,
+    this.tracking = 1,
+    this.fontFamily = '',
+    this.boxAnchor = false,
+    this.backwards = false,
+    this.upsideDown = false,
+    this.underline = false,
+    this.overline = false,
+    this.strike = false,
   });
 
   final String text;
@@ -170,6 +180,20 @@ class TextItem {
   final int vAlign;
   final double wrapWidth;
   final bool isMultiline;
+  final double widthFactor;
+  final double obliqueAngle;
+  final double tracking;
+
+  /// Resolved system face. Empty means the painter's fallback family.
+  final String fontFamily;
+
+  /// True for MTEXT: [origin] is a box attachment, not a TEXT baseline.
+  final bool boxAnchor;
+  final bool backwards;
+  final bool upsideDown;
+  final bool underline;
+  final bool overline;
+  final bool strike;
 }
 
 /// An image placement ready to paint, in screen space.

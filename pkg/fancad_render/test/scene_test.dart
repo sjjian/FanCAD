@@ -219,13 +219,15 @@ void main() {
             height: 2.5,
           ),
         );
-      // 2.5 units at 0.5 pixels per unit is just over a pixel tall.
-      const tiny = CadViewport(center: Vec2.zero(), scale: 0.5, size: size);
+      // 2.5 units at 0.25 pixels per unit is below one physical pixel.
+      const tiny = CadViewport(center: Vec2.zero(), scale: 0.25, size: size);
       final small = newBuilder().build(document, tiny);
       expect(small.texts, isEmpty);
       expect(small.fillBatches, isNotEmpty);
 
-      const near = CadViewport(center: Vec2.zero(), scale: 20, size: size);
+      // Small CAD labels remain useful above a pixel instead of becoming
+      // opaque grey bars.
+      const near = CadViewport(center: Vec2.zero(), scale: 0.5, size: size);
       final large = newBuilder().build(document, near);
       expect(large.texts, hasLength(1));
       expect(large.texts.single.text, 'REVISION B');
