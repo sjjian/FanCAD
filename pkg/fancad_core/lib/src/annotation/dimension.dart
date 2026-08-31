@@ -23,14 +23,20 @@ class DimensionGraphics {
     final style = context.styleFor(entity.props);
     final dim = context.styles.dimStyle(entity.styleName);
     final points = entity.definitionPoints;
+    final family = entity.dimensionType & 0x0F;
+    if (family == 6 && points.isNotEmpty) {
+      _ordinate(entity, context, sink, style);
+      _text(entity, context, sink, style, dim);
+      return;
+    }
     if (points.length < 2) {
       _text(entity, context, sink, style, dim);
       return;
     }
 
-    final family = entity.dimensionType & 0x0F;
     switch (family) {
       case 2:
+      case 5:
         _angular(entity, context, sink, style, dim);
       case 3:
       case 4:
@@ -115,6 +121,26 @@ class DimensionGraphics {
     _arrow(context, sink, style, chord, -unit, dim.scaledArrowSize);
   }
 
+  /// Feature → dogleg → text. Bit 64 is an X-ordinate (vertical first).
+  void _ordinate(
+    DimensionEntity entity,
+    EmitContext context,
+    GeometrySink sink,
+    ResolvedStyle style,
+  ) {
+    final feature = entity.definitionPoints[0];
+    final text = entity.textPosition;
+    final elbow = (entity.dimensionType & 64) != 0
+        ? Vec2(feature.x, text.y)
+        : Vec2(text.x, feature.y);
+    if (feature.distanceTo(elbow) >= 1e-9) {
+      _line(context, sink, style, feature, elbow);
+    }
+    if (elbow.distanceTo(text) >= 1e-9) {
+      _line(context, sink, style, elbow, text);
+    }
+  }
+
   void _angular(
     DimensionEntity entity,
     EmitContext context,
@@ -122,7 +148,10 @@ class DimensionGraphics {
     ResolvedStyle style,
     DimStyleDef dim,
   ) {
-    final points = entity.definitionPoints;
+    final points = DimensionEntity.angularPoints(
+      entity.definitionPoints,
+      entity.dimensionType,
+    );
     if (points.length < 3) {
       _linear(entity, context, sink, style, dim);
       return;

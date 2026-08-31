@@ -108,6 +108,62 @@ void main() {
       isTrue,
     );
   });
+
+  test('a 3-point angular uses the last definition as the vertex', () {
+    const dim = DimensionEntity(
+      id: 1,
+      definitionPoints: [Vec2(10, 0), Vec2(0, 10), Vec2.zero()],
+      textPosition: Vec2(4, 4),
+      measurement: 90,
+      overrideText: '<>°',
+      dimensionType: 5,
+    );
+    final sink = PolylineSink();
+    graphics.emit(dim, context, sink);
+    expect(sink.fills, isEmpty);
+    expect(
+      sink.polylines.any(_isSegment(Vec2.zero(), const Vec2(10, 0))),
+      isTrue,
+    );
+    expect(
+      sink.polylines.any(_isSegment(Vec2.zero(), const Vec2(0, 10))),
+      isTrue,
+    );
+    expect(
+      sink.polylines.any((xy) => xy.length > 6),
+      isTrue,
+      reason: 'the labelled sector is a discretised arc, not a linear chord',
+    );
+    expect(
+      sink.polylines.any(_isSegment(const Vec2(10, 0), const Vec2(0, 10))),
+      isFalse,
+    );
+  });
+
+  test('an X-ordinate draws a vertical dogleg, not a linear dimension', () {
+    const dim = DimensionEntity(
+      id: 1,
+      definitionPoints: [Vec2(8, 3)],
+      textPosition: Vec2(12, 10),
+      measurement: 8,
+      dimensionType: 6 | 64,
+    );
+    final sink = PolylineSink();
+    graphics.emit(dim, context, sink);
+    expect(sink.fills, isEmpty);
+    expect(
+      sink.polylines.any(_isSegment(const Vec2(8, 3), const Vec2(8, 10))),
+      isTrue,
+    );
+    expect(
+      sink.polylines.any(_isSegment(const Vec2(8, 10), const Vec2(12, 10))),
+      isTrue,
+    );
+    expect(
+      sink.polylines.any(_isSegment(const Vec2(8, 3), const Vec2(12, 10))),
+      isFalse,
+    );
+  });
 }
 
 bool Function(Float64List xy) _isSegment(Vec2 a, Vec2 b) {
