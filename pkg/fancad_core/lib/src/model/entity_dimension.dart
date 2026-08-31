@@ -88,18 +88,36 @@ final class DimensionEntity extends CadEntity {
 
   /// Degrees shown on an angular dimension.
   ///
-  /// Definition points are `[vertex, first, second]`. The sweep is the
-  /// counter-clockwise sector from the first arm to the second.
-  static double measuredAngle(List<Vec2> points) {
-    if (points.length < 3) return 0;
-    final vertex = points[0];
-    if (points[1].distanceTo(vertex) < 1e-12 ||
-        points[2].distanceTo(vertex) < 1e-12) {
+  /// Type 2 stores `[vertex, first, second]`. Type 5 (DXF 3-point) stores
+  /// `[first, second, vertex]`. The sweep is the counter-clockwise sector
+  /// from the first arm to the second.
+  static double measuredAngle(List<Vec2> points, {int dimensionType = 2}) {
+    final ordered = angularPoints(points, dimensionType);
+    if (ordered.length < 3) return 0;
+    final vertex = ordered[0];
+    if (ordered[1].distanceTo(vertex) < 1e-12 ||
+        ordered[2].distanceTo(vertex) < 1e-12) {
       return 0;
     }
-    final start = (points[1] - vertex).angle;
-    final end = (points[2] - vertex).angle;
+    final start = (ordered[1] - vertex).angle;
+    final end = (ordered[2] - vertex).angle;
     return angularSweep(start, end) * 180 / math.pi;
+  }
+
+  /// `[vertex, first, second]` regardless of whether [dimensionType] is 2 or 5.
+  static List<Vec2> angularPoints(List<Vec2> points, int dimensionType) {
+    if ((dimensionType & 0x0F) == 5 && points.length >= 3) {
+      return [points[2], points[0], points[1]];
+    }
+    return points;
+  }
+
+  /// Absolute X or Y of the feature point. Bit 64 of [dimensionType] is an
+  /// X-ordinate; otherwise it is a Y-ordinate.
+  static double measuredOrdinate(List<Vec2> points, int dimensionType) {
+    if (points.isEmpty) return 0;
+    final feature = points[0];
+    return (dimensionType & 64) != 0 ? feature.x.abs() : feature.y.abs();
   }
 
   bool get hasRenderedBlock => blockName.isNotEmpty;
@@ -207,7 +225,8 @@ final class DimensionEntity extends CadEntity {
     // aligned values are reread from the new origins. Radial still scales
     // by the mean factor because the chord is a seat, not the radius.
     final nextMeasurement = switch (family) {
-      2 => measuredAngle(points),
+      2 || 5 => measuredAngle(points, dimensionType: dimensionType),
+      6 => measuredOrdinate(points, dimensionType),
       0 || 1 => measuredLength(points, dimensionType),
       _ => measurement * matrix.meanScale,
     };
@@ -251,7 +270,8 @@ final class DimensionEntity extends CadEntity {
     points[index] = target;
     final family = dimensionType & 0x0F;
     final nextMeasurement = switch (family) {
-      2 => measuredAngle(points),
+      2 || 5 => measuredAngle(points, dimensionType: dimensionType),
+      6 => measuredOrdinate(points, dimensionType),
       0 || 1 => measuredLength(points, dimensionType),
       _ => measurement,
     };
