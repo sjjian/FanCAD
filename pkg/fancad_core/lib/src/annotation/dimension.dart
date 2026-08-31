@@ -41,6 +41,19 @@ class DimensionGraphics {
     _text(entity, context, sink, style, dim);
   }
 
+  /// Measurement label only. A `*D` block sometimes keeps the strokes and
+  /// loses the MTEXT; this puts the number back at [DimensionEntity.textPosition]
+  /// without redrawing lines the block already drew.
+  void emitText(
+    DimensionEntity entity,
+    EmitContext context,
+    GeometrySink sink,
+  ) {
+    final style = context.styleFor(entity.props);
+    final dim = context.styles.dimStyle(entity.styleName);
+    _text(entity, context, sink, style, dim);
+  }
+
   void _linear(
     DimensionEntity entity,
     EmitContext context,
