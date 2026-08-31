@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   test('an unknown directive cannot invent leftover formatting', () {
     final runs = const MTextLayout().layout(
-      const MTextEntity(id: 1, position: Vec2.zero(), content: r'\Q99;Hi'),
+      const MTextEntity(id: 1, position: Vec2.zero(), content: r'\X99;Hi'),
     );
     expect(runs.single.text, 'Hi');
     expect(runs.single.color, isNull);
@@ -12,6 +12,6 @@ void main() {
     expect(runs.single.bold, isFalse);
     expect(runs.single.height, 2.5);
 
-    expect(stripMTextFormatting(r'\Q99;Hi'), 'Hi');
+    expect(stripMTextFormatting(r'\X99;Hi'), 'Hi');
   });
 }

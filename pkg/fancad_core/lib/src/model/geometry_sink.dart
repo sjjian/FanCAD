@@ -50,6 +50,9 @@ abstract class StyleResolver {
   /// The named dimension style, or Standard when the name is missing.
   DimStyleDef dimStyle(String name) => DimStyleDef.standard;
 
+  /// The named text style, or Standard when the name is missing.
+  TextStyleDef textStyle(String name) => TextStyleDef.standard;
+
   static const StyleResolver passthrough = _PassthroughResolver();
 }
 
@@ -82,6 +85,9 @@ class _PassthroughResolver implements StyleResolver {
 
   @override
   DimStyleDef dimStyle(String name) => DimStyleDef.standard;
+
+  @override
+  TextStyleDef textStyle(String name) => TextStyleDef.standard;
 }
 
 /// Horizontal text justification.
@@ -89,6 +95,13 @@ enum TextHAlign { left, center, right, aligned, middle, fit }
 
 /// Vertical text justification.
 enum TextVAlign { baseline, bottom, middle, top }
+
+/// Where [TextGeometry.origin] sits on the laid-out run.
+///
+/// TEXT uses the DWG baseline (or a justification point on that baseline).
+/// MTEXT's attachment point is a corner or centre of the box, so applying
+/// the baseline table a second time lifts the paragraph by a full line.
+enum TextAnchor { baseline, box }
 
 /// A laid-out text run in model coordinates.
 @immutable
@@ -99,10 +112,19 @@ class TextGeometry {
     required this.height,
     required this.rotation,
     required this.styleName,
+    this.fontFamily = '',
+    this.bigFontFamily = '',
     this.widthFactor = 1,
     this.obliqueAngle = 0,
+    this.tracking = 1,
     this.hAlign = TextHAlign.left,
     this.vAlign = TextVAlign.baseline,
+    this.anchor = TextAnchor.baseline,
+    this.backwards = false,
+    this.upsideDown = false,
+    this.underline = false,
+    this.overline = false,
+    this.strike = false,
     this.rectangleWidth = 0,
     this.isMultiline = false,
   });
@@ -112,10 +134,24 @@ class TextGeometry {
   final double height;
   final double rotation;
   final String styleName;
+
+  /// STYLE font name or an MTEXT `\f` override, still as recorded in the
+  /// drawing. The renderer maps it onto a system face.
+  final String fontFamily;
+  final String bigFontFamily;
   final double widthFactor;
   final double obliqueAngle;
+
+  /// MTEXT `\T` tracking factor. 1 is the style default.
+  final double tracking;
   final TextHAlign hAlign;
   final TextVAlign vAlign;
+  final TextAnchor anchor;
+  final bool backwards;
+  final bool upsideDown;
+  final bool underline;
+  final bool overline;
+  final bool strike;
 
   /// Wrapping width for MTEXT; 0 means unbounded.
   final double rectangleWidth;
@@ -133,7 +169,7 @@ class TextGeometry {
     }
     final width = rectangleWidth > 0
         ? rectangleWidth
-        : longest * height * 0.62 * widthFactor;
+        : longest * height * 0.62 * widthFactor * tracking;
     final totalHeight = height * lines.length * 1.2;
 
     final dx = switch (hAlign) {
@@ -161,6 +197,51 @@ class TextGeometry {
     }
     return box;
   }
+}
+
+/// Folds a STYLE table entry into a text run so the renderer never has to
+/// look the style up again.
+TextGeometry composeEmittedText({
+  required EmitContext context,
+  required String text,
+  required Vec2 origin,
+  required double height,
+  required double rotation,
+  required String styleName,
+  double widthFactor = 1,
+  double obliqueAngle = 0,
+  double tracking = 1,
+  TextHAlign hAlign = TextHAlign.left,
+  TextVAlign vAlign = TextVAlign.baseline,
+  TextAnchor anchor = TextAnchor.baseline,
+  String? fontOverride,
+  bool underline = false,
+  bool overline = false,
+  bool strike = false,
+}) {
+  final style = context.styles.textStyle(styleName);
+  final scale = context.transform.isIdentity ? 1.0 : context.transform.meanScale;
+  final styleHeight = style.height > 0 ? style.height : height;
+  return TextGeometry(
+    text: text,
+    origin: context.apply(origin),
+    height: styleHeight * scale,
+    rotation: rotation + context.transform.rotation,
+    styleName: styleName,
+    fontFamily: fontOverride ?? style.fontFamily,
+    bigFontFamily: style.bigFontFamily,
+    widthFactor: widthFactor * style.widthFactor,
+    obliqueAngle: obliqueAngle + style.obliqueAngle,
+    tracking: tracking,
+    hAlign: hAlign,
+    vAlign: vAlign,
+    anchor: anchor,
+    backwards: style.backwards,
+    upsideDown: style.upsideDown,
+    underline: underline,
+    overline: overline,
+    strike: strike,
+  );
 }
 
 /// A raster image placement in model space.
@@ -358,6 +439,22 @@ class EmitContext {
     measureWidth: measureWidth,
     attributeValues: values,
   );
+
+  /// Drops [clip] so a tessellation cache cannot bake a miss from a
+  /// viewport that only overlapped the insert's index box.
+  EmitContext withoutClip() {
+    if (clip == null) return this;
+    return EmitContext(
+      tolerance: tolerance,
+      transform: transform,
+      blocks: blocks,
+      styles: styles,
+      inheritedStyle: inheritedStyle,
+      depth: depth,
+      measureWidth: measureWidth,
+      attributeValues: attributeValues,
+    );
+  }
 }
 
 /// A [GeometrySink] that only accumulates a bounding box.
