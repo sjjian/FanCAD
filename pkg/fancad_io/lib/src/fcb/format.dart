@@ -37,7 +37,7 @@ const int fcbVersion = 1;
 
 /// Bumped when native import semantics change without a wire-format change,
 /// so the on-disk FCB cache cannot serve a buffer from an older `dwg_import`.
-const int fcbImportRevision = 2;
+const int fcbImportRevision = 8;
 
 /// Size of the fixed file header, in bytes.
 const int fcbHeaderSize = 16;
@@ -280,6 +280,7 @@ class FcbType {
   static const int image = 17;
   static const int attdef = 18;
   static const int attrib = 19;
+  static const int mleader = 20;
 }
 
 /// Entity flag bits.

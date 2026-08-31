@@ -803,7 +803,7 @@ class FcbReader {
         return TextEntity(
           id: id,
           props: props,
-          position: Vec2(geom[0], geom[1]),
+          position: fcbTextPosition(geom),
           content: stringAt(0),
           height: geom[2],
           rotation: geom[3],
@@ -854,7 +854,7 @@ class FcbReader {
         return AttdefEntity(
           id: id,
           props: props,
-          position: Vec2(geom[0], geom[1]),
+          position: fcbTextPosition(geom),
           defaultValue: stringAt(0),
           styleName: stringAt(1).isEmpty ? 'Standard' : stringAt(1),
           tag: stringAt(2),
@@ -876,7 +876,7 @@ class FcbReader {
         return AttribEntity(
           id: id,
           props: props,
-          position: Vec2(geom[0], geom[1]),
+          position: fcbTextPosition(geom),
           value: stringAt(0),
           styleName: stringAt(1).isEmpty ? 'Standard' : stringAt(1),
           tag: stringAt(2),
@@ -952,6 +952,22 @@ class FcbReader {
           styleName: stringAt(0).isEmpty ? 'Standard' : stringAt(0),
         );
 
+      case FcbType.mleader:
+        if (geom.length < 4) return null;
+        final textOffset = geom.length - 4;
+        return MLeaderEntity(
+          id: id,
+          props: props,
+          vertices: Float64List.fromList(geom.sublist(0, textOffset)),
+          pathLengths: [for (final n in ints) n.toInt()],
+          hasArrowHead: flags & FcbFlags.arrowHead != 0,
+          content: stringAt(0),
+          textPosition: Vec2(geom[textOffset], geom[textOffset + 1]),
+          textHeight: geom[textOffset + 2] == 0 ? 2.5 : geom[textOffset + 2],
+          textRotation: geom[textOffset + 3],
+          styleName: stringAt(1).isEmpty ? 'Standard' : stringAt(1),
+        );
+
       case FcbType.solid:
         if (geom.length < 6) return null;
         return SolidEntity(
@@ -993,18 +1009,24 @@ class FcbReader {
         );
 
       default:
+        final bounds = geom.length >= 4
+            ? Bounds2(geom[0], geom[1], geom[2], geom[3])
+            : Bounds2(
+                _view.getFloat64(at + FcbEntity.minX, Endian.little),
+                _view.getFloat64(at + FcbEntity.minY, Endian.little),
+                _view.getFloat64(at + FcbEntity.maxX, Endian.little),
+                _view.getFloat64(at + FcbEntity.maxY, Endian.little),
+              );
+        final strokeGeom = geom.length > 4
+            ? Float64List.fromList(geom.sublist(4))
+            : null;
         return UnknownEntity(
           id: id,
           props: props,
           originalType: stringAt(0).isEmpty ? 'UNKNOWN' : stringAt(0),
-          proxyBounds: geom.length >= 4
-              ? Bounds2(geom[0], geom[1], geom[2], geom[3])
-              : Bounds2(
-                  _view.getFloat64(at + FcbEntity.minX, Endian.little),
-                  _view.getFloat64(at + FcbEntity.minY, Endian.little),
-                  _view.getFloat64(at + FcbEntity.maxX, Endian.little),
-                  _view.getFloat64(at + FcbEntity.maxY, Endian.little),
-                ),
+          proxyBounds: bounds,
+          strokes: strokeGeom,
+          strokeCounts: [for (final n in ints) n.toInt()],
         );
     }
   }
@@ -1041,4 +1063,11 @@ class FcbReader {
     final raw = ints[index];
     return raw >= 0 && raw < values.length ? values[raw] : fallback;
   }
+}
+
+/// Insertion is always the first pair. A justified TEXT may append the
+/// alignment point after the six standard numbers; paint from that.
+Vec2 fcbTextPosition(List<double> geom) {
+  if (geom.length >= 8) return Vec2(geom[6], geom[7]);
+  return Vec2(geom[0], geom[1]);
 }
