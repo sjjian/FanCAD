@@ -22,6 +22,7 @@
 ///            geom knots ++ ctrl(x, y) ++ weights ++ fit(x, y)
 ///            flag: closed
 /// text       geom [x, y, height, rotation, widthFactor, obliqueAngle]
+///            optional [alignX, alignY] when not left+baseline
 ///            ints [hAlign, vAlign]
 ///            strings [content, styleName]
 /// mtext      geom [x, y, height, rotation, rectangleWidth]
@@ -43,7 +44,12 @@
 /// xline      geom [originX, originY, dirX, dirY]
 /// image      geom [originX, originY, uX, uY, vX, vY]
 ///            strings [reference]
+/// mleader    geom vertices(x, y)*n ++ [textX, textY, textHeight, textRotation]
+///            ints [pointCount per path...]
+///            strings [content, styleName]                 flag: arrowHead
 /// unknown    geom [minX, minY, maxX, maxY]  (proxy extents)
+///            optional strokes (x, y)*n
+///            ints optional [pointCount per stroke run]
 ///            strings [originalTypeName]
 /// ```
 library;

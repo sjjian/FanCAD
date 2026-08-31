@@ -37,6 +37,10 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
 #include <dwg_api.h>
 
 #include <math.h>
+#if defined(__APPLE__) || defined(__linux__)
+#include <iconv.h>
+#define FANCAD_HAVE_ICONV 1
+#endif
 
 int fcdwg_has_backend(void) { return 1; }
 
@@ -219,19 +223,184 @@ static void box_add_coords(box *b, const coords *c, uint32_t stride) {
   }
 }
 
+/* R2007+ strings arrive as UTF-8 from LibreDWG. Pre-R2007 TV strings are
+ * still in the drawing codepage (GBK / CP936 on Chinese R2004 files). The
+ * dynapi returns those bytes unchanged, so FCB must convert them or Dart
+ * will replace every CJK character with U+FFFD. */
+#ifdef FANCAD_HAVE_ICONV
+static int is_ascii(const unsigned char *s) {
+  for (; *s; s++) {
+    if (*s & 0x80) return 0;
+  }
+  return 1;
+}
+
+static int is_valid_utf8(const unsigned char *s) {
+  while (*s) {
+    if (*s < 0x80) {
+      s++;
+      continue;
+    }
+    if ((*s & 0xE0) == 0xC0) {
+      if ((s[1] & 0xC0) != 0x80 || *s < 0xC2) return 0;
+      s += 2;
+      continue;
+    }
+    if ((*s & 0xF0) == 0xE0) {
+      if ((s[1] & 0xC0) != 0x80 || (s[2] & 0xC0) != 0x80) return 0;
+      s += 3;
+      continue;
+    }
+    if ((*s & 0xF8) == 0xF0) {
+      if ((s[1] & 0xC0) != 0x80 || (s[2] & 0xC0) != 0x80 ||
+          (s[3] & 0xC0) != 0x80) {
+        return 0;
+      }
+      s += 4;
+      continue;
+    }
+    return 0;
+  }
+  return 1;
+}
+
+/* Chinese R2000–R2004 drawings often keep GBK even when $DWGCODEPAGE
+ * is tagged ANSI_1252. A well-formed GBK stream is pairs of lead
+ * 0x81–0xFE and a trail in 0x40–0x7E or 0x80–0xFE. */
+static int looks_like_gbk(const unsigned char *s) {
+  int pairs = 0;
+  while (*s) {
+    if (*s < 0x80) {
+      s++;
+      continue;
+    }
+    if (s[0] >= 0x81 && s[0] <= 0xFE && s[1] &&
+        ((s[1] >= 0x40 && s[1] <= 0x7E) || (s[1] >= 0x80 && s[1] <= 0xFE))) {
+      pairs++;
+      s += 2;
+      continue;
+    }
+    return 0;
+  }
+  return pairs > 0;
+}
+
+static char *iconv_to_utf8(const char *src, const char *from) {
+  iconv_t cd;
+  char *in;
+  char *out;
+  char *result;
+  size_t inleft;
+  size_t outleft;
+  size_t outcap;
+  if (!src || !from) return NULL;
+  cd = iconv_open("UTF-8", from);
+  if (cd == (iconv_t)-1) return NULL;
+  inleft = strlen(src);
+  outcap = inleft * 4 + 4;
+  result = (char *)malloc(outcap);
+  if (!result) {
+    iconv_close(cd);
+    return NULL;
+  }
+  in = (char *)src;
+  out = result;
+  outleft = outcap - 1;
+  if (iconv(cd, &in, &inleft, &out, &outleft) == (size_t)-1) {
+    free(result);
+    iconv_close(cd);
+    return NULL;
+  }
+  *out = '\0';
+  iconv_close(cd);
+  return result;
+}
+
+/* Numbering matches LibreDWG Dwg_Codepage / dwg->header.codepage. */
+static const char *iconv_name_for_codepage(unsigned codepage) {
+  switch (codepage) {
+    case 0:
+      return "UTF-8";
+    case 1:
+      return "US-ASCII";
+    case 2:
+      return "ISO-8859-1";
+    case 30:
+      return "WINDOWS-1252";
+    case 31:
+      return "GB2312";
+    case 24:
+      return "BIG5";
+    case 38:
+      return "CP932";
+    case 39:
+      return "CP936";
+    case 40:
+      return "CP949";
+    case 41:
+      return "CP950";
+    default:
+      return NULL;
+  }
+}
+#endif
+
+static char *tv_to_utf8(const char *src, unsigned codepage) {
+#ifdef FANCAD_HAVE_ICONV
+  char *converted;
+  const char *from;
+  if (!src || !*src) return NULL;
+  if (is_ascii((const unsigned char *)src)) return NULL;
+  if (is_valid_utf8((const unsigned char *)src)) return NULL;
+  if (looks_like_gbk((const unsigned char *)src)) {
+    converted = iconv_to_utf8(src, "GB18030");
+    if (converted) return converted;
+    converted = iconv_to_utf8(src, "GBK");
+    if (converted) return converted;
+    converted = iconv_to_utf8(src, "CP936");
+    if (converted) return converted;
+  }
+  from = iconv_name_for_codepage(codepage);
+  if (from && strcmp(from, "UTF-8") != 0) {
+    converted = iconv_to_utf8(src, from);
+    if (converted) return converted;
+  }
+#else
+  (void)src;
+  (void)codepage;
+#endif
+  return NULL;
+}
+
+static unsigned entity_codepage(void *entity) {
+  int error = 0;
+  const Dwg_Object *obj = dwg_obj_generic_to_object(entity, &error);
+  if (!obj || !obj->parent) return 0;
+  return (unsigned)obj->parent->header.codepage;
+}
+
 /* Reads a text field through the dynamic API, which transparently converts
  * the UTF-16 encoding used by R2007 and newer. The caller must call
  * dyn_text_free on the result. */
 static char *dyn_text(void *entity, const char *type, const char *field,
                       int *needs_free) {
   char *value = NULL;
+  char *converted;
   int is_new = 0;
   *needs_free = 0;
   if (!entity) return NULL;
   if (!dwg_dynapi_entity_utf8text(entity, type, field, &value, &is_new, NULL)) {
     return NULL;
   }
-  *needs_free = is_new;
+  if (is_new) {
+    *needs_free = 1;
+    return value;
+  }
+  converted = tv_to_utf8(value, entity_codepage(entity));
+  if (converted) {
+    *needs_free = 1;
+    return converted;
+  }
   return value;
 }
 
@@ -312,6 +481,8 @@ typedef struct {
    * ownerhandle is often 0 on R2004 files, so the owned list is the
    * authority for which block a LINE actually belongs to. */
   handle_map entity_block;
+  /* Anonymous block indices referenced by live DIMENSION entities. */
+  handle_map referenced_dimension_blocks;
   /* Block name per index, so INSERT can reference blocks by name. */
   char **block_names;
   double *block_base_x;
@@ -321,6 +492,11 @@ typedef struct {
   coords staging;
   uint32_t skipped;
   uint32_t unsupported_hatch_segments;
+  struct {
+    char name[32];
+    uint32_t count;
+  } proxies[16];
+  uint32_t proxy_tally_count;
 } import_state;
 
 /* -------------------------------------------------------------------------
@@ -541,19 +717,179 @@ static int is_layout_block(const import_state *s, uint32_t block) {
                   strncmp(name, "*Paper_Space", 12) == 0);
 }
 
+static int is_dim_anon_block(const import_state *s, uint32_t block) {
+  const char *name;
+  if (block >= s->block_count) return 0;
+  name = s->block_names[block];
+  return name && name[0] == '*' && name[1] == 'D';
+}
+
+static int is_referenced_dimension_block(const import_state *s,
+                                         uint32_t block) {
+  return hmap_get(&s->referenced_dimension_blocks, (uint64_t)block + 1u, 0u) !=
+         0u;
+}
+
+static uint32_t block_index_from_ref(const import_state *s,
+                                     Dwg_Object_Ref *ref,
+                                     const Dwg_Object *from) {
+  uint32_t block =
+      hmap_get(&s->block_index, ref_handle(ref), 0xFFFFFFFFu);
+  Dwg_Object *resolved;
+  if (block != 0xFFFFFFFFu) return block;
+  resolved = resolve_ref(s->dwg, ref, from);
+  if (!resolved) return 0xFFFFFFFFu;
+  return hmap_get(&s->block_index, (uint64_t)resolved->handle.value,
+                  0xFFFFFFFFu);
+}
+
+static int mark_referenced_dimension_block(import_state *s, Dwg_Object *obj) {
+  const char *type_name;
+  void *dimension;
+  Dwg_Object_Ref *block_ref;
+  uint32_t block;
+  if (obj->supertype != DWG_SUPERTYPE_ENTITY || !obj->tio.entity) return 1;
+  type_name = dimension_type_name(obj->fixedtype);
+  if (!type_name) return 1;
+  dimension = (void *)obj->tio.entity->tio.DIMENSION_LINEAR;
+  if (!dimension) return 1;
+  block_ref = dyn_handle(dimension, type_name, "block");
+  block = block_index_from_ref(s, block_ref, obj);
+  if (block == 0xFFFFFFFFu || !is_dim_anon_block(s, block)) return 1;
+  return hmap_put(&s->referenced_dimension_blocks, (uint64_t)block + 1u, 1u);
+}
+
+static int index_referenced_dimension_blocks(import_state *s) {
+  uint32_t i;
+  if (!hmap_init(&s->referenced_dimension_blocks, s->block_count)) return 0;
+  for (i = 0; i < s->dwg->num_objects; i++) {
+    if (!mark_referenced_dimension_block(s, &s->dwg->object[i])) return 0;
+  }
+  return 1;
+}
+
+/* sort_ents can leave duplicate handles in the object table. Only the first
+ * candidate is serialized, so a duplicate DIMENSION must not keep an
+ * otherwise orphaned *D block hidden. */
+static int reindex_live_dimension_blocks(import_state *s,
+                                         const uint32_t *candidates,
+                                         uint32_t candidate_count) {
+  uint32_t i;
+  hmap_dispose(&s->referenced_dimension_blocks);
+  if (!hmap_init(&s->referenced_dimension_blocks, s->block_count)) return 0;
+  for (i = 0; i < candidate_count; i++) {
+    if (!mark_referenced_dimension_block(s, &s->dwg->object[candidates[i]])) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+static uint32_t insert_block_index(const import_state *s,
+                                   const Dwg_Object *obj) {
+  Dwg_Object_Ref *ref = NULL;
+  if (!obj->tio.entity) return 0xFFFFFFFFu;
+  if (obj->fixedtype == DWG_TYPE_INSERT && obj->tio.entity->tio.INSERT) {
+    ref = obj->tio.entity->tio.INSERT->block_header;
+  } else if (obj->fixedtype == DWG_TYPE_MINSERT &&
+             obj->tio.entity->tio.MINSERT) {
+    ref = obj->tio.entity->tio.MINSERT->block_header;
+  }
+  return hmap_get(&s->block_index, ref_handle(ref), 0xFFFFFFFFu);
+}
+
+/* _Oblique / _Close / … are the only INSERTs a *D block should own. */
+static int is_acad_arrow_insert(const import_state *s, const Dwg_Object *obj) {
+  uint32_t block;
+  const char *name;
+  if (obj->fixedtype != DWG_TYPE_INSERT &&
+      obj->fixedtype != DWG_TYPE_MINSERT) {
+    return 0;
+  }
+  block = insert_block_index(s, obj);
+  if (block >= s->block_count) return 0;
+  name = s->block_names[block];
+  return name && name[0] == '_';
+}
+
+/* Exploded dimension graphics. A *D entities[] on R2004 also names
+ * MULTILEADERs, HATCHes, and other DIMENSION objects; those are not
+ * ticks and must stay on the layout. */
+static int is_dim_anon_primitive(Dwg_Object_Type type) {
+  switch (type) {
+    case DWG_TYPE_LINE:
+    case DWG_TYPE_SOLID:
+    case DWG_TYPE_TRACE:
+    case DWG_TYPE_POINT:
+    case DWG_TYPE_TEXT:
+    case DWG_TYPE_MTEXT:
+    case DWG_TYPE_ATTDEF:
+    case DWG_TYPE_ARC:
+    case DWG_TYPE_LWPOLYLINE:
+    case DWG_TYPE_POLYLINE_2D:
+    case DWG_TYPE_INSERT:
+    case DWG_TYPE_MINSERT:
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+/* A later *D entities[] list repeats model-space INSERTs (title frames
+ * `bk` / `TK1`, part ticks) and whole annotations. Those must stay on
+ * the layout. */
+static int dim_anon_cannot_own(const import_state *s, uint32_t block,
+                               const Dwg_Object *obj) {
+  if (!is_dim_anon_block(s, block)) return 0;
+  /* This R2004 file has thousands of model-space entities listed under
+   * orphaned *D headers. A live dimension never references those headers;
+   * keeping their contents there hides complete profiles and sheet frames. */
+  if (!is_referenced_dimension_block(s, block)) return 1;
+  if (!is_dim_anon_primitive(obj->fixedtype)) return 1;
+  if (obj->fixedtype == DWG_TYPE_INSERT ||
+      obj->fixedtype == DWG_TYPE_MINSERT) {
+    return !is_acad_arrow_insert(s, obj);
+  }
+  return 0;
+}
+
 static void claim_owned_entity(import_state *s, Dwg_Object *child,
                                uint32_t block) {
   uint64_t handle;
   uint32_t existing;
+  uint32_t by_header;
   if (!child || !child->handle.value) return;
   if (child->supertype != DWG_SUPERTYPE_ENTITY) return;
   if (is_structural_entity(child->fixedtype)) return;
   handle = (uint64_t)child->handle.value;
   existing = hmap_get(&s->entity_block, handle, 0xFFFFFFFFu);
-  /* Named-block lists on this R2004 file overlap: a later *D header
-   * repeats an earlier hard-owned LINE. The first named owner wins;
-   * layout lists (*Model_Space / *Paper_Space) may still be replaced. */
-  if (existing != 0xFFFFFFFFu && !is_layout_block(s, existing)) return;
+  /* entities[] on this R2004 file overlaps. A later *D header repeats a
+   * model-space INSERT (the title frame on sheets such as J15). The
+   * entity's ownerhandle is the CAD owner; a claim that contradicts it
+   * would hide the frame unless that one dimension happens to be in view. */
+  if (child->tio.entity) {
+    by_header = hmap_get(&s->block_index,
+                         ref_handle(child->tio.entity->ownerhandle),
+                         0xFFFFFFFFu);
+    if (by_header != 0xFFFFFFFFu && by_header != block) return;
+  }
+  if (dim_anon_cannot_own(s, block, child)) return;
+  /* Named-block lists on this R2004 file overlap. The first named owner
+   * wins, and a later named block may still take a member back from a
+   * layout list (*Model_Space / *Paper_Space).
+   *
+   * *D is not a real named owner in that sense: its entities[] repeats
+   * model-space hatches, MULTILEADERs, and part edges. If *D overwrites
+   * the layout claim, those objects only exist inside an anonymous
+   * dimension block and never appear on the canvas. Real *D-only
+   * children (ticks, measurement MTEXT) stay unclaimed until *D runs
+   * and DimensionEntity still emits them. */
+  if (existing != 0xFFFFFFFFu) {
+    if (is_dim_anon_block(s, block)) return;
+    if (!is_layout_block(s, existing) && !is_dim_anon_block(s, existing)) {
+      return;
+    }
+  }
   hmap_put(&s->entity_block, handle, block);
 }
 
@@ -603,11 +939,17 @@ static uint32_t owner_block(const import_state *s, const Dwg_Object *obj) {
   if (!obj->tio.entity) return s->model_space_block;
   owned = hmap_get(&s->entity_block, (uint64_t)obj->handle.value,
                    0xFFFFFFFFu);
-  if (owned != 0xFFFFFFFFu && owned < s->block_count) return owned;
+  if (owned != 0xFFFFFFFFu && owned < s->block_count &&
+      !dim_anon_cannot_own(s, owned, obj)) {
+    return owned;
+  }
   by_header = hmap_get(&s->block_index,
                        ref_handle(obj->tio.entity->ownerhandle),
                        0xFFFFFFFFu);
-  if (by_header != 0xFFFFFFFFu && by_header < s->block_count) return by_header;
+  if (by_header != 0xFFFFFFFFu && by_header < s->block_count &&
+      !dim_anon_cannot_own(s, by_header, obj)) {
+    return by_header;
+  }
   return s->model_space_block;
 }
 
@@ -726,6 +1068,183 @@ static void commit(import_state *s, fcb_entity *e, const box *bounds,
 static void attach_geometry(import_state *s, fcb_entity *e) {
   e->geom_offset = fcb_add_doubles(s->b, s->staging.data, s->staging.length);
   e->geom_count = s->staging.length;
+}
+
+static void note_proxy(import_state *s, const char *name) {
+  uint32_t i;
+  s->skipped++;
+  if (!name || !name[0]) name = "UNKNOWN";
+  for (i = 0; i < s->proxy_tally_count; i++) {
+    if (strcmp(s->proxies[i].name, name) == 0) {
+      s->proxies[i].count++;
+      return;
+    }
+  }
+  if (s->proxy_tally_count >= 16) return;
+  strncpy(s->proxies[s->proxy_tally_count].name, name, 31);
+  s->proxies[s->proxy_tally_count].name[31] = '\0';
+  s->proxies[s->proxy_tally_count].count = 1;
+  s->proxy_tally_count++;
+}
+
+static int push_owned_polyline_vertices(coords *g, box *bounds,
+                                        Dwg_Object_Ref **vertex,
+                                        BITCODE_BL num_owned) {
+  uint32_t i;
+  uint32_t written = 0;
+  for (i = 0; i < num_owned; i++) {
+    Dwg_Object *vertex_obj;
+    if (!vertex || !vertex[i]) continue;
+    vertex_obj = vertex[i]->obj;
+    if (!vertex_obj || vertex_obj->supertype != DWG_SUPERTYPE_ENTITY ||
+        !vertex_obj->tio.entity) {
+      continue;
+    }
+    if (vertex_obj->fixedtype == DWG_TYPE_VERTEX_2D &&
+        vertex_obj->tio.entity->tio.VERTEX_2D) {
+      Dwg_Entity_VERTEX_2D *v = vertex_obj->tio.entity->tio.VERTEX_2D;
+      coords_push2(g, v->point.x, v->point.y);
+      coords_push(g, v->bulge);
+      box_add(bounds, v->point.x, v->point.y);
+      written++;
+      continue;
+    }
+    if (vertex_obj->tio.entity->tio.VERTEX_3D) {
+      Dwg_Entity_VERTEX_3D *v = vertex_obj->tio.entity->tio.VERTEX_3D;
+      coords_push2(g, v->point.x, v->point.y);
+      coords_push(g, 0.0);
+      box_add(bounds, v->point.x, v->point.y);
+      written++;
+    }
+  }
+  return (int)written;
+}
+
+static int points_close(double ax, double ay, double bx, double by) {
+  double dx = ax - bx;
+  double dy = ay - by;
+  return dx * dx + dy * dy < 1e-20;
+}
+
+static int import_multileader(import_state *s, Dwg_Entity_MULTILEADER *o,
+                              fcb_entity *e, box *bounds) {
+  Dwg_MLEADER_AnnotContext *ctx;
+  int64_t path_counts[64];
+  uint32_t path_count = 0;
+  uint32_t n;
+  char *text = NULL;
+  int owned_text = 0;
+  double text_x = 0.0;
+  double text_y = 0.0;
+  double text_h;
+  double text_rot = 0.0;
+  coords *g = &s->staging;
+
+  if (!o) return 0;
+  ctx = &o->ctx;
+  text_h = ctx->text_height > 0.0 ? ctx->text_height : 2.5;
+
+  for (n = 0; n < ctx->num_leaders && path_count < 64; n++) {
+    Dwg_LEADER_Node *node = &ctx->leaders[n];
+    uint32_t line;
+    if (!ctx->leaders) break;
+    for (line = 0; line < node->num_lines && path_count < 64; line++) {
+      Dwg_LEADER_Line *ln = &node->lines[line];
+      uint32_t p;
+      uint32_t start = g->length;
+      uint32_t points;
+      if (!node->lines) break;
+      for (p = 0; p < ln->num_points; p++) {
+        if (!ln->points) break;
+        coords_push2(g, ln->points[p].x, ln->points[p].y);
+        box_add(bounds, ln->points[p].x, ln->points[p].y);
+      }
+      if (node->has_lastleaderlinepoint) {
+        double lx = node->lastleaderlinepoint.x;
+        double ly = node->lastleaderlinepoint.y;
+        if (g->length < start + 2 ||
+            !points_close(g->data[g->length - 2], g->data[g->length - 1], lx,
+                          ly)) {
+          coords_push2(g, lx, ly);
+          box_add(bounds, lx, ly);
+        }
+        if (node->has_dogleg && node->dogleg_length != 0.0) {
+          double hx = lx + node->dogleg_vector.x * node->dogleg_length;
+          double hy = ly + node->dogleg_vector.y * node->dogleg_length;
+          coords_push2(g, hx, hy);
+          box_add(bounds, hx, hy);
+        }
+      }
+      points = (g->length - start) / 2;
+      if (points >= 2) {
+        path_counts[path_count++] = (int64_t)points;
+      } else {
+        g->length = start;
+      }
+    }
+  }
+
+  if (ctx->has_content_txt) {
+    char *raw = ctx->content.txt.default_text;
+    char *converted;
+    text_x = ctx->content.txt.location.x;
+    text_y = ctx->content.txt.location.y;
+    if (ctx->content.txt.height > 0.0) text_h = ctx->content.txt.height;
+    text_rot = ctx->content.txt.rotation;
+    converted = raw ? tv_to_utf8(raw, entity_codepage(o)) : NULL;
+    if (converted) {
+      text = converted;
+      owned_text = 1;
+    } else {
+      text = raw;
+    }
+    box_add(bounds, text_x, text_y);
+  } else {
+    text_x = ctx->content_base.x;
+    text_y = ctx->content_base.y;
+    box_add(bounds, text_x, text_y);
+  }
+
+  coords_push2(g, text_x, text_y);
+  coords_push(g, text_h);
+  coords_push(g, text_rot);
+
+  if (path_count > 0) {
+    e->int_offset = fcb_add_ints(s->b, path_counts, path_count);
+    e->int_count = path_count;
+  }
+  e->string_offset = fcb_append_string(s->b, text ? text : "");
+  fcb_append_string(s->b, "Standard");
+  e->string_count = 2;
+  e->flags |= FCB_FLAG_ARROW_HEAD;
+  attach_geometry(s, e);
+  dyn_text_free(text, owned_text);
+  return path_count > 0 || (text && text[0]);
+}
+
+static uint32_t extract_acis_wires(coords *g, box *bounds, int64_t *runs,
+                                   uint32_t run_cap, Dwg_Entity__3DSOLID *solid) {
+  uint32_t run_count = 0;
+  uint32_t w;
+  if (!solid || !solid->wireframe_data_present || !solid->wires) return 0;
+  for (w = 0; w < solid->num_wires && run_count < run_cap; w++) {
+    Dwg_3DSOLID_wire *wire = &solid->wires[w];
+    uint32_t p;
+    uint32_t start = g->length;
+    uint32_t points;
+    if (!wire->points) continue;
+    for (p = 0; p < wire->num_points; p++) {
+      coords_push2(g, wire->points[p].x, wire->points[p].y);
+      box_add(bounds, wire->points[p].x, wire->points[p].y);
+    }
+    points = (g->length - start) / 2;
+    if (points >= 2) {
+      runs[run_count++] = (int64_t)points;
+    } else {
+      g->length = start;
+    }
+  }
+  return run_count;
 }
 
 static void import_hatch_paths(import_state *s, Dwg_Entity_HATCH *hatch,
@@ -927,29 +1446,27 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       return 1;
     }
 
-    case DWG_TYPE_POLYLINE_2D: {
+    case DWG_TYPE_POLYLINE_2D:
+    case DWG_TYPE_POLYLINE_3D:
+    case DWG_TYPE_POLYLINE_MESH:
+    case DWG_TYPE_POLYLINE_PFACE: {
       Dwg_Entity_POLYLINE_2D *o = ent->tio.POLYLINE_2D;
-      uint32_t i;
-      uint32_t written = 0;
+      uint32_t written;
+      BITCODE_BS flag = 0;
       if (!o) return 0;
-      /* Vertices are separate objects referenced by the polyline. */
-      for (i = 0; i < o->num_owned; i++) {
-        Dwg_Object *vertex_obj;
-        Dwg_Entity_VERTEX_2D *vertex;
-        if (!o->vertex || !o->vertex[i]) continue;
-        vertex_obj = o->vertex[i]->obj;
-        if (!vertex_obj || vertex_obj->supertype != DWG_SUPERTYPE_ENTITY) {
-          continue;
-        }
-        vertex = vertex_obj->tio.entity->tio.VERTEX_2D;
-        if (!vertex) continue;
-        coords_push2(g, vertex->point.x, vertex->point.y);
-        coords_push(g, vertex->bulge);
-        box_add(&bounds, vertex->point.x, vertex->point.y);
-        written++;
-      }
+      written = (uint32_t)push_owned_polyline_vertices(g, &bounds, o->vertex,
+                                                       o->num_owned);
       if (written == 0) return 0;
-      if (o->flag & 1) e.flags |= FCB_FLAG_CLOSED;
+      if (obj->fixedtype == DWG_TYPE_POLYLINE_2D) flag = o->flag;
+      else if (obj->fixedtype == DWG_TYPE_POLYLINE_3D && ent->tio.POLYLINE_3D)
+        flag = ent->tio.POLYLINE_3D->flag;
+      else if (obj->fixedtype == DWG_TYPE_POLYLINE_MESH &&
+               ent->tio.POLYLINE_MESH)
+        flag = ent->tio.POLYLINE_MESH->flag;
+      else if (obj->fixedtype == DWG_TYPE_POLYLINE_PFACE &&
+               ent->tio.POLYLINE_PFACE)
+        flag = ent->tio.POLYLINE_PFACE->flag;
+      if (flag & 1) e.flags |= FCB_FLAG_CLOSED;
       attach_geometry(s, &e);
       commit(s, &e, &bounds, owner_block, FCB_TYPE_POLYLINE);
       return 1;
@@ -1009,13 +1526,18 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
                               "name", &owned_style);
       }
       coords_push2(g, o->ins_pt.x, o->ins_pt.y);
+      box_add(&bounds, o->ins_pt.x, o->ins_pt.y);
       coords_push(g, o->height);
       coords_push(g, o->rotation);
       coords_push(g, o->width_factor == 0.0 ? 1.0 : o->width_factor);
       coords_push(g, o->oblique_angle);
+      /* Justified TEXT paints from alignment_pt, not the first corner. */
+      if (o->horiz_alignment != 0 || o->vert_alignment != 0) {
+        coords_push2(g, o->alignment_pt.x, o->alignment_pt.y);
+        box_add(&bounds, o->alignment_pt.x, o->alignment_pt.y);
+      }
       ints[0] = (int64_t)o->horiz_alignment;
       ints[1] = (int64_t)o->vert_alignment;
-      box_add(&bounds, o->ins_pt.x, o->ins_pt.y);
       e.int_offset = fcb_add_ints(s->b, ints, 2);
       e.int_count = 2;
       e.string_offset = fcb_append_string(s->b, value ? value : "");
@@ -1052,14 +1574,18 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
                               "name", &owned_style);
       }
       coords_push2(g, o->ins_pt.x, o->ins_pt.y);
+      box_add(&bounds, o->ins_pt.x, o->ins_pt.y);
       coords_push(g, o->height);
       coords_push(g, o->rotation);
       coords_push(g, o->width_factor == 0.0 ? 1.0 : o->width_factor);
       coords_push(g, o->oblique_angle);
+      if (o->horiz_alignment != 0 || o->vert_alignment != 0) {
+        coords_push2(g, o->alignment_pt.x, o->alignment_pt.y);
+        box_add(&bounds, o->alignment_pt.x, o->alignment_pt.y);
+      }
       ints[0] = (int64_t)o->horiz_alignment;
       ints[1] = (int64_t)o->vert_alignment;
       ints[2] = (int64_t)o->flags;
-      box_add(&bounds, o->ins_pt.x, o->ins_pt.y);
       e.int_offset = fcb_add_ints(s->b, ints, 3);
       e.int_count = 3;
       e.string_offset = fcb_append_string(s->b, value ? value : "");
@@ -1258,6 +1784,98 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       return 1;
     }
 
+    case DWG_TYPE_MULTILEADER: {
+      if (!import_multileader(s, ent->tio.MULTILEADER, &e, &bounds)) return 0;
+      commit(s, &e, &bounds, owner_block, FCB_TYPE_MLEADER);
+      return 1;
+    }
+
+    case DWG_TYPE__3DFACE: {
+      Dwg_Entity__3DFACE *o = ent->tio._3DFACE;
+      if (!o) return 0;
+      coords_push2(g, o->corner1.x, o->corner1.y);
+      coords_push2(g, o->corner2.x, o->corner2.y);
+      coords_push2(g, o->corner3.x, o->corner3.y);
+      if (!points_close(o->corner3.x, o->corner3.y, o->corner4.x,
+                        o->corner4.y)) {
+        coords_push2(g, o->corner4.x, o->corner4.y);
+      }
+      box_add_coords(&bounds, g, 2);
+      attach_geometry(s, &e);
+      commit(s, &e, &bounds, owner_block, FCB_TYPE_SOLID);
+      return 1;
+    }
+
+    case DWG_TYPE_MLINE: {
+      Dwg_Entity_MLINE *o = ent->tio.MLINE;
+      uint32_t i;
+      if (!o || !o->verts) return 0;
+      for (i = 0; i < o->num_verts; i++) {
+        coords_push2(g, o->verts[i].vertex.x, o->verts[i].vertex.y);
+        coords_push(g, 0.0);
+        box_add(&bounds, o->verts[i].vertex.x, o->verts[i].vertex.y);
+      }
+      if (g->length < 6) return 0;
+      attach_geometry(s, &e);
+      commit(s, &e, &bounds, owner_block, FCB_TYPE_POLYLINE);
+      return 1;
+    }
+
+    case DWG_TYPE_WIPEOUT: {
+      Dwg_Entity_WIPEOUT *o = ent->tio.WIPEOUT;
+      uint32_t i;
+      if (!o) return 0;
+      if (o->clip_verts && o->num_clip_verts >= 2) {
+        for (i = 0; i < o->num_clip_verts; i++) {
+          coords_push2(g, o->clip_verts[i].x, o->clip_verts[i].y);
+          coords_push(g, 0.0);
+          box_add(&bounds, o->clip_verts[i].x, o->clip_verts[i].y);
+        }
+      } else {
+        double ux = o->uvec.x * o->size.x;
+        double uy = o->uvec.y * o->size.x;
+        double vx = o->vvec.x * o->size.y;
+        double vy = o->vvec.y * o->size.y;
+        coords_push2(g, o->pt0.x, o->pt0.y);
+        coords_push(g, 0.0);
+        coords_push2(g, o->pt0.x + ux, o->pt0.y + uy);
+        coords_push(g, 0.0);
+        coords_push2(g, o->pt0.x + ux + vx, o->pt0.y + uy + vy);
+        coords_push(g, 0.0);
+        coords_push2(g, o->pt0.x + vx, o->pt0.y + vy);
+        coords_push(g, 0.0);
+        box_add_coords(&bounds, g, 3);
+      }
+      if (g->length < 6) return 0;
+      e.flags |= FCB_FLAG_CLOSED;
+      attach_geometry(s, &e);
+      commit(s, &e, &bounds, owner_block, FCB_TYPE_POLYLINE);
+      return 1;
+    }
+
+    case DWG_TYPE_HELIX: {
+      Dwg_Entity_HELIX *o = ent->tio.HELIX;
+      uint32_t i;
+      if (!o) return 0;
+      if (o->fit_pts && o->num_fit_pts >= 2) {
+        for (i = 0; i < o->num_fit_pts; i++) {
+          coords_push2(g, o->fit_pts[i].x, o->fit_pts[i].y);
+          coords_push(g, 0.0);
+          box_add(&bounds, o->fit_pts[i].x, o->fit_pts[i].y);
+        }
+      } else if (o->ctrl_pts && o->num_ctrl_pts >= 2) {
+        for (i = 0; i < o->num_ctrl_pts; i++) {
+          coords_push2(g, o->ctrl_pts[i].x, o->ctrl_pts[i].y);
+          coords_push(g, 0.0);
+          box_add(&bounds, o->ctrl_pts[i].x, o->ctrl_pts[i].y);
+        }
+      }
+      if (g->length < 6) return 0;
+      attach_geometry(s, &e);
+      commit(s, &e, &bounds, owner_block, FCB_TYPE_POLYLINE);
+      return 1;
+    }
+
     default: {
       const char *dimension_name = dimension_type_name(obj->fixedtype);
       if (dimension_name) {
@@ -1274,7 +1892,7 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
 
         if (!o) return 0;
         block_ref = dyn_handle(o, dimension_name, "block");
-        block = hmap_get(&s->block_index, ref_handle(block_ref), 0xFFFFFFFFu);
+        block = block_index_from_ref(s, block_ref, obj);
         if (block != 0xFFFFFFFFu && block < s->block_count) {
           block_name = s->block_names[block];
         }
@@ -1315,16 +1933,41 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       }
 
       /* Anything else becomes a proxy so it stays visible in the drawing tree
-       * and survives a save instead of silently disappearing. */
-      s->skipped++;
-      coords_push2(g, 0.0, 0.0);
-      coords_push2(g, 0.0, 0.0);
-      e.string_offset =
-          fcb_append_string(s->b, obj->dxfname ? obj->dxfname : "UNKNOWN");
-      e.string_count = 1;
-      attach_geometry(s, &e);
-      commit(s, &e, &bounds, owner_block, FCB_TYPE_UNKNOWN);
-      return 1;
+       * and survives a save instead of silently disappearing. Prefer isoline
+       * wires from ACIS bodies when LibreDWG decoded them. */
+      {
+        const char *type_name = obj->dxfname ? obj->dxfname : "UNKNOWN";
+        int64_t runs[64];
+        uint32_t run_count = 0;
+        Dwg_Entity__3DSOLID *solid = NULL;
+        if (obj->fixedtype == DWG_TYPE_REGION) solid = ent->tio.REGION;
+        else if (obj->fixedtype == DWG_TYPE__3DSOLID) solid = ent->tio._3DSOLID;
+        else if (obj->fixedtype == DWG_TYPE_BODY) solid = ent->tio.BODY;
+        if (solid) {
+          run_count = extract_acis_wires(g, &bounds, runs, 64, solid);
+        }
+        if (run_count == 0) {
+          note_proxy(s, type_name);
+          coords_push2(g, 0.0, 0.0);
+          coords_push2(g, 0.0, 0.0);
+        } else {
+          uint32_t stroke_len = g->length;
+          uint32_t i;
+          for (i = 0; i < 4; i++) coords_push(g, 0.0);
+          memmove(g->data + 4, g->data, stroke_len * sizeof(double));
+          g->data[0] = bounds.min_x;
+          g->data[1] = bounds.min_y;
+          g->data[2] = bounds.max_x;
+          g->data[3] = bounds.max_y;
+          e.int_offset = fcb_add_ints(s->b, runs, run_count);
+          e.int_count = run_count;
+        }
+        e.string_offset = fcb_append_string(s->b, type_name);
+        e.string_count = 1;
+        attach_geometry(s, &e);
+        commit(s, &e, &bounds, owner_block, FCB_TYPE_UNKNOWN);
+        return 1;
+      }
     }
   }
 }
@@ -1636,6 +2279,10 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
     status = FC_STATUS_OUT_OF_MEMORY;
     goto cleanup;
   }
+  if (!index_referenced_dimension_blocks(&state)) {
+    status = FC_STATUS_OUT_OF_MEMORY;
+    goto cleanup;
+  }
   if (!index_owned_entities(&state)) {
     status = FC_STATUS_OUT_OF_MEMORY;
     goto cleanup;
@@ -1680,6 +2327,11 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
     }
     if (handle) hmap_put(&seen_handles, handle, 1);
     candidates[candidate_count++] = i;
+  }
+
+  if (!reindex_live_dimension_blocks(&state, candidates, candidate_count)) {
+    status = FC_STATUS_OUT_OF_MEMORY;
+    goto cleanup;
   }
 
   for (i = 0; i < candidate_count; i++) {
@@ -1766,14 +2418,22 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
     fcb_add_header_variable(b, "$DIMSCALE", buffer);
     fcb_add_header_variable(b, "$ACADVER",
                            dwg_version_type(dwg.header.version));
+    snprintf(buffer, sizeof(buffer), "%u", (unsigned)dwg.header.codepage);
+    fcb_add_header_variable(b, "$DWGCODEPAGE", buffer);
   }
 
   if (state.skipped > 0) {
+    uint32_t t;
     snprintf(message, sizeof(message),
              "%u object(s) were imported as proxies because their type is not "
              "supported yet",
              state.skipped);
     fcb_diagnose(b, message);
+    for (t = 0; t < state.proxy_tally_count; t++) {
+      snprintf(message, sizeof(message), "%u %s object(s) have no drawable geometry",
+               state.proxies[t].count, state.proxies[t].name);
+      fcb_diagnose(b, message);
+    }
   }
   if (state.unsupported_hatch_segments > 0) {
     snprintf(message, sizeof(message),
@@ -1790,6 +2450,7 @@ cleanup:
   free(layout_blocks);
   hmap_dispose(&seen_handles);
   hmap_dispose(&state.entity_block);
+  hmap_dispose(&state.referenced_dimension_blocks);
   free(state.block_base_x);
   free(state.block_base_y);
   if (state.block_names) {

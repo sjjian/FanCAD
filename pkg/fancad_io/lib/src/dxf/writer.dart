@@ -445,6 +445,24 @@ class DxfWriter {
           pair(20, entity.vertices[i * 2 + 1]);
           pair(30, 0);
         }
+      case MLeaderEntity():
+        pair(0, 'MULTILEADER');
+        _common(pair, entity, paperSpace: paperSpace);
+        pair(3, entity.styleName);
+        pair(1, entity.content);
+        pair(40, entity.textHeight);
+        if (entity.textRotation != 0) {
+          pair(50, entity.textRotation * 180 / math.pi);
+        }
+        pair(71, entity.hasArrowHead ? 1 : 0);
+        pair(11, entity.textPosition.x);
+        pair(21, entity.textPosition.y);
+        pair(31, 0);
+        for (var i = 0; i < entity.vertices.length ~/ 2; i++) {
+          pair(10, entity.vertices[i * 2]);
+          pair(20, entity.vertices[i * 2 + 1]);
+          pair(30, 0);
+        }
       case AttdefEntity():
         pair(0, 'ATTDEF');
         _common(pair, entity, paperSpace: paperSpace);

@@ -63,6 +63,7 @@
 #define FCB_TYPE_IMAGE 17
 #define FCB_TYPE_ATTDEF 18
 #define FCB_TYPE_ATTRIB 19
+#define FCB_TYPE_MLEADER 20
 
 /* Entity flags. */
 #define FCB_FLAG_CLOSED (1u << 0)

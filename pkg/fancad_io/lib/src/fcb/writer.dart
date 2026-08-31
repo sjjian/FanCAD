@@ -606,6 +606,29 @@ class FcbWriter {
           flags: entity.hasArrowHead ? FcbFlags.arrowHead : 0,
         );
 
+      case MLeaderEntity():
+        final (stringOffset, stringCount) = _strings.internRun([
+          entity.content,
+          entity.styleName,
+        ]);
+        return _Payload(
+          geomOffset: _doubles.addAll([
+            ...entity.vertices,
+            entity.textPosition.x,
+            entity.textPosition.y,
+            entity.textHeight,
+            entity.textRotation,
+          ]),
+          geomCount: entity.vertices.length + 4,
+          intOffset: entity.pathLengths.isEmpty
+              ? 0
+              : _ints.addAll(entity.pathLengths),
+          intCount: entity.pathLengths.length,
+          stringOffset: stringOffset,
+          stringCount: stringCount,
+          flags: entity.hasArrowHead ? FcbFlags.arrowHead : 0,
+        );
+
       case SolidEntity(:final corners):
         return _geom([
           for (final corner in corners) ...[corner.x, corner.y],
@@ -635,7 +658,12 @@ class FcbWriter {
           stringCount: stringCount,
         );
 
-      case UnknownEntity(:final originalType, :final proxyBounds):
+      case UnknownEntity(
+        :final originalType,
+        :final proxyBounds,
+        :final strokes,
+        :final strokeCounts,
+      ):
         final (stringOffset, stringCount) = _strings.internRun([originalType]);
         return _Payload(
           geomOffset: _doubles.addAll([
@@ -643,8 +671,11 @@ class FcbWriter {
             proxyBounds.isEmpty ? 0 : proxyBounds.minY,
             proxyBounds.isEmpty ? 0 : proxyBounds.maxX,
             proxyBounds.isEmpty ? 0 : proxyBounds.maxY,
+            ...strokes,
           ]),
-          geomCount: 4,
+          geomCount: 4 + strokes.length,
+          intOffset: strokeCounts.isEmpty ? 0 : _ints.addAll(strokeCounts),
+          intCount: strokeCounts.length,
           stringOffset: stringOffset,
           stringCount: stringCount,
         );
@@ -1112,6 +1143,7 @@ class FcbWriter {
     EntityKind.hatch => FcbType.hatch,
     EntityKind.dimension => FcbType.dimension,
     EntityKind.leader => FcbType.leader,
+    EntityKind.mleader => FcbType.mleader,
     EntityKind.solid => FcbType.solid,
     EntityKind.ray => FcbType.ray,
     EntityKind.xline => FcbType.xline,

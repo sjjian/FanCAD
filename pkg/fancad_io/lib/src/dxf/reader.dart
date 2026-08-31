@@ -470,14 +470,28 @@ class DxfReader {
           constantWidth: n(43),
         );
       case 'TEXT':
+        final hAlign = int.tryParse(v[72] ?? '0') ?? 0;
+        final vAlign = int.tryParse(v[73] ?? '0') ?? 0;
+        final justified = hAlign != 0 || vAlign != 0;
         return TextEntity(
           id: id,
           props: props,
-          position: Vec2(n(10), n(20)),
+          position: Vec2(
+            justified ? n(11, n(10)) : n(10),
+            justified ? n(21, n(20)) : n(20),
+          ),
           content: v[1] ?? '',
           height: n(40, 2.5),
           rotation: n(50) * math.pi / 180,
           styleName: v[7] ?? 'Standard',
+          widthFactor: n(41, 1) == 0 ? 1 : n(41, 1),
+          obliqueAngle: n(51) * math.pi / 180,
+          hAlign: hAlign >= 0 && hAlign < TextHAlign.values.length
+              ? TextHAlign.values[hAlign]
+              : TextHAlign.left,
+          vAlign: vAlign >= 0 && vAlign < TextVAlign.values.length
+              ? TextVAlign.values[vAlign]
+              : TextVAlign.baseline,
         );
       case 'HATCH':
         return _hatch(id, props, pairs, v);
@@ -494,31 +508,59 @@ class DxfReader {
         );
       case 'ATTDEF':
         final flags = int.tryParse(v[70] ?? '0') ?? 0;
+        final attdefH = int.tryParse(v[72] ?? '0') ?? 0;
+        final attdefV = int.tryParse(v[74] ?? '0') ?? 0;
+        final attdefJustified = attdefH != 0 || attdefV != 0;
         return AttdefEntity(
           id: id,
           props: props,
-          position: Vec2(n(10), n(20)),
+          position: Vec2(
+            attdefJustified ? n(11, n(10)) : n(10),
+            attdefJustified ? n(21, n(20)) : n(20),
+          ),
           defaultValue: v[1] ?? '',
           tag: v[2] ?? '',
           prompt: v[3] ?? '',
           height: n(40, 2.5),
           rotation: n(50) * math.pi / 180,
           styleName: v[7] ?? 'Standard',
+          widthFactor: n(41, 1) == 0 ? 1 : n(41, 1),
+          obliqueAngle: n(51) * math.pi / 180,
+          hAlign: attdefH >= 0 && attdefH < TextHAlign.values.length
+              ? TextHAlign.values[attdefH]
+              : TextHAlign.left,
+          vAlign: attdefV >= 0 && attdefV < TextVAlign.values.length
+              ? TextVAlign.values[attdefV]
+              : TextVAlign.baseline,
           invisible: flags & 1 != 0,
           constant: flags & 2 != 0,
           verify: flags & 4 != 0,
           preset: flags & 8 != 0,
         );
       case 'ATTRIB':
+        final attribH = int.tryParse(v[72] ?? '0') ?? 0;
+        final attribV = int.tryParse(v[74] ?? '0') ?? 0;
+        final attribJustified = attribH != 0 || attribV != 0;
         return AttribEntity(
           id: id,
           props: props,
-          position: Vec2(n(10), n(20)),
+          position: Vec2(
+            attribJustified ? n(11, n(10)) : n(10),
+            attribJustified ? n(21, n(20)) : n(20),
+          ),
           value: v[1] ?? '',
           tag: v[2] ?? '',
           height: n(40, 2.5),
           rotation: n(50) * math.pi / 180,
           styleName: v[7] ?? 'Standard',
+          widthFactor: n(41, 1) == 0 ? 1 : n(41, 1),
+          obliqueAngle: n(51) * math.pi / 180,
+          hAlign: attribH >= 0 && attribH < TextHAlign.values.length
+              ? TextHAlign.values[attribH]
+              : TextHAlign.left,
+          vAlign: attribV >= 0 && attribV < TextVAlign.values.length
+              ? TextVAlign.values[attribV]
+              : TextVAlign.baseline,
           invisible: (int.tryParse(v[70] ?? '0') ?? 0) & 1 != 0,
         );
       case 'INSERT':
@@ -609,6 +651,24 @@ class DxfReader {
           props: props,
           vertices: vertices,
           hasArrowHead: (int.tryParse(v[71] ?? '1') ?? 1) != 0,
+          styleName: v[3] ?? 'Standard',
+        );
+      case 'MULTILEADER':
+        if (xs.isEmpty) return null;
+        final vertices = Float64List(xs.length * 2);
+        for (var i = 0; i < xs.length; i++) {
+          vertices[i * 2] = xs[i];
+          vertices[i * 2 + 1] = i < ys.length ? ys[i] : 0;
+        }
+        return MLeaderEntity(
+          id: id,
+          props: props,
+          vertices: vertices,
+          hasArrowHead: (int.tryParse(v[71] ?? '1') ?? 1) != 0,
+          content: v[1] ?? '',
+          textPosition: Vec2(n(11, vertices[vertices.length - 2]), n(21, vertices.last)),
+          textHeight: n(40, 2.5) <= 0 ? 2.5 : n(40, 2.5),
+          textRotation: n(50) * math.pi / 180,
           styleName: v[3] ?? 'Standard',
         );
       case 'IMAGE':

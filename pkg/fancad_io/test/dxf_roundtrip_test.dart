@@ -462,10 +462,10 @@ void main() {
     final original = CadDocument();
     original
       ..addEntity(
-        const UnknownEntity(
+        UnknownEntity(
           id: 0,
           originalType: 'ACAD_PROXY',
-          proxyBounds: Bounds2(10, 10, 20, 20),
+          proxyBounds: const Bounds2(10, 10, 20, 20),
         ),
       )
       ..addEntity(const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(5, 0)));
