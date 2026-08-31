@@ -54,20 +54,50 @@ final class SplineEntity extends CadEntity {
 
   int get controlPointCount => controlPoints.length ~/ 2;
 
+  int get fitPointCount => fitPointBuffer.length ~/ 2;
+
+  /// Control polygon used to draw and measure. Stored controls win; a
+  /// fit-only spline interpolates them without writing them back.
+  _SplineGeom get _geom {
+    if (controlPointCount >= 2) {
+      return _SplineGeom(controlPoints, knots, weights, degree);
+    }
+    final fits = <Vec2>[
+      for (var i = 0; i + 1 < fitPointBuffer.length; i += 2)
+        Vec2(fitPointBuffer[i], fitPointBuffer[i + 1]),
+    ];
+    final interpolated = Flatten.interpolateFit(fits);
+    if (interpolated == null) {
+      return _SplineGeom(controlPoints, knots, weights, degree);
+    }
+    return _SplineGeom(
+      interpolated.controlPoints,
+      interpolated.knots,
+      const [],
+      interpolated.degree,
+    );
+  }
+
+  Float64List _centreline(double tolerance) {
+    final geom = _geom;
+    if (geom.controlPoints.length < 4) return Float64List(0);
+    return Flatten.bspline(
+      controlPoints: geom.controlPoints,
+      knots: geom.knots,
+      degree: geom.degree,
+      weights: geom.weights,
+      tolerance: tolerance,
+      closed: closed,
+    );
+  }
+
   @override
   EntityKind get kind => EntityKind.spline;
 
   @override
   void emit(EmitContext context, GeometrySink sink) {
-    if (controlPointCount == 0) return;
-    final points = Flatten.bspline(
-      controlPoints: controlPoints,
-      knots: knots,
-      degree: degree,
-      weights: weights,
-      tolerance: context.tolerance,
-      closed: closed,
-    );
+    final points = _centreline(context.tolerance);
+    if (points.length < 4) return;
     sink.polyline(
       context.applyBuffer(points),
       context.styleFor(props),
@@ -112,24 +142,30 @@ final class SplineEntity extends CadEntity {
   );
 
   @override
-  List<Vec2> grips() => [
-    for (var i = 0; i < controlPointCount; i++)
-      Vec2(controlPoints[i * 2], controlPoints[i * 2 + 1]),
-  ];
+  List<Vec2> grips() {
+    final geom = _geom;
+    final count = geom.controlPoints.length ~/ 2;
+    return [
+      for (var i = 0; i < count; i++)
+        Vec2(geom.controlPoints[i * 2], geom.controlPoints[i * 2 + 1]),
+    ];
+  }
 
   @override
   SplineEntity withGrip(int index, Vec2 target) {
-    if (index < 0 || index >= controlPointCount) return this;
-    final out = Float64List.fromList(controlPoints);
+    final geom = _geom;
+    final count = geom.controlPoints.length ~/ 2;
+    if (index < 0 || index >= count) return this;
+    final out = Float64List.fromList(geom.controlPoints);
     out[index * 2] = target.x;
     out[index * 2 + 1] = target.y;
     return SplineEntity(
       id: id,
       props: props,
       controlPoints: out,
-      knots: knots,
-      weights: weights,
-      degree: degree,
+      knots: geom.knots,
+      weights: geom.weights,
+      degree: geom.degree,
       closed: closed,
       fitPoints: fitPoints,
     );
@@ -140,14 +176,7 @@ final class SplineEntity extends CadEntity {
   /// keep editing.
   @override
   CadEntity? offsetBy(double distance, Vec2 towards) {
-    final xy = Flatten.bspline(
-      controlPoints: controlPoints,
-      knots: knots,
-      degree: degree,
-      weights: weights,
-      tolerance: 1e-3,
-      closed: closed,
-    );
+    final xy = _centreline(1e-3);
     final points = <Vec2>[
       for (var i = 0; i + 1 < xy.length; i += 2) Vec2(xy[i], xy[i + 1]),
     ];
@@ -199,14 +228,7 @@ final class SplineEntity extends CadEntity {
 
   @override
   double get pathLength {
-    final xy = Flatten.bspline(
-      controlPoints: controlPoints,
-      knots: knots,
-      degree: degree,
-      weights: weights,
-      tolerance: 1e-3,
-      closed: closed,
-    );
+    final xy = _centreline(1e-3);
     var total = 0.0;
     final count = xy.length ~/ 2;
     final segments = closed ? count : count - 1;
@@ -220,4 +242,18 @@ final class SplineEntity extends CadEntity {
 
   @override
   Map<String, Object?> geometryToJson() => _$SplineEntityToJson(this);
+}
+
+class _SplineGeom {
+  const _SplineGeom(
+    this.controlPoints,
+    this.knots,
+    this.weights,
+    this.degree,
+  );
+
+  final Float64List controlPoints;
+  final List<double> knots;
+  final List<double> weights;
+  final int degree;
 }

@@ -21,6 +21,26 @@ void main() {
     expect(spline.pathLength, 0);
   });
 
+  test('a fit-only spline still emits a centreline', () {
+    final spline = SplineEntity(
+      id: 1,
+      controlPoints: Float64List(0),
+      fitPoints: Float64List.fromList([0, 0, 2, 3, 5, 1, 8, 0]),
+    );
+    final sink = PolylineSink();
+    spline.emit(const EmitContext(tolerance: 0.1), sink);
+    expect(sink.polylines, isNotEmpty);
+    expect(sink.polylines.first.length, greaterThan(4));
+    expect(spline.pathLength, greaterThan(0));
+  });
+
+  test('a spline with no controls and no fit points still emits nothing', () {
+    final spline = SplineEntity(id: 1, controlPoints: Float64List(0));
+    final sink = PolylineSink();
+    spline.emit(const EmitContext(tolerance: 0.1), sink);
+    expect(sink.isEmpty, isTrue);
+  });
+
   test('a window miss cannot invent a spline stretch', () {
     final spline = SplineEntity(
       id: 1,
