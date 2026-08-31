@@ -107,6 +107,7 @@ class SceneBuilder {
     TessellationCache? cache,
     ParagraphCache? paragraphs,
     DrawingFontMap? fonts,
+    this.shxFonts = const ShxFontTable(),
   }) : cache = cache ?? TessellationCache(),
        paragraphs = paragraphs ?? ParagraphCache(),
        fonts = fonts ?? const DrawingFontMap();
@@ -115,6 +116,9 @@ class SceneBuilder {
   final TessellationCache cache;
   final ParagraphCache paragraphs;
   final DrawingFontMap fonts;
+
+  /// Parsed SHX faces. Empty keeps the TTF fallback for every STYLE.
+  final ShxFontTable shxFonts;
 
   /// Entities whose on-screen bounding box is smaller than this collapse to a
   /// single pixel. At a zoomed-out view of a large drawing this removes most of
@@ -165,6 +169,7 @@ class SceneBuilder {
     final context = document.emitContext(
       tolerance: tolerance,
       clip: visible,
+      shxFonts: shxFonts,
       measureWidth: (text, height) => paragraphs.measureWidth(
         text,
         height: height,
@@ -202,6 +207,7 @@ class SceneBuilder {
             clip: viewportWindow.modelWindow,
             transform: viewportWindow.modelToPaper(),
             measureWidth: context.measureWidth,
+            shxFonts: shxFonts,
           );
           final model = _emitBlock(
             document: document,
