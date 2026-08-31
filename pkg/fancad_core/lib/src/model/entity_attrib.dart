@@ -72,20 +72,19 @@ final class AttribEntity extends CadEntity {
   @override
   void emit(EmitContext context, GeometrySink sink) {
     if (invisible || value.isEmpty) return;
-    sink.text(
-      composeEmittedText(
-        context: context,
-        text: expandDxfTextCodes(value),
-        origin: position,
-        height: height,
-        rotation: rotation,
-        styleName: styleName,
-        widthFactor: widthFactor,
-        obliqueAngle: obliqueAngle,
-        hAlign: hAlign,
-        vAlign: vAlign,
-      ),
-      context.styleFor(props),
+    emitStyledText(
+      context: context,
+      sink: sink,
+      style: context.styleFor(props),
+      text: expandDxfTextCodes(value),
+      origin: position,
+      height: height,
+      rotation: rotation,
+      styleName: styleName,
+      widthFactor: widthFactor,
+      obliqueAngle: obliqueAngle,
+      hAlign: hAlign,
+      vAlign: vAlign,
     );
   }
 

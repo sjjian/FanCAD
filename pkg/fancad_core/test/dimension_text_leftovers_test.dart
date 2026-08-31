@@ -52,6 +52,40 @@ void main() {
     expect(sink.texts.single.text, '40');
   });
 
+  test('an SHX table strokes the measurement instead of TextGeometry', () {
+    final sink = PolylineSink();
+    const graphics = DimensionGraphics();
+    graphics.emit(
+      const DimensionEntity(
+        id: 1,
+        measurement: 4,
+        overrideText: 'A',
+      ),
+      EmitContext(
+        tolerance: 0.1,
+        shxFonts: ShxFontTable({
+          'txt': ShxFont(
+            header: 'txt',
+            above: 1,
+            glyphs: {
+              65: const ShxGlyph(
+                code: 65,
+                name: 'A',
+                commands: [
+                  ShxDraw(to: Vec2.zero(), penDown: true),
+                  ShxDraw(to: Vec2(1, 1), penDown: true),
+                ],
+              ),
+            },
+          ),
+        }),
+      ),
+      sink,
+    );
+    expect(sink.texts, isEmpty);
+    expect(sink.polylines, isNotEmpty);
+  });
+
   test('a suppressed override cannot invent dimension text', () {
     final sink = PolylineSink();
     const graphics = DimensionGraphics();

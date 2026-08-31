@@ -347,8 +347,8 @@ abstract class TextStyleDef with _$TextStyleDef {
 
   static const TextStyleDef standard = TextStyleDef(name: 'Standard');
 
-  /// SHX fonts need a dedicated stroke-font renderer; until that lands the
-  /// renderer substitutes a TTF face for these styles.
+  /// SHX styles stroke through the emit context's font table when that face
+  /// is loaded; otherwise the renderer substitutes a TTF face.
   bool get isShxFont =>
       fontFamily.toLowerCase().endsWith('.shx') ||
       const {'txt', 'simplex', 'romans', 'italic', 'monotxt'}

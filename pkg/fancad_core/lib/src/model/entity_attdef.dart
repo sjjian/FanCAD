@@ -103,20 +103,19 @@ final class AttdefEntity extends CadEntity {
         ? (context.attributeValues![tag] ?? defaultValue)
         : displayText;
     if (text.isEmpty) return;
-    sink.text(
-      composeEmittedText(
-        context: context,
-        text: expandDxfTextCodes(text),
-        origin: position,
-        height: height,
-        rotation: rotation,
-        styleName: styleName,
-        widthFactor: widthFactor,
-        obliqueAngle: obliqueAngle,
-        hAlign: hAlign,
-        vAlign: vAlign,
-      ),
-      context.styleFor(props),
+    emitStyledText(
+      context: context,
+      sink: sink,
+      style: context.styleFor(props),
+      text: expandDxfTextCodes(text),
+      origin: position,
+      height: height,
+      rotation: rotation,
+      styleName: styleName,
+      widthFactor: widthFactor,
+      obliqueAngle: obliqueAngle,
+      hAlign: hAlign,
+      vAlign: vAlign,
     );
   }
 

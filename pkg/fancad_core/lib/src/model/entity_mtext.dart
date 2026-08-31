@@ -89,26 +89,25 @@ final class MTextEntity extends CadEntity {
           ? style
           : style.copyWith(color: CadColor.indexed(run.color!));
       if (run.text.isNotEmpty) {
-        sink.text(
-          composeEmittedText(
-            context: context,
-            text: expandDxfTextCodes(run.text),
-            origin: origin,
-            height: run.height,
-            rotation: rotation,
-            styleName: styleName,
-            widthFactor: run.widthFactor,
-            obliqueAngle: run.obliqueAngle,
-            tracking: run.tracking,
-            hAlign: run.hAlign ?? hAlign,
-            vAlign: vAlign,
-            anchor: TextAnchor.box,
-            fontOverride: run.font.isEmpty ? null : run.font,
-            underline: run.underline,
-            overline: run.overline,
-            strike: run.strike,
-          ),
-          runStyle,
+        emitStyledText(
+          context: context,
+          sink: sink,
+          style: runStyle,
+          text: expandDxfTextCodes(run.text),
+          origin: origin,
+          height: run.height,
+          rotation: rotation,
+          styleName: styleName,
+          widthFactor: run.widthFactor,
+          obliqueAngle: run.obliqueAngle,
+          tracking: run.tracking,
+          hAlign: run.hAlign ?? hAlign,
+          vAlign: vAlign,
+          anchor: TextAnchor.box,
+          fontOverride: run.font.isEmpty ? null : run.font,
+          underline: run.underline,
+          overline: run.overline,
+          strike: run.strike,
         );
       }
       final from = run.barFrom;

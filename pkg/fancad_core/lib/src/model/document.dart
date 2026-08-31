@@ -813,14 +813,26 @@ class CadDocument implements BlockLookup, StyleResolver {
     Bounds2? clip,
     Mat3 transform = const Mat3.identity(),
     double Function(String text, double height)? measureWidth,
-  }) => EmitContext(
-    tolerance: tolerance,
-    transform: transform,
-    blocks: this,
-    styles: this,
-    clip: clip,
-    measureWidth: measureWidth,
-  );
+    ShxFontTable shxFonts = const ShxFontTable(),
+  }) {
+    final style = textStyle('Standard');
+    final shx = shxFonts.lookup(style.fontFamily);
+    return EmitContext(
+      tolerance: tolerance,
+      transform: transform,
+      blocks: this,
+      styles: this,
+      clip: clip,
+      shxFonts: shxFonts,
+      measureWidth: (shx != null)
+          ? (text, height) => shx.measureWidth(
+              text,
+              height: height,
+              widthFactor: style.widthFactor,
+            )
+          : measureWidth,
+    );
+  }
 
   /// Drops every cached index and bounds. Used after a bulk import.
   void invalidateCaches() {
