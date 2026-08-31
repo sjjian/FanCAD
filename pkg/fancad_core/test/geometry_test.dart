@@ -318,6 +318,12 @@ void main() {
           measurement: 10,
         ),
         LeaderEntity(id: 13, vertices: Float64List.fromList([0, 0, 5, 5])),
+        MLeaderEntity(
+          id: 21,
+          vertices: Float64List.fromList([0, 0, 5, 5]),
+          content: 'N',
+          textPosition: const Vec2(5, 5),
+        ),
         SolidEntity(
           id: 14,
           corners: const [Vec2.zero(), Vec2(1, 0), Vec2(1, 1)],

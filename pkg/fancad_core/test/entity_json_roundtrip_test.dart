@@ -111,6 +111,13 @@ void main() {
         vertices: Float64List.fromList([0, 0, 4, 4, 8, 4]),
         hasArrowHead: false,
       ),
+      MLeaderEntity(
+        id: 21,
+        vertices: Float64List.fromList([0, 0, 6, 6, 12, 6]),
+        content: 'ML',
+        textPosition: const Vec2(12, 6),
+        textHeight: 2.5,
+      ),
       const SolidEntity(
         id: 11,
         corners: [Vec2.zero(), Vec2(4, 0), Vec2(4, 3), Vec2(0, 3)],
@@ -132,10 +139,10 @@ void main() {
         uVector: Vec2(10, 0),
         vVector: Vec2(0, 8),
       ),
-      const UnknownEntity(
+      UnknownEntity(
         id: 15,
         originalType: 'ACAD_PROXY',
-        proxyBounds: Bounds2(1, 2, 3, 4),
+        proxyBounds: const Bounds2(1, 2, 3, 4),
       ),
     ];
 

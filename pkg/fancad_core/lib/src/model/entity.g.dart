@@ -105,6 +105,19 @@ Map<String, dynamic> _$LeaderEntityToJson(LeaderEntity instance) =>
       'style': instance.styleName,
     };
 
+Map<String, dynamic> _$MLeaderEntityToJson(MLeaderEntity instance) =>
+    <String, dynamic>{
+      'vertices': pointBufferToJson(instance.vertices),
+      if (idListToJsonIfNotEmpty(instance.pathLengths) case final value?)
+        'pathLengths': value,
+      'arrowHead': instance.hasArrowHead,
+      if (omitEmptyString(instance.content) case final value?) 'text': value,
+      'textPosition': vec2ToJson(instance.textPosition),
+      if (omitZero(instance.textHeight) case final value?) 'height': value,
+      if (omitZero(instance.textRotation) case final value?) 'rotation': value,
+      'style': instance.styleName,
+    };
+
 Map<String, dynamic> _$HatchEntityToJson(
   HatchEntity instance,
 ) => <String, dynamic>{
@@ -155,4 +168,8 @@ Map<String, dynamic> _$UnknownEntityToJson(UnknownEntity instance) =>
       'originalType': instance.originalType,
       if (proxyBoundsToJson(instance.proxyBounds) case final value?)
         'proxyBounds': value,
+      if (pointBufferToJsonIfNotEmpty(instance.strokes) case final value?)
+        'strokes': value,
+      if (idListToJsonIfNotEmpty(instance.strokeCounts) case final value?)
+        'strokeCounts': value,
     };
