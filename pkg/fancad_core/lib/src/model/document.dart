@@ -441,10 +441,36 @@ class CadDocument implements BlockLookup, StyleResolver {
   }
 
   @override
-  DimStyleDef dimStyle(String name) =>
-      namedDimStyle(name) ??
-      namedDimStyle('Standard') ??
-      DimStyleDef.standard;
+  DimStyleDef dimStyle(String name) {
+    final found = namedDimStyle(name) ??
+        namedDimStyle('Standard') ??
+        DimStyleDef.standard;
+    // DWG import writes $DIMSCALE on the header but not a DIMSTYLE table.
+    // A style that still has the identity scale borrows that factor so a
+    // regenerated or fallback measurement is not 2.5 units on a 35-unit drawing.
+    if ((found.scale - 1).abs() > 1e-12) return found;
+    final raw = _headerVariables[r'$DIMSCALE'];
+    if (raw == null || raw.isEmpty) return found;
+    final headerScale = double.tryParse(raw);
+    if (headerScale == null ||
+        headerScale <= 0 ||
+        !headerScale.isFinite ||
+        (headerScale - 1).abs() < 1e-12) {
+      return found;
+    }
+    return found.copyWith(scale: headerScale);
+  }
+
+  @override
+  TextStyleDef textStyle(String name) {
+    final direct = _textStyles[name];
+    if (direct != null) return direct;
+    final needle = name.toLowerCase();
+    for (final style in _textStyles.values) {
+      if (style.name.toLowerCase() == needle) return style;
+    }
+    return _textStyles['Standard'] ?? TextStyleDef.standard;
+  }
 
   /// Removes a dimension style. Refuses to drop Standard.
   DimStyleDef? removeDimStyle(String name) {
@@ -733,11 +759,13 @@ class CadDocument implements BlockLookup, StyleResolver {
       _ => props.lineType,
     };
 
-    var lineWeight = props.lineWeight;
+    var lineWeight = LineWeight.normalize(props.lineWeight);
     if (lineWeight == LineWeight.byLayer) {
-      lineWeight = layerDef?.lineWeight ?? LineWeight.byDefault;
+      lineWeight = LineWeight.normalize(
+        layerDef?.lineWeight ?? LineWeight.byDefault,
+      );
     } else if (lineWeight == LineWeight.byBlock) {
-      lineWeight = inherited.lineWeight;
+      lineWeight = LineWeight.normalize(inherited.lineWeight);
     }
     if (lineWeight == LineWeight.byDefault) lineWeight = LineWeight.zero;
 
