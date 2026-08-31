@@ -20,9 +20,12 @@ class Plotter {
     Layout? layout,
     Bounds2? window,
     double strokeWidth = 0.25,
+    ShxFontTable shxFonts = const ShxFontTable(),
   }) {
     final sink = _SvgSink(strokeWidth: strokeWidth);
-    return sink.finish(_paint(document, sink, layout: layout, window: window));
+    return sink.finish(
+      _paint(document, sink, layout: layout, window: window, shxFonts: shxFonts),
+    );
   }
 
   /// Vector PDF of the active (or given) layout. Paper size is the MediaBox;
@@ -32,9 +35,12 @@ class Plotter {
     Layout? layout,
     Bounds2? window,
     double strokeWidth = 0.25,
+    ShxFontTable shxFonts = const ShxFontTable(),
   }) {
     final sink = _PdfSink(strokeWidth: strokeWidth);
-    return sink.finish(_paint(document, sink, layout: layout, window: window));
+    return sink.finish(
+      _paint(document, sink, layout: layout, window: window, shxFonts: shxFonts),
+    );
   }
 
   Bounds2 _paint(
@@ -42,6 +48,7 @@ class Plotter {
     _PlotSink sink, {
     Layout? layout,
     Bounds2? window,
+    ShxFontTable shxFonts = const ShxFontTable(),
   }) {
     final target = layout ?? document.activeLayout;
     sink.plotRotation = target.plotRotation;
@@ -64,6 +71,7 @@ class Plotter {
     final context = document.emitContext(
       tolerance: padded.diagonal / 2000,
       clip: padded,
+      shxFonts: shxFonts,
     );
 
     if (target.isModelSpace) {
