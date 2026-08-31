@@ -186,17 +186,17 @@ class DimensionGraphics {
     DimStyleDef dim,
   ) {
     if (entity.overrideText == ' ') return;
-    sink.text(
-      TextGeometry(
-        text: entity.displayTextFor(dim),
-        origin: context.apply(entity.textPosition),
-        height: dim.scaledTextHeight,
-        rotation: 0,
-        styleName: dim.textStyle,
-        hAlign: TextHAlign.center,
-        vAlign: TextVAlign.middle,
-      ),
-      style,
+    emitStyledText(
+      context: context,
+      sink: sink,
+      style: style,
+      text: entity.displayTextFor(dim),
+      origin: entity.textPosition,
+      height: dim.scaledTextHeight,
+      rotation: 0,
+      styleName: dim.textStyle,
+      hAlign: TextHAlign.center,
+      vAlign: TextVAlign.middle,
     );
   }
 

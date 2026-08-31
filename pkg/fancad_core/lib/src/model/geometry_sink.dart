@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import '../geometry/bounds.dart';
 import '../geometry/matrix.dart';
 import '../geometry/vector.dart';
+import '../text/shx_font.dart';
 import 'style.dart';
 
 part 'geometry_sink.freezed.dart';
@@ -199,6 +200,43 @@ class TextGeometry {
   }
 }
 
+/// Looks up a parsed SHX face by the STYLE `fontFamily`.
+///
+/// `txt`, `txt.shx` and `TXT.SHX` are the same key. The table only holds
+/// fonts the caller already parsed; core does not search the disk.
+@immutable
+class ShxFontTable {
+  const ShxFontTable([this._byFamily = const {}]);
+
+  final Map<String, ShxFont> _byFamily;
+
+  static const ShxFontTable empty = ShxFontTable();
+
+  bool get isEmpty => _byFamily.isEmpty;
+
+  /// The named face, or null when the table has no matching non-empty font.
+  ShxFont? lookup(String family) {
+    if (family.isEmpty || _byFamily.isEmpty) return null;
+    final key = normalizeFamily(family);
+    final direct = _byFamily[key] ?? _byFamily[family];
+    if (direct != null) return direct.isEmpty ? null : direct;
+    for (final entry in _byFamily.entries) {
+      if (normalizeFamily(entry.key) == key) {
+        return entry.value.isEmpty ? null : entry.value;
+      }
+    }
+    return null;
+  }
+
+  static String normalizeFamily(String family) {
+    var name = family.trim().toLowerCase();
+    if (name.endsWith('.shx')) {
+      name = name.substring(0, name.length - 4);
+    }
+    return name;
+  }
+}
+
 /// Folds a STYLE table entry into a text run so the renderer never has to
 /// look the style up again.
 TextGeometry composeEmittedText({
@@ -241,6 +279,99 @@ TextGeometry composeEmittedText({
     underline: underline,
     overline: overline,
     strike: strike,
+  );
+}
+
+/// Emits [text] as SHX strokes when the style is a loaded shape font,
+/// otherwise as [TextGeometry] for the TTF fallback.
+void emitStyledText({
+  required EmitContext context,
+  required GeometrySink sink,
+  required ResolvedStyle style,
+  required String text,
+  required Vec2 origin,
+  required double height,
+  required double rotation,
+  required String styleName,
+  double widthFactor = 1,
+  double obliqueAngle = 0,
+  double tracking = 1,
+  TextHAlign hAlign = TextHAlign.left,
+  TextVAlign vAlign = TextVAlign.baseline,
+  TextAnchor anchor = TextAnchor.baseline,
+  String? fontOverride,
+  bool underline = false,
+  bool overline = false,
+  bool strike = false,
+}) {
+  if (text.isEmpty) return;
+  final def = context.styles.textStyle(styleName);
+  final family = (fontOverride != null && fontOverride.isNotEmpty)
+      ? fontOverride
+      : def.fontFamily;
+  final wantsShx = (fontOverride != null && fontOverride.isNotEmpty)
+      ? TextStyleDef(name: '', fontFamily: family).isShxFont
+      : def.isShxFont;
+  final font = wantsShx ? context.shxFonts.lookup(family) : null;
+  if (font != null) {
+    final styleHeight = def.height > 0 ? def.height : height;
+    final factor = widthFactor * def.widthFactor;
+    final width = font.measureWidth(
+      text,
+      height: styleHeight,
+      widthFactor: factor,
+    );
+    final dx = switch (hAlign) {
+      TextHAlign.left || TextHAlign.aligned || TextHAlign.fit => 0.0,
+      TextHAlign.center || TextHAlign.middle => -width / 2,
+      TextHAlign.right => -width,
+    };
+    final dy = switch (vAlign) {
+      TextVAlign.baseline || TextVAlign.bottom => 0.0,
+      TextVAlign.middle => -styleHeight / 2,
+      TextVAlign.top => -styleHeight,
+    };
+    final start = (dx == 0 && dy == 0)
+        ? origin
+        : origin + Vec2(dx, dy).rotated(rotation);
+    final strokes = font.layout(
+      text,
+      origin: start,
+      height: styleHeight,
+      rotation: rotation,
+      widthFactor: factor,
+    );
+    for (final stroke in strokes) {
+      if (stroke.length < 2) continue;
+      final xy = Float64List(stroke.length * 2);
+      for (var i = 0; i < stroke.length; i++) {
+        xy[i * 2] = stroke[i].x;
+        xy[i * 2 + 1] = stroke[i].y;
+      }
+      sink.polyline(context.applyBuffer(xy), style);
+    }
+    return;
+  }
+  sink.text(
+    composeEmittedText(
+      context: context,
+      text: text,
+      origin: origin,
+      height: height,
+      rotation: rotation,
+      styleName: styleName,
+      widthFactor: widthFactor,
+      obliqueAngle: obliqueAngle,
+      tracking: tracking,
+      hAlign: hAlign,
+      vAlign: vAlign,
+      anchor: anchor,
+      fontOverride: fontOverride,
+      underline: underline,
+      overline: overline,
+      strike: strike,
+    ),
+    style,
   );
 }
 
@@ -343,6 +474,7 @@ class EmitContext {
     this.clip,
     this.measureWidth,
     this.attributeValues,
+    this.shxFonts = const ShxFontTable(),
   });
 
   /// Maximum allowed deviation when discretizing curves, in model units.
@@ -372,6 +504,9 @@ class EmitContext {
   /// Tag → value while emitting a block through an insert. Null means the
   /// block is being drawn as a definition, so ATTDEFs show their defaults.
   final Map<String, String>? attributeValues;
+
+  /// Parsed SHX faces for STYLE names. Empty keeps the TTF text path.
+  final ShxFontTable shxFonts;
 
   static const int maxDepth = 32;
 
@@ -414,6 +549,7 @@ class EmitContext {
     clip: clip,
     measureWidth: measureWidth,
     attributeValues: attributeValues,
+    shxFonts: shxFonts,
   );
 
   EmitContext withTolerance(double value) => EmitContext(
@@ -426,6 +562,7 @@ class EmitContext {
     clip: clip,
     measureWidth: measureWidth,
     attributeValues: attributeValues,
+    shxFonts: shxFonts,
   );
 
   EmitContext withAttributeValues(Map<String, String> values) => EmitContext(
@@ -438,6 +575,7 @@ class EmitContext {
     clip: clip,
     measureWidth: measureWidth,
     attributeValues: values,
+    shxFonts: shxFonts,
   );
 
   /// Drops [clip] so a tessellation cache cannot bake a miss from a
@@ -453,6 +591,7 @@ class EmitContext {
       depth: depth,
       measureWidth: measureWidth,
       attributeValues: attributeValues,
+      shxFonts: shxFonts,
     );
   }
 }

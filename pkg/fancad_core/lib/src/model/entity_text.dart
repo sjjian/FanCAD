@@ -77,7 +77,20 @@ final class TextEntity extends CadEntity {
   @override
   void emit(EmitContext context, GeometrySink sink) {
     if (content.isEmpty) return;
-    sink.text(toGeometry(context), context.styleFor(props));
+    emitStyledText(
+      context: context,
+      sink: sink,
+      style: context.styleFor(props),
+      text: expandDxfTextCodes(content),
+      origin: position,
+      height: height,
+      rotation: rotation,
+      styleName: styleName,
+      widthFactor: widthFactor,
+      obliqueAngle: obliqueAngle,
+      hAlign: hAlign,
+      vAlign: vAlign,
+    );
   }
 
   @override

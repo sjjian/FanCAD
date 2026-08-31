@@ -92,17 +92,16 @@ final class MLeaderEntity extends CadEntity {
       _emitArrowHead(context, sink, style, xy);
     }
     if (content.isEmpty || textHeight <= 0) return;
-    sink.text(
-      composeEmittedText(
-        context: context,
-        text: stripMTextFormatting(content),
-        origin: textPosition,
-        height: textHeight,
-        rotation: textRotation,
-        styleName: styleName,
-        vAlign: TextVAlign.middle,
-      ),
-      style,
+    emitStyledText(
+      context: context,
+      sink: sink,
+      style: style,
+      text: stripMTextFormatting(content),
+      origin: textPosition,
+      height: textHeight,
+      rotation: textRotation,
+      styleName: styleName,
+      vAlign: TextVAlign.middle,
     );
   }
 
