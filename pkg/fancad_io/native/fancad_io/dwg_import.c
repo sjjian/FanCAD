@@ -431,24 +431,76 @@ static uint64_t ref_handle(const Dwg_Object_Ref *ref) {
   return ref ? (uint64_t)ref->absolute_ref : 0u;
 }
 
-/* Translates a DWG colour into the packed FCB representation. */
+/* R2004 CMC often stores the ACI in the true-colour dword: method C3,
+ * index 256, rgb 0xC30000nn. The low byte is the ACI, not RGB(0,0,n).
+ * 折边线 on the HunterDouglas sheets is 0xC30000D5 = ACI 213 (magenta);
+ * treating that as RGB paints a blue fold line. */
+static uint32_t aci_from_cmc_rgb(const Dwg_Color *color) {
+  uint32_t body;
+  if (!color) return 0;
+  body = (uint32_t)color->rgb & 0x00FFFFFFu;
+  if (body >= 1 && body <= 255) return body;
+  return 0;
+}
+
+/* True-colour payload when LibreDWG filled rgb / method. 0 means "not RGB".
+ * Method 0xC3 is explicit RGB. 0xC2 is the entity ACI default; its rgb body
+ * is not a 24-bit colour. 0x100 / 0x101 are the ByLayer / none sentinels.
+ * A body of 1..255 is the R2004 ACI-in-slot encoding, not RGB(0,0,n). */
+static uint32_t convert_true_color(const Dwg_Color *color) {
+  uint32_t rgb;
+  unsigned method;
+  uint32_t body;
+  if (!color) return 0;
+  rgb = (uint32_t)color->rgb;
+  method = color->method;
+  if (method != 0xc3u && (rgb & 0xFF000000u) != 0xC3000000u) {
+    return 0;
+  }
+  body = rgb & 0x00FFFFFFu;
+  if (body == 0 || body <= 0xFFu || body == 0x100u || body == 0x101u) {
+    return 0;
+  }
+  return fcb_pack_color(FCB_COLOR_TRUE, body);
+}
+
+/* Translates a DWG entity colour into the packed FCB representation. */
 static uint32_t convert_color(const Dwg_Color *color) {
   int32_t index;
-  uint32_t rgb;
+  uint32_t packed;
+  uint32_t aci;
   if (!color) return fcb_pack_color(FCB_COLOR_BY_LAYER, 256);
+  packed = convert_true_color(color);
+  if (packed) return packed;
   index = (int32_t)color->index;
-  rgb = (uint32_t)color->rgb;
-  if (index == 256 || index < 0) {
-    return fcb_pack_color(FCB_COLOR_BY_LAYER, 256);
+  if (index < 0) index = -index;
+  if (index >= 1 && index <= 255) {
+    return fcb_pack_color(FCB_COLOR_INDEXED, (uint32_t)index);
   }
+  aci = aci_from_cmc_rgb(color);
+  if (aci) return fcb_pack_color(FCB_COLOR_INDEXED, aci);
   if (index == 0) return fcb_pack_color(FCB_COLOR_BY_BLOCK, 0);
-  /* R2004 and newer encode a true colour in rgb with a method byte in the
-   * high bits; 0xC2 and 0xC3 mean "explicit RGB". */
-  if ((rgb & 0xFF000000u) == 0xC2000000u ||
-      (rgb & 0xFF000000u) == 0xC3000000u) {
-    return fcb_pack_color(FCB_COLOR_TRUE, rgb & 0x00FFFFFFu);
+  return fcb_pack_color(FCB_COLOR_BY_LAYER, 256);
+}
+
+/* A LAYER table colour is never ByLayer / ByBlock. LibreDWG still reports
+ * index 256 when the CMC is true-colour or the method byte is 0xC0; those
+ * must not land in the layer table as a sentinel the resolver cannot paint. */
+static uint32_t convert_layer_color(const Dwg_Color *color) {
+  int32_t index;
+  uint32_t packed;
+  uint32_t aci;
+  if (!color) return fcb_pack_color(FCB_COLOR_INDEXED, 7);
+  index = (int32_t)color->index;
+  if (index < 0) index = -index;
+  if (index >= 1 && index <= 255) {
+    return fcb_pack_color(FCB_COLOR_INDEXED, (uint32_t)index);
   }
-  return fcb_pack_color(FCB_COLOR_INDEXED, (uint32_t)index);
+  aci = aci_from_cmc_rgb(color);
+  if (aci) return fcb_pack_color(FCB_COLOR_INDEXED, aci);
+  packed = convert_true_color(color);
+  if (packed) return packed;
+  return fcb_pack_color(FCB_COLOR_INDEXED, 7);
 }
 
 /* The dynamic API name for a dimension subtype. Dimension records keep their
@@ -539,7 +591,7 @@ static void import_layers(import_state *s) {
 
     memset(&layer, 0, sizeof(layer));
     layer.name = fcb_intern(s->b, name ? name : "0");
-    layer.color_packed = convert_color(&entry->color);
+    layer.color_packed = convert_layer_color(&entry->color);
     layer.linetype_index =
         hmap_get(&s->linetype_index, ref_handle(entry->ltype), 0);
     layer.line_weight = (int32_t)entry->linewt;
@@ -835,11 +887,99 @@ static int is_dim_anon_primitive(Dwg_Object_Type type) {
   }
 }
 
+static uint32_t entity_layer_intern(const import_state *s,
+                                    const Dwg_Object *obj) {
+  uint32_t idx;
+  uint32_t intern;
+  const uint8_t *p;
+  if (!obj || !obj->tio.entity || !s->b) return 0xFFFFFFFFu;
+  /* The same handle map fill_common uses. resolve_ref on LAYER often
+   * returns NULL on this R2004 file (relative ownerhandle). Interned
+   * strings are length-prefixed, not NUL-terminated. */
+  idx = hmap_get(&s->layer_index, ref_handle(obj->tio.entity->layer),
+                 0xFFFFFFFFu);
+  if (idx == 0xFFFFFFFFu || idx >= s->b->layer_count) return 0xFFFFFFFFu;
+  p = s->b->layers.data + (size_t)idx * FCB_RECORD_LAYER;
+  intern = (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
+           ((uint32_t)p[3] << 24);
+  if (intern >= s->b->strings.count) return 0xFFFFFFFFu;
+  return intern;
+}
+
+static int interned_equals(const import_state *s, uint32_t intern,
+                           const char *want) {
+  uint32_t start;
+  uint32_t end;
+  size_t size;
+  if (!s->b || intern >= s->b->strings.count) return 0;
+  start = s->b->strings.offsets[intern];
+  end = s->b->strings.offsets[intern + 1];
+  size = want ? strlen(want) : 0;
+  if ((size_t)(end - start) != size) return 0;
+  return size == 0 ||
+         memcmp(s->b->strings.data.data + start, want, size) == 0;
+}
+
+static int is_dimension_layer_intern(const import_state *s, uint32_t intern) {
+  return interned_equals(s, intern, "dim") ||
+         interned_equals(s, intern, "标注") ||
+         interned_equals(s, intern, "标注线");
+}
+
+/* Fold / hole / mark layers on the HunterDouglas process sheets. A live
+ * *D header still lists these as if they were ticks. */
+static int is_profile_layer_intern(const import_state *s, uint32_t intern) {
+  return interned_equals(s, intern, "折边线") ||
+         interned_equals(s, intern, "角码孔") ||
+         interned_equals(s, intern, "ATT") ||
+         interned_equals(s, intern, "1金属板竖分格线") ||
+         interned_equals(s, intern, "细实线") ||
+         interned_equals(s, intern, "编号") ||
+         interned_equals(s, intern, "xc") ||
+         interned_equals(s, intern, "问号") ||
+         interned_equals(s, intern, "虚线");
+}
+
+/* World-space span of a LINE or LWPOLYLINE, squared. 0 if the type has no
+ * cheap extent (POLYLINE_2D vertices live in other objects). */
+static int entity_span_sq(const Dwg_Object *obj, double *out) {
+  if (!obj || !obj->tio.entity) return 0;
+  if (obj->fixedtype == DWG_TYPE_LINE && obj->tio.entity->tio.LINE) {
+    const Dwg_Entity_LINE *line = obj->tio.entity->tio.LINE;
+    double dx = line->end.x - line->start.x;
+    double dy = line->end.y - line->start.y;
+    *out = dx * dx + dy * dy;
+    return 1;
+  }
+  if (obj->fixedtype == DWG_TYPE_LWPOLYLINE &&
+      obj->tio.entity->tio.LWPOLYLINE) {
+    const Dwg_Entity_LWPOLYLINE *pl = obj->tio.entity->tio.LWPOLYLINE;
+    double min_x, min_y, max_x, max_y, dx, dy;
+    BITCODE_BL i;
+    if (!pl->points || pl->num_points < 2) return 0;
+    min_x = max_x = pl->points[0].x;
+    min_y = max_y = pl->points[0].y;
+    for (i = 1; i < pl->num_points; i++) {
+      if (pl->points[i].x < min_x) min_x = pl->points[i].x;
+      if (pl->points[i].x > max_x) max_x = pl->points[i].x;
+      if (pl->points[i].y < min_y) min_y = pl->points[i].y;
+      if (pl->points[i].y > max_y) max_y = pl->points[i].y;
+    }
+    dx = max_x - min_x;
+    dy = max_y - min_y;
+    *out = dx * dx + dy * dy;
+    return 1;
+  }
+  return 0;
+}
+
 /* A later *D entities[] list repeats model-space INSERTs (title frames
  * `bk` / `TK1`, part ticks) and whole annotations. Those must stay on
  * the layout. */
 static int dim_anon_cannot_own(const import_state *s, uint32_t block,
                                const Dwg_Object *obj) {
+  uint32_t intern;
+  double span_sq;
   if (!is_dim_anon_block(s, block)) return 0;
   /* This R2004 file has thousands of model-space entities listed under
    * orphaned *D headers. A live dimension never references those headers;
@@ -849,6 +989,15 @@ static int dim_anon_cannot_own(const import_state *s, uint32_t block,
   if (obj->fixedtype == DWG_TYPE_INSERT ||
       obj->fixedtype == DWG_TYPE_MINSERT) {
     return !is_acad_arrow_insert(s, obj);
+  }
+  intern = entity_layer_intern(s, obj);
+  if (is_profile_layer_intern(s, intern)) return 1;
+  if (!is_dimension_layer_intern(s, intern) && entity_span_sq(obj, &span_sq) &&
+      span_sq >= 50.0 * 50.0) {
+    /* Oblique ticks stay under ~40. J19's 板2 top is 206, its height 1811;
+     * both sat in a live *D list after the 2500 cutoff and only appeared
+     * when that one dimension was on screen. */
+    return 1;
   }
   return 0;
 }
@@ -1222,14 +1371,15 @@ static int import_multileader(import_state *s, Dwg_Entity_MULTILEADER *o,
   return path_count > 0 || (text && text[0]);
 }
 
-static uint32_t extract_acis_wires(coords *g, box *bounds, int64_t *runs,
-                                   uint32_t run_cap, Dwg_Entity__3DSOLID *solid) {
-  uint32_t run_count = 0;
-  uint32_t w;
-  if (!solid || !solid->wireframe_data_present || !solid->wires) return 0;
-  for (w = 0; w < solid->num_wires && run_count < run_cap; w++) {
-    Dwg_3DSOLID_wire *wire = &solid->wires[w];
-    uint32_t p;
+static uint32_t append_solid_wires(coords *g, box *bounds, int64_t *runs,
+                                   uint32_t run_cap, uint32_t run_count,
+                                   Dwg_3DSOLID_wire *wires,
+                                   BITCODE_BL num_wires) {
+  BITCODE_BL w;
+  if (!wires) return run_count;
+  for (w = 0; w < num_wires && run_count < run_cap; w++) {
+    Dwg_3DSOLID_wire *wire = &wires[w];
+    BITCODE_BL p;
     uint32_t start = g->length;
     uint32_t points;
     if (!wire->points) continue;
@@ -1245,6 +1395,78 @@ static uint32_t extract_acis_wires(coords *g, box *bounds, int64_t *runs,
     }
   }
   return run_count;
+}
+
+/* Isolines first; silhouettes when the viewport cache is what LibreDWG kept.
+ * The wireframe_data_present flag is often 0 on R2004 REGIONs that still
+ * have a decoded wire array. */
+static uint32_t extract_acis_wires(coords *g, box *bounds, int64_t *runs,
+                                   uint32_t run_cap, Dwg_Entity__3DSOLID *solid) {
+  uint32_t run_count = 0;
+  BITCODE_BL s;
+  if (!solid) return 0;
+  run_count = append_solid_wires(g, bounds, runs, run_cap, 0, solid->wires,
+                                 solid->num_wires);
+  if (!solid->silhouettes) return run_count;
+  for (s = 0; s < solid->num_silhouettes && run_count < run_cap; s++) {
+    Dwg_3DSOLID_silhouette *sil = &solid->silhouettes[s];
+    if (!sil->wires) continue;
+    run_count = append_solid_wires(g, bounds, runs, run_cap, run_count,
+                                   sil->wires, sil->num_wires);
+  }
+  return run_count;
+}
+
+/* SAT v1 (decrypted `acis_data`) stores `point … x y z #`. Connecting those
+ * vertices is enough to keep a REGION on the canvas when LibreDWG left the
+ * isoline arrays empty. SAB binaries are left as proxies. */
+static uint32_t extract_sat_points(coords *g, box *bounds, int64_t *runs,
+                                   uint32_t run_cap,
+                                   const Dwg_Entity__3DSOLID *solid) {
+  const char *p;
+  uint32_t start;
+  uint32_t n = 0;
+  if (run_cap == 0 || !solid || !solid->acis_data) return 0;
+  p = (const char *)solid->acis_data;
+  if (p[0] == '\0' || strncmp(p, "ACIS Binary", 11) == 0) return 0;
+  start = g->length;
+  while (*p) {
+    if (strncmp(p, "point ", 6) == 0 &&
+        (p == (const char *)solid->acis_data || p[-1] == '\n' ||
+         p[-1] == '\r' || p[-1] == ' ' || p[-1] == '\t')) {
+      const char *q = p + 6;
+      double nums[16];
+      int count = 0;
+      while (count < 16) {
+        char *end = NULL;
+        double value;
+        while (*q == ' ' || *q == '\t' || *q == '\n' || *q == '\r') q++;
+        if (*q != '-' && *q != '.' && (*q < '0' || *q > '9')) break;
+        value = strtod(q, &end);
+        if (end == q) break;
+        nums[count++] = value;
+        q = end;
+      }
+      if (count >= 3) {
+        double x = nums[count - 3];
+        double y = nums[count - 2];
+        if (isfinite(x) && isfinite(y)) {
+          coords_push2(g, x, y);
+          box_add(bounds, x, y);
+          n++;
+        }
+      }
+      p = q;
+      continue;
+    }
+    p++;
+  }
+  if (n >= 2) {
+    runs[0] = (int64_t)n;
+    return 1;
+  }
+  g->length = start;
+  return 0;
 }
 
 static void import_hatch_paths(import_state *s, Dwg_Entity_HATCH *hatch,
@@ -1945,6 +2167,9 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
         else if (obj->fixedtype == DWG_TYPE_BODY) solid = ent->tio.BODY;
         if (solid) {
           run_count = extract_acis_wires(g, &bounds, runs, 64, solid);
+          if (run_count == 0) {
+            run_count = extract_sat_points(g, &bounds, runs, 64, solid);
+          }
         }
         if (run_count == 0) {
           note_proxy(s, type_name);
