@@ -107,6 +107,23 @@ class LineWeight {
   /// Hairline: always one device pixel.
   static const int zero = 0;
 
+  /// DWG / LibreDWG store the three inherit sentinels as these bytes.
+  static const int _dwgByLayer = 29;
+  static const int _dwgByBlock = 30;
+  static const int _dwgByDefault = 31;
+
+  /// Maps a DWG or DXF lineweight onto [byLayer] / [byBlock] / [byDefault].
+  ///
+  /// LibreDWG hands us 29/30/31 for the inherit sentinels. Treated as
+  /// hundredths of a millimetre they become a 0.3 mm stroke, so every
+  /// ByLayer line on a Default layer draws thicker than the author asked.
+  static int normalize(int weight) => switch (weight) {
+    _dwgByLayer => byLayer,
+    _dwgByBlock => byBlock,
+    _dwgByDefault => byDefault,
+    _ => weight,
+  };
+
   /// Line weights are stored in hundredths of a millimetre.
   static double toMillimetres(int weight) => weight <= 0 ? 0 : weight / 100;
 

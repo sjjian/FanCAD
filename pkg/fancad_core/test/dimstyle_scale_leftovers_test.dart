@@ -11,4 +11,17 @@ void main() {
       1,
     );
   });
+
+  test('header DIMSCALE fills an identity style so fallback text is readable', () {
+    final document = CadDocument()..setHeaderVariable(r'$DIMSCALE', '14');
+    expect(document.dimStyle('Standard').scaledTextHeight, closeTo(35, 1e-9));
+    expect(document.dimStyle('Standard').scale, closeTo(14, 1e-9));
+  });
+
+  test('an explicit dimstyle scale cannot be replaced by the header', () {
+    final document = CadDocument()
+      ..putDimStyle(const DimStyleDef(name: 'ARCH', textHeight: 5, scale: 2))
+      ..setHeaderVariable(r'$DIMSCALE', '14');
+    expect(document.dimStyle('ARCH').scaledTextHeight, closeTo(10, 1e-9));
+  });
 }
