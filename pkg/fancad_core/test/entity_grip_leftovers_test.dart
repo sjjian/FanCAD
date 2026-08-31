@@ -7,7 +7,7 @@ void main() {
     expect(line.withGrip(-1, const Vec2(1, 1)), same(line));
     expect(line.withGrip(99, const Vec2(1, 1)), same(line));
 
-    const unknown = UnknownEntity(id: 2, originalType: 'PROXY');
+    final unknown = UnknownEntity(id: 2, originalType: 'PROXY');
     expect(unknown.withGrip(0, const Vec2(4, 4)), same(unknown));
   });
 }

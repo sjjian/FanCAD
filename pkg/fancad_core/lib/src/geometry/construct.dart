@@ -8,7 +8,6 @@ import 'boundary.dart';
 import 'bounds.dart';
 import 'flatten.dart';
 import 'intersect.dart';
-import 'matrix.dart';
 import 'vector.dart';
 
 /// The analytic constructions behind the editing commands.
@@ -58,7 +57,8 @@ class Construct {
     // If the counter-clockwise sweep from start to end does not contain the
     // middle point, the arc runs the other way, so the endpoints swap.
     final forward =
-        angularSweep(startAngle, viaAngle) <= angularSweep(startAngle, endAngle);
+        angularSweep(startAngle, viaAngle) <=
+        angularSweep(startAngle, endAngle);
     return ArcEntity(
       id: id,
       props: props,
@@ -111,7 +111,9 @@ class Construct {
     final mid = first.lerp(second, 0.5);
     final horizontal = (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
     final a = horizontal ? Vec2(first.x, dimLine.y) : Vec2(dimLine.x, first.y);
-    final b = horizontal ? Vec2(second.x, dimLine.y) : Vec2(dimLine.x, second.y);
+    final b = horizontal
+        ? Vec2(second.x, dimLine.y)
+        : Vec2(dimLine.x, second.y);
     return DimensionEntity(
       id: id,
       props: props,
@@ -188,8 +190,7 @@ class Construct {
     }
     if (type != 0 || points.length < 3) return null;
     final mid = points[0].lerp(points[1], 0.5);
-    final horizontal =
-        (points[2] - mid).y.abs() >= (points[2] - mid).x.abs();
+    final horizontal = (points[2] - mid).y.abs() >= (points[2] - mid).x.abs();
     final dimLine = horizontal
         ? Vec2((first.x + nextOrigin.x) / 2, points[2].y)
         : Vec2(points[2].x, (first.y + nextOrigin.y) / 2);
@@ -247,8 +248,7 @@ class Construct {
     }
     if (type != 0 || points.length < 3) return null;
     final mid = points[0].lerp(points[1], 0.5);
-    final horizontal =
-        (points[2] - mid).y.abs() >= (points[2] - mid).x.abs();
+    final horizontal = (points[2] - mid).y.abs() >= (points[2] - mid).x.abs();
     if (horizontal) {
       final dir = points[2].y >= mid.y ? 1.0 : -1.0;
       return linearDimension(
@@ -499,10 +499,10 @@ class Construct {
     if (degrees < 1e-6 || degrees > 360 - 1e-6) return null;
     final text = dimLine.distanceTo(vertex) < 1e-9
         ? vertex +
-            Vec2.polar(
-              start + sweep / 2,
-              math.min(a.distanceTo(vertex), b.distanceTo(vertex)) * 0.5,
-            )
+              Vec2.polar(
+                start + sweep / 2,
+                math.min(a.distanceTo(vertex), b.distanceTo(vertex)) * 0.5,
+              )
         : dimLine;
     return DimensionEntity(
       id: id,
@@ -643,7 +643,8 @@ class Construct {
         TextEntity(
           id: 0,
           props: props,
-          position: last +
+          position:
+              last +
               Vec2(goingLeft ? -textHeight * 0.15 : textHeight * 0.15, 0),
           content: annotation,
           height: textHeight,
@@ -653,6 +654,50 @@ class Construct {
       );
     }
     return created;
+  }
+
+  /// A MULTILEADER from [points] with an optional note.
+  ///
+  /// Unlike [leader], the note lives on the same object as the arrows so a
+  /// process callout stays one entity when selected, gripped, or saved.
+  static MLeaderEntity? mleader(
+    List<Vec2> points, {
+    int id = 0,
+    EntityProps props = EntityProps.defaults,
+    String annotation = '',
+    double textHeight = 2.5,
+    bool hasArrowHead = true,
+  }) {
+    if (points.length < 2 || textHeight <= 0) return null;
+    final verts = <Vec2>[points.first];
+    for (final point in points.skip(1)) {
+      if (point.distanceTo(verts.last) > 1e-12) verts.add(point);
+    }
+    if (verts.length < 2) return null;
+
+    if (annotation.isNotEmpty) {
+      final last = verts.last;
+      final prev = verts[verts.length - 2];
+      if ((last.y - prev.y).abs() > 1e-9) {
+        final goingLeft = last.x + 1e-12 < prev.x;
+        verts.add(last + Vec2(goingLeft ? -textHeight : textHeight, 0));
+      }
+    }
+
+    final vertices = Float64List(verts.length * 2);
+    for (var i = 0; i < verts.length; i++) {
+      vertices[i * 2] = verts[i].x;
+      vertices[i * 2 + 1] = verts[i].y;
+    }
+    return MLeaderEntity(
+      id: id,
+      props: props,
+      vertices: vertices,
+      hasArrowHead: hasArrowHead,
+      content: annotation,
+      textPosition: verts.last,
+      textHeight: textHeight,
+    );
   }
 
   /// The lines, arrows and text a dimension draws, as editable entities.
@@ -673,13 +718,9 @@ class Construct {
         case 2:
           pieces.addAll(_explodeAngularDim(entity, props, dim));
         case 3:
-          pieces.addAll(
-            _explodeRadialDim(entity, props, dim, diameter: true),
-          );
+          pieces.addAll(_explodeRadialDim(entity, props, dim, diameter: true));
         case 4:
-          pieces.addAll(
-            _explodeRadialDim(entity, props, dim, diameter: false),
-          );
+          pieces.addAll(_explodeRadialDim(entity, props, dim, diameter: false));
         default:
           pieces.addAll(_explodeLinearDim(entity, props, dim));
       }
@@ -715,8 +756,7 @@ class Construct {
     late final Vec2 unit;
     if ((entity.dimensionType & 0x0F) == 0 && points.length >= 3) {
       final mid = p1.lerp(p2, 0.5);
-      final horizontal =
-          (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
+      final horizontal = (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
       a = horizontal ? Vec2(p1.x, dimLine.y) : Vec2(dimLine.x, p1.y);
       b = horizontal ? Vec2(p2.x, dimLine.y) : Vec2(dimLine.x, p2.y);
       if (a.distanceTo(b) < 1e-9) return const [];
@@ -754,12 +794,7 @@ class Construct {
     return [
       LineEntity(id: 0, props: props, start: center, end: chord),
       if (diameter)
-        LineEntity(
-          id: 0,
-          props: props,
-          start: center,
-          end: center - delta,
-        ),
+        LineEntity(id: 0, props: props, start: center, end: center - delta),
       ..._dimArrows(chord, -unit, props, dim.scaledArrowSize),
     ];
   }
@@ -1048,12 +1083,7 @@ class Construct {
       pick1.lerp(pick2, 0.5),
     );
     if (center == null) return null;
-    return CircleEntity(
-      id: id,
-      props: props,
-      center: center,
-      radius: radius,
-    );
+    return CircleEntity(id: id, props: props, center: center, radius: radius);
   }
 
   static Vec2? _offsetIntersection(
@@ -1066,32 +1096,17 @@ class Construct {
     final circle1 = _circleOf(first);
     final circle2 = _circleOf(second);
     if (line1 != null && line2 != null) {
-      return Intersect.lineLine(
-        line1.start,
-        line1.end,
-        line2.start,
-        line2.end,
-      );
+      return Intersect.lineLine(line1.start, line1.end, line2.start, line2.end);
     }
     if (line1 != null && circle2 != null) {
       return _nearestHit(
-        Intersect.lineCircle(
-          line1.start,
-          line1.end,
-          circle2.$1,
-          circle2.$2,
-        ),
+        Intersect.lineCircle(line1.start, line1.end, circle2.$1, circle2.$2),
         hint,
       );
     }
     if (line2 != null && circle1 != null) {
       return _nearestHit(
-        Intersect.lineCircle(
-          line2.start,
-          line2.end,
-          circle1.$1,
-          circle1.$2,
-        ),
+        Intersect.lineCircle(line2.start, line2.end, circle1.$1, circle1.$2),
         hint,
       );
     }
@@ -1422,321 +1437,7 @@ class Construct {
   /// 64-segment polyline back will not use the command twice.
   static CadEntity? offset(CadEntity entity, double distance, Vec2 towards) {
     if (distance <= 0) return null;
-    switch (entity) {
-      case LineEntity(:final start, :final end):
-        final direction = (end - start).normalized();
-        if (direction.length == 0) return null;
-        final normal = direction.perpendicular;
-        // Which side is the pick on? The sign of the projection decides.
-        final sign = normal.dot(towards - start) >= 0 ? 1.0 : -1.0;
-        final shift = normal * (distance * sign);
-        return LineEntity(
-          id: 0,
-          props: entity.props,
-          start: start + shift,
-          end: end + shift,
-        );
-      case CircleEntity(:final center, :final radius):
-        final target = center.distanceTo(towards) > radius
-            ? radius + distance
-            : radius - distance;
-        if (target <= 0) return null;
-        return CircleEntity(
-          id: 0,
-          props: entity.props,
-          center: center,
-          radius: target,
-        );
-      case ArcEntity(:final center, :final radius):
-        final target = center.distanceTo(towards) > radius
-            ? radius + distance
-            : radius - distance;
-        if (target <= 0) return null;
-        return ArcEntity(
-          id: 0,
-          props: entity.props,
-          center: center,
-          radius: target,
-          startAngle: entity.startAngle,
-          endAngle: entity.endAngle,
-        );
-      case PolylineEntity():
-        return _offsetPolyline(entity, distance, towards);
-      case EllipseEntity():
-        return _offsetEllipse(entity, distance, towards);
-      case SplineEntity():
-        return _offsetSpline(entity, distance, towards);
-      case PointEntity() ||
-          TextEntity() ||
-          MTextEntity() ||
-          InsertEntity() ||
-          HatchEntity() ||
-          DimensionEntity() ||
-          LeaderEntity() ||
-          SolidEntity() ||
-          RayEntity() ||
-          XLineEntity() ||
-          ImageEntity() ||
-          AttdefEntity() ||
-          AttribEntity() ||
-          UnknownEntity():
-        return null;
-    }
-  }
-
-  /// Grows both axes by [distance]. The true parallel of an ellipse is not
-  /// an ellipse; this is the concentric construction drafters expect, and it
-  /// is exact when the oval is a circle.
-  static EllipseEntity? _offsetEllipse(
-    EllipseEntity entity,
-    double distance,
-    Vec2 towards,
-  ) {
-    final unit = entity.toUnit(towards);
-    final sign = unit.lengthSquared >= 1 ? 1.0 : -1.0;
-    final majorLen = entity.majorLength + distance * sign;
-    final minorLen = entity.majorLength * entity.ratio + distance * sign;
-    if (majorLen <= 1e-9 || minorLen <= 1e-9) return null;
-    var major = entity.majorAxis;
-    if (major.lengthSquared < 1e-20) return null;
-    var ratio = minorLen / majorLen;
-    if (ratio > 1) {
-      major = major.normalized().perpendicular * minorLen;
-      ratio = majorLen / minorLen;
-    } else {
-      major = major.normalized() * majorLen;
-    }
-    return EllipseEntity(
-      id: 0,
-      props: entity.props,
-      center: entity.center,
-      majorAxis: major,
-      ratio: ratio,
-      startParam: entity.startParam,
-      endParam: entity.endParam,
-    );
-  }
-
-  /// Offsets the flattened centreline. A NURBS offset is not a NURBS of the
-  /// same degree, so the result is a polyline the fillet/trim family can
-  /// keep editing.
-  static PolylineEntity? _offsetSpline(
-    SplineEntity entity,
-    double distance,
-    Vec2 towards,
-  ) {
-    final xy = Flatten.bspline(
-      controlPoints: entity.controlPoints,
-      knots: entity.knots,
-      degree: entity.degree,
-      weights: entity.weights,
-      tolerance: 1e-3,
-      closed: entity.closed,
-    );
-    final points = <Vec2>[
-      for (var i = 0; i + 1 < xy.length; i += 2) Vec2(xy[i], xy[i + 1]),
-    ];
-    if (points.length < 2) return null;
-    return _offsetPolyline(
-      PolylineEntity.fromPoints(
-        id: 0,
-        props: entity.props,
-        points: points,
-        closed: entity.closed,
-      ),
-      distance,
-      towards,
-    );
-  }
-
-  /// Offsets a polyline by moving each segment and re-intersecting neighbours.
-  ///
-  /// Miter joins rather than round ones, because the mitered offset of a
-  /// rectangle is another rectangle, which is what a user expects to get.
-  /// A bulge is offset as a concentric arc so a filleted profile stays
-  /// filleted instead of collapsing to chords.
-  static PolylineEntity? _offsetPolyline(
-    PolylineEntity source,
-    double distance,
-    Vec2 towards,
-  ) {
-    if (source.hasBulges) {
-      return _offsetBulgedPolyline(source, distance, towards);
-    }
-    final count = source.vertexCount;
-    if (count < 2) return null;
-    final vertices = [for (var i = 0; i < count; i++) source.vertexAt(i)];
-    final segmentCount = source.closed ? count : count - 1;
-
-    // Decide the side once, from the segment nearest the pick, so the whole
-    // polyline offsets coherently instead of segment by segment.
-    var bestDistance = double.infinity;
-    var sign = 1.0;
-    for (var i = 0; i < segmentCount; i++) {
-      final a = vertices[i];
-      final b = vertices[(i + 1) % count];
-      final foot = Intersect.closestPointOnSegment(towards, a, b);
-      final gap = foot.distanceTo(towards);
-      if (gap < bestDistance) {
-        bestDistance = gap;
-        final normal = (b - a).normalized().perpendicular;
-        sign = normal.dot(towards - a) >= 0 ? 1.0 : -1.0;
-      }
-    }
-
-    // Offset each segment as an infinite line, then intersect consecutive ones
-    // to find the new vertices.
-    final lines = <(Vec2, Vec2)>[];
-    for (var i = 0; i < segmentCount; i++) {
-      final a = vertices[i];
-      final b = vertices[(i + 1) % count];
-      final direction = (b - a).normalized();
-      if (direction.length == 0) continue;
-      final shift = direction.perpendicular * (distance * sign);
-      lines.add((a + shift, b + shift));
-    }
-    if (lines.isEmpty) return null;
-
-    final result = <Vec2>[];
-    if (!source.closed) result.add(lines.first.$1);
-    final joints = source.closed ? lines.length : lines.length - 1;
-    for (var i = 0; i < joints; i++) {
-      final current = lines[i];
-      final next = lines[(i + 1) % lines.length];
-      final joint = Intersect.lineLine(
-        current.$1,
-        current.$2,
-        next.$1,
-        next.$2,
-      );
-      // Parallel neighbours (a straight-through vertex) have no intersection;
-      // the shared offset endpoint is the right answer there.
-      result.add(joint ?? current.$2);
-    }
-    if (!source.closed) result.add(lines.last.$2);
-    if (result.length < 2) return null;
-
-    return PolylineEntity.fromPoints(
-      id: 0,
-      props: source.props,
-      points: result,
-      closed: source.closed,
-    );
-  }
-
-  static PolylineEntity? _offsetBulgedPolyline(
-    PolylineEntity source,
-    double distance,
-    Vec2 towards,
-  ) {
-    final count = source.vertexCount;
-    if (count < 2) return null;
-    final segmentCount = source.closed ? count : count - 1;
-
-    var bestDistance = double.infinity;
-    var sign = 1.0;
-    for (var i = 0; i < segmentCount; i++) {
-      final a = source.vertexAt(i);
-      final b = source.vertexAt((i + 1) % count);
-      final foot = Intersect.closestPointOnSegment(towards, a, b);
-      final gap = foot.distanceTo(towards);
-      if (gap < bestDistance) {
-        bestDistance = gap;
-        final normal = (b - a).normalized().perpendicular;
-        sign = normal.dot(towards - a) >= 0 ? 1.0 : -1.0;
-      }
-    }
-
-    final arms = <_OffsetArm>[];
-    for (var i = 0; i < segmentCount; i++) {
-      final arm = _offsetPolylineArm(source, i, distance, sign);
-      if (arm == null) return null;
-      arms.add(arm);
-    }
-    if (arms.isEmpty) return null;
-
-    final points = <Vec2>[];
-    if (!source.closed) points.add(arms.first.start);
-    final joints = source.closed ? arms.length : arms.length - 1;
-    for (var i = 0; i < joints; i++) {
-      final current = arms[i];
-      final next = arms[(i + 1) % arms.length];
-      points.add(
-        _offsetArmJoint(current, next) ?? current.end,
-      );
-    }
-    if (!source.closed) points.add(arms.last.end);
-    if (points.length < 2) return null;
-
-    final vertices = Float64List(points.length * 3);
-    for (var i = 0; i < points.length; i++) {
-      vertices[i * 3] = points[i].x;
-      vertices[i * 3 + 1] = points[i].y;
-      final armIndex = source.closed ? i : (i < arms.length ? i : -1);
-      vertices[i * 3 + 2] = armIndex < 0
-          ? 0
-          : arms[armIndex].bulgeBetween(
-              points[i],
-              points[(i + 1) % points.length],
-            );
-    }
-    return PolylineEntity(
-      id: 0,
-      props: source.props,
-      vertices: vertices,
-      closed: source.closed,
-      constantWidth: source.constantWidth,
-    );
-  }
-
-  static _OffsetArm? _offsetPolylineArm(
-    PolylineEntity source,
-    int index,
-    double distance,
-    double sign,
-  ) {
-    final count = source.vertexCount;
-    final start = source.vertexAt(index);
-    final end = source.vertexAt((index + 1) % count);
-    final direction = end - start;
-    if (direction.lengthSquared < 1e-20) return null;
-    final bulge = source.bulgeAt(index);
-    if (bulge.abs() < 1e-12) {
-      final shift = direction.normalized().perpendicular * (distance * sign);
-      return _OffsetArm.line(start + shift, end + shift);
-    }
-    final def = Flatten.bulgeArc(start, end, bulge);
-    if (def == null) return null;
-    final chordNormal = direction.normalized().perpendicular;
-    final centerIsLeft = chordNormal.dot(def.center - start) > 0;
-    final grow = (sign > 0) != centerIsLeft;
-    final radius = grow ? def.radius + distance : def.radius - distance;
-    if (radius <= 0) return null;
-    final startAngle = (start - def.center).angle;
-    final endAngle = (end - def.center).angle;
-    return _OffsetArm.arc(
-      def.center + Vec2.polar(startAngle, radius),
-      def.center + Vec2.polar(endAngle, radius),
-      def.center,
-      radius,
-      bulge,
-    );
-  }
-
-  static Vec2? _offsetArmJoint(_OffsetArm current, _OffsetArm next) {
-    final hits = current.hits(next);
-    if (hits.isEmpty) return null;
-    final hint = current.end.lerp(next.start, 0.5);
-    var best = hits.first;
-    var bestGap = best.distanceSquaredTo(hint);
-    for (var i = 1; i < hits.length; i++) {
-      final gap = hits[i].distanceSquaredTo(hint);
-      if (gap < bestGap) {
-        best = hits[i];
-        bestGap = gap;
-      }
-    }
-    return best;
+    return entity.offsetBy(distance, towards);
   }
 
   /// Trims [line] by discarding the piece that contains [pick].
@@ -1917,9 +1618,7 @@ class Construct {
       );
     }
     final start = polyline.vertexAt(hit.segment);
-    final end = polyline.vertexAt(
-      (hit.segment + 1) % polyline.vertexCount,
-    );
+    final end = polyline.vertexAt((hit.segment + 1) % polyline.vertexCount);
     return distance +
         _segmentLength(start, end, polyline.bulgeAt(hit.segment)) * hit.t;
   }
@@ -1943,22 +1642,14 @@ class Construct {
       length - distance,
     );
     if (trimmed == null || trimmed.length < 2) return null;
-    return _openPolyVerts(
-      polyline,
-      _reversedPolyVerts(trimmed),
-      polyline.id,
-    );
+    return _openPolyVerts(polyline, _reversedPolyVerts(trimmed), polyline.id);
   }
 
   /// Shortens [arc] back to where it meets [crossings].
   ///
   /// Same contract as [trimLine]: the interval containing [pick] is discarded,
   /// and a middle cut keeps the longer remnant.
-  static ArcEntity? trimArc(
-    ArcEntity arc,
-    List<Vec2> crossings,
-    Vec2 pick,
-  ) {
+  static ArcEntity? trimArc(ArcEntity arc, List<Vec2> crossings, Vec2 pick) {
     if (crossings.isEmpty || arc.radius <= 0 || arc.sweep < 1e-12) {
       return null;
     }
@@ -2184,9 +1875,11 @@ class Construct {
     return switch (target) {
       LineEntity() => crossingsWith(target, edge),
       PolylineEntity() => [
-        for (var i = 0;
-            i < (target.closed ? target.vertexCount : target.vertexCount - 1);
-            i++)
+        for (
+          var i = 0;
+          i < (target.closed ? target.vertexCount : target.vertexCount - 1);
+          i++
+        )
           ..._crossingsOnPolylineSegment(target, i, edge),
       ],
       ArcEntity() => _crossingsOnArc(target, edge),
@@ -2205,17 +1898,11 @@ class Construct {
     final end = polyline.vertexAt((index + 1) % polyline.vertexCount);
     final bulge = polyline.bulgeAt(index);
     if (bulge.abs() < 1e-12) {
-      return crossingsWith(
-        LineEntity(id: 0, start: start, end: end),
-        edge,
-      );
+      return crossingsWith(LineEntity(id: 0, start: start, end: end), edge);
     }
     final def = Flatten.bulgeArc(start, end, bulge);
     if (def == null) {
-      return crossingsWith(
-        LineEntity(id: 0, start: start, end: end),
-        edge,
-      );
+      return crossingsWith(LineEntity(id: 0, start: start, end: end), edge);
     }
     return _crossingsOnArc(
       ArcEntity(
@@ -2276,8 +1963,7 @@ class Construct {
         ];
       case PolylineEntity():
         return [
-          for (final arm in _polylineArms(edge))
-            ..._crossingsOnArc(arc, arm),
+          for (final arm in _polylineArms(edge)) ..._crossingsOnArc(arc, arm),
         ];
       case EllipseEntity():
         return [
@@ -2589,7 +2275,8 @@ class Construct {
     final count = polyline.vertexCount;
     final start = polyline.vertexAt(0);
     final end = polyline.vertexAt(count - 1);
-    final fromStart = pick != null &&
+    final fromStart =
+        pick != null &&
         pick.distanceSquaredTo(start) <= pick.distanceSquaredTo(end);
 
     PolylineEntity? tryEnd({required bool moveStart}) {
@@ -2628,8 +2315,7 @@ class Construct {
           ? grown.startPoint
           : grown.endPoint;
       if (newFree.distanceTo(free) < 1e-9) return null;
-      final newBulge =
-          (bulge >= 0 ? 1.0 : -1.0) * math.tan(grown.sweep / 4);
+      final newBulge = (bulge >= 0 ? 1.0 : -1.0) * math.tan(grown.sweep / 4);
       return _polylineWithMovedEnd(polyline, moveStart, newFree, newBulge);
     }
 
@@ -2747,12 +2433,7 @@ class Construct {
             if (Intersect.distanceToSegment(hit, start, end) < 1e-6) hit,
         ];
       case CircleEntity():
-        return Intersect.circleCircle(
-          center,
-          radius,
-          edge.center,
-          edge.radius,
-        );
+        return Intersect.circleCircle(center, radius, edge.center, edge.radius);
       case ArcEntity():
         return [
           for (final hit in Intersect.circleCircle(
@@ -2954,7 +2635,8 @@ class Construct {
     }
 
     final arc = filleted.arc!;
-    final startFirst = tangent1.distanceSquaredTo(arc.startPoint) <=
+    final startFirst =
+        tangent1.distanceSquaredTo(arc.startPoint) <=
         tangent1.distanceSquaredTo(arc.endPoint);
     final bulge = math.tan((startFirst ? arc.sweep : -arc.sweep) / 4);
 
@@ -3518,11 +3200,7 @@ class Construct {
   /// sweep (the earlier parameter first) and leave the outer remnants.
   /// Returns null when nothing would change; an empty list when the whole
   /// arc is removed.
-  static List<ArcEntity>? breakArc(
-    ArcEntity arc,
-    Vec2 first, [
-    Vec2? second,
-  ]) {
+  static List<ArcEntity>? breakArc(ArcEntity arc, Vec2 first, [Vec2? second]) {
     if (arc.radius <= 0 || arc.sweep < 1e-12) return null;
     var t1 = _arcParam(arc, first);
     var t2 = second == null ? t1 : _arcParam(arc, second);
@@ -3593,7 +3271,8 @@ class Construct {
     final along = line.end - line.start;
     final denom = along.lengthSquared;
     if (denom < 1e-20) return null;
-    final projected = line.start + along * ((pick - line.start).dot(along) / denom);
+    final projected =
+        line.start + along * ((pick - line.start).dot(along) / denom);
     var dir = projected - corner;
     if (dir.lengthSquared < 1e-20) {
       final startLen = line.start.distanceSquaredTo(corner);
@@ -3626,48 +3305,7 @@ class Construct {
   ///
   /// Vertex order flips, and each bulge is negated and moved onto the segment
   /// that now runs the other way, so the drawn curve stays the same.
-  static CadEntity? reverse(CadEntity entity) {
-    switch (entity) {
-      case LineEntity(:final start, :final end):
-        if (start == end) return null;
-        return LineEntity(
-          id: entity.id,
-          props: entity.props,
-          start: end,
-          end: start,
-        );
-      case PolylineEntity():
-        return _reversePolyline(entity);
-      default:
-        return null;
-    }
-  }
-
-  static PolylineEntity? _reversePolyline(PolylineEntity polyline) {
-    final count = polyline.vertexCount;
-    if (count < 2) return null;
-    final out = Float64List(count * 3);
-    for (var i = 0; i < count; i++) {
-      final source = count - 1 - i;
-      out[i * 3] = polyline.vertices[source * 3];
-      out[i * 3 + 1] = polyline.vertices[source * 3 + 1];
-      if (polyline.closed) {
-        final bulgeFrom = (count - 2 - i) % count;
-        out[i * 3 + 2] = -polyline.bulgeAt(bulgeFrom);
-      } else if (i < count - 1) {
-        out[i * 3 + 2] = -polyline.bulgeAt(count - 2 - i);
-      } else {
-        out[i * 3 + 2] = 0;
-      }
-    }
-    return PolylineEntity(
-      id: polyline.id,
-      props: polyline.props,
-      vertices: out,
-      closed: polyline.closed,
-      constantWidth: polyline.constantWidth,
-    );
-  }
+  static CadEntity? reverse(CadEntity entity) => entity.reversed();
 
   /// Joins [entities] whose endpoints meet into one polyline.
   ///
@@ -3804,8 +3442,7 @@ class Construct {
     if (segments < 2 || circle.radius <= 0) return const [];
     return [
       for (var i = 0; i < segments; i++)
-        circle.center +
-            Vec2.polar(2 * math.pi * i / segments, circle.radius),
+        circle.center + Vec2.polar(2 * math.pi * i / segments, circle.radius),
     ];
   }
 
@@ -3851,7 +3488,8 @@ class Construct {
     final def = Flatten.bulgeArc(from, to, bulge);
     if (def == null) return from.lerp(to, t);
     final startAngle = (from - def.center).angle;
-    return def.center + Vec2.polar(startAngle + 4 * math.atan(bulge) * t, def.radius);
+    return def.center +
+        Vec2.polar(startAngle + 4 * math.atan(bulge) * t, def.radius);
   }
 
   /// Points spaced [spacing] apart along [line], starting from the end nearer [pick].
@@ -3888,11 +3526,10 @@ class Construct {
     }
     final length = _polylineLength(polyline);
     if (length <= spacing) return const [];
-    final fromStart = polyline.closed ||
+    final fromStart =
+        polyline.closed ||
         pick.distanceSquaredTo(polyline.vertexAt(0)) <=
-            pick.distanceSquaredTo(
-              polyline.vertexAt(polyline.vertexCount - 1),
-            );
+            pick.distanceSquaredTo(polyline.vertexAt(polyline.vertexCount - 1));
     return [
       for (var i = 1; i * spacing < length - 1e-12; i++)
         _pointAlongPolyline(
@@ -3912,7 +3549,8 @@ class Construct {
     }
     final length = arc.radius * arc.sweep;
     if (length <= spacing) return const [];
-    final fromStart = pick.distanceSquaredTo(arc.startPoint) <=
+    final fromStart =
+        pick.distanceSquaredTo(arc.startPoint) <=
         pick.distanceSquaredTo(arc.endPoint);
     return [
       for (var i = 1; i * spacing < length - 1e-12; i++)
@@ -4024,7 +3662,8 @@ class Construct {
     if (target <= 1e-12 || !target.isFinite) return null;
     final newSweep = target / arc.radius;
     if (newSweep >= math.pi * 2 - 1e-9) return null;
-    final fromStart = pick.distanceSquaredTo(arc.startPoint) <=
+    final fromStart =
+        pick.distanceSquaredTo(arc.startPoint) <=
         pick.distanceSquaredTo(arc.endPoint);
     return ArcEntity(
       id: arc.id,
@@ -4113,7 +3752,8 @@ class Construct {
     }
     var direction = out.last - out[out.length - 2];
     if (direction.lengthSquared < 1e-20) return null;
-    out[out.length - 1] = out.last + direction.normalized() * (target - accumulated);
+    out[out.length - 1] =
+        out.last + direction.normalized() * (target - accumulated);
     return out;
   }
 
@@ -4129,148 +3769,7 @@ class Construct {
   /// command can skip the entity instead of writing a no-op patch.
   static CadEntity? stretch(CadEntity entity, Bounds2 window, Vec2 delta) {
     if (delta.lengthSquared < 1e-20) return null;
-    final translation = Mat3.translation(delta.x, delta.y);
-
-    switch (entity) {
-      case LineEntity(:final start, :final end):
-        final moveStart = _inWindow(window, start);
-        final moveEnd = _inWindow(window, end);
-        if (!moveStart && !moveEnd) return null;
-        if (moveStart && moveEnd) return entity.transformed(translation);
-        return LineEntity(
-          id: entity.id,
-          props: entity.props,
-          start: moveStart ? start + delta : start,
-          end: moveEnd ? end + delta : end,
-        );
-      case PolylineEntity():
-        return _stretchPolyline(entity, window, delta);
-      case SplineEntity():
-        return _stretchSpline(entity, window, delta);
-      case CircleEntity(:final center):
-      case EllipseEntity(:final center):
-        return _inWindow(window, center)
-            ? entity.transformed(translation)
-            : null;
-      case ArcEntity(:final center, :final startPoint, :final endPoint):
-        if (_inWindow(window, center)) {
-          return entity.transformed(translation);
-        }
-        var result = entity;
-        var changed = false;
-        if (_inWindow(window, startPoint)) {
-          result = result.withGrip(0, startPoint + delta) as ArcEntity;
-          changed = true;
-        }
-        if (_inWindow(window, endPoint)) {
-          result = result.withGrip(2, endPoint + delta) as ArcEntity;
-          changed = true;
-        }
-        return changed ? result : null;
-      case PointEntity(:final position):
-      case TextEntity(:final position):
-      case MTextEntity(:final position):
-      case InsertEntity(:final position):
-        return _inWindow(window, position)
-            ? entity.transformed(translation)
-            : null;
-      case RayEntity(:final origin):
-      case XLineEntity(:final origin):
-      case ImageEntity(:final origin):
-        return _inWindow(window, origin)
-            ? entity.transformed(translation)
-            : null;
-      case SolidEntity():
-      case LeaderEntity():
-        return _stretchIndependentGrips(entity, window, delta);
-      default:
-        return window.containsBox(entity.computeBounds())
-            ? entity.transformed(translation)
-            : null;
-    }
-  }
-
-  static bool _inWindow(Bounds2 window, Vec2 point) =>
-      window.containsPoint(point.x, point.y);
-
-  static PolylineEntity? _stretchPolyline(
-    PolylineEntity entity,
-    Bounds2 window,
-    Vec2 delta,
-  ) {
-    var any = false;
-    final out = Float64List.fromList(entity.vertices);
-    for (var i = 0; i < entity.vertexCount; i++) {
-      final x = out[i * 3];
-      final y = out[i * 3 + 1];
-      if (!window.containsPoint(x, y)) continue;
-      any = true;
-      out[i * 3] = x + delta.x;
-      out[i * 3 + 1] = y + delta.y;
-    }
-    if (!any) return null;
-    return PolylineEntity(
-      id: entity.id,
-      props: entity.props,
-      vertices: out,
-      closed: entity.closed,
-      constantWidth: entity.constantWidth,
-    );
-  }
-
-  static SplineEntity? _stretchSpline(
-    SplineEntity entity,
-    Bounds2 window,
-    Vec2 delta,
-  ) {
-    var any = false;
-    final controls = Float64List.fromList(entity.controlPoints);
-    for (var i = 0; i < entity.controlPointCount; i++) {
-      final x = controls[i * 2];
-      final y = controls[i * 2 + 1];
-      if (!window.containsPoint(x, y)) continue;
-      any = true;
-      controls[i * 2] = x + delta.x;
-      controls[i * 2 + 1] = y + delta.y;
-    }
-    Float64List? fits = entity.fitPoints;
-    if (fits != null) {
-      final out = Float64List.fromList(fits);
-      for (var i = 0; i < out.length; i += 2) {
-        if (!window.containsPoint(out[i], out[i + 1])) continue;
-        any = true;
-        out[i] += delta.x;
-        out[i + 1] += delta.y;
-      }
-      fits = out;
-    }
-    if (!any) return null;
-    return SplineEntity(
-      id: entity.id,
-      props: entity.props,
-      controlPoints: controls,
-      knots: entity.knots,
-      weights: entity.weights,
-      degree: entity.degree,
-      closed: entity.closed,
-      fitPoints: fits,
-    );
-  }
-
-  static CadEntity? _stretchIndependentGrips(
-    CadEntity entity,
-    Bounds2 window,
-    Vec2 delta,
-  ) {
-    final grips = entity.grips();
-    var result = entity;
-    var changed = false;
-    for (var i = 0; i < grips.length; i++) {
-      if (!_inWindow(window, grips[i])) continue;
-      result = result.withGrip(i, grips[i] + delta);
-      changed = true;
-    }
-    return changed ? result : null;
+    return entity.stretchBy(window, delta);
   }
 
   /// A copy of [line] spanning the parameter range `[from, to]`.
@@ -4292,12 +3791,7 @@ class Construct {
   }) {
     switch (edge) {
       case LineEntity(:final start, :final end):
-        final hit = Intersect.segmentSegment(
-          line.start,
-          line.end,
-          start,
-          end,
-        );
+        final hit = Intersect.segmentSegment(line.start, line.end, start, end);
         return hit == null ? const [] : [hit];
       case CircleEntity(:final center, :final radius):
         return [
@@ -4356,78 +3850,12 @@ class Construct {
   }
 
   /// The total length of an entity, for the measurement tools.
-  static double lengthOf(CadEntity entity) => switch (entity) {
-    LineEntity(:final length) => length,
-    CircleEntity(:final radius) => 2 * math.pi * radius,
-    ArcEntity(:final radius) => radius * entity.sweep,
-    PolylineEntity() => _polylineLength(entity),
-    EllipseEntity() => _ellipseLength(entity),
-    SplineEntity() => _splineLength(entity),
-    _ => 0,
-  };
+  static double lengthOf(CadEntity entity) => entity.pathLength;
 
-  /// Ramanujan's approximation for a full ellipse; an elliptical arc is
-  /// that length scaled by the parameter sweep. Close enough for DIST.
-  static double _ellipseLength(EllipseEntity ellipse) {
-    final a = ellipse.majorLength;
-    final b = a * ellipse.ratio;
-    if (a <= 0 || b <= 0) return 0;
-    final h = ((a - b) / (a + b));
-    final h2 = h * h;
-    final full = math.pi * (a + b) * (1 + 3 * h2 / (10 + math.sqrt(4 - 3 * h2)));
-    return ellipse.isFullEllipse ? full : full * ellipse.sweep / (math.pi * 2);
-  }
-
-  static double _splineLength(SplineEntity spline) {
-    final xy = _flattenSpline(spline);
-    var total = 0.0;
-    final count = xy.length ~/ 2;
-    final segments = spline.closed ? count : count - 1;
-    for (var i = 0; i < segments; i++) {
-      final dx = xy[((i + 1) % count) * 2] - xy[i * 2];
-      final dy = xy[((i + 1) % count) * 2 + 1] - xy[i * 2 + 1];
-      total += math.sqrt(dx * dx + dy * dy);
-    }
-    return total;
-  }
-
-  static double _polylineLength(PolylineEntity polyline) {
-    var total = 0.0;
-    final count = polyline.vertexCount;
-    final segments = polyline.closed ? count : count - 1;
-    for (var i = 0; i < segments; i++) {
-      total += _segmentLength(
-        polyline.vertexAt(i),
-        polyline.vertexAt((i + 1) % count),
-        polyline.bulgeAt(i),
-      );
-    }
-    return total;
-  }
+  static double _polylineLength(PolylineEntity polyline) => polyline.pathLength;
 
   /// The signed area enclosed by a closed entity. Positive is counter-clockwise.
-  static double areaOf(CadEntity entity) => switch (entity) {
-    CircleEntity(:final radius) => math.pi * radius * radius,
-    EllipseEntity() when entity.isFullEllipse =>
-      math.pi * entity.majorLength * entity.majorLength * entity.ratio,
-    PolylineEntity() when entity.closed => _shoelace(entity),
-    HatchEntity(:final loops) => () {
-      var total = 0.0;
-      for (final loop in loops) {
-        var sum = 0.0;
-        final count = loop.pointCount;
-        for (var i = 0; i < count; i++) {
-          final j = (i + 1) % count;
-          sum +=
-              loop.vertices[i * 2] * loop.vertices[j * 2 + 1] -
-              loop.vertices[j * 2] * loop.vertices[i * 2 + 1];
-        }
-        total += (sum / 2).abs() * (loop.isOuter ? 1 : -1);
-      }
-      return total;
-    }(),
-    _ => 0,
-  };
+  static double areaOf(CadEntity entity) => entity.signedArea;
 
   /// Ids that are exact geometric copies of an earlier entity in [entities].
   ///
@@ -4482,9 +3910,7 @@ class Construct {
       final hi = math.max(t0, t1);
       if (hi - lo < 1e-9) continue;
       final key = '${axis.key}|${_styleKey(entity)}';
-      (groups[key] ??= []).add(
-        _OverlapSpan(entity, i, axis, lo, hi, t0 <= t1),
-      );
+      (groups[key] ??= []).add(_OverlapSpan(entity, i, axis, lo, hi, t0 <= t1));
     }
 
     final erase = <int>[];
@@ -4621,17 +4047,6 @@ class Construct {
 
   static String _qty(double value) => value.toStringAsFixed(6);
 
-  static double _shoelace(PolylineEntity polyline) {
-    var sum = 0.0;
-    final count = polyline.vertexCount;
-    for (var i = 0; i < count; i++) {
-      final a = polyline.vertexAt(i);
-      final b = polyline.vertexAt((i + 1) % count);
-      sum += a.x * b.y - b.x * a.y;
-    }
-    return sum / 2;
-  }
-
   /// Changes text justification and shifts the insertion point so the glyphs
   /// stay put, using the same width estimate as [TextGeometry.estimatedBounds].
   ///
@@ -4644,11 +4059,13 @@ class Construct {
       currentV: entity.vAlign,
     );
     if (next == null) return null;
-    final width = entity.content.length * entity.height * 0.62 * entity.widthFactor;
+    final width =
+        entity.content.length * entity.height * 0.62 * entity.widthFactor;
     final totalHeight = entity.height * 1.2;
-    final delta = (_textAlignOffset(entity.hAlign, entity.vAlign, width, totalHeight) -
-            _textAlignOffset(next.h, next.v, width, totalHeight))
-        .rotated(entity.rotation);
+    final delta =
+        (_textAlignOffset(entity.hAlign, entity.vAlign, width, totalHeight) -
+                _textAlignOffset(next.h, next.v, width, totalHeight))
+            .rotated(entity.rotation);
     return TextEntity(
       id: entity.id,
       props: entity.props,
@@ -4681,9 +4098,10 @@ class Construct {
         ? entity.rectangleWidth
         : longest * entity.height * 0.62;
     final totalHeight = entity.height * lines.length * 1.2;
-    final delta = (_textAlignOffset(entity.hAlign, entity.vAlign, width, totalHeight) -
-            _textAlignOffset(next.h, next.v, width, totalHeight))
-        .rotated(entity.rotation);
+    final delta =
+        (_textAlignOffset(entity.hAlign, entity.vAlign, width, totalHeight) -
+                _textAlignOffset(next.h, next.v, width, totalHeight))
+            .rotated(entity.rotation);
     final h = switch (next.h) {
       TextHAlign.right => 2,
       TextHAlign.center || TextHAlign.middle || TextHAlign.fit => 1,
@@ -4722,19 +4140,19 @@ class Construct {
       'r' || 'right' => (h: TextHAlign.right, v: currentV),
       'm' || 'middle' => (h: TextHAlign.center, v: TextVAlign.middle),
       'tl' || 'topleft' => (h: TextHAlign.left, v: TextVAlign.top),
-      'tc' || 'topcenter' || 'topcentre' => (h: TextHAlign.center, v: TextVAlign.top),
+      'tc' ||
+      'topcenter' ||
+      'topcentre' => (h: TextHAlign.center, v: TextVAlign.top),
       'tr' || 'topright' => (h: TextHAlign.right, v: TextVAlign.top),
       'ml' || 'middleleft' => (h: TextHAlign.left, v: TextVAlign.middle),
-      'mc' || 'middlecenter' || 'middlecentre' => (
-        h: TextHAlign.center,
-        v: TextVAlign.middle,
-      ),
+      'mc' ||
+      'middlecenter' ||
+      'middlecentre' => (h: TextHAlign.center, v: TextVAlign.middle),
       'mr' || 'middleright' => (h: TextHAlign.right, v: TextVAlign.middle),
       'bl' || 'bottomleft' => (h: TextHAlign.left, v: TextVAlign.bottom),
-      'bc' || 'bottomcenter' || 'bottomcentre' => (
-        h: TextHAlign.center,
-        v: TextVAlign.bottom,
-      ),
+      'bc' ||
+      'bottomcenter' ||
+      'bottomcentre' => (h: TextHAlign.center, v: TextVAlign.bottom),
       'br' || 'bottomright' => (h: TextHAlign.right, v: TextVAlign.bottom),
       _ => null,
     };
@@ -4762,10 +4180,7 @@ class Construct {
 
 /// Deletes and stretches produced by [Construct.overkill].
 class OverkillResult {
-  const OverkillResult({
-    this.erase = const [],
-    this.replace = const [],
-  });
+  const OverkillResult({this.erase = const [], this.replace = const []});
 
   final List<int> erase;
   final List<CadEntity> replace;
@@ -4779,7 +4194,8 @@ class _CollinearAxis {
   final Vec2 dir;
   final double offset;
 
-  String get key => '${Construct._qty(dir.x)},${Construct._qty(dir.y)}|'
+  String get key =>
+      '${Construct._qty(dir.x)},${Construct._qty(dir.y)}|'
       '${Construct._qty(offset)}';
 
   double along(Vec2 point) => dir.dot(point);
@@ -4834,64 +4250,6 @@ class _PolyHit {
   final Vec2 point;
 }
 
-/// One offset segment of a bulged polyline, either a line or a concentric arc.
-class _OffsetArm {
-  const _OffsetArm.line(this.start, this.end)
-    : center = null,
-      radius = 0,
-      bulge = 0;
-
-  const _OffsetArm.arc(
-    this.start,
-    this.end,
-    this.center,
-    this.radius,
-    this.bulge,
-  );
-
-  final Vec2 start;
-  final Vec2 end;
-  final Vec2? center;
-  final double radius;
-  final double bulge;
-
-  List<Vec2> hits(_OffsetArm other) {
-    final ownCenter = center;
-    final otherCenter = other.center;
-    if (ownCenter == null && otherCenter == null) {
-      final hit = Intersect.lineLine(start, end, other.start, other.end);
-      return hit == null ? const [] : [hit];
-    }
-    if (ownCenter != null && otherCenter != null) {
-      return Intersect.circleCircle(
-        ownCenter,
-        radius,
-        otherCenter,
-        other.radius,
-      );
-    }
-    if (ownCenter != null) {
-      return Intersect.lineCircle(
-        other.start,
-        other.end,
-        ownCenter,
-        radius,
-      );
-    }
-    return Intersect.lineCircle(start, end, otherCenter!, other.radius);
-  }
-
-  double bulgeBetween(Vec2 from, Vec2 to) {
-    final ownCenter = center;
-    if (ownCenter == null || bulge.abs() < 1e-12) return 0;
-    final a0 = (from - ownCenter).angle;
-    final a1 = (to - ownCenter).angle;
-    return bulge >= 0
-        ? math.tan(angularSweep(a0, a1) / 4)
-        : -math.tan(angularSweep(a1, a0) / 4);
-  }
-}
-
 /// A directed open chain used by [Construct.joinEntities].
 class _JoinRun {
   const _JoinRun(this.points, this.bulges);
@@ -4926,13 +4284,10 @@ class _JoinRun {
 
   _JoinRun get reversed {
     final count = points.length;
-    return _JoinRun(
-      points.reversed.toList(),
-      [
-        for (var i = 0; i < count - 1; i++) -bulges[count - 2 - i],
-        0,
-      ],
-    );
+    return _JoinRun(points.reversed.toList(), [
+      for (var i = 0; i < count - 1; i++) -bulges[count - 2 - i],
+      0,
+    ]);
   }
 
   _JoinRun appended(_JoinRun other) => _JoinRun(
@@ -4942,11 +4297,7 @@ class _JoinRun {
 }
 
 class FilletResult {
-  const FilletResult({
-    required this.first,
-    required this.second,
-    this.arc,
-  });
+  const FilletResult({required this.first, required this.second, this.arc});
 
   final LineEntity first;
   final LineEntity second;
@@ -4955,11 +4306,7 @@ class FilletResult {
 
 /// The two trimmed lines and optional cut produced by [Construct.chamferLines].
 class ChamferResult {
-  const ChamferResult({
-    required this.first,
-    required this.second,
-    this.cut,
-  });
+  const ChamferResult({required this.first, required this.second, this.cut});
 
   final LineEntity first;
   final LineEntity second;

@@ -143,10 +143,10 @@ void main() {
     });
 
     test('unknown entities occupy their proxy box and emit nothing', () {
-      const unknown = UnknownEntity(
+      final unknown = UnknownEntity(
         id: 1,
         originalType: 'PROXY',
-        proxyBounds: Bounds2(0, 0, 4, 2),
+        proxyBounds: const Bounds2(0, 0, 4, 2),
       );
       expect(unknown.computeBounds(), const Bounds2(0, 0, 4, 2));
       expect(unknown.grips(), isEmpty);
