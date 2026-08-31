@@ -37,7 +37,7 @@ const int fcbVersion = 1;
 
 /// Bumped when native import semantics change without a wire-format change,
 /// so the on-disk FCB cache cannot serve a buffer from an older `dwg_import`.
-const int fcbImportRevision = 8;
+const int fcbImportRevision = 11;
 
 /// Size of the fixed file header, in bytes.
 const int fcbHeaderSize = 16;

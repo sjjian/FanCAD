@@ -128,4 +128,69 @@ void main() {
           .join(', '),
     );
   });
+
+  test('a referenced *D block cannot keep a part-scale profile edge', () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    const profileLayers = {
+      '折边线',
+      '角码孔',
+      'ATT',
+      '1金属板竖分格线',
+      '细实线',
+      '编号',
+      'xc',
+      '问号',
+      '虚线',
+    };
+    const dimLayers = {'dim', '标注', '标注线'};
+    final stolen = <String>[];
+    for (final entity in document.entities) {
+      final owner = document.ownerOf(entity.id) ?? '';
+      if (!owner.startsWith('*D')) continue;
+      if (profileLayers.contains(entity.props.layer)) {
+        stolen.add('${entity.kind}#${entity.id}@$owner ${entity.props.layer}');
+        continue;
+      }
+      if (entity is! LineEntity && entity is! PolylineEntity) continue;
+      if (dimLayers.contains(entity.props.layer)) continue;
+      if (document.boundsOfEntity(entity).diagonal < 50) continue;
+      stolen.add(
+        '${entity.kind}#${entity.id}@$owner ${entity.props.layer} '
+        'span=${document.boundsOfEntity(entity).diagonal.toStringAsFixed(0)}',
+      );
+    }
+    expect(stolen, isEmpty, reason: stolen.take(20).join(', '));
+  });
+
+  test('a named layer cannot keep a ByLayer colour', () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    final sentinels = [
+      for (final layer in document.layers.values)
+        if (layer.color.kind == ColorKind.byLayer ||
+            layer.color.kind == ColorKind.byBlock)
+          '${layer.name}=${layer.color}',
+    ];
+    expect(sentinels, isEmpty, reason: sentinels.join(', '));
+  });
+
+  test('a R2004 layer CMC low byte is an ACI, not RGB(0,0,n)', () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    expect(document.layers['折边线']?.color, const CadColor.indexed(213));
+    expect(document.layers['角码孔']?.color, const CadColor.indexed(1));
+    expect(document.layers['细实线']?.color, const CadColor.indexed(2));
+    expect(document.layers['ATT']?.color, const CadColor.indexed(3));
+    expect(document.layers['标注']?.color, const CadColor.indexed(4));
+  });
 }
