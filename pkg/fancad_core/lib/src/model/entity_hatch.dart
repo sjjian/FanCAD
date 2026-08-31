@@ -175,6 +175,10 @@ final class HatchEntity extends CadEntity {
   }
 
   @override
+  CadEntity? stretchBy(Bounds2 window, Vec2 delta) =>
+      stretchIndependentGrips(window, delta);
+
+  @override
   double get signedArea {
     var total = 0.0;
     for (final loop in loops) {
