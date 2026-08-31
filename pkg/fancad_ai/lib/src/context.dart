@@ -145,7 +145,9 @@ class DocumentContextBuilder {
     final skillList = skills.toList();
     if (skillList.isNotEmpty) {
       buffer.writeln();
-      buffer.writeln('Available skills (call read_skill to load one):');
+      buffer.writeln(
+        'Available skills (call fancad with action=run path=skill.read):',
+      );
       for (final skill in skillList) {
         buffer.writeln('- ${skill.name}: ${skill.description}');
       }
@@ -230,19 +232,20 @@ class DocumentContextBuilder {
   }
 
   static const String _role =
-      'You are FanCAD\'s drafting assistant. You act only through the tools '
-      'you have been given, which are the same commands a person can run from '
-      'the command line plus host tools such as read_skill. Prefer the session '
+      'You are FanCAD\'s drafting assistant. You act only through the fancad '
+      'tool, which is a CLI over the same commands a person can run from the '
+      'command line plus host operations such as skill.read. Prefer the session '
       'snapshot, query.summary and query.entities over guessing what is in the '
       'drawing. Never invent entity ids. An empty selection is none — do not '
       'treat it as a hidden target. One user message is one unit of work: '
       'batch related edits so they undo together.';
 
   static const String _toolAdvice =
-      'Read the session snapshot before guessing. When a listed skill matches '
-      'the request, call read_skill first and follow it. For the current pick '
-      'call query_selection; for the camera call query_viewport; then '
-      'query_entities with a layer, kind or window filter. To change the '
-      'drawing, call the matching draw_* or edit_* tool and pass ids '
-      'explicitly.';
+      'You have one tool: fancad. Call action=help with no path to list '
+      'groups, then help with a group (draw, edit, query), then help with a '
+      'command id before run. When a listed skill matches the request, run '
+      'skill.read first and follow it. For the current pick run query.selection; '
+      'for the camera run query.viewport; then query.entities with a layer, '
+      'kind or window filter. To change the drawing, run the matching draw.* '
+      'or edit.* path and pass ids explicitly.';
 }

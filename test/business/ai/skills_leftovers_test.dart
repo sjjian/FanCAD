@@ -20,7 +20,7 @@ void main() {
     final tool = readSkillTool(skills);
     final ok = await tool.execute({'name': 'annotate'});
     expect(ok['status'], 'ok');
-    expect(ok['body'], contains('draw_dimAligned'));
+    expect(ok['body'], contains('draw.dimAligned'));
 
     final missing = await tool.execute({'name': 'no-such-skill'});
     expect(missing['status'], 'failed');
@@ -40,8 +40,12 @@ void main() {
           toolCalls: [
             LlmToolCall(
               id: '1',
-              name: 'read_skill',
-              arguments: {'name': 'inspect-drawing'},
+              name: 'fancad',
+              arguments: {
+                'action': 'run',
+                'path': 'skill.read',
+                'args': {'name': 'inspect-drawing'},
+              },
             ),
           ],
         ),
@@ -61,6 +65,6 @@ void main() {
     final toolRow = conversation.visible.singleWhere(
       (item) => item.role == ChatRole.tool,
     );
-    expect(toolRow.text, contains('query_entities'));
+    expect(toolRow.text, contains('query.entities'));
   });
 }

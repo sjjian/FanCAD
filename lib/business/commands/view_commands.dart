@@ -63,14 +63,18 @@ class ViewCommands {
       ParamSpec(
         name: 'tab',
         type: ParamType.text,
-        description: 'Settings page: general or assistant',
+        description: 'Settings page: general, assistant or mcp',
         required: false,
       ),
     ],
     handler: (context) async {
       final tab = context.args.text('tab') ?? '';
       context.services.revealPanel(
-        tab == 'assistant' ? 'preferences:assistant' : 'preferences',
+        switch (tab) {
+          'assistant' => 'preferences:assistant',
+          'mcp' => 'preferences:mcp',
+          _ => 'preferences',
+        },
       );
       return const CommandResult.ok();
     },

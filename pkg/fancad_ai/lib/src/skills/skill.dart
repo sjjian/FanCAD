@@ -1,7 +1,7 @@
 /// A skill the model may load on demand.
 ///
 /// The system prompt lists only [name] and [description]. The body is fetched
-/// with `read_skill`, the same way moulab keeps workflows out of every turn.
+/// with `skill.read`, the same way moulab keeps workflows out of every turn.
 class SkillSummary {
   const SkillSummary({
     required this.name,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 
 import 'approval.dart';
 import 'authoring.dart';
@@ -102,11 +103,7 @@ class AgentLoop {
     final convo = conversation ?? Conversation();
     convo.addUser(userMessage);
 
-    final extras = _hostTools();
-    final tools = catalog.toolsOf(
-      registry,
-      extra: [for (final tool in extras) tool.definition],
-    );
+    final tools = [fancadLlmTool];
     final system = LlmMessage.system(
       contextBuilder.systemPrompt(
         document: document,
@@ -169,10 +166,10 @@ class AgentLoop {
               isError: true,
             );
           }
-          final allowedNames = {for (final call in pending.calls) call.name};
+          final declinedIds = {for (final call in pending.calls) call.id};
           final remainder = [
             for (final call in completion.toolCalls)
-              if (!allowedNames.contains(call.name)) call,
+              if (!declinedIds.contains(call.id)) call,
           ];
           if (remainder.isEmpty) {
             _coalesce(undoBefore);
@@ -298,22 +295,26 @@ class AgentLoop {
       if (call.arguments.length == 1 && call.arguments.containsKey('raw')) {
         return true;
       }
-      final command = catalog.commandFor(registry, call.name);
+      if (call.name != fancadToolName) continue;
+      final request = OpsRequest.tryParse(call.arguments);
+      if (request == null) return true;
+      if (request.action != OpsAction.run) continue;
+      if (!request.hasPath) return true;
+      final command = catalog.commandFor(registry, request.path);
       if (command != null) {
         for (final param in command.params) {
           if (!param.required) continue;
-          final value = call.arguments[param.name];
+          final value = request.args[param.name];
           if (value == null) return true;
           if (value is String && value.trim().isEmpty) return true;
         }
         continue;
       }
-      final host = _hostTool(call.name);
+      final host = _hostOperation(request.path);
       if (host == null) continue;
-      final required = host.definition.parameters['required'];
-      if (required is! List) continue;
-      for (final key in required) {
-        final value = call.arguments['$key'];
+      for (final param in host.params) {
+        if (!param.required) continue;
+        final value = request.args[param.name];
         if (value == null) return true;
         if (value is String && value.trim().isEmpty) return true;
       }
@@ -328,41 +329,26 @@ class AgentLoop {
     return bundledHostTools(registry);
   }
 
-  HostTool? _hostTool(String name) {
-    for (final tool in _hostTools()) {
-      if (tool.definition.name == name) return tool;
+  Operation? _hostOperation(String path) {
+    final provider = HostOperationProvider(_hostTools());
+    for (final operation in provider.operations()) {
+      if (operation.id == path) return operation;
     }
     return null;
   }
 
+  OperationCatalog _opsCatalog() => OperationCatalog()
+    ..addProvider(
+      CommandOperationProvider(registry: registry, execute: execute),
+    )
+    ..addProvider(HostOperationProvider(_hostTools()));
+
   Future<void> _runCalls(List<LlmToolCall> calls, Conversation convo) async {
+    final dispatcher = OpsDispatcher(_opsCatalog());
     for (final call in calls) {
       if (_cancelled) return;
-      final host = _hostTool(call.name);
-      if (host != null) {
-        try {
-          final payload = await host.execute(call.arguments);
-          convo.addToolResult(
-            call: call,
-            content: jsonEncode(payload),
-            isError: payload['status'] == 'failed',
-          );
-        } catch (caught) {
-          convo.addToolResult(
-            call: call,
-            content: jsonEncode({
-              'status': 'failed',
-              'error': '$caught',
-              'message': '$caught',
-            }),
-            isError: true,
-          );
-        }
-        continue;
-      }
-      final command = catalog.commandFor(registry, call.name);
-      if (command == null) {
-        final message = 'Unknown tool: ${call.name}';
+      if (call.name != fancadToolName) {
+        final message = 'Unknown tool: ${call.name}. Use $fancadToolName.';
         convo.addToolResult(
           call: call,
           content: jsonEncode({
@@ -374,51 +360,66 @@ class AgentLoop {
         );
         continue;
       }
-      if (command.aiExposure == AiExposure.hidden) {
-        final message = '${command.id} is not available to the assistant';
-        convo.addToolResult(
-          call: call,
-          content: jsonEncode({
-            'status': 'failed',
-            'error': message,
-            'message': message,
-          }),
-          isError: true,
-        );
-        continue;
-      }
+      await _runFancad(call, convo, dispatcher);
+    }
+  }
 
-      CommandResult result;
-      try {
-        result = await execute(command.id, call.arguments);
-      } catch (caught) {
-        result = CommandResult.failed('$caught');
-      }
-
-      if (authoring.isActivationFailure(result)) {
-        final repair = authoring.repairPrompt(
-          pluginId: '${call.arguments['id'] ?? command.id}',
-          error: result.message,
-          typings: typings,
-        );
-        convo.addToolResult(
-          call: call,
-          content: jsonEncode({
-            ...encodeAssistantToolResult(result, command),
-            'repairHint': repair,
-          }),
-          isError: true,
-        );
-        continue;
-      }
-
-      final payload = encodeAssistantToolResult(result, command);
+  Future<void> _runFancad(
+    LlmToolCall call,
+    Conversation convo,
+    OpsDispatcher dispatcher,
+  ) async {
+    final request = OpsRequest.tryParse(call.arguments);
+    if (request == null) {
+      final message =
+          'fancad requires action=list|help|schema|run. '
+          'Call help with no path to see groups.';
       convo.addToolResult(
         call: call,
-        content: jsonEncode(payload),
-        isError: payload['status'] != 'ok',
+        content: jsonEncode({
+          'status': 'failed',
+          'error': message,
+          'message': message,
+        }),
+        isError: true,
+        toolName: fancadToolName,
       );
+      return;
     }
+
+    Map<String, Object?> payload;
+    try {
+      payload = await dispatcher.dispatch(request);
+    } catch (caught) {
+      payload = {
+        'status': 'failed',
+        'error': '$caught',
+        'message': '$caught',
+      };
+    }
+
+    if (request.action == OpsAction.run && payload['status'] == 'failed') {
+      final result = CommandResult.failed(
+        '${payload['message'] ?? payload['error'] ?? ''}',
+      );
+      if (authoring.isActivationFailure(result)) {
+        payload = {
+          ...payload,
+          'repairHint': authoring.repairPrompt(
+            pluginId: '${request.args['id'] ?? request.path}',
+            error: result.message,
+            typings: typings,
+          ),
+        };
+      }
+    }
+
+    convo.addToolResult(
+      call: call,
+      content: jsonEncode(payload),
+      isError: payload['status'] == 'failed',
+      toolName: request.displayName,
+    );
   }
 
   void _coalesce(int undoBefore) {

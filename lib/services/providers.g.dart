@@ -214,6 +214,44 @@ final pluginDelegateProvider = Provider<WorkspacePluginDelegate>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PluginDelegateRef = ProviderRef<WorkspacePluginDelegate>;
+String _$opsHostHash() => r'ops-host-fancad-mcp';
+
+/// Localhost ops socket + lock file, or null when MCP is disabled.
+///
+/// Copied from [opsHost].
+@ProviderFor(opsHost)
+final opsHostProvider = Provider<FanCadOpsHost?>.internal(
+  opsHost,
+  name: r'opsHostProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$opsHostHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef OpsHostRef = ProviderRef<FanCadOpsHost?>;
+String _$mcpEndpointHash() => r'ops-mcp-endpoint';
+
+/// URL and token shown in settings for a Cursor MCP client.
+///
+/// Copied from [mcpEndpoint].
+@ProviderFor(mcpEndpoint)
+final mcpEndpointProvider = Provider<McpClientEndpoint>.internal(
+  mcpEndpoint,
+  name: r'mcpEndpointProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$mcpEndpointHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef McpEndpointRef = ProviderRef<McpClientEndpoint>;
 String _$aiControllerHash() => r'd4ad791f3a1f3683aef294d9fa7a78164f13b4f5';
 
 /// The assistant session. Created even when no key is configured so the panel
@@ -353,5 +391,22 @@ final languageProvider = NotifierProvider<Language, String>.internal(
 );
 
 typedef _$Language = Notifier<String>;
+String _$mcpConfigHash() => r'ops-mcp-config';
+
+/// MCP listen settings the settings tab and [opsHost] share.
+///
+/// Copied from [McpConfig].
+@ProviderFor(McpConfig)
+final mcpConfigProvider = NotifierProvider<McpConfig, McpBind>.internal(
+  McpConfig.new,
+  name: r'mcpConfigProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$mcpConfigHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$McpConfig = Notifier<McpBind>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

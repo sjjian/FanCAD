@@ -1,11 +1,12 @@
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 import 'package:test/test.dart';
 
 void main() {
   test('highlight ids accept strings, maps and nested lists, not junk', () {
     expect(
-      CommandToolCatalog.highlightIdsOf({
+      highlightIdsOf({
         'id': '12',
         'selection': [
           {'id': 3.0},
@@ -16,71 +17,6 @@ void main() {
       }),
       [12, 3, 4],
     );
-  });
-
-  test(
-    'a destructive alias is advertised, and approval-required can be hidden',
-    () {
-      final registry = CommandRegistry()
-        ..register(
-          CommandDescriptor(
-            id: 'edit.erase',
-            title: 'Erase',
-            description: 'Deletes objects.',
-            aliases: const ['E'],
-            risk: CommandRisk.destructive,
-            handler: (_) async => const CommandResult.ok(),
-          ),
-        )
-        ..register(
-          CommandDescriptor(
-            id: 'file.save',
-            title: 'Save',
-            aiExposure: AiExposure.approvalRequired,
-            handler: (_) async => const CommandResult.ok(),
-          ),
-        );
-
-      final all = const CommandToolCatalog().toolsOf(registry);
-      expect(
-        all.map((tool) => tool.name),
-        containsAll(['edit_erase', 'file_save']),
-      );
-      final erase = all.firstWhere((tool) => tool.name == 'edit_erase');
-      expect(erase.description, contains('Deletes objects.'));
-      expect(erase.description, contains('Aliases: E.'));
-      expect(erase.description, contains('Destructive: requires approval.'));
-
-      final quiet = const CommandToolCatalog().toolsOf(
-        registry,
-        includeApprovalRequired: false,
-      );
-      expect(quiet.map((tool) => tool.name), ['edit_erase']);
-    },
-  );
-
-  test('host tools merge after registry tools without becoming commands', () {
-    final registry = CommandRegistry()
-      ..register(
-        CommandDescriptor(
-          id: 'query.selection',
-          title: 'Query Selection',
-          risk: CommandRisk.readOnly,
-          handler: (_) async => const CommandResult.ok(),
-        ),
-      );
-    final tools = const CommandToolCatalog().toolsOf(
-      registry,
-      extra: [
-        readSkillTool(
-          InMemorySkillRegistry({
-            'demo': const Skill(name: 'demo', description: 'd', body: 'b'),
-          }),
-        ).definition,
-      ],
-    );
-    expect(tools.map((tool) => tool.name), ['query_selection', 'read_skill']);
-    expect(registry.find('read_skill'), isNull);
   });
 
   test('a leftover cancel becomes a failed tool error the model can read', () {
@@ -99,7 +35,10 @@ void main() {
       command,
     );
     expect(leftover['status'], 'failed');
-    expect(leftover['error'], contains('draw_polyline({points?})'));
+    expect(
+      leftover['error'],
+      contains('fancad({action: run, path: draw.polyline, args: {points?}})'),
+    );
     expect(leftover['error'], contains('arguments were missing'));
     expect(leftover['error'], isNot(contains('Cancelled')));
     expect(leftover['message'], leftover['error']);
@@ -113,5 +52,38 @@ void main() {
     expect(explicit['status'], 'failed');
     expect(explicit['error'], contains('[[x, y]'));
     expect(explicit['error'], isNot(contains('Cancelled')));
+  });
+
+  test('host tools stay out of the command registry', () {
+    final registry = CommandRegistry()
+      ..register(
+        CommandDescriptor(
+          id: 'query.selection',
+          title: 'Query Selection',
+          risk: CommandRisk.readOnly,
+          handler: (_) async => const CommandResult.ok(),
+        ),
+      );
+    expect(registry.find('read_skill'), isNull);
+    expect(registry.find('skill.read'), isNull);
+
+    final catalog = OperationCatalog()
+      ..addProvider(
+        CommandOperationProvider(
+          registry: registry,
+          execute: (id, args) async => const CommandResult.ok(),
+        ),
+      )
+      ..addProvider(
+        HostOperationProvider([
+          readSkillTool(
+            InMemorySkillRegistry({
+              'demo': const Skill(name: 'demo', description: 'd', body: 'b'),
+            }),
+          ),
+        ]),
+      );
+    expect(catalog.find('skill.read'), isNotNull);
+    expect(catalog.find('query.selection'), isNotNull);
   });
 }

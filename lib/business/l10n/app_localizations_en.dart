@@ -41,7 +41,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_tab_assistant => 'Assistant';
 
   @override
+  String get settings_tab_mcp => 'MCP';
+
+  @override
   String get settings_appearance => 'Appearance';
+
+  @override
+  String get settings_mcp => 'MCP';
+
+  @override
+  String get settings_mcp_enable => 'Network';
+
+  @override
+  String get settings_mcp_on =>
+      'Cursor and Claude Desktop connect at the URL below';
+
+  @override
+  String get settings_mcp_off => 'External MCP clients cannot attach';
+
+  @override
+  String get settings_mcp_url => 'URL';
+
+  @override
+  String get settings_mcp_local => 'Local only';
+
+  @override
+  String get settings_mcp_local_on => 'Only this computer can connect';
+
+  @override
+  String get settings_mcp_local_off =>
+      'Other machines can connect; the allowlist is optional';
+
+  @override
+  String get settings_mcp_port => 'Port';
+
+  @override
+  String get settings_mcp_allowlist => 'Allowlist';
+
+  @override
+  String get settings_mcp_allowlist_hint => 'Optional, comma-separated IPs';
 
   @override
   String get settings_connection => 'Connection';

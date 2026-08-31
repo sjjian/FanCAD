@@ -1,5 +1,6 @@
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 import 'package:test/test.dart';
 
 Future<CommandResult> _noop(CommandContext context) async =>
@@ -86,20 +87,28 @@ void main() {
 
     final pending = policy.pendingOf(
       const [
-        LlmToolCall(id: '1', name: 'draw_ellipse', arguments: {}),
+        LlmToolCall(
+          id: '1',
+          name: fancadToolName,
+          arguments: {'action': 'run', 'path': 'draw.ellipse'},
+        ),
         LlmToolCall(
           id: '2',
-          name: 'edit_erase',
+          name: fancadToolName,
           arguments: {
-            'ids': [3],
-            'mystery': 'leftover',
+            'action': 'run',
+            'path': 'edit.erase',
+            'args': {
+              'ids': [3],
+              'mystery': 'leftover',
+            },
           },
         ),
       ],
       registry,
     )!;
     expect(pending.calls, hasLength(1));
-    expect(pending.calls.single.name, 'edit_erase');
+    expect(pending.calls.single.arguments['path'], 'edit.erase');
     expect(pending.details, isNot(contains('mystery')));
     expect(pending.details, isNot(contains('center')));
   });

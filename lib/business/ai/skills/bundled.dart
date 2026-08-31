@@ -28,9 +28,9 @@ there are, where something is, or to list objects in view.
 
 1. Read the session snapshot first: selection, viewport, snap, layer counts.
 2. If that is enough, answer. Do not invent entity ids.
-3. For more detail call `query_summary`, then `query_entities` with a layer,
+3. For more detail run `query.summary`, then `query.entities` with a layer,
    kind, or `window` taken from the viewport `visible` bounds.
-4. For the current selection call `query_selection` instead of guessing ids.
+4. For the current selection run `query.selection` instead of guessing ids.
 5. Never dump the whole drawing. Prefer filters and a `limit`.
 ''',
   r'''---
@@ -48,9 +48,9 @@ refers to what is already picked.
 1. Read the snapshot. If `selection: none`, do not call edit tools that would
    fall back to a hidden selection. Ask the user to select, or find candidates
    with `query_entities` and confirm the ids.
-2. If objects are selected, call `query_selection` when you need color, layer,
-   or geometry, then call the matching `edit_*` tool with those ids.
-3. Pass `ids` explicitly on edit tools. Do not rely on an implicit leftover.
+2. If objects are selected, run `query.selection` when you need color, layer,
+   or geometry, then run the matching `edit.*` command with those ids.
+3. Pass `ids` explicitly on edit commands. Do not rely on an implicit leftover.
 ''',
   r'''---
 name: annotate
@@ -63,13 +63,13 @@ Use this skill when the user asks to dimension, label, or add a measurement.
 
 ## Workflow
 
-1. Resolve the target with `query_selection` if something is selected,
-   otherwise `query_entities`.
+1. Resolve the target with `query.selection` if something is selected,
+   otherwise `query.entities`.
 2. Never invent ids. Use points from the query result (`start` / `end` /
    `center`).
-3. Aligned or linear: `draw_dimAligned` / `draw_dimLinear` with the two
+3. Aligned or linear: `draw.dimAligned` / `draw.dimLinear` with the two
    definition points.
-4. Radius or diameter: `draw_dimRadius` / `draw_dimDiameter` on a circle or
+4. Radius or diameter: `draw.dimRadius` / `draw.dimDiameter` on a circle or
    arc when the tool accepts one.
 5. Offset the dimension line from the geometry so it stays readable.
 ''',
@@ -84,9 +84,9 @@ Use this skill when the user asks to create or fix an extension.
 
 ## Workflow
 
-1. `plugins_scaffold` to create the extension folder.
-2. `plugins_write` to write source.
-3. `plugins_reload` to activate.
+1. `plugins.scaffold` to create the extension folder.
+2. `plugins.write` to write source.
+3. `plugins.reload` to activate.
 4. If activation fails, read `repairHint` and rewrite the file. Use the
    `fancad` typings in the system prompt. Do not invent API names.
 ''',

@@ -10,9 +10,9 @@ refers to what is already picked.
 
 ## Workflow
 
-1. Read the snapshot. If `selection: none`, do not call edit tools that would
+1. Read the snapshot. If `selection: none`, do not run edit commands that would
    fall back to a hidden selection. Ask the user to select, or find candidates
-   with `query_entities` and confirm the ids.
-2. If objects are selected, call `query_selection` when you need color, layer,
-   or geometry, then call the matching `edit_*` tool with those ids.
-3. Pass `ids` explicitly on edit tools. Do not rely on an implicit leftover.
+   with `query.entities` and confirm the ids.
+2. If objects are selected, run `query.selection` when you need color, layer,
+   or geometry, then run the matching `edit.*` command with those ids.
+3. Pass `ids` explicitly on edit commands. Do not rely on an implicit leftover.

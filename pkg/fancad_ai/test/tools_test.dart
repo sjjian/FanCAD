@@ -1,9 +1,10 @@
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('every exposed command becomes a tool with its parameter schema', () {
+  test('the catalog advertises one fancad tool, not every command', () {
     final registry = CommandRegistry();
     registry.register(
       CommandDescriptor(
@@ -28,11 +29,11 @@ void main() {
 
     final tools = const CommandToolCatalog().toolsOf(registry);
     expect(tools, hasLength(1));
-    expect(tools.single.name, 'draw_line');
-    expect(tools.single.parameters['required'], ['start', 'end']);
+    expect(tools.single.name, fancadToolName);
+    expect(tools.single.parameters['required'], ['action']);
   });
 
-  test('a tool name resolves back to the original command', () {
+  test('a dotted path resolves back to the original command', () {
     final registry = CommandRegistry();
     registry.register(
       CommandDescriptor(
@@ -43,14 +44,15 @@ void main() {
       ),
     );
     expect(
-      const CommandToolCatalog().commandFor(registry, 'query_summary')?.id,
+      const CommandToolCatalog().commandFor(registry, 'query.summary')?.id,
       'query.summary',
     );
+    expect(const CommandToolCatalog().commandFor(registry, 'query_summary'), isNull);
   });
 
   test('highlight ids are collected from the usual argument names', () {
     expect(
-      CommandToolCatalog.highlightIdsOf({
+      highlightIdsOf({
         'ids': [3, 5],
         'target': 9,
       }),

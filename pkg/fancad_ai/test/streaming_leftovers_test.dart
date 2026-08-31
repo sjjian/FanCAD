@@ -1,5 +1,6 @@
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -150,7 +151,11 @@ class _IncompleteToolProvider extends LlmProvider {
         return;
       }
       yield const LlmToolCalls([
-        LlmToolCall(id: '1', name: 'draw_line', arguments: {}),
+        LlmToolCall(
+          id: '1',
+          name: fancadToolName,
+          arguments: {'action': 'run', 'path': 'draw.line'},
+        ),
       ]);
       yield const LlmFinished(finishReason: 'tool_calls');
       return;
@@ -159,10 +164,14 @@ class _IncompleteToolProvider extends LlmProvider {
     yield const LlmToolCalls([
       LlmToolCall(
         id: '1',
-        name: 'draw_line',
+        name: fancadToolName,
         arguments: {
-          'start': [0, 0],
-          'end': [4, 0],
+          'action': 'run',
+          'path': 'draw.line',
+          'args': {
+            'start': [0, 0],
+            'end': [4, 0],
+          },
         },
       ),
     ]);

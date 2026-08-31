@@ -91,7 +91,7 @@ void main() {
       ],
     );
     expect(prompt, contains('inspect-drawing: Inspect the open drawing.'));
-    expect(prompt, contains('read_skill'));
+    expect(prompt, contains('skill.read'));
     expect(prompt, isNot(contains('Never dump the whole drawing')));
   });
 }

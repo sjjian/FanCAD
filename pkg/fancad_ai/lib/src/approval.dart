@@ -1,4 +1,5 @@
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 import 'package:meta/meta.dart';
 
 import 'provider.dart';
@@ -73,17 +74,16 @@ class ApprovalPolicy {
     List<LlmToolCall> calls,
     CommandRegistry registry,
   ) {
-    const catalog = CommandToolCatalog();
     final pendingCalls = <LlmToolCall>[];
     final pendingCommands = <CommandDescriptor>[];
     final highlights = <int>{};
     for (final call in calls) {
-      final command = catalog.commandFor(registry, call.name);
+      final command = commandForCall(registry, call);
       if (command == null) continue;
       if (!requiresApproval(command)) continue;
       pendingCalls.add(call);
       pendingCommands.add(command);
-      highlights.addAll(CommandToolCatalog.highlightIdsOf(call.arguments));
+      highlights.addAll(highlightIdsOf(runArgumentsOf(call)));
     }
     if (pendingCalls.isEmpty) return null;
     return PendingChangeSet(

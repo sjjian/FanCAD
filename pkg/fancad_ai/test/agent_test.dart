@@ -1,6 +1,21 @@
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 import 'package:test/test.dart';
+
+LlmToolCall _run(
+  String id,
+  String path, [
+  Map<String, Object?> args = const {},
+]) => LlmToolCall(
+  id: id,
+  name: fancadToolName,
+  arguments: {
+    'action': 'run',
+    'path': path,
+    if (args.isNotEmpty) 'args': args,
+  },
+);
 
 void main() {
   late CommandRegistry registry;
@@ -97,6 +112,22 @@ void main() {
     expect(session.document.entities, isEmpty);
   });
 
+  test('a text-only reply advertises only the fancad tool', () async {
+    late LlmRequest seen;
+    final agent = AgentLoop(
+      provider: _CaptureProvider((request) {
+        seen = request;
+        return const LlmCompletion(text: 'ok');
+      }),
+      registry: registry,
+      execute: execute,
+      document: session.document,
+    );
+    await agent.run('Hi');
+    expect(seen.tools, hasLength(1));
+    expect(seen.tools.single.name, fancadToolName);
+  });
+
   test('an empty message does not call the model', () async {
     final provider = ScriptedLlmProvider([
       const LlmCompletion(text: 'should not run'),
@@ -121,11 +152,7 @@ void main() {
   test('a read-only tool runs without asking', () async {
     final agent = AgentLoop(
       provider: ScriptedLlmProvider([
-        const LlmCompletion(
-          toolCalls: [
-            LlmToolCall(id: '1', name: 'query_summary', arguments: {}),
-          ],
-        ),
+        LlmCompletion(toolCalls: [_run('1', 'query.summary')]),
         const LlmCompletion(text: 'Nothing is drawn yet.'),
       ]),
       registry: registry,
@@ -144,16 +171,12 @@ void main() {
     var asked = 0;
     final draw = AgentLoop(
       provider: ScriptedLlmProvider([
-        const LlmCompletion(
+        LlmCompletion(
           toolCalls: [
-            LlmToolCall(
-              id: '1',
-              name: 'draw_line',
-              arguments: {
-                'start': [0, 0],
-                'end': [10, 0],
-              },
-            ),
+            _run('1', 'draw.line', {
+              'start': [0, 0],
+              'end': [10, 0],
+            }),
           ],
         ),
         const LlmCompletion(text: 'Drew a line.'),
@@ -175,15 +198,11 @@ void main() {
 
     final erase = AgentLoop(
       provider: ScriptedLlmProvider([
-        const LlmCompletion(
+        LlmCompletion(
           toolCalls: [
-            LlmToolCall(
-              id: '2',
-              name: 'edit_erase',
-              arguments: {
-                'ids': [1],
-              },
-            ),
+            _run('2', 'edit.erase', {
+              'ids': [1],
+            }),
           ],
         ),
       ]),
@@ -194,7 +213,7 @@ void main() {
       askApproval: (pending) async {
         asked++;
         expect(pending.calls, hasLength(1));
-        expect(pending.calls.single.name, 'edit_erase');
+        expect(pending.calls.single.arguments['path'], 'edit.erase');
         return false;
       },
     );
@@ -208,24 +227,16 @@ void main() {
   test('an approved edit applies and one turn is one undo entry', () async {
     final agent = AgentLoop(
       provider: ScriptedLlmProvider([
-        const LlmCompletion(
+        LlmCompletion(
           toolCalls: [
-            LlmToolCall(
-              id: '1',
-              name: 'draw_line',
-              arguments: {
-                'start': [0, 0],
-                'end': [10, 0],
-              },
-            ),
-            LlmToolCall(
-              id: '2',
-              name: 'draw_line',
-              arguments: {
-                'start': [0, 1],
-                'end': [10, 1],
-              },
-            ),
+            _run('1', 'draw.line', {
+              'start': [0, 0],
+              'end': [10, 0],
+            }),
+            _run('2', 'draw.line', {
+              'start': [0, 1],
+              'end': [10, 1],
+            }),
           ],
         ),
         const LlmCompletion(text: 'Drew two lines.'),
@@ -262,16 +273,12 @@ void main() {
     final deltas = <String>[];
     final agent = AgentLoop(
       provider: ScriptedLlmProvider([
-        const LlmCompletion(
+        LlmCompletion(
           toolCalls: [
-            LlmToolCall(id: '1', name: 'query_summary', arguments: {}),
-            LlmToolCall(
-              id: '2',
-              name: 'edit_erase',
-              arguments: {
-                'ids': [1],
-              },
-            ),
+            _run('1', 'query.summary'),
+            _run('2', 'edit.erase', {
+              'ids': [1],
+            }),
           ],
         ),
         const LlmCompletion(text: 'Counted, did not erase.'),
@@ -290,24 +297,27 @@ void main() {
     expect(deltas, ['Counted, did not erase.']);
   });
 
-  test('unknown, hidden and thrown tools become failed rows, not crashes',
+  test('unknown and thrown tools become failed rows; hidden commands run',
       () async {
     registry.register(
       CommandDescriptor(
         id: 'view.zoomIn',
         title: 'Zoom In',
         aiExposure: AiExposure.hidden,
-        handler: (_) async => const CommandResult.ok(),
+        handler: (_) async {
+          ran.add('view.zoomIn');
+          return const CommandResult.ok();
+        },
       ),
     );
     final conversation = Conversation();
     final agent = AgentLoop(
       provider: ScriptedLlmProvider([
-        const LlmCompletion(
+        LlmCompletion(
           toolCalls: [
-            LlmToolCall(id: '1', name: 'no_such_tool', arguments: {}),
-            LlmToolCall(id: '2', name: 'view_zoomIn', arguments: {}),
-            LlmToolCall(id: '3', name: 'query_summary', arguments: {}),
+            const LlmToolCall(id: '1', name: 'no_such_tool', arguments: {}),
+            _run('2', 'view.zoomIn'),
+            _run('3', 'query.summary'),
           ],
         ),
         const LlmCompletion(text: 'Done.'),
@@ -325,15 +335,14 @@ void main() {
 
     final turn = await agent.run('Zoom and summarise');
     expect(turn.isOk, isTrue);
-    expect(ran, isEmpty);
-    final texts = conversation.visible
+    expect(ran, ['view.zoomIn']);
+    final rows = conversation.visible
         .where((item) => item.role == ChatRole.tool)
-        .map((item) => item.text)
         .toList();
-    expect(texts, hasLength(3));
-    expect(texts[0], contains('Unknown tool'));
-    expect(texts[1], contains('not available'));
-    expect(texts[2], contains('offline'));
+    expect(rows, hasLength(3));
+    expect(rows[0].text, contains('Unknown tool'));
+    expect(rows[1].toolName, 'view.zoomIn');
+    expect(rows[2].text, contains('offline'));
   });
 
   test('a failed plugin activate ships a repair hint and max rounds stop',
@@ -350,13 +359,9 @@ void main() {
     final conversation = Conversation();
     final reload = AgentLoop(
       provider: ScriptedLlmProvider([
-        const LlmCompletion(
+        LlmCompletion(
           toolCalls: [
-            LlmToolCall(
-              id: '1',
-              name: 'plugins_reload',
-              arguments: {'id': 'demo.wall'},
-            ),
+            _run('1', 'plugins.reload', {'id': 'demo.wall'}),
           ],
         ),
         const LlmCompletion(text: 'I will fix it.'),
@@ -382,11 +387,7 @@ void main() {
 
     final looping = AgentLoop(
       provider: ScriptedLlmProvider([
-        const LlmCompletion(
-          toolCalls: [
-            LlmToolCall(id: '1', name: 'query_summary', arguments: {}),
-          ],
-        ),
+        LlmCompletion(toolCalls: [_run('1', 'query.summary')]),
       ]),
       registry: registry,
       execute: execute,
@@ -414,4 +415,23 @@ class _RepairOnActivate implements ActivationRepair {
     String? typings,
   }) =>
       'Fix $pluginId with plugins.write. $error';
+}
+
+class _CaptureProvider extends LlmProvider {
+  _CaptureProvider(this.onRequest);
+
+  final LlmCompletion Function(LlmRequest request) onRequest;
+
+  @override
+  String get name => 'capture';
+
+  @override
+  Stream<LlmEvent> complete(LlmRequest request) async* {
+    final completion = onRequest(request);
+    if (completion.text.isNotEmpty) yield LlmTextDelta(completion.text);
+    if (completion.toolCalls.isNotEmpty) {
+      yield LlmToolCalls(completion.toolCalls);
+    }
+    yield LlmFinished(finishReason: completion.finishReason);
+  }
 }

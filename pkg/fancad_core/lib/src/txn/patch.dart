@@ -19,6 +19,9 @@ enum ChangeSource {
   /// An AI agent turn.
   ai,
 
+  /// An MCP client attached to this process.
+  mcp,
+
   /// Reading a file. Never recorded on the undo stack.
   importer,
 }
