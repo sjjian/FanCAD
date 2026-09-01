@@ -10,25 +10,21 @@ import 'dxf/reader.dart';
 import 'dxf/writer.dart';
 import 'export/fidelity.dart';
 import 'export/save_strategy.dart';
-import 'fcb/format.dart';
 import 'fcb/reader.dart';
 import 'fcb/writer.dart';
-import 'fcb_cache.dart';
 import 'native_backend.dart';
 
 /// Opens and saves drawings.
 ///
 /// This is the only entry point the rest of the application uses to get a
-/// [CadDocument] from disk. It owns the three-stage pipeline — cache lookup,
-/// native parse on a worker isolate, FCB decode — so that no caller has to
-/// know which stage produced the document it received.
+/// [CadDocument] from disk. It owns the two-stage pipeline — native parse on
+/// a worker isolate, then FCB decode — so that no caller has to know which
+/// stage produced the document it received.
 class DrawingImporter {
-  DrawingImporter({DrawingBackend? backend, FcbCache? cache})
-    : backend = backend ?? NativeDrawingBackend(),
-      _cache = cache;
+  DrawingImporter({DrawingBackend? backend})
+    : backend = backend ?? NativeDrawingBackend();
 
   final DrawingBackend backend;
-  final FcbCache? _cache;
 
   BackendCapabilities get capabilities {
     final native = backend.capabilities;
@@ -82,38 +78,9 @@ class DrawingImporter {
         decodeTime: watch.elapsed,
       );
     }
-    final cache = _cache;
-    String? cacheKey;
-    if (cache != null && File(target).existsSync()) {
-      try {
-        cacheKey = FcbCache.keyFor(target, fcbVersion: fcbVersion);
-        final cached = cache.read(cacheKey);
-        if (cached != null) {
-          final decoded = _decode(cached);
-          return ImportResult(
-            document: decoded.document,
-            diagnostics: decoded.diagnostics,
-            entityCount: decoded.entityCount,
-            decodeTime: decoded.elapsed,
-            bytesTransferred: cached.lengthInBytes,
-            fromCache: true,
-          );
-        }
-      } on FcbFormatException {
-        // A stale or corrupt entry: fall through and re-parse.
-        cache.clear();
-      } on FileSystemException {
-        cacheKey = null;
-      }
-    }
-
     final parseWatch = Stopwatch()..start();
     final fcb = await _readOnWorker(target);
     parseWatch.stop();
-
-    if (cache != null && cacheKey != null) {
-      cache.write(cacheKey, fcb);
-    }
 
     final decoded = _decode(fcb);
     return ImportResult(

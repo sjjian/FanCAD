@@ -230,39 +230,6 @@ void main() {
     });
   });
 
-  group('FcbCache', () {
-    test('stores and returns a buffer, keyed by file identity', () async {
-      final temporary = await Directory.systemTemp.createTemp('fancad-cache');
-      addTearDown(() => temporary.deleteSync(recursive: true));
-
-      final source = File('${temporary.path}/drawing.dwg')
-        ..writeAsBytesSync(Uint8List(128));
-      final cache = FcbCache(directory: Directory('${temporary.path}/cache'));
-      final key = FcbCache.keyFor(source.path, fcbVersion: fcbVersion);
-      expect(cache.read(key), isNull);
-
-      final payload = FcbWriter().write(SampleDrawings.mechanicalPart());
-      cache.write(key, payload);
-      expect(cache.read(key), payload);
-
-      // Touching the source file must invalidate the entry.
-      source.writeAsBytesSync(Uint8List(256));
-      final newKey = FcbCache.keyFor(source.path, fcbVersion: fcbVersion);
-      expect(newKey, isNot(key));
-      expect(cache.read(newKey), isNull);
-    });
-
-    test('evicts the least recently used entry over budget', () {
-      final temporary = Directory.systemTemp.createTempSync('fancad-evict');
-      addTearDown(() => temporary.deleteSync(recursive: true));
-      final cache = FcbCache(directory: temporary, maxTotalBytes: 1024);
-      for (var i = 0; i < 8; i++) {
-        cache.write('key$i', Uint8List(512));
-      }
-      expect(cache.totalBytes, lessThanOrEqualTo(1024));
-    });
-  });
-
   group('DrawingImporter without a native backend', () {
     test('reports no capabilities rather than throwing', () {
       final importer = DrawingImporter(backend: _NoBackend());

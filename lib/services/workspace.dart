@@ -203,8 +203,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
       drawing.pushRecent(stored);
       commandLine.writeSuccess(
         'Opened ${result.entityCount} entities in '
-        '${result.totalTime.inMilliseconds} ms'
-        '${result.fromCache ? ' (from cache)' : ''}.',
+        '${result.totalTime.inMilliseconds} ms.',
       );
       for (final diagnostic in result.diagnostics.take(20)) {
         commandLine.write(diagnostic, level: HistoryLevel.warning);

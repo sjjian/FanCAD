@@ -49,10 +49,6 @@ void main() {
         result.toString(),
         'ImportResult(3 entities, parse 4ms, decode 6ms)',
       );
-      expect(
-        ImportResult(document: CadDocument(), fromCache: true).toString(),
-        contains('from cache'),
-      );
 
       expect(
         const ImportException('broken').toString(),

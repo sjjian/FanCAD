@@ -51,7 +51,6 @@ class ImportResult {
     this.parseTime = Duration.zero,
     this.decodeTime = Duration.zero,
     this.bytesTransferred = 0,
-    this.fromCache = false,
   });
 
   final CadDocument document;
@@ -69,16 +68,12 @@ class ImportResult {
 
   final int bytesTransferred;
 
-  /// True when the drawing was restored from the FCB disk cache.
-  final bool fromCache;
-
   Duration get totalTime => parseTime + decodeTime;
 
   @override
   String toString() =>
       'ImportResult($entityCount entities, parse ${parseTime.inMilliseconds}ms, '
-      'decode ${decodeTime.inMilliseconds}ms'
-      '${fromCache ? ', from cache' : ''})';
+      'decode ${decodeTime.inMilliseconds}ms)';
 }
 
 /// Raised when a drawing cannot be opened.
