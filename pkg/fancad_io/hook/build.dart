@@ -167,14 +167,10 @@ Future<_LibreDwg?> _buildFromSource(
   Directory(buildDir.toFilePath()).createSync(recursive: true);
   final archive = _findArchive(buildDir.toFilePath());
   final stamp = File('${buildDir.toFilePath()}/.fancad-built');
-  final marker = File(
-    File('$source/configure').existsSync()
-        ? '$source/configure'
-        : '$source/CMakeLists.txt',
-  );
+  final revision = _sourceRevision(source);
   if (archive != null &&
       stamp.existsSync() &&
-      stamp.lastModifiedSync().isAfter(marker.lastModifiedSync())) {
+      stamp.readAsStringSync().trim() == revision) {
     logger.info('Reusing LibreDWG static library at $archive');
     return _fromSourceBuild(source, archive);
   }
@@ -210,12 +206,31 @@ Future<_LibreDwg?> _buildFromSource(
     return null;
   }
   if (!rebuilt) {
-    logger.warning(
-      'Reusing an existing LibreDWG archive at $built after a failed rebuild',
+    logger.severe(
+      'LibreDWG rebuild failed; not reusing an archive from another revision.',
     );
+    return null;
   }
-  stamp.writeAsStringSync(built);
+  stamp.writeAsStringSync(revision);
   return _fromSourceBuild(source, built);
+}
+
+/// Git commit of the submodule, so bumping the pin rebuilds libredwg.a.
+String _sourceRevision(String source) {
+  final git = _which('git');
+  if (git != null) {
+    final result = Process.runSync(git, const [
+      'rev-parse',
+      'HEAD',
+    ], workingDirectory: source);
+    if (result.exitCode == 0) {
+      final sha = (result.stdout as String).trim();
+      if (sha.isNotEmpty) return sha;
+    }
+  }
+  final version = File('$source/.version');
+  if (version.existsSync()) return version.readAsStringSync().trim();
+  return File('$source/CMakeLists.txt').lastModifiedSync().toIso8601String();
 }
 
 _LibreDwg _fromSourceBuild(String source, String archive) {

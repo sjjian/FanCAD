@@ -379,14 +379,18 @@ void main() {
       return;
     }
     final document = (await DrawingImporter().open(_sample)).document;
-    final entity = document.entity(52321);
+    final entity = _dimensionNear(
+      document,
+      measurement: 527.1,
+      textX: 348183,
+    );
     expect(entity, isA<DimensionEntity>());
-    final box = document.boundsOfEntity(entity!);
+    final box = document.boundsOfEntity(entity);
     expect(box.isFinite, isTrue);
     expect(
       box.width < 2000 && box.height < 2000,
       isTrue,
-      reason: '#52321 ${box.width.toStringAsFixed(0)}x'
+      reason: '527.1 dim ${box.width.toStringAsFixed(0)}x'
           '${box.height.toStringAsFixed(0)}',
     );
   });
@@ -397,17 +401,15 @@ void main() {
       return;
     }
     final document = (await DrawingImporter().open(_sample)).document;
-    final first = document.entity(52253);
-    final second = document.entity(52321);
-    expect(first, isA<DimensionEntity>());
-    expect(second, isA<DimensionEntity>());
-    final a = first as DimensionEntity;
-    final b = second as DimensionEntity;
+    final a = _dimensionNear(document, measurement: 432.9, textX: 305);
+    final b = _dimensionNear(document, measurement: 527.1, textX: 348183);
+    expect(a, isA<DimensionEntity>());
+    expect(b, isA<DimensionEntity>());
     expect(a.blockName, isNotEmpty);
     expect(
       b.blockName,
       isNot(a.blockName),
-      reason: '#52321.block collided onto #52253\'s *D; the later '
+      reason: 'the 527.1 dim collided onto the 432.9 *D; the later '
           'dimension must not redraw those ticks at the origin',
     );
     final names = <String, int>{};
@@ -421,4 +423,19 @@ void main() {
     ];
     expect(shared, isEmpty, reason: shared.join(', '));
   });
+}
+
+DimensionEntity _dimensionNear(
+  CadDocument document, {
+  required double measurement,
+  required double textX,
+}) {
+  for (final entity in document.entities) {
+    if (entity is DimensionEntity &&
+        (entity.measurement - measurement).abs() < 0.2 &&
+        (entity.textPosition.x - textX).abs() < 2) {
+      return entity;
+    }
+  }
+  fail('no DIMENSION with meas $measurement near x=$textX');
 }

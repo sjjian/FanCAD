@@ -32,18 +32,35 @@ class DxfWriter {
     pair(2, document.currentDimStyle);
     pair(0, 'ENDSEC');
 
+    // LibreDWG 0.14 wires LAYOUT through DXF 330, not the block name.
+    // Handles stay in this file only; the Dart document does not store them.
+    final blockHandles = <String, String>{};
+    var nextHandle = 0x40;
+    String handleOf(String name) => blockHandles.putIfAbsent(
+      name,
+      () => (nextHandle++).toRadixString(16).toUpperCase(),
+    );
+    for (final block in document.blocks.values) {
+      handleOf(block.name);
+    }
+    for (final layout in document.layouts) {
+      handleOf(layout.blockName);
+    }
+
     pair(0, 'SECTION');
     pair(2, 'TABLES');
     _lineTypes(pair, document);
     _layers(pair, document);
     _textStyles(pair, document);
     _dimStyles(pair, document);
+    _blockRecords(pair, blockHandles);
     pair(0, 'ENDSEC');
 
     pair(0, 'SECTION');
     pair(2, 'BLOCKS');
     for (final block in document.blocks.values) {
       pair(0, 'BLOCK');
+      pair(330, handleOf(block.name));
       pair(2, block.name);
       var flags = 0;
       if (block.isAnonymous) flags |= 1;
@@ -100,7 +117,11 @@ class DxfWriter {
       }
       pair(100, 'AcDbLayout');
       pair(1, layout.name);
-      pair(2, layout.blockName);
+      // Group 2 on LAYOUT is paper_size. The associated block is 330.
+      // LibreDWG 0.14 treats a block name in group 2 as invalid DXF.
+      // 0.14 stores the first 330 as ownerhandle and a second as block_header.
+      pair(330, handleOf(layout.blockName));
+      pair(330, handleOf(layout.blockName));
       pair(71, layout.tabOrder);
     }
     pair(0, 'ENDSEC');
@@ -177,6 +198,21 @@ class DxfWriter {
       if (generation != 0) pair(71, generation);
       pair(3, style.fontFamily);
       if (style.bigFontFamily.isNotEmpty) pair(4, style.bigFontFamily);
+    }
+    pair(0, 'ENDTAB');
+  }
+
+  void _blockRecords(
+    void Function(int, Object) pair,
+    Map<String, String> blockHandles,
+  ) {
+    pair(0, 'TABLE');
+    pair(2, 'BLOCK_RECORD');
+    pair(70, blockHandles.length);
+    for (final entry in blockHandles.entries) {
+      pair(0, 'BLOCK_RECORD');
+      pair(5, entry.value);
+      pair(2, entry.key);
     }
     pair(0, 'ENDTAB');
   }

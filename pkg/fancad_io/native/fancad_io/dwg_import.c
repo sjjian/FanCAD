@@ -609,7 +609,7 @@ static void import_layers(import_state *s) {
         hmap_get(&s->linetype_index, ref_handle(entry->ltype), 0);
     layer.line_weight = (int32_t)entry->linewt;
     layer.transparency = 0;
-    if (!entry->on) layer.flags |= FCB_LAYER_HIDDEN;
+    if (entry->off) layer.flags |= FCB_LAYER_HIDDEN;
     if (entry->frozen) layer.flags |= FCB_LAYER_FROZEN;
     if (entry->locked) layer.flags |= FCB_LAYER_LOCKED;
     if (!entry->plotflag) layer.flags |= FCB_LAYER_NOPLOT;
@@ -2350,8 +2350,8 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       Dwg_Entity_IMAGE *o = ent->tio.IMAGE;
       if (!o) return 0;
       coords_push2(g, o->pt0.x, o->pt0.y);
-      coords_push2(g, o->uvec.x * o->size.x, o->uvec.y * o->size.x);
-      coords_push2(g, o->vvec.x * o->size.y, o->vvec.y * o->size.y);
+      coords_push2(g, o->uvec.x * o->image_size.x, o->uvec.y * o->image_size.x);
+      coords_push2(g, o->vvec.x * o->image_size.y, o->vvec.y * o->image_size.y);
       box_add_coords(&bounds, g, 2);
       e.string_offset = fcb_append_string(s->b, "");
       e.string_count = 1;
@@ -2408,10 +2408,10 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
           box_add(&bounds, o->clip_verts[i].x, o->clip_verts[i].y);
         }
       } else {
-        double ux = o->uvec.x * o->size.x;
-        double uy = o->uvec.y * o->size.x;
-        double vx = o->vvec.x * o->size.y;
-        double vy = o->vvec.y * o->size.y;
+        double ux = o->uvec.x * o->image_size.x;
+        double uy = o->uvec.y * o->image_size.x;
+        double vx = o->vvec.x * o->image_size.y;
+        double vy = o->vvec.y * o->image_size.y;
         coords_push2(g, o->pt0.x, o->pt0.y);
         coords_push(g, 0.0);
         coords_push2(g, o->pt0.x + ux, o->pt0.y + uy);
@@ -2679,15 +2679,30 @@ static int import_layouts(import_state *s, uint32_t **layout_blocks_out,
 
       name = dyn_text(lo, "LAYOUT", "layout_name", &owned);
       block_ref = lo->block_header;
+      /* LibreDWG 0.14 maps the first LAYOUT 330 to ownerhandle. A real
+       * BLOCK_HEADER there is the sheet's block; a DICTIONARY is not. */
+      if (!ref_handle(block_ref) && obj->tio.object->ownerhandle) {
+        Dwg_Object *owned =
+            resolve_ref(s->dwg, obj->tio.object->ownerhandle, obj);
+        if (owned && owned->fixedtype == DWG_TYPE_BLOCK_HEADER) {
+          block_ref = obj->tio.object->ownerhandle;
+        }
+      }
       block = hmap_get(&s->block_index, ref_handle(block_ref), 0xFFFFFFFFu);
       item = &items[count];
       item->is_model = name_is_model(name) || block == s->model_space_block;
       if (block == 0xFFFFFFFFu) {
         if (!item->is_model) {
-          dyn_text_free(name, owned);
-          continue;
+          /* 0.14's encoder can write LAYOUT.block_header as a handle that
+           * is not in the BLOCK_HEADER table. The sheet still exists. */
+          if (s->paper_space_block == 0xFFFFFFFFu) {
+            dyn_text_free(name, owned);
+            continue;
+          }
+          block = s->paper_space_block;
+        } else {
+          block = s->model_space_block;
         }
-        block = s->model_space_block;
       }
       item->name = name && name[0] ? strdup(name) : NULL;
       item->block = block;
@@ -2807,7 +2822,7 @@ static void import_paper_viewports(import_state *s,
     rec.model_center_x = vp->VIEWCTR.x;
     rec.model_center_y = vp->VIEWCTR.y;
     rec.scale = scale;
-    rec.rotation = vp->twist_angle;
+    rec.rotation = vp->VIEWTWIST;
     rec.layer = interned_layer_name(s, obj);
     fcb_add_viewport(s->b, &rec);
   }
