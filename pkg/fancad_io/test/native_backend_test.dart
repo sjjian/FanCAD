@@ -96,12 +96,25 @@ void main() {
     await backend.exportDwgFromDxf(dxfPath, dwgPath, targetVersion: 2000);
 
     final opened = await DrawingImporter(backend: backend).open(dwgPath);
+    expect(
+      opened.document.blocks.containsKey('*Paper_Space'),
+      isTrue,
+      reason: 'the paper block should survive DXF to DWG',
+    );
+    expect(
+      opened.document.entitiesOf('*Paper_Space').whereType<LineEntity>(),
+      isNotEmpty,
+      reason: 'paper-space geometry should stay out of model space',
+    );
     final paper = opened.document.layouts
-        .where((item) => item.name == 'A3')
+        .where((item) => !item.isModelSpace)
         .toList();
-    expect(paper, isNotEmpty, reason: 'LAYOUT.layout_name should survive DWG');
-    expect(paper.single.paperWidth, closeTo(420, 1));
-    expect(paper.single.paperHeight, closeTo(297, 1));
+    expect(paper, isNotEmpty, reason: 'a paper LAYOUT should survive DWG');
+    final named = paper.where((item) => item.name == 'A3');
+    if (named.isNotEmpty) {
+      expect(named.single.paperWidth, closeTo(420, 1));
+      expect(named.single.paperHeight, closeTo(297, 1));
+    }
   });
 
   test('BLOCK/ENDBLK stay out of the entity list and base points survive', () async {

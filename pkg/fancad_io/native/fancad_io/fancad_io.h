@@ -46,7 +46,7 @@ FC_EXPORT uint32_t fc_capabilities(void);
 FC_EXPORT uint32_t fc_fcb_version(void);
 
 /* A human-readable backend description, for example
- * "LibreDWG 0.13.3" or "no backend". Statically allocated. */
+ * "LibreDWG 0.14" or "no backend". Statically allocated. */
 FC_EXPORT const char *fc_backend_version(void);
 
 /* Reads a DWG or DXF file and serializes it as an FCB buffer.

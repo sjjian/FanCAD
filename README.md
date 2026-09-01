@@ -185,7 +185,7 @@ dart run build_runner build
 ### DWG support is compiled from the LibreDWG submodule
 
 DWG parsing comes from [GNU LibreDWG](https://www.gnu.org/software/libredwg/)
-0.13.3, pinned as a git submodule at
+0.14.8592, pinned as a git submodule at
 `pkg/fancad_io/native/third_party/libredwg`. The build hook compiles it as a
 static PIC library and links it into `libfancad_io`, so the application does
 not load a Homebrew or system dylib at runtime.

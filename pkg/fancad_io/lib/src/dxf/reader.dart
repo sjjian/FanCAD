@@ -25,6 +25,7 @@ class DxfReader {
     final blockDefs = <String, Map<int, String>>{};
     final viewportsByBlock = <String, List<PaperViewport>>{};
     final layoutRecords = <Map<int, String>>[];
+    final blockHandles = <String, String>{};
     String section = '';
     String? currentBlock;
     var nextId = 1;
@@ -69,6 +70,15 @@ class DxfReader {
       }
       if (type == 'DIMSTYLE' && section == 'TABLES') {
         document.putDimStyle(_dimStyle(scan.collectMap()));
+        continue;
+      }
+      if (type == 'BLOCK_RECORD' && section == 'TABLES') {
+        final values = scan.collectMap();
+        final name = values[2];
+        final handle = values[5];
+        if (name != null && name.isNotEmpty && handle != null) {
+          blockHandles[handle.toUpperCase()] = name;
+        }
         continue;
       }
       if (type == 'BLOCK') {
@@ -127,7 +137,7 @@ class DxfReader {
       );
     }
     document.reindex();
-    _applyLayouts(document, layoutRecords, viewportsByBlock);
+    _applyLayouts(document, layoutRecords, viewportsByBlock, blockHandles);
     return document;
   }
 
@@ -135,11 +145,15 @@ class DxfReader {
     CadDocument document,
     List<Map<int, String>> records,
     Map<String, List<PaperViewport>> viewportsByBlock,
+    Map<String, String> blockHandles,
   ) {
     if (records.isNotEmpty) {
       for (final values in records) {
         final name = values[1] ?? 'Layout';
-        final blockName = values[2] ?? document.modelSpaceBlockName;
+        final owned = values[330]?.toUpperCase();
+        final blockName = values[2] ??
+            (owned != null ? blockHandles[owned] : null) ??
+            document.modelSpaceBlockName;
         final isModel = name.toLowerCase() == 'model' ||
             blockName == document.modelSpaceBlockName;
         document.addLayout(

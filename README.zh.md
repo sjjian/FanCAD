@@ -173,7 +173,7 @@ dart run build_runner build
 
 ### DWG 从 LibreDWG 子模块编进来
 
-DWG 解析来自 [GNU LibreDWG](https://www.gnu.org/software/libredwg/) 0.13.3，
+DWG 解析来自 [GNU LibreDWG](https://www.gnu.org/software/libredwg/) 0.14.8592，
 钉在 `pkg/fancad_io/native/third_party/libredwg` 这个 git submodule。构建
 hook 把它编成静态 PIC 库，链进 `libfancad_io`，运行时不加载 Homebrew 或
 系统里的 dylib。
