@@ -7,7 +7,8 @@
 /// `native/fancad_io/fcb_writer.c` and the Dart reader in `reader.dart` must
 /// agree with it exactly, so any change here is a format version bump.
 ///
-/// All coordinates are 2D; the Z component of a DWG entity is carried in the
+/// All coordinates are 2D WCS. Importers bake OCS through `Mat3.ocs` before
+/// writing a record. The Z component of a DWG entity is carried in the
 /// entity's `elevation` extended property so that a load/save round trip does
 /// not flatten the drawing.
 ///

@@ -117,6 +117,43 @@ EOF
     expect(image.vVector, const Vec2(0, 1));
   });
 
+  test('an INSERT with extrusion (0,0,-1) is stored in WCS', () {
+    final document = reader.readString('''
+  0
+SECTION
+  2
+ENTITIES
+  0
+INSERT
+  2
+MARK
+ 10
+-513651.937
+ 20
+170415.059
+ 41
+-4.17
+ 42
+4.17
+210
+0
+220
+0
+230
+-1
+  0
+ENDSEC
+  0
+EOF
+''');
+    final insert = document.entities.whereType<InsertEntity>().single;
+    expect(insert.position.x, closeTo(513651.937, 1e-6));
+    expect(insert.position.y, closeTo(170415.059, 1e-6));
+    expect(insert.scale.x, closeTo(4.17, 1e-9));
+    expect(insert.scale.y, closeTo(4.17, 1e-9));
+    expect(insert.rotation, closeTo(0, 1e-9));
+  });
+
   test('a BLOCK base point is the insertion origin, not discarded', () {
     final document = reader.readString('''
   0

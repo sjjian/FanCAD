@@ -95,6 +95,67 @@ class Mat3 {
     return Mat3.scalingAbout(factor, factor, dest1).multiplied(rotated);
   }
 
+  /// OCS→WCS for a planar entity. [extrusion] is DXF group 210 / DWG
+  /// `extrusion`. Stored document coordinates stay in WCS; importers bake
+  /// this at the boundary.
+  ///
+  /// AutoCAD arbitrary axis: if |Nx| and |Ny| are both below 1/64, Ax is
+  /// Wy × N, otherwise Wz × N. Ay is N × Ax. The 2D map is
+  /// `WCS = OCS_x · Ax + OCS_y · Ay`. `(0,0,1)` is the identity; `(0,0,-1)`
+  /// flips X.
+  factory Mat3.ocs(Vec3 extrusion) {
+    var nx = extrusion.x;
+    var ny = extrusion.y;
+    var nz = extrusion.z;
+    final len = math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (len < 1e-20) {
+      nx = 0;
+      ny = 0;
+      nz = 1;
+    } else {
+      nx /= len;
+      ny /= len;
+      nz /= len;
+    }
+    const threshold = 1 / 64;
+    final double axx;
+    final double axy;
+    final double axz;
+    if (nx.abs() < threshold && ny.abs() < threshold) {
+      // Wy × N = (Nz, 0, -Nx)
+      axx = nz;
+      axy = 0;
+      axz = -nx;
+    } else {
+      // Wz × N = (-Ny, Nx, 0)
+      axx = -ny;
+      axy = nx;
+      axz = 0;
+    }
+    final axLen = math.sqrt(axx * axx + axy * axy + axz * axz);
+    final inv = axLen < 1e-20 ? 1.0 : 1.0 / axLen;
+    final axX = axx * inv;
+    final axY = axy * inv;
+    final axZ = axz * inv;
+    // Ay = N × Ax
+    final ayX = ny * axZ - nz * axY;
+    final ayY = nz * axX - nx * axZ;
+    return Mat3(axX, axY, ayX, ayY, 0, 0);
+  }
+
+  /// INSERT in OCS: `ocs * T(ins) * R(θ) * S`. Importers decompose
+  /// [insertParts] into WCS position / scale / rotation.
+  factory Mat3.ocsInsert(
+    Vec2 insertion,
+    Vec2 scale,
+    double rotation,
+    Vec3 extrusion,
+  ) => Mat3.ocs(extrusion).multiplied(
+    Mat3.translation(insertion.x, insertion.y)
+        .multiplied(Mat3.rotation(rotation))
+        .multiplied(Mat3.scaling(scale.x, scale.y)),
+  );
+
   /// Mirror across the line through [origin] with direction [direction].
   factory Mat3.mirror(Vec2 origin, Vec2 direction) {
     final d = direction.normalized();
@@ -129,6 +190,18 @@ class Mat3 {
 
   /// The rotation angle of the transform's X axis.
   double get rotation => math.atan2(b, a);
+
+  /// `T * R * S` parameters so an INSERT transform reconstructs this.
+  ({Vec2 position, Vec2 scale, double rotation}) get insertParts {
+    final angle = rotation;
+    final cos = math.cos(angle);
+    final sin = math.sin(angle);
+    return (
+      position: Vec2(e, f),
+      scale: Vec2(a * cos + b * sin, -c * sin + d * cos),
+      rotation: angle,
+    );
+  }
 
   Vec2 transform(Vec2 p) => Vec2(a * p.x + c * p.y + e, b * p.x + d * p.y + f);
 
