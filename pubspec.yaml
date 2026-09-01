@@ -54,6 +54,7 @@ dev_dependencies:
   freezed: ^3.1.0
   json_serializable: ^6.9.0
   riverpod_generator: ^2.6.5
+  flutter_launcher_icons: ^0.14.4
 
 hooks:
   user_defines:
@@ -67,3 +68,14 @@ flutter:
   generate: true
   assets:
     - extensions/
+    - assets/icons/
+
+flutter_launcher_icons:
+  image_path: "assets/icons/logo.png"
+  windows:
+    generate: true
+    image_path: "assets/icons/logo.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "assets/icons/logo_mac.png"

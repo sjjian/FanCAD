@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./logo.png" alt="FanCAD" width="160"/>
+</p>
+
 # FanCAD
 
 [English](README.md) | [中文](README.zh.md)
