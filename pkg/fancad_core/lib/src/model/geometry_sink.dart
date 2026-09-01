@@ -461,6 +461,44 @@ class _EmptyBlockLookup implements BlockLookup {
   Bounds2 boundsOf(String blockName) => const Bounds2.empty();
 }
 
+/// POINT glyph from `$PDMODE` / `$PDSIZE`.
+///
+/// The low three bits are the symbol: 0 is AutoCAD's one-pixel dot, 1 is
+/// none, 2–4 are plus / cross / tick. Bits 32 and 64 add a circle or square.
+/// A drawing that never wrote `$PDMODE` keeps FanCAD's visible marker so a
+/// new POINT is not silently blank.
+@immutable
+class PointDisplay {
+  const PointDisplay({this.mode = 0, this.size = 0, this.fromHeader = false});
+
+  final int mode;
+  final double size;
+
+  /// True when the values came from `$PDMODE` / `$PDSIZE` on the drawing.
+  final bool fromHeader;
+
+  static const PointDisplay missing = PointDisplay();
+
+  /// Shape in 0…4.
+  int get symbol => mode & 7;
+
+  /// Whether [PointEntity] should send a marker to the sink.
+  bool get showsMarker {
+    if (!fromHeader) return true;
+    return symbol != 0 && symbol != 1;
+  }
+
+  static PointDisplay fromHeaders(Map<String, String> headers) {
+    final rawMode = headers[r'$PDMODE'];
+    if (rawMode == null || rawMode.isEmpty) return PointDisplay.missing;
+    return PointDisplay(
+      mode: int.tryParse(rawMode) ?? 0,
+      size: double.tryParse(headers[r'$PDSIZE'] ?? '') ?? 0,
+      fromHeader: true,
+    );
+  }
+}
+
 /// Everything an entity needs in order to flatten itself.
 @immutable
 class EmitContext {
@@ -475,6 +513,7 @@ class EmitContext {
     this.measureWidth,
     this.attributeValues,
     this.shxFonts = const ShxFontTable(),
+    this.pointDisplay = PointDisplay.missing,
   });
 
   /// Maximum allowed deviation when discretizing curves, in model units.
@@ -507,6 +546,9 @@ class EmitContext {
 
   /// Parsed SHX faces for STYLE names. Empty keeps the TTF text path.
   final ShxFontTable shxFonts;
+
+  /// `$PDMODE` / `$PDSIZE` for POINT entities.
+  final PointDisplay pointDisplay;
 
   static const int maxDepth = 32;
 
@@ -550,6 +592,7 @@ class EmitContext {
     measureWidth: measureWidth,
     attributeValues: attributeValues,
     shxFonts: shxFonts,
+    pointDisplay: pointDisplay,
   );
 
   EmitContext withTolerance(double value) => EmitContext(
@@ -563,6 +606,7 @@ class EmitContext {
     measureWidth: measureWidth,
     attributeValues: attributeValues,
     shxFonts: shxFonts,
+    pointDisplay: pointDisplay,
   );
 
   EmitContext withAttributeValues(Map<String, String> values) => EmitContext(
@@ -576,6 +620,7 @@ class EmitContext {
     measureWidth: measureWidth,
     attributeValues: values,
     shxFonts: shxFonts,
+    pointDisplay: pointDisplay,
   );
 
   /// Drops [clip] so a tessellation cache cannot bake a miss from a
@@ -592,6 +637,7 @@ class EmitContext {
       measureWidth: measureWidth,
       attributeValues: attributeValues,
       shxFonts: shxFonts,
+      pointDisplay: pointDisplay,
     );
   }
 }

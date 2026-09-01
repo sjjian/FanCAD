@@ -23,6 +23,7 @@ final class PointEntity extends CadEntity {
 
   @override
   void emit(EmitContext context, GeometrySink sink) {
+    if (!context.pointDisplay.showsMarker) return;
     final p = context.apply(position);
     sink.point(p.x, p.y, context.styleFor(props));
   }

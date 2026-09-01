@@ -246,6 +246,9 @@ class CadDocument implements BlockLookup, StyleResolver {
   InsUnits get insUnits =>
       InsUnits.fromHeader(_headerVariables[r'$INSUNITS']);
 
+  /// `$PDMODE` / `$PDSIZE`. Missing headers keep a visible POINT marker.
+  PointDisplay get pointDisplay => PointDisplay.fromHeaders(_headerVariables);
+
   Iterable<CadEntity> get entities => _entities.values;
   int get entityCount => _entities.length;
   bool get isEmpty => _entities.isEmpty;
@@ -824,6 +827,7 @@ class CadDocument implements BlockLookup, StyleResolver {
       styles: this,
       clip: clip,
       shxFonts: shxFonts,
+      pointDisplay: pointDisplay,
       measureWidth: (shx != null)
           ? (text, height) => shx.measureWidth(
               text,
