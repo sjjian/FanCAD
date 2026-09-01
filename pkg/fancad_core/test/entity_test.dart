@@ -122,6 +122,31 @@ void main() {
         sink,
       );
       expect(sink.points, isNotEmpty);
+      sink.points.clear();
+      const PointEntity(id: 2, position: Vec2(3, 4)).emit(
+        EmitContext(
+          tolerance: 0.1,
+          pointDisplay: PointDisplay.fromHeaders({r'$PDMODE': '0'}),
+        ),
+        sink,
+      );
+      expect(sink.points, isEmpty);
+      const PointEntity(id: 3, position: Vec2(5, 6)).emit(
+        EmitContext(
+          tolerance: 0.1,
+          pointDisplay: PointDisplay.fromHeaders({r'$PDMODE': '1'}),
+        ),
+        sink,
+      );
+      expect(sink.points, isEmpty);
+      const PointEntity(id: 4, position: Vec2(7, 8)).emit(
+        EmitContext(
+          tolerance: 0.1,
+          pointDisplay: PointDisplay.fromHeaders({r'$PDMODE': '3'}),
+        ),
+        sink,
+      );
+      expect(sink.points, isNotEmpty);
     });
 
     test('an insert emits its block members once per cell', () {
