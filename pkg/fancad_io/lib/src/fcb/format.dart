@@ -32,12 +32,8 @@ library;
 const int fcbMagic = 0x31424346;
 
 /// Bumped on any incompatible layout change. Readers reject unknown versions
-/// rather than guessing, and the disk cache is keyed on it.
+/// rather than guessing.
 const int fcbVersion = 1;
-
-/// Bumped when native import semantics change without a wire-format change,
-/// so the on-disk FCB cache cannot serve a buffer from an older `dwg_import`.
-const int fcbImportRevision = 11;
 
 /// Size of the fixed file header, in bytes.
 const int fcbHeaderSize = 16;

@@ -96,9 +96,9 @@ flowchart TB
 | `lib/models` | 产品形状和 JSON，用 Freezed 定义。不碰磁盘。 |
 | `lib/storage` | `SettingsStore`，以及组合同一份 bag 的 view。不做命令编排。 |
 | `lib/services` | 打开文档、插件宿主、AI 循环。Riverpod 用 `@Riverpod` 注解生成。服务拿 view，不拿原始 store。不建 Widget。 |
-| `lib/business` | 命令、工作台、面板、主题、文案、随包助手技能。页面只通过 `Workspace.run` 和已有 provider 做事，不碰 `storage` 或 `FcbCache`。 |
+| `lib/business` | 命令、工作台、面板、主题、文案、随包助手技能。页面只通过 `Workspace.run` 和已有 provider 做事，不碰 `storage`。 |
 | `pkg/fancad_core` | 几何、文档模型、事务、命令注册表。纯 Dart。 |
-| `pkg/fancad_io` | 开图 / 存图：DWG / DXF、LibreDWG shim、FCB、磁盘缓存。 |
+| `pkg/fancad_io` | 开图 / 存图：DWG / DXF、LibreDWG shim、FCB。 |
 | `pkg/fancad_render` | 视口：剖分、裁剪、画布。 |
 | `pkg/fancad_plugin_host` | 扩展运行时：清单、沙箱 JavaScript、传输。 |
 | `pkg/fancad_ai` | 供应商抽象、agent 循环、技能注册表、变更审批。 |
@@ -107,7 +107,7 @@ flowchart TB
 
 一份 `settings.json`。`main.dart` 打开 `SettingsStore`；`providers.dart`
 拆成 `AppSettings`。每个服务只问自己那份 view。图纸不走这里：DWG/DXF 经
-`fancad_io`，导入缓存在 `cache/`。
+`fancad_io`。
 
 ```mermaid
 flowchart LR

@@ -45,17 +45,9 @@ SettingsStore settings(Ref ref) =>
 AppSettings appSettings(Ref ref) =>
     AppSettings(ref.watch(settingsProvider));
 
-/// The on-disk FCB cache, or null when no cache directory is available.
-///
-/// Overridden at startup once the platform support directory is known, and left
-/// null in tests so that a test run never touches a real cache.
-@Riverpod(keepAlive: true)
-FcbCache? fcbCache(Ref ref) => null;
-
 /// The drawing importer. Overridden in tests with a stub backend.
 @Riverpod(keepAlive: true)
-DrawingImporter importer(Ref ref) =>
-    DrawingImporter(cache: ref.watch(fcbCacheProvider));
+DrawingImporter importer(Ref ref) => DrawingImporter();
 
 @Riverpod(keepAlive: true)
 CommandRegistry commandRegistry(Ref ref) {

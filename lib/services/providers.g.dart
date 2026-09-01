@@ -50,29 +50,7 @@ final appSettingsProvider = Provider<AppSettings>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef AppSettingsRef = ProviderRef<AppSettings>;
-String _$fcbCacheHash() => r'dceff030cea335af36519ec63543323c90a12f5c';
-
-/// The on-disk FCB cache, or null when no cache directory is available.
-///
-/// Overridden at startup once the platform support directory is known, and left
-/// null in tests so that a test run never touches a real cache.
-///
-/// Copied from [fcbCache].
-@ProviderFor(fcbCache)
-final fcbCacheProvider = Provider<FcbCache?>.internal(
-  fcbCache,
-  name: r'fcbCacheProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$fcbCacheHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef FcbCacheRef = ProviderRef<FcbCache?>;
-String _$importerHash() => r'2e892a3dda185f80929abf1c488793c322c35f29';
+String _$importerHash() => r'f6003b6920f37961934bfb41428f49d3acf06a88';
 
 /// The drawing importer. Overridden in tests with a stub backend.
 ///
@@ -214,9 +192,13 @@ final pluginDelegateProvider = Provider<WorkspacePluginDelegate>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PluginDelegateRef = ProviderRef<WorkspacePluginDelegate>;
-String _$opsHostHash() => r'ops-host-fancad-mcp';
+String _$opsHostHash() => r'5626de5ebb1cc2cd3a2e0568ae260c6a611b058b';
 
 /// Localhost ops socket + lock file, or null when MCP is disabled.
+///
+/// An in-memory settings store has no support directory. Starting a listener
+/// then would write `~/.fancad/mcp.lock` from a test and steal the real app's
+/// slot. Production always opens a file-backed store.
 ///
 /// Copied from [opsHost].
 @ProviderFor(opsHost)
@@ -233,7 +215,7 @@ final opsHostProvider = Provider<FanCadOpsHost?>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef OpsHostRef = ProviderRef<FanCadOpsHost?>;
-String _$mcpEndpointHash() => r'ops-mcp-endpoint';
+String _$mcpEndpointHash() => r'e7d5d55f0ae5358d47a6304dcc183021d8b321dd';
 
 /// URL and token shown in settings for a Cursor MCP client.
 ///
@@ -373,6 +355,23 @@ final themeBrightnessProvider =
     );
 
 typedef _$ThemeBrightness = Notifier<Brightness>;
+String _$mcpConfigHash() => r'468c9f80ca47859039a340bef8823ebd5eb2464f';
+
+/// MCP listen settings the settings tab and [opsHost] share.
+///
+/// Copied from [McpConfig].
+@ProviderFor(McpConfig)
+final mcpConfigProvider = NotifierProvider<McpConfig, McpBind>.internal(
+  McpConfig.new,
+  name: r'mcpConfigProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$mcpConfigHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$McpConfig = Notifier<McpBind>;
 String _$languageHash() => r'44c2182abf910a0ea39a2808694e7b0806f4980f';
 
 /// UI language. Stored as `en` / `zh`, matching OpenHare. Unknown leftovers
@@ -391,22 +390,5 @@ final languageProvider = NotifierProvider<Language, String>.internal(
 );
 
 typedef _$Language = Notifier<String>;
-String _$mcpConfigHash() => r'ops-mcp-config';
-
-/// MCP listen settings the settings tab and [opsHost] share.
-///
-/// Copied from [McpConfig].
-@ProviderFor(McpConfig)
-final mcpConfigProvider = NotifierProvider<McpConfig, McpBind>.internal(
-  McpConfig.new,
-  name: r'mcpConfigProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$mcpConfigHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$McpConfig = Notifier<McpBind>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

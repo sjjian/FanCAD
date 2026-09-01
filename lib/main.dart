@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:fancad_io/fancad_io.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
@@ -32,9 +31,6 @@ Future<void> main(List<String> arguments) async {
     ProviderScope(
       overrides: [
         settingsProvider.overrideWithValue(settings),
-        fcbCacheProvider.overrideWithValue(
-          FcbCache(directory: Directory(p.join(supportDirectory, 'cache'))),
-        ),
         pluginsDirectoryProvider.overrideWithValue(pluginsDirectory),
         bundledPluginDirectoriesProvider.overrideWithValue(
           _resolveBundledPluginDirectories(),

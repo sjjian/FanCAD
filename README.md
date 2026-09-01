@@ -105,9 +105,9 @@ flowchart TB
 | `lib/models` | Product shapes and JSON, defined with Freezed. No disk I/O. |
 | `lib/storage` | `SettingsStore` plus composed views over the same bag. No command orchestration. |
 | `lib/services` | Open documents, plugin host wiring, the AI loop. Riverpod is annotated (`@Riverpod`) and generated. Services take views, not the raw store. No widgets. |
-| `lib/business` | Commands, workbench, panels, theme, l10n, bundled assistant skills. Pages talk to `Workspace.run` and existing providers, not to `storage` or `FcbCache`. |
+| `lib/business` | Commands, workbench, panels, theme, l10n, bundled assistant skills. Pages talk to `Workspace.run` and existing providers, not to `storage`. |
 | `pkg/fancad_core` | Geometry, the document model, the transaction system, the command registry. Pure Dart. |
-| `pkg/fancad_io` | Drawing I/O: DWG/DXF, LibreDWG shim, FCB, the disk cache. |
+| `pkg/fancad_io` | Drawing I/O: DWG/DXF, LibreDWG shim, FCB. |
 | `pkg/fancad_render` | The viewport: tessellation, culling, the canvas widget. |
 | `pkg/fancad_plugin_host` | The extension runtime: manifests, sandboxed JavaScript, transport. |
 | `pkg/fancad_ai` | Provider abstraction, the agent loop, skill registry, change approval. |
@@ -116,8 +116,7 @@ flowchart TB
 
 One `settings.json` bag. `main.dart` opens `SettingsStore`; `providers.dart`
 splits it into `AppSettings`. Each service asks for the view it needs.
-Drawings are not stored here: DWG/DXF go through `fancad_io`, and the import
-cache lives in `cache/`.
+Drawings are not stored here: DWG/DXF go through `fancad_io`.
 
 ```mermaid
 flowchart LR
