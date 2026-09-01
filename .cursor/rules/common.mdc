@@ -23,3 +23,23 @@ add: compile LibreDWG 0.13.3 as a static library from the submodule
 
 update: tighten trackpad zoom so the cursor stays the anchor
 ```
+
+# 尊重 DWG 内容
+
+导入只解释文件字段：`entmode`、`ownerhandle`、`entities[]`、几何、`DIMENSION.block`。
+
+文件里已经写清的对象（插入点、空间、归属）不要用距离、层名黑名单、median/MAD、「孤立」去改归属或丢掉。改完一定和 DWG 对不上。
+
+LibreDWG 的 `entities[]` 重叠可以把别人的几何挂进块定义、把盒撑大。那是解析器问题，不是再用统计去「修」一份已经画对的对象。
+
+```text
+# ❌ BAD
+命名块不能拥有 dim / _ 箭头
+相对 median 太远就踢回模型空间
+远处紧凑 INSERT 当幽灵丢掉
+
+# ✅ GOOD
+entmode == 2 → 模型空间；== 1 → 图纸空间
+ownerhandle / entities[] 指向谁就归谁
+DIMENSION.block 未引用的 *D 不当真标注块
+```
