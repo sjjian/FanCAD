@@ -48,6 +48,76 @@ void main() {
     }
   });
 
+  test('序号 24 title text is covered by a model-space bk INSERT', () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    MTextEntity? label;
+    for (final entity in document.entities) {
+      if (entity is MTextEntity &&
+          RegExp(r'序号：24(?!\d)').hasMatch(entity.plainText)) {
+        label = entity;
+        break;
+      }
+    }
+    expect(label, isNotNull, reason: 'the sheet title for 序号 24 is in the file');
+    final covers = [
+      for (final entity in document.entitiesOf(document.modelSpaceBlockName))
+        if (entity is InsertEntity && entity.blockName == 'bk')
+          if (document
+              .boundsOfEntity(entity)
+              .containsPoint(label!.position.x, label.position.y))
+            entity,
+    ];
+    expect(
+      covers,
+      isNotEmpty,
+      reason: 'J24\'s bk INSERT shares a handle with a *D arrow; '
+          'the later row is still the title frame',
+    );
+  });
+
+  test('a sheet-number MTEXT is not dropped when its handle collides',
+      () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    Vec2? at(String id) {
+      final needle = RegExp('XDFB-$id(?!\\d)');
+      for (final entity in document.entities) {
+        final text = entity is MTextEntity
+            ? entity.plainText
+            : entity is TextEntity
+            ? entity.content
+            : null;
+        if (text == null || !needle.hasMatch(text)) continue;
+        return entity is MTextEntity
+            ? entity.position
+            : (entity as TextEntity).position;
+      }
+      return null;
+    }
+
+    final j104 = at('J104');
+    final j105 = at('J105');
+    final j106 = at('J106');
+    expect(j104, isNotNull);
+    expect(j106, isNotNull);
+    expect(
+      j105,
+      isNotNull,
+      reason: 'XDFB-J105 sits in the title box between J104 and J106; '
+          'a later MTEXT row on a colliding handle is still that '
+          'sheet number',
+    );
+    expect(j105!.x, greaterThan(j104!.x));
+    expect(j105.x, lessThan(j106!.x));
+  });
+
   test('a *D list does not steal model-space leaders or hatches', () async {
     if (!File(_sample).existsSync()) {
       markTestSkipped('sample DWG is not on this machine');
@@ -192,5 +262,163 @@ void main() {
     expect(document.layers['细实线']?.color, const CadColor.indexed(2));
     expect(document.layers['ATT']?.color, const CadColor.indexed(3));
     expect(document.layers['标注']?.color, const CadColor.indexed(4));
+  });
+
+  test('J18 板2 slotting view keeps its white outline', () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    final outlines = <String>[];
+    for (final entity in document.entitiesOf(document.modelSpaceBlockName)) {
+      if (entity is! LineEntity &&
+          entity is! PolylineEntity &&
+          entity is! UnknownEntity) {
+        continue;
+      }
+      if (entity.props.layer == 'dim' || entity.props.layer == '标注') {
+        continue;
+      }
+      final box = document.boundsOfEntity(entity);
+      if (box.maxX < 209760 || box.minX > 209800) continue;
+      if (box.height < 1500) continue;
+      outlines.add(
+        '${entity.kind}#${entity.id} ${entity.props.layer} '
+        'h=${box.height.toStringAsFixed(0)}',
+      );
+    }
+    expect(
+      outlines,
+      isNotEmpty,
+      reason: 'J18 板2 right edge at x≈209764–209784 '
+          '(LibreDWG reused that handle on a *D arrow)',
+    );
+  });
+
+  test('an INSERT with extrusion (0,0,-1) stays on the sheet strip', () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    final leaked = <String>[];
+    for (final entity in document.entitiesOf(document.modelSpaceBlockName)) {
+      if (entity is! InsertEntity || entity.position.x >= 0) continue;
+      final box = document.boundsOfEntity(entity);
+      if (!box.isFinite || box.width >= 100 || box.height >= 100) continue;
+      leaked.add(
+        '${entity.blockName}@${entity.position.x.toStringAsFixed(0)}',
+      );
+    }
+    expect(leaked, isEmpty, reason: '${leaked.length} mirrored-OCS inserts');
+  });
+
+  test('a compact insert far from the sheet strip is still imported',
+      () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    final kept = [
+      for (final entity in document.entitiesOf(document.modelSpaceBlockName))
+        if (entity is InsertEntity &&
+            !entity.blockName.startsWith('*') &&
+            !entity.blockName.startsWith('_') &&
+            entity.position.y > 300000)
+          '${entity.blockName}@${entity.position.x.toStringAsFixed(0)},'
+          '${entity.position.y.toStringAsFixed(0)}',
+    ];
+    expect(
+      kept,
+      isNotEmpty,
+      reason: '浩辰 keeps a compact JL-01A at y≈358556; isolation is not '
+          'a reason to drop it',
+    );
+  });
+
+  test('a colliding handle does not invent a second entity', () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    final handles = [
+      for (final entity in document.entitiesOf(document.modelSpaceBlockName))
+        if (entity.id < (1 << 40)) entity.id,
+    ];
+    expect(handles.toSet().length, handles.length);
+    final leaked = [
+      for (final entity in document.entitiesOf(document.modelSpaceBlockName))
+        if (entity is PointEntity && entity.id > (1 << 40)) entity.id,
+    ];
+    expect(leaked, isEmpty, reason: '${leaked.length} synthetic POINTs');
+  });
+
+  test('an ACAD arrow definition stays arrow-sized', () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    final box = document.boundsOf('_Oblique');
+    expect(box.isFinite, isTrue);
+    expect(
+      box.width < 100 && box.height < 100,
+      isTrue,
+      reason: '_Oblique ${box.width.toStringAsFixed(0)}x'
+          '${box.height.toStringAsFixed(0)}',
+    );
+  });
+
+  test('a dimension box is the tick geometry, not a million-unit leftover',
+      () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    final entity = document.entity(52321);
+    expect(entity, isA<DimensionEntity>());
+    final box = document.boundsOfEntity(entity!);
+    expect(box.isFinite, isTrue);
+    expect(
+      box.width < 2000 && box.height < 2000,
+      isTrue,
+      reason: '#52321 ${box.width.toStringAsFixed(0)}x'
+          '${box.height.toStringAsFixed(0)}',
+    );
+  });
+
+  test('two DIMENSION entities do not share one *D block', () async {
+    if (!File(_sample).existsSync()) {
+      markTestSkipped('sample DWG is not on this machine');
+      return;
+    }
+    final document = (await DrawingImporter().open(_sample)).document;
+    final first = document.entity(52253);
+    final second = document.entity(52321);
+    expect(first, isA<DimensionEntity>());
+    expect(second, isA<DimensionEntity>());
+    final a = first as DimensionEntity;
+    final b = second as DimensionEntity;
+    expect(a.blockName, isNotEmpty);
+    expect(
+      b.blockName,
+      isNot(a.blockName),
+      reason: '#52321.block collided onto #52253\'s *D; the later '
+          'dimension must not redraw those ticks at the origin',
+    );
+    final names = <String, int>{};
+    for (final entity in document.entitiesOf(document.modelSpaceBlockName)) {
+      if (entity is! DimensionEntity || entity.blockName.isEmpty) continue;
+      names.update(entity.blockName, (v) => v + 1, ifAbsent: () => 1);
+    }
+    final shared = [
+      for (final e in names.entries)
+        if (e.value > 1) '${e.key}×${e.value}',
+    ];
+    expect(shared, isEmpty, reason: shared.join(', '));
   });
 }

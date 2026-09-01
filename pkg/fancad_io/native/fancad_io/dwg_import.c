@@ -535,12 +535,25 @@ typedef struct {
   handle_map entity_block;
   /* Anonymous block indices referenced by live DIMENSION entities. */
   handle_map referenced_dimension_blocks;
+  /* One *D block is one dimension's pre-rendered geometry. Value is
+   * the winning object-table index. A later DIMENSION.block that
+   * resolves to the same header must not draw that *D again. */
+  handle_map claimed_dimension_blocks;
+  box *block_member_box;
+  /* FCB entity ids already written. The first row keeps the DWG handle;
+   * a later non-POINT row on that handle gets a synthetic id. */
+  handle_map used_entity_ids;
+  uint32_t synthetic_seq;
+  /* First object-table index per entity handle. A later non-POINT row
+   * on that handle is kept in model space; a later POINT is dropped. */
+  handle_map first_entity;
   /* Block name per index, so INSERT can reference blocks by name. */
   char **block_names;
   double *block_base_x;
   double *block_base_y;
   uint32_t block_count;
   uint32_t model_space_block;
+  uint32_t paper_space_block;
   coords staging;
   uint32_t skipped;
   uint32_t unsupported_hatch_segments;
@@ -740,6 +753,8 @@ static char *unique_block_name(import_state *s, uint32_t count,
 }
 
 static int is_structural_entity(Dwg_Object_Type type);
+static int dim_text_on_block(const import_state *s, uint32_t block, double x,
+                             double y);
 
 /* Relative OFFSETOBJHANDLE refs need the BLOCK_HEADER as the base; plain
  * dwg_ref_object leaves absolute_ref at 0 and the owned LINE never lands
@@ -986,12 +1001,12 @@ static int dim_anon_cannot_own(const import_state *s, uint32_t block,
    * keeping their contents there hides complete profiles and sheet frames. */
   if (!is_referenced_dimension_block(s, block)) return 1;
   if (!is_dim_anon_primitive(obj->fixedtype)) return 1;
+  intern = entity_layer_intern(s, obj);
+  if (is_profile_layer_intern(s, intern)) return 1;
   if (obj->fixedtype == DWG_TYPE_INSERT ||
       obj->fixedtype == DWG_TYPE_MINSERT) {
     return !is_acad_arrow_insert(s, obj);
   }
-  intern = entity_layer_intern(s, obj);
-  if (is_profile_layer_intern(s, intern)) return 1;
   if (!is_dimension_layer_intern(s, intern) && entity_span_sq(obj, &span_sq) &&
       span_sq >= 50.0 * 50.0) {
     /* Oblique ticks stay under ~40. J19's 板2 top is 206, its height 1811;
@@ -1002,11 +1017,41 @@ static int dim_anon_cannot_own(const import_state *s, uint32_t block,
   return 0;
 }
 
+static Dwg_Object *first_entity_row(const import_state *s, Dwg_Object *obj) {
+  uint64_t handle;
+  uint32_t idx;
+  if (!obj || !obj->handle.value) return obj;
+  handle = (uint64_t)obj->handle.value;
+  idx = hmap_get(&s->first_entity, handle, 0xFFFFFFFFu);
+  if (idx >= s->dwg->num_objects) return obj;
+  return &s->dwg->object[idx];
+}
+
+static int index_first_entities(import_state *s) {
+  uint32_t i;
+  if (!hmap_init(&s->first_entity, s->dwg->num_objects)) return 0;
+  for (i = 0; i < s->dwg->num_objects; i++) {
+    Dwg_Object *obj = &s->dwg->object[i];
+    uint64_t handle;
+    if (obj->supertype != DWG_SUPERTYPE_ENTITY || !obj->tio.entity) continue;
+    if (is_structural_entity(obj->fixedtype)) continue;
+    handle = (uint64_t)obj->handle.value;
+    if (!handle) continue;
+    if (hmap_get(&s->first_entity, handle, 0xFFFFFFFFu) != 0xFFFFFFFFu) {
+      continue;
+    }
+    if (!hmap_put(&s->first_entity, handle, i)) return 0;
+  }
+  return 1;
+}
+
 static void claim_owned_entity(import_state *s, Dwg_Object *child,
                                uint32_t block) {
   uint64_t handle;
   uint32_t existing;
   uint32_t by_header;
+  BITCODE_BB entmode;
+  child = first_entity_row(s, child);
   if (!child || !child->handle.value) return;
   if (child->supertype != DWG_SUPERTYPE_ENTITY) return;
   if (is_structural_entity(child->fixedtype)) return;
@@ -1017,6 +1062,12 @@ static void claim_owned_entity(import_state *s, Dwg_Object *child,
    * entity's ownerhandle is the CAD owner; a claim that contradicts it
    * would hide the frame unless that one dimension happens to be in view. */
   if (child->tio.entity) {
+    entmode = child->tio.entity->entmode;
+    if (entmode == 2 && block != s->model_space_block) return;
+    if (entmode == 1 && (s->paper_space_block == 0xFFFFFFFFu ||
+                         block != s->paper_space_block)) {
+      return;
+    }
     by_header = hmap_get(&s->block_index,
                          ref_handle(child->tio.entity->ownerhandle),
                          0xFFFFFFFFu);
@@ -1085,21 +1136,155 @@ static int index_owned_entities(import_state *s) {
 static uint32_t owner_block(const import_state *s, const Dwg_Object *obj) {
   uint32_t owned;
   uint32_t by_header;
+  uint32_t first;
+  int is_first;
+  BITCODE_BB entmode;
   if (!obj->tio.entity) return s->model_space_block;
-  owned = hmap_get(&s->entity_block, (uint64_t)obj->handle.value,
-                   0xFFFFFFFFu);
-  if (owned != 0xFFFFFFFFu && owned < s->block_count &&
-      !dim_anon_cannot_own(s, owned, obj)) {
-    return owned;
+  /* 2 = MSPACE, 1 = PSPACE. handle.value is not unique on this R2004
+   * file; trusting the map alone stuffed plate edges into _Oblique. */
+  entmode = obj->tio.entity->entmode;
+  if (entmode == 2) return s->model_space_block;
+  if (entmode == 1 && s->paper_space_block != 0xFFFFFFFFu) {
+    return s->paper_space_block;
+  }
+  first = obj->handle.value
+              ? hmap_get(&s->first_entity, (uint64_t)obj->handle.value,
+                         0xFFFFFFFFu)
+              : 0xFFFFFFFFu;
+  is_first = first < s->dwg->num_objects && &s->dwg->object[first] == obj;
+  /* A later row on the same handle is a different object. The first
+   * row already has the block seat. */
+  if (obj->handle.value && !is_first) {
+    return s->model_space_block;
+  }
+  if (is_first) {
+    owned = hmap_get(&s->entity_block, (uint64_t)obj->handle.value,
+                     0xFFFFFFFFu);
+    if (owned != 0xFFFFFFFFu && owned < s->block_count &&
+        !dim_anon_cannot_own(s, owned, obj)) {
+      return owned;
+    }
   }
   by_header = hmap_get(&s->block_index,
                        ref_handle(obj->tio.entity->ownerhandle),
                        0xFFFFFFFFu);
+  /* *D.ownerhandle on a handle-0 later row is the same echo: local
+   * ticks already sit in the block under their real handles. */
+  if (is_dim_anon_block(s, by_header) && !is_first) {
+    return s->model_space_block;
+  }
   if (by_header != 0xFFFFFFFFu && by_header < s->block_count &&
       !dim_anon_cannot_own(s, by_header, obj)) {
     return by_header;
   }
   return s->model_space_block;
+}
+
+static void add_entity_anchor(const Dwg_Object *obj, box *b) {
+  const Dwg_Object_Entity *ent;
+  if (!obj || !obj->tio.entity) return;
+  ent = obj->tio.entity;
+  if (obj->fixedtype == DWG_TYPE_LINE && ent->tio.LINE) {
+    box_add(b, ent->tio.LINE->start.x, ent->tio.LINE->start.y);
+    box_add(b, ent->tio.LINE->end.x, ent->tio.LINE->end.y);
+  } else if (obj->fixedtype == DWG_TYPE_POINT && ent->tio.POINT) {
+    box_add(b, ent->tio.POINT->x, ent->tio.POINT->y);
+  } else if (obj->fixedtype == DWG_TYPE_INSERT && ent->tio.INSERT) {
+    box_add(b, ent->tio.INSERT->ins_pt.x, ent->tio.INSERT->ins_pt.y);
+  } else if (obj->fixedtype == DWG_TYPE_MTEXT && ent->tio.MTEXT) {
+    box_add(b, ent->tio.MTEXT->ins_pt.x, ent->tio.MTEXT->ins_pt.y);
+  }
+}
+
+static int index_block_member_boxes(import_state *s) {
+  uint32_t i;
+  s->block_member_box = (box *)calloc(s->block_count ? s->block_count : 1,
+                                      sizeof(box));
+  if (!s->block_member_box) return 0;
+  for (i = 0; i < s->block_count; i++) box_init(&s->block_member_box[i]);
+  for (i = 0; i < s->dwg->num_objects; i++) {
+    Dwg_Object *obj = &s->dwg->object[i];
+    uint32_t owner;
+    uint64_t handle;
+    if (obj->supertype != DWG_SUPERTYPE_ENTITY || !obj->tio.entity) continue;
+    if (is_structural_entity(obj->fixedtype)) continue;
+    handle = (uint64_t)obj->handle.value;
+    owner = handle ? hmap_get(&s->entity_block, handle, 0xFFFFFFFFu)
+                   : 0xFFFFFFFFu;
+    if (owner == 0xFFFFFFFFu) {
+      owner = hmap_get(&s->block_index,
+                       ref_handle(obj->tio.entity->ownerhandle),
+                       0xFFFFFFFFu);
+    }
+    if (owner >= s->block_count || !is_dim_anon_block(s, owner)) continue;
+    add_entity_anchor(obj, &s->block_member_box[owner]);
+  }
+  return 1;
+}
+
+static int dimension_block_and_text(const import_state *s, Dwg_Object *obj,
+                                    uint32_t *block, double *text_x,
+                                    double *text_y) {
+  const char *type_name;
+  void *dimension;
+  Dwg_Object_Ref *block_ref;
+  BITCODE_2RD midpoint;
+  if (!obj || obj->supertype != DWG_SUPERTYPE_ENTITY || !obj->tio.entity) {
+    return 0;
+  }
+  type_name = dimension_type_name(obj->fixedtype);
+  if (!type_name) return 0;
+  dimension = (void *)obj->tio.entity->tio.DIMENSION_LINEAR;
+  if (!dimension) return 0;
+  block_ref = dyn_handle(dimension, type_name, "block");
+  *block = block_index_from_ref(s, block_ref, obj);
+  *text_x = 0.0;
+  *text_y = 0.0;
+  memset(&midpoint, 0, sizeof(midpoint));
+  if (dwg_dynapi_entity_value(dimension, type_name, "text_midpt", &midpoint,
+                              NULL)) {
+    *text_x = midpoint.x;
+    *text_y = midpoint.y;
+  }
+  return 1;
+}
+
+static int preclaim_fitting_dimension_blocks(import_state *s,
+                                             const uint32_t *candidates,
+                                             uint32_t candidate_count) {
+  uint32_t i;
+  for (i = 0; i < candidate_count; i++) {
+    Dwg_Object *obj = &s->dwg->object[candidates[i]];
+    uint32_t block;
+    double text_x, text_y;
+    if (!dimension_block_and_text(s, obj, &block, &text_x, &text_y)) continue;
+    if (block >= s->block_count) continue;
+    if (!dim_text_on_block(s, block, text_x, text_y)) continue;
+    if (hmap_get(&s->claimed_dimension_blocks, (uint64_t)block + 1u,
+                 0xFFFFFFFFu) != 0xFFFFFFFFu) {
+      continue;
+    }
+    if (!hmap_put(&s->claimed_dimension_blocks, (uint64_t)block + 1u,
+                  candidates[i])) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+static int dim_text_on_block(const import_state *s, uint32_t block, double x,
+                             double y) {
+  const box *b;
+  if (block >= s->block_count || !s->block_member_box) return 0;
+  b = &s->block_member_box[block];
+  if (!b->seen) return 0;
+  /* Measurement MTEXT sits just outside the ticks. */
+  {
+    double px = (b->max_x - b->min_x) * 0.1 + 1.0;
+    double py = (b->max_y - b->min_y) * 0.1 + 1.0;
+    return x >= b->min_x - px && x <= b->max_x + px &&
+           y >= b->min_y - py && y <= b->max_y + py;
+  }
 }
 
 static int is_structural_entity(Dwg_Object_Type type) {
@@ -1129,6 +1314,7 @@ static int import_block_headers(import_state *s) {
   s->block_names = (char **)calloc(capacity, sizeof(char *));
   s->block_base_x = (double *)calloc(capacity, sizeof(double));
   s->block_base_y = (double *)calloc(capacity, sizeof(double));
+  s->paper_space_block = 0xFFFFFFFFu;
   if (!s->block_names || !s->block_base_x || !s->block_base_y) return 0;
 
   model_ref = dwg_model_space_ref(s->dwg);
@@ -1160,6 +1346,10 @@ static int import_block_headers(import_state *s) {
       s->block_base_x[count] = header->base_pt.x;
       s->block_base_y[count] = header->base_pt.y;
       if (is_model) s->model_space_block = count;
+      if (s->block_names[count] &&
+          strcmp(s->block_names[count], "*Paper_Space") == 0) {
+        s->paper_space_block = count;
+      }
       hmap_put(&s->block_index, (uint64_t)obj->handle.value, count);
       count++;
       dyn_text_free(name, owned);
@@ -1173,12 +1363,26 @@ static int import_block_headers(import_state *s) {
  * Entity extraction
  * ------------------------------------------------------------------------- */
 
+/* First object keeps the DWG handle. A later non-POINT row on that
+ * handle gets a synthetic id so both rows can exist. */
+static uint64_t uniquify_entity_id(import_state *s, uint64_t handle) {
+  if (handle != 0 && hmap_get(&s->used_entity_ids, handle, 0) == 0) {
+    if (hmap_put(&s->used_entity_ids, handle, 1)) return handle;
+  }
+  for (;;) {
+    uint64_t alt = (1ull << 40) + (uint64_t)++s->synthetic_seq;
+    if (hmap_get(&s->used_entity_ids, alt, 0) != 0) continue;
+    if (hmap_put(&s->used_entity_ids, alt, 1)) return alt;
+    return handle != 0 ? handle : alt;
+  }
+}
+
 /* Fills the common part of an entity record. */
 static void fill_common(import_state *s, const Dwg_Object *obj,
                         fcb_entity *out) {
   const Dwg_Object_Entity *ent = obj->tio.entity;
   memset(out, 0, sizeof(*out));
-  out->handle = (uint64_t)obj->handle.value;
+  out->handle = uniquify_entity_id(s, (uint64_t)obj->handle.value);
   out->layer_index = hmap_get(&s->layer_index, ref_handle(ent->layer), 0);
   out->color_packed = convert_color(&ent->color);
   out->linetype_index = 0xFFFFFFFFu; /* ByLayer */
@@ -1236,34 +1440,54 @@ static void note_proxy(import_state *s, const char *name) {
   s->proxy_tally_count++;
 }
 
-static int push_owned_polyline_vertices(coords *g, box *bounds,
-                                        Dwg_Object_Ref **vertex,
-                                        BITCODE_BL num_owned) {
-  uint32_t i;
+static int push_one_polyline_vertex(coords *g, box *bounds,
+                                    Dwg_Object *vertex_obj) {
+  if (!vertex_obj || vertex_obj->supertype != DWG_SUPERTYPE_ENTITY ||
+      !vertex_obj->tio.entity) {
+    return 0;
+  }
+  if (vertex_obj->fixedtype == DWG_TYPE_VERTEX_2D &&
+      vertex_obj->tio.entity->tio.VERTEX_2D) {
+    Dwg_Entity_VERTEX_2D *v = vertex_obj->tio.entity->tio.VERTEX_2D;
+    coords_push2(g, v->point.x, v->point.y);
+    coords_push(g, v->bulge);
+    box_add(bounds, v->point.x, v->point.y);
+    return 1;
+  }
+  if ((vertex_obj->fixedtype == DWG_TYPE_VERTEX_3D ||
+       vertex_obj->fixedtype == DWG_TYPE_VERTEX_MESH) &&
+      vertex_obj->tio.entity->tio.VERTEX_3D) {
+    Dwg_Entity_VERTEX_3D *v = vertex_obj->tio.entity->tio.VERTEX_3D;
+    coords_push2(g, v->point.x, v->point.y);
+    coords_push(g, 0.0);
+    box_add(bounds, v->point.x, v->point.y);
+    return 1;
+  }
+  return 0;
+}
+
+/* R2004 POLYLINE_2D often leaves vertex[] unresolved (relative handles).
+ * first_vertex → SEQEND is the same chain BLOCK_HEADER.entities uses. */
+static int push_owned_polyline_vertices(import_state *s, const Dwg_Object *from,
+                                        coords *g, box *bounds,
+                                        Dwg_Entity_POLYLINE_2D *o) {
   uint32_t written = 0;
-  for (i = 0; i < num_owned; i++) {
-    Dwg_Object *vertex_obj;
-    if (!vertex || !vertex[i]) continue;
-    vertex_obj = vertex[i]->obj;
-    if (!vertex_obj || vertex_obj->supertype != DWG_SUPERTYPE_ENTITY ||
-        !vertex_obj->tio.entity) {
-      continue;
-    }
-    if (vertex_obj->fixedtype == DWG_TYPE_VERTEX_2D &&
-        vertex_obj->tio.entity->tio.VERTEX_2D) {
-      Dwg_Entity_VERTEX_2D *v = vertex_obj->tio.entity->tio.VERTEX_2D;
-      coords_push2(g, v->point.x, v->point.y);
-      coords_push(g, v->bulge);
-      box_add(bounds, v->point.x, v->point.y);
-      written++;
-      continue;
-    }
-    if (vertex_obj->tio.entity->tio.VERTEX_3D) {
-      Dwg_Entity_VERTEX_3D *v = vertex_obj->tio.entity->tio.VERTEX_3D;
-      coords_push2(g, v->point.x, v->point.y);
-      coords_push(g, 0.0);
-      box_add(bounds, v->point.x, v->point.y);
-      written++;
+  BITCODE_BL i;
+  if (!o) return 0;
+  for (i = 0; i < o->num_owned; i++) {
+    if (!o->vertex || !o->vertex[i]) continue;
+    written += (uint32_t)push_one_polyline_vertex(
+        g, bounds, resolve_ref(s->dwg, o->vertex[i], from));
+  }
+  if (written == 0 && o->first_vertex) {
+    Dwg_Object *child = resolve_ref(s->dwg, o->first_vertex, from);
+    Dwg_Object *last = resolve_ref(s->dwg, o->last_vertex, from);
+    uint32_t guard = 0;
+    while (child && guard++ < 100000) {
+      if (child->fixedtype == DWG_TYPE_SEQEND) break;
+      written += (uint32_t)push_one_polyline_vertex(g, bounds, child);
+      if (child == last) break;
+      child = dwg_next_entity(child);
     }
   }
   return (int)written;
@@ -1417,23 +1641,64 @@ static uint32_t extract_acis_wires(coords *g, box *bounds, int64_t *runs,
   return run_count;
 }
 
-/* SAT v1 (decrypted `acis_data`) stores `point … x y z #`. Connecting those
- * vertices is enough to keep a REGION on the canvas when LibreDWG left the
- * isoline arrays empty. SAB binaries are left as proxies. */
+/* SAB v2 ("ACIS BinaryFile") has no isolines on this R2004 file. LibreDWG
+ * can rewrite it as SAT v1 text in encr_sat_data[]; `point … x y z` is then
+ * enough to keep a REGION on the canvas. */
+static char *solid_sat_text(Dwg_Entity__3DSOLID *solid) {
+  size_t total = 0;
+  BITCODE_BL i;
+  char *out;
+  char *dst;
+  if (!solid) return NULL;
+  if (solid->acis_data &&
+      strncmp((const char *)solid->acis_data, "ACIS Binary", 11) == 0 &&
+      !solid->_dxf_sab_converted) {
+    dwg_convert_SAB_to_SAT1(solid);
+  }
+  if (solid->acis_data && solid->acis_data[0] &&
+      strncmp((const char *)solid->acis_data, "ACIS Binary", 11) != 0) {
+    size_t n = strlen((const char *)solid->acis_data);
+    out = (char *)malloc(n + 1);
+    if (!out) return NULL;
+    memcpy(out, solid->acis_data, n + 1);
+    return out;
+  }
+  if (!solid->encr_sat_data || !solid->block_size) return NULL;
+  for (i = 0; i < solid->num_blocks; i++) {
+    if (solid->encr_sat_data[i]) total += solid->block_size[i];
+  }
+  if (total == 0) return NULL;
+  out = (char *)malloc(total + 1);
+  if (!out) return NULL;
+  dst = out;
+  for (i = 0; i < solid->num_blocks; i++) {
+    if (!solid->encr_sat_data[i]) continue;
+    memcpy(dst, solid->encr_sat_data[i], solid->block_size[i]);
+    dst += solid->block_size[i];
+  }
+  *dst = '\0';
+  return out;
+}
+
 static uint32_t extract_sat_points(coords *g, box *bounds, int64_t *runs,
                                    uint32_t run_cap,
-                                   const Dwg_Entity__3DSOLID *solid) {
+                                   Dwg_Entity__3DSOLID *solid) {
+  char *sat;
   const char *p;
   uint32_t start;
   uint32_t n = 0;
-  if (run_cap == 0 || !solid || !solid->acis_data) return 0;
-  p = (const char *)solid->acis_data;
-  if (p[0] == '\0' || strncmp(p, "ACIS Binary", 11) == 0) return 0;
+  if (run_cap == 0 || !solid) return 0;
+  sat = solid_sat_text(solid);
+  if (!sat || sat[0] == '\0') {
+    free(sat);
+    return 0;
+  }
+  p = sat;
   start = g->length;
   while (*p) {
-    if (strncmp(p, "point ", 6) == 0 &&
-        (p == (const char *)solid->acis_data || p[-1] == '\n' ||
-         p[-1] == '\r' || p[-1] == ' ' || p[-1] == '\t')) {
+      if (strncmp(p, "point ", 6) == 0 &&
+        (p == sat || p[-1] == '\n' || p[-1] == '\r' || p[-1] == ' ' ||
+         p[-1] == '\t')) {
       const char *q = p + 6;
       double nums[16];
       int count = 0;
@@ -1441,6 +1706,12 @@ static uint32_t extract_sat_points(coords *g, box *bounds, int64_t *runs,
         char *end = NULL;
         double value;
         while (*q == ' ' || *q == '\t' || *q == '\n' || *q == '\r') q++;
+        if (*q == '$') {
+          q++;
+          if (*q == '-') q++;
+          while (*q >= '0' && *q <= '9') q++;
+          continue;
+        }
         if (*q != '-' && *q != '.' && (*q < '0' || *q > '9')) break;
         value = strtod(q, &end);
         if (end == q) break;
@@ -1461,6 +1732,7 @@ static uint32_t extract_sat_points(coords *g, box *bounds, int64_t *runs,
     }
     p++;
   }
+  free(sat);
   if (n >= 2) {
     runs[0] = (int64_t)n;
     return 1;
@@ -1574,6 +1846,80 @@ static void append_insert_attribs(import_state *s, Dwg_Object_Ref **refs,
   }
 }
 
+/* Same arbitrary axis as Dart `Mat3.ocs` / `Mat3.ocsInsert`. Document
+ * coordinates stay WCS; this bakes OCS at the import boundary. */
+static void apply_ocs_insert(double nx, double ny, double nz, double *ins_x,
+                             double *ins_y, double *scale_x, double *scale_y,
+                             double *rotation) {
+  double len, inv, axx, axy, axz, ax_x, ax_y, ax_z, ay_x, ay_y;
+  double oa, ob, oc, od;
+  double ca, sa, a, b, c, d, e, f;
+  double rot, cr, sr;
+  len = sqrt(nx * nx + ny * ny + nz * nz);
+  if (len < 1e-20) {
+    nx = 0.0;
+    ny = 0.0;
+    nz = 1.0;
+  } else {
+    nx /= len;
+    ny /= len;
+    nz /= len;
+  }
+  if (fabs(nx) < (1.0 / 64.0) && fabs(ny) < (1.0 / 64.0)) {
+    axx = nz;
+    axy = 0.0;
+    axz = -nx;
+  } else {
+    axx = -ny;
+    axy = nx;
+    axz = 0.0;
+  }
+  len = sqrt(axx * axx + axy * axy + axz * axz);
+  inv = len < 1e-20 ? 1.0 : 1.0 / len;
+  ax_x = axx * inv;
+  ax_y = axy * inv;
+  ax_z = axz * inv;
+  ay_x = ny * ax_z - nz * ax_y;
+  ay_y = nz * ax_x - nx * ax_z;
+  oa = ax_x;
+  ob = ax_y;
+  oc = ay_x;
+  od = ay_y;
+  if (oa == 1.0 && ob == 0.0 && oc == 0.0 && od == 1.0) return;
+
+  ca = cos(*rotation);
+  sa = sin(*rotation);
+  /* T * R * S, then ocs * that. */
+  a = ca * *scale_x;
+  b = sa * *scale_x;
+  c = -sa * *scale_y;
+  d = ca * *scale_y;
+  e = *ins_x;
+  f = *ins_y;
+  {
+    double a2 = oa * a + oc * b;
+    double b2 = ob * a + od * b;
+    double c2 = oa * c + oc * d;
+    double d2 = ob * c + od * d;
+    double e2 = oa * e + oc * f;
+    double f2 = ob * e + od * f;
+    a = a2;
+    b = b2;
+    c = c2;
+    d = d2;
+    e = e2;
+    f = f2;
+  }
+  rot = atan2(b, a);
+  cr = cos(rot);
+  sr = sin(rot);
+  *ins_x = e;
+  *ins_y = f;
+  *scale_x = a * cr + b * sr;
+  *scale_y = -c * sr + d * cr;
+  *rotation = rot;
+}
+
 /* Translates one entity. Returns non-zero when a record was written. */
 static int import_entity(import_state *s, const Dwg_Object *obj,
                          uint32_t owner_block) {
@@ -1676,9 +2022,13 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       uint32_t written;
       BITCODE_BS flag = 0;
       if (!o) return 0;
-      written = (uint32_t)push_owned_polyline_vertices(g, &bounds, o->vertex,
-                                                       o->num_owned);
-      if (written == 0) return 0;
+      written = (uint32_t)push_owned_polyline_vertices(s, obj, g, &bounds, o);
+      if (written == 0) {
+        /* A 2D polyline with no resolved VERTEX would otherwise vanish,
+         * which is how J18's 板2 开槽示意图 lost its white outline. */
+        note_proxy(s, obj->dxfname ? obj->dxfname : "POLYLINE");
+        return 0;
+      }
       if (obj->fixedtype == DWG_TYPE_POLYLINE_2D) flag = o->flag;
       else if (obj->fixedtype == DWG_TYPE_POLYLINE_3D && ent->tio.POLYLINE_3D)
         flag = ent->tio.POLYLINE_3D->flag;
@@ -1878,6 +2228,8 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
         scale_x = m->scale.x == 0.0 ? 1.0 : m->scale.x;
         scale_y = m->scale.y == 0.0 ? 1.0 : m->scale.y;
         rotation = m->rotation;
+        apply_ocs_insert(m->extrusion.x, m->extrusion.y, m->extrusion.z,
+                         &ins_x, &ins_y, &scale_x, &scale_y, &rotation);
         ints[0] = (int64_t)(m->num_cols ? m->num_cols : 1);
         ints[1] = (int64_t)(m->num_rows ? m->num_rows : 1);
         coords_push2(g, ins_x, ins_y);
@@ -1892,6 +2244,8 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
         scale_x = m->scale.x == 0.0 ? 1.0 : m->scale.x;
         scale_y = m->scale.y == 0.0 ? 1.0 : m->scale.y;
         rotation = m->rotation;
+        apply_ocs_insert(m->extrusion.x, m->extrusion.y, m->extrusion.z,
+                         &ins_x, &ins_y, &scale_x, &scale_y, &rotation);
         ints[0] = 1;
         ints[1] = 1;
         coords_push2(g, ins_x, ins_y);
@@ -2115,9 +2469,6 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
         if (!o) return 0;
         block_ref = dyn_handle(o, dimension_name, "block");
         block = block_index_from_ref(s, block_ref, obj);
-        if (block != 0xFFFFFFFFu && block < s->block_count) {
-          block_name = s->block_names[block];
-        }
         text_x = dyn_double(o, dimension_name, "text_midpt", 0.0);
         /* text_midpt is a 2RD, so reading it as a double yields only x; read
          * the pair explicitly. */
@@ -2130,6 +2481,23 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
             text_y = midpoint.y;
           } else {
             text_y = 0.0;
+          }
+        }
+        if (block != 0xFFFFFFFFu && block < s->block_count) {
+          uint32_t self = (uint32_t)(obj - s->dwg->object);
+          uint32_t winner = hmap_get(&s->claimed_dimension_blocks,
+                                     (uint64_t)block + 1u, 0xFFFFFFFFu);
+          /* A colliding DIMENSION.block that points at another dim's
+           * *D must not redraw those ticks. The fitting text_midpt
+           * already claimed the block in preclaim; otherwise the
+           * first remaining dimension keeps it so the *D is not
+           * orphaned. */
+          if (winner == 0xFFFFFFFFu) {
+            hmap_put(&s->claimed_dimension_blocks, (uint64_t)block + 1u,
+                     self);
+            block_name = s->block_names[block];
+          } else if (winner == self) {
+            block_name = s->block_names[block];
           }
         }
         measurement = dyn_double(o, dimension_name, "act_measurement", 0.0);
@@ -2460,7 +2828,6 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
   uint32_t *ordered = NULL;
   uint32_t *candidates = NULL;
   uint32_t *layout_blocks = NULL;
-  handle_map seen_handles;
   uint32_t entity_total = 0;
   uint32_t candidate_count = 0;
   uint32_t status = FC_STATUS_OK;
@@ -2468,8 +2835,6 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
 
   memset(&dwg, 0, sizeof(dwg));
   memset(&state, 0, sizeof(state));
-  memset(&seen_handles, 0, sizeof(seen_handles));
-
   result = dwg_read_file((char *)path, &dwg);
   /* LibreDWG returns a bitmask of severities; anything up to
    * DWG_ERR_CRITICAL still yields a usable drawing, which matters because a
@@ -2491,7 +2856,8 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
   coords_init(&state.staging);
   if (!hmap_init(&state.layer_index, 64) ||
       !hmap_init(&state.linetype_index, 32) ||
-      !hmap_init(&state.block_index, 256)) {
+      !hmap_init(&state.block_index, 256) ||
+      !hmap_init(&state.used_entity_ids, dwg.num_objects)) {
     status = FC_STATUS_OUT_OF_MEMORY;
     goto cleanup;
   }
@@ -2504,11 +2870,23 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
     status = FC_STATUS_OUT_OF_MEMORY;
     goto cleanup;
   }
+  if (!hmap_init(&state.claimed_dimension_blocks, state.block_count)) {
+    status = FC_STATUS_OUT_OF_MEMORY;
+    goto cleanup;
+  }
   if (!index_referenced_dimension_blocks(&state)) {
     status = FC_STATUS_OUT_OF_MEMORY;
     goto cleanup;
   }
+  if (!index_first_entities(&state)) {
+    status = FC_STATUS_OUT_OF_MEMORY;
+    goto cleanup;
+  }
   if (!index_owned_entities(&state)) {
+    status = FC_STATUS_OUT_OF_MEMORY;
+    goto cleanup;
+  }
+  if (!index_block_member_boxes(&state)) {
     status = FC_STATUS_OUT_OF_MEMORY;
     goto cleanup;
   }
@@ -2523,13 +2901,9 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
     goto cleanup;
   }
 
-  /* LibreDWG can list the same handle more than once after sort_ents.
-   * The FCB entity id is that handle, so duplicates collapse in Dart and
-   * inflate block entity_count. */
-  if (!hmap_init(&seen_handles, dwg.num_objects)) {
-    status = FC_STATUS_OUT_OF_MEMORY;
-    goto cleanup;
-  }
+  /* First row keeps the handle. A later non-POINT row on the same
+   * handle is another object LibreDWG listed after a *D arrow; drop
+   * a later POINT. */
   candidates = (uint32_t *)calloc(dwg.num_objects ? dwg.num_objects : 1,
                                   sizeof(uint32_t));
   if (!candidates) {
@@ -2539,6 +2913,7 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
   for (i = 0; i < dwg.num_objects; i++) {
     Dwg_Object *obj = &dwg.object[i];
     uint64_t handle;
+    uint32_t first;
     if (obj->supertype != DWG_SUPERTYPE_ENTITY || !obj->tio.entity) continue;
     /* Vertices and sequence-end markers belong to their parent polyline.
      * BLOCK/ENDBLK are the old entity-stream brackets; the block table is
@@ -2546,15 +2921,24 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
      * table. */
     if (is_structural_entity(obj->fixedtype)) continue;
     handle = (uint64_t)obj->handle.value;
-    if (handle &&
-        hmap_get(&seen_handles, handle, 0xFFFFFFFFu) != 0xFFFFFFFFu) {
-      continue;
+    first = handle
+                ? hmap_get(&state.first_entity, handle, 0xFFFFFFFFu)
+                : 0xFFFFFFFFu;
+    if (handle && first != i) {
+      /* LibreDWG repeats vertices as POINT on a reused handle. A later
+       * LINE / INSERT / MTEXT is a different object (plate edge, title
+       * frame, sheet number). */
+      if (obj->fixedtype == DWG_TYPE_POINT) continue;
     }
-    if (handle) hmap_put(&seen_handles, handle, 1);
     candidates[candidate_count++] = i;
   }
 
   if (!reindex_live_dimension_blocks(&state, candidates, candidate_count)) {
+    status = FC_STATUS_OUT_OF_MEMORY;
+    goto cleanup;
+  }
+  if (!preclaim_fitting_dimension_blocks(&state, candidates,
+                                         candidate_count)) {
     status = FC_STATUS_OUT_OF_MEMORY;
     goto cleanup;
   }
@@ -2673,9 +3057,12 @@ cleanup:
   free(ordered);
   free(candidates);
   free(layout_blocks);
-  hmap_dispose(&seen_handles);
+  hmap_dispose(&state.used_entity_ids);
   hmap_dispose(&state.entity_block);
+  hmap_dispose(&state.first_entity);
   hmap_dispose(&state.referenced_dimension_blocks);
+  hmap_dispose(&state.claimed_dimension_blocks);
+  free(state.block_member_box);
   free(state.block_base_x);
   free(state.block_base_y);
   if (state.block_names) {
