@@ -17,10 +17,11 @@ description: 基于当前仓库现状约束实现阶段的编码规范，覆盖 
 - 不要手改 `*.freezed.dart`、`*.g.dart`，除非任务明确要求。
 - `storage` 的 `SettingsStore` 是原始 KV；各业务用自己的 view 组合同一份 `settings.json`（`DrawingSettings` / `AssistantSettings` / `ShellSettings` / `PluginSettings`）。
 - `services` 依赖 view 和 `models`，不直接读写 `SettingsStore` / `SettingsKeys`。只有 composition root（`providers.dart`、`main.dart`）打开 store。
-- `business` 只通过 `Workspace.run` / 已有 service provider 做事，不 import `storage`、不直接 `FcbCache`。
+- `business` 只通过 `Workspace.run` / 已有 service provider 做事，不 import `storage`。
 - `services` 不建 Widget。
 - `storage` 只做读写、键名和 view，不做命令编排。
 - CAD 动词仍是 `CommandDescriptor`，放在 `lib/business/commands/`，由 `Workspace.run` / `runHeadless` 调用。不要把 `draw.line` / `edit.erase` 改成 `*Services`。
+- DWG 导入只按文件字段解释（`entmode`、`ownerhandle`、`entities[]`、几何、`DIMENSION.block`）。文件里已经写清的对象不要用距离、层名黑名单或「孤立」去改归属或丢掉。
 
 ## 不要
 
