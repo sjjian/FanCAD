@@ -110,7 +110,7 @@ void main() {
     expect(box.color, FanCadTokens.dark.borderStrong);
   });
 
-  testWidgets('a leftover icon button stays 28 and a tab uses selection', (
+  testWidgets('a leftover icon button stays 28 and a strip tab underlines', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -141,10 +141,10 @@ void main() {
         matching: find.byType(Container),
       ),
     );
-    expect(
-      (fill.decoration! as BoxDecoration).color,
-      FanCadTokens.dark.selection,
-    );
+    final decoration = fill.decoration! as BoxDecoration;
+    expect(decoration.color, FanCadTokens.dark.pressed);
+    expect(decoration.border?.bottom.color, FanCadTokens.dark.accent);
+    expect(decoration.border?.bottom.width, 1);
   });
 
   test('dark and light type styles keep token colours and tabular figures', () {

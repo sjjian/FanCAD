@@ -4,7 +4,7 @@ import '../theme/tokens.dart';
 
 /// How a [ShellTab] paints its selected and hover chrome.
 enum ShellTabStyle {
-  /// Document and assistant session tabs: top accent, right hairline.
+  /// Document and assistant session tabs: quiet fill, bottom accent.
   strip,
 
   /// A full-width list row, as used for layout names.
@@ -65,11 +65,7 @@ class _ShellTabState extends State<ShellTab> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final fill = widget.selected
-        ? tokens.selection
-        : _hovered
-        ? tokens.hover
-        : Colors.transparent;
+    final idle = _hovered ? tokens.hover : Colors.transparent;
 
     late final Widget painted;
     switch (widget.style) {
@@ -84,12 +80,11 @@ class _ShellTabState extends State<ShellTab> {
                 right: FanCadTokens.space1,
               ),
           decoration: BoxDecoration(
-            color: fill,
+            color: widget.selected ? tokens.pressed : idle,
             border: Border(
               right: BorderSide(color: tokens.border),
-              top: BorderSide(
+              bottom: BorderSide(
                 color: widget.selected ? tokens.accent : Colors.transparent,
-                width: 2,
               ),
             ),
           ),
@@ -102,7 +97,7 @@ class _ShellTabState extends State<ShellTab> {
           padding:
               widget.padding ??
               const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
-          color: fill,
+          color: widget.selected ? tokens.selection : idle,
           child: widget.child,
         );
       case ShellTabStyle.underline:
