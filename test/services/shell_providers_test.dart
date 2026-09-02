@@ -54,10 +54,7 @@ void main() {
     sidebar.resize(900);
     expect(sidebar.state.width, Sidebar.maxWidth);
     sidebar.commitWidth();
-    expect(
-      settings.getDouble(SettingsKeys.sidebarWidth),
-      Sidebar.maxWidth,
-    );
+    expect(settings.getDouble(SettingsKeys.sidebarWidth), Sidebar.maxWidth);
   });
 
   test('a leftover assistant view does not occupy the left sidebar', () {
@@ -75,6 +72,10 @@ void main() {
 
     sidebar.reveal('layouts');
     expect(sidebar.state.viewId, 'layouts');
+    expect(sidebar.state.isOpen, isTrue);
+
+    sidebar.reveal('preferences');
+    expect(sidebar.state.viewId, 'preferences');
     expect(sidebar.state.isOpen, isTrue);
   });
 
@@ -116,14 +117,8 @@ void main() {
     );
     expect(CommandPane.defaultHeight, 84);
     expect(CommandPane.expandedHeight, 200);
-    expect(
-      CommandPane.defaultHeight,
-      lessThan(CommandPane.expandedHeight),
-    );
-    expect(
-      CommandPane.collapsedHeight,
-      lessThan(CommandPane.defaultHeight),
-    );
+    expect(CommandPane.defaultHeight, lessThan(CommandPane.expandedHeight));
+    expect(CommandPane.collapsedHeight, lessThan(CommandPane.defaultHeight));
   });
 
   test('the command pane clamps height and expands to a taller history', () {
@@ -166,6 +161,10 @@ void main() {
     expect(settings.getString(SettingsKeys.themeBrightness), 'light');
     dark.toggle();
     expect(settings.getString(SettingsKeys.themeBrightness), 'dark');
+
+    dark.setPreference('system');
+    expect(settings.getString(SettingsKeys.themeBrightness), 'system');
+    expect(dark.preference, 'system');
   });
 
   test('language defaults to English and persists a supported switch', () {

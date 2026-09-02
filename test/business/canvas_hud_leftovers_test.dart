@@ -85,7 +85,7 @@ void main() {
       tester
           .widget<ShellSplitter>(find.byKey(const Key('sidebar-splitter')))
           .strong,
-      isTrue,
+      isFalse,
     );
     expect(
       find.descendant(
@@ -102,10 +102,11 @@ void main() {
       findsNothing,
     );
     final card = tester.getRect(find.byKey(const Key('canvas-bottom-card')));
-    expect(card.width / hud.width, closeTo(canvasHudWidthFactor, 0.05));
+    expect(card.width, lessThanOrEqualTo(canvasHudMaxWidth + 1));
+    expect(card.width, lessThan(hud.width));
     expect(card.left, greaterThan(hud.left + 8));
     expect(card.right, lessThan(hud.right - 8));
-    expect(canvasHudRadius, greaterThan(FanCadTokens.radiusLarge));
+    expect(canvasHudRadius, FanCadTokens.radiusLarge);
     final undo = tester.getRect(find.byKey(const Key('canvas-tool-undo')));
     final snap = tester.getRect(find.byKey(const Key('canvas-mode-snap')));
     final ortho = tester.getRect(find.byKey(const Key('canvas-mode-ortho')));
@@ -241,7 +242,7 @@ void main() {
     );
     expect(find.text('Filter by name, alias or category'), findsNothing);
 
-    await tester.tap(find.byIcon(Icons.terminal));
+    await tester.tap(find.byKey(const Key('activity-commands')));
     await tester.pump();
     expect(find.byKey(const Key('command-log-panel')), findsNothing);
     expect(find.text('Filter by name, alias or category'), findsOneWidget);
@@ -267,7 +268,7 @@ void main() {
       tester
           .widget<ShellSplitter>(find.byKey(const Key('assistant-splitter')))
           .strong,
-      isTrue,
+      isFalse,
     );
   });
 

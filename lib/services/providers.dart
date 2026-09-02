@@ -42,8 +42,7 @@ SettingsStore settings(Ref ref) =>
 
 /// The same bag, split into the views services actually ask for.
 @Riverpod(keepAlive: true)
-AppSettings appSettings(Ref ref) =>
-    AppSettings(ref.watch(settingsProvider));
+AppSettings appSettings(Ref ref) => AppSettings(ref.watch(settingsProvider));
 
 /// The drawing importer. Overridden in tests with a stub backend.
 @Riverpod(keepAlive: true)
@@ -220,6 +219,7 @@ class Sidebar extends _$Sidebar {
     'commands',
     'plugins',
     'editor',
+    'preferences',
   };
 
   @override
@@ -228,7 +228,9 @@ class Sidebar extends _$Sidebar {
     return SidebarState(
       viewId: _leftViewId(shell.sidebarView()),
       isOpen: shell.sidebarOpen(),
-      width: shell.sidebarWidth(fallback: defaultWidth).clamp(minWidth, maxWidth),
+      width: shell
+          .sidebarWidth(fallback: defaultWidth)
+          .clamp(minWidth, maxWidth),
     );
   }
 
@@ -401,21 +403,37 @@ class ThemeBrightness extends _$ThemeBrightness {
 
   @override
   Brightness build() {
-    return ref.watch(appSettingsProvider).shell.themeBrightness() == 'light'
-        ? Brightness.light
-        : Brightness.dark;
+    return _resolve(ref.watch(appSettingsProvider).shell.themeBrightness());
   }
 
+  /// Stored preference: `dark`, `light`, or `system`.
+  String get preference => _shell.themeBrightness();
+
   void toggle() {
-    setBrightness(
-      state == Brightness.dark ? Brightness.light : Brightness.dark,
-    );
+    setPreference(state == Brightness.dark ? 'light' : 'dark');
   }
 
   void setBrightness(Brightness value) {
-    if (state == value) return;
-    state = value;
-    _shell.setThemeBrightness(state.name);
+    setPreference(value == Brightness.light ? 'light' : 'dark');
+  }
+
+  void setPreference(String value) {
+    _shell.setThemeBrightness(value);
+    state = _resolve(value);
+    ref.invalidateSelf();
+  }
+
+  Brightness _resolve(String preference) {
+    if (preference == 'light') return Brightness.light;
+    if (preference == 'system') {
+      try {
+        return WidgetsBinding.instance.platformDispatcher.platformBrightness;
+      } catch (_) {
+        // Headless tests have no binding; MaterialApp uses ThemeMode.system.
+        return Brightness.dark;
+      }
+    }
+    return Brightness.dark;
   }
 }
 
@@ -458,7 +476,8 @@ class McpConfig extends _$McpConfig {
     _mcp.setPort(port);
   }
 
-  void setPortFromText(String raw) => setPort(parseMcpPort(raw, fallback: state.port));
+  void setPortFromText(String raw) =>
+      setPort(parseMcpPort(raw, fallback: state.port));
 
   void setLocal(bool value) {
     if (state.local == value) return;
@@ -502,9 +521,10 @@ class Language extends _$Language {
   @override
   String build() {
     return FanCadLanguage.parse(
-      ref.watch(appSettingsProvider).shell.language(
-        fallback: FanCadLanguage.english,
-      ),
+      ref
+          .watch(appSettingsProvider)
+          .shell
+          .language(fallback: FanCadLanguage.english),
     );
   }
 

@@ -95,7 +95,7 @@ class _LayersPanelState extends State<LayersPanel> {
           ],
         ),
         Container(
-          height: FanCadTokens.statusBarHeight,
+          height: FanCadTokens.filterBarHeight,
           padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
           decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: tokens.border)),
@@ -282,33 +282,30 @@ class _LayerRowState extends State<_LayerRow> {
         origin.dy + 1,
       ),
       items: [
-        PopupMenuItem(
+        shellMenuItem(
+          context,
           value: 'current',
+          label: widget.isCurrent ? l10n.already_current : l10n.set_as_current,
           enabled: !widget.isCurrent,
-          child: Text(
-            widget.isCurrent ? l10n.already_current : l10n.set_as_current,
-          ),
         ),
-        PopupMenuItem(value: 'isolate', child: Text(l10n.isolate_layer)),
-        PopupMenuItem(
+        shellMenuItem(context, value: 'isolate', label: l10n.isolate_layer),
+        shellMenuItem(
+          context,
           value: 'select',
           enabled: widget.count > 0,
-          child: Text(
-            widget.count == 0
-                ? l10n.no_objects_on_layer
-                : widget.count == 1
-                ? l10n.select_objects_one
-                : l10n.select_objects_many(widget.count),
-          ),
+          label: widget.count == 0
+              ? l10n.no_objects_on_layer
+              : widget.count == 1
+              ? l10n.select_objects_one
+              : l10n.select_objects_many(widget.count),
         ),
-        PopupMenuItem(
+        shellMenuItem(
+          context,
           value: 'delete',
           enabled: widget.onDelete != null,
-          child: Text(
-            widget.onDelete == null
-                ? l10n.layer_0_cannot_delete
-                : l10n.delete_layer,
-          ),
+          label: widget.onDelete == null
+              ? l10n.layer_0_cannot_delete
+              : l10n.delete_layer,
         ),
       ],
     ).then((action) {
@@ -343,7 +340,10 @@ class _LayerRowState extends State<_LayerRow> {
         onTap: widget.onSetCurrent,
         onDoubleTap: widget.onIsolate,
         onSecondaryTap: _openMenu,
-        padding: const EdgeInsets.only(left: FanCadTokens.space2, right: 2),
+        padding: const EdgeInsets.only(
+          left: FanCadTokens.space2,
+          right: FanCadTokens.space2,
+        ),
         child: Row(
           children: [
             ShellIconButton(

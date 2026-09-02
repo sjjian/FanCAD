@@ -16,11 +16,15 @@
   "@theme_light": {
     "description": "theme light"
   },
-  "appearance_dark_tooltip": "外观 — 深色。可切换浅色或深色",
+  "theme_system": "跟随系统",
+  "@theme_system": {
+    "description": "theme follow operating system"
+  },
+  "appearance_dark_tooltip": "外观 — 深色。可切换浅色、深色或跟随系统",
   "@appearance_dark_tooltip": {
     "description": "appearance dark tooltip"
   },
-  "appearance_light_tooltip": "外观 — 浅色。可切换浅色或深色",
+  "appearance_light_tooltip": "外观 — 浅色。可切换浅色、深色或跟随系统",
   "@appearance_light_tooltip": {
     "description": "appearance light tooltip"
   },
@@ -896,7 +900,7 @@
   "@empty_drawing_title": {
     "description": "empty drawing title"
   },
-  "empty_drawing_hint": "从工具栏开始命令，输入别名如 L 或 C，或选择下方命令。",
+  "empty_drawing_hint": "从工具栏开始命令，或输入别名如 L 或 C。",
   "@empty_drawing_hint": {
     "description": "empty drawing hint"
   },

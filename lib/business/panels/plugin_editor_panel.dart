@@ -207,42 +207,52 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
               child: Row(
                 children: [
                   Expanded(
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value:
-                            _pluginId != null &&
-                                plugins.any((handle) => handle.id == _pluginId)
-                            ? _pluginId
-                            : null,
-                        hint: Text(
-                          context.l10n.extension,
-                          style: tokens.labelStyle,
-                        ),
-                        isExpanded: true,
-                        style: tokens.bodyStyle,
-                        dropdownColor: tokens.surfaceOverlay,
-                        items: [
-                          for (final handle in plugins)
-                            DropdownMenuItem(
-                              value: handle.id,
-                              child: Text(
-                                handle.manifest.name.isEmpty
-                                    ? handle.id
-                                    : handle.manifest.name,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                    child: ShellMenuButton<String>(
+                      placement: ShellMenuPlacement.down,
+                      onSelected: (id) {
+                        unawaited(
+                          _switchTo(
+                            id,
+                            host?.plugin(id)?.manifest.entryPoint ?? 'main.js',
+                          ),
+                        );
+                      },
+                      itemBuilder: (context) => [
+                        for (final handle in plugins)
+                          shellMenuItem(
+                            context,
+                            value: handle.id,
+                            label: handle.manifest.name.isEmpty
+                                ? handle.id
+                                : handle.manifest.name,
+                            checked: handle.id == _pluginId,
+                          ),
+                      ],
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              () {
+                                final current = plugins
+                                    .where((handle) => handle.id == _pluginId)
+                                    .firstOrNull;
+                                if (current == null) {
+                                  return context.l10n.extension;
+                                }
+                                return current.manifest.name.isEmpty
+                                    ? current.id
+                                    : current.manifest.name;
+                              }(),
+                              style: tokens.bodyStyle,
+                              overflow: TextOverflow.ellipsis,
                             ),
+                          ),
+                          Icon(
+                            Icons.expand_more,
+                            size: FanCadTokens.iconSmall,
+                            color: tokens.textMuted,
+                          ),
                         ],
-                        onChanged: (id) {
-                          if (id == null) return;
-                          unawaited(
-                            _switchTo(
-                              id,
-                              host?.plugin(id)?.manifest.entryPoint ??
-                                  'main.js',
-                            ),
-                          );
-                        },
                       ),
                     ),
                   ),

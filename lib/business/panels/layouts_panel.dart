@@ -171,17 +171,18 @@ class _LayoutRowState extends State<_LayoutRow> {
       ),
       items: [
         if (widget.onRestore != null)
-          PopupMenuItem(
+          shellMenuItem(
+            context,
             value: 'restore',
-            child: Text(context.l10n.restore_viewport),
+            label: context.l10n.restore_viewport,
           ),
         if (widget.onRename != null)
-          PopupMenuItem(value: 'rename', child: Text(context.l10n.rename)),
+          shellMenuItem(context, value: 'rename', label: context.l10n.rename),
         if (widget.onCopy != null)
-          PopupMenuItem(value: 'copy', child: Text(context.l10n.duplicate)),
+          shellMenuItem(context, value: 'copy', label: context.l10n.duplicate),
         if (widget.onDelete != null)
-          PopupMenuItem(value: 'delete', child: Text(context.l10n.delete)),
-        PopupMenuItem(value: 'new', child: Text(context.l10n.new_layout)),
+          shellMenuItem(context, value: 'delete', label: context.l10n.delete),
+        shellMenuItem(context, value: 'new', label: context.l10n.new_layout),
       ],
     ).then((action) {
       if (!mounted || action == null) return;

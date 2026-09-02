@@ -21,10 +21,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get theme_light => '浅色';
 
   @override
-  String get appearance_dark_tooltip => '外观 — 深色。可切换浅色或深色';
+  String get theme_system => '跟随系统';
 
   @override
-  String get appearance_light_tooltip => '外观 — 浅色。可切换浅色或深色';
+  String get appearance_dark_tooltip => '外观 — 深色。可切换浅色、深色或跟随系统';
+
+  @override
+  String get appearance_light_tooltip => '外观 — 浅色。可切换浅色、深色或跟随系统';
 
   @override
   String get settings => '设置';
@@ -620,7 +623,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get empty_drawing_title => '此图纸为空';
 
   @override
-  String get empty_drawing_hint => '从工具栏开始命令，输入别名如 L 或 C，或选择下方命令。';
+  String get empty_drawing_hint => '从工具栏开始命令，或输入别名如 L 或 C。';
 
   @override
   String get line_alias => '直线  L';

@@ -157,9 +157,9 @@ class _CommandPaletteState extends State<CommandPalette> {
                     border: Border.all(color: tokens.borderStrong),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
+                        color: tokens.shadow,
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
@@ -279,10 +279,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                             const Spacer(),
                             Text(
                               context.l10n.palette_hints,
-                              style: tokens.monoStyle.copyWith(
-                                fontSize: 10.5,
-                                color: tokens.textFaint,
-                              ),
+                              style: tokens.labelStyle,
                             ),
                           ],
                         ),

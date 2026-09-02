@@ -15,6 +15,7 @@ class FanCadTokens {
     required this.surfaceRaised,
     required this.surfaceOverlay,
     required this.border,
+    required this.borderMuted,
     required this.borderStrong,
     required this.text,
     required this.textMuted,
@@ -34,12 +35,13 @@ class FanCadTokens {
     surface: Color(0xFF23262B),
     surfaceRaised: Color(0xFF2B2F35),
     surfaceOverlay: Color(0xFF33383F),
-    border: Color(0xFF34383F),
-    borderStrong: Color(0xFF454B54),
+    border: Color(0xFF4A515A),
+    borderMuted: Color(0xFF3A4048),
+    borderStrong: Color(0xFF5E6670),
     text: Color(0xFFE6E8EB),
     textMuted: Color(0xFF9BA3AD),
-    textFaint: Color(0xFF6B7280),
-    accent: Color(0xFF3B9DFF),
+    textFaint: Color(0xFF8B939D),
+    accent: Color(0xFF5B9BFF),
     accentText: Color(0xFFFFFFFF),
     success: Color(0xFF4ED07E),
     warning: Color(0xFFFFB347),
@@ -48,16 +50,17 @@ class FanCadTokens {
   );
 
   static const FanCadTokens light = FanCadTokens(
-    canvas: Color(0xFFF7F8FA),
+    canvas: Color(0xFFF3F1EC),
     surface: Color(0xFFFFFFFF),
     surfaceRaised: Color(0xFFF1F3F6),
     surfaceOverlay: Color(0xFFFFFFFF),
-    border: Color(0xFFDDE1E7),
-    borderStrong: Color(0xFFBFC6D0),
+    border: Color(0xFFC5CCD6),
+    borderMuted: Color(0xFFDDE2E8),
+    borderStrong: Color(0xFFA8B2BE),
     text: Color(0xFF1B1D21),
     textMuted: Color(0xFF5A626C),
-    textFaint: Color(0xFF8B939D),
-    accent: Color(0xFF1668D6),
+    textFaint: Color(0xFF6B7280),
+    accent: Color(0xFF1A73E8),
     accentText: Color(0xFFFFFFFF),
     success: Color(0xFF1E9E58),
     warning: Color(0xFFB4700A),
@@ -78,6 +81,10 @@ class FanCadTokens {
   final Color surfaceOverlay;
 
   final Color border;
+
+  /// Pane seams. Quieter than [border] so title, tabs and docks do not
+  /// read as a grid of hard rules.
+  final Color borderMuted;
   final Color borderStrong;
   final Color text;
   final Color textMuted;
@@ -109,6 +116,7 @@ class FanCadTokens {
   static const double commandLineHeight = 24;
   static const double statusBarHeight = 24;
   static const double rowHeight = 26;
+  static const double filterBarHeight = 28;
   static const double activityBarWidth = 48;
 
   /// Width reserved for the native traffic lights on a macOS hidden title bar.
@@ -145,11 +153,18 @@ class FanCadTokens {
   );
 
   TextStyle get sectionTitleStyle => TextStyle(
-    fontSize: 11,
+    fontSize: 13,
     height: 1.3,
-    letterSpacing: 0.6,
     fontWeight: FontWeight.w600,
-    color: textMuted,
+    color: text,
+    fontFamily: uiFontFamily,
+  );
+
+  TextStyle get dialogTitleStyle => TextStyle(
+    fontSize: 14,
+    height: 1.3,
+    fontWeight: FontWeight.w600,
+    color: text,
     fontFamily: uiFontFamily,
   );
 
@@ -182,6 +197,19 @@ class FanCadTokens {
 
   /// The tint behind a selected list row.
   Color get selection => accent.withValues(alpha: isDark ? 0.22 : 0.14);
+
+  /// Keyboard focus ring. Same hue as the accent, drawn as a 2px outline.
+  Color get focusRing => accent;
+
+  /// Disabled ink. Opacity rather than a leftover grey, so it stays on-token
+  /// when the text ladder moves.
+  Color get disabled => text.withValues(alpha: 0.38);
+
+  /// Overlay shadow. A mid grey on light, not pure black, so a toast or HUD
+  /// does not look muddy on paper.
+  Color get shadow => isDark
+      ? const Color(0xFF000000).withValues(alpha: 0.22)
+      : const Color(0xFF1B1D21).withValues(alpha: 0.10);
 }
 
 /// Makes [FanCadTokens] available to the widget tree.

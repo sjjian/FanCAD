@@ -29,16 +29,27 @@ class ShellRow extends StatefulWidget {
 
 class _ShellRowState extends State<ShellRow> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return MouseRegion(
-      cursor: widget.onTap == null
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+    final tappable = widget.onTap != null;
+    return FocusableActionDetector(
+      enabled: tappable,
+      mouseCursor: tappable
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onShowHoverHighlight: (show) => setState(() => _hovered = show),
+      onShowFocusHighlight: (show) => setState(() => _focused = show),
+      actions: <Type, Action<Intent>>{
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            widget.onTap?.call();
+            return null;
+          },
+        ),
+      },
       child: GestureDetector(
         onTap: widget.onTap,
         onDoubleTap: widget.onDoubleTap,
@@ -46,11 +57,16 @@ class _ShellRowState extends State<ShellRow> {
         child: Container(
           height: widget.height,
           padding: widget.padding,
-          color: widget.isSelected
-              ? tokens.selection
-              : _hovered
-              ? tokens.hover
-              : Colors.transparent,
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? tokens.selection
+                : _hovered
+                ? tokens.hover
+                : Colors.transparent,
+            border: _focused
+                ? Border.all(color: tokens.focusRing, width: 2)
+                : null,
+          ),
           alignment: Alignment.centerLeft,
           child: widget.child,
         ),

@@ -63,13 +63,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         return;
       }
       if (isPreferencesPanel(panelId)) {
-        if (!mounted) return;
-        unawaited(
-          showSettingsDialog(
-            context,
-            initialTab: settingsTabFromPanelId(panelId),
-          ),
-        );
+        revealSettingsTab(settingsTabFromPanelId(panelId));
+        ref.read(sidebarProvider.notifier).reveal('preferences');
         return;
       }
       ref.read(sidebarProvider.notifier).reveal(panelId);
@@ -183,10 +178,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  request.title,
-                  style: tokens.bodyStyle.copyWith(fontSize: 15),
-                ),
+                Text(request.title, style: tokens.dialogTitleStyle),
                 const SizedBox(height: FanCadTokens.space3),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 220),
@@ -362,7 +354,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                               child: ShellSplitter(
                                 key: const Key('sidebar-splitter'),
                                 axis: Axis.vertical,
-                                strong: true,
                                 onDrag: (delta) => ref
                                     .read(sidebarProvider.notifier)
                                     .resize(sidebar.width + delta),
@@ -389,7 +380,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                               child: ShellSplitter(
                                 key: const Key('assistant-splitter'),
                                 axis: Axis.vertical,
-                                strong: true,
                                 onDrag: (delta) => ref
                                     .read(assistantPaneProvider.notifier)
                                     .resize(assistant.width - delta),
@@ -443,21 +433,23 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
             commandLineFocus: _commandFocus,
           );
     final sidebar = ref.watch(sidebarProvider);
+    final stack = Stack(
+      children: [
+        body,
+        Positioned(
+          right: FanCadTokens.space4,
+          top: FanCadTokens.space3,
+          child: _Notices(workspace: workspace),
+        ),
+      ],
+    );
+    if (tab == null) return stack;
     return CanvasHud(
       workspace: workspace,
       commandFocus: _commandFocus,
       historyOpen: sidebar.isOpen && sidebar.viewId == 'history',
       onOpenHistory: () => workspace.revealPanel('history'),
-      child: Stack(
-        children: [
-          body,
-          Positioned(
-            right: FanCadTokens.space4,
-            top: FanCadTokens.space3,
-            child: _Notices(workspace: workspace),
-          ),
-        ],
-      ),
+      child: stack,
     );
   }
 
@@ -479,6 +471,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       workspace: workspace,
       host: ref.watch(pluginHostProvider),
     ),
+    'preferences' => const SettingsPanel(),
     _ => const SizedBox.shrink(),
   };
 
@@ -583,14 +576,23 @@ class _ActivityBar extends StatelessWidget {
   final String activeViewId;
   final ValueChanged<String> onSelect;
 
-  static const List<({String id, IconData icon})> _views = [
-    (id: 'layers', icon: Icons.layers_outlined),
-    (id: 'properties', icon: Icons.tune),
-    (id: 'layouts', icon: Icons.dashboard_outlined),
-    (id: 'history', icon: Icons.history),
-    (id: 'commands', icon: Icons.terminal),
-    (id: 'plugins', icon: Icons.extension_outlined),
-    (id: 'editor', icon: Icons.code),
+  static const List<({String id, IconData icon, IconData activeIcon})>
+  _views = [
+    (id: 'layers', icon: Icons.layers_outlined, activeIcon: Icons.layers),
+    (id: 'properties', icon: Icons.tune_outlined, activeIcon: Icons.tune),
+    (
+      id: 'layouts',
+      icon: Icons.dashboard_outlined,
+      activeIcon: Icons.dashboard,
+    ),
+    (id: 'history', icon: Icons.history_outlined, activeIcon: Icons.history),
+    (id: 'commands', icon: Icons.terminal_outlined, activeIcon: Icons.terminal),
+    (
+      id: 'plugins',
+      icon: Icons.extension_outlined,
+      activeIcon: Icons.extension,
+    ),
+    (id: 'editor', icon: Icons.code_outlined, activeIcon: Icons.code),
   ];
 
   ({String label, String hint}) _copy(AppLocalizations l10n, String id) {
@@ -612,26 +614,26 @@ class _ActivityBar extends StatelessWidget {
     return Container(
       width: FanCadTokens.activityBarWidth,
       decoration: BoxDecoration(
-        color: tokens.canvas,
-        border: Border(right: BorderSide(color: tokens.border)),
+        color: tokens.surface,
+        border: Border(right: BorderSide(color: tokens.borderMuted)),
       ),
       child: Column(
         children: [
           const SizedBox(height: FanCadTokens.space2),
           for (final view in _views)
             Padding(
-              padding: const EdgeInsets.only(bottom: 2),
+              padding: const EdgeInsets.only(bottom: FanCadTokens.space1),
               child: ShellIconButton(
                 key: Key('activity-${view.id}'),
-                icon: view.icon,
+                icon: activeViewId == view.id ? view.activeIcon : view.icon,
                 tooltip: () {
                   final copy = _copy(l10n, view.id);
                   return activeViewId == view.id
                       ? '${l10n.hide_view(copy.label)}\n${copy.hint}'
                       : '${copy.label}\n${copy.hint}';
                 }(),
-                size: FanCadTokens.activityBarWidth,
-                iconSize: FanCadTokens.iconLarge,
+                size: FanCadTokens.activityBarWidth - FanCadTokens.space3,
+                iconSize: 22,
                 isActive: activeViewId == view.id,
                 showActiveBar: true,
                 onPressed: () => onSelect(view.id),
@@ -639,12 +641,27 @@ class _ActivityBar extends StatelessWidget {
             ),
           const Spacer(),
           ShellIconButton(
+            key: const Key('activity-preferences'),
+            icon: activeViewId == 'preferences'
+                ? Icons.settings
+                : Icons.settings_outlined,
+            tooltip: activeViewId == 'preferences'
+                ? '${l10n.hide_view(l10n.settings)}\n${l10n.settings_tooltip}'
+                : '${l10n.settings}\n${l10n.settings_tooltip}  ${shellShortcut(',')}',
+            size: FanCadTokens.activityBarWidth - FanCadTokens.space3,
+            iconSize: 22,
+            isActive: activeViewId == 'preferences',
+            showActiveBar: true,
+            onPressed: () => onSelect('preferences'),
+          ),
+          const SizedBox(height: FanCadTokens.space1),
+          ShellIconButton(
             icon: Icons.menu,
             tooltip: activeViewId.isEmpty
                 ? '${l10n.show_sidebar}  ${shellShortcut('B')}'
                 : '${l10n.hide_sidebar}  ${shellShortcut('B')}',
-            size: FanCadTokens.activityBarWidth,
-            iconSize: FanCadTokens.iconLarge,
+            size: FanCadTokens.activityBarWidth - FanCadTokens.space3,
+            iconSize: 22,
             onPressed: () =>
                 onSelect(activeViewId.isEmpty ? _views.first.id : activeViewId),
           ),
@@ -718,7 +735,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
           ],
         ),
         Container(
-          height: FanCadTokens.statusBarHeight,
+          height: FanCadTokens.filterBarHeight,
           padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
           decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: tokens.border)),

@@ -144,8 +144,8 @@ class ShellToast extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 420),
       child: Material(
         color: tokens.surfaceOverlay,
-        elevation: 8,
-        shadowColor: Colors.black.withValues(alpha: 0.35),
+        elevation: 3,
+        shadowColor: tokens.shadow,
         borderRadius: BorderRadius.circular(FanCadTokens.radius),
         child: Container(
           padding: const EdgeInsets.symmetric(
@@ -154,11 +154,7 @@ class ShellToast extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(FanCadTokens.radius),
-            border: Border.all(
-              color: tone == ShellTone.danger
-                  ? tokens.danger
-                  : tokens.borderStrong,
-            ),
+            border: Border.all(color: color),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,

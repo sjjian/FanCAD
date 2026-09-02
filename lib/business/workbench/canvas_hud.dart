@@ -37,13 +37,13 @@ class CanvasHud extends StatelessWidget {
       children: [
         child,
         Positioned(
-          left: 0,
-          right: 0,
+          left: FanCadTokens.space3,
+          right: FanCadTokens.space3,
           bottom: FanCadTokens.space3,
           child: Align(
             alignment: Alignment.bottomCenter,
-            child: FractionallySizedBox(
-              widthFactor: canvasHudWidthFactor,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: canvasHudMaxWidth),
               child: _HudCard(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -67,14 +67,14 @@ class CanvasHud extends StatelessWidget {
   }
 }
 
-/// How wide the floating card is relative to the drawing.
+/// How wide the floating card may grow. Wide enough for a typed prompt,
+/// still narrower than a dock that ate the drawing.
 @visibleForTesting
-const canvasHudWidthFactor = 2 / 3;
+const canvasHudMaxWidth = 640.0;
 
-/// Corner radius on the floating card — larger than chrome chips so it reads
-/// as a dock, not a toolbar strip.
+/// Corner radius on the floating card. Same large chrome radius as dialogs.
 @visibleForTesting
-const canvasHudRadius = 16.0;
+const canvasHudRadius = FanCadTokens.radiusLarge;
 
 /// Inset so tools and mode chips sit inside the rounded corners.
 @visibleForTesting
@@ -90,8 +90,8 @@ class _HudCard extends StatelessWidget {
     final tokens = context.tokens;
     return Material(
       color: tokens.surfaceOverlay,
-      elevation: 8,
-      shadowColor: Colors.black.withValues(alpha: 0.35),
+      elevation: 3,
+      shadowColor: tokens.shadow,
       borderRadius: BorderRadius.circular(canvasHudRadius),
       child: Container(
         key: const Key('canvas-bottom-card'),
@@ -290,37 +290,23 @@ Future<void> _openSnapModeMenu(
   Workspace workspace,
   Offset globalPosition,
 ) async {
-  final tokens = context.tokens;
   final chosen = await showShellMenu<Object>(
     context: context,
     position: shellMenuPosition(globalPosition),
+    placement: ShellMenuPlacement.up,
     items: [
       for (final mode in SnapMode.values)
-        PopupMenuItem<Object>(
+        shellMenuItem<Object>(
+          context,
           value: mode,
-          height: 32,
-          child: Row(
-            children: [
-              SizedBox(
-                width: 18,
-                child: workspace.snapEngine.modes.contains(mode)
-                    ? Icon(
-                        Icons.check,
-                        size: FanCadTokens.iconSmall,
-                        color: tokens.accent,
-                      )
-                    : null,
-              ),
-              const SizedBox(width: FanCadTokens.space2),
-              Text(context.l10n.snapModeLabel(mode), style: tokens.bodyStyle),
-            ],
-          ),
+          label: context.l10n.snapModeLabel(mode),
+          checked: workspace.snapEngine.modes.contains(mode),
         ),
       const PopupMenuDivider(),
-      PopupMenuItem<Object>(
+      shellMenuItem<Object>(
+        context,
         value: 'defaults',
-        height: 32,
-        child: Text(context.l10n.restore_defaults, style: tokens.bodyStyle),
+        label: context.l10n.restore_defaults,
       ),
     ],
   );
@@ -336,32 +322,18 @@ Future<void> _openPolarIncrementMenu(
   Workspace workspace,
   Offset globalPosition,
 ) async {
-  final tokens = context.tokens;
   final current = _polarDegrees(workspace.snapEngine.tracking.polarIncrement);
   final chosen = await showShellMenu<int>(
     context: context,
     position: shellMenuPosition(globalPosition),
+    placement: ShellMenuPlacement.up,
     items: [
       for (final degrees in _polarIncrements)
-        PopupMenuItem<int>(
+        shellMenuItem<int>(
+          context,
           value: degrees,
-          height: 32,
-          child: Row(
-            children: [
-              SizedBox(
-                width: 18,
-                child: degrees == current
-                    ? Icon(
-                        Icons.check,
-                        size: FanCadTokens.iconSmall,
-                        color: tokens.accent,
-                      )
-                    : null,
-              ),
-              const SizedBox(width: FanCadTokens.space2),
-              Text('$degrees°', style: tokens.bodyStyle),
-            ],
-          ),
+          label: '$degrees°',
+          checked: degrees == current,
         ),
     ],
   );

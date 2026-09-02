@@ -42,33 +42,24 @@ class TitleBar extends StatelessWidget {
       ? FanCadTokens.macTrafficLightsWidth
       : FanCadTokens.space2;
 
+  /// Space after the last title-bar control.
+  ///
+  /// macOS has no window-button cluster on the right, so the assistant
+  /// icon would otherwise sit flush against the window edge.
+  @visibleForTesting
+  static double trailingInset() => FanCadTokens.space2;
+
   /// Whether this platform draws its own minimise / maximise / close cluster.
   @visibleForTesting
   static bool usesCustomWindowButtons({
     required bool usesNativeTrafficLights,
   }) => !usesNativeTrafficLights;
 
-  /// Window title. A single drawing is already named on the tab strip.
-  @visibleForTesting
-  static String chromeTitle({
-    required int tabCount,
-    String? activeTitle,
-    bool dirty = false,
-  }) {
-    if (tabCount <= 1) return 'FanCAD';
-    return '${dirty ? '● ' : ''}$activeTitle — FanCAD';
-  }
-
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final l10n = context.l10n;
     final tab = workspace.active;
-    final title = chromeTitle(
-      tabCount: workspace.tabs.length,
-      activeTitle: tab?.title,
-      dirty: tab?.isDirty ?? false,
-    );
     final nativeLights = Platform.isMacOS;
 
     return Container(
@@ -76,7 +67,7 @@ class TitleBar extends StatelessWidget {
       height: FanCadTokens.titleBarHeight,
       decoration: BoxDecoration(
         color: tokens.surfaceRaised,
-        border: Border(bottom: BorderSide(color: tokens.border)),
+        border: Border(bottom: BorderSide(color: tokens.borderMuted)),
       ),
       child: Row(
         children: [
@@ -92,7 +83,7 @@ class TitleBar extends StatelessWidget {
             onPressed: () => workspace.run('file.open'),
           ),
           ShellIconButton(
-            icon: Icons.save_outlined,
+            icon: tab?.isDirty == true ? Icons.save : Icons.save_outlined,
             tooltip: tab == null
                 ? '${l10n.save}  ${shellShortcut('S')}'
                 : tab.isDirty
@@ -101,31 +92,15 @@ class TitleBar extends StatelessWidget {
                 ? '${l10n.save_this_drawing}  ${shellShortcut('S')}'
                 : l10n.saved_write_again(shellShortcut('S')),
             enabled: tab != null,
-            isActive: tab?.isDirty ?? false,
             onPressed: () => workspace.run('file.save'),
           ),
           _FileMenu(workspace: workspace),
-          Expanded(
-            child: _DragArea(
-              child: Center(
-                child: Text(
-                  title,
-                  style: tokens.labelStyle.copyWith(color: tokens.textMuted),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-          ),
+          const Expanded(child: _DragArea(child: SizedBox.expand())),
           ShellIconButton(
             icon: Icons.search,
             tooltip:
                 '${l10n.command_palette}  ${shellShortcut('P', shift: true)}',
             onPressed: onTogglePalette,
-          ),
-          ShellIconButton(
-            icon: Icons.settings_outlined,
-            tooltip: '${l10n.settings_tooltip}  ${shellShortcut(',')}',
-            onPressed: () => workspace.run('workbench.preferences'),
           ),
           ShellIconButton(
             icon: Icons.auto_awesome_outlined,
@@ -143,6 +118,7 @@ class TitleBar extends StatelessWidget {
             ),
             const _WindowButtons(),
           ],
+          SizedBox(width: trailingInset()),
         ],
       ),
     );
@@ -162,12 +138,9 @@ class _FileMenu extends StatelessWidget {
     final l10n = context.l10n;
     final tab = workspace.active;
     final recent = workspace.recentFiles;
-    return PopupMenuButton<String>(
+    return ShellMenuButton<String>(
       tooltip: l10n.more_file_actions,
-      padding: EdgeInsets.zero,
-      offset: const Offset(0, FanCadTokens.titleBarHeight - 8),
-      color: tokens.surfaceOverlay,
-      shape: shellOverlayShape(tokens),
+      placement: ShellMenuPlacement.down,
       onSelected: (value) {
         if (value.startsWith('recent:')) {
           workspace.run(
@@ -194,48 +167,54 @@ class _FileMenu extends StatelessWidget {
         workspace.run(value);
       },
       itemBuilder: (context) => [
-        _item(tokens, 'file.new', l10n.new_drawing, shellShortcut('N')),
-        _item(tokens, 'file.open', l10n.open_ellipsis, shellShortcut('O')),
+        shellMenuItem(
+          context,
+          value: 'file.new',
+          label: l10n.new_drawing,
+          shortcut: shellShortcut('N'),
+        ),
+        shellMenuItem(
+          context,
+          value: 'file.open',
+          label: l10n.open_ellipsis,
+          shortcut: shellShortcut('O'),
+        ),
         if (recent.isNotEmpty) ...[
           const PopupMenuDivider(),
-          PopupMenuItem<String>(
-            enabled: false,
-            height: 28,
-            child: Text(l10n.recent, style: tokens.sectionTitleStyle),
-          ),
+          shellMenuSection<String>(context, l10n.recent),
           for (final path in recent.take(8)) _recentItem(context, tokens, path),
           if (recent.any((path) => !File(path).existsSync()))
-            PopupMenuItem<String>(
+            shellMenuItem(
+              context,
               value: 'pruneRecent',
-              height: 32,
-              child: Text(l10n.remove_missing, style: tokens.bodyStyle),
+              label: l10n.remove_missing,
             ),
-          PopupMenuItem<String>(
+          shellMenuItem(
+            context,
             value: 'clearRecent',
-            height: 32,
-            child: Text(l10n.clear_recent, style: tokens.bodyStyle),
+            label: l10n.clear_recent,
           ),
         ],
         const PopupMenuDivider(),
-        _item(
-          tokens,
-          'file.save',
-          l10n.save,
-          shellShortcut('S'),
+        shellMenuItem(
+          context,
+          value: 'file.save',
+          label: l10n.save,
+          shortcut: shellShortcut('S'),
           enabled: tab != null,
         ),
-        _item(
-          tokens,
-          'file.saveAs',
-          l10n.save_as,
-          shellShortcut('S', shift: true),
+        shellMenuItem(
+          context,
+          value: 'file.saveAs',
+          label: l10n.save_as,
+          shortcut: shellShortcut('S', shift: true),
           enabled: tab != null,
         ),
-        _item(
-          tokens,
-          'file.close',
-          l10n.close_drawing,
-          shellShortcut('W'),
+        shellMenuItem(
+          context,
+          value: 'file.close',
+          label: l10n.close_drawing,
+          shortcut: shellShortcut('W'),
           enabled: tab != null,
         ),
       ],
@@ -313,27 +292,6 @@ class _FileMenu extends StatelessWidget {
     }
   }
 
-  PopupMenuItem<String> _item(
-    FanCadTokens tokens,
-    String value,
-    String label,
-    String shortcut, {
-    bool enabled = true,
-  }) {
-    return PopupMenuItem<String>(
-      value: value,
-      enabled: enabled,
-      height: 32,
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: tokens.bodyStyle)),
-          const SizedBox(width: FanCadTokens.space4),
-          Text(shortcut, style: tokens.labelStyle),
-        ],
-      ),
-    );
-  }
-
   static String _fileName(String path) {
     final separator = path.contains(r'\') ? r'\' : '/';
     final parts = path.split(separator);
@@ -356,7 +314,7 @@ class DocumentTabStrip extends StatelessWidget {
       height: FanCadTokens.tabBarHeight,
       decoration: BoxDecoration(
         color: tokens.surface,
-        border: Border(bottom: BorderSide(color: tokens.border)),
+        border: Border(bottom: BorderSide(color: tokens.borderMuted)),
       ),
       child: Row(
         children: [
@@ -403,51 +361,31 @@ class _OpenDrawingsMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final tabs = workspace.tabs;
-    return PopupMenuButton<int>(
+    return ShellMenuButton<int>(
       tooltip: context.l10n.open_drawings(tabs.length),
-      padding: EdgeInsets.zero,
-      offset: const Offset(0, FanCadTokens.tabBarHeight - 6),
-      color: tokens.surfaceOverlay,
-      shape: shellOverlayShape(tokens),
+      placement: ShellMenuPlacement.down,
       onSelected: workspace.activate,
       itemBuilder: (context) => [
         for (var i = 0; i < tabs.length; i++)
-          PopupMenuItem<int>(
+          shellMenuItem<int>(
+            context,
             value: i,
-            height: 32,
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 18,
-                  child: i == workspace.activeIndex
-                      ? Icon(
-                          Icons.check,
-                          size: FanCadTokens.iconSmall,
-                          color: tokens.accent,
-                        )
-                      : tabs[i].isDirty
-                      ? Center(
-                          child: Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: tokens.textMuted,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(width: FanCadTokens.space2),
-                Expanded(
-                  child: Text(
-                    tabs[i].title,
-                    style: tokens.bodyStyle,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
+            label: tabs[i].title,
+            checked: i == workspace.activeIndex ? true : null,
+            leading: i == workspace.activeIndex
+                ? null
+                : tabs[i].isDirty
+                ? Center(
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: tokens.textMuted,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
       ],
       child: SizedBox(
@@ -566,7 +504,6 @@ class _TabState extends State<_Tab> {
   }
 
   Future<void> _openMenu(Offset globalPosition) async {
-    final tokens = context.tokens;
     final l10n = context.l10n;
     final workspace = widget.workspace;
     final tab = widget.tab;
@@ -576,44 +513,29 @@ class _TabState extends State<_Tab> {
       context: context,
       position: shellMenuPosition(globalPosition),
       items: [
-        PopupMenuItem(
-          value: 'close',
-          height: 32,
-          child: Text(l10n.close, style: tokens.bodyStyle),
-        ),
-        PopupMenuItem(
+        shellMenuItem(context, value: 'close', label: l10n.close),
+        shellMenuItem(
+          context,
           value: 'closeOthers',
+          label: l10n.close_others,
           enabled: others,
-          height: 32,
-          child: Text(l10n.close_others, style: tokens.bodyStyle),
         ),
-        PopupMenuItem(
-          value: 'closeAll',
-          height: 32,
-          child: Text(l10n.close_all, style: tokens.bodyStyle),
-        ),
+        shellMenuItem(context, value: 'closeAll', label: l10n.close_all),
         if (path != null || tab.diagnostics.isNotEmpty) ...[
           const PopupMenuDivider(),
           if (path != null)
-            PopupMenuItem(
-              value: 'copyPath',
-              height: 32,
-              child: Text(l10n.copy_path, style: tokens.bodyStyle),
-            ),
+            shellMenuItem(context, value: 'copyPath', label: l10n.copy_path),
           if (path != null)
-            PopupMenuItem(
+            shellMenuItem(
+              context,
               value: 'reveal',
-              height: 32,
-              child: Text(l10n.revealInFolder(), style: tokens.bodyStyle),
+              label: l10n.revealInFolder(),
             ),
           if (tab.diagnostics.isNotEmpty)
-            PopupMenuItem(
+            shellMenuItem(
+              context,
               value: 'warnings',
-              height: 32,
-              child: Text(
-                l10n.import_warnings(tab.diagnostics.length),
-                style: tokens.bodyStyle,
-              ),
+              label: l10n.import_warnings(tab.diagnostics.length),
             ),
         ],
       ],
@@ -804,7 +726,6 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
         destructive: true,
         onPressed: windowManager.close,
       ),
-      const SizedBox(width: FanCadTokens.space1),
     ],
   );
 }
