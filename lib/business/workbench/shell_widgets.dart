@@ -61,23 +61,18 @@ class EmptyWorkspace extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 36,
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: tokens.accent,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                Image.asset(
+                  'assets/icons/logo.png',
+                  width: 40,
+                  height: 40,
+                  filterQuality: FilterQuality.medium,
+                  errorBuilder: (_, __, ___) =>
+                      const SizedBox(width: 40, height: 40),
                 ),
                 const SizedBox(height: FanCadTokens.space3),
                 Text(
                   'FanCAD',
-                  style: TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w200,
-                    letterSpacing: 4,
-                    color: tokens.text,
-                  ),
+                  style: tokens.dialogTitleStyle.copyWith(fontSize: 16),
                 ),
                 const SizedBox(height: FanCadTokens.space1),
                 Text(
@@ -85,11 +80,12 @@ class EmptyWorkspace extends StatelessWidget {
                   style: tokens.labelStyle.copyWith(fontSize: 13),
                 ),
                 const SizedBox(height: FanCadTokens.space5),
-                _Action(
+                _PrimaryAction(
                   label: context.l10n.new_drawing,
                   shortcut: shellShortcut('N'),
                   onPressed: onNew,
                 ),
+                const SizedBox(height: FanCadTokens.space2),
                 _Action(
                   label: context.l10n.open_drawing_file,
                   shortcut: shellShortcut('O'),
@@ -119,6 +115,36 @@ class EmptyWorkspace extends StatelessWidget {
   }
 }
 
+class _PrimaryAction extends StatelessWidget {
+  const _PrimaryAction({
+    required this.label,
+    required this.shortcut,
+    required this.onPressed,
+  });
+
+  final String label;
+  final String shortcut;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return FilledButton(
+      onPressed: onPressed,
+      child: Row(
+        children: [
+          Text(label),
+          const Spacer(),
+          Text(
+            shortcut,
+            style: tokens.labelStyle.copyWith(color: tokens.accentText),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Action extends StatelessWidget {
   const _Action({
     required this.label,
@@ -139,7 +165,7 @@ class _Action extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
       child: Row(
         children: [
-          Text(label, style: tokens.bodyStyle.copyWith(color: tokens.accent)),
+          Text(label, style: tokens.bodyStyle),
           const Spacer(),
           Text(shortcut, style: tokens.labelStyle),
         ],
@@ -186,7 +212,7 @@ class _Recent extends StatelessWidget {
             Text(
               name,
               style: tokens.bodyStyle.copyWith(
-                color: missing ? tokens.textFaint : tokens.accent,
+                color: missing ? tokens.textFaint : tokens.text,
                 decoration: missing ? TextDecoration.lineThrough : null,
               ),
             ),

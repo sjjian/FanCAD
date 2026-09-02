@@ -76,7 +76,6 @@ class PropertiesPanel extends StatelessWidget {
                   message: tab.document.entityCount == 0
                       ? context.l10n.drawing_empty_inspect
                       : context.l10n.click_object_inspect,
-                  messageStyle: context.tokens.bodyStyle,
                   detail: tab.document.entityCount == 0
                       ? null
                       : tab.document.entityCount == 1

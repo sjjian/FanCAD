@@ -21,12 +21,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get theme_light => 'Light';
 
   @override
+  String get theme_system => 'System';
+
+  @override
   String get appearance_dark_tooltip =>
-      'Appearance — Dark. Choose Light or Dark';
+      'Appearance — Dark. Choose Light, Dark or System';
 
   @override
   String get appearance_light_tooltip =>
-      'Appearance — Light. Choose Light or Dark';
+      'Appearance — Light. Choose Light, Dark or System';
 
   @override
   String get settings => 'Settings';
@@ -632,7 +635,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get empty_drawing_hint =>
-      'Start a command from the toolbar, type an alias such as L or C, or pick one below.';
+      'Start a command from the toolbar, or type an alias such as L or C.';
 
   @override
   String get line_alias => 'Line  L';

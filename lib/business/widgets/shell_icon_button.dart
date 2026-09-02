@@ -24,7 +24,7 @@ class ShellIconButton extends StatefulWidget {
   final double size;
   final double iconSize;
 
-  /// Draws the accent bar an activity-bar item uses to show which view is open.
+  /// Activity-bar item: a quiet rounded chip instead of an accent rail.
   final bool showActiveBar;
   final bool enabled;
 
@@ -37,13 +37,14 @@ class ShellIconButton extends StatefulWidget {
 
 class _ShellIconButtonState extends State<ShellIconButton> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final enabled = widget.enabled && widget.onPressed != null;
     final color = !enabled
-        ? tokens.textFaint
+        ? tokens.disabled
         : widget.destructive && _hovered
         ? tokens.danger
         : widget.isActive
@@ -54,15 +55,26 @@ class _ShellIconButtonState extends State<ShellIconButton> {
         : widget.destructive && _hovered
         ? tokens.danger.withValues(alpha: tokens.isDark ? 0.16 : 0.12)
         : widget.isActive && widget.showActiveBar
-        ? (_hovered ? tokens.pressed : tokens.selection)
+        ? tokens.pressed
         : _hovered
         ? tokens.hover
         : Colors.transparent;
 
-    Widget button = MouseRegion(
-      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+    Widget button = FocusableActionDetector(
+      enabled: enabled,
+      mouseCursor: enabled
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onShowHoverHighlight: (show) => setState(() => _hovered = show),
+      onShowFocusHighlight: (show) => setState(() => _focused = show),
+      actions: <Type, Action<Intent>>{
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            widget.onPressed?.call();
+            return null;
+          },
+        ),
+      },
       child: GestureDetector(
         onTap: enabled ? widget.onPressed : null,
         child: Container(
@@ -70,21 +82,17 @@ class _ShellIconButtonState extends State<ShellIconButton> {
           height: widget.size,
           decoration: BoxDecoration(
             color: fill,
-            borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
+            borderRadius: BorderRadius.circular(
+              widget.showActiveBar
+                  ? FanCadTokens.radius
+                  : FanCadTokens.radiusSmall,
+            ),
+            border: _focused
+                ? Border.all(color: tokens.focusRing, width: 2)
+                : null,
           ),
-          child: Stack(
-            children: [
-              Center(
-                child: Icon(widget.icon, size: widget.iconSize, color: color),
-              ),
-              if (widget.showActiveBar && widget.isActive)
-                Positioned(
-                  left: 0,
-                  top: 4,
-                  bottom: 4,
-                  child: Container(width: 2, color: tokens.accent),
-                ),
-            ],
+          child: Center(
+            child: Icon(widget.icon, size: widget.iconSize, color: color),
           ),
         ),
       ),

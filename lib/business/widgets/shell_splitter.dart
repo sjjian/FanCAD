@@ -95,7 +95,7 @@ class _ShellSplitterState extends State<ShellSplitter> {
                       ? tokens.accent
                       : widget.strong
                       ? tokens.borderStrong
-                      : tokens.border,
+                      : tokens.borderMuted,
                 ),
               ),
             ],

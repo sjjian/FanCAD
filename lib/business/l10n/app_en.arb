@@ -16,11 +16,15 @@
   "@theme_light": {
     "description": "theme light"
   },
-  "appearance_dark_tooltip": "Appearance — Dark. Choose Light or Dark",
+  "theme_system": "System",
+  "@theme_system": {
+    "description": "theme follow operating system"
+  },
+  "appearance_dark_tooltip": "Appearance — Dark. Choose Light, Dark or System",
   "@appearance_dark_tooltip": {
     "description": "appearance dark tooltip"
   },
-  "appearance_light_tooltip": "Appearance — Light. Choose Light or Dark",
+  "appearance_light_tooltip": "Appearance — Light. Choose Light, Dark or System",
   "@appearance_light_tooltip": {
     "description": "appearance light tooltip"
   },
@@ -896,7 +900,7 @@
   "@empty_drawing_title": {
     "description": "empty drawing title"
   },
-  "empty_drawing_hint": "Start a command from the toolbar, type an alias such as L or C, or pick one below.",
+  "empty_drawing_hint": "Start a command from the toolbar, or type an alias such as L or C.",
   "@empty_drawing_hint": {
     "description": "empty drawing hint"
   },

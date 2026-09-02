@@ -154,7 +154,7 @@ class FanCadTheme {
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: tokens.surfaceOverlay,
-        titleTextStyle: tokens.bodyStyle.copyWith(fontSize: 15),
+        titleTextStyle: tokens.dialogTitleStyle,
         contentTextStyle: tokens.labelStyle,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),

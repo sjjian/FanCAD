@@ -17,6 +17,15 @@ const _settingsRouteName = 'fancad.settings';
 
 ValueNotifier<SettingsTab>? _openSettingsTab;
 
+final ValueNotifier<SettingsTab> _sidebarSettingsTab = ValueNotifier(
+  SettingsTab.general,
+);
+
+/// Selects a settings page before the sidebar reveals the preferences view.
+void revealSettingsTab(SettingsTab tab) {
+  _sidebarSettingsTab.value = tab;
+}
+
 /// Whether the settings dialog is already on screen.
 @visibleForTesting
 bool get settingsDialogIsOpen => _openSettingsTab != null;
@@ -66,21 +75,95 @@ Future<void> showSettingsDialog(
   });
 }
 
+/// Settings in the left sidebar, same pages as the leftover dialog.
+class SettingsPanel extends StatelessWidget {
+  const SettingsPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _sidebarSettingsTab,
+      builder: (context, _) => _SettingsBody(
+        key: const Key('settings-panel'),
+        tab: _sidebarSettingsTab,
+        header: PanelHeader(title: context.l10n.settings),
+      ),
+    );
+  }
+}
+
 /// The application-wide settings surface.
 ///
 /// Writes go through the shell and assistant views so a theme or language
 /// change is visible before the dialog closes. There is no Save: the store
 /// already debounces to disk, and a discarded draft would fight that.
-class SettingsDialog extends ConsumerStatefulWidget {
+class SettingsDialog extends StatelessWidget {
   const SettingsDialog({super.key, required this.tab});
 
   final ValueListenable<SettingsTab> tab;
 
   @override
-  ConsumerState<SettingsDialog> createState() => _SettingsDialogState();
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    return ListenableBuilder(
+      listenable: tab,
+      builder: (context, _) {
+        return Dialog(
+          key: const Key('settings-dialog'),
+          backgroundColor: tokens.surfaceOverlay,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+            side: BorderSide(color: tokens.borderStrong),
+          ),
+          child: SizedBox(
+            width: 560,
+            height: tab.value == SettingsTab.general ? 360 : 520,
+            child: _SettingsBody(
+              tab: tab,
+              header: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  FanCadTokens.space4,
+                  FanCadTokens.space3,
+                  FanCadTokens.space2,
+                  FanCadTokens.space2,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.settings,
+                        style: tokens.dialogTitleStyle,
+                      ),
+                    ),
+                    ShellIconButton(
+                      icon: Icons.close,
+                      tooltip: l10n.close,
+                      iconSize: FanCadTokens.iconSmall,
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
-class _SettingsDialogState extends ConsumerState<SettingsDialog> {
+class _SettingsBody extends ConsumerStatefulWidget {
+  const _SettingsBody({super.key, required this.tab, required this.header});
+
+  final ValueListenable<SettingsTab> tab;
+  final Widget header;
+
+  @override
+  ConsumerState<_SettingsBody> createState() => _SettingsBodyState();
+}
+
+class _SettingsBodyState extends ConsumerState<_SettingsBody> {
   late final TextEditingController _label;
   late final TextEditingController _model;
   late final TextEditingController _endpoint;
@@ -165,112 +248,79 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     setState(() {});
   }
 
+  void _setTab(SettingsTab next) {
+    final tab = widget.tab;
+    if (tab is ValueNotifier<SettingsTab>) {
+      tab.value = next;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final l10n = context.l10n;
     final tab = widget.tab.value;
-    // Watch so a language or theme write rebuilds this dialog in place.
+    // Watch so a language or theme write rebuilds this surface in place.
     ref.watch(languageProvider);
     ref.watch(themeBrightnessProvider);
-    return Dialog(
-      key: const Key('settings-dialog'),
-      backgroundColor: tokens.surfaceOverlay,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
-        side: BorderSide(color: tokens.borderStrong),
-      ),
-      child: SizedBox(
-        width: 560,
-        height: 520,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                FanCadTokens.space4,
-                FanCadTokens.space3,
-                FanCadTokens.space2,
-                FanCadTokens.space2,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        widget.header,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
+          child: Wrap(
+            spacing: FanCadTokens.space3,
+            children: [
+              _SettingsTabButton(
+                tabKey: const Key('settings-tab-general'),
+                label: l10n.settings_tab_general,
+                selected: tab == SettingsTab.general,
+                onTap: () => _setTab(SettingsTab.general),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      l10n.settings,
-                      style: tokens.bodyStyle.copyWith(fontSize: 15),
-                    ),
-                  ),
-                  ShellIconButton(
-                    icon: Icons.close,
-                    tooltip: l10n.close,
-                    iconSize: FanCadTokens.iconSmall,
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
+              _SettingsTabButton(
+                tabKey: const Key('settings-tab-assistant'),
+                label: l10n.settings_tab_assistant,
+                selected: tab == SettingsTab.assistant,
+                onTap: () => _setTab(SettingsTab.assistant),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: FanCadTokens.space4,
+              _SettingsTabButton(
+                tabKey: const Key('settings-tab-mcp'),
+                label: l10n.settings_tab_mcp,
+                selected: tab == SettingsTab.mcp,
+                onTap: () => _setTab(SettingsTab.mcp),
               ),
-              child: Row(
-                children: [
-                  _SettingsTabButton(
-                    tabKey: const Key('settings-tab-general'),
-                    label: l10n.settings_tab_general,
-                    selected: tab == SettingsTab.general,
-                    onTap: () => _openSettingsTab?.value = SettingsTab.general,
-                  ),
-                  const SizedBox(width: FanCadTokens.space4),
-                  _SettingsTabButton(
-                    tabKey: const Key('settings-tab-assistant'),
-                    label: l10n.settings_tab_assistant,
-                    selected: tab == SettingsTab.assistant,
-                    onTap: () =>
-                        _openSettingsTab?.value = SettingsTab.assistant,
-                  ),
-                  const SizedBox(width: FanCadTokens.space4),
-                  _SettingsTabButton(
-                    tabKey: const Key('settings-tab-mcp'),
-                    label: l10n.settings_tab_mcp,
-                    selected: tab == SettingsTab.mcp,
-                    onTap: () => _openSettingsTab?.value = SettingsTab.mcp,
-                  ),
-                ],
-              ),
-            ),
-            const ShellHairline(),
-            Expanded(
-              child: IndexedStack(
-                index: switch (tab) {
-                  SettingsTab.general => 0,
-                  SettingsTab.assistant => 1,
-                  SettingsTab.mcp => 2,
-                },
-                children: [
-                  _GeneralPage(),
-                  _AssistantPage(
-                    label: _label,
-                    model: _model,
-                    endpoint: _endpoint,
-                    apiKey: _apiKey,
-                    onCommit: _flushAssistantFields,
-                    onSelectProfile: _selectProfile,
-                    onAddProfile: _addProfile,
-                    onRemoveProfile: _removeProfile,
-                  ),
-                  _McpPage(
-                    port: _mcpPort,
-                    allowlist: _mcpAllowlist,
-                    onCommit: _flushMcpFields,
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+        const ShellHairline(),
+        Expanded(
+          child: IndexedStack(
+            index: switch (tab) {
+              SettingsTab.general => 0,
+              SettingsTab.assistant => 1,
+              SettingsTab.mcp => 2,
+            },
+            children: [
+              _GeneralPage(),
+              _AssistantPage(
+                label: _label,
+                model: _model,
+                endpoint: _endpoint,
+                apiKey: _apiKey,
+                onCommit: _flushAssistantFields,
+                onSelectProfile: _selectProfile,
+                onAddProfile: _addProfile,
+                onRemoveProfile: _removeProfile,
+              ),
+              _McpPage(
+                port: _mcpPort,
+                allowlist: _mcpAllowlist,
+                onCommit: _flushMcpFields,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -312,7 +362,8 @@ class _GeneralPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final language = ref.watch(languageProvider);
-    final theme = ref.watch(themeBrightnessProvider);
+    ref.watch(themeBrightnessProvider);
+    final themePref = ref.read(themeBrightnessProvider.notifier).preference;
     return ListView(
       padding: const EdgeInsets.all(FanCadTokens.space4),
       children: [
@@ -321,7 +372,9 @@ class _GeneralPage extends ConsumerWidget {
           children: [
             SettingsLabeledRow(
               label: l10n.language,
-              child: Row(
+              child: Wrap(
+                spacing: FanCadTokens.space2,
+                runSpacing: FanCadTokens.space2,
                 children: [
                   SettingsRadioOption(
                     key: const Key('settings-language-en'),
@@ -331,7 +384,6 @@ class _GeneralPage extends ConsumerWidget {
                         .read(languageProvider.notifier)
                         .setLanguage(FanCadLanguage.english),
                   ),
-                  const SizedBox(width: FanCadTokens.space2),
                   SettingsRadioOption(
                     key: const Key('settings-language-zh'),
                     label: '简体中文',
@@ -345,24 +397,36 @@ class _GeneralPage extends ConsumerWidget {
             ),
             SettingsLabeledRow(
               label: l10n.theme,
-              child: Row(
+              child: Wrap(
+                spacing: FanCadTokens.space2,
+                runSpacing: FanCadTokens.space2,
                 children: [
                   SettingsRadioOption(
                     key: const Key('settings-theme-dark'),
                     label: l10n.theme_dark,
-                    selected: theme == Brightness.dark,
+                    width: 108,
+                    selected: themePref == 'dark',
                     onTap: () => ref
                         .read(themeBrightnessProvider.notifier)
-                        .setBrightness(Brightness.dark),
+                        .setPreference('dark'),
                   ),
-                  const SizedBox(width: FanCadTokens.space2),
                   SettingsRadioOption(
                     key: const Key('settings-theme-light'),
                     label: l10n.theme_light,
-                    selected: theme == Brightness.light,
+                    width: 108,
+                    selected: themePref == 'light',
                     onTap: () => ref
                         .read(themeBrightnessProvider.notifier)
-                        .setBrightness(Brightness.light),
+                        .setPreference('light'),
+                  ),
+                  SettingsRadioOption(
+                    key: const Key('settings-theme-system'),
+                    label: l10n.theme_system,
+                    width: 108,
+                    selected: themePref == 'system',
+                    onTap: () => ref
+                        .read(themeBrightnessProvider.notifier)
+                        .setPreference('system'),
                   ),
                 ],
               ),

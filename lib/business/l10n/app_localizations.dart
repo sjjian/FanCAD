@@ -122,16 +122,22 @@ abstract class AppLocalizations {
   /// **'Light'**
   String get theme_light;
 
+  /// theme follow operating system
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get theme_system;
+
   /// appearance dark tooltip
   ///
   /// In en, this message translates to:
-  /// **'Appearance — Dark. Choose Light or Dark'**
+  /// **'Appearance — Dark. Choose Light, Dark or System'**
   String get appearance_dark_tooltip;
 
   /// appearance light tooltip
   ///
   /// In en, this message translates to:
-  /// **'Appearance — Light. Choose Light or Dark'**
+  /// **'Appearance — Light. Choose Light, Dark or System'**
   String get appearance_light_tooltip;
 
   /// settings dialog title
@@ -1199,7 +1205,7 @@ abstract class AppLocalizations {
   /// empty drawing hint
   ///
   /// In en, this message translates to:
-  /// **'Start a command from the toolbar, type an alias such as L or C, or pick one below.'**
+  /// **'Start a command from the toolbar, or type an alias such as L or C.'**
   String get empty_drawing_hint;
 
   /// line alias

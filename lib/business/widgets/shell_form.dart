@@ -49,7 +49,7 @@ class SettingsLabeledRow extends StatelessWidget {
     this.crossAxisAlignment = CrossAxisAlignment.center,
   });
 
-  static const double labelWidth = 128;
+  static const double labelWidth = 140;
 
   final String label;
   final Widget child;
@@ -105,16 +105,25 @@ class SettingsRadioOption extends StatefulWidget {
 
 class _SettingsRadioOptionState extends State<SettingsRadioOption> {
   bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return SizedBox(
       width: widget.width,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
+      child: FocusableActionDetector(
+        mouseCursor: SystemMouseCursors.click,
+        onShowHoverHighlight: (show) => setState(() => _hovered = show),
+        onShowFocusHighlight: (show) => setState(() => _focused = show),
+        actions: <Type, Action<Intent>>{
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) {
+              widget.onTap();
+              return null;
+            },
+          ),
+        },
         child: GestureDetector(
           onTap: widget.onTap,
           behavior: HitTestBehavior.opaque,
@@ -133,7 +142,12 @@ class _SettingsRadioOptionState extends State<SettingsRadioOption> {
                   : tokens.surfaceRaised,
               borderRadius: BorderRadius.circular(FanCadTokens.radius),
               border: Border.all(
-                color: widget.selected ? tokens.accent : tokens.borderStrong,
+                color: _focused
+                    ? tokens.focusRing
+                    : widget.selected
+                    ? tokens.accent
+                    : tokens.borderStrong,
+                width: _focused ? 2 : 1,
               ),
             ),
             child: Row(
@@ -187,10 +201,13 @@ class SettingsToggle extends StatelessWidget {
     final tokens = context.tokens;
     Widget control = SizedBox(
       height: 22,
-      child: Switch(
-        value: value,
-        onChanged: onChanged,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      child: Transform.scale(
+        scale: 0.85,
+        child: Switch(
+          value: value,
+          onChanged: onChanged,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
       ),
     );
     final tooltip = this.tooltip;

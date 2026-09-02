@@ -19,7 +19,10 @@ void main() {
       importer: DrawingImporter(backend: MemoryDrawingBackend()),
       drawing: DrawingSettings(settings),
     );
-    final created = AiController(workspace: workspace, assistant: AssistantSettings(settings));
+    final created = AiController(
+      workspace: workspace,
+      assistant: AssistantSettings(settings),
+    );
     addTearDown(created.dispose);
     addTearDown(workspace.dispose);
     return created;
@@ -66,6 +69,20 @@ void main() {
 
     await tester.tap(find.byKey(const Key('assistant-composer-model')));
     await tester.pumpAndSettle();
+    final trigger = tester.getRect(
+      find.byKey(const Key('assistant-composer-model')),
+    );
+    final activeItem = tester.getRect(
+      find.byKey(Key('assistant-profile-${ai.activeProfile.id}')),
+    );
+    expect(activeItem.bottom, lessThanOrEqualTo(trigger.top));
+    expect(
+      find.descendant(
+        of: find.byKey(Key('assistant-profile-${ai.activeProfile.id}')),
+        matching: find.byIcon(Icons.check),
+      ),
+      findsOneWidget,
+    );
     await tester.tap(
       find.byKey(Key('assistant-profile-${ai.profiles.first.id}')),
     );

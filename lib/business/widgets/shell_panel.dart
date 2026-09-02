@@ -22,13 +22,13 @@ class PanelHeader extends StatelessWidget {
         right: FanCadTokens.space1,
       ),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: tokens.border)),
+        border: Border(bottom: BorderSide(color: tokens.borderMuted)),
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              title.toUpperCase(),
+              title,
               style: tokens.sectionTitleStyle,
               overflow: TextOverflow.ellipsis,
             ),

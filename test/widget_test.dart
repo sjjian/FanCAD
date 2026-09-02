@@ -44,8 +44,8 @@ void main() {
 
     expect(find.text('FanCAD'), findsWidgets);
     expect(find.text('New drawing'), findsOneWidget);
-    expect(find.text('LAYERS'), findsOneWidget);
-    expect(find.text('LAYOUTS'), findsNothing);
+    expect(find.text('Layers'), findsOneWidget);
+    expect(find.text('Layouts'), findsNothing);
     // Sidebar show/hide lives on the activity bar; a title-bar hamburger
     // was the same action twice.
     expect(find.byIcon(Icons.menu), findsOneWidget);
@@ -53,6 +53,7 @@ void main() {
     expect(find.text('ASSISTANT'), findsNothing);
     expect(find.byIcon(Icons.auto_awesome_outlined), findsOneWidget);
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
+    expect(find.byKey(const Key('activity-preferences')), findsOneWidget);
   });
 
   testWidgets('switching to Simplified Chinese localizes chrome', (
@@ -70,16 +71,18 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pump();
     await tester.pump();
-    expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
+    expect(find.byKey(const Key('settings-panel')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('settings-language-zh')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('图层'), findsOneWidget);
-    expect(find.text('新建图纸'), findsOneWidget);
     expect(find.text('设置'), findsWidgets);
+    expect(find.text('新建图纸'), findsOneWidget);
     expect(find.text('LAYERS'), findsNothing);
+    await tester.tap(find.byKey(const Key('activity-layers')));
+    await tester.pump();
+    expect(find.text('图层'), findsOneWidget);
   });
 
   testWidgets('the settings dialog writes the assistant model', (tester) async {
@@ -95,7 +98,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pump();
     await tester.pump();
-    expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
+    expect(find.byKey(const Key('settings-panel')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('settings-tab-assistant')));
     await tester.pump();
@@ -130,7 +133,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
+    expect(find.byKey(const Key('settings-panel')), findsOneWidget);
     expect(find.text('API key'), findsOneWidget);
   });
 
@@ -150,7 +153,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('LAYERS'), findsOneWidget);
+    expect(find.text('Layers'), findsOneWidget);
     expect(find.byKey(const Key('assistant-session-tabs')), findsOneWidget);
     expect(find.text('ASSISTANT'), findsNothing);
   });
@@ -171,7 +174,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('LAYERS'), findsOneWidget);
+    expect(find.text('Layers'), findsOneWidget);
     expect(find.byKey(const Key('assistant-session-tabs')), findsOneWidget);
     expect(find.text('ASSISTANT'), findsNothing);
   });
@@ -190,8 +193,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Model'), findsNothing);
-    expect(find.text('LAYOUTS'), findsNothing);
-    expect(find.text('FanCAD'), findsWidgets);
+    expect(find.text('Layouts'), findsNothing);
+    expect(find.text('FanCAD'), findsNothing);
     expect(
       find.descendant(
         of: find.byKey(const Key('status-bar')),
@@ -209,7 +212,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('activity-layouts')));
     await tester.pump();
-    expect(find.text('LAYOUTS'), findsOneWidget);
+    expect(find.text('Layouts'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const Key('layouts-panel')),
@@ -382,13 +385,18 @@ class _LocalizedWorkbench extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final language = ref.watch(languageProvider);
-    final brightness = ref.watch(themeBrightnessProvider);
+    ref.watch(themeBrightnessProvider);
+    final themeMode = switch (ref
+        .read(themeBrightnessProvider.notifier)
+        .preference) {
+      'light' => ThemeMode.light,
+      'system' => ThemeMode.system,
+      _ => ThemeMode.dark,
+    };
     return MaterialApp(
       theme: FanCadTheme.light(),
       darkTheme: FanCadTheme.dark(),
-      themeMode: brightness == Brightness.dark
-          ? ThemeMode.dark
-          : ThemeMode.light,
+      themeMode: themeMode,
       locale: Locale(language),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

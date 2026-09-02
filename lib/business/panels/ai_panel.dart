@@ -127,6 +127,8 @@ class _AiPanelState extends State<AiPanel> {
                     controller.setDraft(prompt);
                     _syncDraft();
                   },
+                  onOpenSettings: () =>
+                      controller.workspace.revealPanel('preferences:assistant'),
                 )
               : LayoutBuilder(
                   builder: (context, constraints) {
@@ -241,7 +243,7 @@ class _ChatTabStrip extends StatelessWidget {
       height: FanCadTokens.tabBarHeight,
       decoration: BoxDecoration(
         color: tokens.surface,
-        border: Border(bottom: BorderSide(color: tokens.border)),
+        border: Border(bottom: BorderSide(color: tokens.borderMuted)),
       ),
       child: Row(
         children: [
@@ -340,10 +342,15 @@ class _ChatSessionTabState extends State<_ChatSessionTab> {
 }
 
 class _EmptyAssistant extends StatelessWidget {
-  const _EmptyAssistant({required this.configured, required this.onUsePrompt});
+  const _EmptyAssistant({
+    required this.configured,
+    required this.onUsePrompt,
+    required this.onOpenSettings,
+  });
 
   final bool configured;
   final ValueChanged<String> onUsePrompt;
+  final VoidCallback onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -361,31 +368,37 @@ class _EmptyAssistant extends StatelessWidget {
           configured
               ? l10n.assistant_empty_configured
               : l10n.assistant_empty_unconfigured,
-          style: tokens.labelStyle.copyWith(height: 1.45),
+          style: tokens.bodyStyle.copyWith(height: 1.45),
         ),
+        if (!configured) ...[
+          const SizedBox(height: FanCadTokens.space4),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton(
+              onPressed: onOpenSettings,
+              child: Text(l10n.open_settings),
+            ),
+          ),
+        ],
         if (configured) ...[
           const SizedBox(height: FanCadTokens.space4),
-          Text(l10n.try_section.toUpperCase(), style: tokens.sectionTitleStyle),
+          Text(l10n.try_section, style: tokens.sectionTitleStyle),
           const SizedBox(height: FanCadTokens.space2),
           for (final prompt in prompts)
             Padding(
               padding: const EdgeInsets.only(bottom: FanCadTokens.space2),
-              child: Material(
-                color: tokens.surfaceRaised,
-                borderRadius: BorderRadius.circular(FanCadTokens.radius),
-                child: InkWell(
-                  onTap: () => onUsePrompt(prompt),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: tokens.surfaceRaised,
                   borderRadius: BorderRadius.circular(FanCadTokens.radius),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: FanCadTokens.space3,
-                      vertical: FanCadTokens.space2,
-                    ),
-                    child: Text(
-                      prompt,
-                      style: tokens.bodyStyle.copyWith(color: tokens.accent),
-                    ),
+                ),
+                child: ShellRow(
+                  onTap: () => onUsePrompt(prompt),
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: FanCadTokens.space3,
                   ),
+                  child: Text(prompt, style: tokens.bodyStyle),
                 ),
               ),
             ),
@@ -979,20 +992,20 @@ class _ProfilePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return PopupMenuButton<String>(
+    return ShellMenuButton<String>(
       key: const Key('assistant-composer-model'),
       tooltip: context.l10n.click_to_change_model,
       enabled: enabled,
-      padding: EdgeInsets.zero,
-      color: tokens.surfaceOverlay,
-      shape: shellOverlayShape(tokens),
+      placement: ShellMenuPlacement.up,
       onSelected: onSelect,
       itemBuilder: (context) => [
         for (final item in profiles)
-          PopupMenuItem(
+          shellMenuItem(
+            context,
             key: Key('assistant-profile-${item.id}'),
             value: item.id,
-            child: Text(item.displayName),
+            label: item.displayName,
+            checked: item.id == profile.id,
           ),
       ],
       child: Padding(

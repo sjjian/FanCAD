@@ -354,13 +354,9 @@ class _HistoryOverflow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return PopupMenuButton<String>(
+    return ShellMenuButton<String>(
       tooltip: context.l10n.command_history,
-      padding: EdgeInsets.zero,
       enabled: enabled,
-      offset: const Offset(0, -8),
-      color: tokens.surfaceOverlay,
-      shape: shellOverlayShape(tokens),
       onSelected: (value) {
         switch (value) {
           case 'copy':
@@ -370,17 +366,17 @@ class _HistoryOverflow extends StatelessWidget {
         }
       },
       itemBuilder: (context) => [
-        PopupMenuItem(
+        shellMenuItem(
+          context,
           value: 'copy',
+          label: context.l10n.copy_history,
           enabled: enabled,
-          height: 32,
-          child: Text(context.l10n.copy_history, style: tokens.bodyStyle),
         ),
-        PopupMenuItem(
+        shellMenuItem(
+          context,
           value: 'clear',
+          label: context.l10n.clear_history,
           enabled: enabled,
-          height: 32,
-          child: Text(context.l10n.clear_history, style: tokens.bodyStyle),
         ),
       ],
       child: SizedBox(
@@ -518,7 +514,7 @@ class StatusBar extends StatelessWidget {
       height: FanCadTokens.statusBarHeight,
       decoration: BoxDecoration(
         color: tokens.surface,
-        border: Border(top: BorderSide(color: tokens.border)),
+        border: Border(top: BorderSide(color: tokens.borderMuted)),
       ),
       child: Row(
         children: [
@@ -538,35 +534,13 @@ class StatusBar extends StatelessWidget {
               onPressed: () => workspace.revealPanel('properties'),
             ),
             ShellTextButton(
-              label: l10n.objects_count(tab.document.entityCount),
-              tooltip: tab.document.entityCount == 0
-                  ? l10n.drawing_empty
-                  : l10n.select_every_object,
-              enabled: tab.document.entityCount > 0,
-              onPressed: () => workspace.run('select.all'),
-            ),
-            ShellTextButton(
               label:
                   '1:${(1 / tab.viewport.viewport.scale).toStringAsFixed(2)}',
-              tooltip: l10n.zoom_extents_tooltip,
+              tooltip: scene == null
+                  ? l10n.zoom_extents_tooltip
+                  : '${l10n.zoom_extents_tooltip}\n${l10n.draw_calls_visible(scene.drawCallCount, scene.entityCount)}',
               onPressed: () => workspace.run('view.zoomExtents'),
             ),
-            if (scene != null)
-              Tooltip(
-                message: l10n.scene_stats_tooltip,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: FanCadTokens.space2,
-                  ),
-                  child: Text(
-                    l10n.draw_calls_visible(
-                      scene.drawCallCount,
-                      scene.entityCount,
-                    ),
-                    style: tokens.labelStyle,
-                  ),
-                ),
-              ),
           ],
           const SizedBox(width: FanCadTokens.space3),
           _CurrentLayerIndicator(workspace: workspace),
@@ -671,33 +645,29 @@ class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
     bool hidden,
     bool locked,
   ) async {
-    final tokens = context.tokens;
     final workspace = widget.workspace;
     final chosen = await showShellMenu<String>(
       context: context,
       position: shellMenuPosition(globalPosition),
+      placement: ShellMenuPlacement.up,
       items: [
-        PopupMenuItem(
+        shellMenuItem(
+          context,
           value: 'visible',
-          height: 32,
-          child: Text(
-            hidden ? context.l10n.turn_layer_on : context.l10n.turn_layer_off,
-            style: tokens.bodyStyle,
-          ),
+          label: hidden
+              ? context.l10n.turn_layer_on
+              : context.l10n.turn_layer_off,
         ),
-        PopupMenuItem(
+        shellMenuItem(
+          context,
           value: 'lock',
-          height: 32,
-          child: Text(
-            locked ? context.l10n.unlock_layer : context.l10n.lock_layer,
-            style: tokens.bodyStyle,
-          ),
+          label: locked ? context.l10n.unlock_layer : context.l10n.lock_layer,
         ),
         const PopupMenuDivider(),
-        PopupMenuItem(
+        shellMenuItem(
+          context,
           value: 'manage',
-          height: 32,
-          child: Text(context.l10n.manage_layers, style: tokens.bodyStyle),
+          label: context.l10n.manage_layers,
         ),
       ],
     );

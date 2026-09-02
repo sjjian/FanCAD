@@ -108,7 +108,6 @@ class _DocumentViewState extends State<DocumentView> {
       if (box is! RenderBox) return;
       final global = box.localToGlobal(local);
       final tab = widget.tab;
-      final tokens = context.tokens;
       final l10n = context.l10n;
       final selected = tab.selection.isNotEmpty;
       final hasHidden = tab.document.activeEntities.any(
@@ -132,51 +131,88 @@ class _DocumentViewState extends State<DocumentView> {
         ),
         items: [
           if (runningTitle != null)
-            _item('__cancel__', l10n.cancel_named(runningTitle), 'Esc', tokens),
+            shellMenuItem(
+              context,
+              value: '__cancel__',
+              label: l10n.cancel_named(runningTitle),
+              shortcut: 'Esc',
+            ),
           if (runningTitle != null) const PopupMenuDivider(),
           if (selected) ...[
-            _item('__properties__', l10n.properties, null, tokens),
-            _item('view.zoomSelected', l10n.zoom_to_selection, null, tokens),
-            const PopupMenuDivider(),
-            _item('edit.erase', l10n.erase, 'E', tokens),
-            _item('edit.move', l10n.move, 'M', tokens),
-            _item('edit.copy', l10n.copy, 'CO', tokens),
-            _item('view.isolateObjects', l10n.isolate, null, tokens),
-            _item('view.hideObjects', l10n.hide, null, tokens),
-            _item('select.none', l10n.deselect, null, tokens),
-          ] else ...[
-            _item('select.all', l10n.select_all, null, tokens),
-            _item('view.zoomExtents', l10n.zoom_extents, null, tokens),
-            _item('view.zoomWindow', l10n.zoom_window, null, tokens),
-          ],
-          PopupMenuItem(
-            value: 'view.unisolateObjects',
-            enabled: hasHidden,
-            height: 32,
-            child: _label(
-              hasHidden ? l10n.show_hidden_objects : l10n.no_hidden_objects,
-              null,
-              tokens,
-              enabled: hasHidden,
+            shellMenuItem(
+              context,
+              value: '__properties__',
+              label: l10n.properties,
             ),
+            shellMenuItem(
+              context,
+              value: 'view.zoomSelected',
+              label: l10n.zoom_to_selection,
+            ),
+            const PopupMenuDivider(),
+            shellMenuItem(
+              context,
+              value: 'edit.erase',
+              label: l10n.erase,
+              shortcut: 'E',
+            ),
+            shellMenuItem(
+              context,
+              value: 'edit.move',
+              label: l10n.move,
+              shortcut: 'M',
+            ),
+            shellMenuItem(
+              context,
+              value: 'edit.copy',
+              label: l10n.copy,
+              shortcut: 'CO',
+            ),
+            shellMenuItem(
+              context,
+              value: 'view.isolateObjects',
+              label: l10n.isolate,
+            ),
+            shellMenuItem(context, value: 'view.hideObjects', label: l10n.hide),
+            shellMenuItem(context, value: 'select.none', label: l10n.deselect),
+          ] else ...[
+            shellMenuItem(context, value: 'select.all', label: l10n.select_all),
+            shellMenuItem(
+              context,
+              value: 'view.zoomExtents',
+              label: l10n.zoom_extents,
+            ),
+            shellMenuItem(
+              context,
+              value: 'view.zoomWindow',
+              label: l10n.zoom_window,
+            ),
+          ],
+          shellMenuItem(
+            context,
+            value: 'view.unisolateObjects',
+            label: hasHidden
+                ? l10n.show_hidden_objects
+                : l10n.no_hidden_objects,
+            enabled: hasHidden,
           ),
           const PopupMenuDivider(),
-          _item(
-            'edit.undo',
-            tab.history.nextUndoLabel == null
+          shellMenuItem(
+            context,
+            value: 'edit.undo',
+            label: tab.history.nextUndoLabel == null
                 ? l10n.undo
                 : l10n.undo_named(tab.history.nextUndoLabel!),
-            shellShortcut('Z'),
-            tokens,
+            shortcut: shellShortcut('Z'),
             enabled: tab.history.canUndo,
           ),
-          _item(
-            'edit.redo',
-            tab.history.nextRedoLabel == null
+          shellMenuItem(
+            context,
+            value: 'edit.redo',
+            label: tab.history.nextRedoLabel == null
                 ? l10n.redo
                 : l10n.redo_named(tab.history.nextRedoLabel!),
-            shellShortcut('Z', shift: true),
-            tokens,
+            shortcut: shellShortcut('Z', shift: true),
             enabled: tab.history.canRedo,
           ),
         ],
@@ -193,42 +229,6 @@ class _DocumentViewState extends State<DocumentView> {
         widget.workspace.run(id);
       });
     });
-  }
-
-  PopupMenuItem<String> _item(
-    String value,
-    String label,
-    String? shortcut,
-    FanCadTokens tokens, {
-    bool enabled = true,
-  }) {
-    return PopupMenuItem<String>(
-      value: value,
-      enabled: enabled,
-      height: 32,
-      child: _label(label, shortcut, tokens, enabled: enabled),
-    );
-  }
-
-  Widget _label(
-    String label,
-    String? shortcut,
-    FanCadTokens tokens, {
-    bool enabled = true,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: tokens.bodyStyle.copyWith(
-              color: enabled ? tokens.text : tokens.textFaint,
-            ),
-          ),
-        ),
-        if (shortcut != null) Text(shortcut, style: tokens.labelStyle),
-      ],
-    );
   }
 
   @override
@@ -342,8 +342,7 @@ class _DocumentViewState extends State<DocumentView> {
                         tab.viewport,
                       ]),
                       builder: (context, _) {
-                        final prompt =
-                            widget.workspace.commandLine.promptText;
+                        final prompt = widget.workspace.commandLine.promptText;
                         final toolPrompt =
                             tab.tools.activeTool?.promptText ?? '';
                         return Stack(
@@ -352,9 +351,7 @@ class _DocumentViewState extends State<DocumentView> {
                               _CanvasPromptHud(
                                 workspace: widget.workspace,
                                 onKeyword: (keyword) {
-                                  final remaining = widget
-                                      .workspace
-                                      .commandLine
+                                  final remaining = widget.workspace.commandLine
                                       .submit(keyword);
                                   if (remaining != null) {
                                     widget.workspace.submitCommandLine(
@@ -369,9 +366,7 @@ class _DocumentViewState extends State<DocumentView> {
                                 key: _dynHudKey,
                                 tools: tab.tools,
                                 viewport: tab.viewport.viewport,
-                                prompt: prompt.isNotEmpty
-                                    ? prompt
-                                    : toolPrompt,
+                                prompt: prompt.isNotEmpty ? prompt : toolPrompt,
                                 distanceFocus: _dynDistanceFocus,
                                 angleFocus: _dynAngleFocus,
                               ),
@@ -383,11 +378,7 @@ class _DocumentViewState extends State<DocumentView> {
                   if (tab.document.entityCount == 0 &&
                       !widget.workspace.isBusy &&
                       !widget.workspace.commandLine.isAwaitingInput)
-                    _EmptyDrawingHint(
-                      onLine: () => widget.workspace.run('draw.line'),
-                      onRectangle: () => widget.workspace.run('draw.rectangle'),
-                      onCircle: () => widget.workspace.run('draw.circle'),
-                    ),
+                    const _EmptyDrawingHint(),
                 ],
               ),
             ),
@@ -498,75 +489,34 @@ class _CanvasPromptHud extends StatelessWidget {
   }
 }
 
-/// First-stroke hints on a new, empty drawing.
+/// First-stroke hint on a new, empty drawing. Quiet text so it does not
+/// compete with the canvas HUD.
 class _EmptyDrawingHint extends StatelessWidget {
-  const _EmptyDrawingHint({
-    required this.onLine,
-    required this.onRectangle,
-    required this.onCircle,
-  });
-
-  final VoidCallback onLine;
-  final VoidCallback onRectangle;
-  final VoidCallback onCircle;
+  const _EmptyDrawingHint();
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Align(
-      alignment: Alignment.center,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: Material(
-          color: tokens.surfaceOverlay.withValues(alpha: 0.94),
-          elevation: 4,
-          shadowColor: Colors.black.withValues(alpha: 0.25),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
-            side: BorderSide(color: tokens.borderStrong),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              FanCadTokens.space4,
-              FanCadTokens.space4,
-              FanCadTokens.space4,
-              FanCadTokens.space3,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  context.l10n.empty_drawing_title,
-                  style: tokens.bodyStyle.copyWith(fontSize: 14),
-                ),
-                const SizedBox(height: FanCadTokens.space1),
-                Text(
-                  context.l10n.empty_drawing_hint,
-                  style: tokens.labelStyle,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: FanCadTokens.space3),
-                Wrap(
-                  spacing: FanCadTokens.space2,
-                  runSpacing: FanCadTokens.space2,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    PromptKeywordChip(
-                      label: context.l10n.line_alias,
-                      onPressed: onLine,
-                    ),
-                    PromptKeywordChip(
-                      label: context.l10n.rectangle_alias,
-                      onPressed: onRectangle,
-                    ),
-                    PromptKeywordChip(
-                      label: context.l10n.circle_alias,
-                      onPressed: onCircle,
-                    ),
-                  ],
-                ),
-              ],
-            ),
+    return IgnorePointer(
+      child: Align(
+        alignment: Alignment.center,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                context.l10n.empty_drawing_title,
+                style: tokens.dialogTitleStyle,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: FanCadTokens.space1),
+              Text(
+                context.l10n.empty_drawing_hint,
+                style: tokens.labelStyle,
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       ),

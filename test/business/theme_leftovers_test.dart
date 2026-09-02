@@ -28,6 +28,7 @@ void main() {
     expect(FanCadTokens.commandLineHeight, 24);
     expect(FanCadTokens.statusBarHeight, 24);
     expect(FanCadTokens.rowHeight, 26);
+    expect(FanCadTokens.filterBarHeight, 28);
     expect(FanCadTokens.macTrafficLightsWidth, 78);
     expect(FanCadTokens.activityBarWidth, 48);
     expect(FanCadTokens.splitterHit, 7);
@@ -152,8 +153,13 @@ void main() {
 
     expect(dark.bodyStyle.color, dark.text);
     expect(light.bodyStyle.color, light.text);
+    expect(dark.borderMuted, const Color(0xFF3A4048));
+    expect(light.borderMuted, const Color(0xFFDDE2E8));
+    expect(dark.borderMuted, isNot(dark.border));
+    expect(dark.borderMuted, isNot(dark.borderStrong));
     expect(dark.labelStyle.color, dark.textMuted);
-    expect(dark.sectionTitleStyle.letterSpacing, 0.6);
+    expect(dark.sectionTitleStyle.fontSize, 13);
+    expect(dark.sectionTitleStyle.fontWeight, FontWeight.w600);
     expect(dark.monoStyle.fontFamily, FanCadTokens.monoFontFamily);
     expect(dark.monoStyle.fontFeatures, const [FontFeature.tabularFigures()]);
     expect(FanCadTokens.uiFontFamily, isNull);
@@ -230,5 +236,52 @@ void main() {
         shellOverlayShape(FanCadTokens.dark) as RoundedRectangleBorder;
     expect(shape.side.color, FanCadTokens.dark.borderStrong);
     expect(shape.borderRadius, BorderRadius.circular(FanCadTokens.radius));
+    expect(shellMenuItemHeight, 32);
+    expect(shellMenuMinWidth, 180);
+    expect(
+      resolveShellMenuPlacement(
+        requested: ShellMenuPlacement.auto,
+        triggerCenterY: 100,
+        overlayHeight: 800,
+      ),
+      ShellMenuPlacement.down,
+    );
+    expect(
+      resolveShellMenuPlacement(
+        requested: ShellMenuPlacement.auto,
+        triggerCenterY: 500,
+        overlayHeight: 800,
+      ),
+      ShellMenuPlacement.up,
+    );
+    expect(
+      resolveShellMenuPlacement(
+        requested: ShellMenuPlacement.up,
+        triggerCenterY: 10,
+        overlayHeight: 800,
+      ),
+      ShellMenuPlacement.up,
+    );
+    final above = shellMenuAnchorRect(
+      trigger: const Rect.fromLTWH(10, 700, 40, 24),
+      overlaySize: const Size(800, 800),
+      placement: ShellMenuPlacement.up,
+      menuHeight: 48,
+    );
+    expect(above.top, 700 - 48);
+    expect(above.bottom, 800 - 700);
+    final below = shellMenuAnchorRect(
+      trigger: const Rect.fromLTWH(10, 40, 40, 24),
+      overlaySize: const Size(800, 800),
+      placement: ShellMenuPlacement.down,
+    );
+    expect(below.top, 64);
+    expect(
+      shellMenuExtent(const [
+        PopupMenuItem<int>(value: 1, height: 32, child: SizedBox.shrink()),
+        PopupMenuItem<int>(value: 2, height: 32, child: SizedBox.shrink()),
+      ]),
+      16 + shellMenuItemHeight * 2,
+    );
   });
 }

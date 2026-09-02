@@ -41,16 +41,21 @@ class _FanCadAppState extends ConsumerState<FanCadApp> {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = ref.watch(themeBrightnessProvider);
+    ref.watch(themeBrightnessProvider);
     final language = ref.watch(languageProvider);
+    final themeMode = switch (ref
+        .read(themeBrightnessProvider.notifier)
+        .preference) {
+      'light' => ThemeMode.light,
+      'system' => ThemeMode.system,
+      _ => ThemeMode.dark,
+    };
     return MaterialApp(
       title: 'FanCAD',
       debugShowCheckedModeBanner: false,
       theme: FanCadTheme.light(),
       darkTheme: FanCadTheme.dark(),
-      themeMode: brightness == Brightness.dark
-          ? ThemeMode.dark
-          : ThemeMode.light,
+      themeMode: themeMode,
       locale: Locale(language),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
