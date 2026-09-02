@@ -6,6 +6,7 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/painting.dart';
 import 'package:meta/meta.dart';
 
+import 'device_space.dart';
 import 'picking.dart';
 import 'viewport.dart';
 
@@ -108,7 +109,8 @@ class OverlayTheme {
   final ui.Color selectionStroke;
   final ui.Color selectionMask;
 
-  /// Grip and marker sizes in logical pixels, so they stay constant on screen.
+  /// Grip and marker sizes in logical pixels, so they stay the same apparent
+  /// size on every display. The painter scales them by the device ratio.
   final double gripSize;
   final double snapSize;
   final double crosshairSize;
@@ -140,6 +142,12 @@ class OverlayTheme {
 }
 
 /// Draws an [OverlayModel].
+///
+/// Works in physical pixels for the same reason the drawing layer does: a grip
+/// that sits half a pixel off the endpoint it belongs to looks like a snap bug.
+/// One `canvas.scale(1 / dpr)` at the top, and every coordinate below it is a
+/// physical pixel; the sizes a person chose by eye are scaled up from logical
+/// pixels so they look the same on any display.
 class OverlayPainter {
   OverlayPainter({this.theme = const OverlayTheme()});
 
@@ -151,6 +159,17 @@ class OverlayPainter {
     ..isAntiAlias = true;
   final Paint _fill = Paint()..isAntiAlias = true;
 
+  /// Set for the duration of one [paint], so the shape helpers do not each
+  /// have to be handed the mapping.
+  PixelSpace _pixels = const PixelSpace(
+    scale: 1,
+    originX: 0,
+    originY: 0,
+    dpr: 1,
+  );
+
+  double get _dpr => _pixels.dpr;
+
   void paint(
     ui.Canvas canvas,
     OverlayModel model,
@@ -158,6 +177,10 @@ class OverlayPainter {
     CadDocument document,
   ) {
     if (!viewport.isUsable) return;
+    _pixels = viewport.pixels;
+
+    canvas.save();
+    canvas.scale(1 / _dpr);
 
     if (model.highlightedIds.isNotEmpty) {
       _paintEntityOutlines(
@@ -166,7 +189,7 @@ class OverlayPainter {
         viewport,
         document,
         theme.selectionStroke,
-        1.2,
+        _pixels.fromLogical(1.2),
         dashed: true,
       );
     }
@@ -177,7 +200,7 @@ class OverlayPainter {
         viewport,
         document,
         theme.selectionStroke,
-        1.2,
+        _pixels.fromLogical(1.2),
         dashed: true,
       );
     }
@@ -189,7 +212,7 @@ class OverlayPainter {
     for (var i = 0; i < model.grips.length; i++) {
       _paintGrip(
         canvas,
-        viewport.toScreen(model.grips[i]),
+        _pixels.offsetOf(model.grips[i]),
         hot: i == model.hotGripIndex,
       );
     }
@@ -199,8 +222,10 @@ class OverlayPainter {
 
     final cursor = model.cursor;
     if (cursor != null && model.showCrosshair) {
-      _paintCrosshair(canvas, viewport.toScreen(cursor), viewport);
+      _paintCrosshair(canvas, _pixels.offsetOf(cursor));
     }
+
+    canvas.restore();
   }
 
   /// Re-emits the selected entities and strokes them on top of the drawing.
@@ -219,7 +244,7 @@ class OverlayPainter {
     double width, {
     bool dashed = false,
   }) {
-    final sink = _OutlineSink(viewport);
+    final sink = _OutlineSink(_pixels);
     Picker.emitInActiveLayout(
       document,
       ids,
@@ -232,11 +257,17 @@ class OverlayPainter {
     if (dashed) {
       _stroke
         ..color = theme.selectionMask
-        ..strokeWidth = 2.6
+        ..strokeWidth = _pixels.fromLogical(2.6)
         ..strokeCap = StrokeCap.round;
       canvas.drawRawPoints(ui.PointMode.lines, solid, _stroke);
     }
-    final points = dashed ? dashOutline(solid) : solid;
+    final points = dashed
+        ? dashOutline(
+            solid,
+            on: _pixels.fromLogical(4),
+            off: _pixels.fromLogical(3),
+          )
+        : solid;
     if (points.isEmpty) return;
     _stroke
       ..color = color
@@ -251,31 +282,36 @@ class OverlayPainter {
   void _paintShape(ui.Canvas canvas, OverlayShape shape, CadViewport view) {
     _stroke
       ..color = theme.preview
-      ..strokeWidth = 1;
+      ..strokeWidth = _dpr;
     switch (shape) {
       case OverlayLine(:final from, :final to, :final dashed):
-        _line(canvas, view.toScreen(from), view.toScreen(to), dashed: dashed);
+        _line(
+          canvas,
+          _pixels.offsetOf(from),
+          _pixels.offsetOf(to),
+          dashed: dashed,
+        );
       case OverlayPolyline(:final points, :final closed, :final dashed):
         if (points.length < 2) return;
         for (var i = 0; i + 1 < points.length; i++) {
           _line(
             canvas,
-            view.toScreen(points[i]),
-            view.toScreen(points[i + 1]),
+            _pixels.offsetOf(points[i]),
+            _pixels.offsetOf(points[i + 1]),
             dashed: dashed,
           );
         }
         if (closed && points.length > 2) {
           _line(
             canvas,
-            view.toScreen(points.last),
-            view.toScreen(points.first),
+            _pixels.offsetOf(points.last),
+            _pixels.offsetOf(points.first),
             dashed: dashed,
           );
         }
       case OverlayArc(:final center, :final radius, :final startAngle, :final sweep):
-        final screenCenter = view.toScreen(center);
-        final screenRadius = radius * view.scale;
+        final screenCenter = _pixels.offsetOf(center);
+        final screenRadius = radius * _pixels.scale;
         if (screenRadius <= 0.5) return;
         canvas.drawArc(
           ui.Rect.fromCircle(center: screenCenter, radius: screenRadius),
@@ -286,8 +322,8 @@ class OverlayPainter {
           _stroke,
         );
       case OverlayRect(:final from, :final to, :final crossing):
-        final a = view.toScreen(from);
-        final b = view.toScreen(to);
+        final a = _pixels.offsetOf(from);
+        final b = _pixels.offsetOf(to);
         final rect = ui.Rect.fromPoints(a, b);
         _fill.color = (crossing ? theme.tracking : theme.selection).withValues(
           alpha: 0.12,
@@ -307,10 +343,12 @@ class OverlayPainter {
         );
         _stroke
           ..color = theme.preview
-          ..strokeWidth = 1;
+          ..strokeWidth = _dpr;
       case OverlayTrackingLine(:final origin, :final angle):
-        final screenOrigin = view.toScreen(origin);
-        final reach = view.size.width + view.size.height;
+        final screenOrigin = _pixels.offsetOf(origin);
+        final reach = _pixels.fromLogical(
+          view.size.width + view.size.height,
+        );
         final dx = math.cos(angle) * reach;
         final dy = -math.sin(angle) * reach;
         _stroke.color = theme.tracking.withValues(alpha: 0.7);
@@ -333,8 +371,8 @@ class OverlayPainter {
       canvas.drawLine(a, b, _stroke);
       return;
     }
-    const on = 6.0;
-    const off = 4.0;
+    final on = _pixels.fromLogical(6);
+    final off = _pixels.fromLogical(4);
     final total = (b - a).distance;
     if (total <= 0) return;
     final direction = (b - a) / total;
@@ -358,11 +396,8 @@ class OverlayPainter {
   }
 
   void _paintGrip(ui.Canvas canvas, ui.Offset at, {required bool hot}) {
-    final rect = ui.Rect.fromCenter(
-      center: at,
-      width: theme.gripSize,
-      height: theme.gripSize,
-    );
+    final size = _pixels.fromLogical(theme.gripSize);
+    final rect = ui.Rect.fromCenter(center: at, width: size, height: size);
     _fill.color = hot ? theme.hotGrip : theme.grip;
     canvas.drawRect(rect, _fill);
   }
@@ -370,12 +405,12 @@ class OverlayPainter {
   /// Snap markers use the glyph shapes CAD users already read fluently: a
   /// square for an endpoint, a triangle for a midpoint, a circle for a centre.
   void _paintSnap(ui.Canvas canvas, SnapMarker marker, CadViewport view) {
-    final at = view.toScreen(marker.point);
-    final size = theme.snapSize;
+    final at = _pixels.offsetOf(marker.point);
+    final size = _pixels.fromLogical(theme.snapSize);
     final half = size / 2;
     _stroke
       ..color = theme.snap
-      ..strokeWidth = 1.6;
+      ..strokeWidth = _pixels.fromLogical(1.6);
 
     switch (marker.kind) {
       case SnapMarkerKind.endpoint:
@@ -453,11 +488,11 @@ class OverlayPainter {
     }
   }
 
-  void _paintCrosshair(ui.Canvas canvas, ui.Offset at, CadViewport view) {
+  void _paintCrosshair(ui.Canvas canvas, ui.Offset at) {
     _stroke
       ..color = theme.crosshair
-      ..strokeWidth = 1;
-    final reach = theme.crosshairSize;
+      ..strokeWidth = _dpr;
+    final reach = _pixels.fromLogical(theme.crosshairSize);
     canvas
       ..drawLine(at.translate(-reach, 0), at.translate(reach, 0), _stroke)
       ..drawLine(at.translate(0, -reach), at.translate(0, reach), _stroke)
@@ -518,11 +553,11 @@ Float32List dashOutline(
   return Float32List.sublistView(buffer, 0, length);
 }
 
-/// Collects screen-space segments for the selection outline.
+/// Collects physical-pixel segments for the selection outline.
 class _OutlineSink implements GeometrySink {
-  _OutlineSink(this.viewport);
+  _OutlineSink(this.pixels);
 
-  final CadViewport viewport;
+  final PixelSpace pixels;
   Float32List buffer = Float32List(512);
   int length = 0;
 
@@ -543,16 +578,20 @@ class _OutlineSink implements GeometrySink {
     final count = xy.length ~/ 2;
     if (count < 2) return;
     for (var i = 0; i + 1 < count; i++) {
-      final a = viewport.toScreen(Vec2(xy[i * 2], xy[i * 2 + 1]));
-      final b = viewport.toScreen(Vec2(xy[(i + 1) * 2], xy[(i + 1) * 2 + 1]));
-      _add(a.dx, a.dy, b.dx, b.dy);
+      _add(
+        pixels.xOf(xy[i * 2]),
+        pixels.yOf(xy[i * 2 + 1]),
+        pixels.xOf(xy[(i + 1) * 2]),
+        pixels.yOf(xy[(i + 1) * 2 + 1]),
+      );
     }
     if (closed && count > 2) {
-      final a = viewport.toScreen(
-        Vec2(xy[(count - 1) * 2], xy[(count - 1) * 2 + 1]),
+      _add(
+        pixels.xOf(xy[(count - 1) * 2]),
+        pixels.yOf(xy[(count - 1) * 2 + 1]),
+        pixels.xOf(xy[0]),
+        pixels.yOf(xy[1]),
       );
-      final b = viewport.toScreen(Vec2(xy[0], xy[1]));
-      _add(a.dx, a.dy, b.dx, b.dy);
     }
   }
 
@@ -567,34 +606,33 @@ class _OutlineSink implements GeometrySink {
 
   @override
   void point(double x, double y, ResolvedStyle style) {
-    final at = viewport.toScreen(Vec2(x, y));
-    _add(at.dx - 3, at.dy, at.dx + 3, at.dy);
-    _add(at.dx, at.dy - 3, at.dx, at.dy + 3);
+    final at = pixels.offsetOf(Vec2(x, y));
+    final arm = pixels.fromLogical(3);
+    _add(at.dx - arm, at.dy, at.dx + arm, at.dy);
+    _add(at.dx, at.dy - arm, at.dx, at.dy + arm);
   }
 
   @override
   void text(TextGeometry geometry, ResolvedStyle style) {
     final box = geometry.estimatedBounds();
     if (box.isEmpty) return;
-    final corners = [
-      viewport.toScreen(Vec2(box.minX, box.minY)),
-      viewport.toScreen(Vec2(box.maxX, box.minY)),
-      viewport.toScreen(Vec2(box.maxX, box.maxY)),
-      viewport.toScreen(Vec2(box.minX, box.maxY)),
-    ];
-    for (var i = 0; i < corners.length; i++) {
-      final a = corners[i];
-      final b = corners[(i + 1) % corners.length];
-      _add(a.dx, a.dy, b.dx, b.dy);
-    }
+    _ring([
+      pixels.offsetOf(Vec2(box.minX, box.minY)),
+      pixels.offsetOf(Vec2(box.maxX, box.minY)),
+      pixels.offsetOf(Vec2(box.maxX, box.maxY)),
+      pixels.offsetOf(Vec2(box.minX, box.maxY)),
+    ]);
   }
 
   @override
   void image(ImageGeometry geometry, ResolvedStyle style) {
-    final corners = geometry.corners;
+    _ring([for (final corner in geometry.corners) pixels.offsetOf(corner)]);
+  }
+
+  void _ring(List<Offset> corners) {
     for (var i = 0; i < corners.length; i++) {
-      final a = viewport.toScreen(corners[i]);
-      final b = viewport.toScreen(corners[(i + 1) % corners.length]);
+      final a = corners[i];
+      final b = corners[(i + 1) % corners.length];
       _add(a.dx, a.dy, b.dx, b.dy);
     }
   }

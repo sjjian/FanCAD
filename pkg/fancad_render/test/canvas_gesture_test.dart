@@ -39,6 +39,12 @@ void main() {
     await tester.pump();
 
     expect(controller.viewport.scale, greaterThan(before));
+
+    // A notch has no gesture end, so the camera counts as moving until the
+    // settle timer fires and asks for a crisp rebuild.
+    expect(controller.quality, RenderQuality.interactive);
+    await tester.pump(ViewportController.settleDelay);
+    expect(controller.quality, RenderQuality.crisp);
   });
 
   testWidgets('a trackpad pinch zooms about the cursor', (tester) async {

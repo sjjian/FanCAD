@@ -34,4 +34,14 @@ void main() {
     batch.addPolyline(Float32List.fromList([0, 0, 10, 0]), closed: true);
     expect(batch.segmentCount, 1);
   });
+
+  test('a sub-pixel stub keeps its projected length', () {
+    final batch = LineBatch(const BatchKey(Color(0xFF00FF00), 0));
+    batch.addPolyline(Float32List.fromList([10, 4, 10.2, 4, 40, 4]));
+    expect(batch.segmentCount, 2);
+    expect(batch.vertices.view[0], closeTo(10, 1e-5));
+    expect(batch.vertices.view[2], closeTo(10.2, 1e-5));
+    expect(batch.vertices.view[4], closeTo(10.2, 1e-5));
+    expect(batch.vertices.view[6], closeTo(40, 1e-5));
+  });
 }

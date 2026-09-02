@@ -5,9 +5,12 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'device_space.dart';
 import 'overlay.dart';
 import 'palette.dart';
-import 'scene.dart';
+import 'picture_cache.dart';
+import 'render_scene.dart';
+import 'scene_builder.dart';
 import 'scene_painter.dart';
 import 'tessellation_cache.dart';
 import 'text_cache.dart';
@@ -83,7 +86,7 @@ class CadCanvasState extends State<CadCanvas> {
   final ScenePainter _scenePainter = ScenePainter(paragraphs: ParagraphCache());
   late OverlayPainter _overlayPainter;
 
-  final _SceneHolder _holder = _SceneHolder();
+  final DrawingCache _cache = DrawingCache();
   int _paintEpoch = 0;
   int _seenVersion = -1;
 
@@ -137,7 +140,7 @@ class CadCanvasState extends State<CadCanvas> {
     }
     if (oldWidget.document != widget.document) {
       _tessellation.clear();
-      _holder.invalidate();
+      _cache.invalidate();
       _paintEpoch++;
       _seenVersion = -1;
     }
@@ -149,7 +152,7 @@ class CadCanvasState extends State<CadCanvas> {
         oldWidget.background != widget.background ||
         oldWidget.overlayTheme != widget.overlayTheme) {
       _bindAppearance();
-      _holder.invalidate();
+      _cache.invalidate();
       _paintEpoch++;
     }
   }
@@ -157,6 +160,7 @@ class CadCanvasState extends State<CadCanvas> {
   @override
   void dispose() {
     widget.controller.removeListener(_onViewportChanged);
+    _cache.dispose();
     super.dispose();
   }
 
@@ -191,7 +195,7 @@ class CadCanvasState extends State<CadCanvas> {
         ...change.added,
       ]);
     }
-    _holder.invalidate();
+    _cache.invalidate();
     _paintEpoch++;
     if (mounted) setState(() {});
   }
@@ -203,7 +207,7 @@ class CadCanvasState extends State<CadCanvas> {
     final version = widget.document.version;
     if (version != _seenVersion) {
       if (_seenVersion != -1) {
-        _holder.invalidate();
+        _cache.invalidate();
         _paintEpoch++;
       }
       _seenVersion = version;
@@ -255,7 +259,8 @@ class CadCanvasState extends State<CadCanvas> {
                           viewport: widget.controller.viewport,
                           builder: _sceneBuilder,
                           painter: _scenePainter,
-                          holder: _holder,
+                          cache: _cache,
+                          quality: widget.controller.quality,
                           paintEpoch: _paintEpoch,
                           onlyLayers: widget.onlyLayers,
                           onSceneBuilt: widget.onSceneBuilt,
@@ -460,27 +465,6 @@ class CadCanvasState extends State<CadCanvas> {
   }
 }
 
-/// Holds the last built scene so a pan can reuse it.
-class _SceneHolder {
-  RenderScene? scene;
-  ui.Picture? picture;
-  int documentVersion = -1;
-
-  void invalidate() {
-    scene = null;
-    picture?.dispose();
-    picture = null;
-    documentVersion = -1;
-  }
-
-  void store(RenderScene value, ui.Picture recorded, int version) {
-    picture?.dispose();
-    scene = value;
-    picture = recorded;
-    documentVersion = version;
-  }
-}
-
 class _GridStyle {
   const _GridStyle({required this.color, required this.palette});
 
@@ -495,7 +479,8 @@ class _DrawingLayerPainter extends CustomPainter {
     required this.viewport,
     required this.builder,
     required this.painter,
-    required this.holder,
+    required this.cache,
+    required this.quality,
     required this.paintEpoch,
     required this.onlyLayers,
     required this.onSceneBuilt,
@@ -511,39 +496,39 @@ class _DrawingLayerPainter extends CustomPainter {
   final CadViewport viewport;
   final SceneBuilder builder;
   final ScenePainter painter;
-  final _SceneHolder holder;
+  final DrawingCache cache;
+  final RenderQuality quality;
   final int paintEpoch;
   final Set<String>? onlyLayers;
   final void Function(RenderScene scene)? onSceneBuilt;
   final _GridStyle? grid;
 
+  /// Three paths, cheapest first.
+  ///
+  /// A pan replays the recording translated by a whole number of physical
+  /// pixels, which is identical to a rebuild. A zoom still in flight replays it
+  /// under a scale, which keeps the linework on the geometry rather than
+  /// realigning it mid-gesture. Only a settled camera rebuilds and realigns.
   @override
   void paint(ui.Canvas canvas, Size size) {
     canvas.save();
     canvas.clipRect(Offset.zero & size, doAntiAlias: false);
     if (grid != null) _paintGrid(canvas, size);
 
-    final cached = holder.scene;
-    final picture = holder.picture;
-    if (cached != null &&
-        picture != null &&
-        holder.documentVersion == documentVersion &&
-        cached.canReuseFor(viewport)) {
-      // The scene was built in the screen space of a viewport at the same zoom,
-      // so a translation is an exact re-projection rather than an approximation.
-      final delta = cached.translationFor(viewport);
-      canvas
-        ..save()
-        ..translate(delta.dx, delta.dy)
-        ..drawPicture(picture)
-        ..restore();
+    final placement = cache.placementFor(
+      viewport,
+      documentVersion,
+      interactive: quality == RenderQuality.interactive,
+    );
+    if (placement != null) {
+      cache.replay(canvas, placement, viewport.devicePixelRatio);
       canvas.restore();
       return;
     }
 
     final scene = builder.build(document, viewport, onlyLayers: onlyLayers);
     final recorded = painter.record(scene);
-    holder.store(scene, recorded, documentVersion);
+    cache.store(scene, recorded, documentVersion);
     canvas.drawPicture(recorded);
     canvas.restore();
     onSceneBuilt?.call(scene);
@@ -552,7 +537,9 @@ class _DrawingLayerPainter extends CustomPainter {
   /// A reference grid, spaced at a round number of drawing units.
   ///
   /// Two densities: a fine grid and a bolder one every ten lines, which is what
-  /// makes it readable as a measuring aid rather than as wallpaper.
+  /// makes it readable as a measuring aid rather than as wallpaper. Drawn in
+  /// physical pixels on pixel centres like the drawing itself, so a grid line
+  /// is one crisp pixel rather than a two-pixel smear on a Retina display.
   void _paintGrid(ui.Canvas canvas, Size size) {
     if (!viewport.isUsable) return;
     final style = grid!;
@@ -561,6 +548,9 @@ class _DrawingLayerPainter extends CustomPainter {
     final minorPixels = magnitude * viewport.scale;
     if (minorPixels < 4) return;
 
+    final pixels = viewport.pixels;
+    final width = size.width * pixels.dpr;
+    final height = size.height * pixels.dpr;
     final visible = viewport.visibleBounds;
     final foreground = style.palette.foreground;
     final minor = Paint()
@@ -570,40 +560,47 @@ class _DrawingLayerPainter extends CustomPainter {
       ..color = foreground.withValues(alpha: 0.11)
       ..strokeWidth = 1;
 
+    canvas.save();
+    canvas.scale(1 / pixels.dpr);
+
     final startX = (visible.minX / magnitude).floor();
     final endX = (visible.maxX / magnitude).ceil();
     for (var i = startX; i <= endX; i++) {
-      final x = viewport.toScreen(Vec2(i * magnitude, 0)).dx;
+      final x = PixelSpace.centre(pixels.xOf(i * magnitude));
       canvas.drawLine(
         Offset(x, 0),
-        Offset(x, size.height),
+        Offset(x, height),
         i % 10 == 0 ? major : minor,
       );
     }
     final startY = (visible.minY / magnitude).floor();
     final endY = (visible.maxY / magnitude).ceil();
     for (var i = startY; i <= endY; i++) {
-      final y = viewport.toScreen(Vec2(0, i * magnitude)).dy;
+      final y = PixelSpace.centre(pixels.yOf(i * magnitude));
       canvas.drawLine(
         Offset(0, y),
-        Offset(size.width, y),
+        Offset(width, y),
         i % 10 == 0 ? major : minor,
       );
     }
 
     // The drawing origin, which is worth being able to find.
-    final origin = viewport.toScreen(const Vec2.zero());
-    if (origin.dx >= -20 &&
-        origin.dx <= size.width + 20 &&
-        origin.dy >= -20 &&
-        origin.dy <= size.height + 20) {
+    final originX = PixelSpace.centre(pixels.xOf(0));
+    final originY = PixelSpace.centre(pixels.yOf(0));
+    final margin = pixels.fromLogical(20);
+    if (originX >= -margin &&
+        originX <= width + margin &&
+        originY >= -margin &&
+        originY <= height + margin) {
       final axis = Paint()
         ..color = foreground.withValues(alpha: 0.22)
         ..strokeWidth = 1;
       canvas
-        ..drawLine(Offset(0, origin.dy), Offset(size.width, origin.dy), axis)
-        ..drawLine(Offset(origin.dx, 0), Offset(origin.dx, size.height), axis);
+        ..drawLine(Offset(0, originY), Offset(width, originY), axis)
+        ..drawLine(Offset(originX, 0), Offset(originX, height), axis);
     }
+
+    canvas.restore();
   }
 
   @override
@@ -612,6 +609,7 @@ class _DrawingLayerPainter extends CustomPainter {
       old.documentVersion != documentVersion ||
       old.paintEpoch != paintEpoch ||
       old.viewport != viewport ||
+      old.quality != quality ||
       old.onlyLayers != onlyLayers ||
       (old.grid == null) != (grid == null);
 }

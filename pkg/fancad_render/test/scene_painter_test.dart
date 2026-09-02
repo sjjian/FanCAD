@@ -5,10 +5,46 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'raster.dart';
+
+/// The painter is deliberately dumb, so these tests are about what the whole
+/// chain puts on the pixel grid: build, align, paint.
+///
+/// Scenes therefore come from a document through [SceneBuilder] rather than
+/// being assembled by hand. A hand-built scene would skip the aligner, which
+/// is where every decision these tests are checking is made.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const view = CadViewport(center: Vec2.zero(), scale: 1, size: Size(200, 200));
+
+  /// A 40 by 40 window centred on the origin, so a drawing coordinate of 0 is
+  /// pixel 20 and the arithmetic in each test stays readable.
+  CadViewport window({double dpr = 1}) => CadViewport(
+    center: const Vec2.zero(),
+    scale: 1,
+    size: const Size(40, 40),
+    devicePixelRatio: dpr,
+  );
+
+  RenderScene build(CadDocument document, CadViewport at) =>
+      SceneBuilder(palette: AciPalette.dark).build(document, at);
+
+  /// Horizontal hairlines at the given drawing heights, spanning the window.
+  CadDocument rules(List<double> heights, {int color = 3}) {
+    final document = CadDocument();
+    for (var i = 0; i < heights.length; i++) {
+      document.addEntity(
+        LineEntity(
+          id: i,
+          props: EntityProps(color: CadColor.indexed(color)),
+          start: Vec2(-16, heights[i]),
+          end: Vec2(16, heights[i]),
+        ),
+      );
+    }
+    return document;
+  }
 
   RenderScene sceneWithEveryBatch() {
     final lines = LineBatch(const BatchKey(Color(0xFFFFFFFF), 1))
@@ -17,7 +53,7 @@ void main() {
       ..vertices.add2(5, 5);
     final fills = FillBatch(const BatchKey(Color(0xFF00FF00), 0))
       ..addRing(Float32List.fromList([0, 0, 10, 0, 10, 10, 0, 10]));
-    return RenderScene(
+    return RenderScene.single(
       viewport: view,
       lineBatches: [lines],
       pointBatches: [points],
@@ -54,8 +90,6 @@ void main() {
       ],
       entityCount: 4,
       segmentCount: 1,
-      culledCount: 0,
-      buildTime: Duration.zero,
       coverage: const Bounds2(0, 0, 20, 20),
     );
   }
@@ -94,27 +128,133 @@ void main() {
     second.dispose();
   });
 
-  test('a hairline ACI 7 is a pure white pixel on a dark canvas', () async {
+  test('a hairline ACI 7 is one solid row on a dark canvas', () async {
+    final scene = build(rules([0], color: 7), window());
+    final raster = await rasterise(scene);
+
+    // Drawing height 0 is pixel 20.0, which the aligner moves to the centre of
+    // pixel 20 so the pen covers that row and nothing else.
+    expect(raster.litRows(Channel.red), [20]);
+    expect(
+      raster.peakInRow(20, Channel.red, from: 10, to: 30),
+      greaterThan(solidCore),
+    );
+  });
+
+  test('a vertical hairline is one solid column of ACI 3', () async {
     final document = CadDocument()
       ..addEntity(
-        const LineEntity(id: 1, start: Vec2(-20, 0), end: Vec2(20, 0)),
+        const LineEntity(
+          id: 0,
+          props: EntityProps(color: CadColor.indexed(3)),
+          start: Vec2(0, -16),
+          end: Vec2(0, 16),
+        ),
       );
-    const view = CadViewport(
-      center: Vec2.zero(),
-      scale: 1,
-      size: Size(40, 40),
+    final raster = await rasterise(build(document, window()));
+
+    expect(raster.litColumns(Channel.green), [20]);
+    expect(
+      raster.peakInColumn(20, Channel.green, from: 10, to: 30),
+      greaterThan(solidCore),
     );
-    final scene = SceneBuilder(palette: AciPalette.dark).build(document, view);
-    final picture = ScenePainter().record(scene);
-    final image = await picture.toImage(40, 40);
-    final bytes = await image.toByteData();
-    expect(bytes, isNotNull);
-    // The line sits on the horizontal mid-pixel of a 40×40 view.
-    final offset = ((20 * 40) + 20) * 4;
-    expect(bytes!.getUint8(offset), 255);
-    expect(bytes.getUint8(offset + 1), 255);
-    expect(bytes.getUint8(offset + 2), 255);
-    image.dispose();
-    picture.dispose();
+  });
+
+  test('a shallow hairline is not aligned into a staircase', () async {
+    // A 0.6 px rise over 32 px. Rounding the ends onto a pixel centre would
+    // turn a smear into a visible step, so a run this far off the axis is left
+    // exactly where the projection put it.
+    final document = CadDocument()
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(color: CadColor.indexed(3)),
+          start: Vec2(-16, 9.8),
+          end: Vec2(16, 9.2),
+        ),
+      );
+    final raster = await rasterise(build(document, window()));
+
+    expect(raster.litRows(Channel.green).length, lessThan(4));
+  });
+
+  test('a one-pixel gap between hairlines stays two rows', () async {
+    // 1.0 px apart: the two pens land in adjacent pixels whatever the phase,
+    // so there is nothing ambiguous to resolve and both rows survive.
+    final raster = await rasterise(build(rules([0.5, -0.5]), window()));
+
+    expect(raster.litRows(Channel.green), hasLength(2));
+  });
+
+  test('parallels closer than the pen is wide collapse onto one row', () async {
+    // 0.54 px apart. At this zoom the gap is narrower than the thinnest line
+    // the display can draw, so the honest answer is one row. Keeping two would
+    // mean their appearance depended on where the pair fell on the grid, which
+    // is the blink.
+    final raster = await rasterise(build(rules([0.27, -0.27]), window()));
+
+    expect(raster.litRows(Channel.green), hasLength(1));
+    expect(
+      raster.peakInRow(
+        raster.litRows(Channel.green).single,
+        Channel.green,
+        from: 10,
+        to: 30,
+      ),
+      greaterThan(solidCore),
+    );
+  });
+
+  test('a sub-pixel pair straddling a pixel edge is still one row', () async {
+    // Pixels 19.6 and 20.4: floor() puts them in different pixels even though
+    // they are 0.8 px apart. Deciding by the gap rather than by which pixel
+    // each one happens to land in is what keeps this stable under a pan.
+    final raster = await rasterise(build(rules([0.4, -0.4]), window()));
+
+    expect(raster.litRows(Channel.green), hasLength(1));
+  });
+
+  test('a whole-pixel shift keeps a hairline solid', () async {
+    final scene = build(rules([0]), window());
+    final raster = await rasterise(scene, shift: const Offset(3, -2));
+
+    // A pan replays the recording displaced by whole physical pixels, so the
+    // alignment baked into it still lands on pixel centres. Displacing it by a
+    // fraction is what forced the picture cache to be deleted before.
+    expect(raster.litRows(Channel.green), [18]);
+    expect(
+      raster.peakInRow(18, Channel.green, from: 10, to: 30),
+      greaterThan(solidCore),
+    );
+  });
+
+  test('a hairline at device ratio 2 occupies one physical pixel', () async {
+    final document = CadDocument()
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(color: CadColor.indexed(3)),
+          start: Vec2(0, -16),
+          end: Vec2(0, 16),
+        ),
+      );
+    final raster = await rasterise(build(document, window(dpr: 2)));
+
+    expect(raster.width, 80);
+    // Drawing coordinate 0 is physical pixel 40. One pixel, not the two a
+    // logical-pixel hairline covers on a Retina display.
+    expect(raster.litColumns(Channel.green), [40]);
+    expect(
+      raster.peakInColumn(40, Channel.green, from: 20, to: 60),
+      greaterThan(solidCore),
+    );
+    expect(
+      raster.peakInColumn(39, Channel.green, from: 20, to: 60),
+      lessThan(litThreshold),
+    );
+    expect(
+      raster.peakInColumn(41, Channel.green, from: 20, to: 60),
+      lessThan(litThreshold),
+    );
   });
 }

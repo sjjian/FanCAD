@@ -52,31 +52,38 @@ class Float32Buffer {
 
 /// The identity of a draw call: primitives sharing one of these are merged.
 ///
-/// Line weight is quantised to a device pixel because a 0.18 mm and a 0.20 mm
-/// pen are the same single-pixel line at most zoom levels, and merging them
-/// removes a draw call for free.
+/// [strokeWidth] is in physical pixels, and 0 is the hairline sentinel — the
+/// thinnest solid line the display has, which the painter draws as exactly one
+/// physical pixel. A 0.18 mm and a 0.20 mm pen are both that line at most zoom
+/// levels, and merging them removes a draw call for free.
+///
+/// [order] is the drawing-order bucket, so geometry that has to sit on top of
+/// other geometry cannot be merged underneath it.
 @immutable
 class BatchKey {
-  const BatchKey(this.color, this.strokeWidth);
+  const BatchKey(this.color, this.strokeWidth, {this.order = 0});
 
   final ui.Color color;
   final double strokeWidth;
+  final int order;
 
   @override
   bool operator ==(Object other) =>
       other is BatchKey &&
       other.color == color &&
-      other.strokeWidth == strokeWidth;
+      other.strokeWidth == strokeWidth &&
+      other.order == order;
 
   @override
-  int get hashCode => Object.hash(color, strokeWidth);
+  int get hashCode => Object.hash(color, strokeWidth, order);
 
   @override
   String toString() =>
-      'BatchKey(#${color.toARGB32().toRadixString(16)}, $strokeWidth)';
+      'BatchKey(#${color.toARGB32().toRadixString(16)}, $strokeWidth'
+      '${order == 0 ? '' : ', order $order'})';
 }
 
-/// Screen-space line segments sharing one colour and width.
+/// Line segments in physical pixels, sharing one colour and width.
 class LineBatch {
   LineBatch(this.key);
 
@@ -86,7 +93,10 @@ class LineBatch {
   int get segmentCount => vertices.length ~/ 4;
   bool get isEmpty => vertices.isEmpty;
 
-  /// Appends a polyline given as screen-space `[x, y, ...]`.
+  /// Appends a polyline given as `[x, y, ...]` in physical pixels.
+  ///
+  /// Vertices stay where the projection put them. Stretching a sub-pixel
+  /// stub to a 1 px tick would invent a notch that is not in the drawing.
   void addPolyline(Float32List screen, {bool closed = false}) {
     final count = screen.length ~/ 2;
     if (count < 2) return;
@@ -109,7 +119,7 @@ class LineBatch {
   }
 }
 
-/// Screen-space point markers sharing one colour and size.
+/// Point markers in physical pixels, sharing one colour and size.
 class PointBatch {
   PointBatch(this.key);
 
@@ -120,7 +130,8 @@ class PointBatch {
   bool get isEmpty => vertices.isEmpty;
 }
 
-/// Filled regions sharing one colour, accumulated into a single path.
+/// Filled regions in physical pixels, accumulated into a single path per
+/// colour.
 class FillBatch {
   FillBatch(this.key);
 
@@ -142,7 +153,7 @@ class FillBatch {
   }
 }
 
-/// A text run ready to paint, in screen space.
+/// A text run ready to paint, in physical pixels.
 @immutable
 class TextItem {
   const TextItem({
@@ -165,12 +176,16 @@ class TextItem {
     this.underline = false,
     this.overline = false,
     this.strike = false,
+    this.order = 0,
   });
 
   final String text;
   final ui.Offset origin;
 
-  /// Cap height in device-independent pixels, already scaled by the viewport.
+  /// Drawing-order bucket, matching [BatchKey.order].
+  final int order;
+
+  /// Cap height in physical pixels, already scaled by the viewport.
   final double pixelHeight;
 
   /// Clockwise screen rotation in radians, already Y-flipped.
@@ -196,7 +211,7 @@ class TextItem {
   final bool strike;
 }
 
-/// An image placement ready to paint, in screen space.
+/// An image placement ready to paint, in physical pixels.
 @immutable
 class ImageItem {
   const ImageItem({
@@ -204,10 +219,14 @@ class ImageItem {
     required this.origin,
     required this.uVector,
     required this.vVector,
+    this.order = 0,
   });
 
   final String reference;
   final ui.Offset origin;
   final ui.Offset uVector;
   final ui.Offset vVector;
+
+  /// Drawing-order bucket, matching [BatchKey.order].
+  final int order;
 }
