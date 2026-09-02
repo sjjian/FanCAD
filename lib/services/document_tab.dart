@@ -60,7 +60,7 @@ class DocumentTab extends ChangeNotifier {
   /// reference to a widget.
   void Function(DocumentChange change)? onGeometryInvalidated;
 
-  /// The most recent scene, for the status bar's draw-call readout.
+  /// The most recent scene, for the canvas zoom readout's draw-call tooltip.
   RenderScene? lastScene;
 
   CadDocument get document => session.document;

@@ -150,10 +150,18 @@ void main() {
       ),
       findsNothing,
     );
+    expect(find.byKey(const Key('status-bar')), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const Key('status-bar')),
-        matching: find.text('Model'),
+        matching: find.byKey(const Key('canvas-readout-cursor')),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('status-bar')),
+        matching: find.byKey(const Key('canvas-readout-selection')),
       ),
       findsNothing,
     );
@@ -165,20 +173,54 @@ void main() {
       ),
       findsNothing,
     );
+    expect(find.byKey(const Key('canvas-readout-cursor')), findsOneWidget);
+    expect(find.byKey(const Key('canvas-readout-selection')), findsOneWidget);
+    expect(find.byKey(const Key('canvas-readout-layer')), findsOneWidget);
+    expect(find.byKey(const Key('canvas-readout-zoom')), findsOneWidget);
     expect(
       find.descendant(
-        of: find.byKey(const Key('status-bar')),
-        matching: find.byKey(const Key('canvas-mode-snap')),
+        of: find.byKey(const Key('canvas-hud')),
+        matching: find.byKey(const Key('canvas-readout-cursor')),
       ),
-      findsNothing,
+      findsOneWidget,
     );
     expect(
       find.descendant(
-        of: find.byKey(const Key('status-bar')),
-        matching: find.text('SNAP'),
+        of: find.byKey(const Key('canvas-hud')),
+        matching: find.byKey(const Key('canvas-readout-selection')),
       ),
-      findsNothing,
+      findsOneWidget,
     );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-hud')),
+        matching: find.byKey(const Key('canvas-readout-layer')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-hud')),
+        matching: find.byKey(const Key('canvas-readout-zoom')),
+      ),
+      findsOneWidget,
+    );
+    final cursorReadout = tester.getRect(
+      find.byKey(const Key('canvas-readout-cursor')),
+    );
+    final selectionReadout = tester.getRect(
+      find.byKey(const Key('canvas-readout-selection')),
+    );
+    final zoomReadout = tester.getRect(
+      find.byKey(const Key('canvas-readout-zoom')),
+    );
+    expect(cursorReadout.left, closeTo(hud.left + FanCadTokens.space3, 1));
+    expect(zoomReadout.right, closeTo(hud.right - FanCadTokens.space3, 1));
+    expect(cursorReadout.bottom, closeTo(hud.bottom - FanCadTokens.space1, 1));
+    expect(zoomReadout.bottom, closeTo(hud.bottom - FanCadTokens.space1, 1));
+    expect(cursorReadout.right, lessThan(card.left));
+    expect(selectionReadout.left, greaterThan(card.right));
+    expect(zoomReadout.left, greaterThan(card.right));
     final snapFill = tester.widget<Container>(
       find.descendant(
         of: find.byKey(const Key('canvas-mode-snap')),

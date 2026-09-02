@@ -404,7 +404,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                   },
                 ),
               ),
-              StatusBar(workspace: workspace),
+              const StatusBar(),
             ],
           ),
         ),
@@ -870,7 +870,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
   }
 }
 
-/// Transient notifications, stacked above the status bar.
+/// Transient notifications, stacked in the canvas corner.
 class _Notices extends StatelessWidget {
   const _Notices({required this.workspace});
 
