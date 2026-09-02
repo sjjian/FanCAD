@@ -123,7 +123,10 @@ class Flatten {
     final chordLength = chord.length;
     if (chordLength == 0) return null;
     final sweep = 4 * math.atan(bulge);
-    final radius = chordLength / 2 / math.sin(sweep.abs() / 2);
+    // Signed radius: cos(sweep / 2) is even, so an abs() radius always
+    // sat on the left of the chord. A negative bulge then tessellated
+    // the complementary arc — the other half of the same circle.
+    final radius = chordLength / 2 / math.sin(sweep / 2);
     if (!radius.isFinite || radius == 0) return null;
     // A positive bulge is the counter-clockwise (left-of-chord) included
     // arc. The signed apothem puts the centre on that side, and flips
