@@ -13,6 +13,7 @@ workspace:
   - pkg/fancad_plugin_host
   - pkg/fancad_ai
   - pkg/fancad_ops
+  - pkg/desktop_open_files
 
 dependencies:
   flutter:
@@ -33,6 +34,8 @@ dependencies:
     path: pkg/fancad_ai
   fancad_ops:
     path: pkg/fancad_ops
+  desktop_open_files:
+    path: pkg/desktop_open_files
 
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^2.6.1
