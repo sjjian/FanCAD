@@ -6,6 +6,8 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'package:desktop_open_files/desktop_open_files.dart';
+
 import 'business/app.dart';
 import 'services/plugin_bootstrap.dart';
 import 'services/providers.dart';
@@ -37,11 +39,8 @@ Future<void> main(List<String> arguments) async {
         ),
       ],
       child: FanCadApp(
-        // Files passed on the command line, so `fancad drawing.dwg` works.
-        initialFiles: [
-          for (final argument in arguments)
-            if (!argument.startsWith('-')) argument,
-        ],
+        // argv on Windows / Linux; macOS Finder arrives through the plugin.
+        initialFiles: DesktopOpenFiles.fromArguments(arguments),
       ),
     ),
   );

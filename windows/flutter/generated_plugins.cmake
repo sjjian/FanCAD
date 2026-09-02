@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  desktop_open_files
   file_selector_windows
   quickjs_engine
   screen_retriever_windows
