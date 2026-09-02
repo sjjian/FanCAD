@@ -126,6 +126,8 @@ Map<String, dynamic> _$HatchEntityToJson(
   'solid': instance.solid,
   if (omitZero(instance.patternAngle) case final value?) 'patternAngle': value,
   if (omitOne(instance.patternScale) case final value?) 'patternScale': value,
+  if (_patternLinesToJson(instance.patternLines) case final value?)
+    'patternLines': value,
 };
 
 Map<String, dynamic> _$InsertEntityToJson(InsertEntity instance) =>

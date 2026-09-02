@@ -416,7 +416,73 @@ class DxfReader {
       patternAngle: ocs
           .transformDirection(Vec2.polar(n(52) * math.pi / 180, 1))
           .angle,
+      patternLines: _patternLines(pairs, ocs),
     );
+  }
+
+  /// The resolved definition lines that follow group 78, which is what a DXF
+  /// writer puts on the entity once the pattern has been rotated and scaled.
+  static List<HatchPatternLine> _patternLines(
+    List<(int, String)> pairs,
+    Mat3 ocs,
+  ) {
+    final lines = <HatchPatternLine>[];
+    var reading = false;
+    double angle = 0;
+    double originX = 0;
+    double originY = 0;
+    double deltaX = 0;
+    double deltaY = 0;
+    final dashes = <double>[];
+    var started = false;
+
+    void flush() {
+      if (!started) return;
+      final origin = ocs.transform(Vec2(originX, originY));
+      lines.add(
+        HatchPatternLine(
+          angle: ocs.transformDirection(Vec2.polar(angle, 1)).angle,
+          originX: origin.x,
+          originY: origin.y,
+          deltaX: deltaX,
+          deltaY: deltaY,
+          dashes: List<double>.of(dashes),
+        ),
+      );
+      dashes.clear();
+      started = false;
+    }
+
+    for (final (code, value) in pairs) {
+      final number = double.tryParse(value) ?? 0;
+      if (code == 78) {
+        reading = true;
+        continue;
+      }
+      if (!reading) continue;
+      switch (code) {
+        case 53:
+          flush();
+          started = true;
+          angle = number * math.pi / 180;
+          originX = 0;
+          originY = 0;
+          deltaX = 0;
+          deltaY = 0;
+        case 43:
+          originX = number;
+        case 44:
+          originY = number;
+        case 45:
+          deltaX = number;
+        case 46:
+          deltaY = number;
+        case 49:
+          dashes.add(number);
+      }
+    }
+    flush();
+    return lines;
   }
 
   static CadEntity? _decode(String type, List<(int, String)> pairs, int id) {

@@ -13,6 +13,7 @@ import '../geometry/intersect.dart';
 import '../geometry/matrix.dart';
 import '../geometry/vector.dart';
 import '../hatch/generator.dart';
+import '../hatch/pattern.dart';
 import '../text/mtext_layout.dart';
 import 'geometry_sink.dart';
 import 'json_converters.dart';
@@ -418,6 +419,37 @@ List<Map<String, Object?>> _hatchLoopsToJson(List<HatchLoop> loops) => [
   for (final loop in loops)
     {'outer': loop.isOuter, 'points': pointBufferToJson(loop.vertices)},
 ];
+
+List<HatchPatternLine> _patternLineList(Object? value) {
+  if (value is! List) return const [];
+  return [
+    for (final item in value)
+      if (item is Map<String, Object?>)
+        HatchPatternLine(
+          angle: (item['angle'] as num?)?.toDouble() ?? 0,
+          originX: (item['originX'] as num?)?.toDouble() ?? 0,
+          originY: (item['originY'] as num?)?.toDouble() ?? 0,
+          deltaX: (item['deltaX'] as num?)?.toDouble() ?? 0,
+          deltaY: (item['deltaY'] as num?)?.toDouble() ?? 1,
+          dashes: doubleListFromJson(item['dashes']),
+        ),
+  ];
+}
+
+List<Map<String, Object?>>? _patternLinesToJson(List<HatchPatternLine> lines) {
+  if (lines.isEmpty) return null;
+  return [
+    for (final line in lines)
+      {
+        'angle': line.angle,
+        'originX': line.originX,
+        'originY': line.originY,
+        'deltaX': line.deltaX,
+        'deltaY': line.deltaY,
+        if (line.dashes.isNotEmpty) 'dashes': line.dashes,
+      },
+  ];
+}
 
 Map<String, String> _stringMap(Object? value) {
   if (value is! Map) return const {};

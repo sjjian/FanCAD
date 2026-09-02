@@ -30,6 +30,7 @@ final class HatchEntity extends CadEntity {
     this.solid = true,
     this.patternAngle = 0,
     this.patternScale = 1,
+    this.patternLines = const [],
   });
 
   static HatchEntity fromGeometry(
@@ -44,6 +45,7 @@ final class HatchEntity extends CadEntity {
     solid: json['solid'] as bool? ?? true,
     patternAngle: (json['patternAngle'] as num?)?.toDouble() ?? 0,
     patternScale: (json['patternScale'] as num?)?.toDouble() ?? 1,
+    patternLines: _patternLineList(json['patternLines']),
   );
 
   @JsonKey(toJson: _hatchLoopsToJson)
@@ -56,6 +58,17 @@ final class HatchEntity extends CadEntity {
   final double patternAngle;
   @JsonKey(toJson: omitOne)
   final double patternScale;
+
+  /// The pattern line families carried by the file itself, already rotated
+  /// and scaled by whatever produced the drawing.
+  ///
+  /// DWG and DXF both store the resolved definition lines of a hatch next to
+  /// its pattern name, and that is what AutoCAD draws. When this is
+  /// non-empty it wins over looking [patternName] up in the built-in table
+  /// and rotating it by [patternAngle], which cannot reproduce a pattern the
+  /// file has already resolved differently.
+  @JsonKey(toJson: _patternLinesToJson)
+  final List<HatchPatternLine> patternLines;
 
   @override
   EntityKind get kind => EntityKind.hatch;
@@ -99,6 +112,7 @@ final class HatchEntity extends CadEntity {
     solid: solid,
     patternAngle: patternAngle,
     patternScale: patternScale,
+    patternLines: patternLines,
   );
 
   @override
@@ -110,6 +124,7 @@ final class HatchEntity extends CadEntity {
     solid: solid,
     patternAngle: patternAngle,
     patternScale: patternScale,
+    patternLines: patternLines,
   );
 
   HatchEntity copyWith({
@@ -117,6 +132,7 @@ final class HatchEntity extends CadEntity {
     bool? solid,
     double? patternAngle,
     double? patternScale,
+    List<HatchPatternLine>? patternLines,
   }) => HatchEntity(
     id: id,
     props: props,
@@ -125,6 +141,7 @@ final class HatchEntity extends CadEntity {
     solid: solid ?? this.solid,
     patternAngle: patternAngle ?? this.patternAngle,
     patternScale: patternScale ?? this.patternScale,
+    patternLines: patternLines ?? this.patternLines,
   );
 
   @override
@@ -136,6 +153,9 @@ final class HatchEntity extends CadEntity {
     solid: solid,
     patternAngle: patternAngle + matrix.rotation,
     patternScale: patternScale * matrix.meanScale,
+    patternLines: [
+      for (final line in patternLines) line.transformed(matrix),
+    ],
   );
 
   @override
@@ -171,6 +191,7 @@ final class HatchEntity extends CadEntity {
       solid: solid,
       patternAngle: patternAngle,
       patternScale: patternScale,
+      patternLines: patternLines,
     );
   }
 

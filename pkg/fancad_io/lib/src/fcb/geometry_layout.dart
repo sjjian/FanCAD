@@ -32,8 +32,11 @@
 /// insert     geom [x, y, scaleX, scaleY, rotation, colSpacing, rowSpacing]
 ///            ints [columnCount, rowCount]
 ///            strings [blockName]
-/// hatch      ints [loopCount, (isOuter, pointCount) * loopCount]
-///            geom [patternAngle, patternScale, points...]
+/// hatch      ints [loopCount, (isOuter, pointCount) * loopCount,
+///                  patternLineCount, dashCount * patternLineCount]
+///            geom [patternAngle, patternScale, points...,
+///                  (angle, originX, originY, deltaX, deltaY, dashes...)
+///                    * patternLineCount]
 ///            strings [patternName]                        flag: solidFill
 /// dimension  ints [dimensionType, definitionPointCount, sourceId...]
 ///            geom [textX, textY, measurement, defPoint(x, y)...]

@@ -284,6 +284,49 @@ void main() {
     expect(hatch.loops.single.vertices[2], closeTo(20, 1e-9));
   });
 
+  test('a hatch keeps the definition lines the file resolved for it', () {
+    final original = CadDocument();
+    original.addEntity(
+      HatchEntity(
+        id: 0,
+        loops: [
+          HatchLoop(
+            vertices: Float64List.fromList([0, 0, 20, 0, 20, 10, 0, 10]),
+          ),
+        ],
+        patternName: 'ANSI31',
+        solid: false,
+        patternScale: 5,
+        patternAngle: math.pi / 4,
+        patternLines: const [
+          HatchPatternLine(
+            angle: math.pi,
+            originX: 45236.355,
+            originY: -40545.868,
+            deltaY: -15.875,
+          ),
+          HatchPatternLine(angle: 0, deltaY: 3.5, dashes: [2, -1]),
+        ],
+      ),
+    );
+
+    final restored = const DxfReader().readString(
+      const DxfWriter().writeString(original),
+    );
+    final lines = restored.entities
+        .whereType<HatchEntity>()
+        .single
+        .patternLines;
+    expect(lines, hasLength(2));
+    expect(lines[0].angle, closeTo(math.pi, 1e-9));
+    expect(lines[0].originX, closeTo(45236.355, 1e-6));
+    expect(lines[0].originY, closeTo(-40545.868, 1e-6));
+    expect(lines[0].deltaY, closeTo(-15.875, 1e-9));
+    expect(lines[0].dashes, isEmpty);
+    expect(lines[1].deltaY, closeTo(3.5, 1e-9));
+    expect(lines[1].dashes, [closeTo(2, 1e-9), closeTo(-1, 1e-9)]);
+  });
+
   test('a dimension keeps its style and definition points through DXF', () {
     final original = CadDocument()
       ..putDimStyle(const DimStyleDef(name: 'ARCH', decimalPlaces: 0))

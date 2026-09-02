@@ -20,8 +20,16 @@ class HatchGenerator {
     double pixelSize = 0.5,
   }) {
     if (hatch.solid || hatch.loops.isEmpty) return const [];
-    final pattern = HatchPattern.named(hatch.patternName);
-    if (pattern.lines.isEmpty) return const [];
+
+    // A file that carries its own definition lines has already resolved the
+    // pattern: the angles are final and the offsets are in drawing units. The
+    // built-in table is the fallback for hatches that only name a pattern,
+    // and only then does the entity's own angle and scale apply.
+    final fromFile = hatch.patternLines.isNotEmpty;
+    final lines = fromFile
+        ? hatch.patternLines
+        : HatchPattern.named(hatch.patternName).lines;
+    if (lines.isEmpty) return const [];
 
     var box = const Bounds2.empty();
     for (final loop in hatch.loops) {
@@ -30,14 +38,17 @@ class HatchGenerator {
     if (box.isEmpty) return const [];
 
     final strokes = <Float64List>[];
-    final scale = hatch.patternScale == 0 ? 1.0 : hatch.patternScale;
-    for (final line in pattern.lines) {
+    final scale = fromFile
+        ? 1.0
+        : (hatch.patternScale == 0 ? 1.0 : hatch.patternScale);
+    final extraAngle = fromFile ? 0.0 : hatch.patternAngle;
+    for (final line in lines) {
       strokes.addAll(
         _family(
           line: line,
           box: box,
           loops: hatch.loops,
-          extraAngle: hatch.patternAngle,
+          extraAngle: extraAngle,
           scale: scale,
         ),
       );

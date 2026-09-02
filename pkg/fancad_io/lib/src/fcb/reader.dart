@@ -909,6 +909,27 @@ class FcbReader {
           );
           cursor = end;
         }
+        final patternLines = <HatchPatternLine>[];
+        var intCursor = 1 + loopCount * 2;
+        if (intCursor < ints.length) {
+          final lineCount = ints[intCursor++];
+          for (var i = 0; i < lineCount; i++) {
+            if (intCursor + i >= ints.length) break;
+            final dashCount = ints[intCursor + i];
+            if (cursor + 5 + dashCount > geom.length) break;
+            patternLines.add(
+              HatchPatternLine(
+                angle: geom[cursor],
+                originX: geom[cursor + 1],
+                originY: geom[cursor + 2],
+                deltaX: geom[cursor + 3],
+                deltaY: geom[cursor + 4],
+                dashes: geom.sublist(cursor + 5, cursor + 5 + dashCount),
+              ),
+            );
+            cursor += 5 + dashCount;
+          }
+        }
         return HatchEntity(
           id: id,
           props: props,
@@ -917,6 +938,7 @@ class FcbReader {
           solid: flags & FcbFlags.solidFill != 0,
           patternAngle: geom[0],
           patternScale: geom[1] == 0 ? 1 : geom[1],
+          patternLines: patternLines,
         );
 
       case FcbType.dimension:
