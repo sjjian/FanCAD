@@ -45,6 +45,77 @@ void main() {
       expect(strokes, isNotEmpty);
     });
 
+    test('a hatch far from the pattern origin still generates strokes', () {
+      // Pattern lines are infinite and only their offset along the normal
+      // carries meaning, so the finite stand-in has to be slid onto the
+      // boundary. A production drawing sits tens of thousands of units from
+      // the origin, where a segment centred on the origin misses its own
+      // loops entirely and every hatch came out empty.
+      final atOrigin = const HatchGenerator().generate(boxHatch());
+      expect(atOrigin, isNotEmpty);
+
+      for (final offset in <(double, double)>[
+        (5000, 500),
+        (55391, 9462),
+        (-120000, 340000),
+      ]) {
+        final moved = HatchEntity(
+          id: 1,
+          solid: false,
+          patternName: 'ANSI31',
+          loops: [
+            HatchLoop(
+              vertices: Float64List.fromList([
+                offset.$1, offset.$2,
+                offset.$1 + 20, offset.$2,
+                offset.$1 + 20, offset.$2 + 20,
+                offset.$1, offset.$2 + 20,
+              ]),
+            ),
+          ],
+        );
+        final strokes = const HatchGenerator().generate(moved);
+        expect(
+          strokes.length,
+          closeTo(atOrigin.length, 2),
+          reason: 'translating a hatch must not change how it is filled',
+        );
+        for (final stroke in strokes) {
+          for (var i = 0; i < stroke.length; i += 2) {
+            expect(stroke[i], inInclusiveRange(offset.$1 - 1e-6, offset.$1 + 20 + 1e-6));
+            expect(
+              stroke[i + 1],
+              inInclusiveRange(offset.$2 - 1e-6, offset.$2 + 20 + 1e-6),
+            );
+          }
+        }
+      }
+    });
+
+    test('a long thin region at a production offset is filled', () {
+      // The shape this was found on: a 2992 x 23 U-profile section at
+      // ANSI31 scale 5, which fell back to drawing its boundary as linework
+      // and painted over the green outline underneath it.
+      final bar = HatchEntity(
+        id: 1,
+        solid: false,
+        patternName: 'ANSI31',
+        patternAngle: 0.7853981633974483,
+        patternScale: 5,
+        loops: [
+          HatchLoop(
+            vertices: Float64List.fromList([
+              55391, 9462,
+              58383, 9462,
+              58383, 9485,
+              55391, 9485,
+            ]),
+          ),
+        ],
+      );
+      expect(const HatchGenerator().generate(bar), isNotEmpty);
+    });
+
     test('NET strokes stay inside the boundary', () {
       final strokes = const HatchGenerator().generate(boxHatch(pattern: 'NET'));
       expect(strokes, isNotEmpty);
