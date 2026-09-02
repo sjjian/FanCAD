@@ -91,7 +91,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   List<String> get recentFiles => drawing.recentFiles;
 
   /// Snapping is application-wide rather than per-tab, because the toggles live
-  /// in the status bar and users expect them to stay put when switching tabs.
+  /// on the canvas HUD and users expect them to stay put when switching tabs.
   late final SnapEngine snapEngine;
 
   final List<DocumentTab> _tabs = [];

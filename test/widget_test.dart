@@ -195,13 +195,7 @@ void main() {
     expect(find.text('Model'), findsNothing);
     expect(find.text('Layouts'), findsNothing);
     expect(find.text('FanCAD'), findsNothing);
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('status-bar')),
-        matching: find.text('Model'),
-      ),
-      findsNothing,
-    );
+    expect(find.byKey(const Key('status-bar')), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const Key('canvas-hud')),
