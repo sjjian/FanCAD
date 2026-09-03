@@ -79,11 +79,17 @@ class HatchGenerator {
     // a 0.001 pattern scale cannot freeze the UI.
     final count = end - start;
     final step = count > 400 ? (count / 400).ceil() : 1;
+    // Each pattern line is infinite; only its offset along the normal is
+    // meaningful. Slide the finite stand-in along its own direction until it
+    // straddles the boundary, or a hatch far from the pattern origin gets a
+    // segment that never reaches its own loops and clips away to nothing.
+    final centre = box.center;
+    final reach = box.diagonal + spacing;
     for (var i = start; i <= end; i += step) {
       final along = origin + normal * (i * spacing);
-      final reach = box.diagonal + spacing;
-      final a = along - dir * reach;
-      final b = along + dir * reach;
+      final base = along + dir * (centre - along).dot(dir);
+      final a = base - dir * reach;
+      final b = base + dir * reach;
       out.addAll(_clipSegment(a, b, loops));
     }
     return out;
