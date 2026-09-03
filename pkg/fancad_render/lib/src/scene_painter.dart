@@ -239,15 +239,20 @@ class ScenePainter {
 
   /// Rasterises a scene into a picture that can be replayed cheaply.
   ///
-  /// The recording is culled to the viewport so a sheet border that lands
-  /// off-screen cannot expand a [RepaintBoundary] over the application chrome.
+  /// The recording is culled to [RenderScene.coverageOnScreen], which is the
+  /// overscan the batches were built for, not the widget. A sheet border that
+  /// lands off that box still cannot expand a [RepaintBoundary] over the
+  /// chrome — the live painter clips to the widget — but a pan that stays
+  /// inside the overscan has pixels to reveal instead of a blank strip.
   /// The cull box is in logical pixels because [paint] undoes the device ratio
   /// before drawing anything.
   ui.Picture record(RenderScene scene) {
     final recorder = ui.PictureRecorder();
-    final size = scene.viewport.size;
-    final cull = size.width > 0 && size.height > 0 ? Offset.zero & size : null;
-    paint(ui.Canvas(recorder, cull), scene);
+    final cull = scene.coverageOnScreen;
+    paint(
+      ui.Canvas(recorder, cull.width > 0 && cull.height > 0 ? cull : null),
+      scene,
+    );
     return recorder.endRecording();
   }
 }

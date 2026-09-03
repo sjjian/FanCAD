@@ -242,6 +242,48 @@ void main() {
     );
   });
 
+  test('a pan inside the overscan still has the linework that was off screen',
+      () async {
+    // A vertical hairline sitting in the overscan to the left of a 40 px
+    // window. Replaying a pan used to reveal a blank strip there because the
+    // recording had been culled to the widget, throwing the extra geometry
+    // away even though the batches still held it.
+    final document = CadDocument()
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(color: CadColor.indexed(3)),
+          start: Vec2(-25, -10),
+          end: Vec2(-25, 10),
+        ),
+      );
+    final from = window();
+    final scene = build(document, from);
+    final to = from.panned(const Offset(12, 0)).pixelLocked();
+    expect(scene.covers(to), isTrue);
+
+    final cache = DrawingCache()
+      ..store(scene, ScenePainter().record(scene), 0);
+    addTearDown(cache.dispose);
+
+    final placement = cache.placementFor(to, 0, interactive: false);
+    expect(placement, isNotNull);
+    final raster = await rasterFrom(to, (canvas) {
+      cache.replay(canvas, placement!, to.devicePixelRatio);
+    });
+
+    expect(raster.litColumns(Channel.green), isNotEmpty);
+    expect(
+      raster.peakInColumn(
+        raster.litColumns(Channel.green).single,
+        Channel.green,
+        from: 10,
+        to: 30,
+      ),
+      greaterThan(solidCore),
+    );
+  });
+
   test('a hairline at device ratio 2 occupies one physical pixel', () async {
     final document = CadDocument()
       ..addEntity(
