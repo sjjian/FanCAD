@@ -61,7 +61,12 @@ class CadCanvas extends StatefulWidget {
   final OverlayTheme overlayTheme;
   final Color background;
 
-  /// Called after each scene build, for the status bar's frame statistics.
+  /// Called after a scene is built, for the status bar's frame statistics.
+  ///
+  /// Not on every frame: a pan or a zoom in flight replays the last recording
+  /// without building anything, so the statistics hold the settled camera's
+  /// numbers until the camera settles again. That is the honest reading —
+  /// during a gesture there is no build to report.
   final void Function(RenderScene scene)? onSceneBuilt;
 
   /// A right-click that did not become a pan. The shell owns the menu.
