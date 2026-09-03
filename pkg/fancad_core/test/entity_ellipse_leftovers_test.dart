@@ -34,4 +34,30 @@ void main() {
       isNull,
     );
   });
+
+  test('a full ellipse boxes its axes without flattening', () {
+    const ellipse = EllipseEntity(
+      id: 1,
+      center: Vec2.zero(),
+      majorAxis: Vec2(4, 0),
+      ratio: 0.5,
+    );
+    expect(ellipse.computeBounds(), const Bounds2(-4, -2, 4, 2));
+  });
+
+  test('an elliptical arc boxes the endpoints and the extrema it covers', () {
+    const quarter = EllipseEntity(
+      id: 1,
+      center: Vec2.zero(),
+      majorAxis: Vec2(4, 0),
+      ratio: 0.5,
+      startParam: 0,
+      endParam: 1.5707963267948966,
+    );
+    final box = quarter.computeBounds();
+    expect(box.minX, closeTo(0, 1e-9));
+    expect(box.minY, closeTo(0, 1e-9));
+    expect(box.maxX, closeTo(4, 1e-9));
+    expect(box.maxY, closeTo(2, 1e-9));
+  });
 }

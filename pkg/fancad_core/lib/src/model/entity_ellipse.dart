@@ -114,6 +114,46 @@ final class EllipseEntity extends CadEntity {
   }
 
   @override
+  Bounds2 computeBounds({
+    BlockLookup blocks = BlockLookup.empty,
+    double tolerance = 1e-3,
+  }) {
+    final major = majorAxis;
+    final minor = minorAxis;
+    if (isFullEllipse) {
+      // x(t) = Cx + Mx cos t + mx sin t, and the extrema are
+      // ±sqrt(Mx² + mx²). Same for y. Flattening just to measure a box
+      // is how a sheet of hatches used to stall Zoom Extents.
+      final extX = math.sqrt(major.x * major.x + minor.x * minor.x);
+      final extY = math.sqrt(major.y * major.y + minor.y * minor.y);
+      return Bounds2(
+        center.x - extX,
+        center.y - extY,
+        center.x + extX,
+        center.y + extY,
+      );
+    }
+    var box = Bounds2.fromPoints([startPoint, endPoint]);
+    void consider(double param) {
+      if (!containsParam(param)) return;
+      final point = pointAt(param);
+      box = box.expandToInclude(point.x, point.y);
+    }
+
+    if (major.x != 0 || minor.x != 0) {
+      final t = math.atan2(minor.x, major.x);
+      consider(t);
+      consider(t + math.pi);
+    }
+    if (major.y != 0 || minor.y != 0) {
+      final t = math.atan2(minor.y, major.y);
+      consider(t);
+      consider(t + math.pi);
+    }
+    return box;
+  }
+
+  @override
   EllipseEntity withId(int id) => EllipseEntity(
     id: id,
     props: props,
