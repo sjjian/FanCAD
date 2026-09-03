@@ -4,6 +4,8 @@ import 'dart:ui' show Offset, Size;
 import 'package:fancad_core/fancad_core.dart';
 import 'package:meta/meta.dart';
 
+import 'device_space.dart';
+
 /// The mapping between drawing coordinates and device pixels.
 ///
 /// CAD conventions differ from screen conventions in two ways that matter: the
@@ -86,6 +88,49 @@ class CadViewport {
     final box = visibleBounds;
     if (box.isEmpty) return box;
     return box.inflated(math.max(box.width, box.height) * factor);
+  }
+
+  /// This camera with its screen origin on a whole physical pixel.
+  ///
+  /// Alignment is decided in this space, so a pan becomes a whole-pixel
+  /// translation and cannot undo it: the recorded picture stays valid and a
+  /// hairline cannot drift off the pixel centre it was aligned to. The camera
+  /// moves by at most half a physical pixel — a quarter of a logical pixel on
+  /// a Retina display — and the operation is idempotent.
+  ///
+  /// Applied to every camera the controller hands out, so hit-testing, snap
+  /// and the raster all agree on where a drawing point is.
+  CadViewport pixelLocked() {
+    if (!isUsable) return this;
+    final physical = scale * devicePixelRatio;
+    if (!physical.isFinite || physical <= 0) return this;
+    final halfWidth = size.width / 2 * devicePixelRatio;
+    final halfHeight = size.height / 2 * devicePixelRatio;
+    final originX = (halfWidth - center.x * physical).roundToDouble();
+    final originY = (halfHeight + center.y * physical).roundToDouble();
+    if (!originX.isFinite || !originY.isFinite) return this;
+    return copyWith(
+      center: Vec2(
+        (halfWidth - originX) / physical,
+        (originY - halfHeight) / physical,
+      ),
+    );
+  }
+
+  /// The world-to-physical-pixel mapping the renderer draws in.
+  ///
+  /// [worldToScreen] stays in logical pixels because that is the space pointer
+  /// events and hit-testing arrive in. Rasterisation uses this instead, so a
+  /// line weight and an alignment are expressed in the same unit as the pixels
+  /// they land on.
+  PixelSpace get pixels {
+    final physical = scale * devicePixelRatio;
+    return PixelSpace(
+      scale: physical,
+      originX: size.width / 2 * devicePixelRatio - center.x * physical,
+      originY: size.height / 2 * devicePixelRatio + center.y * physical,
+      dpr: devicePixelRatio,
+    );
   }
 
   /// The world-to-screen transform, in logical pixels.

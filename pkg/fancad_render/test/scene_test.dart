@@ -268,9 +268,10 @@ void main() {
 
       final nudged = view.panned(const Offset(20, 10));
       expect(scene.canReuseFor(nudged), isTrue);
-      final delta = scene.translationFor(nudged);
-      expect(delta.dx, closeTo(20, 1e-9));
-      expect(delta.dy, closeTo(10, 1e-9));
+      final placement = scene.placementFor(nudged);
+      expect(placement.isTranslation, isTrue);
+      expect(placement.offset.dx, closeTo(20, 1e-9));
+      expect(placement.offset.dy, closeTo(10, 1e-9));
     });
 
     test('a zoom cannot reuse the scene', () {

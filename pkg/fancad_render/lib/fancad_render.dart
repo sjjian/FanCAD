@@ -10,15 +10,20 @@
 /// interactive command is written against.
 library;
 
-export 'src/drawing_font.dart';
 export 'src/batch.dart'
     show BatchKey, FillBatch, ImageItem, LineBatch, PointBatch, TextItem;
+export 'src/batching_sink.dart';
 export 'src/cad_canvas.dart';
+export 'src/device_space.dart';
+export 'src/drawing_font.dart';
 export 'src/dynamic_input.dart';
+export 'src/line_aligner.dart';
 export 'src/overlay.dart';
 export 'src/palette.dart';
 export 'src/picking.dart';
-export 'src/scene.dart';
+export 'src/picture_cache.dart';
+export 'src/render_scene.dart';
+export 'src/scene_builder.dart';
 export 'src/scene_painter.dart';
 export 'src/select_tool.dart';
 export 'src/snap.dart';

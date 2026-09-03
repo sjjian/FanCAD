@@ -111,11 +111,8 @@ void main() {
       scale: 1,
       size: Size(200, 200),
     );
-    final scene = RenderScene(
+    final scene = RenderScene.single(
       viewport: view,
-      lineBatches: const [],
-      pointBatches: const [],
-      fillBatches: const [],
       texts: const [
         TextItem(
           text: 'AL',
@@ -129,11 +126,7 @@ void main() {
           fontFamily: 'Roboto',
         ),
       ],
-      images: const [],
       entityCount: 1,
-      segmentCount: 0,
-      culledCount: 0,
-      buildTime: Duration.zero,
       coverage: const Bounds2(-100, -100, 100, 100),
     );
     final picture = ScenePainter().record(scene);
