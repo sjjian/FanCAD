@@ -404,6 +404,20 @@ class DxfWriter {
             pair(20, loop.vertices[i * 2 + 1]);
           }
         }
+        if (entity.patternLines.isNotEmpty) {
+          pair(78, entity.patternLines.length);
+          for (final line in entity.patternLines) {
+            pair(53, line.angle * 180 / math.pi);
+            pair(43, line.originX);
+            pair(44, line.originY);
+            pair(45, line.deltaX);
+            pair(46, line.deltaY);
+            pair(79, line.dashes.length);
+            for (final dash in line.dashes) {
+              pair(49, dash);
+            }
+          }
+        }
       case DimensionEntity():
         pair(0, 'DIMENSION');
         _common(pair, entity, paperSpace: paperSpace);

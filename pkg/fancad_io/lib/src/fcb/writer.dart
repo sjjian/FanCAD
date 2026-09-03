@@ -556,6 +556,20 @@ class FcbWriter {
             coordinates.add(loop.vertices[i]);
           }
         }
+        ints.add(entity.patternLines.length);
+        for (final line in entity.patternLines) {
+          ints.add(line.dashes.length);
+        }
+        for (final line in entity.patternLines) {
+          coordinates.addAll([
+            line.angle,
+            line.originX,
+            line.originY,
+            line.deltaX,
+            line.deltaY,
+            ...line.dashes,
+          ]);
+        }
         final (stringOffset, stringCount) = _strings.internRun([
           entity.patternName,
         ]);

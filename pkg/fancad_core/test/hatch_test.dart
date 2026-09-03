@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
@@ -114,6 +115,63 @@ void main() {
         ],
       );
       expect(const HatchGenerator().generate(bar), isNotEmpty);
+    });
+
+    test('the definition lines in the file win over the pattern table', () {
+      // A 23 x 1483 honeycomb section from a production drawing. Its pattern
+      // is named ANSI31 and its entity angle is 45 degrees, but the DWG also
+      // carries the resolved definition line: horizontal, spaced 15.875. Rot-
+      // ating the table's own 45 degrees by another 45 gives lines that run
+      // along the bar instead of across it, and only two of them fit.
+      const spacing = 15.875;
+      final bar = HatchEntity(
+        id: 1,
+        solid: false,
+        patternName: 'ANSI31',
+        patternAngle: 0.7853981633974483,
+        patternScale: 5,
+        loops: [
+          HatchLoop(
+            vertices: Float64List.fromList([
+              54928.4, 7607.1,
+              54928.4, 9090.6,
+              54905.4, 9090.6,
+              54905.4, 7607.1,
+            ]),
+          ),
+        ],
+        patternLines: const [
+          HatchPatternLine(
+            angle: math.pi,
+            originX: 45236.355,
+            originY: -40545.868,
+            deltaY: -spacing,
+          ),
+        ],
+      );
+
+      final strokes = const HatchGenerator().generate(bar);
+      expect(strokes, hasLength(93));
+      final rows = <double>[];
+      for (final stroke in strokes) {
+        expect(stroke[1], closeTo(stroke[3], 1e-6), reason: 'rungs run across');
+        expect(
+          (stroke[0] - stroke[2]).abs(),
+          closeTo(23, 1e-6),
+          reason: 'a rung spans the full width of the section',
+        );
+        rows.add(stroke[1]);
+      }
+      rows.sort();
+      for (var i = 1; i < rows.length; i++) {
+        expect(rows[i] - rows[i - 1], closeTo(spacing, 1e-6));
+      }
+
+      // Without them the same entity falls back to the table and its angle.
+      final table = const HatchGenerator().generate(
+        bar.copyWith(patternLines: const []),
+      );
+      expect(table, hasLength(2));
     });
 
     test('NET strokes stay inside the boundary', () {

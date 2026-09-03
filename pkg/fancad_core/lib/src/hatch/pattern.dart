@@ -1,5 +1,8 @@
 import 'dart:math' as math;
 
+import '../geometry/matrix.dart';
+import '../geometry/vector.dart';
+
 /// One family of parallel lines in an AutoCAD hatch pattern.
 class HatchPatternLine {
   const HatchPatternLine({
@@ -22,6 +25,19 @@ class HatchPatternLine {
 
   /// Dash lengths; empty means a continuous line.
   final List<double> dashes;
+
+  HatchPatternLine transformed(Mat3 matrix) {
+    final origin = matrix.transform(Vec2(originX, originY));
+    final scale = matrix.meanScale;
+    return HatchPatternLine(
+      angle: angle + matrix.rotation,
+      originX: origin.x,
+      originY: origin.y,
+      deltaX: deltaX * scale,
+      deltaY: deltaY * scale,
+      dashes: [for (final dash in dashes) dash * scale],
+    );
+  }
 }
 
 /// A named hatch pattern, matching the `.pat` file convention.

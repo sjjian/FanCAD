@@ -2279,14 +2279,37 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       uint32_t int_count = 0;
       char *pattern;
       int owned_pattern;
+      uint32_t line;
+      uint32_t def_lines;
       if (!o) return 0;
-      ints = (int64_t *)calloc((size_t)o->num_paths * 2 + 2, sizeof(int64_t));
+      def_lines = o->deflines ? o->num_deflines : 0;
+      ints = (int64_t *)calloc(
+          (size_t)o->num_paths * 2 + 3 + (size_t)def_lines, sizeof(int64_t));
       if (!ints) return 0;
 
       coords_push(g, o->angle);
       coords_push(g, o->scale_spacing == 0.0 ? 1.0 : o->scale_spacing);
       import_hatch_paths(s, o, g, ints, &int_count);
       box_add_coords(&bounds, g, 2);
+
+      /* The definition lines carry the pattern AutoCAD actually draws: their
+       * angles are final and their offsets are in drawing units, whatever the
+       * pattern name and the entity angle say. They go last so the boundary
+       * points stay a contiguous run. */
+      ints[int_count++] = (int64_t)def_lines;
+      for (line = 0; line < def_lines; line++) {
+        ints[int_count++] = (int64_t)o->deflines[line].num_dashes;
+      }
+      for (line = 0; line < def_lines; line++) {
+        Dwg_HATCH_DefLine *d = &o->deflines[line];
+        uint32_t dash;
+        coords_push(g, d->angle);
+        coords_push2(g, d->pt0.x, d->pt0.y);
+        coords_push2(g, d->offset.x, d->offset.y);
+        for (dash = 0; dash < d->num_dashes; dash++) {
+          coords_push(g, d->dashes ? d->dashes[dash] : 0.0);
+        }
+      }
 
       pattern = dyn_text(o, "HATCH", "name", &owned_pattern);
       if (o->is_solid_fill) e.flags |= FCB_FLAG_SOLID_FILL;

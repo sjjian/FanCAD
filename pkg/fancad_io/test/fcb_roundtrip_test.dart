@@ -116,6 +116,53 @@ void main() {
       // silently defaulted on the way through.
       expect(FcbWriter().write(restored), encoded);
     });
+
+    test('a hatch keeps the definition lines the file resolved for it', () {
+      // These ride behind the boundary points in the same geometry run, so
+      // the reader has to find where one ends and the other begins.
+      final document = CadDocument();
+      document.addEntity(
+        HatchEntity(
+          id: 0,
+          solid: false,
+          patternName: 'ANSI31',
+          patternAngle: 0.7853981633974483,
+          patternScale: 5,
+          loops: [
+            HatchLoop(
+              vertices: Float64List.fromList([0, 0, 23, 0, 23, 1483, 0, 1483]),
+            ),
+            HatchLoop(
+              vertices: Float64List.fromList([4, 4, 8, 4, 8, 8, 4, 8]),
+              isOuter: false,
+            ),
+          ],
+          patternLines: const [
+            HatchPatternLine(
+              angle: 3.141592653589793,
+              originX: 45236.355,
+              originY: -40545.868,
+              deltaY: -15.875,
+            ),
+            HatchPatternLine(angle: 0, deltaY: 3.5, dashes: [2, -1]),
+          ],
+        ),
+      );
+
+      final decoded = FcbReader(FcbWriter().write(document)).decode().document;
+      final hatch = decoded.entities.whereType<HatchEntity>().single;
+      expect(hatch.loops, hasLength(2));
+      expect(hatch.loops.last.isOuter, isFalse);
+      expect(hatch.loops.first.vertices[2], closeTo(23, 1e-9));
+      expect(hatch.patternLines, hasLength(2));
+      expect(hatch.patternLines[0].originY, closeTo(-40545.868, 1e-9));
+      expect(hatch.patternLines[0].deltaY, closeTo(-15.875, 1e-9));
+      expect(hatch.patternLines[0].dashes, isEmpty);
+      expect(hatch.patternLines[1].dashes, [
+        closeTo(2, 1e-9),
+        closeTo(-1, 1e-9),
+      ]);
+    });
   });
 
   test('paper viewports survive a round trip', () {
