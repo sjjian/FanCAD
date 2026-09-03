@@ -115,14 +115,25 @@ class ViewportController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Marks the camera as moving and arms the settle timer.
+  /// Moves the camera, marks it as moving, and arms the settle timer, as one
+  /// write and one notification.
+  ///
+  /// The camera and the quality have to move together. A zoom clamped at
+  /// [CadViewport.minScale] or [CadViewport.maxScale] leaves the camera where
+  /// it was, so writing the quality separately would drop the renderer onto
+  /// the cached recording with nothing to tell it, and it would stay there
+  /// until the settle timer happened to fire.
   ///
   /// A gesture reports its own end, so while one is in flight there is nothing
   /// to time. A wheel notch has no end, which is what the timer is for.
-  void _moved() {
+  void _moveTo(CadViewport next) {
+    final locked = next.pixelLocked();
+    if (locked == _viewport) return;
+    _viewport = locked;
     _quality = RenderQuality.interactive;
     _settle?.cancel();
     _settle = _interacting ? null : Timer(settleDelay, _onSettled);
+    notifyListeners();
   }
 
   void _onSettled() {
@@ -159,19 +170,14 @@ class ViewportController extends ChangeNotifier {
 
   void panBy(Offset screenDelta) {
     if (screenDelta == Offset.zero) return;
-    _moved();
-    viewport = _viewport.panned(screenDelta);
+    _moveTo(_viewport.panned(screenDelta));
   }
 
-  void zoomBy(double factor, Offset anchor) {
-    _moved();
-    viewport = _viewport.zoomed(factor, anchor);
-  }
+  void zoomBy(double factor, Offset anchor) =>
+      _moveTo(_viewport.zoomed(factor, anchor));
 
-  void zoomAtCenter(double factor) {
-    _moved();
-    viewport = _viewport.zoomedAtCenter(factor);
-  }
+  void zoomAtCenter(double factor) =>
+      _moveTo(_viewport.zoomedAtCenter(factor));
 
   void zoomIn() => zoomAtCenter(1.25);
   void zoomOut() => zoomAtCenter(0.8);

@@ -82,4 +82,28 @@ void main() {
     controller.zoomTo(const Bounds2.empty());
     expect(controller.viewport, before);
   });
+
+  test('a zoom held against the scale limit leaves the camera settled', () {
+    // The camera does not move, so there is nothing to smooth and nothing to
+    // repaint. Marking the view as moving anyway would put the renderer on the
+    // cached recording with no notification to say so, and it would sit there
+    // until the settle timer happened to fire.
+    final controller = ViewportController();
+    addTearDown(controller.dispose);
+    controller.setSize(size, 1);
+    controller.viewport = controller.viewport.copyWith(
+      scale: CadViewport.maxScale,
+    );
+    expect(controller.quality, RenderQuality.crisp);
+
+    var ticks = 0;
+    controller.addListener(() => ticks++);
+    final pinned = controller.viewport;
+
+    controller.zoomBy(4, const Offset(400, 300));
+
+    expect(controller.viewport, pinned);
+    expect(controller.quality, RenderQuality.crisp);
+    expect(ticks, 0);
+  });
 }
