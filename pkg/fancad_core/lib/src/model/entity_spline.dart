@@ -106,6 +106,23 @@ final class SplineEntity extends CadEntity {
   }
 
   @override
+  Bounds2 computeBounds({
+    BlockLookup blocks = BlockLookup.empty,
+    double tolerance = 1e-3,
+  }) {
+    // A NURBS curve with non-negative weights sits inside the convex hull of
+    // its control points. Using that hull as the box is exact enough to cull
+    // and to zoom, and it is what makes opening a drawing of a thousand
+    // splines a decode rather than a tessellation of every curve at 1e-3.
+    if (controlPointCount >= 1) return Bounds2.fromXY(controlPoints);
+    // Fit-only splines interpolate the points, so the box of the points is
+    // a close stand-in. A bulge can sit slightly outside; that is still a
+    // cheaper miss than tessellating every fit spline on open.
+    if (fitPointCount >= 1) return Bounds2.fromXY(fitPointBuffer);
+    return const Bounds2.empty();
+  }
+
+  @override
   SplineEntity withId(int id) => SplineEntity(
     id: id,
     props: props,

@@ -16,4 +16,17 @@ void main() {
     );
     expect(hatch.withGrip(99, const Vec2(1, 1)), same(hatch));
   });
+
+  test('hatch bounds are the boundary loops, not the pattern strokes', () {
+    final hatch = HatchEntity(
+      id: 1,
+      solid: false,
+      patternName: 'ANSI31',
+      patternScale: 0.5,
+      loops: [
+        HatchLoop(vertices: Float64List.fromList([0, 0, 20, 0, 20, 10, 0, 10])),
+      ],
+    );
+    expect(hatch.computeBounds(), const Bounds2(0, 0, 20, 10));
+  });
 }

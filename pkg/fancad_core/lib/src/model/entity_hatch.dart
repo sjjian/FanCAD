@@ -104,6 +104,22 @@ final class HatchEntity extends CadEntity {
   }
 
   @override
+  Bounds2 computeBounds({
+    BlockLookup blocks = BlockLookup.empty,
+    double tolerance = 1e-3,
+  }) {
+    // Pattern strokes are clipped to the boundary. The box of the loops is
+    // the box of the hatch; generating the pattern here would make every
+    // spatial-index build pay for a fill that is not even on screen.
+    var box = const Bounds2.empty();
+    for (final loop in loops) {
+      if (loop.vertices.isEmpty) continue;
+      box = box.union(Bounds2.fromXY(loop.vertices));
+    }
+    return box;
+  }
+
+  @override
   HatchEntity withId(int id) => HatchEntity(
     id: id,
     props: props,

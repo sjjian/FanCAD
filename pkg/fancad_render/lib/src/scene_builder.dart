@@ -277,7 +277,8 @@ class SceneBuilder {
     var culled = 0;
     final previousClip = sink.worldClip;
     if (worldClip != null) sink.worldClip = worldClip;
-    for (final id in document.indexFor(blockName).search(query)) {
+    final index = document.indexFor(blockName);
+    for (final id in index.search(query)) {
       final entity = document.entity(id);
       if (entity == null || !entity.props.visible) continue;
       if (!document.isLayerVisible(entity.props.layer)) continue;
@@ -289,7 +290,10 @@ class SceneBuilder {
         continue;
       }
 
-      final bounds = document.boundsOfEntity(entity);
+      // The index already stored this box while the file was decoded. Asking
+      // the entity again would re-tessellate every visible spline just to
+      // decide whether it is a pixel or a curve.
+      final bounds = index.boundsOf(id) ?? const Bounds2.empty();
       if (bounds.isNotEmpty && !bounds.intersects(query)) {
         culled++;
         continue;

@@ -90,4 +90,35 @@ void main() {
       isNull,
     );
   });
+
+  test('spline bounds are the control polygon, not a tessellation', () {
+    final spline = SplineEntity(
+      id: 1,
+      controlPoints: Float64List.fromList([0, 0, 2, 4, 4, 0]),
+      knots: const [0, 0, 0, 1, 1, 1],
+      degree: 2,
+    );
+    final box = spline.computeBounds();
+    expect(box.minX, 0);
+    expect(box.minY, 0);
+    expect(box.maxX, 4);
+    expect(box.maxY, 4);
+
+    final curve = Flatten.bspline(
+      controlPoints: spline.controlPoints,
+      knots: spline.knots,
+      degree: spline.degree,
+      tolerance: 1e-3,
+    );
+    expect(box.containsBox(Bounds2.fromXY(curve)), isTrue);
+  });
+
+  test('a fit-only spline boxes the fit points', () {
+    final spline = SplineEntity(
+      id: 1,
+      controlPoints: Float64List(0),
+      fitPoints: Float64List.fromList([0, 0, 2, 3, 5, 1, 8, 0]),
+    );
+    expect(spline.computeBounds(), Bounds2.fromXY(spline.fitPointBuffer));
+  });
 }
