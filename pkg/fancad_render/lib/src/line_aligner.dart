@@ -27,6 +27,11 @@ import 'device_space.dart';
 /// narrower than the thinnest line the display can draw, so the alternative is
 /// not "two lines", it is two lines that appear and disappear depending on
 /// where the pair happens to fall on the pixel grid.
+///
+/// It is also strictly two lines to a row. A run of close parallels — the
+/// rungs of a hatch at a sheet zoom — therefore thins out to half as many rows
+/// and still covers its band, instead of each rung joining the one before
+/// until the whole run sits on a single line.
 class LineAligner {
   /// How far off an axis a segment may be and still count as axis-aligned, in
   /// physical pixels. A deviation this small cannot be seen; a larger one
@@ -54,6 +59,9 @@ class LineAligner {
   final List<int> _starts = <int>[];
   Float32List _cross = Float32List(0);
   Float32List _assigned = Float32List(0);
+
+  /// Which segments already share a row, so merging stays pairwise.
+  Uint8List _paired = Uint8List(0);
 
   /// Remembered merge decisions, for the leftover tests and diagnostics.
   int get decisionCount => _current.length;
@@ -131,7 +139,9 @@ class LineAligner {
     if (_cross.length < _starts.length) {
       _cross = Float32List(_starts.length);
       _assigned = Float32List(_starts.length);
+      _paired = Uint8List(_starts.length);
     }
+    _paired.fillRange(0, _starts.length, 0);
 
     // Merging is decided by the projected gap between two lines, never by
     // which pixel each one's `floor()` happens to land in. The latter is what
@@ -167,6 +177,12 @@ class LineAligner {
         // Two parallels only compete for a pixel where they overlap. Rules on
         // opposite sides of a title block are not the same line.
         if (lo >= otherHi || otherLo >= hi) continue;
+        // Strictly two to a row. A neighbour that already shares its row with
+        // someone cannot take another line, or the rungs of a ladder each join
+        // the one before, the chain never breaks, and a hatch that should read
+        // as a grey band collapses onto a single line and blanks the band it
+        // covers.
+        if (_paired[j] != 0) continue;
         if (!_merges(
           key: key,
           horizontal: horizontal,
@@ -176,6 +192,8 @@ class LineAligner {
           continue;
         }
         target = _assigned[j];
+        _paired[i] = 1;
+        _paired[j] = 1;
         break;
       }
 
