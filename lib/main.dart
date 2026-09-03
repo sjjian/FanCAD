@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'business/app.dart';
@@ -89,10 +90,14 @@ Future<void> _configureWindow() async {
   // keeps the native traffic lights and lets Flutter draw under them; the
   // title bar pads its leading edge so the first icon is clear. Windows
   // and Linux hide the OS buttons and draw our own on the right.
+  //
+  // Size matches the current display's work area so the first frame is as
+  // large as the screen, without maximising — that would hide restore.
+  final frame = await _displayWorkArea();
   final options = WindowOptions(
-    size: const Size(1440, 900),
+    size: frame.size,
     minimumSize: const Size(900, 600),
-    center: true,
+    center: frame.origin == null,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
@@ -100,7 +105,50 @@ Future<void> _configureWindow() async {
     title: 'FanCAD',
   );
   await windowManager.waitUntilReadyToShow(options, () async {
+    final origin = frame.origin;
+    if (origin != null) {
+      await windowManager.setPosition(origin);
+    }
     await windowManager.show();
     await windowManager.focus();
   });
+}
+
+/// The usable rectangle of the display the cursor is on.
+///
+/// [Display.size] includes the menu bar and dock; the work area is what a
+/// restored window can actually occupy. Falls back to the old 1440×900
+/// default when the screen plugin is missing (a headless test run).
+Future<({Size size, Offset? origin})> _displayWorkArea() async {
+  const fallback = Size(1440, 900);
+  const minimum = Size(900, 600);
+  try {
+    final primary = await screenRetriever.getPrimaryDisplay();
+    final displays = await screenRetriever.getAllDisplays();
+    final cursor = await screenRetriever.getCursorScreenPoint();
+    var current = primary;
+    for (final display in displays) {
+      final origin = display.visiblePosition ?? Offset.zero;
+      final area = display.visibleSize ?? display.size;
+      if (Rect.fromLTWH(
+        origin.dx,
+        origin.dy,
+        area.width,
+        area.height,
+      ).contains(cursor)) {
+        current = display;
+        break;
+      }
+    }
+    final raw = current.visibleSize ?? current.size;
+    return (
+      size: Size(
+        raw.width < minimum.width ? minimum.width : raw.width,
+        raw.height < minimum.height ? minimum.height : raw.height,
+      ),
+      origin: current.visiblePosition,
+    );
+  } catch (_) {
+    return (size: fallback, origin: null);
+  }
 }
