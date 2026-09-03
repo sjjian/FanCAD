@@ -214,13 +214,27 @@ void main() {
     expect(raster.litRows(Channel.green), hasLength(1));
   });
 
-  test('a whole-pixel shift keeps a hairline solid', () async {
-    final scene = build(rules([0]), window());
-    final raster = await rasterise(scene, shift: const Offset(3, -2));
-
+  test('a replayed pan keeps a hairline solid', () async {
     // A pan replays the recording displaced by whole physical pixels, so the
     // alignment baked into it still lands on pixel centres. Displacing it by a
-    // fraction is what forced the picture cache to be deleted before.
+    // fraction is what forced the picture cache to be deleted before, so this
+    // goes through [DrawingCache] rather than translating a canvas by hand.
+    final from = window();
+    final scene = build(rules([0]), from);
+    final cache = DrawingCache()
+      ..store(scene, ScenePainter().record(scene), 0);
+    addTearDown(cache.dispose);
+
+    final to = from.panned(const Offset(0, -2)).pixelLocked();
+    final placement = cache.placementFor(to, 0, interactive: false);
+    expect(placement, isNotNull);
+    expect(placement!.isTranslation, isTrue);
+    expect(placement.offset, const Offset(0, -2));
+
+    final raster = await rasterFrom(to, (canvas) {
+      cache.replay(canvas, placement, to.devicePixelRatio);
+    });
+
     expect(raster.litRows(Channel.green), [18]);
     expect(
       raster.peakInRow(18, Channel.green, from: 10, to: 30),
