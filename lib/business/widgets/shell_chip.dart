@@ -9,6 +9,7 @@ import '../theme/tokens.dart';
 /// on the canvas HUD so a click means the same thing in both places.
 class PromptKeywordChip extends StatefulWidget {
   const PromptKeywordChip({
+    super.key,
     required this.label,
     required this.onPressed,
     this.muted = false,

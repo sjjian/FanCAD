@@ -1,3 +1,9 @@
+# Local dump / probe scripts
+/debug/
+
+# Local MCP config (may contain tokens)
+.cursor/mcp.json
+
 # Miscellaneous
 *.class
 *.log

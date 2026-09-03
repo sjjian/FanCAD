@@ -64,9 +64,9 @@ void main() {
     expect(ray.computeBounds(), const Bounds2(0, 0, 0, 0));
     expect(ray.indexBounds().maxX, greaterThan(1e6));
     expect(ray.indexBounds().minX, closeTo(0, 1e-9));
-    expect((ray.withGrip(0, const Vec2(2, 3)) as RayEntity).origin, const Vec2(2, 3));
+    expect(ray.withGrip(0, const Vec2(2, 3)).origin, const Vec2(2, 3));
     expect(
-      (ray.withGrip(1, const Vec2(0, 4)) as RayEntity).direction,
+      ray.withGrip(1, const Vec2(0, 4)).direction,
       const Vec2(0, 4),
     );
     final rotated = ray.transformed(Mat3.rotation(1.5707963267948966));
@@ -81,7 +81,7 @@ void main() {
     const xline = XLineEntity(id: 1, origin: Vec2(3, 4), direction: Vec2(0, 1));
     expect(xline.grips(), const [Vec2(3, 4)]);
     expect(
-      (xline.withGrip(0, const Vec2(1, 1)) as XLineEntity).origin,
+      xline.withGrip(0, const Vec2(1, 1)).origin,
       const Vec2(1, 1),
     );
     final bothWays = PolylineSink();
@@ -104,7 +104,7 @@ void main() {
       Vec2(0, 6),
     ]);
     expect(
-      (image.withGrip(0, const Vec2(2, 1)) as ImageEntity).origin,
+      image.withGrip(0, const Vec2(2, 1)).origin,
       const Vec2(2, 1),
     );
     expect(image.withGrip(2, const Vec2(9, 9)), image);

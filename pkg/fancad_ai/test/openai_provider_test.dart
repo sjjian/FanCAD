@@ -240,8 +240,8 @@ LlmRequest _userRequest() =>
 String _choiceJson({String? content, String? finishReason}) => jsonEncode({
       'choices': [
         {
-          if (finishReason != null) 'finish_reason': finishReason,
-          'message': {if (content != null) 'content': content},
+          'finish_reason': ?finishReason,
+          'message': {'content': ?content},
         },
       ],
     });
@@ -263,7 +263,7 @@ class _FakeClient extends http.BaseClient {
     lastUri = request.url;
     lastHeaders = request.headers;
     if (request is http.Request) lastBody = request.body;
-    if (_error != null) throw _error!;
+    if (_error != null) throw _error;
     final response = _response!;
     return http.StreamedResponse(
       Stream<List<int>>.value(response.bodyBytes),

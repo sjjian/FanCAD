@@ -19,7 +19,7 @@ void main() {
     final runs = const MTextLayout().layout(
       const MTextEntity(
         id: 1,
-        position: const Vec2(10, 50),
+        position: Vec2(10, 50),
         content: r'A\PB',
         height: 12,
       ),
@@ -32,7 +32,7 @@ void main() {
     final runs = const MTextLayout().layout(
       const MTextEntity(
         id: 1,
-        position: const Vec2(600, 80),
+        position: Vec2(600, 80),
         content: r'\pi-200;第一行很长的工艺说明\P\pi-40;板背贴板号',
         height: 30,
       ),

@@ -69,13 +69,13 @@ void main() {
   test('selection dashes stay light on a dark canvas and dark on a light one',
       () {
     final dark = const OverlayTheme().withCanvas(const Color(0xFF1B1D21));
-    expect(dark.selectionMask.value, 0xFF1B1D21);
-    expect(dark.selectionStroke.value, 0xFFFFFFFF);
-    expect(dark.preview.value, 0xFFFFFFFF);
+    expect(dark.selectionMask.toARGB32(), 0xFF1B1D21);
+    expect(dark.selectionStroke.toARGB32(), 0xFFFFFFFF);
+    expect(dark.preview.toARGB32(), 0xFFFFFFFF);
 
     final light = const OverlayTheme().withCanvas(const Color(0xFFF7F8FA));
-    expect(light.selectionMask.value, 0xFFF7F8FA);
-    expect(light.selectionStroke.value, 0xFF000000);
-    expect(light.preview.value, 0xFF000000);
+    expect(light.selectionMask.toARGB32(), 0xFFF7F8FA);
+    expect(light.selectionStroke.toARGB32(), 0xFF000000);
+    expect(light.preview.toARGB32(), 0xFF000000);
   });
 }

@@ -1,10 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
+import '../widgets/shell_icon_button.dart';
+import '../widgets/shell_row.dart';
+
 export '../widgets/shell_badge.dart';
 export '../widgets/shell_banner.dart';
 export '../widgets/shell_chip.dart';
@@ -12,11 +14,9 @@ export '../widgets/shell_empty.dart';
 export '../widgets/shell_field.dart';
 export '../widgets/shell_form.dart';
 export '../widgets/shell_hairline.dart';
-import '../widgets/shell_icon_button.dart';
 export '../widgets/shell_icon_button.dart';
 export '../widgets/shell_menu.dart';
 export '../widgets/shell_panel.dart';
-import '../widgets/shell_row.dart';
 export '../widgets/shell_row.dart';
 export '../widgets/shell_splitter.dart';
 export '../widgets/shell_tab.dart';
@@ -66,7 +66,7 @@ class EmptyWorkspace extends StatelessWidget {
                   width: 40,
                   height: 40,
                   filterQuality: FilterQuality.medium,
-                  errorBuilder: (_, __, ___) =>
+                  errorBuilder: (_, _, _) =>
                       const SizedBox(width: 40, height: 40),
                 ),
                 const SizedBox(height: FanCadTokens.space3),

@@ -367,7 +367,7 @@ void main() {
       });
 
       expect(result.status, CommandStatus.ok, reason: result.message);
-      expect((result.data!['ids']! as List), hasLength(2));
+      expect(result.data!['ids']! as List, hasLength(2));
       expect(document.entities.whereType<DimensionEntity>(), hasLength(3));
     });
 
@@ -434,7 +434,7 @@ void main() {
       });
 
       expect(result.status, CommandStatus.ok, reason: result.message);
-      expect((result.data!['ids']! as List), hasLength(2));
+      expect(result.data!['ids']! as List, hasLength(2));
       expect(document.entities.whereType<DimensionEntity>(), hasLength(3));
     });
 
@@ -2159,7 +2159,7 @@ void main() {
       });
 
       expect(result.status, CommandStatus.ok, reason: result.message);
-      expect((result.data!['ids']! as List), hasLength(3));
+      expect(result.data!['ids']! as List, hasLength(3));
       expect(document.activeEntities.whereType<InsertEntity>(), hasLength(4));
     });
 

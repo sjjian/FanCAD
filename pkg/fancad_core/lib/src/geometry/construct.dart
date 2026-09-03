@@ -3083,25 +3083,6 @@ class Construct {
     );
   }
 
-  static PolylineEntity _openPolyline(
-    PolylineEntity source,
-    List<Vec2> points,
-    int id,
-  ) {
-    final created = PolylineEntity.fromPoints(
-      id: id,
-      props: source.props,
-      points: points,
-    );
-    if (source.constantWidth == 0) return created;
-    return PolylineEntity(
-      id: created.id,
-      props: created.props,
-      vertices: created.vertices,
-      constantWidth: source.constantWidth,
-    );
-  }
-
   /// Breaks [arc] at [first], or drops the span between [first] and [second].
   ///
   /// One point splits the arc in two. Two points drop the interior along the
@@ -3638,31 +3619,6 @@ class Construct {
       def.center + Vec2.polar(startAngle + newSweep, def.radius),
       0,
     );
-    return out;
-  }
-
-  /// [points] run from the fixed end toward the moving end.
-  static List<Vec2>? _trimChainToLength(List<Vec2> points, double target) {
-    final out = <Vec2>[points.first];
-    var accumulated = 0.0;
-    for (var i = 0; i < points.length - 1; i++) {
-      final from = points[i];
-      final to = points[i + 1];
-      final segment = from.distanceTo(to);
-      if (segment < 1e-12) continue;
-      if (accumulated + segment >= target - 1e-12) {
-        final t = ((target - accumulated) / segment).clamp(0.0, 1.0);
-        final end = from + (to - from) * t;
-        if (end.distanceSquaredTo(out.last) > 1e-20) out.add(end);
-        return out.length >= 2 ? out : null;
-      }
-      accumulated += segment;
-      out.add(to);
-    }
-    var direction = out.last - out[out.length - 2];
-    if (direction.lengthSquared < 1e-20) return null;
-    out[out.length - 1] =
-        out.last + direction.normalized() * (target - accumulated);
     return out;
   }
 

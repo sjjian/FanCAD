@@ -115,7 +115,7 @@ class PropertyRow extends StatelessWidget {
         : copyText != null
         ? context.l10n.click_to_copy_label(label)
         : null;
-    Widget row = ShellRow(
+    final Widget row = ShellRow(
       onTap: onTap ?? (copyText == null ? null : () => _copy(context)),
       onSecondaryTap: copyText == null ? null : () => _copy(context),
       height: FanCadTokens.rowHeight,

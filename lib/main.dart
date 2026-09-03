@@ -1,12 +1,11 @@
 import 'dart:io';
 
+import 'package:desktop_open_files/desktop_open_files.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
-
-import 'package:desktop_open_files/desktop_open_files.dart';
 
 import 'business/app.dart';
 import 'services/plugin_bootstrap.dart';

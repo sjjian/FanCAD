@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:fancad_core/fancad_core.dart';
 import 'package:test/test.dart';
 
@@ -32,10 +30,10 @@ void main() {
         Vec2(-5, 0),
         Vec2(0, -5),
       ]);
-      final stretched = circle.withGrip(1, const Vec2(8, 0)) as CircleEntity;
+      final stretched = circle.withGrip(1, const Vec2(8, 0));
       expect(stretched.center, const Vec2.zero());
       expect(stretched.radius, 8);
-      final north = circle.withGrip(2, const Vec2(0, 3)) as CircleEntity;
+      final north = circle.withGrip(2, const Vec2(0, 3));
       expect(north.radius, 3);
       final uniform = circle.transformed(const Mat3.scaling(2, 2)) as CircleEntity;
       expect(uniform.radius, 10);
@@ -47,7 +45,7 @@ void main() {
       const point = PointEntity(id: 2, position: Vec2(1, 2));
       expect(point.grips(), const [Vec2(1, 2)]);
       expect(
-        (point.withGrip(0, const Vec2(4, 5)) as PointEntity).position,
+        point.withGrip(0, const Vec2(4, 5)).position,
         const Vec2(4, 5),
       );
     });
@@ -55,17 +53,17 @@ void main() {
     test('circle, text and insert grips stay on their anchors', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
       expect(
-        (circle.withGrip(0, const Vec2(1, 1)) as CircleEntity).center,
+        circle.withGrip(0, const Vec2(1, 1)).center,
         const Vec2(1, 1),
       );
       const text = TextEntity(id: 1, position: Vec2.zero(), content: 'A');
       expect(
-        (text.withGrip(0, const Vec2(2, 3)) as TextEntity).position,
+        text.withGrip(0, const Vec2(2, 3)).position,
         const Vec2(2, 3),
       );
       const insert = InsertEntity(id: 1, blockName: 'B', position: Vec2.zero());
       expect(
-        (insert.withGrip(0, const Vec2(4, 5)) as InsertEntity).position,
+        insert.withGrip(0, const Vec2(4, 5)).position,
         const Vec2(4, 5),
       );
     });

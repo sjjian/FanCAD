@@ -216,8 +216,9 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
     final model = _model.text.trim();
     if (model.isNotEmpty && model != _ai.model) _ai.setModel(model);
     final endpoint = _endpoint.text.trim();
-    if (endpoint.isNotEmpty && endpoint != _ai.baseUrl)
+    if (endpoint.isNotEmpty && endpoint != _ai.baseUrl) {
       _ai.setBaseUrl(endpoint);
+    }
     _ai.setApiKey(_apiKey.text);
   }
 

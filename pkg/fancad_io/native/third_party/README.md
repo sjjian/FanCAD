@@ -11,5 +11,3 @@ hook compiles it as a static PIC library and links `libredwg.a` into
 ```bash
 git submodule update --init --recursive
 ```
-
-`tool/setup_libredwg.sh` is a wrapper for the same command.

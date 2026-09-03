@@ -22,10 +22,10 @@ void main() {
     expect(grips[2].distanceTo(const Vec2(0, 10)), closeTo(0, 1e-9));
     expect(grips[3], const Vec2.zero());
 
-    expect((arc.withGrip(0, const Vec2(0, 10)) as ArcEntity).startAngle, closeTo(math.pi / 2, 1e-9));
-    expect((arc.withGrip(2, const Vec2(10, 0)) as ArcEntity).endAngle, closeTo(0, 1e-9));
-    expect((arc.withGrip(1, const Vec2(20, 0)) as ArcEntity).radius, closeTo(20, 1e-9));
-    expect((arc.withGrip(3, const Vec2(1, 2)) as ArcEntity).center, const Vec2(1, 2));
+    expect(arc.withGrip(0, const Vec2(0, 10)).startAngle, closeTo(math.pi / 2, 1e-9));
+    expect(arc.withGrip(2, const Vec2(10, 0)).endAngle, closeTo(0, 1e-9));
+    expect(arc.withGrip(1, const Vec2(20, 0)).radius, closeTo(20, 1e-9));
+    expect(arc.withGrip(3, const Vec2(1, 2)).center, const Vec2(1, 2));
 
     final silent = PolylineSink();
     const ArcEntity(
@@ -72,19 +72,19 @@ void main() {
       Vec2(0, -5),
     ]);
     expect(
-      (ellipse.withGrip(0, const Vec2(2, 1)) as EllipseEntity).center,
+      ellipse.withGrip(0, const Vec2(2, 1)).center,
       const Vec2(2, 1),
     );
     expect(
-      (ellipse.withGrip(1, const Vec2(20, 0)) as EllipseEntity).majorAxis,
+      ellipse.withGrip(1, const Vec2(20, 0)).majorAxis,
       const Vec2(20, 0),
     );
     expect(
-      (ellipse.withGrip(2, const Vec2(-8, 0)) as EllipseEntity).majorAxis,
+      ellipse.withGrip(2, const Vec2(-8, 0)).majorAxis,
       const Vec2(8, 0),
     );
     expect(
-      (ellipse.withGrip(3, const Vec2(0, 10)) as EllipseEntity).ratio,
+      ellipse.withGrip(3, const Vec2(0, 10)).ratio,
       closeTo(1, 1e-9),
     );
 

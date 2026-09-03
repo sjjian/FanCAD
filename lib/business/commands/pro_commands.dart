@@ -743,7 +743,7 @@ class ProCommands {
           (offsetY - layout.plotOffsetY).abs() < 1e-12) {
         return CommandResult.ok(
           message:
-              '${layout.name} is already ${width} × ${height} mm'
+              '${layout.name} is already $width × $height mm'
               '${rotation == 0 ? '' : ', rotated $rotation°'}.',
           data: {
             'name': layout.name,
@@ -781,7 +781,7 @@ class ProCommands {
       return CommandResult(
         status: CommandStatus.ok,
         message:
-            '${layout.name} is now ${width} × ${height} mm'
+            '${layout.name} is now $width × $height mm'
             '${rotation == 0 ? '' : ', plot $rotation°'}'
             '${fit ? ', fit' : (scale == 1 ? '' : ', scale $scale')}.',
         data: {

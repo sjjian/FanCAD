@@ -237,14 +237,14 @@ class AgentLoop {
     await for (final event in provider.complete(request)) {
       if (_cancelled) break;
       switch (event) {
-        case LlmTextDelta delta:
+        case final LlmTextDelta delta:
           text += delta.text;
           convo.appendAssistantDelta(delta.text);
           onDelta?.call(delta.text);
-        case LlmReasoningDelta delta:
+        case final LlmReasoningDelta delta:
           convo.appendReasoningDelta(delta.text);
           onDelta?.call(delta.text);
-        case LlmToolCalls tools:
+        case final LlmToolCalls tools:
           calls = tools.calls;
         case LlmFinished(:final finishReason, usage: final seen):
           finish = finishReason;

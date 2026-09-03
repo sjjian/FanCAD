@@ -3,7 +3,7 @@ import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class RecordingDelegate implements PluginHostDelegate {
-  RecordingDelegate({DocumentSession? session}) : session = session;
+  RecordingDelegate({this.session});
 
   @override
   DocumentSession? session;
