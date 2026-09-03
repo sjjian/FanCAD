@@ -175,6 +175,52 @@ void main() {
     );
   });
 
+  test('a ladder of close parallels stays a band', () {
+    // The rungs of a hatch, 93 of them one drawing unit apart, seen at a zoom
+    // where the gap is 0.8 physical pixels. Merging is pairwise: each rung may
+    // join a neighbour's row, but the chain must break rather than dragging
+    // every rung onto the first one's row and blanking the 74 pixel band the
+    // hatch covers.
+    const count = 93;
+    const gap = 0.8;
+    final document = CadDocument();
+    for (var i = 0; i < count; i++) {
+      document.addEntity(
+        LineEntity(
+          id: i,
+          props: const EntityProps(color: CadColor.indexed(3)),
+          start: Vec2(-10, i.toDouble()),
+          end: Vec2(10, i.toDouble()),
+        ),
+      );
+    }
+
+    final scene = SceneBuilder(palette: AciPalette.dark).build(
+      document,
+      CadViewport(
+        center: Vec2(0, count / 2),
+        scale: gap,
+        size: const Size(200, 200),
+        devicePixelRatio: 1,
+      ).pixelLocked(),
+    );
+
+    final rows = <double>{};
+    for (final batch in scene.lineBatches) {
+      final xy = batch.vertices.view;
+      for (var i = 1; i < xy.length; i += 2) {
+        rows.add(xy[i]);
+      }
+    }
+    final sorted = rows.toList()..sort();
+    final span = sorted.last - sorted.first;
+
+    // Every rung may pair up with one neighbour, so half of them is the floor.
+    expect(rows.length, greaterThanOrEqualTo(count ~/ 2));
+    // And the band still covers the height it did before aligning.
+    expect(span, closeTo((count - 1) * gap, 2));
+  });
+
   test('a shallow run is left where the projection put it', () {
     // Aligning a run this far off the axis is what makes a staircase, so the
     // aligner declines and both endpoints keep their projected heights.
