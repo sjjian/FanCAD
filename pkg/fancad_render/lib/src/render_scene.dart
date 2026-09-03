@@ -1,4 +1,4 @@
-import 'dart:ui' show Offset;
+import 'dart:ui' show Offset, Rect;
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:meta/meta.dart';
@@ -152,6 +152,26 @@ class RenderScene {
       other.size == viewport.size &&
       other.devicePixelRatio == viewport.devicePixelRatio &&
       coverage.containsBox(other.visibleBounds);
+
+  /// [coverage] in the logical pixels of [viewport].
+  ///
+  /// The picture recorder culls to this so a pan that stays inside the
+  /// overscan still has pixels to reveal. Clipping the recording to the
+  /// widget instead left a blank rectangle the size of the drag: the
+  /// batches held the extra geometry, but the picture had already thrown
+  /// it away.
+  Rect get coverageOnScreen {
+    final size = viewport.size;
+    final view = Offset.zero & size;
+    if (size.width <= 0 || size.height <= 0 || coverage.isEmpty) return view;
+    final topLeft = viewport.toScreen(Vec2(coverage.minX, coverage.maxY));
+    final bottomRight = viewport.toScreen(Vec2(coverage.maxX, coverage.minY));
+    return view
+        .expandToInclude(
+          Rect.fromLTRB(topLeft.dx, topLeft.dy, bottomRight.dx, bottomRight.dy),
+        )
+        .inflate(1);
+  }
 
   /// Whether this scene stands in for [other] exactly, by translating it a
   /// whole number of physical pixels.
