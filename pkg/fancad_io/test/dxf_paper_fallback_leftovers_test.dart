@@ -1,4 +1,3 @@
-import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
 import 'package:test/test.dart';
 

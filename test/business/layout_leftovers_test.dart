@@ -39,7 +39,7 @@ void main() {
       expect(result.status, CommandStatus.ok);
       expect(result.message, '1 layout(s).');
 
-      final layouts = (result.data!['layouts']! as List).cast<Map>();
+      final layouts = (result.data!['layouts']! as List).cast<Map<String, Object?>>();
       expect(layouts, hasLength(1));
       expect(layouts.single['name'], 'Model');
       expect(layouts.single['model'], isTrue);
@@ -80,7 +80,7 @@ void main() {
       expect(result.status, CommandStatus.ok);
       expect(result.message, '2 layout(s).');
 
-      final layouts = (result.data!['layouts']! as List).cast<Map>();
+      final layouts = (result.data!['layouts']! as List).cast<Map<String, Object?>>();
       final model = layouts.firstWhere((layout) => layout['name'] == 'Model');
       final paper = layouts.firstWhere((layout) => layout['name'] == 'Layout1');
 

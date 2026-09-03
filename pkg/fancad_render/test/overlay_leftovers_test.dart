@@ -31,7 +31,7 @@ void main() {
 
   test('overlay shapes, grips and snap glyphs still paint', () {
     expect(const OverlayTheme().crosshairSize, 14);
-    expect(const OverlayTheme().preview.value, 0xFFE0E0E0);
+    expect(const OverlayTheme().preview.toARGB32(), 0xFFE0E0E0);
 
     final document = CadDocument()
       ..addEntity(

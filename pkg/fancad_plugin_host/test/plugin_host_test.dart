@@ -14,6 +14,7 @@ class TestDelegate implements PluginHostDelegate {
   }
 
   final CommandRegistry registry;
+  @override
   late DocumentSession session;
 
   final List<String> messages = [];

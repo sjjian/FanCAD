@@ -21,7 +21,7 @@ class AssistantMarkdown extends StatelessWidget {
       selectable: true,
       softLineBreak: true,
       styleSheet: _sheet(tokens),
-      imageBuilder: (_, _, _) => const SizedBox.shrink(),
+      sizedImageBuilder: (_) => const SizedBox.shrink(),
       onTapLink: (_, _, _) {},
     );
   }

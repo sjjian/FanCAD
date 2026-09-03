@@ -84,9 +84,9 @@ void main() {
     final result = await run('query.viewport');
     expect(result.status, CommandStatus.ok, reason: result.message);
     expect(result.data!['scale'], isA<num>());
-    expect(result.data!['center'], isA<List>());
-    expect(result.data!['visible'], isA<List>());
-    expect((result.data!['visible']! as List), hasLength(4));
+    expect(result.data!['center'], isA<List<Object?>>());
+    expect(result.data!['visible'], isA<List<Object?>>());
+    expect(result.data!['visible']! as List, hasLength(4));
   });
 
   test(
@@ -102,7 +102,7 @@ void main() {
 
       final result = await run('query.layers');
       expect(result.status, CommandStatus.ok);
-      final layers = (result.data!['layers']! as List).cast<Map>();
+      final layers = (result.data!['layers']! as List).cast<Map<String, Object?>>();
       final zero = layers.firstWhere((layer) => layer['name'] == '0');
       expect(zero['current'], isTrue);
       expect(zero['count'], 1);

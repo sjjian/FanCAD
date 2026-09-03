@@ -4,6 +4,7 @@ analyzer:
   exclude:
     - '**/*.g.dart'
     - '**/*.freezed.dart'
+    - 'debug/**'
   language:
     # A CAD kernel does arithmetic on values that came from a binary file and
     # from JavaScript. Implicit casts and raw types are exactly how a bad

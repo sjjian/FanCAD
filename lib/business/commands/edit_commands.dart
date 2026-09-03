@@ -1932,7 +1932,7 @@ class EditCommands {
       }
       final rotation = (context.args.number('rotation') ?? 0) * math.pi / 180;
       var points = [
-        if (context.args.point('at') case final at?) at,
+        ?context.args.point('at'),
         ..._pointList(context.args['points']),
       ];
       if (points.isEmpty) {
@@ -2165,7 +2165,7 @@ class EditCommands {
       context.selection.replace(committed.change.added);
       return CommandResult(
         status: CommandStatus.ok,
-        message: 'MInsert "${block.name}": ${columns}×$rows references.',
+        message: 'MInsert "${block.name}": $columns×$rows references.',
         data: {'block': block.name, 'ids': committed.change.added},
         transaction: committed,
       );

@@ -1,5 +1,4 @@
 import 'package:fancad/fancad.dart';
-import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
 import 'package:flutter/material.dart';

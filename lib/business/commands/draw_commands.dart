@@ -2539,7 +2539,7 @@ class DrawCommands {
     final firstId = context.args.integer('firstLine');
     final secondId = context.args.integer('secondLine');
     final int id1;
-    final int? id2;
+    final int id2;
     if (firstId != null && secondId != null) {
       id1 = firstId;
       id2 = secondId;
@@ -2563,9 +2563,6 @@ class DrawCommands {
       );
       if (secondPick.isEmpty) return const CommandResult.cancelled();
       id2 = secondPick.first;
-    }
-    if (id2 == null) {
-      return const CommandResult.failed('Select two lines or one arc.');
     }
     final first = context.document.entity(id1);
     final second = context.document.entity(id2);
@@ -2696,7 +2693,7 @@ class DrawCommands {
 
       final supplied = [
         ..._pointList(context.args['points']),
-        if (context.args.point('next') case final next?) next,
+        ?context.args.point('next'),
       ];
       final layer = EntityProps(layer: context.document.currentLayer);
       if (supplied.isNotEmpty) {
@@ -2809,7 +2806,7 @@ class DrawCommands {
       }
       final supplied = [
         ..._pointList(context.args['points']),
-        if (context.args.point('next') case final next?) next,
+        ?context.args.point('next'),
       ];
       final layer = EntityProps(layer: context.document.currentLayer);
       if (supplied.isNotEmpty) {

@@ -215,8 +215,8 @@ LlmRequest _userRequest() =>
 String _choiceJson({String? content, String? finishReason}) => jsonEncode({
   'choices': [
     {
-      if (finishReason != null) 'finish_reason': finishReason,
-      'message': {if (content != null) 'content': content},
+      'finish_reason': ?finishReason,
+      'message': {'content': ?content},
     },
   ],
 });

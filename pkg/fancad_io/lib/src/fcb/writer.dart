@@ -220,10 +220,8 @@ class FcbWriter {
       FcbSection.layouts: _encodeLayouts(document, blockIndex),
       FcbSection.viewports: _encodeViewports(document),
       FcbSection.headerVariables: _encodeHeaderVariables(document),
-      if (_encodePlotWindows(document) case final plotWindows?)
-        FcbSection.plotWindows: plotWindows,
-      if (_encodePlotPlacement(document) case final plotPlacement?)
-        FcbSection.plotPlacement: plotPlacement,
+      FcbSection.plotWindows: ?_encodePlotWindows(document),
+      FcbSection.plotPlacement: ?_encodePlotPlacement(document),
     };
 
     // Pools are encoded last: the entity and table encoders above are what
