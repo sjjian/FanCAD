@@ -50,7 +50,7 @@ class ScenePainter {
   /// identical lines from any layer stay in one batch.
   static double _hairline(double width) => width <= 0 ? 1 : width;
 
-  /// Draws [scene], optionally displaced by [shift] physical pixels.
+  /// Draws [scene].
   ///
   /// Anti-aliasing is on for every stroke and never toggled. An axis-aligned
   /// hairline was aligned onto a physical pixel centre during the build, so it
@@ -58,18 +58,17 @@ class ScenePainter {
   /// a sloped line gets the soft edge that keeps it off the staircase. The old
   /// pairing of "align and turn AA off" made zoom pop between solid and grey
   /// green as segments crossed the threshold.
-  void paint(ui.Canvas canvas, RenderScene scene, {Offset shift = Offset.zero}) {
+  void paint(ui.Canvas canvas, RenderScene scene) {
     final dpr = _ratio(scene.viewport.devicePixelRatio);
     canvas.save();
     // Batches are in physical pixels. Undoing the ratio once, here, is what
     // lets a hairline be one physical pixel and an alignment be a physical
     // pixel centre without every call site repeating the conversion.
     canvas.scale(1 / dpr);
-    if (shift != Offset.zero) canvas.translate(shift.dx, shift.dy);
 
     final extent = scene.viewport.size * dpr;
     for (final pass in scene.passes) {
-      _paintPass(canvas, pass, shift, dpr, extent);
+      _paintPass(canvas, pass, dpr, extent);
     }
 
     canvas.restore();
@@ -83,7 +82,6 @@ class ScenePainter {
   void _paintPass(
     ui.Canvas canvas,
     RenderPass pass,
-    Offset shift,
     double dpr,
     Size extent,
   ) {
@@ -119,7 +117,7 @@ class ScenePainter {
     }
 
     for (final item in pass.texts) {
-      if (_isFarOffscreen(item.origin + shift, extent)) continue;
+      if (_isFarOffscreen(item.origin, extent)) continue;
       _paintText(canvas, item, dpr);
     }
   }
@@ -245,11 +243,11 @@ class ScenePainter {
   /// off-screen cannot expand a [RepaintBoundary] over the application chrome.
   /// The cull box is in logical pixels because [paint] undoes the device ratio
   /// before drawing anything.
-  ui.Picture record(RenderScene scene, {Offset shift = Offset.zero}) {
+  ui.Picture record(RenderScene scene) {
     final recorder = ui.PictureRecorder();
     final size = scene.viewport.size;
     final cull = size.width > 0 && size.height > 0 ? Offset.zero & size : null;
-    paint(ui.Canvas(recorder, cull), scene, shift: shift);
+    paint(ui.Canvas(recorder, cull), scene);
     return recorder.endRecording();
   }
 }

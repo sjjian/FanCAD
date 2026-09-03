@@ -102,20 +102,28 @@ class Raster {
 
 /// Rasterises [scene] the way a display would: one raster pixel per physical
 /// pixel.
+Future<Raster> rasterise(RenderScene scene, {ScenePainter? painter}) =>
+    rasterFrom(
+      scene.viewport,
+      (canvas) => (painter ?? ScenePainter()).paint(canvas, scene),
+    );
+
+/// Rasterises whatever [draw] puts on a canvas covering [viewport], one raster
+/// pixel per physical pixel.
 ///
-/// [ScenePainter] draws in physical pixels and undoes the device ratio itself,
-/// so scaling the recording canvas back up by the ratio leaves a net transform
-/// of one and puts a physical pixel on a raster pixel. Without that step a
+/// The canvas is in logical pixels, which is the space both [ScenePainter] and
+/// [DrawingCache] draw in — the painter undoes the device ratio itself. Scaling
+/// the recording canvas up by the ratio therefore leaves a net transform of one
+/// and puts a physical pixel on a raster pixel. Without that step a
 /// device-ratio-2 test would be measuring logical pixels and could not tell a
 /// one-pixel hairline from a two-pixel one — the very thing being tested.
-Future<Raster> rasterise(
-  RenderScene scene, {
-  Offset shift = Offset.zero,
-  ScenePainter? painter,
-}) async {
-  final dpr = scene.viewport.devicePixelRatio;
-  final width = (scene.viewport.size.width * dpr).round();
-  final height = (scene.viewport.size.height * dpr).round();
+Future<Raster> rasterFrom(
+  CadViewport viewport,
+  void Function(Canvas canvas) draw,
+) async {
+  final dpr = viewport.devicePixelRatio;
+  final width = (viewport.size.width * dpr).round();
+  final height = (viewport.size.height * dpr).round();
 
   final recorder = PictureRecorder();
   // The cull box is in the recording canvas's own space, which the scale below
@@ -125,7 +133,7 @@ Future<Raster> rasterise(
     Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
   );
   canvas.scale(dpr);
-  (painter ?? ScenePainter()).paint(canvas, scene, shift: shift);
+  draw(canvas);
   final picture = recorder.endRecording();
 
   final image = await picture.toImage(width, height);
