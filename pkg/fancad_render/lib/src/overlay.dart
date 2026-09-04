@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 
 import 'device_space.dart';
 import 'picking.dart';
+import 'tessellation_cache.dart';
 import 'viewport.dart';
 
 /// Everything drawn on top of the drawing: selection, grips, previews, snaps.
@@ -81,7 +82,6 @@ class OverlayModel {
 class OverlayTheme {
   const OverlayTheme({
     this.selection = const ui.Color(0xFF3B9DFF),
-    this.highlight = const ui.Color(0xFF7CD4FF),
     this.grip = const ui.Color(0xFF3B9DFF),
     this.hotGrip = const ui.Color(0xFFFF9F3B),
     this.snap = const ui.Color(0xFFFFD166),
@@ -96,7 +96,6 @@ class OverlayTheme {
   });
 
   final ui.Color selection;
-  final ui.Color highlight;
   final ui.Color grip;
   final ui.Color hotGrip;
   final ui.Color snap;
@@ -121,7 +120,6 @@ class OverlayTheme {
     final dark = canvas.computeLuminance() < 0.5;
     return OverlayTheme(
       selection: selection,
-      highlight: highlight,
       grip: grip,
       hotGrip: hotGrip,
       snap: snap,
@@ -149,9 +147,10 @@ class OverlayTheme {
 /// physical pixel; the sizes a person chose by eye are scaled up from logical
 /// pixels so they look the same on any display.
 class OverlayPainter {
-  OverlayPainter({this.theme = const OverlayTheme()});
+  OverlayPainter({this.theme = const OverlayTheme(), this.cache});
 
   final OverlayTheme theme;
+  final TessellationCache? cache;
 
   final Paint _stroke = Paint()
     ..style = PaintingStyle.stroke
@@ -251,6 +250,7 @@ class OverlayPainter {
       sink,
       tolerance: viewport.tolerance,
       visible: viewport.visibleBounds,
+      cache: cache,
     );
     if (sink.length == 0) return;
     final solid = Float32List.sublistView(sink.buffer, 0, sink.length);

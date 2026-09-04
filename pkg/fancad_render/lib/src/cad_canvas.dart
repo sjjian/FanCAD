@@ -32,10 +32,11 @@ abstract class CanvasInputHandler {
 /// The drawing viewport.
 ///
 /// Two painted layers with different repaint rates. The lower one holds the
-/// drawing and only rebuilds when the document or the camera changes; the upper
-/// one holds selection, grips and previews and repaints on every mouse move.
-/// Keeping them apart is what makes a rubber-band line over a 200,000 entity
-/// drawing cost the same as over an empty one.
+/// drawing: a pan or an in-flight zoom replays the last recording, and a
+/// settled camera rebuilds and realigns. The upper one holds selection, grips
+/// and previews and repaints on every mouse move. Keeping them apart is what
+/// makes a rubber-band line over a 200,000 entity drawing cost the same as
+/// over an empty one.
 class CadCanvas extends StatefulWidget {
   const CadCanvas({
     required this.document,
@@ -50,6 +51,7 @@ class CadCanvas extends StatefulWidget {
     this.onDoubleClick,
     this.showGrid = true,
     this.onlyLayers,
+    this.tessellation,
     super.key,
   });
 
@@ -80,6 +82,10 @@ class CadCanvas extends StatefulWidget {
   /// When set, only these layers are drawn. Used by the layer isolation command.
   final Set<String>? onlyLayers;
 
+  /// Shared with tools and overlay so hover/pick replay the drawing's flatten.
+  /// The canvas creates its own when omitted.
+  final TessellationCache? tessellation;
+
   @override
   State<CadCanvas> createState() => CadCanvasState();
 }
@@ -87,8 +93,9 @@ class CadCanvas extends StatefulWidget {
 class CadCanvasState extends State<CadCanvas> {
   late AciPalette _palette;
   late SceneBuilder _sceneBuilder;
-  final TessellationCache _tessellation = TessellationCache();
-  final ScenePainter _scenePainter = ScenePainter(paragraphs: ParagraphCache());
+  late TessellationCache _tessellation;
+  late final ParagraphCache _paragraphs;
+  late final ScenePainter _scenePainter;
   late OverlayPainter _overlayPainter;
 
   final DrawingCache _cache = DrawingCache();
@@ -124,15 +131,23 @@ class CadCanvasState extends State<CadCanvas> {
   @override
   void initState() {
     super.initState();
+    _tessellation = widget.tessellation ?? TessellationCache();
+    _paragraphs = ParagraphCache();
+    _scenePainter = ScenePainter(paragraphs: _paragraphs);
     _bindAppearance();
     widget.controller.addListener(_onViewportChanged);
   }
 
   void _bindAppearance() {
     _palette = widget.palette ?? AciPalette(background: widget.background);
-    _sceneBuilder = SceneBuilder(palette: _palette, cache: _tessellation);
+    _sceneBuilder = SceneBuilder(
+      palette: _palette,
+      cache: _tessellation,
+      paragraphs: _paragraphs,
+    );
     _overlayPainter = OverlayPainter(
       theme: widget.overlayTheme.withCanvas(widget.background),
+      cache: _tessellation,
     );
   }
 
@@ -144,8 +159,14 @@ class CadCanvasState extends State<CadCanvas> {
       widget.controller.addListener(_onViewportChanged);
     }
     if (oldWidget.document != widget.document) {
-      _tessellation.clear();
+      if (widget.tessellation != null) {
+        _tessellation = widget.tessellation!;
+      } else {
+        _tessellation.clear();
+      }
+      _paragraphs.clear();
       _cache.invalidate();
+      _bindAppearance();
       _paintEpoch++;
       _seenVersion = -1;
     }
@@ -166,6 +187,7 @@ class CadCanvasState extends State<CadCanvas> {
   void dispose() {
     widget.controller.removeListener(_onViewportChanged);
     _cache.dispose();
+    _paragraphs.clear();
     super.dispose();
   }
 
@@ -191,8 +213,15 @@ class CadCanvasState extends State<CadCanvas> {
   /// Drops cached geometry for entities that changed. Called by the shell when
   /// the document reports a change.
   void applyDocumentChange(DocumentChange change) {
+    _dropGeometry(change);
+    _seenVersion = widget.document.version;
+    if (mounted) setState(() {});
+  }
+
+  void _dropGeometry(DocumentChange change) {
     if (change.requiresFullRegeneration) {
       _tessellation.clear();
+      _paragraphs.clear();
     } else {
       _tessellation.invalidate([
         ...change.modified,
@@ -202,7 +231,6 @@ class CadCanvasState extends State<CadCanvas> {
     }
     _cache.invalidate();
     _paintEpoch++;
-    if (mounted) setState(() {});
   }
 
   Vec2 _toWorld(Offset local) => widget.controller.viewport.toWorld(local);
@@ -212,6 +240,9 @@ class CadCanvasState extends State<CadCanvas> {
     final version = widget.document.version;
     if (version != _seenVersion) {
       if (_seenVersion != -1) {
+        // A version bump that did not go through [applyDocumentChange].
+        _tessellation.clear();
+        _paragraphs.clear();
         _cache.invalidate();
         _paintEpoch++;
       }

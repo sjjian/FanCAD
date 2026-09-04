@@ -10,11 +10,6 @@ import 'viewport.dart';
 /// build time and both cameras are locked to whole physical pixels: a pan is
 /// then a whole-pixel translation, and replaying the recording is identical to
 /// rebuilding it rather than a blurred approximation.
-///
-/// The previous version of this cache had to be deleted because the painter
-/// snapped hairlines onto pixel centres as it drew, so a fractional translate
-/// of the recording put them straight back onto a pixel seam. Neither half of
-/// that is true any more.
 class DrawingCache {
   /// How far a zoom may run on the recording before the scene is rebuilt.
   ///

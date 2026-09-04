@@ -166,7 +166,10 @@ class ParagraphCache {
     return paragraph;
   }
 
-  void clear() => _entries.clear();
+  void clear() {
+    _entries.clear();
+    _capRatios.clear();
+  }
 }
 
 class _Key {

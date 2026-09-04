@@ -11,9 +11,9 @@ import 'text_cache.dart';
 
 /// Paints a [RenderScene] onto a canvas.
 ///
-/// Separate from any widget so the same scene can be rasterised into a
-/// `ui.Picture` for the static layer, drawn directly for the interactive
-/// overlay, or replayed at print resolution.
+/// Separate from any widget so the same scene can be recorded into a
+/// `ui.Picture` for the drawing layer. Overlay glyphs use a separate painter;
+/// plots go through `fancad_core`.
 ///
 /// Deliberately dumb: every alignment decision was already made and baked into
 /// the vertex buffers by [SceneBuilder]. Deciding anything here would mean
@@ -215,12 +215,11 @@ class ScenePainter {
     canvas.restore();
   }
 
-  /// Draws the outline and file name of an unloaded raster reference.
+  /// Draws the outline of an unloaded raster reference.
   ///
-  /// Loading the pixels is asynchronous and belongs to the image cache, which
-  /// arrives with the external reference work. Until then an image must still
-  /// occupy its space visibly, because a missing underlay that leaves no trace
-  /// is indistinguishable from a drawing error.
+  /// Pixel decode is not wired yet. Until it is, an IMAGE still occupies its
+  /// space visibly, because a missing underlay that leaves no trace is
+  /// indistinguishable from a drawing error.
   void _paintImagePlaceholder(ui.Canvas canvas, ImageItem item, double dpr) {
     final path = ui.Path()
       ..moveTo(item.origin.dx, item.origin.dy)

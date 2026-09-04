@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-import 'package:fancad_render/fancad_render.dart';
+import 'package:fancad_render/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

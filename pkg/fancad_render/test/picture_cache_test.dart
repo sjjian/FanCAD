@@ -1,13 +1,11 @@
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_render/fancad_render.dart';
+import 'package:fancad_render/testing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// "Zoom always redraws" from RENDER.md, held to a count.
-///
-/// The cost of a camera move must not depend on the size of the drawing, which
-/// means a gesture in flight cannot call [SceneBuilder.build] at all. Counting
-/// builds is the direct measurement; `onSceneBuilt` fires once per build.
+/// "Zoom always redraws" is held to a count: a gesture in flight cannot call
+/// [SceneBuilder.build] at all. Counting builds is the direct measurement;
+/// `onSceneBuilt` fires once per build.
 void main() {
   late ViewportController controller;
   late CadDocument document;

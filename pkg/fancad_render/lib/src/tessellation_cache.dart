@@ -109,17 +109,42 @@ class RecordingSink implements GeometrySink {
   }
 }
 
-/// Caches flattened geometry, keyed by entity and level of detail.
+/// Replays cached world primitives onto any [GeometrySink].
+void replayCachedPrimitives(
+  GeometrySink sink,
+  List<CachedPrimitive> primitives,
+) {
+  for (final primitive in primitives) {
+    switch (primitive.kind) {
+      case PrimitiveKind.polyline:
+        sink.polyline(primitive.xy, primitive.style, closed: primitive.closed);
+      case PrimitiveKind.fill:
+        sink.fill(primitive.xy, primitive.style, holes: primitive.holes);
+      case PrimitiveKind.point:
+        sink.point(primitive.xy[0], primitive.xy[1], primitive.style);
+      case PrimitiveKind.text:
+        sink.text(primitive.text!, primitive.style);
+      case PrimitiveKind.image:
+        sink.image(primitive.image!, primitive.style);
+    }
+  }
+}
+
+/// Caches flattened geometry, keyed by entity, tessellation tolerance and
+/// collapse size.
 ///
-/// Tessellating a spline or recursing into a nested block reference is far more
-/// expensive than the arithmetic to draw the result, and while the user pans,
-/// the same entities are re-emitted every frame at the same zoom. Caching that
-/// work is the difference between a smooth pan and a stuttering one.
+/// Flattening a spline or walking a nested block is far more expensive than
+/// drawing the result. A pan never comes through here: it replays a recorded
+/// picture. This cache pays off on a settled rebuild, and on hover / pick /
+/// selection outlines that re-emit the same entities the drawing already
+/// flattened.
 ///
-/// Two decisions keep the cache from becoming a memory leak. Tolerance is
-/// bucketed to powers of two, so a continuous zoom produces a bounded number
-/// of variants rather than one per frame. And cheap entities are never cached
-/// at all: a two-point line costs less to re-emit than to look up.
+/// Two decisions keep the cache from becoming a memory leak. Tolerance and
+/// [EmitContext.minExtent] are bucketed to powers of two, so a continuous zoom
+/// produces a bounded number of variants rather than one per frame. Cheap
+/// entities are never cached at all: a two-point line costs less to re-emit
+/// than to look up. Hover uses `minExtent` 0 so it does not replay the
+/// drawing's collapsed insert.
 class TessellationCache {
   TessellationCache({this.budget = 8 * 1000 * 1000});
 
@@ -170,13 +195,27 @@ class TessellationCache {
     return (math.log(tolerance) / math.ln2).floor();
   }
 
-  /// Geometry for [entity] at [bucket], emitting it through [emit] on a miss.
+  /// Collapse-size band for [minExtent]. Zero (and non-finite) share one slot
+  /// so hover outlines that keep every member stay distinct from a zoomed-out
+  /// drawing that collapsed the same insert to a point.
+  static int extentBucket(double minExtent) {
+    if (!minExtent.isFinite || minExtent <= 0) return 0;
+    return (math.log(minExtent) / math.ln2).floor();
+  }
+
+  /// Geometry for [entity] at [bucket] and [minExtent], emitting it through
+  /// [emit] on a miss.
   List<CachedPrimitive> obtain(
     CadEntity entity,
     int bucket,
-    void Function(RecordingSink sink) emit,
-  ) {
-    final key = _CacheKey(entity.id, bucket);
+    void Function(RecordingSink sink) emit, {
+    double minExtent = 0,
+  }) {
+    final key = _CacheKey(
+      entity.id,
+      bucket,
+      extentBucket(minExtent),
+    );
     final existing = _entries.remove(key);
     if (existing != null) {
       // Re-inserting moves the entry to the most-recently-used end.
@@ -240,17 +279,19 @@ class TessellationCache {
 /// a document-wide version would throw away every unrelated entry on every
 /// edit.
 class _CacheKey {
-  const _CacheKey(this.entityId, this.bucket);
+  const _CacheKey(this.entityId, this.bucket, this.extentBucket);
 
   final int entityId;
   final int bucket;
+  final int extentBucket;
 
   @override
   bool operator ==(Object other) =>
       other is _CacheKey &&
       other.entityId == entityId &&
-      other.bucket == bucket;
+      other.bucket == bucket &&
+      other.extentBucket == extentBucket;
 
   @override
-  int get hashCode => Object.hash(entityId, bucket);
+  int get hashCode => Object.hash(entityId, bucket, extentBucket);
 }

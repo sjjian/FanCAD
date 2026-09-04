@@ -22,6 +22,7 @@ class DocumentTab extends ChangeNotifier {
       session: session,
       viewportProvider: () => viewport.viewport,
       snapEngine: snapEngine,
+      tessellation: tessellation,
       onWrite: _history.add,
       onPrompt: (message) {
         _prompt = message;
@@ -41,6 +42,9 @@ class DocumentTab extends ChangeNotifier {
   final ViewportController viewport;
   late final ToolController tools;
 
+  /// Flattened geometry shared by the canvas, hover pick and selection outlines.
+  final TessellationCache tessellation = TessellationCache();
+
   /// The file this tab was opened from, if any.
   String? filePath;
 
@@ -55,9 +59,9 @@ class DocumentTab extends ChangeNotifier {
 
   /// Set by the shell so a document change can drop the right cached geometry.
   ///
-  /// The canvas owns its tessellation cache, so the tab cannot invalidate it
-  /// directly; this hook is how the two are connected without the tab holding a
-  /// reference to a widget.
+  /// Picture recordings live on the canvas widget; tessellation lives on the
+  /// tab so hover pick can share it. This hook is how a session change reaches
+  /// the widget's picture cache without the tab holding a State.
   void Function(DocumentChange change)? onGeometryInvalidated;
 
   /// The most recent scene, for the canvas zoom readout's draw-call tooltip.

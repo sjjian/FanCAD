@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_render/fancad_render.dart';
+import 'package:fancad_render/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -77,4 +77,21 @@ void main() {
       expect(cache.toString(), contains('0 entries'));
     },
   );
+
+  test('hover minExtent does not reuse a collapsed drawing flatten', () {
+    final cache = TessellationCache();
+    var emits = 0;
+    void emit(RecordingSink sink) {
+      emits++;
+      sink.polyline(Float64List.fromList([0, 0, 1, 0]), style);
+    }
+
+    cache.obtain(circle, 0, emit, minExtent: 10);
+    cache.obtain(circle, 0, emit, minExtent: 0);
+    expect(emits, 2);
+    cache.obtain(circle, 0, emit, minExtent: 10);
+    cache.obtain(circle, 0, emit, minExtent: 0);
+    expect(emits, 2);
+    expect(cache.hits, 2);
+  });
 }
