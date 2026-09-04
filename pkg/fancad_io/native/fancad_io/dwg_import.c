@@ -1642,8 +1642,9 @@ static uint32_t extract_acis_wires(coords *g, box *bounds, int64_t *runs,
 }
 
 /* SAB v2 ("ACIS BinaryFile") has no isolines on this R2004 file. LibreDWG
- * can rewrite it as SAT v1 text in encr_sat_data[]; `point … x y z` is then
- * enough to keep a REGION on the canvas. */
+ * can rewrite it as SAT v1 text in encr_sat_data[]. Walk loop/coedge/edge
+ * so the REGION keeps its profile; joining `point` records in file order
+ * scribbled across the same box. */
 static char *solid_sat_text(Dwg_Entity__3DSOLID *solid) {
   size_t total = 0;
   BITCODE_BL i;
@@ -1680,13 +1681,205 @@ static char *solid_sat_text(Dwg_Entity__3DSOLID *solid) {
   return out;
 }
 
-static uint32_t extract_sat_points(coords *g, box *bounds, int64_t *runs,
-                                   uint32_t run_cap,
-                                   Dwg_Entity__3DSOLID *solid) {
+typedef struct {
+  char kind; /* L loop, C coedge, E edge, V vertex, P point, O ellipse */
+  uint8_t nrefs;
+  uint8_t nnums;
+  uint8_t reversed;
+  int32_t refs[12];
+  double nums[16];
+} sat_rec;
+
+static int sat_is_ws(char c) {
+  return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
+
+static char sat_kind(const char *name) {
+  if (strcmp(name, "loop") == 0) return 'L';
+  if (strcmp(name, "coedge") == 0) return 'C';
+  if (strcmp(name, "edge") == 0) return 'E';
+  if (strcmp(name, "vertex") == 0) return 'V';
+  if (strcmp(name, "point") == 0) return 'P';
+  if (strcmp(name, "ellipse-curve") == 0) return 'O';
+  return 'X';
+}
+
+static int sat_near(double x0, double y0, double x1, double y1) {
+  double dx = x0 - x1;
+  double dy = y0 - y1;
+  return dx * dx + dy * dy < 1e-8;
+}
+
+static int sat_vertex_xy(const sat_rec *recs, uint32_t nrec, int32_t vi,
+                         double *x, double *y) {
+  int32_t pi;
+  if (vi < 0 || (uint32_t)vi >= nrec || recs[vi].kind != 'V' ||
+      recs[vi].nrefs == 0) {
+    return 0;
+  }
+  pi = recs[vi].refs[recs[vi].nrefs - 1];
+  if (pi < 0 || (uint32_t)pi >= nrec || recs[pi].kind != 'P' ||
+      recs[pi].nnums < 3) {
+    return 0;
+  }
+  *x = recs[pi].nums[recs[pi].nnums - 3];
+  *y = recs[pi].nums[recs[pi].nnums - 2];
+  return isfinite(*x) && isfinite(*y);
+}
+
+static void sat_push_xy(coords *g, box *bounds, uint32_t *count, double x,
+                        double y) {
+  if (*count > 0 &&
+      sat_near(g->data[g->length - 2], g->data[g->length - 1], x, y)) {
+    return;
+  }
+  coords_push2(g, x, y);
+  box_add(bounds, x, y);
+  (*count)++;
+}
+
+static void sat_emit_edge(coords *g, box *bounds, uint32_t *count,
+                          const sat_rec *recs, uint32_t nrec, int32_t ei,
+                          int reversed) {
+  const sat_rec *edge;
+  int32_t start_v;
+  int32_t end_v;
+  int32_t curve;
+  double sx, sy, ex, ey, a0, a1;
+  if (ei < 0 || (uint32_t)ei >= nrec || recs[ei].kind != 'E' ||
+      recs[ei].nrefs < 7 || recs[ei].nnums < 2) {
+    return;
+  }
+  edge = &recs[ei];
+  start_v = edge->refs[3];
+  end_v = edge->refs[4];
+  curve = edge->refs[6];
+  a0 = edge->nums[0];
+  a1 = edge->nums[1];
+  if (reversed) {
+    int32_t swap_v = start_v;
+    double swap_a = a0;
+    start_v = end_v;
+    end_v = swap_v;
+    a0 = a1;
+    a1 = swap_a;
+  }
+  if (!sat_vertex_xy(recs, nrec, start_v, &sx, &sy)) return;
+  if (!sat_vertex_xy(recs, nrec, end_v, &ex, &ey)) return;
+  sat_push_xy(g, bounds, count, sx, sy);
+  if (curve >= 0 && (uint32_t)curve < nrec && recs[curve].kind == 'O' &&
+      recs[curve].nnums >= 10) {
+    const sat_rec *c = &recs[curve];
+    double cx = c->nums[0];
+    double cy = c->nums[1];
+    double nx = c->nums[3];
+    double ny = c->nums[4];
+    double nz = c->nums[5];
+    double mx = c->nums[6];
+    double my = c->nums[7];
+    double mz = c->nums[8];
+    double ratio = c->nums[9];
+    double bx = ny * mz - nz * my;
+    double by = nz * mx - nx * mz;
+    double bz = nx * my - ny * mx;
+    double mlen = sqrt(mx * mx + my * my + mz * mz);
+    double clen = sqrt(bx * bx + by * by + bz * bz);
+    double sweep = a1 - a0;
+    int steps;
+    int i;
+    if (clen > 0.0) {
+      double scale = (mlen * ratio) / clen;
+      bx *= scale;
+      by *= scale;
+    }
+    steps = (int)(fabs(sweep) / 0.39269908169872414); /* π/8 */
+    if (steps < 4) steps = 4;
+    if (steps > 64) steps = 64;
+    for (i = 1; i < steps; i++) {
+      double t = a0 + sweep * (double)i / (double)steps;
+      double ct = cos(t);
+      double st = sin(t);
+      sat_push_xy(g, bounds, count, cx + mx * ct + bx * st,
+                  cy + my * ct + by * st);
+    }
+  }
+  sat_push_xy(g, bounds, count, ex, ey);
+}
+
+static const char *sat_parse_record(const char *p, sat_rec *rec) {
+  char name[64];
+  uint32_t nlen = 0;
+  memset(rec, 0, sizeof(*rec));
+  while (sat_is_ws(*p)) p++;
+  if (*p == '-' && p[1] >= '0' && p[1] <= '9') {
+    p++;
+    while (*p >= '0' && *p <= '9') p++;
+    while (sat_is_ws(*p)) p++;
+  }
+  while (*p && !sat_is_ws(*p) && *p != '#' && nlen < 63) name[nlen++] = *p++;
+  name[nlen] = '\0';
+  rec->kind = sat_kind(name);
+  while (*p && *p != '#') {
+    while (sat_is_ws(*p)) p++;
+    if (!*p || *p == '#') break;
+    if (*p == '{') {
+      int depth = 1;
+      p++;
+      while (*p && depth) {
+        if (*p == '{') depth++;
+        else if (*p == '}') depth--;
+        p++;
+      }
+      continue;
+    }
+    if (*p == '$') {
+      char *end = NULL;
+      long value;
+      p++;
+      value = strtol(p, &end, 10);
+      if (end != p && rec->nrefs < 12) rec->refs[rec->nrefs++] = (int32_t)value;
+      p = end ? end : p;
+      continue;
+    }
+    if (*p == '-' || *p == '.' || (*p >= '0' && *p <= '9')) {
+      char *end = NULL;
+      double value = strtod(p, &end);
+      if (end != p) {
+        if (rec->nnums < 16) rec->nums[rec->nnums++] = value;
+        p = end;
+        continue;
+      }
+    }
+    if (rec->kind == 'C') {
+      if ((*p == 'I' || *p == 'F') &&
+          (sat_is_ws(p[1]) || p[1] == '#' || p[1] == '\0')) {
+        rec->reversed = (*p == 'I');
+      } else if (strncmp(p, "reversed", 8) == 0 &&
+                 (sat_is_ws(p[8]) || p[8] == '#' || p[8] == '\0')) {
+        rec->reversed = 1;
+      } else if (strncmp(p, "forward", 7) == 0 &&
+                 (sat_is_ws(p[7]) || p[7] == '#' || p[7] == '\0')) {
+        rec->reversed = 0;
+      }
+    }
+    while (*p && !sat_is_ws(*p) && *p != '#') p++;
+  }
+  if (*p == '#') p++;
+  return p;
+}
+
+static uint32_t extract_sat_loops(coords *g, box *bounds, int64_t *runs,
+                                 uint32_t run_cap,
+                                 Dwg_Entity__3DSOLID *solid) {
   char *sat;
   const char *p;
+  sat_rec *recs = NULL;
+  uint8_t *used = NULL;
+  uint32_t nrec = 0;
+  uint32_t cap = 0;
+  uint32_t i;
+  uint32_t run_count = 0;
   uint32_t start;
-  uint32_t n = 0;
   if (run_cap == 0 || !solid) return 0;
   sat = solid_sat_text(solid);
   if (!sat || sat[0] == '\0') {
@@ -1694,51 +1887,93 @@ static uint32_t extract_sat_points(coords *g, box *bounds, int64_t *runs,
     return 0;
   }
   p = sat;
+  for (i = 0; i < 3; i++) {
+    while (*p && *p != '\n') p++;
+    if (*p == '\n') p++;
+  }
   start = g->length;
   while (*p) {
-      if (strncmp(p, "point ", 6) == 0 &&
-        (p == sat || p[-1] == '\n' || p[-1] == '\r' || p[-1] == ' ' ||
-         p[-1] == '\t')) {
-      const char *q = p + 6;
-      double nums[16];
-      int count = 0;
-      while (count < 16) {
-        char *end = NULL;
-        double value;
-        while (*q == ' ' || *q == '\t' || *q == '\n' || *q == '\r') q++;
-        if (*q == '$') {
-          q++;
-          if (*q == '-') q++;
-          while (*q >= '0' && *q <= '9') q++;
-          continue;
-        }
-        if (*q != '-' && *q != '.' && (*q < '0' || *q > '9')) break;
-        value = strtod(q, &end);
-        if (end == q) break;
-        nums[count++] = value;
-        q = end;
+    sat_rec rec;
+    while (sat_is_ws(*p)) p++;
+    if (!*p) break;
+    p = sat_parse_record(p, &rec);
+    if (nrec == cap) {
+      uint32_t grown = cap ? cap * 2 : 64;
+      sat_rec *next = (sat_rec *)realloc(recs, grown * sizeof(sat_rec));
+      if (!next) {
+        free(recs);
+        free(sat);
+        g->length = start;
+        return 0;
       }
-      if (count >= 3) {
-        double x = nums[count - 3];
-        double y = nums[count - 2];
-        if (isfinite(x) && isfinite(y)) {
-          coords_push2(g, x, y);
-          box_add(bounds, x, y);
-          n++;
-        }
-      }
-      p = q;
-      continue;
+      recs = next;
+      cap = grown;
     }
-    p++;
+    recs[nrec++] = rec;
   }
+  used = (uint8_t *)calloc(nrec ? nrec : 1, 1);
+  if (!used) {
+    free(recs);
+    free(sat);
+    g->length = start;
+    return 0;
+  }
+  for (i = 0; i < nrec && run_count < run_cap; i++) {
+    int32_t start_c = -1;
+    int32_t cur;
+    uint32_t run_start;
+    uint32_t npts = 0;
+    uint32_t steps = 0;
+    uint32_t r;
+    if (recs[i].kind != 'L') continue;
+    for (r = 3; r < recs[i].nrefs; r++) {
+      int32_t idx = recs[i].refs[r];
+      if (idx >= 0 && (uint32_t)idx < nrec && recs[idx].kind == 'C') {
+        start_c = idx;
+        break;
+      }
+    }
+    if (start_c < 0 || used[start_c]) continue;
+    run_start = g->length;
+    cur = start_c;
+    while (steps++ < nrec) {
+      const sat_rec *co = &recs[cur];
+      int32_t edge;
+      int32_t next;
+      if (co->kind != 'C' || co->nrefs < 7 || used[cur]) break;
+      used[cur] = 1;
+      edge = co->refs[6];
+      next = co->refs[3];
+      sat_emit_edge(g, bounds, &npts, recs, nrec, edge, co->reversed);
+      if (next == start_c) break;
+      if (next < 0 || (uint32_t)next >= nrec) break;
+      cur = next;
+    }
+    if (npts >= 2) {
+      sat_push_xy(g, bounds, &npts, g->data[run_start], g->data[run_start + 1]);
+      runs[run_count++] = (int64_t)npts;
+    } else {
+      g->length = run_start;
+    }
+  }
+  if (run_count == 0) {
+    for (i = 0; i < nrec && run_count < run_cap; i++) {
+      uint32_t run_start = g->length;
+      uint32_t npts = 0;
+      if (recs[i].kind != 'E') continue;
+      sat_emit_edge(g, bounds, &npts, recs, nrec, (int32_t)i, 0);
+      if (npts >= 2) {
+        runs[run_count++] = (int64_t)npts;
+      } else {
+        g->length = run_start;
+      }
+    }
+  }
+  free(used);
+  free(recs);
   free(sat);
-  if (n >= 2) {
-    runs[0] = (int64_t)n;
-    return 1;
-  }
-  g->length = start;
-  return 0;
+  if (run_count == 0) g->length = start;
+  return run_count;
 }
 
 static void import_hatch_paths(import_state *s, Dwg_Entity_HATCH *hatch,
@@ -2557,20 +2792,27 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       }
 
       /* Anything else becomes a proxy so it stays visible in the drawing tree
-       * and survives a save instead of silently disappearing. Prefer isoline
-       * wires from ACIS bodies when LibreDWG decoded them. */
+       * and survives a save instead of silently disappearing. A REGION is a
+       * 2D face: SAT loops are its boundary. Isolines first for 3D solids. */
       {
         const char *type_name = obj->dxfname ? obj->dxfname : "UNKNOWN";
-        int64_t runs[64];
+        int64_t runs[256];
         uint32_t run_count = 0;
         Dwg_Entity__3DSOLID *solid = NULL;
         if (obj->fixedtype == DWG_TYPE_REGION) solid = ent->tio.REGION;
         else if (obj->fixedtype == DWG_TYPE__3DSOLID) solid = ent->tio._3DSOLID;
         else if (obj->fixedtype == DWG_TYPE_BODY) solid = ent->tio.BODY;
         if (solid) {
-          run_count = extract_acis_wires(g, &bounds, runs, 64, solid);
-          if (run_count == 0) {
-            run_count = extract_sat_points(g, &bounds, runs, 64, solid);
+          if (obj->fixedtype == DWG_TYPE_REGION) {
+            run_count = extract_sat_loops(g, &bounds, runs, 256, solid);
+            if (run_count == 0) {
+              run_count = extract_acis_wires(g, &bounds, runs, 256, solid);
+            }
+          } else {
+            run_count = extract_acis_wires(g, &bounds, runs, 256, solid);
+            if (run_count == 0) {
+              run_count = extract_sat_loops(g, &bounds, runs, 256, solid);
+            }
           }
         }
         if (run_count == 0) {
