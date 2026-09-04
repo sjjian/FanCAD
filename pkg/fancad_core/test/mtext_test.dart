@@ -173,8 +173,10 @@ void main() {
       text.emit(const EmitContext(tolerance: 0.1), sink);
       expect(sink.texts.map((run) => run.text), ['Hello', 'world']);
       expect(sink.texts.every((run) => !run.isMultiline), isTrue);
-      expect(sink.texts.first.hAlign, TextHAlign.right);
+      expect(sink.texts.first.hAlign, TextHAlign.left);
       expect(sink.texts.first.vAlign, TextVAlign.top);
+      expect(sink.texts.first.origin.x, lessThan(text.position.x));
+      expect(sink.texts.last.origin.x, closeTo(sink.texts.first.origin.x, 1e-9));
       expect(sink.texts.last.origin.y, lessThan(sink.texts.first.origin.y));
 
       expect(text.grips(), const [Vec2(2, 3)]);

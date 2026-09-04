@@ -2178,10 +2178,20 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       Dwg_Entity_MTEXT *o = ent->tio.MTEXT;
       int64_t attachment;
       char *value;
+      char *style_name = NULL;
       int owned_value;
+      int owned_style = 0;
       double rotation;
+      Dwg_Object_Ref *style_ref;
       if (!o) return 0;
       value = dyn_text(o, "MTEXT", "text", &owned_value);
+      style_ref = o->style;
+      if (style_ref && style_ref->obj &&
+          style_ref->obj->supertype == DWG_SUPERTYPE_OBJECT &&
+          style_ref->obj->tio.object->tio.STYLE) {
+        style_name = dyn_text(style_ref->obj->tio.object->tio.STYLE, "STYLE",
+                              "name", &owned_style);
+      }
       /* MTEXT stores a direction vector rather than an angle. */
       rotation = atan2(o->x_axis_dir.y, o->x_axis_dir.x);
       coords_push2(g, o->ins_pt.x, o->ins_pt.y);
@@ -2193,11 +2203,12 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       e.int_offset = fcb_add_ints(s->b, &attachment, 1);
       e.int_count = 1;
       e.string_offset = fcb_append_string(s->b, value ? value : "");
-      fcb_append_string(s->b, "Standard");
+      fcb_append_string(s->b, style_name ? style_name : "Standard");
       e.string_count = 2;
       attach_geometry(s, &e);
       commit(s, &e, &bounds, owner_block, FCB_TYPE_MTEXT);
       dyn_text_free(value, owned_value);
+      dyn_text_free(style_name, owned_style);
       return 1;
     }
 

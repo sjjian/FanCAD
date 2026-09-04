@@ -325,10 +325,19 @@ void emitStyledText({
       TextHAlign.center || TextHAlign.middle => -width / 2,
       TextHAlign.right => -width,
     };
-    final dy = switch (vAlign) {
-      TextVAlign.baseline || TextVAlign.bottom => 0.0,
-      TextVAlign.middle => -styleHeight / 2,
-      TextVAlign.top => -styleHeight,
+    // MTEXT already put the box corner on [origin]; applying the TEXT
+    // baseline table here would lift the paragraph by a full line.
+    final dy = switch (anchor) {
+      TextAnchor.box => switch (vAlign) {
+        TextVAlign.middle => -styleHeight / 2,
+        TextVAlign.bottom => -styleHeight,
+        _ => 0.0,
+      },
+      TextAnchor.baseline => switch (vAlign) {
+        TextVAlign.baseline || TextVAlign.bottom => 0.0,
+        TextVAlign.middle => -styleHeight / 2,
+        TextVAlign.top => -styleHeight,
+      },
     };
     final start = (dx == 0 && dy == 0)
         ? origin

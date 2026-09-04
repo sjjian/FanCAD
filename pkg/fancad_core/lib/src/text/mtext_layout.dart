@@ -45,6 +45,25 @@ class MTextRun {
   /// Optional fraction bar or slash, already in model space.
   final Vec2? barFrom;
   final Vec2? barTo;
+
+  MTextRun translated(Vec2 delta) => MTextRun(
+    text: text,
+    origin: origin + delta,
+    height: height,
+    bold: bold,
+    italic: italic,
+    font: font,
+    color: color,
+    widthFactor: widthFactor,
+    obliqueAngle: obliqueAngle,
+    tracking: tracking,
+    underline: underline,
+    overline: overline,
+    strike: strike,
+    hAlign: hAlign,
+    barFrom: barFrom == null ? null : barFrom! + delta,
+    barTo: barTo == null ? null : barTo! + delta,
+  );
 }
 
 /// Parses AutoCAD MTEXT formatting and wraps it into lines.
@@ -99,7 +118,80 @@ class MTextLayout {
         MTextRun(text: '', origin: entity.position, height: entity.height),
       ];
     }
-    return runs;
+    return _attach(entity, runs, y);
+  }
+
+  /// Moves the laid-out column so [entity.position] is the attachment corner.
+  ///
+  /// Attachment is a box corner, not a per-line justify. Right-aligning each
+  /// `\P` row independently walked shorter lines toward the insertion and
+  /// stacked their tails on top of each other. A hugging column (width 0)
+  /// stays left-aligned; only a defined rectangle justifies to the attachment.
+  List<MTextRun> _attach(
+    MTextEntity entity,
+    List<MTextRun> runs,
+    double totalHeight,
+  ) {
+    var maxRight = entity.position.x;
+    for (final run in runs) {
+      final right = run.origin.x + _runWidth(run);
+      if (right > maxRight) maxRight = right;
+    }
+    final defined = entity.rectangleWidth > 0;
+    final columnWidth = defined
+        ? entity.rectangleWidth
+        : math.max(0.0, maxRight - entity.position.x);
+
+    final justified = [
+      for (final run in runs)
+        run.translated(
+          Vec2(_inlineDx(entity, run, columnWidth, defined), 0),
+        ),
+    ];
+
+    final dx = switch (entity.hAlign) {
+      TextHAlign.center ||
+      TextHAlign.middle ||
+      TextHAlign.fit => -columnWidth / 2,
+      TextHAlign.right => -columnWidth,
+      _ => 0.0,
+    };
+    final dy = switch (entity.vAlign) {
+      TextVAlign.middle => totalHeight / 2,
+      TextVAlign.bottom || TextVAlign.baseline => totalHeight,
+      _ => 0.0,
+    };
+    if (dx == 0 && dy == 0) return justified;
+    final delta = Vec2(dx, dy);
+    return [for (final run in justified) run.translated(delta)];
+  }
+
+  double _inlineDx(
+    MTextEntity entity,
+    MTextRun run,
+    double columnWidth,
+    bool defined,
+  ) {
+    final align = run.hAlign ?? (defined ? entity.hAlign : TextHAlign.left);
+    final width = _runWidth(run);
+    final left = entity.position.x;
+    return switch (align) {
+      TextHAlign.center ||
+      TextHAlign.middle ||
+      TextHAlign.fit => left + (columnWidth - width) / 2 - run.origin.x,
+      TextHAlign.right => left + columnWidth - width - run.origin.x,
+      _ => 0.0,
+    };
+  }
+
+  double _runWidth(MTextRun run) {
+    if (run.text.isEmpty) {
+      final from = run.barFrom;
+      final to = run.barTo;
+      if (from == null || to == null) return 0;
+      return (to.x - from.x).abs();
+    }
+    return _textWidth(run.text, run.height) * run.widthFactor;
   }
 
   List<List<_Frag>> _wrap(
