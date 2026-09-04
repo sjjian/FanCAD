@@ -96,12 +96,28 @@ final class SplineEntity extends CadEntity {
 
   @override
   void emit(EmitContext context, GeometrySink sink) {
+    if (emitAsPixel(context, sink, context.extentHint ?? computeBounds())) {
+      return;
+    }
     final points = _centreline(context.tolerance);
     if (points.length < 4) return;
     sink.polyline(
       context.applyBuffer(points),
       context.styleFor(props),
       closed: closed,
+    );
+  }
+
+  @override
+  void emitObjectSnaps(ObjectSnapSink sink) {
+    final count = controlPointCount;
+    if (count <= 0) return;
+    sink.endpoint(Vec2(controlPoints[0], controlPoints[1]));
+    sink.endpoint(
+      Vec2(
+        controlPoints[(count - 1) * 2],
+        controlPoints[(count - 1) * 2 + 1],
+      ),
     );
   }
 

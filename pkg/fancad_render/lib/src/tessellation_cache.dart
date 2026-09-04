@@ -130,6 +130,49 @@ void replayCachedPrimitives(
   }
 }
 
+/// Forwards every primitive to two sinks so a cache miss can paint and
+/// record in one emit.
+class TeeSink implements GeometrySink {
+  TeeSink(this.first, this.second);
+
+  final GeometrySink first;
+  final GeometrySink second;
+
+  @override
+  void polyline(Float64List xy, ResolvedStyle style, {bool closed = false}) {
+    first.polyline(xy, style, closed: closed);
+    second.polyline(xy, style, closed: closed);
+  }
+
+  @override
+  void fill(
+    Float64List xy,
+    ResolvedStyle style, {
+    List<Float64List> holes = const [],
+  }) {
+    first.fill(xy, style, holes: holes);
+    second.fill(xy, style, holes: holes);
+  }
+
+  @override
+  void point(double x, double y, ResolvedStyle style) {
+    first.point(x, y, style);
+    second.point(x, y, style);
+  }
+
+  @override
+  void text(TextGeometry geometry, ResolvedStyle style) {
+    first.text(geometry, style);
+    second.text(geometry, style);
+  }
+
+  @override
+  void image(ImageGeometry geometry, ResolvedStyle style) {
+    first.image(geometry, style);
+    second.image(geometry, style);
+  }
+}
+
 /// Caches flattened geometry, keyed by entity, tessellation tolerance and
 /// collapse size.
 ///
@@ -141,9 +184,9 @@ void replayCachedPrimitives(
 ///
 /// Two decisions keep the cache from becoming a memory leak. Tolerance and
 /// [EmitContext.minExtent] are bucketed to powers of two, so a continuous zoom
-/// produces a bounded number of variants rather than one per frame. Cheap
-/// entities are never cached at all: a two-point line costs less to re-emit
-/// than to look up. Hover uses `minExtent` 0 so it does not replay the
+/// produces a bounded number of variants rather than one per frame. Recordings
+/// cheaper than a short polyline are not retained: looking them up costs more
+/// than emitting them. Hover uses `minExtent` 0 so it does not replay the
 /// drawing's collapsed insert.
 class TessellationCache {
   TessellationCache({this.budget = 8 * 1000 * 1000});
@@ -169,22 +212,11 @@ class TessellationCache {
     return total == 0 ? 0 : _hits / total;
   }
 
-  /// Whether caching [entity] is likely to pay for itself.
+  /// Geometry lighter than this is cheaper to re-emit than to look up.
   ///
-  /// Curves and block references are worth caching; straight geometry is not.
-  static bool isWorthCaching(CadEntity entity) => switch (entity.kind) {
-    EntityKind.circle ||
-    EntityKind.arc ||
-    EntityKind.ellipse ||
-    EntityKind.spline ||
-    EntityKind.insert ||
-    EntityKind.hatch ||
-    EntityKind.dimension ||
-    EntityKind.mtext => true,
-    EntityKind.polyline => entity is PolylineEntity &&
-        (entity.hasBulges || entity.vertexCount > 16),
-    _ => false,
-  };
+  /// A two-point line weighs 8. Anything heavier (a tessellated curve, a
+  /// filled ring, a nested block) is retained.
+  static const int minStoreWeight = 9;
 
   /// Quantises tolerance so a smooth zoom reuses cache entries.
   ///
@@ -211,30 +243,57 @@ class TessellationCache {
     void Function(RecordingSink sink) emit, {
     double minExtent = 0,
   }) {
+    final existing = lookup(entity, bucket, minExtent: minExtent);
+    if (existing != null) return existing;
+
+    final sink = RecordingSink();
+    emit(sink);
+    remember(entity, bucket, sink, minExtent: minExtent);
+    return sink.primitives;
+  }
+
+  List<CachedPrimitive>? lookup(
+    CadEntity entity,
+    int bucket, {
+    double minExtent = 0,
+  }) {
     final key = _CacheKey(
       entity.id,
       bucket,
       extentBucket(minExtent),
     );
     final existing = _entries.remove(key);
-    if (existing != null) {
-      // Re-inserting moves the entry to the most-recently-used end.
-      _entries[key] = existing;
-      _hits++;
-      return existing;
+    if (existing == null) {
+      _misses++;
+      return null;
     }
+    _entries[key] = existing;
+    _hits++;
+    return existing;
+  }
 
-    _misses++;
-    final sink = RecordingSink();
-    emit(sink);
-    final primitives = sink.primitives;
-    final weight = sink.weight;
-
-    _entries[key] = primitives;
+  /// Stores [recorder] when it is heavy enough to repay a lookup.
+  void remember(
+    CadEntity entity,
+    int bucket,
+    RecordingSink recorder, {
+    double minExtent = 0,
+  }) {
+    final weight = recorder.weight;
+    if (weight < minStoreWeight) return;
+    final key = _CacheKey(
+      entity.id,
+      bucket,
+      extentBucket(minExtent),
+    );
+    if (_entries.containsKey(key)) {
+      _totalWeight -= _weights.remove(key) ?? 0;
+      _entries.remove(key);
+    }
+    _entries[key] = recorder.primitives;
     _weights[key] = weight;
     _totalWeight += weight;
     _evict();
-    return primitives;
   }
 
   /// Drops cached geometry for specific entities, after an edit.

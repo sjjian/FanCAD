@@ -128,6 +128,9 @@ final class MTextEntity extends CadEntity {
   }
 
   @override
+  void emitObjectSnaps(ObjectSnapSink sink) => sink.node(position);
+
+  @override
   MTextEntity withId(int id) => MTextEntity(
     id: id,
     props: props,

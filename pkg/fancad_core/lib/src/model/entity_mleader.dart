@@ -78,6 +78,7 @@ final class MLeaderEntity extends CadEntity {
 
   @override
   void emit(EmitContext context, GeometrySink sink) {
+    if (emitAsPixel(context, sink, computeBounds())) return;
     final style = context.styleFor(props);
     for (final (start, count) in _paths()) {
       if (count < 2) continue;

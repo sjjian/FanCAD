@@ -421,126 +421,19 @@ class SnapEngine {
     double radius,
     List<_Candidate> out,
   ) {
-    void offer(SnapMode mode, Vec2 point, {Vec2? direction}) {
-      if (!modes.contains(mode)) return;
-      final distance = point.distanceTo(cursor);
-      if (distance > radius) return;
-      out.add(
-        _Candidate(
-          mode: mode,
-          point: point,
-          distance: distance,
-          entityId: entity.id,
-          direction: direction,
-        ),
-      );
-    }
-
-    switch (entity) {
-      case LineEntity(:final start, :final end, :final midpoint):
-        offer(SnapMode.endpoint, start);
-        offer(SnapMode.endpoint, end);
-        offer(SnapMode.midpoint, midpoint);
-        _offerPerpendicular(entity.id, start, end, cursor, radius, out);
-      case PolylineEntity():
-        final count = entity.vertexCount;
-        for (var i = 0; i < count; i++) {
-          offer(SnapMode.endpoint, entity.vertexAt(i));
-        }
-        final segments = entity.closed ? count : count - 1;
-        for (var i = 0; i < segments; i++) {
-          final a = entity.vertexAt(i);
-          final b = entity.vertexAt((i + 1) % count);
-          // A bulged segment is an arc, so its chord midpoint is not on it.
-          if (entity.bulgeAt(i) == 0) {
-            offer(SnapMode.midpoint, a.lerp(b, 0.5));
-            _offerPerpendicular(entity.id, a, b, cursor, radius, out);
-          }
-        }
-      case CircleEntity(:final center, :final radius):
-        offer(SnapMode.center, center);
-        for (final angle in _quadrants) {
-          offer(SnapMode.quadrant, center + Vec2.polar(angle, radius));
-        }
-        _offerCircleSnaps(entity.id, center, radius, cursor, out);
-      case ArcEntity(
-        :final center,
-        :final radius,
-        :final startPoint,
-        :final endPoint,
-        :final midPoint,
-      ):
-        offer(SnapMode.center, center);
-        offer(SnapMode.endpoint, startPoint);
-        offer(SnapMode.endpoint, endPoint);
-        offer(SnapMode.midpoint, midPoint);
-        final sweep = entity.sweep;
-        for (final angle in _quadrants) {
-          if (angularSweep(entity.startAngle, angle) <= sweep) {
-            offer(SnapMode.quadrant, center + Vec2.polar(angle, radius));
-          }
-        }
-        _offerCircleSnaps(entity.id, center, radius, cursor, out);
-      case EllipseEntity(:final center):
-        offer(SnapMode.center, center);
-        offer(SnapMode.quadrant, center + entity.majorAxis);
-        offer(SnapMode.quadrant, center - entity.majorAxis);
-        offer(
-          SnapMode.quadrant,
-          center + entity.majorAxis.perpendicular * entity.ratio,
-        );
-        offer(
-          SnapMode.quadrant,
-          center - entity.majorAxis.perpendicular * entity.ratio,
-        );
-      case PointEntity(:final position):
-        offer(SnapMode.node, position);
-      case SplineEntity():
-        final count = entity.controlPointCount;
-        if (count > 0) {
-          offer(
-            SnapMode.endpoint,
-            Vec2(entity.controlPoints[0], entity.controlPoints[1]),
-          );
-          offer(
-            SnapMode.endpoint,
-            Vec2(
-              entity.controlPoints[(count - 1) * 2],
-              entity.controlPoints[(count - 1) * 2 + 1],
-            ),
-          );
-        }
-      case InsertEntity(:final position):
-        offer(SnapMode.node, position);
-      case TextEntity(:final position):
-      case MTextEntity(:final position):
-      case AttdefEntity(:final position):
-      case AttribEntity(:final position):
-        offer(SnapMode.node, position);
-      case SolidEntity(:final corners):
-        for (final corner in corners) {
-          offer(SnapMode.endpoint, corner);
-        }
-      case HatchEntity(:final loops):
-        for (final loop in loops) {
-          for (var i = 0; i < loop.pointCount; i++) {
-            offer(
-              SnapMode.endpoint,
-              Vec2(loop.vertices[i * 2], loop.vertices[i * 2 + 1]),
-            );
-          }
-        }
-      case DimensionEntity() ||
-          LeaderEntity() ||
-          MLeaderEntity() ||
-          RayEntity() ||
-          XLineEntity() ||
-          ImageEntity() ||
-          UnknownEntity():
-        // These have no distinguished points a draughtsman aims at; the
-        // nearest-point snap collected from the tessellation covers them.
-        break;
-    }
+    entity.emitObjectSnaps(
+      _AnalyticSnapSink(
+        entityId: entity.id,
+        cursor: cursor,
+        radius: radius,
+        modes: modes,
+        out: out,
+        onSegment: (a, b) =>
+            _offerPerpendicular(entity.id, a, b, cursor, radius, out),
+        onCircle: (center, circleRadius) =>
+            _offerCircleSnaps(entity.id, center, circleRadius, cursor, out),
+      ),
+    );
   }
 
   void _offerPerpendicular(
@@ -771,13 +664,6 @@ class SnapEngine {
     return math.min(diff, math.pi * 2 - diff);
   }
 
-  static const List<double> _quadrants = [
-    0,
-    math.pi / 2,
-    math.pi,
-    math.pi * 3 / 2,
-  ];
-
   /// Lower sorts first. Distinguished points beat computed ones, and
   /// nearest-point comes last because it always exists.
   static int _priority(SnapMode mode) => switch (mode) {
@@ -791,6 +677,61 @@ class SnapEngine {
     SnapMode.perpendicular => 7,
     SnapMode.nearest => 8,
   };
+}
+
+class _AnalyticSnapSink implements ObjectSnapSink {
+  _AnalyticSnapSink({
+    required this.entityId,
+    required this.cursor,
+    required this.radius,
+    required this.modes,
+    required this.out,
+    required this.onSegment,
+    required this.onCircle,
+  });
+
+  final int entityId;
+  final Vec2 cursor;
+  final double radius;
+  final Set<SnapMode> modes;
+  final List<_Candidate> out;
+  final void Function(Vec2 a, Vec2 b) onSegment;
+  final void Function(Vec2 center, double radius) onCircle;
+
+  void _offer(SnapMode mode, Vec2 point) {
+    if (!modes.contains(mode)) return;
+    final distance = point.distanceTo(cursor);
+    if (distance > radius) return;
+    out.add(
+      _Candidate(
+        mode: mode,
+        point: point,
+        distance: distance,
+        entityId: entityId,
+      ),
+    );
+  }
+
+  @override
+  void endpoint(Vec2 point) => _offer(SnapMode.endpoint, point);
+
+  @override
+  void midpoint(Vec2 point) => _offer(SnapMode.midpoint, point);
+
+  @override
+  void center(Vec2 point) => _offer(SnapMode.center, point);
+
+  @override
+  void quadrant(Vec2 point) => _offer(SnapMode.quadrant, point);
+
+  @override
+  void node(Vec2 point) => _offer(SnapMode.node, point);
+
+  @override
+  void segment(Vec2 start, Vec2 end) => onSegment(start, end);
+
+  @override
+  void circle(Vec2 center, double radius) => onCircle(center, radius);
 }
 
 class _Candidate {

@@ -37,6 +37,7 @@ final class LeaderEntity extends CadEntity {
   @override
   void emit(EmitContext context, GeometrySink sink) {
     if (vertices.length < 4) return;
+    if (emitAsPixel(context, sink, Bounds2.fromXY(vertices))) return;
     final style = context.styleFor(props);
     final xy = context.applyBuffer(vertices);
     sink.polyline(xy, style);

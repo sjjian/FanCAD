@@ -117,4 +117,29 @@ void main() {
     expect(lod.polylines, isEmpty);
     expect(lod.points, hasLength(1));
   });
+
+  test('a sub-pixel circle collapses to a point; text keeps its glyph', () {
+    const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 1);
+    final collapsed = PolylineSink();
+    circle.emit(const EmitContext(tolerance: 0.1, minExtent: 10), collapsed);
+    expect(collapsed.polylines, isEmpty);
+    expect(collapsed.points, hasLength(1));
+
+    const full = EmitContext(tolerance: 0.1);
+    final ring = PolylineSink();
+    circle.emit(full, ring);
+    expect(ring.polylines, isNotEmpty);
+    expect(ring.points, isEmpty);
+
+    const text = TextEntity(
+      id: 2,
+      position: Vec2.zero(),
+      content: 'A',
+      height: 2.5,
+    );
+    final labels = PolylineSink();
+    text.emit(const EmitContext(tolerance: 0.1, minExtent: 100), labels);
+    expect(labels.texts, isNotEmpty);
+    expect(labels.points, isEmpty);
+  });
 }

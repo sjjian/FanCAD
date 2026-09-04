@@ -119,7 +119,7 @@ void main() {
   test('hover pick reuses tessellation without collapsing an insert', () {
     final document = CadDocument();
     document.addEntity(
-      const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(8, 0)),
+      const CircleEntity(id: 1, center: Vec2.zero(), radius: 8),
       blockName: 'TICK',
     );
     document

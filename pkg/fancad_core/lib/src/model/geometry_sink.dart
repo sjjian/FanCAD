@@ -406,6 +406,25 @@ class ImageGeometry {
   ];
 }
 
+/// Receives analytic object-snap points in the entity's own coordinates.
+///
+/// Distinct from [GeometrySink]: a circle's centre is not a flattened
+/// vertex. The snap engine implements this and applies OSMODE, aperture and
+/// priority. Entities never see those.
+abstract class ObjectSnapSink {
+  void endpoint(Vec2 point);
+  void midpoint(Vec2 point);
+  void center(Vec2 point);
+  void quadrant(Vec2 point);
+  void node(Vec2 point);
+
+  /// A straight segment, for a perpendicular foot along the chord.
+  void segment(Vec2 start, Vec2 end);
+
+  /// A circular curve, for perpendicular and tangent snaps.
+  void circle(Vec2 center, double radius);
+}
+
 /// Receives the flattened geometry of entities in model coordinates.
 ///
 /// Every consumer of entity geometry goes through this interface: the
@@ -514,6 +533,7 @@ class EmitContext {
     this.shxFonts = const ShxFontTable(),
     this.pointDisplay = PointDisplay.missing,
     this.minExtent = 0,
+    this.extentHint,
   });
 
   /// Maximum allowed deviation when discretizing curves, in model units.
@@ -557,6 +577,11 @@ class EmitContext {
   /// print and hover outlines want: they re-emit the definition, not the
   /// overview's level of detail.
   final double minExtent;
+
+  /// Optional box in the entity's own coordinates, usually from the spatial
+  /// index. Types that collapse when small use it so a spline does not have
+  /// to tessellate just to decide it is a pixel.
+  final Bounds2? extentHint;
 
   static const int maxDepth = 32;
 
@@ -609,6 +634,7 @@ class EmitContext {
     shxFonts: shxFonts,
     pointDisplay: pointDisplay,
     minExtent: minExtent,
+    extentHint: null,
   );
 
   EmitContext withTolerance(double value) => EmitContext(
@@ -624,6 +650,7 @@ class EmitContext {
     shxFonts: shxFonts,
     pointDisplay: pointDisplay,
     minExtent: minExtent,
+    extentHint: extentHint,
   );
 
   EmitContext withAttributeValues(Map<String, String> values) => EmitContext(
@@ -639,7 +666,30 @@ class EmitContext {
     shxFonts: shxFonts,
     pointDisplay: pointDisplay,
     minExtent: minExtent,
+    extentHint: extentHint,
   );
+
+  /// Box used for this entity's own level-of-detail, in its coordinates.
+  ///
+  /// Nested [descend] drops the hint: a child lives in a different space.
+  EmitContext withExtentHint(Bounds2? value) {
+    if (identical(value, extentHint)) return this;
+    return EmitContext(
+      tolerance: tolerance,
+      transform: transform,
+      blocks: blocks,
+      styles: styles,
+      inheritedStyle: inheritedStyle,
+      depth: depth,
+      clip: clip,
+      measureWidth: measureWidth,
+      attributeValues: attributeValues,
+      shxFonts: shxFonts,
+      pointDisplay: pointDisplay,
+      minExtent: minExtent,
+      extentHint: value,
+    );
+  }
 
   /// Drops [clip] so a tessellation cache cannot bake a miss from a
   /// viewport that only overlapped the insert's index box.
@@ -657,6 +707,7 @@ class EmitContext {
       shxFonts: shxFonts,
       pointDisplay: pointDisplay,
       minExtent: minExtent,
+      extentHint: extentHint,
     );
   }
 }
