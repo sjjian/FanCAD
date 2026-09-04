@@ -43,6 +43,21 @@ void main() {
     expect(runs.last.origin.y, closeTo(80 - 30 * 5 / 3, 1e-9));
   });
 
+  test('top-right attachment shifts the box, not each row', () {
+    final runs = const MTextLayout().layout(
+      const MTextEntity(
+        id: 1,
+        position: Vec2(100, 50),
+        content: r'A\PBBBB',
+        height: 10,
+        attachment: 3,
+      ),
+    );
+    expect(runs.map((run) => run.text), ['A', 'BBBB']);
+    expect(runs.first.origin.x, closeTo(runs.last.origin.x, 1e-9));
+    expect(runs.first.origin.x, closeTo(100 - 4 * 10 * 0.6, 1e-9));
+  });
+
   test('capital \\P still breaks; lowercase \\p never does', () {
     final broken = const MTextLayout().layout(
       const MTextEntity(id: 1, position: Vec2.zero(), content: r'A\PB'),
