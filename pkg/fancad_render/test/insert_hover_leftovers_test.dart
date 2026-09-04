@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('a small insert still emits its definition, not a collapse point', () {
+  test('a sub-pixel insert still leaves a mark so it does not vanish', () {
     final document = CadDocument();
     document.addEntity(
       const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(8, 0)),
@@ -27,8 +27,62 @@ void main() {
       size: Size(200, 200),
     );
     final scene = SceneBuilder(palette: AciPalette.dark).build(document, view);
+    expect(
+      scene.lineBatches.isNotEmpty || scene.pointBatches.isNotEmpty,
+      isTrue,
+    );
+  });
+
+  test('a visible insert collapses members smaller than a pixel', () {
+    final document = CadDocument();
+    // A 200-unit frame stays several pixels at this zoom; the 4-unit ticks
+    // inside it are well under 1.5 px and must not dump as linework.
+    document
+      ..addEntity(
+        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(200, 0)),
+        blockName: 'CELL',
+      )
+      ..addEntity(
+        const LineEntity(id: 2, start: Vec2(200, 0), end: Vec2(200, 200)),
+        blockName: 'CELL',
+      )
+      ..addEntity(
+        const LineEntity(id: 3, start: Vec2(200, 200), end: Vec2(0, 200)),
+        blockName: 'CELL',
+      )
+      ..addEntity(
+        const LineEntity(id: 4, start: Vec2.zero(), end: Vec2(0, 200)),
+        blockName: 'CELL',
+      );
+    for (var i = 0; i < 40; i++) {
+      document.addEntity(
+        LineEntity(
+          id: 10 + i,
+          start: Vec2(10.0 + i * 4, 10),
+          end: Vec2(12.0 + i * 4, 12),
+        ),
+        blockName: 'CELL',
+      );
+    }
+    document
+      ..putBlock(
+        BlockRecord(
+          name: 'CELL',
+          entityIds: [1, 2, 3, 4, for (var i = 0; i < 40; i++) 10 + i],
+        ),
+      )
+      ..addEntity(
+        const InsertEntity(id: 100, blockName: 'CELL', position: Vec2.zero()),
+      );
+    const view = CadViewport(
+      center: Vec2(100, 100),
+      scale: 0.2,
+      size: Size(200, 200),
+    );
+    final scene = SceneBuilder(palette: AciPalette.dark).build(document, view);
     expect(scene.lineBatches, isNotEmpty);
-    expect(scene.pointBatches, isEmpty);
+    expect(scene.segmentCount, lessThan(10));
+    expect(scene.pointBatches, isNotEmpty);
   });
 
   test('an insert cached against a miss clip still draws later', () {

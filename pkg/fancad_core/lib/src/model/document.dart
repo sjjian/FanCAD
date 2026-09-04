@@ -702,10 +702,28 @@ class CadDocument implements BlockLookup, StyleResolver {
             context.inheritedStyle,
           )
         : context;
+    final minExtent = effective.minExtent;
+    final index = minExtent > 0 ? indexFor(blockName) : null;
     for (final id in block.entityIds) {
       final entity = _entities[id];
       if (entity == null || !entity.props.visible) continue;
       if (!isLayerVisible(entity.props.layer)) continue;
+      if (index != null) {
+        final bounds = index.boundsOf(id) ?? const Bounds2.empty();
+        if (bounds.isNotEmpty &&
+            entity.kind != EntityKind.point &&
+            entity.kind != EntityKind.text &&
+            entity.kind != EntityKind.mtext &&
+            effective.isSubPixelWorld(
+              effective.transform.isIdentity
+                  ? bounds
+                  : bounds.transformed(effective.transform),
+            )) {
+          final center = effective.apply(bounds.center);
+          sink.point(center.x, center.y, effective.styleFor(entity.props));
+          continue;
+        }
+      }
       entity.emit(effective, sink);
     }
   }
@@ -817,6 +835,7 @@ class CadDocument implements BlockLookup, StyleResolver {
     Mat3 transform = const Mat3.identity(),
     double Function(String text, double height)? measureWidth,
     ShxFontTable shxFonts = const ShxFontTable(),
+    double minExtent = 0,
   }) {
     final style = textStyle('Standard');
     final shx = shxFonts.lookup(style.fontFamily);
@@ -828,6 +847,7 @@ class CadDocument implements BlockLookup, StyleResolver {
       clip: clip,
       shxFonts: shxFonts,
       pointDisplay: pointDisplay,
+      minExtent: minExtent,
       measureWidth: (shx != null)
           ? (text, height) => shx.measureWidth(
               text,

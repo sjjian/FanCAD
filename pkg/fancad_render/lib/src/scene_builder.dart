@@ -90,6 +90,7 @@ class SceneBuilder {
       tolerance: tolerance,
       clip: visible,
       shxFonts: shxFonts,
+      minExtent: minimumWorldSize,
       measureWidth: (text, height) => paragraphs.measureWidth(
         text,
         height: height,
@@ -128,6 +129,7 @@ class SceneBuilder {
             transform: viewportWindow.modelToPaper(),
             measureWidth: context.measureWidth,
             shxFonts: shxFonts,
+            minExtent: minimumWorldSize,
           );
           final model = _emitBlock(
             document: document,
@@ -304,10 +306,11 @@ class SceneBuilder {
           bounds.width < minimumWorldSize &&
           bounds.height < minimumWorldSize) {
         // Collapse rather than drop: a field of tiny blocks should still read
-        // as a grey mass, not as blank paper. Inserts are left alone — a
-        // collapsed block is a single pixel, but hover re-emits the whole
-        // definition as a dashed outline, which is how a title frame can
-        // appear only while the cursor is over it.
+        // as a grey mass, not as blank paper. Inserts are left to emit
+        // themselves: a sub-pixel cell becomes one point so a dense block
+        // does not dump its definition, and members still larger than a
+        // pixel keep their shape. Hover re-emits the definition with
+        // minExtent 0, so the outline is the real geometry, not the lod.
         final center = context.apply(bounds.center);
         sink.point(
           center.x,

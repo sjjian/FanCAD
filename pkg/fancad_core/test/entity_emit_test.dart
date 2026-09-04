@@ -91,4 +91,30 @@ void main() {
     );
     expect(clipped.polylines, isEmpty);
   });
+
+  test('a sub-pixel insert collapses to a point instead of its members', () {
+    final document = CadDocument();
+    document.addEntity(
+      const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(4, 0)),
+      blockName: 'CELL',
+    );
+    document.putBlock(const BlockRecord(name: 'CELL', entityIds: [1]));
+    const insert = InsertEntity(
+      id: 2,
+      blockName: 'CELL',
+      position: Vec2.zero(),
+    );
+    final full = PolylineSink();
+    insert.emit(EmitContext(tolerance: 0.1, blocks: document), full);
+    expect(full.polylines, hasLength(1));
+    expect(full.points, isEmpty);
+
+    final lod = PolylineSink();
+    insert.emit(
+      EmitContext(tolerance: 0.1, blocks: document, minExtent: 10),
+      lod,
+    );
+    expect(lod.polylines, isEmpty);
+    expect(lod.points, hasLength(1));
+  });
 }

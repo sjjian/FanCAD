@@ -83,7 +83,27 @@ void main() {
         ResolvedStyle.fallback,
       );
       expect(child.depth, 1);
+      expect(child.minExtent, 0);
       expect(child.apply(Vec2.zero()), const Vec2(1, 0));
+      expect(
+        const EmitContext(tolerance: 0.1, minExtent: 4).descend(
+          const Mat3.scaling(2, 2),
+          ResolvedStyle.fallback,
+        ).minExtent,
+        4,
+      );
+      expect(
+        const EmitContext(tolerance: 0.1, minExtent: 4).isSubPixelWorld(
+          const Bounds2(0, 0, 3, 3),
+        ),
+        isTrue,
+      );
+      expect(
+        const EmitContext(tolerance: 0.1, minExtent: 4).isSubPixelWorld(
+          const Bounds2(0, 0, 10, 1),
+        ),
+        isFalse,
+      );
       expect(const EmitContext(tolerance: 0.1, depth: 31).canRecurse, isTrue);
       expect(const EmitContext(tolerance: 0.1, depth: 32).canRecurse, isFalse);
       expect(BlockLookup.empty.entityIdsOf('X'), isNull);
