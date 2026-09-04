@@ -98,6 +98,7 @@ final class EllipseEntity extends CadEntity {
 
   @override
   void emit(EmitContext context, GeometrySink sink) {
+    if (emitAsPixel(context, sink, computeBounds())) return;
     final points = Flatten.ellipse(
       center: center,
       major: majorAxis,
@@ -111,6 +112,15 @@ final class EllipseEntity extends CadEntity {
       context.styleFor(props),
       closed: isFullEllipse,
     );
+  }
+
+  @override
+  void emitObjectSnaps(ObjectSnapSink sink) {
+    sink.center(center);
+    sink.quadrant(center + majorAxis);
+    sink.quadrant(center - majorAxis);
+    sink.quadrant(center + majorAxis.perpendicular * ratio);
+    sink.quadrant(center - majorAxis.perpendicular * ratio);
   }
 
   @override

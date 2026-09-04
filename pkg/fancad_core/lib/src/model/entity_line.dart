@@ -35,12 +35,21 @@ final class LineEntity extends CadEntity {
 
   @override
   void emit(EmitContext context, GeometrySink sink) {
+    if (emitAsPixel(context, sink, Bounds2.fromCorners(start, end))) return;
     final a = context.apply(start);
     final b = context.apply(end);
     sink.polyline(
       Float64List.fromList([a.x, a.y, b.x, b.y]),
       context.styleFor(props),
     );
+  }
+
+  @override
+  void emitObjectSnaps(ObjectSnapSink sink) {
+    sink.endpoint(start);
+    sink.endpoint(end);
+    sink.midpoint(midpoint);
+    sink.segment(start, end);
   }
 
   @override

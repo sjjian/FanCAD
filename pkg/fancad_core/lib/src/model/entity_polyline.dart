@@ -77,6 +77,9 @@ final class PolylineEntity extends CadEntity {
   @override
   void emit(EmitContext context, GeometrySink sink) {
     if (vertexCount == 0) return;
+    if (emitAsPixel(context, sink, context.extentHint ?? computeBounds())) {
+      return;
+    }
     final flat = Flatten.polylineWithBulges(
       vertices: vertices,
       closed: closed,
@@ -99,6 +102,24 @@ final class PolylineEntity extends CadEntity {
       }
     }
     sink.polyline(context.applyBuffer(flat), style, closed: closed);
+  }
+
+  @override
+  void emitObjectSnaps(ObjectSnapSink sink) {
+    final count = vertexCount;
+    for (var i = 0; i < count; i++) {
+      sink.endpoint(vertexAt(i));
+    }
+    final segments = closed ? count : count - 1;
+    for (var i = 0; i < segments; i++) {
+      final a = vertexAt(i);
+      final b = vertexAt((i + 1) % count);
+      // A bulged segment is an arc, so its chord midpoint is not on it.
+      if (bulgeAt(i) == 0) {
+        sink.midpoint(a.lerp(b, 0.5));
+        sink.segment(a, b);
+      }
+    }
   }
 
   @override

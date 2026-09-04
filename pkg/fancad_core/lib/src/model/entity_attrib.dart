@@ -89,6 +89,9 @@ final class AttribEntity extends CadEntity {
   }
 
   @override
+  void emitObjectSnaps(ObjectSnapSink sink) => sink.node(position);
+
+  @override
   AttribEntity withId(int id) => AttribEntity(
     id: id,
     props: props,

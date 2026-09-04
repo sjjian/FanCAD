@@ -167,6 +167,7 @@ final class DimensionEntity extends CadEntity {
 
   @override
   void emit(EmitContext context, GeometrySink sink) {
+    if (emitAsPixel(context, sink)) return;
     final style = context.styleFor(props);
     if (hasRenderedBlock && context.canRecurse) {
       final ids = context.blocks.entityIdsOf(blockName);

@@ -45,6 +45,7 @@ final class ArcEntity extends CadEntity {
   @override
   void emit(EmitContext context, GeometrySink sink) {
     if (radius <= 0) return;
+    if (emitAsPixel(context, sink, computeBounds())) return;
     final points = Flatten.arc(
       center: center,
       radius: radius,
@@ -53,6 +54,21 @@ final class ArcEntity extends CadEntity {
       tolerance: context.tolerance,
     );
     sink.polyline(context.applyBuffer(points), context.styleFor(props));
+  }
+
+  @override
+  void emitObjectSnaps(ObjectSnapSink sink) {
+    sink.center(center);
+    sink.endpoint(startPoint);
+    sink.endpoint(endPoint);
+    sink.midpoint(midPoint);
+    const quadrants = [0.0, math.pi / 2, math.pi, math.pi * 3 / 2];
+    for (final angle in quadrants) {
+      if (angularSweep(startAngle, angle) <= sweep) {
+        sink.quadrant(center + Vec2.polar(angle, radius));
+      }
+    }
+    sink.circle(center, radius);
   }
 
   @override

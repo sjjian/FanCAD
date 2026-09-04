@@ -32,6 +32,18 @@ final class CircleEntity extends CadEntity {
   @override
   void emit(EmitContext context, GeometrySink sink) {
     if (radius <= 0) return;
+    if (emitAsPixel(
+      context,
+      sink,
+      Bounds2(
+        center.x - radius,
+        center.y - radius,
+        center.x + radius,
+        center.y + radius,
+      ),
+    )) {
+      return;
+    }
     final points = Flatten.circle(
       center: center,
       radius: radius,
@@ -42,6 +54,16 @@ final class CircleEntity extends CadEntity {
       context.styleFor(props),
       closed: true,
     );
+  }
+
+  @override
+  void emitObjectSnaps(ObjectSnapSink sink) {
+    sink.center(center);
+    sink.quadrant(center + Vec2(radius, 0));
+    sink.quadrant(center + Vec2(0, radius));
+    sink.quadrant(center + Vec2(-radius, 0));
+    sink.quadrant(center + Vec2(0, -radius));
+    sink.circle(center, radius);
   }
 
   @override

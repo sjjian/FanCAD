@@ -39,6 +39,18 @@ final class ImageEntity extends CadEntity {
 
   @override
   void emit(EmitContext context, GeometrySink sink) {
+    if (emitAsPixel(
+      context,
+      sink,
+      Bounds2.fromPoints([
+        origin,
+        origin + uVector,
+        origin + uVector + vVector,
+        origin + vVector,
+      ]),
+    )) {
+      return;
+    }
     sink.image(
       ImageGeometry(
         reference: reference,

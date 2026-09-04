@@ -24,6 +24,7 @@ final class SolidEntity extends CadEntity {
   @override
   void emit(EmitContext context, GeometrySink sink) {
     if (corners.length < 3) return;
+    if (emitAsPixel(context, sink, Bounds2.fromPoints(corners))) return;
     final buffer = Float64List(corners.length * 2);
     for (var i = 0; i < corners.length; i++) {
       final p = context.apply(corners[i]);
@@ -31,6 +32,13 @@ final class SolidEntity extends CadEntity {
       buffer[i * 2 + 1] = p.y;
     }
     sink.fill(buffer, context.styleFor(props));
+  }
+
+  @override
+  void emitObjectSnaps(ObjectSnapSink sink) {
+    for (final corner in corners) {
+      sink.endpoint(corner);
+    }
   }
 
   @override

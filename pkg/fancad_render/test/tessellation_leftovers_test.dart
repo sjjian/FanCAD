@@ -8,32 +8,21 @@ void main() {
   const style = ResolvedStyle.fallback;
   const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
 
-  test('straight lines stay off the cache; a bulge polyline does not', () {
-    expect(
-      TessellationCache.isWorthCaching(
-        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(1, 0)),
-      ),
-      isFalse,
+  Float64List longPolyline() => Float64List.fromList([
+    for (var i = 0; i < 16; i++) ...[i.toDouble(), 0.0],
+  ]);
+
+  test('a two-point line is not retained; a long polyline is', () {
+    final cache = TessellationCache();
+    cache.obtain(
+      const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(1, 0)),
+      0,
+      (sink) => sink.polyline(Float64List.fromList([0, 0, 1, 0]), style),
     );
-    expect(TessellationCache.isWorthCaching(circle), isTrue);
-    expect(
-      TessellationCache.isWorthCaching(
-        PolylineEntity(
-          id: 1,
-          vertices: Float64List.fromList([0, 0, 0, 1, 0, 0, 2, 0, 0]),
-        ),
-      ),
-      isFalse,
-    );
-    expect(
-      TessellationCache.isWorthCaching(
-        PolylineEntity(
-          id: 2,
-          vertices: Float64List.fromList([0, 0, 0.5, 10, 0, 0]),
-        ),
-      ),
-      isTrue,
-    );
+    expect(cache.entryCount, 0);
+
+    cache.obtain(circle, 0, (sink) => sink.polyline(longPolyline(), style));
+    expect(cache.entryCount, 1);
   });
 
   test('a non-positive tolerance shares bucket 0 instead of NaN', () {
@@ -61,7 +50,7 @@ void main() {
       expect(cache.hitRate, 0);
 
       void emit(RecordingSink sink) {
-        sink.polyline(Float64List.fromList([0, 0, 1, 0]), style);
+        sink.polyline(longPolyline(), style);
       }
 
       cache.obtain(circle, 0, emit);
@@ -83,7 +72,7 @@ void main() {
     var emits = 0;
     void emit(RecordingSink sink) {
       emits++;
-      sink.polyline(Float64List.fromList([0, 0, 1, 0]), style);
+      sink.polyline(longPolyline(), style);
     }
 
     cache.obtain(circle, 0, emit, minExtent: 10);

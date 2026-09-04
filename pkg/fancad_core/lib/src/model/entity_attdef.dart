@@ -120,6 +120,9 @@ final class AttdefEntity extends CadEntity {
   }
 
   @override
+  void emitObjectSnaps(ObjectSnapSink sink) => sink.node(position);
+
+  @override
   AttdefEntity withId(int id) => AttdefEntity(
     id: id,
     props: props,

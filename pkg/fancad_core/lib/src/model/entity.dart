@@ -92,7 +92,36 @@ sealed class CadEntity {
   EntityKind get kind;
 
   /// Flattens this entity into [sink] in model coordinates.
+  ///
+  /// [EmitContext.tolerance] and [EmitContext.minExtent] are the current
+  /// zoom. Each type chooses its own level of detail: a circle flattens at
+  /// the tolerance and may collapse to a point; TEXT keeps its glyph.
   void emit(EmitContext context, GeometrySink sink);
+
+  /// Distinguished points for object snaps, in the entity's own coordinates.
+  ///
+  /// Default contributes nothing. Nearest-point snapping still uses [emit].
+  void emitObjectSnaps(ObjectSnapSink sink) {}
+
+  /// When [local] (or [EmitContext.extentHint]) is smaller than
+  /// [EmitContext.minExtent] after transform, writes one point and returns
+  /// true. POINT and TEXT never call this: a collapsed glyph would vanish.
+  bool emitAsPixel(
+    EmitContext context,
+    GeometrySink sink, [
+    Bounds2? local,
+  ]) {
+    if (context.minExtent <= 0) return false;
+    final box = local ?? context.extentHint;
+    if (box == null || box.isEmpty) return false;
+    final world = context.transform.isIdentity
+        ? box
+        : box.transformed(context.transform);
+    if (!context.isSubPixelWorld(world)) return false;
+    final center = context.apply(box.center);
+    sink.point(center.x, center.y, context.styleFor(props));
+    return true;
+  }
 
   /// Returns a copy with a different identity.
   CadEntity withId(int id);

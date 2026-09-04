@@ -94,6 +94,9 @@ final class TextEntity extends CadEntity {
   }
 
   @override
+  void emitObjectSnaps(ObjectSnapSink sink) => sink.node(position);
+
+  @override
   TextEntity withId(int id) => TextEntity(
     id: id,
     props: props,

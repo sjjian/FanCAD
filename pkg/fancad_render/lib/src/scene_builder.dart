@@ -16,9 +16,9 @@ import 'viewport.dart';
 /// Turns a document and a viewport into a [RenderScene].
 ///
 /// The pipeline is four steps, ordered so the most work is discarded earliest:
-/// query the spatial index for the visible region, drop entities too small to
-/// see, flatten what remains at a tolerance matched to the current zoom, and
-/// merge the results into one batch per colour and line weight.
+/// query the spatial index for the visible region, let each entity emit at
+/// the current zoom, and merge the results into one batch per colour and
+/// line weight.
 ///
 /// The last step is what makes large drawings viable. A drawing with 200,000
 /// lines spread over a dozen layers becomes roughly a dozen `drawRawPoints`
@@ -103,11 +103,6 @@ class SceneBuilder {
       measureWidth: measureWidth,
       shxFonts: shxFonts,
     )) {
-      final transformScale = space.context.transform.meanScale;
-      final lodExtent = space.context.transform.isIdentity ||
-              transformScale < 1e-12
-          ? minimumWorldSize
-          : minimumWorldSize / transformScale;
       final emitted = _emitBlock(
         document: document,
         sink: sink,
@@ -117,7 +112,6 @@ class SceneBuilder {
         onlyLayers: onlyLayers,
         hiddenLayers: space.hiddenLayers.isEmpty ? null : space.hiddenLayers,
         bucket: bucket,
-        minimumWorldSize: lodExtent,
         worldClip: space.paperClip,
       );
       drawn += emitted.drawn;
@@ -235,11 +229,6 @@ class SceneBuilder {
     ];
   }
 
-  static bool _isPointLike(CadEntity entity) =>
-      entity.kind == EntityKind.point ||
-      entity.kind == EntityKind.text ||
-      entity.kind == EntityKind.mtext;
-
   ({int drawn, int culled}) _emitBlock({
     required CadDocument document,
     required BatchingSink sink,
@@ -249,7 +238,6 @@ class SceneBuilder {
     required Set<String>? onlyLayers,
     Set<String>? hiddenLayers,
     required int bucket,
-    required double minimumWorldSize,
     Bounds2? worldClip,
   }) {
     var drawn = 0;
@@ -277,42 +265,31 @@ class SceneBuilder {
         culled++;
         continue;
       }
-      if (bounds.isNotEmpty &&
-          !_isPointLike(entity) &&
-          entity.kind != EntityKind.insert &&
-          bounds.width < minimumWorldSize &&
-          bounds.height < minimumWorldSize) {
-        // Collapse rather than drop: a field of tiny blocks should still read
-        // as a grey mass, not as blank paper. Inserts are left to emit
-        // themselves: a sub-pixel cell becomes one point so a dense block
-        // does not dump its definition, and members still larger than a
-        // pixel keep their shape. Hover re-emits the definition with
-        // minExtent 0, so the outline is the real geometry, not the lod.
-        final center = context.apply(bounds.center);
-        sink.point(
-          center.x,
-          center.y,
-          document.resolve(entity.props, ResolvedStyle.fallback),
-        );
-        drawn++;
-        continue;
-      }
 
+      final hinted = bounds.isNotEmpty ? context.withExtentHint(bounds) : context;
       // Cached tessellation is in the entity's own space. A paper viewport
       // applies a transform, so replaying the cache would put model geometry
       // on the sheet at the wrong coordinates.
-      if (context.transform.isIdentity &&
-          TessellationCache.isWorthCaching(entity)) {
-        sink.replay(
-          cache.obtain(
+      if (context.transform.isIdentity) {
+        final cached = cache.lookup(
+          entity,
+          bucket,
+          minExtent: hinted.minExtent,
+        );
+        if (cached != null) {
+          sink.replay(cached);
+        } else {
+          final recorder = RecordingSink();
+          entity.emit(hinted.withoutClip(), TeeSink(sink, recorder));
+          cache.remember(
             entity,
             bucket,
-            (recorder) => entity.emit(context.withoutClip(), recorder),
-            minExtent: context.minExtent,
-          ),
-        );
+            recorder,
+            minExtent: hinted.minExtent,
+          );
+        }
       } else {
-        entity.emit(context, sink);
+        entity.emit(hinted, sink);
       }
       drawn++;
     }

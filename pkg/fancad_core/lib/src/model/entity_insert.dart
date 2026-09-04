@@ -108,6 +108,9 @@ final class InsertEntity extends CadEntity {
   }
 
   @override
+  void emitObjectSnaps(ObjectSnapSink sink) => sink.node(position);
+
+  @override
   Bounds2 computeBounds({
     BlockLookup blocks = BlockLookup.empty,
     double tolerance = 1e-3,

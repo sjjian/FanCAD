@@ -76,6 +76,9 @@ final class HatchEntity extends CadEntity {
   @override
   void emit(EmitContext context, GeometrySink sink) {
     if (loops.isEmpty) return;
+    if (emitAsPixel(context, sink, context.extentHint ?? computeBounds())) {
+      return;
+    }
     final style = context.styleFor(props);
     final outer = <Float64List>[];
     final inner = <Float64List>[];
@@ -89,6 +92,10 @@ final class HatchEntity extends CadEntity {
       for (final ring in rings) {
         sink.fill(ring, style, holes: outer.isEmpty ? const [] : inner);
       }
+    } else if (_patternWouldVanish(context)) {
+      for (final ring in [...outer, ...inner]) {
+        sink.polyline(ring, style, closed: true);
+      }
     } else {
       final strokes = const HatchGenerator().generate(this);
       if (strokes.isEmpty) {
@@ -99,6 +106,28 @@ final class HatchEntity extends CadEntity {
         for (final stroke in strokes) {
           sink.polyline(context.applyBuffer(stroke), style);
         }
+      }
+    }
+  }
+
+  /// Pattern strokes closer than a few pixels read as a grey smear; the
+  /// boundary is enough at that zoom.
+  bool _patternWouldVanish(EmitContext context) {
+    if (context.minExtent <= 0) return false;
+    final box = context.extentHint ?? computeBounds();
+    if (box.isEmpty) return false;
+    final world = context.transform.isIdentity
+        ? box
+        : box.transformed(context.transform);
+    return world.width < context.minExtent * 8 &&
+        world.height < context.minExtent * 8;
+  }
+
+  @override
+  void emitObjectSnaps(ObjectSnapSink sink) {
+    for (final loop in loops) {
+      for (var i = 0; i < loop.pointCount; i++) {
+        sink.endpoint(Vec2(loop.vertices[i * 2], loop.vertices[i * 2 + 1]));
       }
     }
   }

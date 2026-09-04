@@ -193,17 +193,24 @@ class Picker {
     GeometrySink sink, {
     TessellationCache? cache,
   }) {
-    if (cache != null &&
-        context.transform.isIdentity &&
-        TessellationCache.isWorthCaching(entity)) {
-      replayCachedPrimitives(
-        sink,
-        cache.obtain(
-          entity,
-          TessellationCache.toleranceBucket(context.tolerance),
-          (recorder) => entity.emit(context.withoutClip(), recorder),
-          minExtent: context.minExtent,
-        ),
+    if (cache != null && context.transform.isIdentity) {
+      final bucket = TessellationCache.toleranceBucket(context.tolerance);
+      final cached = cache.lookup(
+        entity,
+        bucket,
+        minExtent: context.minExtent,
+      );
+      if (cached != null) {
+        replayCachedPrimitives(sink, cached);
+        return;
+      }
+      final recorder = RecordingSink();
+      entity.emit(context.withoutClip(), TeeSink(sink, recorder));
+      cache.remember(
+        entity,
+        bucket,
+        recorder,
+        minExtent: context.minExtent,
       );
       return;
     }

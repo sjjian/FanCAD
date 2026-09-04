@@ -52,6 +52,7 @@ final class UnknownEntity extends CadEntity {
 
   @override
   void emit(EmitContext context, GeometrySink sink) {
+    if (emitAsPixel(context, sink, computeBounds())) return;
     if (strokes.length < 4) return;
     final style = context.styleFor(props);
     final counts = strokeCounts.isEmpty
