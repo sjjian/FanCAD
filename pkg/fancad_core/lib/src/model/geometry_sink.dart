@@ -513,6 +513,7 @@ class EmitContext {
     this.attributeValues,
     this.shxFonts = const ShxFontTable(),
     this.pointDisplay = PointDisplay.missing,
+    this.minExtent = 0,
   });
 
   /// Maximum allowed deviation when discretizing curves, in model units.
@@ -549,12 +550,27 @@ class EmitContext {
   /// `$PDMODE` / `$PDSIZE` for POINT entities.
   final PointDisplay pointDisplay;
 
+  /// World-space size below which a primitive is a pixel, not a shape.
+  ///
+  /// Compared after [transform] is applied, so nested inserts keep this
+  /// value as they descend. Zero disables collapsing, which is what pick,
+  /// print and hover outlines want: they re-emit the definition, not the
+  /// overview's level of detail.
+  final double minExtent;
+
   static const int maxDepth = 32;
 
   bool get canRecurse => depth < maxDepth;
 
   ResolvedStyle styleFor(EntityProps props) =>
       styles.resolve(props, inheritedStyle);
+
+  /// True when [world] is smaller than [minExtent] on both axes.
+  bool isSubPixelWorld(Bounds2 world) =>
+      minExtent > 0 &&
+      world.isNotEmpty &&
+      world.width < minExtent &&
+      world.height < minExtent;
 
   /// Transforms a model point through the accumulated block transform.
   Vec2 apply(Vec2 point) =>
@@ -592,6 +608,7 @@ class EmitContext {
     attributeValues: attributeValues,
     shxFonts: shxFonts,
     pointDisplay: pointDisplay,
+    minExtent: minExtent,
   );
 
   EmitContext withTolerance(double value) => EmitContext(
@@ -606,6 +623,7 @@ class EmitContext {
     attributeValues: attributeValues,
     shxFonts: shxFonts,
     pointDisplay: pointDisplay,
+    minExtent: minExtent,
   );
 
   EmitContext withAttributeValues(Map<String, String> values) => EmitContext(
@@ -620,6 +638,7 @@ class EmitContext {
     attributeValues: values,
     shxFonts: shxFonts,
     pointDisplay: pointDisplay,
+    minExtent: minExtent,
   );
 
   /// Drops [clip] so a tessellation cache cannot bake a miss from a
@@ -637,6 +656,7 @@ class EmitContext {
       attributeValues: attributeValues,
       shxFonts: shxFonts,
       pointDisplay: pointDisplay,
+      minExtent: minExtent,
     );
   }
 }

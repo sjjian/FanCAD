@@ -87,12 +87,16 @@ final class InsertEntity extends CadEntity {
     for (var row = 0; row < rowCount; row++) {
       for (var column = 0; column < columnCount; column++) {
         final local = transformFor(column, row);
-        final clip = context.clip;
-        if (clip != null && blockBounds.isNotEmpty) {
+        if (blockBounds.isNotEmpty) {
           final worldBounds = blockBounds.transformed(
             context.transform.multiplied(local),
           );
-          if (!worldBounds.intersects(clip)) continue;
+          final clip = context.clip;
+          if (clip != null && !worldBounds.intersects(clip)) continue;
+          if (context.isSubPixelWorld(worldBounds)) {
+            sink.point(worldBounds.center.x, worldBounds.center.y, style);
+            continue;
+          }
         }
         context.blocks.emitBlock(
           blockName,
