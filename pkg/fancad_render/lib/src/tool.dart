@@ -10,6 +10,7 @@ import 'dynamic_input.dart';
 import 'overlay.dart';
 import 'picking.dart';
 import 'snap.dart';
+import 'tessellation_cache.dart';
 import 'viewport.dart';
 
 /// The services a tool may use.
@@ -135,12 +136,14 @@ class ToolController extends ChangeNotifier
     required DocumentSession session,
     required CadViewport Function() viewportProvider,
     SnapEngine? snapEngine,
-    this.picker = const Picker(),
+    Picker? picker,
+    TessellationCache? tessellation,
     this.onWrite,
     this.onPrompt,
   }) : _session = session,
        _viewportProvider = viewportProvider,
-       snapEngine = snapEngine ?? SnapEngine();
+       snapEngine = snapEngine ?? SnapEngine(),
+       picker = picker ?? Picker(cache: tessellation);
 
   DocumentSession _session;
   final CadViewport Function() _viewportProvider;

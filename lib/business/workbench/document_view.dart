@@ -332,6 +332,7 @@ class _DocumentViewState extends State<DocumentView> {
                     onContextMenu: _openContextMenu,
                     onDoubleClick: _onDoubleClick,
                     onlyLayers: tab.isolatedLayers,
+                    tessellation: tab.tessellation,
                   ),
                   Positioned.fill(
                     child: ListenableBuilder(

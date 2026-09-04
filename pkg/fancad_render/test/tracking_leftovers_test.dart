@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_render/fancad_render.dart';
+import 'package:fancad_render/testing.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 

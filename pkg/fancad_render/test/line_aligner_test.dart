@@ -1,17 +1,17 @@
 import 'dart:ui';
 
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_render/fancad_render.dart';
+import 'package:fancad_render/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The blink, made countable.
 ///
-/// RENDER.md describes green linework flashing while zooming. What flashes is
-/// the number of pixel rows a pair of close parallels occupies: one on this
-/// frame, two on the next, because the old painter re-decided the merge from
-/// the projected gap on every frame and the phase of `floor()` wandered as the
-/// camera moved. Counting distinct aligned rows across a zoom sweep turns that
-/// into a number a test can hold to.
+/// Green linework used to flash while zooming. What flashed is the number of
+/// pixel rows a pair of close parallels occupies: one on this frame, two on
+/// the next, because the old painter re-decided the merge from the projected
+/// gap on every frame and the phase of `floor()` wandered as the camera moved.
+/// Counting distinct aligned rows across a zoom sweep turns that into a number
+/// a test can hold to.
 void main() {
   const size = Size(60, 60);
 

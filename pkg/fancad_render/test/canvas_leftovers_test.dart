@@ -1,5 +1,5 @@
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_render/fancad_render.dart';
+import 'package:fancad_render/testing.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -303,6 +303,92 @@ void main() {
       await tester.pump();
       expect(controller.viewport.size, const Size(800, 600));
       expect(scenes.length, greaterThan(builtBefore));
+    },
+  );
+
+  testWidgets(
+    'a version bump without applyDocumentChange drops tessellation',
+    (tester) async {
+      final cache = TessellationCache();
+      final document = CadDocument();
+      for (var i = 0; i < 12; i++) {
+        document.addEntity(
+          CircleEntity(id: 0, center: Vec2(i * 20.0, 0), radius: 8),
+        );
+      }
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SizedBox(
+            width: 800,
+            height: 600,
+            child: CadCanvas(
+              document: document,
+              controller: controller,
+              tessellation: cache,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(cache.misses, greaterThan(0));
+      cache.resetStatistics();
+
+      document.addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SizedBox(
+            width: 800,
+            height: 600,
+            child: CadCanvas(
+              document: document,
+              controller: controller,
+              tessellation: cache,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(cache.hits, 0);
+      expect(cache.misses, greaterThan(0));
+    },
+  );
+
+  testWidgets(
+    'applyDocumentChange keeps unrelated tessellation',
+    (tester) async {
+      final cache = TessellationCache();
+      final document = CadDocument();
+      for (var i = 0; i < 12; i++) {
+        document.addEntity(
+          CircleEntity(id: 0, center: Vec2(i * 20.0, 0), radius: 8),
+        );
+      }
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SizedBox(
+            width: 800,
+            height: 600,
+            child: CadCanvas(
+              document: document,
+              controller: controller,
+              tessellation: cache,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      cache.resetStatistics();
+
+      final added = document.addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+      );
+      tester.state<CadCanvasState>(find.byType(CadCanvas)).applyDocumentChange(
+        DocumentChange(added: [added.id]),
+      );
+      await tester.pump();
+      expect(cache.hits, greaterThan(0));
     },
   );
 

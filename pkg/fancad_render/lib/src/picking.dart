@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
 
+import 'tessellation_cache.dart';
 import 'viewport.dart';
 
 /// One entity found under the cursor.
@@ -55,11 +56,15 @@ class GripHit {
 /// hit-test implementation to keep consistent — and inconsistency between what
 /// is drawn and what is selectable is the kind of bug users never forgive.
 class Picker {
-  const Picker({this.pickRadiusPixels = 6});
+  const Picker({this.pickRadiusPixels = 6, this.cache});
 
   /// The aperture, in pixels. Six is roughly what AutoCAD uses and what a
   /// mouse can be aimed at reliably.
   final double pickRadiusPixels;
+
+  /// Shared with the drawing layer when the shell injects one. Hover and
+  /// selection then replay flattened geometry instead of tessellating again.
+  final TessellationCache? cache;
 
   /// The entity nearest [world], or null when nothing is within the aperture.
   PickHit? pickTopmost(
@@ -101,7 +106,7 @@ class Picker {
         if (filter != null && !filter(entity)) continue;
 
         final sink = PolylineSink();
-        entity.emit(space.context, sink);
+        _emitEntity(entity, space.context, sink);
         final closest = _closestOn(sink, world, radius);
         if (closest == null) continue;
         if (space.paperClip != null &&
@@ -170,11 +175,39 @@ class Picker {
         // A bounding box overlap is not a real crossing: the window may sit in
         // the empty middle of a large circle. Check the geometry.
         final sink = PolylineSink();
-        entity.emit(space.context, sink);
+        _emitEntity(entity, space.context, sink);
         if (_crosses(sink, window)) result.add(id);
       }
     }
     return result;
+  }
+
+  void _emitEntity(CadEntity entity, EmitContext context, GeometrySink sink) {
+    emitInto(entity, context, sink, cache: cache);
+  }
+
+  /// Emits [entity] through [sink], replaying tessellation when [cache] has it.
+  static void emitInto(
+    CadEntity entity,
+    EmitContext context,
+    GeometrySink sink, {
+    TessellationCache? cache,
+  }) {
+    if (cache != null &&
+        context.transform.isIdentity &&
+        TessellationCache.isWorthCaching(entity)) {
+      replayCachedPrimitives(
+        sink,
+        cache.obtain(
+          entity,
+          TessellationCache.toleranceBucket(context.tolerance),
+          (recorder) => entity.emit(context.withoutClip(), recorder),
+          minExtent: context.minExtent,
+        ),
+      );
+      return;
+    }
+    entity.emit(context, sink);
   }
 
   /// Paper-space entities, plus model-space entities seen through a viewport.
@@ -182,11 +215,20 @@ class Picker {
     CadDocument document,
     Bounds2 paperBox, {
     required double tolerance,
+    double minExtent = 0,
+    double Function(String text, double height)? measureWidth,
+    ShxFontTable shxFonts = const ShxFontTable(),
   }) sync* {
     yield LayoutSpace(
       blockName: document.currentBlockName,
       query: paperBox,
-      context: document.emitContext(tolerance: tolerance, clip: paperBox),
+      context: document.emitContext(
+        tolerance: tolerance,
+        clip: paperBox,
+        minExtent: minExtent,
+        measureWidth: measureWidth,
+        shxFonts: shxFonts,
+      ),
     );
     final layout = document.activeLayout;
     if (layout.isModelSpace) return;
@@ -203,6 +245,9 @@ class Picker {
           tolerance: scale < 1e-12 ? tolerance : tolerance / scale,
           clip: viewport.modelWindow,
           transform: viewport.modelToPaper(),
+          minExtent: minExtent,
+          measureWidth: measureWidth,
+          shxFonts: shxFonts,
         ),
         paperClip: viewport.paperBounds,
         hiddenLayers: {
@@ -290,6 +335,7 @@ class Picker {
     GeometrySink sink, {
     required double tolerance,
     Bounds2? visible,
+    TessellationCache? cache,
   }) {
     final layout = document.activeLayout;
     for (final id in ids) {
@@ -299,9 +345,11 @@ class Picker {
       final owner = document.ownerOf(id) ?? document.modelSpaceBlockName;
       final onSheet = layout.isModelSpace || owner == layout.blockName;
       if (onSheet) {
-        entity.emit(
+        emitInto(
+          entity,
           document.emitContext(tolerance: tolerance, clip: visible),
           sink,
+          cache: cache,
         );
         continue;
       }
@@ -313,13 +361,15 @@ class Picker {
           continue;
         }
         final scale = viewport.scale.abs();
-        entity.emit(
+        emitInto(
+          entity,
           document.emitContext(
             tolerance: scale < 1e-12 ? tolerance : tolerance / scale,
             clip: viewport.modelWindow,
             transform: viewport.modelToPaper(),
           ),
           sink,
+          cache: cache,
         );
       }
     }

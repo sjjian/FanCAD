@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui';
 
-import 'package:fancad_render/fancad_render.dart';
+import 'package:fancad_render/testing.dart';
 
 /// Colour channels, so a test can say which colour it is looking for instead
 /// of doing byte-offset arithmetic at every assertion.
@@ -21,8 +21,7 @@ enum Channel {
 ///
 /// A one-pixel pen centred on a pixel centre gives that. One straddling a
 /// pixel boundary spreads roughly half into each of two pixels instead, which
-/// is the washed-out ACI 3 that RENDER.md describes and the reason alignment
-/// exists at all.
+/// is the washed-out ACI 3 that alignment exists to prevent.
 const int solidCore = 200;
 
 /// The value above which a pixel counts as carrying linework rather than

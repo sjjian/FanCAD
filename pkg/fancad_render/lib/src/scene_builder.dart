@@ -7,6 +7,7 @@ import 'batching_sink.dart';
 import 'drawing_font.dart';
 import 'line_aligner.dart';
 import 'palette.dart';
+import 'picking.dart';
 import 'render_scene.dart';
 import 'tessellation_cache.dart';
 import 'text_cache.dart';
@@ -54,21 +55,18 @@ class SceneBuilder {
 
   /// How far beyond the visible area geometry is built, as a fraction of the
   /// viewport. A third of a screen is enough that a flick pan stays inside the
-  /// existing scene long enough for the replacement to be built.
+  /// existing scene until the camera settle timer rebuilds on the UI thread.
   static const double overscan = 0.35;
 
   RenderScene build(
     CadDocument document,
     CadViewport viewport, {
     Set<String>? onlyLayers,
-    bool withOverscan = true,
   }) {
     if (!viewport.isUsable) return RenderScene.empty(viewport);
 
     final stopwatch = Stopwatch()..start();
-    final visible = withOverscan
-        ? viewport.paddedBounds(overscan)
-        : viewport.visibleBounds;
+    final visible = viewport.paddedBounds(overscan);
     final tolerance = viewport.tolerance;
     final bucket = TessellationCache.toleranceBucket(tolerance);
     final minimumWorldSize = viewport.pixelsToWorld(minimumPixelSize);
@@ -85,72 +83,51 @@ class SceneBuilder {
           double.tryParse(document.headerVariables[r'$LTSCALE'] ?? '') ?? 1,
     );
 
-    final block = document.currentBlockName;
-    final context = document.emitContext(
-      tolerance: tolerance,
-      clip: visible,
-      shxFonts: shxFonts,
-      minExtent: minimumWorldSize,
-      measureWidth: (text, height) => paragraphs.measureWidth(
-        text,
-        height: height,
-        fontFamily: fonts.resolve(
-          styleFont: 'txt',
-          bigFont: '',
-          text: text,
-        ),
+    final measureWidth = (String text, double height) => paragraphs.measureWidth(
+      text,
+      height: height,
+      fontFamily: fonts.resolve(
+        styleFont: 'txt',
+        bigFont: '',
+        text: text,
       ),
     );
     var drawn = 0;
     var culled = 0;
 
-    final paper = _emitBlock(
-      document: document,
-      sink: sink,
-      blockName: block,
-      context: context,
-      query: visible,
-      onlyLayers: onlyLayers,
-      bucket: bucket,
-      minimumWorldSize: minimumWorldSize,
-    );
-    drawn += paper.drawn;
-    culled += paper.culled;
+    for (final space in Picker.spacesUnder(
+      document,
+      visible,
+      tolerance: tolerance,
+      minExtent: minimumWorldSize,
+      measureWidth: measureWidth,
+      shxFonts: shxFonts,
+    )) {
+      final transformScale = space.context.transform.meanScale;
+      final lodExtent = space.context.transform.isIdentity ||
+              transformScale < 1e-12
+          ? minimumWorldSize
+          : minimumWorldSize / transformScale;
+      final emitted = _emitBlock(
+        document: document,
+        sink: sink,
+        blockName: space.blockName,
+        context: space.context,
+        query: space.query,
+        onlyLayers: onlyLayers,
+        hiddenLayers: space.hiddenLayers.isEmpty ? null : space.hiddenLayers,
+        bucket: bucket,
+        minimumWorldSize: lodExtent,
+        worldClip: space.paperClip,
+      );
+      drawn += emitted.drawn;
+      culled += emitted.culled;
+    }
 
     final layout = document.activeLayout;
     if (!layout.isModelSpace) {
       for (final viewportWindow in layout.viewports) {
         if (!viewportWindow.paperBounds.intersects(visible)) continue;
-        if (viewportWindow.isOn) {
-          final scale = viewportWindow.scale.abs();
-          final vpContext = document.emitContext(
-            tolerance: scale < 1e-12 ? tolerance : tolerance / scale,
-            clip: viewportWindow.modelWindow,
-            transform: viewportWindow.modelToPaper(),
-            measureWidth: context.measureWidth,
-            shxFonts: shxFonts,
-            minExtent: minimumWorldSize,
-          );
-          final model = _emitBlock(
-            document: document,
-            sink: sink,
-            blockName: document.modelSpaceBlockName,
-            context: vpContext,
-            query: viewportWindow.modelWindow,
-            onlyLayers: onlyLayers,
-            hiddenLayers: {
-              for (final name in viewportWindow.frozenLayers)
-                name.toLowerCase(),
-            },
-            bucket: bucket,
-            minimumWorldSize: scale < 1e-12
-                ? minimumWorldSize
-                : minimumWorldSize / scale,
-            worldClip: viewportWindow.paperBounds,
-          );
-          drawn += model.drawn;
-          culled += model.culled;
-        }
         _emitViewportFrame(sink, viewportWindow.paperBounds);
       }
     }
@@ -331,6 +308,7 @@ class SceneBuilder {
             entity,
             bucket,
             (recorder) => entity.emit(context.withoutClip(), recorder),
+            minExtent: context.minExtent,
           ),
         );
       } else {

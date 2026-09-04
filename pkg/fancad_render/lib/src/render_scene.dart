@@ -173,11 +173,6 @@ class RenderScene {
         .inflate(1);
   }
 
-  /// Whether this scene stands in for [other] exactly, by translating it a
-  /// whole number of physical pixels.
-  bool canReuseFor(CadViewport other) =>
-      other.scale == viewport.scale && covers(other);
-
   /// How this scene has to be placed to stand in for [other].
   ///
   /// Exact for any camera: both mappings are a scale and a translation of the

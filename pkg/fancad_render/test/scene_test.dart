@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_render/fancad_render.dart';
+import 'package:fancad_render/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -267,25 +267,25 @@ void main() {
       final scene = newBuilder().build(document, view);
 
       final nudged = view.panned(const Offset(20, 10));
-      expect(scene.canReuseFor(nudged), isTrue);
+      expect(scene.covers(nudged), isTrue);
       final placement = scene.placementFor(nudged);
       expect(placement.isTranslation, isTrue);
       expect(placement.offset.dx, closeTo(20, 1e-9));
       expect(placement.offset.dy, closeTo(10, 1e-9));
     });
 
-    test('a zoom cannot reuse the scene', () {
+    test('a zoom is not a translation of the same scene', () {
       final document = gridDocument(50);
       const view = CadViewport(center: Vec2.zero(), scale: 2, size: size);
       final scene = newBuilder().build(document, view);
-      expect(scene.canReuseFor(view.copyWith(scale: 4)), isFalse);
+      expect(scene.placementFor(view.copyWith(scale: 4)).isTranslation, isFalse);
     });
 
     test('a pan beyond the overscan cannot reuse the scene', () {
       final document = gridDocument(500);
       const view = CadViewport(center: Vec2(100, 0), scale: 2, size: size);
       final scene = newBuilder().build(document, view);
-      expect(scene.canReuseFor(view.panned(const Offset(5000, 0))), isFalse);
+      expect(scene.covers(view.panned(const Offset(5000, 0))), isFalse);
     });
   });
 

@@ -17,13 +17,11 @@ import 'viewport.dart';
 /// coordinates through [GeometrySink], and everything past this point — clip,
 /// dash runs, line weight, alignment, the painter — is in physical pixels.
 ///
-/// Public so a caller can batch against a viewport other than the one on
-/// screen, which is what a print preview at plot resolution needs.
+/// Plot and PDF go through `fancad_core`'s plotter, not this sink. The canvas
+/// is the only production caller.
 class BatchingSink implements GeometrySink {
-  /// Text below a physical pixel is drawn as a bar. CAD drawings use thin
-  /// stroke fonts whose labels remain useful at two to four pixels high, so
-  /// replacing all sub-4.5 px text hid most annotations at sheet overview
-  /// zooms.
+  /// Text below one physical pixel is drawn as a bar. Labels of two to four
+  /// pixels stay as type; only ink that would vanish into a speck is replaced.
   static const double minimumTextPixels = 1;
 
   BatchingSink({
@@ -32,8 +30,6 @@ class BatchingSink implements GeometrySink {
     this.fonts = const DrawingFontMap(),
     this.lineTypes = const {},
     this.globalLineTypeScale = 1,
-    this.colorOverride,
-    this.strokeWidthOverride,
   }) : pixels = viewport.pixels;
 
   final CadViewport viewport;
@@ -47,11 +43,6 @@ class BatchingSink implements GeometrySink {
   /// simply absent.
   final Map<String, List<double>> lineTypes;
   final double globalLineTypeScale;
-
-  /// Forces every primitive to one colour, used to draw a highlight or a
-  /// preview of a pending change.
-  final ui.Color? colorOverride;
-  final double? strokeWidthOverride;
 
   /// World-space clip used when drawing a paper-space viewport. Geometry that
   /// leaves the window is cut so it does not spill onto the sheet.
@@ -83,20 +74,7 @@ class BatchingSink implements GeometrySink {
       images.isEmpty;
 
   void replay(List<CachedPrimitive> primitives) {
-    for (final primitive in primitives) {
-      switch (primitive.kind) {
-        case PrimitiveKind.polyline:
-          polyline(primitive.xy, primitive.style, closed: primitive.closed);
-        case PrimitiveKind.fill:
-          fill(primitive.xy, primitive.style, holes: primitive.holes);
-        case PrimitiveKind.point:
-          point(primitive.xy[0], primitive.xy[1], primitive.style);
-        case PrimitiveKind.text:
-          text(primitive.text!, primitive.style);
-        case PrimitiveKind.image:
-          image(primitive.image!, primitive.style);
-      }
-    }
+    replayCachedPrimitives(this, primitives);
   }
 
   /// Projects an interleaved world buffer into physical pixels.
@@ -123,8 +101,6 @@ class BatchingSink implements GeometrySink {
   }
 
   ui.Color _colorFor(ResolvedStyle style) {
-    final override = colorOverride;
-    if (override != null) return override;
     final color = palette.colorOf(style.color);
     if (style.transparency <= 0) return color;
     return color.withValues(alpha: 1 - style.transparency / 100);
@@ -136,8 +112,6 @@ class BatchingSink implements GeometrySink {
   /// painter draws as exactly one pixel — the thinnest solid line the display
   /// has. Zero is that sentinel, so hairlines from any layer share one batch.
   double _strokeWidth(ResolvedStyle style) {
-    final override = strokeWidthOverride;
-    if (override != null) return override;
     final millimetres = LineWeight.toMillimetres(style.lineWeight);
     if (millimetres <= 0) return 0;
     // 96 dpi is the reference other CAD applications use for on-screen line
