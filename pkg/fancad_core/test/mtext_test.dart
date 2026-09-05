@@ -175,7 +175,7 @@ void main() {
       expect(sink.texts.every((run) => !run.isMultiline), isTrue);
       expect(sink.texts.first.hAlign, TextHAlign.left);
       expect(sink.texts.first.vAlign, TextVAlign.top);
-      expect(sink.texts.first.origin.x, lessThan(text.position.x));
+      expect(sink.texts.first.origin.x, closeTo(text.position.x, 1e-9));
       expect(sink.texts.last.origin.x, closeTo(sink.texts.first.origin.x, 1e-9));
       expect(sink.texts.last.origin.y, lessThan(sink.texts.first.origin.y));
 

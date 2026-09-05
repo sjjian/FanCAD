@@ -126,7 +126,13 @@ class MTextLayout {
   /// Attachment is a box corner, not a per-line justify. Right-aligning each
   /// `\P` row independently walked shorter lines toward the insertion and
   /// stacked their tails on top of each other. A hugging column (width 0)
-  /// stays left-aligned; only a defined rectangle justifies to the attachment.
+  /// stays left-aligned inside the column; only a defined rectangle justifies
+  /// to the attachment.
+  ///
+  /// Hugging also skips a left/right box shift. Shifting by a guessed glyph
+  /// width walked title notes off the sheet; without a drawn rectangle the
+  /// insertion stays the left of the column. Center still uses the measured
+  /// width so a one-line label stays on its point.
   List<MTextRun> _attach(
     MTextEntity entity,
     List<MTextRun> runs,
@@ -153,7 +159,7 @@ class MTextLayout {
       TextHAlign.center ||
       TextHAlign.middle ||
       TextHAlign.fit => -columnWidth / 2,
-      TextHAlign.right => -columnWidth,
+      TextHAlign.right => defined ? -columnWidth : 0.0,
       _ => 0.0,
     };
     final dy = switch (entity.vAlign) {
