@@ -85,6 +85,7 @@ Workspace workspace(Ref ref) {
       recentFiles: () => workspace.recentFiles,
     ),
     pluginCommands: ref.watch(pluginCommandsProvider),
+    clipboard: workspace.clipboard,
   );
 
   ref.onDispose(() {

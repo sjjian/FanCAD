@@ -574,6 +574,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get copy => 'Copy';
 
   @override
+  String get copy_to_clipboard => 'Copy to clipboard';
+
+  @override
+  String get copy_with_base => 'Copy with base point';
+
+  @override
+  String get cut => 'Cut';
+
+  @override
+  String get paste => 'Paste';
+
+  @override
+  String get paste_to_original => 'Paste to original coordinates';
+
+  @override
+  String get paste_as_block => 'Paste as block';
+
+  @override
   String get isolate => 'Isolate';
 
   @override
@@ -1294,6 +1312,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get command_edit_copy => 'Copy';
+
+  @override
+  String get command_edit_copy_clip => 'Copy to Clipboard';
+
+  @override
+  String get command_edit_copy_base => 'Copy with Base Point';
+
+  @override
+  String get command_edit_cut_clip => 'Cut';
+
+  @override
+  String get command_edit_paste_clip => 'Paste';
+
+  @override
+  String get command_edit_paste_orig => 'Paste to Original Coordinates';
+
+  @override
+  String get command_edit_paste_block => 'Paste as Block';
 
   @override
   String get command_edit_stretch => 'Stretch';

@@ -7,6 +7,7 @@
 library;
 
 export 'src/annotation/dimension.dart';
+export 'src/clipboard/clip.dart';
 export 'src/command/args_input.dart';
 export 'src/command/command.dart';
 export 'src/command/disposable.dart';

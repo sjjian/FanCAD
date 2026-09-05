@@ -1,5 +1,6 @@
 import 'package:fancad_core/fancad_core.dart';
 
+import 'clipboard_commands.dart';
 import 'draw_commands.dart';
 import 'edit_commands.dart';
 import 'file_commands.dart';
@@ -19,12 +20,14 @@ Disposable registerBuiltinCommands(
   CommandRegistry registry, {
   required FileCommands fileCommands,
   PluginCommands? pluginCommands,
+  DrawingClipboard? clipboard,
 }) {
   final scope = DisposableBag(debugLabel: 'builtin-commands');
   for (final descriptor in [
     ...fileCommands.all(),
     ...DrawCommands.all(),
     ...EditCommands.all(),
+    ...ClipboardCommands(store: clipboard ?? DrawingClipboard()).all(),
     ...ViewCommands.all(),
     ...QueryCommands.all(),
     ...ProCommands.all(),

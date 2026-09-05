@@ -522,6 +522,19 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         () => workspace.run('select.none'),
         shift: true,
       ),
+      ...chord(LogicalKeyboardKey.keyC, () => workspace.run('edit.copyClip')),
+      ...chord(
+        LogicalKeyboardKey.keyC,
+        () => workspace.run('edit.copyBase'),
+        shift: true,
+      ),
+      ...chord(LogicalKeyboardKey.keyV, () => workspace.run('edit.pasteClip')),
+      ...chord(
+        LogicalKeyboardKey.keyV,
+        () => workspace.run('edit.pasteBlock'),
+        shift: true,
+      ),
+      ...chord(LogicalKeyboardKey.keyX, () => workspace.run('edit.cutClip')),
       ...chord(
         LogicalKeyboardKey.keyE,
         () => workspace.run('view.zoomExtents'),

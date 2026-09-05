@@ -5,6 +5,7 @@ export 'business/ai/authoring.dart';
 export 'business/ai/skills/bundled.dart';
 export 'business/app.dart';
 export 'business/commands/builtins.dart';
+export 'business/commands/clipboard_commands.dart';
 export 'business/commands/draw_commands.dart';
 export 'business/commands/edit_commands.dart';
 export 'business/commands/file_commands.dart';

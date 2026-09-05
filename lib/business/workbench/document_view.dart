@@ -110,6 +110,7 @@ class _DocumentViewState extends State<DocumentView> {
       final tab = widget.tab;
       final l10n = context.l10n;
       final selected = tab.selection.isNotEmpty;
+      final hasClip = !widget.workspace.clipboard.isEmpty;
       final hasHidden = tab.document.activeEntities.any(
         (entity) => !entity.props.visible,
       );
@@ -170,6 +171,24 @@ class _DocumentViewState extends State<DocumentView> {
             ),
             shellMenuItem(
               context,
+              value: 'edit.copyClip',
+              label: l10n.copy_to_clipboard,
+              shortcut: shellShortcut('C'),
+            ),
+            shellMenuItem(
+              context,
+              value: 'edit.copyBase',
+              label: l10n.copy_with_base,
+              shortcut: shellShortcut('C', shift: true),
+            ),
+            shellMenuItem(
+              context,
+              value: 'edit.cutClip',
+              label: l10n.cut,
+              shortcut: shellShortcut('X'),
+            ),
+            shellMenuItem(
+              context,
               value: 'view.isolateObjects',
               label: l10n.isolate,
             ),
@@ -188,6 +207,26 @@ class _DocumentViewState extends State<DocumentView> {
               label: l10n.zoom_window,
             ),
           ],
+          shellMenuItem(
+            context,
+            value: 'edit.pasteClip',
+            label: l10n.paste,
+            shortcut: shellShortcut('V'),
+            enabled: hasClip,
+          ),
+          shellMenuItem(
+            context,
+            value: 'edit.pasteOrig',
+            label: l10n.paste_to_original,
+            enabled: hasClip,
+          ),
+          shellMenuItem(
+            context,
+            value: 'edit.pasteBlock',
+            label: l10n.paste_as_block,
+            shortcut: shellShortcut('V', shift: true),
+            enabled: hasClip,
+          ),
           shellMenuItem(
             context,
             value: 'view.unisolateObjects',

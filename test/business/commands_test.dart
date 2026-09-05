@@ -45,6 +45,7 @@ void main() {
         saveActive: (path) async => path,
         recentFiles: () => const [],
       ),
+      clipboard: workspace.clipboard,
     );
     workspace.newDocument();
   });

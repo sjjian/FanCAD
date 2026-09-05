@@ -563,6 +563,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get copy => '复制';
 
   @override
+  String get copy_to_clipboard => '复制到剪贴板';
+
+  @override
+  String get copy_with_base => '带基点复制';
+
+  @override
+  String get cut => '剪切';
+
+  @override
+  String get paste => '粘贴';
+
+  @override
+  String get paste_to_original => '粘贴到原坐标';
+
+  @override
+  String get paste_as_block => '粘贴为块';
+
+  @override
   String get isolate => '隔离';
 
   @override
@@ -1272,6 +1290,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get command_edit_copy => '复制';
+
+  @override
+  String get command_edit_copy_clip => '复制到剪贴板';
+
+  @override
+  String get command_edit_copy_base => '带基点复制';
+
+  @override
+  String get command_edit_cut_clip => '剪切';
+
+  @override
+  String get command_edit_paste_clip => '粘贴';
+
+  @override
+  String get command_edit_paste_orig => '粘贴到原坐标';
+
+  @override
+  String get command_edit_paste_block => '粘贴为块';
 
   @override
   String get command_edit_stretch => '拉伸';
