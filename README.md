@@ -2,231 +2,55 @@
   <img src="./logo.png" alt="FanCAD" width="160"/>
 </p>
 
-# FanCAD
+<p align="center">
+  <strong>FanCAD</strong> is an AI-native professional 2D CAD for the desktop.<br/>
+  Built to stand with GstarCAD and ZWCAD — the DWG workflow you already know, plus an assistant that can actually draw.
+</p>
 
-[English](README.md) | [中文](README.zh.md)
+<p align="center">
+  <a href="https://github.com/sjjian/FanCAD/stargazers"><img src="https://img.shields.io/github/stars/sjjian/FanCAD?style=flat&color=1f6feb" alt="GitHub stars"/></a>
+  <img src="https://img.shields.io/badge/license-GPLv3-blue" alt="GPLv3"/>
+  <img src="https://img.shields.io/badge/macOS-supported-black" alt="macOS"/>
+  <img src="https://img.shields.io/badge/Windows-supported-blue" alt="Windows"/>
+  <img src="https://img.shields.io/badge/Linux-supported-orange" alt="Linux"/>
+  <img src="https://img.shields.io/badge/Flutter-native-02569B?logo=flutter" alt="Flutter"/>
+</p>
 
-An AI-native, plugin-everything 2D CAD application for the desktop, written in
-Flutter.
+<p align="center">
+  <img src="./product.png" alt="FanCAD" width="92%"/>
+</p>
 
-Three ideas shape the whole design:
+<p align="center">
+  <b>English</b> | <a href="./README.zh.md">简体中文</a>
+</p>
 
-**The command registry is the AI tool set.** Every action — drawing a line,
-changing a layer, running an extension — is a registered command with a
-parameter schema. That schema is what the command palette autocompletes, what
-the command line parses, and what is handed to the language model as a tool
-definition. There is no separate "AI surface" to keep in sync, because there is
-nothing to sync: adding a command makes it available to the user and to the
-model at the same time.
+## Why FanCAD
 
-**Patches are the only way to change a drawing.** The UI, extensions and the AI
-agent all write through the same transaction system, so undo, change
-attribution and the "preview before applying" gate work identically no matter
-who initiated the edit.
+Most “AI CAD” products bolt a chatbot onto a viewer. FanCAD is the other way around: a professional 2D CAD first, aimed at the same job as [GstarCAD](https://www.gstarcad.com/) and [ZWCAD](https://www.zwsoft.com/product/zwcad) — open the DWG, draw, annotate, layout, plot — then put the model on the same command surface as the drafter.
 
-**Built-in features and AI-generated features run the same code path.** The
-extension API is the same whether an extension shipped with the application or
-was written by the model thirty seconds ago and hot-loaded from disk.
+If you already live in AutoCAD-compatible software, you should feel at home. The difference is that talking to the assistant is just another way to run the product.
 
-## Status
+## Key Features
 
-Early. See `pkg/` for what exists; the roadmap below reflects the order things
-are being built in.
-
-## Architecture
-
-This is a Dart workspace: one Flutter application at the root, with
-product-agnostic libraries under `pkg/`. Product orchestration lives in
-`lib/{models,storage,services,business}`. Dependency direction is
-`business → services → (models + storage views) → SettingsStore → pkg/*`.
-`pkg` must not import `package:fancad/...`.
-
-```mermaid
-flowchart TB
-  subgraph ui [lib/business]
-    workbench[Workbench panels theme l10n]
-    commands[CommandDescriptors]
-  end
-
-  subgraph services [lib/services]
-    providers["@Riverpod providers"]
-    workspace[Workspace]
-    ai[AiController]
-    plugins[PluginDelegate / PluginHost]
-    shell[Sidebar CommandPane AssistantPane Theme Language]
-  end
-
-  subgraph models [lib/models Freezed]
-    chat[AssistantChat]
-    profile[AssistantProfile]
-  end
-
-  subgraph storage [lib/storage]
-    views[DrawingSettings AssistantSettings ShellSettings PluginSettings]
-    app[AppSettings]
-    store[SettingsStore]
-    json["settings.json"]
-  end
-
-  subgraph pkg [pkg]
-    core[fancad_core]
-    io[fancad_io]
-    render[fancad_render]
-    host[fancad_plugin_host]
-    agent[fancad_ai]
-  end
-
-  workbench --> providers
-  workbench -->|"Workspace.run"| workspace
-  commands --> workspace
-  providers --> workspace
-  providers --> ai
-  providers --> plugins
-  providers --> shell
-  workspace --> views
-  ai --> views
-  ai --> chat
-  ai --> profile
-  plugins --> views
-  shell --> views
-  views --> store
-  app --> views
-  store --> json
-  workspace --> core
-  workspace --> io
-  workspace --> render
-  plugins --> host
-  ai --> agent
-  commands --> core
-```
-
-| Layer | What lives there |
-| --- | --- |
-| `lib/models` | Product shapes and JSON, defined with Freezed. No disk I/O. |
-| `lib/storage` | `SettingsStore` plus composed views over the same bag. No command orchestration. |
-| `lib/services` | Open documents, plugin host wiring, the AI loop. Riverpod is annotated (`@Riverpod`) and generated. Services take views, not the raw store. No widgets. |
-| `lib/business` | Commands, workbench, panels, theme, l10n, bundled assistant skills. Pages talk to `Workspace.run` and existing providers, not to `storage`. |
-| `pkg/fancad_core` | Geometry, the document model, the transaction system, the command registry. Pure Dart. |
-| `pkg/fancad_io` | Drawing I/O: DWG/DXF, LibreDWG shim, FCB. |
-| `pkg/fancad_render` | The viewport: tessellation, culling, the canvas widget. |
-| `pkg/fancad_plugin_host` | The extension runtime: manifests, sandboxed JavaScript, transport. |
-| `pkg/fancad_ai` | Provider abstraction, the agent loop, skill registry, change approval. |
-
-### Preferences
-
-One `settings.json` bag. `main.dart` opens `SettingsStore`; `providers.dart`
-splits it into `AppSettings`. Each service asks for the view it needs.
-Drawings are not stored here: DWG/DXF go through `fancad_io`.
-
-```mermaid
-flowchart LR
-  json["settings.json"] --> store[SettingsStore]
-  store --> app[AppSettings]
-  app --> drawing[DrawingSettings]
-  app --> assistant[AssistantSettings]
-  app --> shellView[ShellSettings]
-  app --> pluginView[PluginSettings]
-  drawing --> workspace[Workspace]
-  assistant --> ai[AiController]
-  shellView --> shell[Sidebar / panes / theme / language]
-  pluginView --> delegate[WorkspacePluginDelegate]
-```
-
-### Commands
-
-CAD verbs stay `CommandDescriptor`s in `lib/business/commands/`. They are not
-rewritten as `*Services`. The UI, plugins and the model all go through
-`Workspace.run` / `runHeadless`.
-
-```mermaid
-flowchart LR
-  ui[toolbar / command line / panel]
-  plugin[plugin]
-  model[assistant]
-  ws[Workspace.run / runHeadless]
-  reg[CommandRegistry]
-  core[fancad_core document + undo]
-
-  ui --> ws
-  plugin --> ws
-  model --> ws
-  ws --> reg
-  reg --> core
-```
-
-Nothing above `fancad_io` knows that LibreDWG exists; everything goes
-through the `DrawingBackend` interface.
-
-Freezed models and annotated Riverpod providers are generated. After editing
-`@freezed` or `@Riverpod` sources, run `dart run build_runner build`.
+- **Professional 2D CAD**: Draw, modify, annotate, manage layers and blocks, work in paper space, attach xrefs. The command line and shortcuts are the ones drafters already use.
+- **Native DWG / DXF**: Open and exchange real production drawings. No “import as a picture”, no proprietary lock-in for day-to-day files.
+- **An assistant that draws**: The model calls the same commands you do. It can draft, edit, query the drawing, and write extensions — then show you the result before anything is committed.
+- **You stay in control**: Preview, allow or cancel, undo the whole turn. High-impact edits never land silently.
+- **Plugins are the product**: Extensions are first-class commands, not a side API. Built-in tools, third-party plugins, and AI-authored plugins share one path, with hot reload.
+- **Lightweight & native**: Flutter desktop — not Electron, not a browser in a box. Native on Windows, macOS, and Linux; English and 简体中文.
+- **Open source**: GPLv3. The DWG stack is [GNU LibreDWG](https://www.gnu.org/software/libredwg/).
 
 ## Building
 
 ```bash
+git clone --recurse-submodules <url>
+cd FanCAD
 flutter pub get
 flutter run -d macos      # or -d windows, -d linux
 ```
 
-Tests:
-
-```bash
-dart test pkg/fancad_core       # pure Dart
-dart test pkg/fancad_io
-dart test pkg/fancad_ai
-flutter test                    # widget and render tests
-```
-
-Codegen, after changing a Freezed model or a `@Riverpod` provider:
-
-```bash
-dart run build_runner build
-```
-
-### DWG support is compiled from the LibreDWG submodule
-
-DWG parsing comes from [GNU LibreDWG](https://www.gnu.org/software/libredwg/)
-0.14.8592, pinned as a git submodule at
-`pkg/fancad_io/native/third_party/libredwg`. The build hook compiles it as a
-static PIC library and links it into `libfancad_io`, so the application does
-not load a Homebrew or system dylib at runtime.
-
-Clone with submodules, or initialize them after a plain clone:
-
-```bash
-git clone --recurse-submodules <url>
-# or, in an existing checkout:
-git submodule update --init --recursive
-```
-
-The first build on a machine compiles LibreDWG (a few minutes). Later builds
-reuse that static library. `FANCAD_LIBREDWG_ROOT` still overrides the submodule
-if you are working on the parser itself.
-
-Set `FANCAD_BUILD_VERBOSE=1` to see the full compile and link commands.
+The first build compiles LibreDWG (a few minutes). After a plain clone, run `git submodule update --init --recursive`.
 
 ## Licence
 
-**GPLv3.** LibreDWG is GPLv3, and FanCAD links it, so the combined work is
-GPLv3. This was a deliberate choice rather than an accident of dependency
-selection: the alternatives were a proprietary DWG SDK with per-seat licensing,
-or writing a DWG parser from scratch. Contributors should be aware that
-distributing a closed-source fork of this application is not possible while the
-LibreDWG backend is linked.
-
-The seam is `DrawingBackend` in `pkg/fancad_io/lib/src/backend.dart`. Nothing
-above it depends on LibreDWG, so a differently licensed backend can be
-substituted without touching the rest of the application.
-
-## Roadmap
-
-- **M0** Workspace, application shell, command registry
-- **M1** Native DWG import, the document model, the render pipeline
-- **M2** Transactions and undo, selection and snapping, the basic drawing and
-  editing commands
-- **M3** The extension host, the JavaScript API, hot reload
-- **M4** The AI agent, document context, the approval gate, AI-authored
-  extensions
-- **M5** Professional fidelity: SHX fonts, hatch patterns, dimensions, MText
-  layout, external references, layouts and printing
-- **M6** Write-back: DWG and DXF export, fidelity auditing, million-entity
-  performance
+**GPLv3.** LibreDWG is GPLv3, and FanCAD links it, so the combined work is GPLv3. A closed-source fork is not possible while that backend is linked.
