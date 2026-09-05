@@ -43,7 +43,7 @@ void main() {
     expect(runs.last.origin.y, closeTo(80 - 30 * 5 / 3, 1e-9));
   });
 
-  test('top-right attachment shifts the box, not each row', () {
+  test('hugging top-right keeps the column on the insertion', () {
     final runs = const MTextLayout().layout(
       const MTextEntity(
         id: 1,
@@ -54,8 +54,37 @@ void main() {
       ),
     );
     expect(runs.map((run) => run.text), ['A', 'BBBB']);
-    expect(runs.first.origin.x, closeTo(runs.last.origin.x, 1e-9));
-    expect(runs.first.origin.x, closeTo(100 - 4 * 10 * 0.6, 1e-9));
+    expect(runs.first.origin.x, closeTo(100, 1e-9));
+    expect(runs.last.origin.x, closeTo(100, 1e-9));
+  });
+
+  test('a defined top-right box still sits on the insertion', () {
+    final runs = const MTextLayout().layout(
+      const MTextEntity(
+        id: 1,
+        position: Vec2(100, 50),
+        content: r'A\PBBBB',
+        height: 10,
+        rectangleWidth: 40,
+        attachment: 3,
+      ),
+    );
+    expect(runs.map((run) => run.text), ['A', 'BBBB']);
+    expect(runs.first.origin.x + 10 * 0.6, closeTo(100, 1e-9));
+    expect(runs.last.origin.x + 4 * 10 * 0.6, closeTo(100, 1e-9));
+  });
+
+  test('a hugging centre label stays on its point', () {
+    final runs = const MTextLayout().layout(
+      const MTextEntity(
+        id: 1,
+        position: Vec2(100, 50),
+        content: 'Hi',
+        height: 10,
+        attachment: 5,
+      ),
+    );
+    expect(runs.single.origin.x, closeTo(100 - 2 * 10 * 0.6 / 2, 1e-9));
   });
 
   test('capital \\P still breaks; lowercase \\p never does', () {
