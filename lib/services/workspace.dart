@@ -94,6 +94,10 @@ class Workspace extends ChangeNotifier implements CommandServices {
   /// on the canvas HUD and users expect them to stay put when switching tabs.
   late final SnapEngine snapEngine;
 
+  /// Geometry clipboard shared by every open tab. COPYCLIP writes here;
+  /// PASTECLIP in another drawing reads it. Not the OS clipboard.
+  final DrawingClipboard clipboard = DrawingClipboard();
+
   final List<DocumentTab> _tabs = [];
   int _activeIndex = -1;
   int _nextSessionId = 1;

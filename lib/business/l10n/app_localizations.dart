@@ -1094,6 +1094,42 @@ abstract class AppLocalizations {
   /// **'Copy'**
   String get copy;
 
+  /// copy to clipboard
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to clipboard'**
+  String get copy_to_clipboard;
+
+  /// copy with base point
+  ///
+  /// In en, this message translates to:
+  /// **'Copy with base point'**
+  String get copy_with_base;
+
+  /// cut
+  ///
+  /// In en, this message translates to:
+  /// **'Cut'**
+  String get cut;
+
+  /// paste
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get paste;
+
+  /// paste to original coordinates
+  ///
+  /// In en, this message translates to:
+  /// **'Paste to original coordinates'**
+  String get paste_to_original;
+
+  /// paste as block
+  ///
+  /// In en, this message translates to:
+  /// **'Paste as block'**
+  String get paste_as_block;
+
   /// isolate
   ///
   /// In en, this message translates to:
@@ -2443,6 +2479,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy'**
   String get command_edit_copy;
+
+  /// command edit copy clip
+  ///
+  /// In en, this message translates to:
+  /// **'Copy to Clipboard'**
+  String get command_edit_copy_clip;
+
+  /// command edit copy base
+  ///
+  /// In en, this message translates to:
+  /// **'Copy with Base Point'**
+  String get command_edit_copy_base;
+
+  /// command edit cut clip
+  ///
+  /// In en, this message translates to:
+  /// **'Cut'**
+  String get command_edit_cut_clip;
+
+  /// command edit paste clip
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get command_edit_paste_clip;
+
+  /// command edit paste orig
+  ///
+  /// In en, this message translates to:
+  /// **'Paste to Original Coordinates'**
+  String get command_edit_paste_orig;
+
+  /// command edit paste block
+  ///
+  /// In en, this message translates to:
+  /// **'Paste as Block'**
+  String get command_edit_paste_block;
 
   /// command edit stretch
   ///

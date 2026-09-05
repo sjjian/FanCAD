@@ -813,6 +813,30 @@
   "@copy": {
     "description": "copy"
   },
+  "copy_to_clipboard": "复制到剪贴板",
+  "@copy_to_clipboard": {
+    "description": "copy to clipboard"
+  },
+  "copy_with_base": "带基点复制",
+  "@copy_with_base": {
+    "description": "copy with base point"
+  },
+  "cut": "剪切",
+  "@cut": {
+    "description": "cut"
+  },
+  "paste": "粘贴",
+  "@paste": {
+    "description": "paste"
+  },
+  "paste_to_original": "粘贴到原坐标",
+  "@paste_to_original": {
+    "description": "paste to original coordinates"
+  },
+  "paste_as_block": "粘贴为块",
+  "@paste_as_block": {
+    "description": "paste as block"
+  },
   "isolate": "隔离",
   "@isolate": {
     "description": "isolate"
@@ -1788,6 +1812,30 @@
   "command_edit_copy": "复制",
   "@command_edit_copy": {
     "description": "command edit copy"
+  },
+  "command_edit_copy_clip": "复制到剪贴板",
+  "@command_edit_copy_clip": {
+    "description": "command edit copy clip"
+  },
+  "command_edit_copy_base": "带基点复制",
+  "@command_edit_copy_base": {
+    "description": "command edit copy base"
+  },
+  "command_edit_cut_clip": "剪切",
+  "@command_edit_cut_clip": {
+    "description": "command edit cut clip"
+  },
+  "command_edit_paste_clip": "粘贴",
+  "@command_edit_paste_clip": {
+    "description": "command edit paste clip"
+  },
+  "command_edit_paste_orig": "粘贴到原坐标",
+  "@command_edit_paste_orig": {
+    "description": "command edit paste orig"
+  },
+  "command_edit_paste_block": "粘贴为块",
+  "@command_edit_paste_block": {
+    "description": "command edit paste block"
   },
   "command_edit_stretch": "拉伸",
   "@command_edit_stretch": {

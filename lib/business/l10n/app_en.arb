@@ -813,6 +813,30 @@
   "@copy": {
     "description": "copy"
   },
+  "copy_to_clipboard": "Copy to clipboard",
+  "@copy_to_clipboard": {
+    "description": "copy to clipboard"
+  },
+  "copy_with_base": "Copy with base point",
+  "@copy_with_base": {
+    "description": "copy with base point"
+  },
+  "cut": "Cut",
+  "@cut": {
+    "description": "cut"
+  },
+  "paste": "Paste",
+  "@paste": {
+    "description": "paste"
+  },
+  "paste_to_original": "Paste to original coordinates",
+  "@paste_to_original": {
+    "description": "paste to original coordinates"
+  },
+  "paste_as_block": "Paste as block",
+  "@paste_as_block": {
+    "description": "paste as block"
+  },
   "isolate": "Isolate",
   "@isolate": {
     "description": "isolate"
@@ -1803,6 +1827,30 @@
   "command_edit_copy": "Copy",
   "@command_edit_copy": {
     "description": "command edit copy"
+  },
+  "command_edit_copy_clip": "Copy to Clipboard",
+  "@command_edit_copy_clip": {
+    "description": "command edit copy clip"
+  },
+  "command_edit_copy_base": "Copy with Base Point",
+  "@command_edit_copy_base": {
+    "description": "command edit copy base"
+  },
+  "command_edit_cut_clip": "Cut",
+  "@command_edit_cut_clip": {
+    "description": "command edit cut clip"
+  },
+  "command_edit_paste_clip": "Paste",
+  "@command_edit_paste_clip": {
+    "description": "command edit paste clip"
+  },
+  "command_edit_paste_orig": "Paste to Original Coordinates",
+  "@command_edit_paste_orig": {
+    "description": "command edit paste orig"
+  },
+  "command_edit_paste_block": "Paste as Block",
+  "@command_edit_paste_block": {
+    "description": "command edit paste block"
   },
   "command_edit_stretch": "Stretch",
   "@command_edit_stretch": {
