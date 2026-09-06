@@ -123,6 +123,76 @@ void main() {
     expect(result.message.toLowerCase(), contains('empty'));
   });
 
+  test(
+    'COPYCLIP of a font-coded dimension keeps the *D note after paste',
+    () async {
+      const raw = r'{\F宋体|c134;型材1}';
+      const rotation = 1.5707963267948966;
+      late final int dimId;
+      workspace.active!.session.edit('seed', (transaction) {
+        transaction.putBlock(
+          const BlockRecord(name: '*D1', isAnonymous: true, entityIds: []),
+        );
+        transaction.add(
+          const MTextEntity(
+            id: 0,
+            position: Vec2(5, 3),
+            content: raw,
+            height: 40,
+            rotation: rotation,
+            attachment: 5,
+          ),
+          blockName: '*D1',
+        );
+        dimId = transaction.add(
+          const DimensionEntity(
+            id: 0,
+            blockName: '*D1',
+            measurement: 10,
+            overrideText: raw,
+            definitionPoints: [Vec2.zero(), Vec2(0, -10)],
+            textPosition: Vec2(5, 3),
+            dimensionType: 161,
+          ),
+        );
+      });
+
+      final copied = await run('edit.copyBase', {
+        'from': [0, 0],
+        'ids': [dimId],
+      });
+      expect(copied.status, CommandStatus.ok, reason: copied.message);
+
+      workspace.newDocument();
+      final pasted = await run('edit.pasteClip', {
+        'to': [100, 40],
+      });
+      expect(pasted.status, CommandStatus.ok, reason: pasted.message);
+
+      final dim = document.entities.whereType<DimensionEntity>().single;
+      expect(dim.blockName, isNotEmpty);
+      expect(dim.textPosition, const Vec2(105, 43));
+      final note = document
+          .entitiesOf(dim.blockName)
+          .whereType<MTextEntity>()
+          .single;
+      expect(note.position, const Vec2(105, 43));
+      expect(note.height, 40);
+      expect(note.rotation, closeTo(rotation, 1e-12));
+
+      final sink = PolylineSink();
+      dim.emit(document.emitContext(tolerance: 0.1), sink);
+      expect(sink.texts, isNotEmpty);
+      expect(sink.texts.every((item) => item.height == 40), isTrue);
+      expect(
+        sink.texts.every((item) => (item.rotation - rotation).abs() < 1e-9),
+        isTrue,
+      );
+      expect(sink.texts.map((item) => item.text).join(), contains('型材1'));
+      expect(sink.texts.every((item) => !item.text.contains(r'\F')), isTrue);
+    },
+  );
+
   test('PASTEBLOCK creates one insert at the insertion point', () async {
     final first = await drawLine(0, 0, 10, 0);
     final second = await drawLine(0, 0, 0, 4);

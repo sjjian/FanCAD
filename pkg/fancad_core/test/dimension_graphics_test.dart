@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
@@ -6,6 +7,24 @@ import 'package:test/test.dart';
 void main() {
   const graphics = DimensionGraphics();
   const context = EmitContext(tolerance: 0.1);
+
+  test('a vertical aligned fallback follows the dimension line', () {
+    final sink = PolylineSink();
+    graphics.emit(
+      const DimensionEntity(
+        id: 1,
+        definitionPoints: [Vec2(0, 10), Vec2(0, 0)],
+        textPosition: Vec2(4, 5),
+        measurement: 10,
+        overrideText: r'{\F宋体|c134;型材1}',
+        dimensionType: 129,
+      ),
+      context,
+      sink,
+    );
+    expect(sink.texts.single.text, '型材1');
+    expect(sink.texts.single.rotation, closeTo(math.pi / 2, 1e-12));
+  });
 
   test('a short definition list only emits the measurement text', () {
     final sink = PolylineSink();
@@ -34,36 +53,47 @@ void main() {
     expect(sink.polylines, isNotEmpty);
   });
 
-  test('radius and diameter share a chord but only diameter crosses the centre', () {
-    const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 10);
-    final radius = Construct.radiusDimension(circle, const Vec2(10, 0))!;
-    final diameter = Construct.diameterDimension(circle, const Vec2(10, 0))!;
+  test(
+    'radius and diameter share a chord but only diameter crosses the centre',
+    () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 10);
+      final radius = Construct.radiusDimension(circle, const Vec2(10, 0))!;
+      final diameter = Construct.diameterDimension(circle, const Vec2(10, 0))!;
 
-    final radiusSink = PolylineSink();
-    graphics.emit(radius, context, radiusSink);
-    expect(radiusSink.texts.single.text, 'R10.00');
-    expect(radiusSink.fills, hasLength(1));
-    expect(
-      radiusSink.polylines.any(_isSegment(const Vec2.zero(), const Vec2(10, 0))),
-      isTrue,
-    );
-    expect(
-      radiusSink.polylines.any(_isSegment(const Vec2.zero(), const Vec2(-10, 0))),
-      isFalse,
-    );
+      final radiusSink = PolylineSink();
+      graphics.emit(radius, context, radiusSink);
+      expect(radiusSink.texts.single.text, 'R10.00');
+      expect(radiusSink.fills, hasLength(1));
+      expect(
+        radiusSink.polylines.any(
+          _isSegment(const Vec2.zero(), const Vec2(10, 0)),
+        ),
+        isTrue,
+      );
+      expect(
+        radiusSink.polylines.any(
+          _isSegment(const Vec2.zero(), const Vec2(-10, 0)),
+        ),
+        isFalse,
+      );
 
-    final diameterSink = PolylineSink();
-    graphics.emit(diameter, context, diameterSink);
-    expect(diameterSink.texts.single.text, 'Ø20.00');
-    expect(
-      diameterSink.polylines.any(_isSegment(const Vec2.zero(), const Vec2(10, 0))),
-      isTrue,
-    );
-    expect(
-      diameterSink.polylines.any(_isSegment(const Vec2.zero(), const Vec2(-10, 0))),
-      isTrue,
-    );
-  });
+      final diameterSink = PolylineSink();
+      graphics.emit(diameter, context, diameterSink);
+      expect(diameterSink.texts.single.text, 'Ø20.00');
+      expect(
+        diameterSink.polylines.any(
+          _isSegment(const Vec2.zero(), const Vec2(10, 0)),
+        ),
+        isTrue,
+      );
+      expect(
+        diameterSink.polylines.any(
+          _isSegment(const Vec2.zero(), const Vec2(-10, 0)),
+        ),
+        isTrue,
+      );
+    },
+  );
 
   test('an angular dimension draws two legs and a sector arc, not arrows', () {
     final dim = Construct.angularDimension(
