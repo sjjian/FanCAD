@@ -60,7 +60,7 @@ final class TextEntity extends CadEntity {
 
   TextGeometry toGeometry(EmitContext context) => composeEmittedText(
     context: context,
-    text: expandDxfTextCodes(content),
+    text: decodeDrawnText(content),
     origin: position,
     height: height,
     rotation: rotation,
@@ -81,7 +81,7 @@ final class TextEntity extends CadEntity {
       context: context,
       sink: sink,
       style: context.styleFor(props),
-      text: expandDxfTextCodes(content),
+      text: decodeDrawnText(content),
       origin: position,
       height: height,
       rotation: rotation,

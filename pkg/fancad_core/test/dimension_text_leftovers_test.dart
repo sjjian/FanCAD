@@ -28,12 +28,7 @@ void main() {
   test('a *D block that already drew MTEXT cannot invent a second label', () {
     final document = CadDocument();
     document.addEntity(
-      const MTextEntity(
-        id: 1,
-        position: Vec2(5, 2),
-        content: '40',
-        height: 35,
-      ),
+      const MTextEntity(id: 1, position: Vec2(5, 2), content: '40', height: 35),
       blockName: r'*D$1',
     );
     document.addEntity(
@@ -56,11 +51,7 @@ void main() {
     final sink = PolylineSink();
     const graphics = DimensionGraphics();
     graphics.emit(
-      const DimensionEntity(
-        id: 1,
-        measurement: 4,
-        overrideText: 'A',
-      ),
+      const DimensionEntity(id: 1, measurement: 4, overrideText: 'A'),
       EmitContext(
         tolerance: 0.1,
         shxFonts: ShxFontTable({
@@ -84,6 +75,32 @@ void main() {
     );
     expect(sink.texts, isEmpty);
     expect(sink.polylines, isNotEmpty);
+  });
+
+  test('a font-coded override paints the note, not the braces', () {
+    final sink = PolylineSink();
+    const graphics = DimensionGraphics();
+    graphics.emit(
+      const DimensionEntity(
+        id: 1,
+        measurement: 10,
+        overrideText: r'{\F宋体|c134;型材1}',
+      ),
+      const EmitContext(tolerance: 0.1),
+      sink,
+    );
+    expect(sink.texts.single.text, '型材1');
+  });
+
+  test('TEXT that kept MTEXT codes still paints the glyphs', () {
+    final sink = PolylineSink();
+    const TextEntity(
+      id: 1,
+      position: Vec2.zero(),
+      content: r'{\F宋体|c134;型材1}',
+      height: 2.5,
+    ).emit(const EmitContext(tolerance: 0.1), sink);
+    expect(sink.texts.single.text, '型材1');
   });
 
   test('a suppressed override cannot invent dimension text', () {

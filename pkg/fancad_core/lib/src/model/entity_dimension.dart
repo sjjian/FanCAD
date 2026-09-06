@@ -134,8 +134,10 @@ final class DimensionEntity extends CadEntity {
         ? 0
         : (decimalPlaces > 8 ? 8 : decimalPlaces);
     final value = measurement.toStringAsFixed(places);
-    if (overrideText.isEmpty) return value;
-    return overrideText.replaceAll('<>', value);
+    final raw = overrideText.isEmpty
+        ? value
+        : overrideText.replaceAll('<>', value);
+    return decodeDrawnText(raw);
   }
 
   DimensionEntity copyWith({
