@@ -244,6 +244,15 @@ void main() {
     expect(xs[1], closeTo(200, 1e-6));
     expect(xs[2], closeTo(300, 1e-6));
     expect(
+      opened.document.blocks.keys.toSet(),
+      containsAll(names),
+      reason: 'CJK / × block names must decode from MIF, not stay as \\U+XXXX',
+    );
+    expect(
+      inserts.map((item) => item.blockName).toSet(),
+      containsAll(names),
+    );
+    expect(
       opened.document.blocks.values.where(
         (block) => opened.document.entitiesOf(block.name).whereType<LineEntity>().isNotEmpty,
       ),
@@ -575,6 +584,39 @@ void main() {
     expect(
       opened.document.entities.whereType<LineEntity>().single.props.layer,
       'WALLS',
+    );
+  });
+
+  test('a CJK layer name stays bound after DWG save', () async {
+    final directory = Directory.systemTemp.createTempSync('fancad-cjk-layer');
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    const layerName = '标注线';
+    final document = CadDocument()
+      ..putLayer(const LayerDef(name: layerName))
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          start: Vec2.zero(),
+          end: Vec2(10, 0),
+          props: EntityProps(layer: layerName),
+        ),
+      );
+
+    final dwgPath = '${directory.path}/cjk-layer.dwg';
+    await importer.save(dwgPath, document);
+
+    final opened = await importer.open(dwgPath);
+    expect(opened.document.layers.containsKey(layerName), isTrue);
+    expect(
+      opened.document.layers.keys.any((name) => name.contains(r'\U+')),
+      isFalse,
+      reason: 'LAYER table must decode MIF back to Unicode',
+    );
+    expect(
+      opened.document.entities.whereType<LineEntity>().single.props.layer,
+      layerName,
+      reason: 'the entity must stay on 标注线, not fall onto 0',
     );
   });
 

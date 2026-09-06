@@ -116,6 +116,9 @@ void main() {
     timeout: Timeout.parse('2m'),
   );
 
+  /// LibreDWG has no dwg_add_MULTILEADER / true UNKNOWN objects. Write-down
+  /// to MTEXT+LEADER and LWPOLYLINE is the known strategy; this test locks
+  /// that, and is not part of the CJK layer-name bind fix.
   test(
     'ATTRIB, UNKNOWN and MULTILEADER are not yet DWG round-trips',
     () async {
@@ -1236,6 +1239,30 @@ void main() {
         opened.entities.whereType<LineEntity>().single.props.layer,
         'WALLS',
       );
+    });
+
+    test('a CJK layer name is not stored as MIF on reopen', () async {
+      const layerName = '标注线';
+      final opened = await saveAndOpen(
+        CadDocument()
+          ..putLayer(const LayerDef(name: layerName, color: CadColor.indexed(1)))
+          ..addEntity(
+            const LineEntity(
+              id: 1,
+              props: EntityProps(layer: layerName),
+              start: Vec2.zero(),
+              end: Vec2(8, 0),
+            ),
+          ),
+        'cjklayer',
+      );
+      expect(opened.layers.containsKey(layerName), isTrue);
+      expect(opened.layers.keys.any((name) => name.contains(r'\U+')), isFalse);
+      expect(
+        opened.entities.whereType<LineEntity>().single.props.layer,
+        layerName,
+      );
+      expect(opened.layer(layerName)?.color, const CadColor.indexed(1));
     });
 
     test('ByBlock colour and lineweight survive', () async {

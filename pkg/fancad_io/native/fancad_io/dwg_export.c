@@ -68,6 +68,97 @@ static int ascii_ieq(const char *a, const char *b) {
   return *a == 0 && *b == 0;
 }
 
+/* R2000/R2004 table names store non-ASCII as AutoCAD MIF (`\U+XXXX`).
+ * dwg_add_LAYER writes that encoding; dwg_find_tablehandle compares the
+ * raw TV bytes, so a UTF-8 lookup never hits the row and the entity
+ * falls onto layer 0. Encode both sides the same way. */
+#define MIF_CAP 2048
+
+static int utf8_next(const unsigned char **pp, unsigned *cp) {
+  const unsigned char *p = *pp;
+  unsigned char c;
+  if (!p || !*p) return 0;
+  c = p[0];
+  if (c < 0x80) {
+    *cp = c;
+    *pp = p + 1;
+    return 1;
+  }
+  if ((c & 0xE0) == 0xC0 && (p[1] & 0xC0) == 0x80) {
+    *cp = ((unsigned)(c & 0x1F) << 6) | (unsigned)(p[1] & 0x3F);
+    *pp = p + 2;
+    return 1;
+  }
+  if ((c & 0xF0) == 0xE0 && (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80) {
+    *cp = ((unsigned)(c & 0x0F) << 12) | ((unsigned)(p[1] & 0x3F) << 6) |
+          (unsigned)(p[2] & 0x3F);
+    *pp = p + 3;
+    return 1;
+  }
+  if ((c & 0xF8) == 0xF0 && (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80 &&
+      (p[3] & 0xC0) == 0x80) {
+    *cp = ((unsigned)(c & 0x07) << 18) | ((unsigned)(p[1] & 0x3F) << 12) |
+          ((unsigned)(p[2] & 0x3F) << 6) | (unsigned)(p[3] & 0x3F);
+    *pp = p + 4;
+    return 1;
+  }
+  return 0;
+}
+
+static void utf8_to_mif(const char *src, char *dst, size_t cap) {
+  const unsigned char *p = (const unsigned char *)src;
+  size_t o = 0;
+  if (!dst || cap == 0) return;
+  dst[0] = '\0';
+  if (!src) return;
+  if (strstr(src, "\\U+")) {
+    strncpy(dst, src, cap - 1);
+    dst[cap - 1] = '\0';
+    return;
+  }
+  while (*p && o + 1 < cap) {
+    unsigned cp = 0;
+    if (!utf8_next(&p, &cp)) break;
+    if (cp >= 0x20 && cp <= 0x7E) {
+      dst[o++] = (char)cp;
+      continue;
+    }
+    if (cp < 0x10000) {
+      if (o + 7 >= cap) break;
+      snprintf(dst + o, cap - o, "\\U+%04X", cp);
+      o += 7;
+      continue;
+    }
+    {
+      unsigned hi = 0xD800u + ((cp - 0x10000u) >> 10);
+      unsigned lo = 0xDC00u + ((cp - 0x10000u) & 0x3FFu);
+      if (o + 14 >= cap) break;
+      snprintf(dst + o, cap - o, "\\U+%04X\\U+%04X", hi, lo);
+      o += 14;
+    }
+  }
+  dst[o] = '\0';
+}
+
+static const char *mif_name(const char *utf8, char *buf, size_t cap) {
+  if (!utf8 || !utf8[0]) return utf8;
+  utf8_to_mif(utf8, buf, cap);
+  return buf[0] ? buf : utf8;
+}
+
+static BITCODE_H find_named(Dwg_Data *dwg, const char *utf8, const char *table) {
+  char mif[MIF_CAP];
+  BITCODE_H href;
+  if (!dwg || !utf8 || !utf8[0] || !table) return NULL;
+  href = dwg_find_tablehandle(dwg, utf8, table);
+  if (href) return href;
+  utf8_to_mif(utf8, mif, sizeof(mif));
+  if (mif[0] && !streq(mif, utf8)) {
+    href = dwg_find_tablehandle(dwg, mif, table);
+  }
+  return href;
+}
+
 static int is_model_space(const char *name) {
   return streq(name, "*Model_Space") || streq(name, "*MODEL_SPACE");
 }
@@ -106,7 +197,7 @@ static void bind_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr, void *ent,
     if (layer_rec) {
       fcb_view_str(v, fcb_u32(layer_rec + FCB_LAYER_NAME), layer, sizeof(layer));
       if (layer[0]) {
-        href = dwg_find_tablehandle(dwg, layer, "LAYER");
+        href = find_named(dwg, layer, "LAYER");
         if (href) common->layer = href;
       }
     }
@@ -142,7 +233,7 @@ static void bind_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr, void *ent,
           common->ltype_flags = 2;
           common->isbylayerlt = 0;
         } else if (ltype[0] && !streq(ltype, "ByLayer")) {
-          href = dwg_find_tablehandle(dwg, ltype, "LTYPE");
+          href = find_named(dwg, ltype, "LTYPE");
           if (href) {
             common->ltype = href;
             /* 11 = named LTYPE handle; 00 leaves the entity ByLayer. */
@@ -212,7 +303,7 @@ static void bind_style(Dwg_Data *dwg, BITCODE_H *slot, const fcb_view *v,
   if (!slot || str_count < 2) return;
   fcb_view_str(v, str_off + 1, name, sizeof(name));
   if (!name[0] || streq(name, "Standard")) return;
-  href = dwg_find_tablehandle(dwg, name, "STYLE");
+  href = find_named(dwg, name, "STYLE");
   if (href) *slot = href;
 }
 
@@ -430,15 +521,18 @@ static void *export_spline(Dwg_Object_BLOCK_HEADER *hdr, const fcb_view *v,
 }
 
 static BITCODE_H find_block_header(Dwg_Data *dwg, const char *name) {
+  char mif[MIF_CAP];
   BITCODE_BL k;
   if (!dwg || !name || !name[0]) return NULL;
+  utf8_to_mif(name, mif, sizeof(mif));
   for (k = 0; k < dwg->num_objects; k++) {
     Dwg_Object *obj = &dwg->object[k];
     Dwg_Object_BLOCK_HEADER *bh;
     if (obj->fixedtype != DWG_TYPE_BLOCK_HEADER || !obj->tio.object) continue;
     bh = obj->tio.object->tio.BLOCK_HEADER;
     if (!bh || !bh->name) continue;
-    if (streq(bh->name, name) || ascii_ieq(bh->name, name)) {
+    if (streq(bh->name, name) || ascii_ieq(bh->name, name) ||
+        (mif[0] && streq(bh->name, mif))) {
       return dwg_add_handleref(dwg, 5, obj->handle.value, obj);
     }
   }
@@ -563,7 +657,7 @@ static void *export_dimension(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
       char style[NAME_CAP];
       fcb_view_str(v, str_off + 2, style, sizeof(style));
       if (style[0] && !streq(style, "Standard")) {
-        href = dwg_find_tablehandle(dwg, style, "DIMSTYLE");
+        href = find_named(dwg, style, "DIMSTYLE");
         if (href) d->dimstyle = href;
       }
     }
@@ -811,6 +905,8 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
       break;
     }
     case FCB_TYPE_MLEADER: {
+      /* LibreDWG has no dwg_add_MULTILEADER. Keep the callout visible as
+       * MTEXT + LEADER; a true MULTILEADER round-trip needs an add API. */
       char content[TEXT_CAP];
       unsigned nvert;
       unsigned i;
@@ -952,6 +1048,8 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
       break;
     }
     case FCB_TYPE_UNKNOWN: {
+      /* Proxy / REGION strokes have no add API; write each stroke as
+       * LWPOLYLINE so the outline survives. */
       uint64_t int_off = fcb_u64(rec + FCB_ENT_INT_OFFSET);
       uint32_t int_count = fcb_u32(rec + FCB_ENT_INT_COUNT);
       uint32_t cursor = 4;
@@ -1118,7 +1216,7 @@ static void bind_viewport_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
   if (!common) return;
 
   if (layer && layer[0]) {
-    href = dwg_find_tablehandle(dwg, layer, "LAYER");
+    href = find_named(dwg, layer, "LAYER");
     if (href) common->layer = href;
   }
 
@@ -1156,7 +1254,7 @@ static void bind_frozen_layers(Dwg_Data *dwg, Dwg_Entity_VIEWPORT *vp,
     p += len;
     if (*p == ',') p++;
     if (!name[0]) continue;
-    found = dwg_find_tablehandle(dwg, name, "LAYER");
+    found = find_named(dwg, name, "LAYER");
     if (!found) continue;
     if (n == cap) {
       BITCODE_BL next = cap ? cap * 2 : 4;
@@ -1416,8 +1514,10 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
     if (!rec) continue;
     fcb_view_str(&view, fcb_u32(rec + FCB_LTYPE_NAME), name, sizeof(name));
     if (!name[0] || is_default_ltype(name)) continue;
-    if (!dwg_find_tablehandle(dwg, name, "LTYPE")) {
-      Dwg_Object_LTYPE *lt = dwg_add_LTYPE(dwg, name);
+    if (!find_named(dwg, name, "LTYPE")) {
+      char stored[MIF_CAP];
+      Dwg_Object_LTYPE *lt =
+          dwg_add_LTYPE(dwg, mif_name(name, stored, sizeof(stored)));
       if (lt) fill_ltype_dashes(lt, &view, rec);
     }
   }
@@ -1428,8 +1528,10 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
     if (!rec) continue;
     fcb_view_str(&view, fcb_u32(rec + FCB_STYLE_NAME), name, sizeof(name));
     if (!name[0] || is_default_style(name)) continue;
-    if (!dwg_find_tablehandle(dwg, name, "STYLE")) {
-      Dwg_Object_STYLE *style = dwg_add_STYLE(dwg, name);
+    if (!find_named(dwg, name, "STYLE")) {
+      char stored[MIF_CAP];
+      Dwg_Object_STYLE *style =
+          dwg_add_STYLE(dwg, mif_name(name, stored, sizeof(stored)));
       if (style) fill_style_metrics(style, &view, rec);
     }
   }
@@ -1443,8 +1545,11 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
     if (!rec) continue;
     fcb_view_str(&view, fcb_u32(rec + FCB_DIMSTYLE_NAME), name, sizeof(name));
     if (!name[0] || is_default_dimstyle(name)) continue;
-    if (dwg_find_tablehandle(dwg, name, "DIMSTYLE")) continue;
-    ds = dwg_add_DIMSTYLE(dwg, name);
+    if (find_named(dwg, name, "DIMSTYLE")) continue;
+    {
+      char stored[MIF_CAP];
+      ds = dwg_add_DIMSTYLE(dwg, mif_name(name, stored, sizeof(stored)));
+    }
     if (!ds) continue;
     ds->DIMDEC = (BITCODE_BS)fcb_u32(rec + FCB_DIMSTYLE_DECIMALS);
     ds->DIMTXT = fcb_f64(rec + FCB_DIMSTYLE_TEXT_HEIGHT);
@@ -1456,7 +1561,7 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
     fcb_view_str(&view, fcb_u32(rec + FCB_DIMSTYLE_TEXTSTYLE), style,
                  sizeof(style));
     if (style[0] && !is_default_style(style)) {
-      href = dwg_find_tablehandle(dwg, style, "STYLE");
+      href = find_named(dwg, style, "STYLE");
       if (href) ds->DIMTXSTY = href;
     }
   }
@@ -1467,8 +1572,10 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
     if (!rec) continue;
     fcb_view_str(&view, fcb_u32(rec + FCB_LAYER_NAME), name, sizeof(name));
     if (!name[0] || is_default_layer(name)) continue;
-    if (!dwg_find_tablehandle(dwg, name, "LAYER")) {
-      Dwg_Object_LAYER *layer = dwg_add_LAYER(dwg, name);
+    if (!find_named(dwg, name, "LAYER")) {
+      char stored[MIF_CAP];
+      Dwg_Object_LAYER *layer =
+          dwg_add_LAYER(dwg, mif_name(name, stored, sizeof(stored)));
       if (layer) {
         uint32_t lf = fcb_u32(rec + FCB_LAYER_FLAGS);
         char ltype[NAME_CAP];
@@ -1497,7 +1604,7 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
               fcb_view_str(&view, fcb_u32(lt_rec + FCB_LTYPE_NAME), ltype,
                            sizeof(ltype));
               if (ltype[0] && !is_default_ltype(ltype)) {
-                href = dwg_find_tablehandle(dwg, ltype, "LTYPE");
+                href = find_named(dwg, ltype, "LTYPE");
                 if (href) layer->ltype = href;
               }
             }
@@ -1532,13 +1639,17 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
       headers[i] = header_of(dwg_paper_space_object(dwg));
     } else {
       /* Named blocks and extra paper tabs (*Paper_Space0, ...). */
-      headers[i] = dwg_add_BLOCK_HEADER(dwg, name);
-      if (headers[i]) {
-        dwg_add_BLOCK(headers[i], name);
-        headers[i]->base_pt.x = fcb_f64(rec + FCB_BLOCK_BASE_X);
-        headers[i]->base_pt.y = fcb_f64(rec + FCB_BLOCK_BASE_Y);
-        headers[i]->base_pt.z = 0;
-        needs_endblk[i] = 1;
+      {
+        char stored[MIF_CAP];
+        const char *stored_name = mif_name(name, stored, sizeof(stored));
+        headers[i] = dwg_add_BLOCK_HEADER(dwg, stored_name);
+        if (headers[i]) {
+          dwg_add_BLOCK(headers[i], stored_name);
+          headers[i]->base_pt.x = fcb_f64(rec + FCB_BLOCK_BASE_X);
+          headers[i]->base_pt.y = fcb_f64(rec + FCB_BLOCK_BASE_Y);
+          headers[i]->base_pt.z = 0;
+          needs_endblk[i] = 1;
+        }
       }
     }
   }
