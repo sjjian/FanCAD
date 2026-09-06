@@ -2,6 +2,26 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('a CJK font switch is not part of the dimension note', () {
+    const raw = r'{\F宋体|c134;型材1}';
+    expect(stripMTextFormatting(raw), '型材1');
+    expect(decodeDrawnText(raw), '型材1');
+    expect(
+      const MTextLayout()
+          .layout(
+            const MTextEntity(
+              id: 1,
+              position: Vec2.zero(),
+              content: raw,
+              height: 2.5,
+            ),
+          )
+          .single
+          .text,
+      '型材1',
+    );
+  });
+
   test('a paragraph indent cannot leak into the glyph string', () {
     const entity = MTextEntity(
       id: 1,
@@ -167,11 +187,7 @@ void main() {
     expect(aligned.first.origin.y, greaterThan(aligned.last.origin.y));
 
     final centered = const MTextLayout().layout(
-      const MTextEntity(
-        id: 1,
-        position: Vec2.zero(),
-        content: r'\pxqc;Hi',
-      ),
+      const MTextEntity(id: 1, position: Vec2.zero(), content: r'\pxqc;Hi'),
     );
     expect(centered.single.hAlign, TextHAlign.center);
   });

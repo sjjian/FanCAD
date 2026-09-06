@@ -44,11 +44,7 @@ void main() {
       expectNamedBlockIntact(opened, 'PART', lineCount: 3);
       expectNamedBlockIntact(opened, 'TITLE', attdefTag: 'Sheet no');
       expect(
-        opened.entities
-            .whereType<LineEntity>()
-            .first
-            .props
-            .lineWeight,
+        opened.entities.whereType<LineEntity>().first.props.lineWeight,
         LineWeight.byLayer,
         reason: 'DWG 29 must come back as ByLayer, not 0.29 mm',
       );
@@ -64,57 +60,54 @@ void main() {
     timeout: Timeout.parse('2m'),
   );
 
-  test(
-    'edits survive a second DWG save and reopen',
-    () async {
-      final directory = Directory.systemTemp.createTempSync('fancad-rt2');
-      addTearDown(() => directory.deleteSync(recursive: true));
+  test('edits survive a second DWG save and reopen', () async {
+    final directory = Directory.systemTemp.createTempSync('fancad-rt2');
+    addTearDown(() => directory.deleteSync(recursive: true));
 
-      final source = syntheticDrawing();
-      final firstPath = '${directory.path}/before.dwg';
-      await importer.save(firstPath, source);
-      final opened = (await importer.open(firstPath)).document;
+    final source = syntheticDrawing();
+    final firstPath = '${directory.path}/before.dwg';
+    await importer.save(firstPath, source);
+    final opened = (await importer.open(firstPath)).document;
 
-      final edited = applyEdits(opened);
-      final secondPath = '${directory.path}/after.dwg';
-      await importer.save(secondPath, edited);
-      final reopened = (await importer.open(secondPath)).document;
+    final edited = applyEdits(opened);
+    final secondPath = '${directory.path}/after.dwg';
+    await importer.save(secondPath, edited);
+    final reopened = (await importer.open(secondPath)).document;
 
-      expectFiniteModelExtents(reopened, step: 'edit pass');
-      expectMatchingSnapshots(edited, reopened, step: 'edit pass');
+    expectFiniteModelExtents(reopened, step: 'edit pass');
+    expectMatchingSnapshots(edited, reopened, step: 'edit pass');
 
-      final moved = reopened.entities.whereType<LineEntity>().where(
-        (e) =>
-            close(e.start, const Vec2(105, 3)) &&
-            close(e.end, const Vec2(115, 3)),
-      );
-      expect(moved, hasLength(1), reason: 'edit pass: translated LINE');
+    final moved = reopened.entities.whereType<LineEntity>().where(
+      (e) =>
+          close(e.start, const Vec2(105, 3)) &&
+          close(e.end, const Vec2(115, 3)),
+    );
+    expect(moved, hasLength(1), reason: 'edit pass: translated LINE');
 
-      final text = reopened.entities.whereType<TextEntity>().where(
-        (e) => e.content == 'edited',
-      );
-      expect(text, hasLength(1), reason: 'edit pass: TEXT content');
-      expect(text.single.position.x, closeTo(1200, 1e-6));
-      expect(text.single.position.y, closeTo(800, 1e-6));
+    final text = reopened.entities.whereType<TextEntity>().where(
+      (e) => e.content == 'edited',
+    );
+    expect(text, hasLength(1), reason: 'edit pass: TEXT content');
+    expect(text.single.position.x, closeTo(1200, 1e-6));
+    expect(text.single.position.y, closeTo(800, 1e-6));
 
-      final arc = reopened.entities.whereType<ArcEntity>().single;
-      expect(arc.props.layer, 'NOTES', reason: 'edit pass: ARC layer');
+    final arc = reopened.entities.whereType<ArcEntity>().single;
+    expect(arc.props.layer, 'NOTES', reason: 'edit pass: ARC layer');
 
-      final added = reopened.entities.whereType<CircleEntity>().where(
-        (e) => close(e.center, const Vec2(500, 500)) && (e.radius - 12).abs() < 1e-6,
-      );
-      expect(added, hasLength(1), reason: 'edit pass: added CIRCLE');
+    final added = reopened.entities.whereType<CircleEntity>().where(
+      (e) =>
+          close(e.center, const Vec2(500, 500)) && (e.radius - 12).abs() < 1e-6,
+    );
+    expect(added, hasLength(1), reason: 'edit pass: added CIRCLE');
 
-      expect(
-        reopened.entities.whereType<PointEntity>().where(
-          (e) => close(e.position, const Vec2(77, 88)),
-        ),
-        isEmpty,
-        reason: 'edit pass: deleted POINT',
-      );
-    },
-    timeout: Timeout.parse('2m'),
-  );
+    expect(
+      reopened.entities.whereType<PointEntity>().where(
+        (e) => close(e.position, const Vec2(77, 88)),
+      ),
+      isEmpty,
+      reason: 'edit pass: deleted POINT',
+    );
+  }, timeout: Timeout.parse('2m'));
 
   /// ATTRIB still writes as TEXT. MULTILEADER and REGION now round-trip
   /// as themselves rather than exploding into LEADER/MTEXT or LWPOLYLINE.
@@ -339,11 +332,7 @@ void main() {
     test('a RAY keeps origin and direction', () async {
       final source = CadDocument()
         ..addEntity(
-          const RayEntity(
-            id: 1,
-            origin: Vec2(2, 3),
-            direction: Vec2(0, 1),
-          ),
+          const RayEntity(id: 1, origin: Vec2(2, 3), direction: Vec2(0, 1)),
         );
       final opened = await saveAndOpen(source, 'ray');
       expectMatchingSnapshots(source, opened, step: 'ray');
@@ -352,11 +341,7 @@ void main() {
     test('an XLINE keeps origin and direction', () async {
       final source = CadDocument()
         ..addEntity(
-          const XLineEntity(
-            id: 1,
-            origin: Vec2(4, 5),
-            direction: Vec2(1, 0),
-          ),
+          const XLineEntity(id: 1, origin: Vec2(4, 5), direction: Vec2(1, 0)),
         );
       final opened = await saveAndOpen(source, 'xline');
       expectMatchingSnapshots(source, opened, step: 'xline');
@@ -481,9 +466,7 @@ void main() {
                 vertices: Float64List.fromList([0, 0, 20, 0, 20, 10, 0, 10]),
               ),
             ],
-            patternLines: const [
-              HatchPatternLine(angle: 0.785, deltaY: 3.175),
-            ],
+            patternLines: const [HatchPatternLine(angle: 0.785, deltaY: 3.175)],
           ),
         ),
         'ansi31',
@@ -497,9 +480,7 @@ void main() {
     test('a POINT and CIRCLE keep their geometry', () async {
       final source = CadDocument()
         ..addEntity(const PointEntity(id: 1, position: Vec2(3, 4)))
-        ..addEntity(
-          const CircleEntity(id: 2, center: Vec2(8, 9), radius: 2.5),
-        );
+        ..addEntity(const CircleEntity(id: 2, center: Vec2(8, 9), radius: 2.5));
       final opened = await saveAndOpen(source, 'ptcirc');
       expectMatchingSnapshots(source, opened, step: 'point circle');
     });
@@ -629,34 +610,34 @@ void main() {
       expect(leader.vertices[4], closeTo(8, 1e-6));
     });
 
-    test('an aligned dimension keeps its *D block and first two points', () async {
-      final source = CadDocument()
-        ..putBlock(const BlockRecord(name: '*D1', isAnonymous: true))
-        ..addEntity(
-          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(8, 6)),
-          blockName: '*D1',
-        )
-        ..addEntity(
-          const DimensionEntity(
-            id: 2,
+    test(
+      'an aligned dimension keeps its *D block and first two points',
+      () async {
+        final source = CadDocument()
+          ..putBlock(const BlockRecord(name: '*D1', isAnonymous: true))
+          ..addEntity(
+            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(8, 6)),
             blockName: '*D1',
-            dimensionType: 1,
-            measurement: 10,
-            definitionPoints: [Vec2(0, 0), Vec2(8, 6), Vec2(4, 8)],
-            textPosition: Vec2(4, 8),
-          ),
-        );
-      final opened = await saveAndOpen(source, 'dimalign');
-      final dim = opened.entities.whereType<DimensionEntity>().single;
-      expect(dim.blockName, '*D1');
-      expect(dim.measurement, closeTo(10, 1e-6));
-      expect(dim.definitionPoints, hasLength(2));
-      expect(dim.definitionPoints[1], const Vec2(8, 6));
-      expect(
-        opened.entitiesOf('*D1').whereType<LineEntity>(),
-        hasLength(1),
-      );
-    });
+          )
+          ..addEntity(
+            const DimensionEntity(
+              id: 2,
+              blockName: '*D1',
+              dimensionType: 1,
+              measurement: 10,
+              definitionPoints: [Vec2(0, 0), Vec2(8, 6), Vec2(4, 8)],
+              textPosition: Vec2(4, 8),
+            ),
+          );
+        final opened = await saveAndOpen(source, 'dimalign');
+        final dim = opened.entities.whereType<DimensionEntity>().single;
+        expect(dim.blockName, '*D1');
+        expect(dim.measurement, closeTo(10, 1e-6));
+        expect(dim.definitionPoints, hasLength(2));
+        expect(dim.definitionPoints[1], const Vec2(8, 6));
+        expect(opened.entitiesOf('*D1').whereType<LineEntity>(), hasLength(1));
+      },
+    );
 
     test('hatch pattern scale and angle survive', () async {
       final opened = await saveAndOpen(
@@ -672,9 +653,7 @@ void main() {
                 vertices: Float64List.fromList([0, 0, 12, 0, 12, 8, 0, 8]),
               ),
             ],
-            patternLines: const [
-              HatchPatternLine(angle: 0.5, deltaY: 9.525),
-            ],
+            patternLines: const [HatchPatternLine(angle: 0.5, deltaY: 9.525)],
           ),
         ),
         'hatchang',
@@ -968,11 +947,7 @@ void main() {
     test('a diagonal RAY keeps a unit direction', () async {
       final source = CadDocument()
         ..addEntity(
-          const RayEntity(
-            id: 1,
-            origin: Vec2(2, 3),
-            direction: Vec2(3, 4),
-          ),
+          const RayEntity(id: 1, origin: Vec2(2, 3), direction: Vec2(3, 4)),
         );
       final opened = await saveAndOpen(source, 'rayd');
       final ray = opened.entities.whereType<RayEntity>().single;
@@ -1121,7 +1096,11 @@ void main() {
         ),
         'rgb',
       );
-      final color = opened.entities.whereType<CircleEntity>().single.props.color;
+      final color = opened.entities
+          .whereType<CircleEntity>()
+          .single
+          .props
+          .color;
       expect(color.kind, ColorKind.trueColor);
       expect(color.value, 0xFF00AA);
     });
@@ -1217,9 +1196,7 @@ void main() {
     test('a layer indexed colour survives on the table row', () async {
       final opened = await saveAndOpen(
         CadDocument()
-          ..putLayer(
-            const LayerDef(name: 'WALLS', color: CadColor.indexed(5)),
-          )
+          ..putLayer(const LayerDef(name: 'WALLS', color: CadColor.indexed(5)))
           ..addEntity(
             const LineEntity(
               id: 1,
@@ -1241,7 +1218,9 @@ void main() {
       const layerName = '标注线';
       final opened = await saveAndOpen(
         CadDocument()
-          ..putLayer(const LayerDef(name: layerName, color: CadColor.indexed(1)))
+          ..putLayer(
+            const LayerDef(name: layerName, color: CadColor.indexed(1)),
+          )
           ..addEntity(
             const LineEntity(
               id: 1,
@@ -1296,10 +1275,41 @@ void main() {
         'textstyle',
       );
       expect(opened.textStyles.containsKey('TITLE'), isTrue);
-      expect(
-        opened.entities.whereType<TextEntity>().single.styleName,
-        'TITLE',
+      expect(opened.entities.whereType<TextEntity>().single.styleName, 'TITLE');
+    });
+
+    test('a CJK font-coded dimension note still paints the glyphs', () async {
+      const raw = r'{\F宋体|c134;型材1}';
+      final source = CadDocument()
+        ..putBlock(const BlockRecord(name: '*D1', isAnonymous: true))
+        ..addEntity(
+          const MTextEntity(
+            id: 1,
+            position: Vec2(5, 3),
+            content: raw,
+            height: 2.5,
+          ),
+          blockName: '*D1',
+        )
+        ..addEntity(
+          const DimensionEntity(
+            id: 2,
+            blockName: '*D1',
+            measurement: 10,
+            overrideText: raw,
+            definitionPoints: [Vec2(0, 0), Vec2(10, 0), Vec2(5, 3)],
+            textPosition: Vec2(5, 3),
+          ),
+        );
+      final opened = await saveAndOpen(source, 'dimcjk');
+      final sink = PolylineSink();
+      opened.entities.whereType<DimensionEntity>().single.emit(
+        opened.emitContext(tolerance: 0.1),
+        sink,
       );
+      expect(sink.texts, isNotEmpty);
+      expect(sink.texts.map((item) => item.text).join(), contains('型材1'));
+      expect(sink.texts.every((item) => !item.text.contains(r'\F')), isTrue);
     });
 
     test('dimension override text survives', () async {
@@ -1337,10 +1347,10 @@ void main() {
         'lttable',
       );
       expect(opened.lineTypes.containsKey('DASHED'), isTrue);
-      expect(
-        opened.lineTypes['DASHED']!.pattern,
-        [closeTo(12, 1e-6), closeTo(-6, 1e-6)],
-      );
+      expect(opened.lineTypes['DASHED']!.pattern, [
+        closeTo(12, 1e-6),
+        closeTo(-6, 1e-6),
+      ]);
       expect(opened.lineTypes['DASHED']!.patternLength, closeTo(18, 1e-6));
     });
 
@@ -1367,14 +1377,8 @@ void main() {
         'stymet',
       );
       expect(opened.textStyles.containsKey('NOTES'), isTrue);
-      expect(
-        opened.entities.whereType<TextEntity>().single.styleName,
-        'NOTES',
-      );
-      expect(
-        opened.textStyles['NOTES']!.fontFamily,
-        'romans',
-      );
+      expect(opened.entities.whereType<TextEntity>().single.styleName, 'NOTES');
+      expect(opened.textStyles['NOTES']!.fontFamily, 'romans');
       expect(opened.textStyles['NOTES']!.height, closeTo(2.5, 1e-6));
       expect(opened.textStyles['NOTES']!.widthFactor, closeTo(0.8, 1e-6));
       expect(opened.textStyles['NOTES']!.obliqueAngle, closeTo(0.15, 1e-6));
@@ -1458,23 +1462,26 @@ void main() {
       );
     });
 
-    test('entity line-type scale and transparency are not yet written', () async {
-      final opened = await saveAndOpen(
-        CadDocument()..addEntity(
-          const LineEntity(
-            id: 1,
-            props: EntityProps(lineTypeScale: 2.5, transparency: 40),
-            start: Vec2.zero(),
-            end: Vec2(6, 0),
+    test(
+      'entity line-type scale and transparency are not yet written',
+      () async {
+        final opened = await saveAndOpen(
+          CadDocument()..addEntity(
+            const LineEntity(
+              id: 1,
+              props: EntityProps(lineTypeScale: 2.5, transparency: 40),
+              start: Vec2.zero(),
+              end: Vec2(6, 0),
+            ),
           ),
-        ),
-        'lts',
-      );
-      final line = opened.entities.whereType<LineEntity>().single;
-      expect(line.end.x, closeTo(6, 1e-6));
-      expect(line.props.lineTypeScale, 1);
-      expect(line.props.transparency, -1);
-    });
+          'lts',
+        );
+        final line = opened.entities.whereType<LineEntity>().single;
+        expect(line.end.x, closeTo(6, 1e-6));
+        expect(line.props.lineTypeScale, 1);
+        expect(line.props.transparency, -1);
+      },
+    );
 
     test('ByDefault lineweight is rewritten as ByLayer', () async {
       final opened = await saveAndOpen(
@@ -1493,7 +1500,8 @@ void main() {
           opened.entities.whereType<LineEntity>().single.props.lineWeight,
         ),
         LineWeight.byLayer,
-        reason: 'LibreDWG r2000 does not distinguish Default (31) from ByLayer (29)',
+        reason:
+            'LibreDWG r2000 does not distinguish Default (31) from ByLayer (29)',
       );
     });
 
@@ -1615,10 +1623,7 @@ void main() {
           ),
         'twosty',
       );
-      expect(
-        opened.entities.whereType<TextEntity>().single.styleName,
-        'TITLE',
-      );
+      expect(opened.entities.whereType<TextEntity>().single.styleName, 'TITLE');
       expect(
         opened.entities.whereType<MTextEntity>().single.styleName,
         'NOTES',
@@ -1697,19 +1702,11 @@ void main() {
           blockName: 'INNER',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'INNER',
-            position: Vec2(2, 0),
-          ),
+          const InsertEntity(id: 2, blockName: 'INNER', position: Vec2(2, 0)),
           blockName: 'OUTER',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 3,
-            blockName: 'OUTER',
-            position: Vec2(40, 40),
-          ),
+          const InsertEntity(id: 3, blockName: 'OUTER', position: Vec2(40, 40)),
         );
       final opened = await saveAndOpen(source, 'nested');
       expectMatchingSnapshots(source, opened, step: 'nested insert');
@@ -1718,9 +1715,9 @@ void main() {
         hasLength(1),
       );
       expect(
-        opened.entities
-            .whereType<InsertEntity>()
-            .where((e) => e.blockName == 'OUTER'),
+        opened.entities.whereType<InsertEntity>().where(
+          (e) => e.blockName == 'OUTER',
+        ),
         hasLength(1),
       );
     });
@@ -1801,11 +1798,7 @@ void main() {
       final source = CadDocument()
         ..putBlock(const BlockRecord(name: 'EMPTY'))
         ..addEntity(
-          const InsertEntity(
-            id: 1,
-            blockName: 'EMPTY',
-            position: Vec2(8, 9),
-          ),
+          const InsertEntity(id: 1, blockName: 'EMPTY', position: Vec2(8, 9)),
         );
       final opened = await saveAndOpen(source, 'emptyblk');
       expect(opened.blocks.containsKey('EMPTY'), isTrue);
@@ -1823,11 +1816,7 @@ void main() {
           blockName: 'BOLT',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'BOLT',
-            position: Vec2(10, 0),
-          ),
+          const InsertEntity(id: 2, blockName: 'BOLT', position: Vec2(10, 0)),
         )
         ..addEntity(
           const InsertEntity(
@@ -1856,11 +1845,7 @@ void main() {
           blockName: 'TAG',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'TAG',
-            position: Vec2(40, 0),
-          ),
+          const InsertEntity(id: 2, blockName: 'TAG', position: Vec2(40, 0)),
         );
       final opened = await saveAndOpen(source, 'blklayer');
       expectMatchingSnapshots(source, opened, step: 'block layer');
@@ -1887,16 +1872,10 @@ void main() {
         blockName: 'MARK',
       );
       document.addEntity(
-        const InsertEntity(
-          id: 2,
-          blockName: 'MARK',
-          position: Vec2(30, 20),
-        ),
+        const InsertEntity(id: 2, blockName: 'MARK', position: Vec2(30, 20)),
         blockName: '*Paper_Space',
       );
-      document.addEntity(
-        const PointEntity(id: 3, position: Vec2(100, 0)),
-      );
+      document.addEntity(const PointEntity(id: 3, position: Vec2(100, 0)));
 
       final opened = await saveAndOpen(document, 'paperins');
       expectMatchingSnapshots(document, opened, step: 'paper insert');
@@ -1908,9 +1887,7 @@ void main() {
         reason: 'paper INSERT must stay on the sheet, not *MODEL_SPACE',
       );
       expect(
-        opened
-            .entitiesOf(opened.modelSpaceBlockName)
-            .whereType<InsertEntity>(),
+        opened.entitiesOf(opened.modelSpaceBlockName).whereType<InsertEntity>(),
         isEmpty,
       );
     });
@@ -1930,11 +1907,7 @@ void main() {
           blockName: 'PAD',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'PAD',
-            position: Vec2(8, 8),
-          ),
+          const InsertEntity(id: 2, blockName: 'PAD', position: Vec2(8, 8)),
         );
       final opened = await saveAndOpen(source, 'blkhatch');
       expectMatchingSnapshots(source, opened, step: 'block hatch');
@@ -2119,11 +2092,7 @@ void main() {
           blockName: 'LABEL',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'LABEL',
-            position: Vec2(12, 0),
-          ),
+          const InsertEntity(id: 2, blockName: 'LABEL', position: Vec2(12, 0)),
         );
       final opened = await saveAndOpen(source, 'blktext');
       expectMatchingSnapshots(source, opened, step: 'block text');
@@ -2192,11 +2161,7 @@ void main() {
           blockName: 'BLOB',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 3,
-            blockName: 'BLOB',
-            position: Vec2(15, 0),
-          ),
+          const InsertEntity(id: 3, blockName: 'BLOB', position: Vec2(15, 0)),
         );
       final opened = await saveAndOpen(source, 'blkmix');
       expectMatchingSnapshots(source, opened, step: 'block mix');
@@ -2243,11 +2208,7 @@ void main() {
             const BlockRecord(name: 'NOTE', description: 'title block'),
           )
           ..addEntity(
-            const InsertEntity(
-              id: 1,
-              blockName: 'NOTE',
-              position: Vec2(1, 1),
-            ),
+            const InsertEntity(id: 1, blockName: 'NOTE', position: Vec2(1, 1)),
           ),
         'blkdesc',
       );
@@ -2259,40 +2220,46 @@ void main() {
       );
     });
 
-    test('an INSERT with one of two attributes keeps the written tag', () async {
-      final source = CadDocument()
-        ..putBlock(const BlockRecord(name: 'FORM'))
-        ..addEntity(
-          const AttdefEntity(
-            id: 1,
-            position: Vec2.zero(),
-            tag: 'A',
-            defaultValue: '1',
-          ),
-          blockName: 'FORM',
-        )
-        ..addEntity(
-          const AttdefEntity(
-            id: 2,
-            position: Vec2(0, 4),
-            tag: 'B',
-            defaultValue: '2',
-          ),
-          blockName: 'FORM',
-        )
-        ..addEntity(
-          const InsertEntity(
-            id: 3,
+    test(
+      'an INSERT with one of two attributes keeps the written tag',
+      () async {
+        final source = CadDocument()
+          ..putBlock(const BlockRecord(name: 'FORM'))
+          ..addEntity(
+            const AttdefEntity(
+              id: 1,
+              position: Vec2.zero(),
+              tag: 'A',
+              defaultValue: '1',
+            ),
             blockName: 'FORM',
-            position: Vec2(9, 9),
-            attributes: {'A': 'x'},
-          ),
+          )
+          ..addEntity(
+            const AttdefEntity(
+              id: 2,
+              position: Vec2(0, 4),
+              tag: 'B',
+              defaultValue: '2',
+            ),
+            blockName: 'FORM',
+          )
+          ..addEntity(
+            const InsertEntity(
+              id: 3,
+              blockName: 'FORM',
+              position: Vec2(9, 9),
+              attributes: {'A': 'x'},
+            ),
+          );
+        final opened = await saveAndOpen(source, 'oneattr');
+        final insert = opened.entities.whereType<InsertEntity>().single;
+        expect(insert.attributes['A'], 'x');
+        expect(
+          opened.entitiesOf('FORM').whereType<AttdefEntity>(),
+          hasLength(2),
         );
-      final opened = await saveAndOpen(source, 'oneattr');
-      final insert = opened.entities.whereType<InsertEntity>().single;
-      expect(insert.attributes['A'], 'x');
-      expect(opened.entitiesOf('FORM').whereType<AttdefEntity>(), hasLength(2));
-    });
+      },
+    );
 
     test('a Y-mirrored INSERT keeps a negative Y scale', () async {
       final source = CadDocument()
@@ -2363,11 +2330,7 @@ void main() {
           blockName: 'MIX',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 4,
-            blockName: 'MIX',
-            position: Vec2(20, 0),
-          ),
+          const InsertEntity(id: 4, blockName: 'MIX', position: Vec2(20, 0)),
         );
       final opened = await saveAndOpen(source, 'blkmix2');
       expectMatchingSnapshots(source, opened, step: 'block mix 2');
@@ -2421,11 +2384,7 @@ void main() {
           blockName: 'A1_B2',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'A1_B2',
-            position: Vec2(7, 7),
-          ),
+          const InsertEntity(id: 2, blockName: 'A1_B2', position: Vec2(7, 7)),
         );
       final opened = await saveAndOpen(source, 'blknum');
       expectMatchingSnapshots(source, opened, step: 'numbered block');
@@ -2572,9 +2531,7 @@ void main() {
       expectMatchingSnapshots(document, opened, step: 'paper text');
       expect(
         sameOwner(
-          opened.ownerOf(
-            opened.entities.whereType<TextEntity>().single.id,
-          ),
+          opened.ownerOf(opened.entities.whereType<TextEntity>().single.id),
           '*Paper_Space',
         ),
         isTrue,
@@ -2611,17 +2568,13 @@ void main() {
         ),
         blockName: '*Paper_Space',
       );
-      document.addEntity(
-        const PointEntity(id: 3, position: Vec2(100, 0)),
-      );
+      document.addEntity(const PointEntity(id: 3, position: Vec2(100, 0)));
 
       final opened = await saveAndOpen(document, 'pgeom');
       expectMatchingSnapshots(document, opened, step: 'paper geom');
       expect(
         sameOwner(
-          opened.ownerOf(
-            opened.entities.whereType<CircleEntity>().single.id,
-          ),
+          opened.ownerOf(opened.entities.whereType<CircleEntity>().single.id),
           '*Paper_Space',
         ),
         isTrue,
@@ -2658,11 +2611,7 @@ void main() {
         blockName: 'MARK',
       );
       document.addEntity(
-        const InsertEntity(
-          id: 2,
-          blockName: 'MARK',
-          position: Vec2(25, 40),
-        ),
+        const InsertEntity(id: 2, blockName: 'MARK', position: Vec2(25, 40)),
         blockName: '*Paper_Space0',
       );
 
@@ -2815,80 +2764,83 @@ void main() {
   });
 
   group('further edits', () {
-    test('insert move, mtext edit and hatch add survive a second save', () async {
-      final source = CadDocument()
-        ..putBlock(const BlockRecord(name: 'PART'))
-        ..addEntity(
-          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(4, 0)),
-          blockName: 'PART',
-        )
-        ..addEntity(
-          const InsertEntity(
-            id: 2,
+    test(
+      'insert move, mtext edit and hatch add survive a second save',
+      () async {
+        final source = CadDocument()
+          ..putBlock(const BlockRecord(name: 'PART'))
+          ..addEntity(
+            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(4, 0)),
             blockName: 'PART',
-            position: Vec2(10, 10),
+          )
+          ..addEntity(
+            const InsertEntity(
+              id: 2,
+              blockName: 'PART',
+              position: Vec2(10, 10),
+            ),
+          )
+          ..addEntity(
+            const MTextEntity(id: 3, position: Vec2(0, 8), content: 'note'),
+          )
+          ..addEntity(
+            const CircleEntity(id: 4, center: Vec2(20, 20), radius: 3),
+          );
+
+        final opened = await saveAndOpen(source, 'edit2a');
+        final insert = opened.entities.whereType<InsertEntity>().single;
+        opened.replaceEntity(
+          InsertEntity(
+            id: insert.id,
+            props: insert.props,
+            blockName: insert.blockName,
+            position: const Vec2(15, 12),
+            scale: insert.scale,
+            rotation: insert.rotation,
+            attributes: insert.attributes,
           ),
-        )
-        ..addEntity(
-          const MTextEntity(id: 3, position: Vec2(0, 8), content: 'note'),
-        )
-        ..addEntity(
-          const CircleEntity(id: 4, center: Vec2(20, 20), radius: 3),
+        );
+        final mtext = opened.entities.whereType<MTextEntity>().single;
+        opened.replaceEntity(
+          MTextEntity(
+            id: mtext.id,
+            props: mtext.props,
+            position: mtext.position,
+            content: 'changed',
+            height: mtext.height,
+            rotation: mtext.rotation,
+            styleName: mtext.styleName,
+            rectangleWidth: mtext.rectangleWidth,
+          ),
+        );
+        opened.removeEntity(
+          opened.entities.whereType<CircleEntity>().single.id,
+        );
+        opened.addEntity(
+          HatchEntity(
+            id: 0,
+            loops: [
+              HatchLoop(
+                vertices: Float64List.fromList([0, 0, 6, 0, 6, 6, 0, 6]),
+              ),
+            ],
+          ),
         );
 
-      final opened = await saveAndOpen(source, 'edit2a');
-      final insert = opened.entities.whereType<InsertEntity>().single;
-      opened.replaceEntity(
-        InsertEntity(
-          id: insert.id,
-          props: insert.props,
-          blockName: insert.blockName,
-          position: const Vec2(15, 12),
-          scale: insert.scale,
-          rotation: insert.rotation,
-          attributes: insert.attributes,
-        ),
-      );
-      final mtext = opened.entities.whereType<MTextEntity>().single;
-      opened.replaceEntity(
-        MTextEntity(
-          id: mtext.id,
-          props: mtext.props,
-          position: mtext.position,
-          content: 'changed',
-          height: mtext.height,
-          rotation: mtext.rotation,
-          styleName: mtext.styleName,
-          rectangleWidth: mtext.rectangleWidth,
-        ),
-      );
-      opened.removeEntity(
-        opened.entities.whereType<CircleEntity>().single.id,
-      );
-      opened.addEntity(
-        HatchEntity(
-          id: 0,
-          loops: [
-            HatchLoop(
-              vertices: Float64List.fromList([0, 0, 6, 0, 6, 6, 0, 6]),
-            ),
-          ],
-        ),
-      );
-
-      final reopened = await saveAndOpen(opened, 'edit2b');
-      expectMatchingSnapshots(opened, reopened, step: 'further edits');
-      expect(
-        reopened.entities.whereType<InsertEntity>().single.position,
-        const Vec2(15, 12),
-      );
-      expect(
-        reopened.entities.whereType<MTextEntity>().single.content,
-        'changed',
-      );
-      expect(reopened.entities.whereType<CircleEntity>(), isEmpty);
-      expect(reopened.entities.whereType<HatchEntity>(), hasLength(1));
-    });
+        final reopened = await saveAndOpen(opened, 'edit2b');
+        expectMatchingSnapshots(opened, reopened, step: 'further edits');
+        expect(
+          reopened.entities.whereType<InsertEntity>().single.position,
+          const Vec2(15, 12),
+        );
+        expect(
+          reopened.entities.whereType<MTextEntity>().single.content,
+          'changed',
+        );
+        expect(reopened.entities.whereType<CircleEntity>(), isEmpty);
+        expect(reopened.entities.whereType<HatchEntity>(), hasLength(1));
+      },
+    );
 
     test('deleting an INSERT leaves the block definition', () async {
       final source = CadDocument()
@@ -2898,16 +2850,10 @@ void main() {
           blockName: 'KEEP',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'KEEP',
-            position: Vec2(9, 9),
-          ),
+          const InsertEntity(id: 2, blockName: 'KEEP', position: Vec2(9, 9)),
         );
       final opened = await saveAndOpen(source, 'delinsa');
-      opened.removeEntity(
-        opened.entities.whereType<InsertEntity>().single.id,
-      );
+      opened.removeEntity(opened.entities.whereType<InsertEntity>().single.id);
       final reopened = await saveAndOpen(opened, 'delinsb');
       expect(reopened.blocks.containsKey('KEEP'), isTrue);
       expect(reopened.entities.whereType<InsertEntity>(), isEmpty);
@@ -2962,11 +2908,7 @@ void main() {
           blockName: 'PART',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'PART',
-            position: Vec2(10, 10),
-          ),
+          const InsertEntity(id: 2, blockName: 'PART', position: Vec2(10, 10)),
         );
       final opened = await saveAndOpen(source, 'blked1');
       final line = opened.entitiesOf('PART').whereType<LineEntity>().single;
@@ -3000,10 +2942,7 @@ void main() {
       final line = opened.entities.whereType<LineEntity>().single;
       opened.replaceEntity(line.withProps(const EntityProps(layer: 'B')));
       final reopened = await saveAndOpen(opened, 'ly2');
-      expect(
-        reopened.entities.whereType<LineEntity>().single.props.layer,
-        'B',
-      );
+      expect(reopened.entities.whereType<LineEntity>().single.props.layer, 'B');
     });
 
     test('rotating an INSERT survives a second save', () async {
@@ -3014,11 +2953,7 @@ void main() {
           blockName: 'ARM',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'ARM',
-            position: Vec2(5, 5),
-          ),
+          const InsertEntity(id: 2, blockName: 'ARM', position: Vec2(5, 5)),
         );
       final opened = await saveAndOpen(source, 'rot1');
       final insert = opened.entities.whereType<InsertEntity>().single;
@@ -3040,25 +2975,26 @@ void main() {
       );
     });
 
-    test('saving over the same DWG path replaces the previous drawing', () async {
-      final directory = Directory.systemTemp.createTempSync('fancad-ow');
-      addTearDown(() => directory.deleteSync(recursive: true));
-      final path = '${directory.path}/same.dwg';
+    test(
+      'saving over the same DWG path replaces the previous drawing',
+      () async {
+        final directory = Directory.systemTemp.createTempSync('fancad-ow');
+        addTearDown(() => directory.deleteSync(recursive: true));
+        final path = '${directory.path}/same.dwg';
 
-      final first = CadDocument()
-        ..addEntity(
-          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
-        );
-      await importer.save(path, first);
-      final second = CadDocument()
-        ..addEntity(
-          const CircleEntity(id: 1, center: Vec2(4, 4), radius: 2),
-        );
-      await importer.save(path, second);
-      final opened = (await importer.open(path)).document;
-      expect(opened.entities.whereType<LineEntity>(), isEmpty);
-      expect(opened.entities.whereType<CircleEntity>(), hasLength(1));
-    });
+        final first = CadDocument()
+          ..addEntity(
+            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+          );
+        await importer.save(path, first);
+        final second = CadDocument()
+          ..addEntity(const CircleEntity(id: 1, center: Vec2(4, 4), radius: 2));
+        await importer.save(path, second);
+        final opened = (await importer.open(path)).document;
+        expect(opened.entities.whereType<LineEntity>(), isEmpty);
+        expect(opened.entities.whereType<CircleEntity>(), hasLength(1));
+      },
+    );
 
     test('adding a LINE to an existing block survives a second save', () async {
       final source = CadDocument()
@@ -3068,11 +3004,7 @@ void main() {
           blockName: 'PART',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'PART',
-            position: Vec2(8, 8),
-          ),
+          const InsertEntity(id: 2, blockName: 'PART', position: Vec2(8, 8)),
         );
       final opened = await saveAndOpen(source, 'addb1');
       opened.addEntity(
@@ -3085,9 +3017,7 @@ void main() {
 
     test('changing a CIRCLE radius survives a second save', () async {
       final source = CadDocument()
-        ..addEntity(
-          const CircleEntity(id: 1, center: Vec2(4, 4), radius: 2),
-        );
+        ..addEntity(const CircleEntity(id: 1, center: Vec2(4, 4), radius: 2));
       final opened = await saveAndOpen(source, 'cr1');
       final circle = opened.entities.whereType<CircleEntity>().single;
       opened.replaceEntity(
@@ -3151,11 +3081,7 @@ void main() {
           blockName: 'PART',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 3,
-            blockName: 'PART',
-            position: Vec2(6, 6),
-          ),
+          const InsertEntity(id: 3, blockName: 'PART', position: Vec2(6, 6)),
         );
       final opened = await saveAndOpen(source, 'delm1');
       final first = opened.entitiesOf('PART').whereType<LineEntity>().first;
@@ -3181,7 +3107,9 @@ void main() {
         blockName: '*Paper_Space',
       );
       final opened = await saveAndOpen(document, 'padd1');
-      final paper = opened.layouts.firstWhere((item) => item.name == 'Sheet').blockName;
+      final paper = opened.layouts
+          .firstWhere((item) => item.name == 'Sheet')
+          .blockName;
       opened.addEntity(
         const LineEntity(id: 0, start: Vec2(0, 0), end: Vec2(20, 0)),
         blockName: paper,
@@ -3189,10 +3117,7 @@ void main() {
       final reopened = await saveAndOpen(opened, 'padd2');
       final line = reopened.entities.whereType<LineEntity>().single;
       expect(line.end.x, closeTo(20, 1e-6));
-      expect(
-        sameOwner(reopened.ownerOf(line.id), '*Paper_Space'),
-        isTrue,
-      );
+      expect(sameOwner(reopened.ownerOf(line.id), '*Paper_Space'), isTrue);
     });
 
     test('changing INSERT scale survives a second save', () async {
@@ -3203,11 +3128,7 @@ void main() {
           blockName: 'ARM',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'ARM',
-            position: Vec2(4, 4),
-          ),
+          const InsertEntity(id: 2, blockName: 'ARM', position: Vec2(4, 4)),
         );
       final opened = await saveAndOpen(source, 'sc1');
       final insert = opened.entities.whereType<InsertEntity>().single;
@@ -3264,7 +3185,11 @@ void main() {
       final opened = await saveAndOpen(source, 'pt1');
       final point = opened.entities.whereType<PointEntity>().single;
       opened.replaceEntity(
-        PointEntity(id: point.id, props: point.props, position: const Vec2(9, 8)),
+        PointEntity(
+          id: point.id,
+          props: point.props,
+          position: const Vec2(9, 8),
+        ),
       );
       final reopened = await saveAndOpen(opened, 'pt2');
       expect(
@@ -3293,7 +3218,10 @@ void main() {
         const CircleEntity(id: 0, center: Vec2(5, 5), radius: 1),
       );
       final third = await saveAndOpen(document, 't3');
-      expect(third.entities.whereType<LineEntity>().single.end, const Vec2(3, 1));
+      expect(
+        third.entities.whereType<LineEntity>().single.end,
+        const Vec2(3, 1),
+      );
       expect(third.entities.whereType<CircleEntity>(), hasLength(1));
     });
 
@@ -3346,11 +3274,7 @@ void main() {
           blockName: 'PART',
         )
         ..addEntity(
-          const InsertEntity(
-            id: 2,
-            blockName: 'PART',
-            position: Vec2(4, 4),
-          ),
+          const InsertEntity(id: 2, blockName: 'PART', position: Vec2(4, 4)),
         );
       final opened = await saveAndOpen(source, 'bly1');
       final line = opened.entitiesOf('PART').whereType<LineEntity>().single;
@@ -3379,11 +3303,7 @@ CadDocument syntheticDrawing() {
 
   var id = 1;
   document.addEntity(
-    LineEntity(
-      id: id++,
-      start: const Vec2(100, 0),
-      end: const Vec2(110, 0),
-    ),
+    LineEntity(id: id++, start: const Vec2(100, 0), end: const Vec2(110, 0)),
   );
   document.addEntity(
     PolylineEntity.fromPoints(
@@ -3452,7 +3372,11 @@ CadDocument syntheticDrawing() {
     ),
   );
   document.addEntity(
-    const LineEntity(id: 0, start: Vec2(50, 50), end: Vec2(60, 50)).withId(id++),
+    const LineEntity(
+      id: 0,
+      start: Vec2(50, 50),
+      end: Vec2(60, 50),
+    ).withId(id++),
     blockName: '*D1',
   );
   document.addEntity(
@@ -3701,11 +3625,17 @@ String colorKey(CadColor color) {
 Object? geometryOf(CadEntity entity) {
   switch (entity) {
     case LineEntity(:final start, :final end):
-      return {'start': [start.x, start.y], 'end': [end.x, end.y]};
+      return {
+        'start': [start.x, start.y],
+        'end': [end.x, end.y],
+      };
     case PolylineEntity(:final vertices, :final closed):
       return {'closed': closed, 'vertices': vertices};
     case CircleEntity(:final center, :final radius):
-      return {'center': [center.x, center.y], 'radius': radius};
+      return {
+        'center': [center.x, center.y],
+        'radius': radius,
+      };
     case ArcEntity(
       :final center,
       :final radius,
@@ -3778,7 +3708,12 @@ Object? geometryOf(CadEntity entity) {
         'rowSp': rowSpacing,
         'attribs': attributes,
       };
-    case ImageEntity(:final origin, :final uVector, :final vVector, :final reference):
+    case ImageEntity(
+      :final origin,
+      :final uVector,
+      :final vVector,
+      :final reference,
+    ):
       return {
         'ref': reference,
         'origin': [origin.x, origin.y],
@@ -3808,9 +3743,13 @@ Object? geometryOf(CadEntity entity) {
     case LeaderEntity(:final vertices, :final hasArrowHead):
       return {'arrow': hasArrowHead, 'xy': vertices};
     case SolidEntity(:final corners):
-      final pts = [
-        for (final p in corners) [p.x, p.y],
-      ]..sort((a, b) => (a[0] != b[0] ? a[0].compareTo(b[0]) : a[1].compareTo(b[1])));
+      final pts =
+          [
+            for (final p in corners) [p.x, p.y],
+          ]..sort(
+            (a, b) =>
+                (a[0] != b[0] ? a[0].compareTo(b[0]) : a[1].compareTo(b[1])),
+          );
       return pts;
     case RayEntity(:final origin, :final direction):
       return {

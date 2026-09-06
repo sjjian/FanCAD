@@ -106,11 +106,7 @@ sealed class CadEntity {
   /// When [local] (or [EmitContext.extentHint]) is smaller than
   /// [EmitContext.minExtent] after transform, writes one point and returns
   /// true. POINT and TEXT never call this: a collapsed glyph would vanish.
-  bool emitAsPixel(
-    EmitContext context,
-    GeometrySink sink, [
-    Bounds2? local,
-  ]) {
+  bool emitAsPixel(EmitContext context, GeometrySink sink, [Bounds2? local]) {
     if (context.minExtent <= 0) return false;
     final box = local ?? context.extentHint;
     if (box == null || box.isEmpty) return false;
@@ -417,6 +413,31 @@ String expandDxfTextCodes(String raw) {
 
 /// Removes MTEXT inline formatting, keeping the readable content.
 String stripMTextFormatting(String raw) => decodeMTextPlain(raw);
+
+/// True when [raw] still carries MTEXT `\` directives (`\f`, `\P`, `\C`, …).
+///
+/// `\U+` / `\M+` are glyphs, not style, so they do not count. A TEXT entity
+/// that kept `{\f宋体|c134;型材1}` after a DWG write-down does.
+bool looksLikeMTextFormatting(String raw) {
+  for (var i = 0; i < raw.length - 1; i++) {
+    if (raw[i] != '\\') continue;
+    final code = raw[i + 1];
+    if (code == 'U' || code == 'M') continue;
+    return true;
+  }
+  return false;
+}
+
+/// Glyphs TEXT and dimension overrides should paint.
+///
+/// `%%d` is a TEXT code. `{\f…;…}` is MTEXT that sometimes lands on TEXT
+/// after a DWG write-down; those braces are not part of the note.
+String decodeDrawnText(String raw) {
+  final expanded = expandDxfTextCodes(raw);
+  return looksLikeMTextFormatting(expanded)
+      ? stripMTextFormatting(expanded)
+      : expanded;
+}
 
 Vec2 _point(Object? value, {Vec2 fallback = const Vec2.zero()}) =>
     vec2FromJson(value, fallback: fallback);
