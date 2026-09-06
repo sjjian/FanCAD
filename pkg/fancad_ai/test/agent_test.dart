@@ -77,7 +77,11 @@ void main() {
     );
   });
 
-  Future<CommandResult> execute(String id, Map<String, Object?> args) {
+  Future<CommandResult> execute(
+    String id,
+    Map<String, Object?> args, {
+    String? tab,
+  }) {
     return registry.run(
       id,
       args: args,
@@ -324,7 +328,7 @@ void main() {
       ]),
       registry: registry,
       conversation: conversation,
-      execute: (id, args) async {
+      execute: (id, args, {tab}) async {
         if (id == 'query.summary') throw StateError('offline');
         return execute(id, args);
       },

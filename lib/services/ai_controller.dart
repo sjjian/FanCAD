@@ -244,11 +244,7 @@ class AiController extends ChangeNotifier {
       final titled = chat.title.trim().isEmpty
           ? titleFromUserMessage(message)
           : chat.title;
-      return chat.copyWith(
-        draft: '',
-        title: titled,
-        updatedAt: DateTime.now(),
-      );
+      return chat.copyWith(draft: '', title: titled, updatedAt: DateTime.now());
     });
     _busy = true;
     _error = null;
@@ -264,11 +260,12 @@ class AiController extends ChangeNotifier {
     final agent = AgentLoop(
       provider: provider,
       registry: workspace.commands,
-      execute: (id, args) => workspace.runHeadless(
+      execute: (id, args, {tab}) => workspace.runHeadless(
         id,
         args: args,
         source: ChangeSource.ai,
         session: session,
+        tab: tab,
       ),
       document: session.document,
       conversation: conversation,

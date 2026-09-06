@@ -48,7 +48,7 @@ void main() {
       ..addProvider(
         CommandOperationProvider(
           registry: registry,
-          execute: (id, args) async {
+          execute: (id, args, {tab}) async {
             ran.add(id);
             return CommandResult.ok(message: id, data: args);
           },
@@ -63,22 +63,30 @@ void main() {
           description: 'Load a skill body.',
           params: const [ParamSpec(name: 'name', type: ParamType.text)],
           risk: CommandRisk.readOnly,
-          execute: (args) async => {'status': 'ok', 'name': args['name']},
+          execute: (args, {tab}) async => {
+            'status': 'ok',
+            'name': args['name'],
+          },
         ),
       );
     dispatcher = OpsDispatcher(catalog);
   });
 
-  test('list without a path returns groups, not every command schema', () async {
-    final payload = await dispatcher.dispatch(const OpsRequest(action: OpsAction.list));
-    expect(payload['status'], 'ok');
-    final groups = payload['groups'] as List<Object?>;
-    expect(
-      groups.map((item) => (item as Map)['id']),
-      containsAll(['draw', 'file', 'query', 'skill']),
-    );
-    expect(payload.toString(), isNot(contains('start')));
-  });
+  test(
+    'list without a path returns groups, not every command schema',
+    () async {
+      final payload = await dispatcher.dispatch(
+        const OpsRequest(action: OpsAction.list),
+      );
+      expect(payload['status'], 'ok');
+      final groups = payload['groups'] as List<Object?>;
+      expect(
+        groups.map((item) => (item as Map)['id']),
+        containsAll(['draw', 'file', 'query', 'skill']),
+      );
+      expect(payload.toString(), isNot(contains('start')));
+    },
+  );
 
   test('help on a group lists summaries; help on an id is full', () async {
     final group = await dispatcher.dispatch(
@@ -121,20 +129,23 @@ void main() {
     expect(payload['message'], 'draw.line');
   });
 
-  test('hidden file commands and host tools appear and resolve aliases', () async {
-    expect(catalog.find('file.open'), isNotNull);
-    expect(catalog.find('L')?.id, 'draw.line');
-    expect(catalog.find('draw_line'), isNull);
+  test(
+    'hidden file commands and host tools appear and resolve aliases',
+    () async {
+      expect(catalog.find('file.open'), isNotNull);
+      expect(catalog.find('L')?.id, 'draw.line');
+      expect(catalog.find('draw_line'), isNull);
 
-    final skill = await dispatcher.dispatch(
-      const OpsRequest(
-        action: OpsAction.run,
-        path: 'skill.read',
-        args: {'name': 'annotate'},
-      ),
-    );
-    expect(skill['name'], 'annotate');
-  });
+      final skill = await dispatcher.dispatch(
+        const OpsRequest(
+          action: OpsAction.run,
+          path: 'skill.read',
+          args: {'name': 'annotate'},
+        ),
+      );
+      expect(skill['name'], 'annotate');
+    },
+  );
 
   test('unknown path lists known groups', () async {
     final payload = await dispatcher.dispatch(
@@ -144,26 +155,58 @@ void main() {
     expect(payload['error'], contains('Known groups'));
   });
 
-  test('a leftover cancel becomes a failed run the caller can correct', () async {
-    catalog.register(
-      operationFromCommand(
-        CommandDescriptor(
-          id: 'draw.polyline',
-          title: 'Polyline',
-          description: 'Draws a connected sequence of segments.',
-          params: const [
-            ParamSpec(name: 'points', type: ParamType.points, required: false),
-          ],
-          handler: (_) async => const CommandResult.ok(),
+  test(
+    'a leftover cancel becomes a failed run the caller can correct',
+    () async {
+      catalog.register(
+        operationFromCommand(
+          CommandDescriptor(
+            id: 'draw.polyline',
+            title: 'Polyline',
+            description: 'Draws a connected sequence of segments.',
+            params: const [
+              ParamSpec(
+                name: 'points',
+                type: ParamType.points,
+                required: false,
+              ),
+            ],
+            handler: (_) async => const CommandResult.ok(),
+          ),
+          (id, args, {tab}) async => const CommandResult.cancelled(),
         ),
-        (id, args) async => const CommandResult.cancelled(),
-      ),
+      );
+      final payload = await dispatcher.dispatch(
+        const OpsRequest(action: OpsAction.run, path: 'draw.polyline'),
+      );
+      expect(payload['status'], 'failed');
+      expect(
+        payload['error'],
+        contains('fancad({action: run, path: draw.polyline'),
+      );
+      expect(payload['error'], isNot(contains('Cancelled')));
+    },
+  );
+
+  test('run forwards tab to the injected executor', () async {
+    String? seen;
+    catalog = OperationCatalog()
+      ..addProvider(
+        CommandOperationProvider(
+          registry: registry,
+          execute: (id, args, {tab}) async {
+            seen = tab;
+            ran.add(id);
+            return CommandResult.ok(message: id, data: args);
+          },
+        ),
+      );
+    dispatcher = OpsDispatcher(catalog);
+
+    await dispatcher.dispatch(
+      const OpsRequest(action: OpsAction.run, path: 'query.summary', tab: '2'),
     );
-    final payload = await dispatcher.dispatch(
-      const OpsRequest(action: OpsAction.run, path: 'draw.polyline'),
-    );
-    expect(payload['status'], 'failed');
-    expect(payload['error'], contains('fancad({action: run, path: draw.polyline'));
-    expect(payload['error'], isNot(contains('Cancelled')));
+    expect(seen, '2');
+    expect(ran, ['query.summary']);
   });
 }

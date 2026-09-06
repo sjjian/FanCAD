@@ -42,10 +42,7 @@ HostTool readSkillTool(SkillRegistry registry) {
     execute: (args) async {
       final name = '${args['name'] ?? ''}'.trim();
       if (name.isEmpty) {
-        return {
-          'status': 'failed',
-          'message': 'skill.read requires a name.',
-        };
+        return {'status': 'failed', 'message': 'skill.read requires a name.'};
       }
       final skill = registry.read(name);
       if (skill == null) {
@@ -102,6 +99,6 @@ Operation operationFromHostTool(HostTool tool) {
       ),
     ],
     risk: CommandRisk.readOnly,
-    execute: tool.execute,
+    execute: (args, {tab}) => tool.execute(args),
   );
 }

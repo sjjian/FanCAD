@@ -9,13 +9,21 @@ class OpsRequest {
     required this.action,
     this.path = '',
     this.args = const {},
+    this.tab,
   });
 
   final OpsAction action;
   final String path;
   final Map<String, Object?> args;
 
+  /// Open drawing to run against: session id, file path, or unique title.
+  ///
+  /// Empty means the currently active drawing. Does not switch the visible tab.
+  final String? tab;
+
   bool get hasPath => path.trim().isNotEmpty;
+
+  bool get hasTab => tab != null && tab!.trim().isNotEmpty;
 
   /// What the panel should print: the inner command, not the wrapper tool.
   String get displayName => hasPath ? path.trim() : action.name;
@@ -23,10 +31,12 @@ class OpsRequest {
   static OpsRequest? tryParse(Map<String, Object?> raw) {
     final action = parseAction(raw['action']);
     if (action == null) return null;
+    final tab = '${raw['tab'] ?? ''}'.trim();
     return OpsRequest(
       action: action,
       path: '${raw['path'] ?? ''}'.trim(),
       args: asObjectMap(raw['args']),
+      tab: tab.isEmpty ? null : tab,
     );
   }
 
@@ -43,6 +53,7 @@ class OpsRequest {
     'action': action.name,
     if (hasPath) 'path': path,
     if (args.isNotEmpty) 'args': args,
+    if (hasTab) 'tab': tab,
   };
 }
 

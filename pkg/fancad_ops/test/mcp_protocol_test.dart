@@ -68,7 +68,7 @@ void main() {
           group: 'query',
           title: 'Summary',
           risk: CommandRisk.readOnly,
-          execute: (_) async => {'status': 'ok', 'n': 1},
+          execute: (args, {tab}) async => {'status': 'ok', 'n': 1},
         ),
       );
     final session = McpSession(

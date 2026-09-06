@@ -25,7 +25,10 @@ class OpsDispatcher {
     if (path.trim().isEmpty) return _groups();
     final operation = catalog.find(path);
     if (operation != null) {
-      return ok({'path': operation.id, 'operations': [operation.summaryJson()]});
+      return ok({
+        'path': operation.id,
+        'operations': [operation.summaryJson()],
+      });
     }
     final group = catalog.inGroup(path);
     if (group.isNotEmpty) {
@@ -72,7 +75,7 @@ class OpsDispatcher {
     final operation = catalog.find(request.path);
     if (operation == null) return _unknown(request.path);
     try {
-      return await operation.execute(request.args);
+      return await operation.execute(request.args, tab: request.tab);
     } catch (error) {
       return failed('$error');
     }

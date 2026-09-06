@@ -25,9 +25,9 @@ void main() {
           return true;
         },
         newDocument: workspace.newDocument,
-        closeActive: ({bool force = false}) =>
-            workspace.closeTab(workspace.activeIndex, force: force),
-        saveActive: (path) async => path,
+        closeActive: (session, {bool force = false}) =>
+            workspace.closeSession(session, force: force),
+        saveActive: (session, path) async => path,
         recentFiles: () => const [],
       ),
     );

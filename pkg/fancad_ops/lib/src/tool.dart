@@ -10,6 +10,7 @@ const fancadToolDescription =
     '3. action=help path=draw.line for parameters, aliases and risk. '
     '4. action=schema path=draw.line for the JSON Schema. '
     '5. action=run path=draw.line with args from that help. '
+    'To operate a background drawing, call file.list then pass tab with that id. '
     'Skills load with action=run path=skill.read args={name: inspect-drawing}.';
 
 const fancadToolParameters = <String, Object?>{
@@ -31,6 +32,14 @@ const fancadToolParameters = <String, Object?>{
     'args': {
       'type': 'object',
       'description': 'Arguments for action=run, taken from help/schema.',
+    },
+    'tab': {
+      'type': 'string',
+      'description':
+          'Open drawing to run against. Call file.list first and pass the '
+          'drawing id. A unique file path or title also works. Omit to use the '
+          'active drawing. Does not switch the visible tab; use file.activate '
+          'for that.',
     },
   },
   'required': ['action'],

@@ -15,7 +15,11 @@ import 'tools.dart';
 
 /// How a tool is executed by the host.
 typedef ToolExecutor =
-    Future<CommandResult> Function(String commandId, Map<String, Object?> args);
+    Future<CommandResult> Function(
+      String commandId,
+      Map<String, Object?> args, {
+      String? tab,
+    });
 
 /// One completed agent turn.
 class AgentTurn {
@@ -391,11 +395,7 @@ class AgentLoop {
     try {
       payload = await dispatcher.dispatch(request);
     } catch (caught) {
-      payload = {
-        'status': 'failed',
-        'error': '$caught',
-        'message': '$caught',
-      };
+      payload = {'status': 'failed', 'error': '$caught', 'message': '$caught'};
     }
 
     if (request.action == OpsAction.run && payload['status'] == 'failed') {

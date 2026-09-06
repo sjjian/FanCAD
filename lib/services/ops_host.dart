@@ -57,17 +57,17 @@ class FanCadOpsHost {
 
   McpHttpServer? _server;
 
-  String get url =>
-      _server?.url ?? fancadMcpUrl(host: bindHost, port: port);
+  String get url => _server?.url ?? fancadMcpUrl(host: bindHost, port: port);
 
   OperationCatalog catalog() => OperationCatalog()
     ..addProvider(
       CommandOperationProvider(
         registry: workspace.commands,
-        execute: (id, args) => workspace.runHeadless(
+        execute: (id, args, {tab}) => workspace.runHeadless(
           id,
           args: args,
           source: ChangeSource.mcp,
+          tab: tab,
         ),
       ),
     )
@@ -91,11 +91,7 @@ class FanCadOpsHost {
     );
     _server = server;
     final bound = await server.start(host: bindHost, port: port);
-    final lock = McpLock(
-      port: bound,
-      token: token,
-      pid: pid,
-    );
+    final lock = McpLock(port: bound, token: token, pid: pid);
     for (final path in lockPaths) {
       await McpLock.write(path, lock);
     }
@@ -118,15 +114,17 @@ class FanCadOpsHost {
     final operation = catalog.find(request.path);
     if (operation == null) return null;
     if (operation.risk != CommandRisk.destructive) return null;
+    final drawing = workspace.findDrawing(request.tab);
+    final drawingTitle = drawing?.title.trim() ?? '';
+    final prompt = drawingTitle.isEmpty
+        ? 'Allow ${operation.title}?'
+        : 'Allow ${operation.title} on "$drawingTitle"?';
     final allowed = await workspace.requestApprovalFor(
-      'Allow ${operation.title}?',
+      prompt,
       operation.description.isEmpty ? operation.id : operation.description,
       highlightIdsOf(request.args),
     );
     if (allowed) return null;
-    return {
-      'status': 'cancelled',
-      'message': 'The user declined this change.',
-    };
+    return {'status': 'cancelled', 'message': 'The user declined this change.'};
   }
 }

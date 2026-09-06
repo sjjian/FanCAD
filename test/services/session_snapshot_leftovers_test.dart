@@ -18,8 +18,8 @@ void main() {
       fileCommands: FileCommands(
         openFile: (_) async => false,
         newDocument: workspace.newDocument,
-        closeActive: ({bool force = false}) => true,
-        saveActive: (path) async => path,
+        closeActive: (session, {bool force = false}) => true,
+        saveActive: (session, path) async => path,
         recentFiles: () => const [],
       ),
     );

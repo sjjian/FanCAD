@@ -79,10 +79,12 @@ Workspace workspace(Ref ref) {
     fileCommands: FileCommands(
       openFile: (path) async => await workspace.openFile(path) != null,
       newDocument: workspace.newDocument,
-      closeActive: ({bool force = false}) =>
-          workspace.closeTab(workspace.activeIndex, force: force),
-      saveActive: (path) => workspace.saveActive(path),
+      closeActive: (session, {bool force = false}) =>
+          workspace.closeSession(session, force: force),
+      saveActive: (session, path) => workspace.saveSession(session, path),
       recentFiles: () => workspace.recentFiles,
+      listDrawings: workspace.listOpenDrawings,
+      activateDrawing: workspace.activateDrawing,
     ),
     pluginCommands: ref.watch(pluginCommandsProvider),
     clipboard: workspace.clipboard,

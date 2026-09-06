@@ -241,6 +241,21 @@ class Workspace extends ChangeNotifier implements CommandServices {
       notify('There is no drawing to save.', isError: true);
       return null;
     }
+    return saveTab(tab, path);
+  }
+
+  /// Writes [session]'s tab, used by `file.save` when MCP targets a background
+  /// drawing.
+  Future<String?> saveSession(DocumentSession session, [String? path]) async {
+    final tab = tabForSession(session);
+    if (tab == null) {
+      notify('There is no drawing to save.', isError: true);
+      return null;
+    }
+    return saveTab(tab, path);
+  }
+
+  Future<String?> saveTab(DocumentTab tab, [String? path]) async {
     final target = (path ?? tab.filePath)?.trim();
     if (target == null || target.isEmpty) {
       notify('There is no path to save to.', isError: true);
@@ -280,6 +295,93 @@ class Workspace extends ChangeNotifier implements CommandServices {
   }
 
   void activateTab(DocumentTab tab) => activate(_tabs.indexOf(tab));
+
+  /// Open drawing for [selector], or the active tab when [selector] is empty.
+  ///
+  /// Matches session id, then file path, then a unique title. Duplicate titles
+  /// are not a match — use the id from [listOpenDrawings].
+  DocumentTab? findDrawing(String? selector) {
+    final key = selector?.trim() ?? '';
+    if (key.isEmpty) return active;
+
+    for (final tab in _tabs) {
+      if (tab.session.id == key) return tab;
+    }
+    for (final tab in _tabs) {
+      if (_sameDrawingFile(tab.filePath, key)) return tab;
+    }
+    DocumentTab? titled;
+    var matches = 0;
+    for (final tab in _tabs) {
+      if (tab.title != key) continue;
+      titled = tab;
+      matches += 1;
+    }
+    if (matches == 1) return titled;
+    return null;
+  }
+
+  /// Error for a [findDrawing] miss, including duplicate-title candidates.
+  String drawingNotFoundMessage(String selector) {
+    final key = selector.trim();
+    final ids = [
+      for (final tab in _tabs)
+        if (tab.title == key) tab.session.id,
+    ];
+    if (ids.length > 1) {
+      return 'Title "$key" matches more than one drawing (ids: ${ids.join(', ')}). '
+          'Use an id from file.list.';
+    }
+    return 'No open drawing matches "$key".';
+  }
+
+  /// Brings [selector] to the front. Returns an error message, or null.
+  String? activateDrawing(String selector) {
+    final tab = findDrawing(selector);
+    if (tab == null) return drawingNotFoundMessage(selector);
+    activateTab(tab);
+    return null;
+  }
+
+  List<Map<String, Object?>> listOpenDrawings() {
+    final current = active;
+    return [
+      for (final tab in _tabs)
+        {
+          'id': tab.session.id,
+          'title': tab.title,
+          'path': tab.filePath,
+          'dirty': tab.isDirty,
+          'active': identical(tab, current),
+          'entityCount': tab.document.entityCount,
+          'activeLayout': tab.document.activeLayoutName,
+        },
+    ];
+  }
+
+  DocumentTab? tabForSession(DocumentSession session) {
+    final index = indexOfSession(session);
+    if (index < 0) return null;
+    return _tabs[index];
+  }
+
+  int indexOfSession(DocumentSession session) {
+    for (var i = 0; i < _tabs.length; i++) {
+      if (identical(_tabs[i].session, session)) return i;
+    }
+    for (var i = 0; i < _tabs.length; i++) {
+      if (_tabs[i].session.id == session.id) return i;
+    }
+    return -1;
+  }
+
+  /// Closes the tab that owns [session]. Returns false when it is dirty and
+  /// [force] is false.
+  bool closeSession(DocumentSession session, {bool force = false}) {
+    final index = indexOfSession(session);
+    if (index < 0) return true;
+    return closeTab(index, force: force);
+  }
 
   /// Drops the recent-files list. Missing paths otherwise stay in the File
   /// menu and on the empty workspace until the user restarts.
@@ -452,6 +554,8 @@ class Workspace extends ChangeNotifier implements CommandServices {
       id == 'file.open' ||
       id == 'file.openRecent' ||
       id == 'file.new' ||
+      id == 'file.list' ||
+      id == 'file.activate' ||
       id == 'workbench.preferences';
 
   /// Save and close have nowhere to act when the last tab is already gone.
@@ -503,14 +607,48 @@ class Workspace extends ChangeNotifier implements CommandServices {
     Map<String, Object?> args = const {},
     ChangeSource source = ChangeSource.plugin,
     DocumentSession? session,
+    String? tab,
     void Function(String message)? log,
   }) async {
     final descriptor = commands.find(idOrAlias);
     if (descriptor == null) {
       return CommandResult.failed('Unknown command: $idOrAlias');
     }
+    if (tab != null && tab.trim().isNotEmpty) {
+      final found = findDrawing(tab);
+      if (found == null) {
+        return CommandResult.failed(drawingNotFoundMessage(tab));
+      }
+      session = found.session;
+    }
     final target = session ?? active?.session;
     if (target == null) {
+      if (descriptor.id == 'file.list' || descriptor.id == 'file.activate') {
+        return commands.run(
+          descriptor.id,
+          args: args,
+          source: source,
+          contextBuilder: (each) {
+            final transient = DocumentSession(
+              id: 'transient',
+              document: CadDocument(),
+            );
+            return CommandContext(
+              session: transient,
+              args: CommandArgs(args),
+              input: ArgsCommandInput(
+                args: CommandArgs(args),
+                params: each.params,
+                selection: transient.selection,
+                log: log ?? commandLine.write,
+              ),
+              services: this,
+              source: source,
+              commandId: each.id,
+            );
+          },
+        );
+      }
       return CommandResult.failed('No drawing is open');
     }
     return commands.run(
