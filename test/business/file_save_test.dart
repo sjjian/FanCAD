@@ -19,8 +19,8 @@ void main() {
       fileCommands: FileCommands(
         openFile: (_) async => false,
         newDocument: workspace.newDocument,
-        closeActive: ({bool force = false}) => true,
-        saveActive: (path) async {
+        closeActive: (session, {bool force = false}) => true,
+        saveActive: (session, path) async {
           written = path;
           return path;
         },
@@ -49,8 +49,8 @@ void main() {
       fileCommands: FileCommands(
         openFile: (_) async => false,
         newDocument: workspace.newDocument,
-        closeActive: ({bool force = false}) => true,
-        saveActive: (path) async {
+        closeActive: (session, {bool force = false}) => true,
+        saveActive: (session, path) async {
           saved = true;
           return path;
         },
@@ -82,8 +82,8 @@ void main() {
       fileCommands: FileCommands(
         openFile: (_) async => false,
         newDocument: workspace.newDocument,
-        closeActive: ({bool force = false}) => true,
-        saveActive: (path) async {
+        closeActive: (session, {bool force = false}) => true,
+        saveActive: (session, path) async {
           saved = true;
           return path;
         },

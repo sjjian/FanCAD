@@ -30,7 +30,10 @@ class Operation {
   final List<ParamSpec> params;
   final List<String> aliases;
   final CommandRisk risk;
-  final Future<Map<String, Object?>> Function(Map<String, Object?> args)
+  final Future<Map<String, Object?>> Function(
+    Map<String, Object?> args, {
+    String? tab,
+  })
   execute;
 
   /// JSON Schema for [params], the same shape a command already advertised.

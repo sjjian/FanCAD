@@ -10,7 +10,7 @@ void main() {
     final agent = AgentLoop(
       provider: _ChunkedProvider(),
       registry: CommandRegistry(),
-      execute: (id, args) async => CommandResult.failed(id),
+      execute: (id, args, {tab}) async => CommandResult.failed(id),
       document: CadDocument(),
       conversation: conversation,
       onDelta: deltas.add,
@@ -56,7 +56,7 @@ void main() {
     final agent = AgentLoop(
       provider: provider,
       registry: registry,
-      execute: (id, args) => registry.run(
+      execute: (id, args, {tab}) => registry.run(
         id,
         args: args,
         source: ChangeSource.ai,
@@ -91,7 +91,7 @@ void main() {
     final agent = AgentLoop(
       provider: _ReasoningProvider(),
       registry: CommandRegistry(),
-      execute: (id, args) async => CommandResult.failed(id),
+      execute: (id, args, {tab}) async => CommandResult.failed(id),
       document: CadDocument(),
       conversation: conversation,
     );

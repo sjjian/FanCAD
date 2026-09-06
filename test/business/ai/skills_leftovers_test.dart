@@ -52,7 +52,7 @@ void main() {
         const LlmCompletion(text: 'I will inspect first.'),
       ]),
       registry: registry,
-      execute: (id, args) async =>
+      execute: (id, args, {tab}) async =>
           CommandResult.failed('command $id should not run'),
       document: session.document,
       conversation: conversation,

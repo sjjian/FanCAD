@@ -19,6 +19,8 @@ class FileCommands {
     required this.closeActive,
     required this.saveActive,
     required this.recentFiles,
+    this.listDrawings,
+    this.activateDrawing,
     this.chooseSavePath,
   });
 
@@ -27,13 +29,22 @@ class FileCommands {
 
   final void Function() newDocument;
 
-  /// Closes the active tab. Returns false when it has unsaved changes.
-  final bool Function({bool force}) closeActive;
+  /// Closes the tab that owns [session]. Returns false when it has unsaved
+  /// changes.
+  final bool Function(DocumentSession session, {bool force}) closeActive;
 
-  /// Writes the active document to [path], or to its own path when null.
-  final Future<String?> Function(String? path) saveActive;
+  /// Writes [session]'s document to [path], or to its own path when null.
+  final Future<String?> Function(DocumentSession session, String? path)
+  saveActive;
 
   final List<String> Function() recentFiles;
+
+  /// Open drawing tabs for `file.list`. Production injects
+  /// [Workspace.listOpenDrawings].
+  final List<Map<String, Object?>> Function()? listDrawings;
+
+  /// Brings a drawing to the front. Returns an error message, or null.
+  final String? Function(String selector)? activateDrawing;
 
   /// Override for tests. Production leaves this null and uses [saveFileDialog].
   final Future<String?> Function({String suggestedName})? chooseSavePath;
@@ -45,6 +56,8 @@ class FileCommands {
     _saveAs(),
     _close(),
     _openRecent(),
+    _list(),
+    _activate(),
   ];
 
   static const String _category = 'File';
@@ -111,7 +124,8 @@ class FileCommands {
     defaultKeybinding: 'ctrl+s',
     aiExposure: AiExposure.hidden,
     description:
-        'Saves the active drawing, asking for a path when it has never been saved.',
+        'Saves the drawing this command is targeting, asking for a path when it '
+        'has never been saved.',
     handler: (context) async {
       var path = context.session.filePath;
       if (path == null || path.isEmpty) {
@@ -124,7 +138,7 @@ class FileCommands {
         if (chosen == null) return const CommandResult.cancelled();
         path = chosen;
       }
-      final written = await saveActive(path);
+      final written = await saveActive(context.session, path);
       return written == null
           ? const CommandResult.failed('The file was not written.')
           : CommandResult.ok(message: 'Saved to $written');
@@ -138,7 +152,7 @@ class FileCommands {
     aliases: const ['saveas'],
     defaultKeybinding: 'ctrl+shift+s',
     aiExposure: AiExposure.hidden,
-    description: 'Saves the active drawing to a new file.',
+    description: 'Saves the drawing this command is targeting to a new file.',
     params: const [
       ParamSpec(
         name: 'path',
@@ -159,7 +173,7 @@ class FileCommands {
         if (chosen == null) return const CommandResult.cancelled();
         path = chosen;
       }
-      final written = await saveActive(path);
+      final written = await saveActive(context.session, path);
       return written == null
           ? const CommandResult.failed('The file was not written.')
           : CommandResult.ok(message: 'Saved to $written');
@@ -173,9 +187,11 @@ class FileCommands {
     aliases: const ['close'],
     defaultKeybinding: 'ctrl+w',
     aiExposure: AiExposure.hidden,
-    description: 'Closes the active drawing.',
+    description: 'Closes the drawing this command is targeting.',
     handler: (context) async {
-      if (closeActive()) return const CommandResult.ok();
+      if (closeActive(context.session, force: false)) {
+        return const CommandResult.ok();
+      }
       // Unsaved work is the one case where a command refuses and hands the
       // decision back, rather than choosing on the user's behalf.
       final discard = await context.services.requestApproval(
@@ -183,10 +199,80 @@ class FileCommands {
         '"${context.session.title}" has unsaved changes.',
       );
       if (!discard) return const CommandResult.cancelled();
-      closeActive(force: true);
+      closeActive(context.session, force: true);
       return const CommandResult.ok(message: 'Drawing closed.');
     },
   );
+
+  CommandDescriptor _list() => CommandDescriptor(
+    id: 'file.list',
+    title: 'List Drawings',
+    category: _category,
+    risk: CommandRisk.readOnly,
+    description:
+        'Lists every open drawing tab: id, title, path, dirty, whether it is '
+        'active, entity count, and the current layout. Use the id as the '
+        'fancad tab selector to operate on a drawing without switching the UI.',
+    handler: (context) async {
+      final drawings = listDrawings?.call() ?? const <Map<String, Object?>>[];
+      return CommandResult.ok(
+        message: '${drawings.length} open drawing(s).',
+        data: {'drawings': drawings},
+      );
+    },
+  );
+
+  CommandDescriptor _activate() => CommandDescriptor(
+    id: 'file.activate',
+    title: 'Activate Drawing',
+    category: _category,
+    description:
+        'Brings an open drawing to the front. Pass id from file.list, or a '
+        'unique path or title.',
+    params: const [
+      ParamSpec(
+        name: 'id',
+        type: ParamType.text,
+        required: false,
+        description: 'Session id from file.list',
+      ),
+      ParamSpec(
+        name: 'path',
+        type: ParamType.text,
+        required: false,
+        description: 'File path of an open drawing',
+      ),
+      ParamSpec(
+        name: 'title',
+        type: ParamType.text,
+        required: false,
+        description: 'Tab title; must be unique',
+      ),
+    ],
+    handler: (context) async {
+      final selector = _activateSelector(context.args);
+      if (selector.isEmpty) {
+        return const CommandResult.failed(
+          'file.activate needs id, path, or title. Call file.list first.',
+        );
+      }
+      final activate = activateDrawing;
+      if (activate == null) {
+        return const CommandResult.failed('file.activate is not available.');
+      }
+      final error = activate(selector);
+      if (error != null) return CommandResult.failed(error);
+      return CommandResult.ok(message: 'Activated $selector.');
+    },
+  );
+
+  static String _activateSelector(CommandArgs args) {
+    for (final name in const ['id', 'path', 'title']) {
+      final value = args.text(name)?.trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return '';
+  }
 
   CommandDescriptor _openRecent() => CommandDescriptor(
     id: 'file.openRecent',

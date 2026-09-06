@@ -215,9 +215,9 @@ void main() {
       fileCommands: FileCommands(
         openFile: (_) async => false,
         newDocument: ws.newDocument,
-        closeActive: ({bool force = false}) =>
-            ws.closeTab(ws.activeIndex, force: force),
-        saveActive: (path) async => path,
+        closeActive: (session, {bool force = false}) =>
+            ws.closeSession(session, force: force),
+        saveActive: (session, path) async => path,
         recentFiles: () => const [],
       ),
     );
@@ -235,9 +235,9 @@ void main() {
       fileCommands: FileCommands(
         openFile: (_) async => false,
         newDocument: ws.newDocument,
-        closeActive: ({bool force = false}) =>
-            ws.closeTab(ws.activeIndex, force: force),
-        saveActive: (path) async => path,
+        closeActive: (session, {bool force = false}) =>
+            ws.closeSession(session, force: force),
+        saveActive: (session, path) async => path,
         recentFiles: () => const [],
       ),
     );
@@ -332,9 +332,9 @@ void main() {
       fileCommands: FileCommands(
         openFile: (_) async => false,
         newDocument: ws.newDocument,
-        closeActive: ({bool force = false}) =>
-            ws.closeTab(ws.activeIndex, force: force),
-        saveActive: (path) async => path,
+        closeActive: (session, {bool force = false}) =>
+            ws.closeSession(session, force: force),
+        saveActive: (session, path) async => path,
         recentFiles: () => const [],
       ),
     );
@@ -360,9 +360,9 @@ void main() {
         fileCommands: FileCommands(
           openFile: (_) async => false,
           newDocument: ws.newDocument,
-          closeActive: ({bool force = false}) =>
-              ws.closeTab(ws.activeIndex, force: force),
-          saveActive: (path) async => path,
+          closeActive: (session, {bool force = false}) =>
+              ws.closeSession(session, force: force),
+          saveActive: (session, path) async => path,
           recentFiles: () => const [],
         ),
       );

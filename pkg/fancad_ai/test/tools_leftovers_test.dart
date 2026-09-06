@@ -71,7 +71,7 @@ void main() {
       ..addProvider(
         CommandOperationProvider(
           registry: registry,
-          execute: (id, args) async => const CommandResult.ok(),
+      execute: (id, args, {tab}) async => const CommandResult.ok(),
         ),
       )
       ..addProvider(

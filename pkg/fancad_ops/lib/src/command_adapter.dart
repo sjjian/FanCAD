@@ -5,14 +5,15 @@ import 'operation.dart';
 
 /// Runs a command id. The host injects [Workspace.runHeadless] (or a test stub).
 typedef CommandExecutor =
-    Future<CommandResult> Function(String id, Map<String, Object?> args);
+    Future<CommandResult> Function(
+      String id,
+      Map<String, Object?> args, {
+      String? tab,
+    });
 
 /// Every registered command, including those hidden from the old per-tool list.
 class CommandOperationProvider implements OperationProvider {
-  CommandOperationProvider({
-    required this.registry,
-    required this.execute,
-  });
+  CommandOperationProvider({required this.registry, required this.execute});
 
   final CommandRegistry registry;
   final CommandExecutor execute;
@@ -39,8 +40,8 @@ Operation operationFromCommand(
     params: command.params,
     aliases: command.aliases,
     risk: command.risk,
-    execute: (args) async {
-      final result = await execute(command.id, args);
+    execute: (args, {tab}) async {
+      final result = await execute(command.id, args, tab: tab);
       return encodeOperationResult(result, operation);
     },
   );
