@@ -276,7 +276,9 @@ class FcbReader {
         lineType: lineTypeIndex < lineTypes.length
             ? lineTypes[lineTypeIndex].name
             : 'Continuous',
-        lineWeight: _view.getInt32(at + FcbLayer.lineWeight, Endian.little),
+        lineWeight: LineWeight.normalize(
+          _view.getInt32(at + FcbLayer.lineWeight, Endian.little),
+        ),
         visible: flags & FcbLayerFlags.hidden == 0,
         frozen: flags & FcbLayerFlags.frozen != 0,
         locked: flags & FcbLayerFlags.locked != 0,
@@ -692,7 +694,9 @@ class FcbReader {
         final index when index < lineTypeNames.length => lineTypeNames[index],
         _ => 'ByLayer',
       },
-      lineWeight: _view.getInt32(at + FcbEntity.lineWeight, Endian.little),
+      lineWeight: LineWeight.normalize(
+        _view.getInt32(at + FcbEntity.lineWeight, Endian.little),
+      ),
       lineTypeScale: lineTypeScale,
       transparency: transparency,
       visible: flags & FcbFlags.invisible == 0,
@@ -752,11 +756,20 @@ class FcbReader {
         );
 
       case FcbType.polyline:
+        var width = 0.0;
+        var verts = geom;
+        if (geom.length % 3 == 1 && geom.isNotEmpty) {
+          width = geom.last;
+          verts = Float64List.fromList(geom.sublist(0, geom.length - 1));
+        } else {
+          verts = Float64List.fromList(geom);
+        }
         return PolylineEntity(
           id: id,
           props: props,
-          vertices: Float64List.fromList(geom),
+          vertices: verts,
           closed: closed,
+          constantWidth: width,
         );
 
       case FcbType.spline:

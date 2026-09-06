@@ -32,6 +32,9 @@
 #define FCB_SECTION_HEADERVARS 10
 #define FCB_SECTION_DIAGNOSTICS 11
 #define FCB_SECTION_VIEWPORTS 12
+#define FCB_SECTION_PLOT_WINDOWS 13
+#define FCB_SECTION_DIMSTYLES 14
+#define FCB_SECTION_PLOT_PLACEMENT 15
 
 /* Fixed record sizes. */
 #define FCB_RECORD_ENTITY 104
@@ -41,6 +44,7 @@
 #define FCB_RECORD_BLOCK 48
 #define FCB_RECORD_LAYOUT 32
 #define FCB_RECORD_VIEWPORT 80
+#define FCB_RECORD_DIMSTYLE 64
 
 /* Entity type codes. Wire values: never renumber. */
 #define FCB_TYPE_UNKNOWN 0
@@ -126,6 +130,7 @@ typedef struct {
   fcb_bytes blocks;
   fcb_bytes layouts;
   fcb_bytes viewports;
+  fcb_bytes dimstyles;
   fcb_bytes headervars;
   fcb_bytes diagnostics;
   uint32_t entity_count;
@@ -135,6 +140,7 @@ typedef struct {
   uint32_t block_count;
   uint32_t layout_count;
   uint32_t viewport_count;
+  uint32_t dimstyle_count;
   uint32_t headervar_count;
   int failed;
 } fcb_builder;
@@ -252,6 +258,20 @@ typedef struct {
 } fcb_viewport;
 
 void fcb_add_viewport(fcb_builder *b, const fcb_viewport *viewport);
+
+typedef struct {
+  uint32_t name;
+  uint32_t text_style;
+  uint32_t decimal_places;
+  double text_height;
+  double arrow_size;
+  double extension_line_offset;
+  double extension_line_extend;
+  double text_gap;
+  double scale;
+} fcb_dimstyle;
+
+void fcb_add_dimstyle(fcb_builder *b, const fcb_dimstyle *dimstyle);
 
 void fcb_add_header_variable(fcb_builder *b, const char *key,
                              const char *value);

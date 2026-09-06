@@ -106,25 +106,11 @@ class DrawingImporter {
       case SaveFormat.fcb:
         await File(plan.targetPath).writeAsBytes(encode(document));
       case SaveFormat.dwg:
-        final dxf = '${plan.targetPath}.tmp.dxf';
-        await const DxfWriter().writeFile(dxf, document);
-        try {
-          if (backend is NativeDrawingBackend) {
-            await (backend as NativeDrawingBackend).exportDwgFromDxf(
-              dxf,
-              plan.targetPath,
-              targetVersion: plan.dwgVersion,
-            );
-          } else {
-            throw ImportException(
-              'DWG export requires the native backend',
-              path: plan.targetPath,
-            );
-          }
-        } finally {
-          final temp = File(dxf);
-          if (temp.existsSync()) temp.deleteSync();
-        }
+        await backend.writeFromFcb(
+          plan.targetPath,
+          encode(document),
+          targetVersion: plan.dwgVersion,
+        );
     }
     return SaveOutcome(plan: plan, path: plan.targetPath);
   }

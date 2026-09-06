@@ -8,7 +8,7 @@ class SavePlan {
     required this.format,
     this.fallbackPath,
     this.reason = '',
-    this.dwgVersion = 2000,
+    this.dwgVersion = 2004,
   });
 
   final String targetPath;
@@ -63,7 +63,7 @@ class SaveStrategy {
           return SavePlan(
             targetPath: target,
             format: SaveFormat.dwg,
-            dwgVersion: 2000,
+            dwgVersion: 2004,
           );
         }
         final dxf = '${_withoutExtension(target)}.dxf';

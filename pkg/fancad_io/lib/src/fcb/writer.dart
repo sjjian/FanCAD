@@ -384,10 +384,14 @@ class FcbWriter {
           endParam,
         ]);
 
-      case PolylineEntity(:final vertices, :final closed):
+      case PolylineEntity(:final vertices, :final closed, :final constantWidth):
+        final geomOffset = _doubles.addBuffer(vertices);
+        if (constantWidth != 0) {
+          _doubles.add(constantWidth);
+        }
         return _Payload(
-          geomOffset: _doubles.addBuffer(vertices),
-          geomCount: vertices.length,
+          geomOffset: geomOffset,
+          geomCount: vertices.length + (constantWidth != 0 ? 1 : 0),
           flags: closed ? FcbFlags.closed : 0,
         );
 

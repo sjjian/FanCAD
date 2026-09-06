@@ -27,6 +27,7 @@ void main(List<String> arguments) async {
     final nativeDirectory = input.packageRoot.resolve('native/fancad_io/');
     final sources = [
       nativeDirectory.resolve('fcb_builder.c').toFilePath(),
+      nativeDirectory.resolve('fcb_view.c').toFilePath(),
       nativeDirectory.resolve('fancad_io.c').toFilePath(),
       nativeDirectory.resolve('dwg_import.c').toFilePath(),
       nativeDirectory.resolve('dwg_export.c').toFilePath(),

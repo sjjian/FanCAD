@@ -92,13 +92,13 @@ int32_t fc_last_error(char *out, int32_t capacity) {
 
 int32_t fc_write_file(const char *path, const uint8_t *fcb, uint64_t length,
                       int32_t target_version) {
-  (void)path;
-  (void)fcb;
-  (void)length;
-  (void)target_version;
-  fc_set_error(
-      "FCB-to-DWG is not implemented; write DXF and call fc_dxf_to_dwg");
-  return FC_STATUS_UNSUPPORTED;
+  fc_set_error(NULL);
+  if (!path || !*path || !fcb || length == 0) {
+    fc_set_error("fc_write_file: invalid argument");
+    return FC_STATUS_INVALID_ARGUMENT;
+  }
+  return fcdwg_export_fcb_to_dwg(fcb, length, path, target_version, fc_error,
+                                 sizeof(fc_error));
 }
 
 int32_t fc_dxf_to_dwg(const char *dxf_path, const char *dwg_path,
