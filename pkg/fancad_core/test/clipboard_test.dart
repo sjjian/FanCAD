@@ -24,6 +24,70 @@ void main() {
     expect(clip.blockEntities.values.single, isA<LineEntity>());
   });
 
+  test('a pasted named insert does not translate its members', () {
+    final source = CadDocument();
+    final build = Transaction(source, label: 'build');
+    build.putBlock(const BlockRecord(name: 'MARK', entityIds: []));
+    build.add(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(2, 0)),
+      blockName: 'MARK',
+    );
+    final insertId = build.add(
+      const InsertEntity(id: 0, blockName: 'MARK', position: Vec2(5, 5)),
+    );
+    build.commit();
+    final clip = DrawingClip.extract(source, [
+      insertId,
+    ], basePoint: const Vec2(5, 5))!;
+
+    final target = CadDocument();
+    final paste = Transaction(target, label: 'Paste');
+    final placed = clip.paste(paste, insertion: const Vec2(100, 40));
+    paste.commit();
+
+    final insert = target.entity(placed.single)! as InsertEntity;
+    expect(insert.position, const Vec2(100, 40));
+    expect(insert.blockName, 'MARK');
+    final member = target.entitiesOf('MARK').whereType<LineEntity>().single;
+    expect(member.start, Vec2.zero());
+    expect(member.end, const Vec2(2, 0));
+  });
+
+  test('a pasted *U insert does not translate its members', () {
+    final source = CadDocument();
+    final build = Transaction(source, label: 'build');
+    build.putBlock(
+      const BlockRecord(name: '*U1', isAnonymous: true, entityIds: []),
+    );
+    build.add(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+      blockName: '*U1',
+    );
+    final insertId = build.add(
+      const InsertEntity(id: 0, blockName: '*U1', position: Vec2(5, 5)),
+    );
+    build.commit();
+    final clip = DrawingClip.extract(source, [
+      insertId,
+    ], basePoint: const Vec2(5, 5))!;
+
+    final target = CadDocument();
+    final paste = Transaction(target, label: 'Paste');
+    final placed = clip.paste(paste, insertion: const Vec2(100, 40));
+    paste.commit();
+
+    final insert = target.entity(placed.single)! as InsertEntity;
+    expect(insert.position, const Vec2(100, 40));
+    expect(insert.blockName, startsWith('*U'));
+    final member = target
+        .entitiesOf(insert.blockName)
+        .whereType<LineEntity>()
+        .single;
+    expect(member.start, Vec2.zero());
+    expect(member.end, const Vec2(10, 0));
+    expect(target.boundsOfEntity(insert), const Bounds2(100, 40, 110, 40));
+  });
+
   test('paste translates by insertion minus the stored base', () {
     final source = CadDocument();
     final lineId = Transaction(source, label: 'draw')
@@ -92,6 +156,69 @@ void main() {
 
     expect(target.layer('WALL')!.color, const CadColor.indexed(3));
     expect(target.entities.whereType<LineEntity>().single.props.layer, 'WALL');
+  });
+
+  test('a pasted *D note keeps height and rotation after the translation', () {
+    const raw = r'{\F宋体|c134;型材1}';
+    final source = CadDocument();
+    final build = Transaction(source, label: 'build');
+    build.putBlock(
+      const BlockRecord(name: '*D1', isAnonymous: true, entityIds: []),
+    );
+    build.add(
+      const MTextEntity(
+        id: 0,
+        position: Vec2(5, 3),
+        content: raw,
+        height: 40,
+        rotation: 1.5707963267948966,
+        attachment: 5,
+      ),
+      blockName: '*D1',
+    );
+    final dimId = build.add(
+      const DimensionEntity(
+        id: 0,
+        blockName: '*D1',
+        definitionPoints: [Vec2.zero(), Vec2(0, -10)],
+        textPosition: Vec2(5, 3),
+        measurement: 10,
+        overrideText: raw,
+        dimensionType: 161,
+      ),
+    );
+    build.commit();
+    final clip = DrawingClip.extract(source, [
+      dimId,
+    ], basePoint: const Vec2.zero())!;
+
+    final target = CadDocument();
+    final paste = Transaction(target, label: 'Paste');
+    final placed = clip.paste(paste, insertion: const Vec2(100, 40));
+    paste.commit();
+
+    final dim = target.entity(placed.single)! as DimensionEntity;
+    expect(dim.blockName, isNotEmpty);
+    expect(dim.textPosition, const Vec2(105, 43));
+    final note = target
+        .entitiesOf(dim.blockName)
+        .whereType<MTextEntity>()
+        .single;
+    expect(note.position, const Vec2(105, 43));
+    expect(note.height, 40);
+    expect(note.rotation, closeTo(1.5707963267948966, 1e-12));
+
+    final sink = PolylineSink();
+    dim.emit(target.emitContext(tolerance: 0.1), sink);
+    expect(sink.texts, isNotEmpty);
+    expect(sink.texts.every((item) => item.height == 40), isTrue);
+    expect(
+      sink.texts.every(
+        (item) => (item.rotation - 1.5707963267948966).abs() < 1e-9,
+      ),
+      isTrue,
+    );
+    expect(sink.texts.every((item) => !item.text.contains(r'\F')), isTrue);
   });
 
   test('anonymous dimension blocks get a new name on each paste', () {

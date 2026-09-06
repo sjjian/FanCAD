@@ -15,11 +15,7 @@ import '../model/style.dart';
 class DimensionGraphics {
   const DimensionGraphics();
 
-  void emit(
-    DimensionEntity entity,
-    EmitContext context,
-    GeometrySink sink,
-  ) {
+  void emit(DimensionEntity entity, EmitContext context, GeometrySink sink) {
     final style = context.styleFor(entity.props);
     final dim = context.styles.dimStyle(entity.styleName);
     final points = entity.definitionPoints;
@@ -75,8 +71,7 @@ class DimensionGraphics {
     // horizontal or vertical, not parallel to the two origins.
     if ((entity.dimensionType & 0x0F) == 0 && points.length >= 3) {
       final mid = p1.lerp(p2, 0.5);
-      final horizontal =
-          (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
+      final horizontal = (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
       final a = horizontal ? Vec2(p1.x, dimLine.y) : Vec2(dimLine.x, p1.y);
       final b = horizontal ? Vec2(p2.x, dimLine.y) : Vec2(dimLine.x, p2.y);
       if (a.distanceTo(b) < 1e-9) return;
@@ -193,7 +188,7 @@ class DimensionGraphics {
       text: entity.displayTextFor(dim),
       origin: entity.textPosition,
       height: dim.scaledTextHeight,
-      rotation: 0,
+      rotation: _textRotation(entity),
       styleName: dim.textStyle,
       hAlign: TextHAlign.center,
       vAlign: TextVAlign.middle,
@@ -247,10 +242,7 @@ class DimensionGraphics {
     final t = context.apply(tip);
     final l = context.apply(left);
     final r = context.apply(right);
-    sink.fill(
-      Float64List.fromList([t.x, t.y, l.x, l.y, r.x, r.y]),
-      style,
-    );
+    sink.fill(Float64List.fromList([t.x, t.y, l.x, l.y, r.x, r.y]), style);
   }
 
   static double _sweep(double start, double end) {
@@ -259,5 +251,41 @@ class DimensionGraphics {
       sweep += math.pi * 2;
     }
     return sweep;
+  }
+
+  /// Aligned text follows the dimension line, flipped so it stays readable.
+  static double _textRotation(DimensionEntity entity) {
+    final points = entity.definitionPoints;
+    if (points.length < 2) return 0;
+    final Vec2 a;
+    final Vec2 b;
+    if ((entity.dimensionType & 0x0F) == 0 && points.length >= 3) {
+      final mid = points[0].lerp(points[1], 0.5);
+      final dimLine = points[2];
+      final horizontal = (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
+      a = horizontal
+          ? Vec2(points[0].x, dimLine.y)
+          : Vec2(dimLine.x, points[0].y);
+      b = horizontal
+          ? Vec2(points[1].x, dimLine.y)
+          : Vec2(dimLine.x, points[1].y);
+    } else {
+      a = points[0];
+      b = points[1];
+    }
+    final delta = b - a;
+    if (delta.lengthSquared < 1e-20) return 0;
+    return _readableTextAngle(delta.angle);
+  }
+
+  static double _readableTextAngle(double angle) {
+    var readable = angle;
+    while (readable <= -math.pi / 2) {
+      readable += math.pi;
+    }
+    while (readable > math.pi / 2) {
+      readable -= math.pi;
+    }
+    return readable;
   }
 }

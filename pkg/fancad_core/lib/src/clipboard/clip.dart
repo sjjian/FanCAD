@@ -198,7 +198,11 @@ class DrawingClip {
       if (transform) {
         final delta = insertion - basePoint;
         if (delta.x != 0 || delta.y != 0) {
-          copy = copy.transformed(Mat3.translation(delta.x, delta.y));
+          final moved = copy.transformed(Mat3.translation(delta.x, delta.y));
+          // Dimension.transformed drops blockName because MOVE of the
+          // object alone leaves *D behind. Paste already applied the
+          // same delta to those members, so the link is still valid.
+          copy = _keepDimensionBlock(copy, moved);
         }
       }
       staged.add((entity: copy, owner: owner, placed: placed));
@@ -207,10 +211,13 @@ class DrawingClip {
     for (final sourceName in toImport) {
       final block = blocks[sourceName]!;
       final destName = nameMap[sourceName]!;
+      // INSERT carries block-local geometry. Only *D lives in WCS like
+      // the dimension that owns it, so those members take the paste delta.
+      final moveMembers = _membersLiveInWorld(block);
       for (final id in block.entityIds) {
         final entity = blockEntities[id];
         if (entity == null) continue;
-        stage(entity, destName, transform: false, placed: false);
+        stage(entity, destName, transform: moveMembers, placed: false);
       }
     }
 
@@ -280,6 +287,26 @@ class DrawingClipboard {
   DrawingClip? clip;
 
   bool get isEmpty => clip == null || clip!.isEmpty;
+}
+
+/// `*D` dimension geometry is stored in world coordinates. Named blocks
+/// and anonymous `*U` inserts stay put; their INSERT is what the paste
+/// delta moves.
+bool _membersLiveInWorld(BlockRecord block) {
+  if (block.isLayoutBlock) return false;
+  final name = block.name;
+  return name.length >= 2 &&
+      name.startsWith('*') &&
+      (name[1] == 'D' || name[1] == 'd');
+}
+
+CadEntity _keepDimensionBlock(CadEntity before, CadEntity after) {
+  if (before is DimensionEntity &&
+      after is DimensionEntity &&
+      before.blockName.isNotEmpty) {
+    return after.copyWith(blockName: before.blockName);
+  }
+  return after;
 }
 
 Iterable<String> _referencedBlockNames(CadEntity entity) sync* {
