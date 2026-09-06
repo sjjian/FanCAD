@@ -810,16 +810,16 @@ void main() {
       reason: 'a standalone ATTRIB is stored as TEXT',
     );
     expect(
-      entities.whereType<MTextEntity>().any(
+      entities.whereType<MLeaderEntity>().any(
         (item) => item.content.contains('callout'),
       ),
       isTrue,
-      reason: 'MULTILEADER has no LibreDWG add API; content is stored as MTEXT',
+      reason: 'MULTILEADER must round-trip as itself',
     );
     expect(
-      entities.whereType<PolylineEntity>(),
+      entities.whereType<UnknownEntity>(),
       isNotEmpty,
-      reason: 'UNKNOWN proxy strokes are stored as LWPOLYLINE',
+      reason: 'REGION must round-trip as UNKNOWN, not LWPOLYLINE',
     );
   });
 

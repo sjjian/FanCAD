@@ -1,6 +1,7 @@
 #include "dwg_export.h"
 
 #include <math.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,6 +42,9 @@ int fcdwg_export_dxf_to_dwg(const char *dxf_path, const char *dwg_path,
 
 #include <dwg.h>
 #include <dwg_api.h>
+
+/* Not in the public headers; the static LibreDWG we link still exports it. */
+void dwg_set_next_objhandle(Dwg_Object *obj);
 
 #define NAME_CAP 256
 #define TEXT_CAP 4096
@@ -670,6 +674,283 @@ static void *export_dimension(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
   return ent;
 }
 
+static int sat_put(char **buf, size_t *len, size_t *cap, const char *s) {
+  size_t n;
+  if (!buf || !len || !cap || !s) return 0;
+  n = strlen(s);
+  if (*len + n + 1 > *cap) {
+    size_t next = *cap ? *cap * 2 : 1024;
+    char *tmp;
+    while (next < *len + n + 1) next *= 2;
+    tmp = (char *)realloc(*buf, next);
+    if (!tmp) return 0;
+    *buf = tmp;
+    *cap = next;
+  }
+  memcpy(*buf + *len, s, n + 1);
+  *len += n;
+  return 1;
+}
+
+static int sat_fmt(char **buf, size_t *len, size_t *cap, const char *fmt, ...) {
+  char line[512];
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(line, sizeof(line), fmt, ap);
+  va_end(ap);
+  return sat_put(buf, len, cap, line);
+}
+
+static int xy_close(double ax, double ay, double bx, double by) {
+  double dx = ax - bx;
+  double dy = ay - by;
+  return dx * dx + dy * dy < 1e-16;
+}
+
+/* Planar SAT v1 that extract_sat_loops can walk: one loop record per stroke. */
+static char *sat_from_strokes(const double *g, uint32_t geom_count,
+                              const int64_t *runs, uint32_t run_count) {
+  char *buf = NULL;
+  size_t len = 0;
+  size_t cap = 0;
+  uint32_t cursor = 4;
+  uint32_t r;
+  int rec = 0;
+  int64_t fallback_run = 0;
+  if (!g || geom_count < 8) return NULL;
+  if (!sat_put(&buf, &len, &cap, "700 0 1 0 \n")) goto fail;
+  if (!sat_put(&buf, &len, &cap,
+               "8 FanCAD 8 ACIS 1.7.0 24 Thu Jan 01 00:00:00 1998 \n")) {
+    goto fail;
+  }
+  if (!sat_put(&buf, &len, &cap, "18 1e-6 1e-10 \n")) goto fail;
+  if (!runs || run_count == 0) {
+    fallback_run = (int64_t)((geom_count - 4) / 2);
+    runs = &fallback_run;
+    run_count = 1;
+  }
+  for (r = 0; r < run_count; r++) {
+    int n = (int)runs[r];
+    int i;
+    int body, lump, shell, face, loop, co0, ed0, v0, p0;
+    if (n < 2) {
+      cursor += (uint32_t)n * 2;
+      continue;
+    }
+    if (cursor + (uint32_t)n * 2 > geom_count) break;
+    if (n >= 3 &&
+        xy_close(g[cursor], g[cursor + 1], g[cursor + (uint32_t)(n - 1) * 2],
+                 g[cursor + (uint32_t)(n - 1) * 2 + 1])) {
+      n -= 1;
+    }
+    if (n < 3) {
+      cursor += (uint32_t)runs[r] * 2;
+      continue;
+    }
+    body = rec++;
+    lump = rec++;
+    shell = rec++;
+    face = rec++;
+    loop = rec++;
+    co0 = rec;
+    rec += n;
+    ed0 = rec;
+    rec += n;
+    v0 = rec;
+    rec += n;
+    p0 = rec;
+    rec += n;
+    if (!sat_fmt(&buf, &len, &cap, "body $-1 $%d $-1 $-1 #\n", lump)) goto fail;
+    if (!sat_fmt(&buf, &len, &cap, "lump $-1 $-1 $%d $%d #\n", shell, body)) {
+      goto fail;
+    }
+    if (!sat_fmt(&buf, &len, &cap, "shell $-1 $-1 $-1 $%d $-1 $%d #\n", face,
+                 lump)) {
+      goto fail;
+    }
+    if (!sat_fmt(&buf, &len, &cap,
+                 "face $-1 $-1 $%d $-1 $%d $-1 $-1 forward single #\n", loop,
+                 shell)) {
+      goto fail;
+    }
+    if (!sat_fmt(&buf, &len, &cap, "loop $-1 $-1 $-1 $%d $%d #\n", co0, face)) {
+      goto fail;
+    }
+    for (i = 0; i < n; i++) {
+      int next = co0 + ((i + 1) % n);
+      int edge = ed0 + i;
+      if (!sat_fmt(&buf, &len, &cap,
+                   "coedge $-1 $-1 $-1 $%d $-1 $-1 $%d forward #\n", next,
+                   edge)) {
+        goto fail;
+      }
+    }
+    for (i = 0; i < n; i++) {
+      int start_v = v0 + i;
+      int end_v = v0 + ((i + 1) % n);
+      if (!sat_fmt(&buf, &len, &cap,
+                   "edge $-1 $-1 $%d $%d $%d $-1 $-1 $%d 0 1 #\n", co0 + i,
+                   start_v, end_v, co0 + i)) {
+        goto fail;
+      }
+    }
+    for (i = 0; i < n; i++) {
+      if (!sat_fmt(&buf, &len, &cap, "vertex $-1 $-1 $-1 $%d #\n", p0 + i)) {
+        goto fail;
+      }
+    }
+    for (i = 0; i < n; i++) {
+      double x = g[cursor + (uint32_t)i * 2];
+      double y = g[cursor + (uint32_t)i * 2 + 1];
+      if (!sat_fmt(&buf, &len, &cap, "point $-1 $-1 %.17g %.17g 0 #\n", x, y)) {
+        goto fail;
+      }
+    }
+    cursor += (uint32_t)runs[r] * 2;
+  }
+  if (!buf || len == 0) goto fail;
+  if (!sat_put(&buf, &len, &cap, "End-of-ACIS-data \n")) goto fail;
+  return buf;
+fail:
+  free(buf);
+  return NULL;
+}
+
+static void *export_unknown_solid(Dwg_Object_BLOCK_HEADER *hdr,
+                                  const fcb_view *v, const uint8_t *rec,
+                                  const double *g, uint32_t geom_count) {
+  uint64_t int_off = fcb_u64(rec + FCB_ENT_INT_OFFSET);
+  uint32_t int_count = fcb_u32(rec + FCB_ENT_INT_COUNT);
+  uint32_t str_off = fcb_u32(rec + FCB_ENT_STRING_OFFSET);
+  uint32_t str_count = fcb_u32(rec + FCB_ENT_STRING_COUNT);
+  const int64_t *runs = NULL;
+  char kind[NAME_CAP];
+  char *sat;
+  void *ent = NULL;
+  kind[0] = '\0';
+  if (str_count > 0) fcb_view_str(v, str_off, kind, sizeof(kind));
+  if (ints_ok(v, int_off, int_count) && int_count > 0) runs = ints_at(v, int_off);
+  sat = sat_from_strokes(g, geom_count, runs, runs ? int_count : 0);
+  if (!sat) return NULL;
+  if (ascii_ieq(kind, "3DSOLID")) ent = dwg_add_3DSOLID(hdr, sat);
+  else if (ascii_ieq(kind, "BODY")) ent = dwg_add_BODY(hdr, sat);
+  else ent = dwg_add_REGION(hdr, sat);
+  free(sat);
+  return ent;
+}
+
+static Dwg_Entity_MULTILEADER *export_multileader(
+    Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr, const fcb_view *v,
+    const uint8_t *rec, const double *g, uint32_t geom_count, uint16_t flags) {
+  uint64_t int_off = fcb_u64(rec + FCB_ENT_INT_OFFSET);
+  uint32_t int_count = fcb_u32(rec + FCB_ENT_INT_COUNT);
+  uint32_t str_off = fcb_u32(rec + FCB_ENT_STRING_OFFSET);
+  uint32_t str_count = fcb_u32(rec + FCB_ENT_STRING_COUNT);
+  char content[TEXT_CAP];
+  unsigned nvert;
+  unsigned npath = 1;
+  const int64_t *paths = NULL;
+  BITCODE_BL idx;
+  int realloced;
+  int err = 0;
+  int klass;
+  unsigned i;
+  unsigned cursor = 0;
+  Dwg_Object *blkobj;
+  Dwg_Object *obj;
+  Dwg_Entity_MULTILEADER *ml;
+  Dwg_MLEADER_AnnotContext *ctx;
+  if (!dwg || !hdr || !g || geom_count < 6) return NULL;
+  nvert = (unsigned)((geom_count - 4) / 2);
+  if (nvert < 2) return NULL;
+  if (ints_ok(v, int_off, int_count) && int_count > 0) {
+    paths = ints_at(v, int_off);
+    npath = int_count;
+  }
+  content[0] = '\0';
+  if (str_count > 0) fcb_view_str(v, str_off, content, sizeof(content));
+  blkobj = dwg_obj_generic_to_object(hdr, &err);
+  if (!blkobj) return NULL;
+  idx = dwg->num_objects;
+  realloced = dwg_add_object(dwg);
+  if (realloced > 0) return NULL;
+  if (realloced == -1) {
+    blkobj = dwg_obj_generic_to_object(hdr, &err);
+    if (!blkobj) return NULL;
+  }
+  obj = &dwg->object[idx];
+  if (dwg_setup_MULTILEADER(obj) != 0) return NULL;
+  klass = dwg_require_class(dwg, "MULTILEADER", 11);
+  if (klass >= 500) obj->type = (Dwg_Object_Type)klass;
+  dwg_add_entity_defaults(dwg, obj->tio.entity);
+  dwg_set_next_objhandle(obj);
+  obj->tio.entity->ownerhandle =
+      dwg_add_handleref(dwg, 5, blkobj->handle.value, obj);
+  dwg_insert_entity(hdr, obj);
+  ml = obj->tio.entity->tio.MULTILEADER;
+  if (!ml) return NULL;
+  ml->type = 1;
+  ml->has_landing = 1;
+  ml->has_dogleg = 0;
+  ml->style_content = 2;
+  ml->arrow_size = 2.5;
+  ml->scale_factor = 1.0;
+  ctx = &ml->ctx;
+  ctx->scale_factor = 1.0;
+  ctx->text_height = g[geom_count - 2];
+  if (ctx->text_height <= 0.0) ctx->text_height = 2.5;
+  ctx->arrow_size = ctx->text_height;
+  ctx->has_content_txt = 1;
+  ctx->content.txt.type = 2;
+  ctx->content.txt.location.x = g[geom_count - 4];
+  ctx->content.txt.location.y = g[geom_count - 3];
+  ctx->content.txt.location.z = 0.0;
+  ctx->content.txt.height = ctx->text_height;
+  ctx->content.txt.rotation = g[geom_count - 1];
+  ctx->content.txt.default_text = strdup(content);
+  ctx->content.txt.direction.x = cos(ctx->content.txt.rotation);
+  ctx->content.txt.direction.y = sin(ctx->content.txt.rotation);
+  ctx->content.txt.normal.z = 1.0;
+  ctx->content_base = ctx->content.txt.location;
+  ctx->base = ctx->content.txt.location;
+  ctx->base_dir.x = 1.0;
+  ctx->base_vert.z = 1.0;
+  ctx->num_leaders = npath;
+  ctx->leaders = (Dwg_LEADER_Node *)calloc(npath, sizeof(Dwg_LEADER_Node));
+  if (!ctx->leaders) return ml;
+  for (i = 0; i < npath; i++) {
+    Dwg_LEADER_Node *node = &ctx->leaders[i];
+    Dwg_LEADER_Line *line;
+    unsigned npts = paths ? (unsigned)paths[i] : nvert;
+    unsigned p;
+    if (npts < 2) npts = 2;
+    if (cursor + npts > nvert) npts = nvert - cursor;
+    if (npts < 2) break;
+    node->parent = ml;
+    node->has_lastleaderlinepoint = 1;
+    node->lastleaderlinepoint.x = g[(cursor + npts - 1) * 2];
+    node->lastleaderlinepoint.y = g[(cursor + npts - 1) * 2 + 1];
+    node->num_lines = 1;
+    node->lines = (Dwg_LEADER_Line *)calloc(1, sizeof(Dwg_LEADER_Line));
+    if (!node->lines) break;
+    line = &node->lines[0];
+    line->parent = node;
+    line->type = 1;
+    line->num_points = npts;
+    line->points = (BITCODE_3DPOINT *)calloc(npts, sizeof(BITCODE_3DPOINT));
+    if (!line->points) break;
+    for (p = 0; p < npts; p++) {
+      line->points[p].x = g[(cursor + p) * 2];
+      line->points[p].y = g[(cursor + p) * 2 + 1];
+    }
+    cursor += npts;
+  }
+  bind_style(dwg, &ctx->content.txt.style, v, str_off, str_count);
+  bind_style(dwg, &ml->text_style, v, str_off, str_count);
+  (void)flags;
+  return ml;
+}
+
 static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
                           const fcb_view *v, const uint8_t *rec,
                           Dwg_Object_BLOCK_HEADER **headers) {
@@ -905,37 +1186,44 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
       break;
     }
     case FCB_TYPE_MLEADER: {
-      /* LibreDWG has no dwg_add_MULTILEADER. Keep the callout visible as
-       * MTEXT + LEADER; a true MULTILEADER round-trip needs an add API. */
-      char content[TEXT_CAP];
-      unsigned nvert;
-      unsigned i;
-      dwg_point_3d *pts;
-      Dwg_Entity_MTEXT *mtext;
-      Dwg_Entity_LEADER *leader;
-      if (!g || geom_count < 6) return;
-      nvert = (unsigned)((geom_count - 4) / 2);
-      if (nvert < 2) return;
-      fcb_view_str(v, str_count > 0 ? str_off : 0, content, sizeof(content));
-      a = pt3(g[geom_count - 4], g[geom_count - 3]);
-      mtext = dwg_add_MTEXT(hdr, &a, 0, content);
-      if (mtext) {
-        mtext->text_height = g[geom_count - 2];
-        mtext->x_axis_dir.x = cos(g[geom_count - 1]);
-        mtext->x_axis_dir.y = sin(g[geom_count - 1]);
-        bind_style(dwg, &mtext->style, v, str_off, str_count);
-      }
-      pts = (dwg_point_3d *)malloc((size_t)nvert * sizeof(dwg_point_3d));
-      if (!pts) {
-        ent = mtext;
+      Dwg_Entity_MULTILEADER *ml =
+          export_multileader(dwg, hdr, v, rec, g, geom_count, flags);
+      if (ml) {
+        ent = ml;
         break;
       }
-      for (i = 0; i < nvert; i++) pts[i] = pt3(g[i * 2], g[i * 2 + 1]);
-      leader = dwg_add_LEADER(hdr, nvert, pts, mtext, 0);
-      free(pts);
-      if (leader) leader->arrowhead_on = (flags & FCB_FLAG_ARROW_HEAD) ? 1 : 0;
-      if (mtext) bind_entity(dwg, hdr, mtext, v, rec);
-      ent = leader ? (void *)leader : (void *)mtext;
+      /* If the class entity cannot be built, keep the callout visible. */
+      {
+        char content[TEXT_CAP];
+        unsigned nvert;
+        unsigned i;
+        dwg_point_3d *pts;
+        Dwg_Entity_MTEXT *mtext;
+        Dwg_Entity_LEADER *leader;
+        if (!g || geom_count < 6) return;
+        nvert = (unsigned)((geom_count - 4) / 2);
+        if (nvert < 2) return;
+        fcb_view_str(v, str_count > 0 ? str_off : 0, content, sizeof(content));
+        a = pt3(g[geom_count - 4], g[geom_count - 3]);
+        mtext = dwg_add_MTEXT(hdr, &a, 0, content);
+        if (mtext) {
+          mtext->text_height = g[geom_count - 2];
+          mtext->x_axis_dir.x = cos(g[geom_count - 1]);
+          mtext->x_axis_dir.y = sin(g[geom_count - 1]);
+          bind_style(dwg, &mtext->style, v, str_off, str_count);
+        }
+        pts = (dwg_point_3d *)malloc((size_t)nvert * sizeof(dwg_point_3d));
+        if (!pts) {
+          ent = mtext;
+          break;
+        }
+        for (i = 0; i < nvert; i++) pts[i] = pt3(g[i * 2], g[i * 2 + 1]);
+        leader = dwg_add_LEADER(hdr, nvert, pts, mtext, 0);
+        free(pts);
+        if (leader) leader->arrowhead_on = (flags & FCB_FLAG_ARROW_HEAD) ? 1 : 0;
+        if (mtext) bind_entity(dwg, hdr, mtext, v, rec);
+        ent = leader ? (void *)leader : (void *)mtext;
+      }
       break;
     }
     case FCB_TYPE_SOLID: {
@@ -1048,47 +1336,50 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
       break;
     }
     case FCB_TYPE_UNKNOWN: {
-      /* Proxy / REGION strokes have no add API; write each stroke as
-       * LWPOLYLINE so the outline survives. */
-      uint64_t int_off = fcb_u64(rec + FCB_ENT_INT_OFFSET);
-      uint32_t int_count = fcb_u32(rec + FCB_ENT_INT_COUNT);
-      uint32_t cursor = 4;
       if (!g || geom_count < 6) return;
-      if (ints_ok(v, int_off, int_count) && int_count > 0) {
-        const int64_t *ints = ints_at(v, int_off);
-        uint32_t r;
-        for (r = 0; r < int_count; r++) {
-          int n = (int)ints[r];
+      ent = export_unknown_solid(hdr, v, rec, g, geom_count);
+      if (ent) break;
+      /* Strokes that cannot form a REGION stay visible as polylines. */
+      {
+        uint64_t int_off = fcb_u64(rec + FCB_ENT_INT_OFFSET);
+        uint32_t int_count = fcb_u32(rec + FCB_ENT_INT_COUNT);
+        uint32_t cursor = 4;
+        if (ints_ok(v, int_off, int_count) && int_count > 0) {
+          const int64_t *ints = ints_at(v, int_off);
+          uint32_t r;
+          for (r = 0; r < int_count; r++) {
+            int n = (int)ints[r];
+            int i;
+            dwg_point_2d *pts;
+            if (n < 2) {
+              cursor += (uint32_t)n * 2;
+              continue;
+            }
+            pts = (dwg_point_2d *)malloc((size_t)n * sizeof(dwg_point_2d));
+            if (!pts) continue;
+            for (i = 0; i < n; i++) {
+              if (cursor + 1 >= geom_count) break;
+              pts[i].x = g[cursor++];
+              pts[i].y = g[cursor++];
+            }
+            ent = dwg_add_LWPOLYLINE(hdr, n, pts);
+            bind_entity(dwg, hdr, ent, v, rec);
+            free(pts);
+          }
+        } else {
+          int n = (int)((geom_count - 4) / 2);
           int i;
           dwg_point_2d *pts;
-          if (n < 2) {
-            cursor += (uint32_t)n * 2;
-            continue;
-          }
+          if (n < 2) return;
           pts = (dwg_point_2d *)malloc((size_t)n * sizeof(dwg_point_2d));
-          if (!pts) continue;
+          if (!pts) return;
           for (i = 0; i < n; i++) {
-            if (cursor + 1 >= geom_count) break;
-            pts[i].x = g[cursor++];
-            pts[i].y = g[cursor++];
+            pts[i].x = g[4 + i * 2];
+            pts[i].y = g[5 + i * 2];
           }
           ent = dwg_add_LWPOLYLINE(hdr, n, pts);
-          bind_entity(dwg, hdr, ent, v, rec);
           free(pts);
         }
-      } else {
-        int n = (int)((geom_count - 4) / 2);
-        int i;
-        dwg_point_2d *pts;
-        if (n < 2) return;
-        pts = (dwg_point_2d *)malloc((size_t)n * sizeof(dwg_point_2d));
-        if (!pts) return;
-        for (i = 0; i < n; i++) {
-          pts[i].x = g[4 + i * 2];
-          pts[i].y = g[5 + i * 2];
-        }
-        ent = dwg_add_LWPOLYLINE(hdr, n, pts);
-        free(pts);
       }
       break;
     }
@@ -1181,6 +1472,101 @@ static void apply_header_vars(Dwg_Data *dwg, const fcb_view *v) {
       dwg->header_vars.PDSIZE = strtod(value, NULL);
     }
   }
+}
+
+static int layout_is_model_name(const char *name) {
+  return streq(name, "Model") || streq(name, "MODEL");
+}
+
+static unsigned fcb_paper_layout_count(const fcb_view *view) {
+  uint64_t i;
+  unsigned n = 0;
+  if (!view) return 0;
+  for (i = 0; i < view->layout_count; i++) {
+    const uint8_t *rec = fcb_view_layout(view, i);
+    if (!rec) continue;
+    if (fcb_u32(rec + FCB_LAYOUT_FLAGS) & FCB_LAYOUT_MODEL_SPACE) continue;
+    n++;
+  }
+  return n;
+}
+
+static void apply_model_paper_size(Dwg_Data *dwg, const fcb_view *view) {
+  uint64_t i;
+  double width = 0;
+  double height = 0;
+  BITCODE_BL k;
+  if (!dwg || !view) return;
+  for (i = 0; i < view->layout_count; i++) {
+    const uint8_t *rec = fcb_view_layout(view, i);
+    if (!rec) continue;
+    if (!(fcb_u32(rec + FCB_LAYOUT_FLAGS) & FCB_LAYOUT_MODEL_SPACE)) continue;
+    width = fcb_f64(rec + FCB_LAYOUT_WIDTH);
+    height = fcb_f64(rec + FCB_LAYOUT_HEIGHT);
+    break;
+  }
+  if (width <= 0.0 || height <= 0.0) return;
+  for (k = 0; k < dwg->num_objects; k++) {
+    Dwg_Object *obj = &dwg->object[k];
+    Dwg_Object_LAYOUT *lo;
+    if (obj->supertype != DWG_SUPERTYPE_OBJECT) continue;
+    if (obj->fixedtype != DWG_TYPE_LAYOUT || !obj->tio.object) continue;
+    lo = obj->tio.object->tio.LAYOUT;
+    if (!lo || !layout_is_model_name(lo->layout_name)) continue;
+    lo->plotsettings.paper_width = width;
+    lo->plotsettings.paper_height = height;
+    lo->LIMMAX.x = width;
+    lo->LIMMAX.y = height;
+  }
+}
+
+/* dwg_new_Document always creates Layout1 at A3. Drop it when the source
+ * drawing has no paper tab, so save-reopen does not grow a blank sheet. */
+static void drop_default_paper_layout(Dwg_Data *dwg) {
+  BITCODE_H dictref;
+  Dwg_Object *dictobj = NULL;
+  Dwg_Object_DICTIONARY *dict = NULL;
+  Dwg_Object_BLOCK_HEADER *pspace;
+  BITCODE_BL k;
+  BITCODE_BL i;
+  BITCODE_BL w;
+  if (!dwg) return;
+  for (k = 0; k < dwg->num_objects; k++) {
+    Dwg_Object *obj = &dwg->object[k];
+    Dwg_Object_LAYOUT *lo;
+    if (obj->supertype != DWG_SUPERTYPE_OBJECT) continue;
+    if (obj->fixedtype != DWG_TYPE_LAYOUT || !obj->tio.object) continue;
+    lo = obj->tio.object->tio.LAYOUT;
+    if (!lo || layout_is_model_name(lo->layout_name)) continue;
+    obj->type = DWG_TYPE_UNUSED;
+    obj->fixedtype = DWG_TYPE_UNUSED;
+  }
+  dictref = dwg_find_dictionary(dwg, "ACAD_LAYOUT");
+  if (dictref) {
+    BITCODE_RLL abs = dictref->absolute_ref;
+    for (k = 0; k < dwg->num_objects; k++) {
+      if (dwg->object[k].handle.value == abs) {
+        dictobj = &dwg->object[k];
+        break;
+      }
+    }
+  }
+  if (dictobj && dictobj->tio.object) dict = dictobj->tio.object->tio.DICTIONARY;
+  if (dict && dict->texts && dict->itemhandles) {
+    w = 0;
+    for (i = 0; i < dict->numitems; i++) {
+      const char *text = dict->texts[i];
+      if (text && !layout_is_model_name(text)) continue;
+      if (w != i) {
+        dict->texts[w] = dict->texts[i];
+        dict->itemhandles[w] = dict->itemhandles[i];
+      }
+      w++;
+    }
+    dict->numitems = w;
+  }
+  pspace = header_of(dwg_paper_space_object(dwg));
+  if (pspace) pspace->layout = dwg_add_handleref(dwg, 5, 0, NULL);
 }
 
 /* dwg_add_* calls API_UNADD_ENTITY on failure (INSERT name miss, bad hatch,
@@ -1507,6 +1893,7 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
   }
   dwg->header.version = version;
   apply_header_vars(dwg, &view);
+  apply_model_paper_size(dwg, &view);
 
   for (i = 0; i < view.linetype_count; i++) {
     const uint8_t *rec = fcb_view_linetype(&view, i);
@@ -1687,6 +2074,7 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
   {
     uint64_t li;
     unsigned paper = 0;
+    if (fcb_paper_layout_count(&view) == 0) drop_default_paper_layout(dwg);
     for (li = 0; li < view.layout_count; li++) {
       const uint8_t *rec = fcb_view_layout(&view, li);
       char name[NAME_CAP];

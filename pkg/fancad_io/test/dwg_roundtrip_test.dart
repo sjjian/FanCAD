@@ -116,11 +116,10 @@ void main() {
     timeout: Timeout.parse('2m'),
   );
 
-  /// LibreDWG has no dwg_add_MULTILEADER / true UNKNOWN objects. Write-down
-  /// to MTEXT+LEADER and LWPOLYLINE is the known strategy; this test locks
-  /// that, and is not part of the CJK layer-name bind fix.
+  /// ATTRIB still writes as TEXT. MULTILEADER and REGION now round-trip
+  /// as themselves rather than exploding into LEADER/MTEXT or LWPOLYLINE.
   test(
-    'ATTRIB, UNKNOWN and MULTILEADER are not yet DWG round-trips',
+    'MULTILEADER and REGION survive a DWG round-trip',
     () async {
       final directory = Directory.systemTemp.createTempSync('fancad-gaps');
       addTearDown(() => directory.deleteSync(recursive: true));
@@ -168,24 +167,21 @@ void main() {
       );
       expect(
         opened.entities.whereType<UnknownEntity>(),
-        isEmpty,
-        reason: 'UNKNOWN proxy strokes are stored as LWPOLYLINE',
+        isNotEmpty,
+        reason: 'REGION strokes must come back as UNKNOWN, not LWPOLYLINE',
       );
       expect(
-        opened.entities.whereType<PolylineEntity>(),
-        isNotEmpty,
+        opened.entities.whereType<UnknownEntity>().single.originalType,
+        'REGION',
       );
       expect(
         opened.entities.whereType<MLeaderEntity>(),
-        isEmpty,
-        reason: 'MULTILEADER has no LibreDWG add API',
+        isNotEmpty,
+        reason: 'MULTILEADER must round-trip as itself',
       );
       expect(
-        opened.entities.whereType<MTextEntity>().any(
-          (e) => e.content.contains('callout'),
-        ),
-        isTrue,
-        reason: 'MULTILEADER content is stored as MTEXT',
+        opened.entities.whereType<MLeaderEntity>().single.content,
+        contains('callout'),
       );
     },
     timeout: Timeout.parse('2m'),
@@ -2438,6 +2434,19 @@ void main() {
   });
 
   group('paper space', () {
+    test('a model-only drawing does not grow a Layout1 tab', () async {
+      final opened = await saveAndOpen(
+        CadDocument()..addEntity(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+        ),
+        'modelonly',
+      );
+      expect(opened.layouts.where((item) => !item.isModelSpace), isEmpty);
+      final model = opened.layouts.where((item) => item.isModelSpace).single;
+      expect(model.paperWidth, closeTo(297, 1e-4));
+      expect(model.paperHeight, closeTo(210, 1e-4));
+    });
+
     test('two paper tabs keep separate entity lists', () async {
       final document = CadDocument();
       document.addLayout(
