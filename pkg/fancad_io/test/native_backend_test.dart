@@ -52,10 +52,7 @@ void main() {
     expect(File(dwgPath).lengthSync(), greaterThan(0));
 
     final opened = await importer.open(dwgPath);
-    expect(
-      opened.document.modelSpaceBlockName.toUpperCase(),
-      '*MODEL_SPACE',
-    );
+    expect(opened.document.modelSpaceBlockName.toUpperCase(), '*MODEL_SPACE');
   });
 
   test('a line survives FCB to DWG and back', () async {
@@ -66,11 +63,7 @@ void main() {
     final session = DocumentSession(id: 'native', document: document);
     session.edit('line', (transaction) {
       transaction.add(
-        LineEntity(
-          id: 0,
-          start: const Vec2.zero(),
-          end: const Vec2(100, 40),
-        ),
+        LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(100, 40)),
       );
     });
 
@@ -140,66 +133,72 @@ void main() {
       reason: 'LAYOUT tab names should survive FCB to DWG',
     );
     expect(
-      opened.document.layouts.where((item) => item.name == 'A3').single.paperWidth,
+      opened.document.layouts
+          .where((item) => item.name == 'A3')
+          .single
+          .paperWidth,
       closeTo(420, 1e-3),
     );
     expect(
-      opened.document.layouts.where((item) => item.name == 'A3').single.paperHeight,
+      opened.document.layouts
+          .where((item) => item.name == 'A3')
+          .single
+          .paperHeight,
       closeTo(297, 1e-3),
     );
   });
 
-  test('BLOCK/ENDBLK stay out of the entity list and base points survive', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-block');
-    addTearDown(() => directory.deleteSync(recursive: true));
+  test(
+    'BLOCK/ENDBLK stay out of the entity list and base points survive',
+    () async {
+      final directory = Directory.systemTemp.createTempSync('fancad-block');
+      addTearDown(() => directory.deleteSync(recursive: true));
 
-    final document = CadDocument()
-      ..putBlock(const BlockRecord(name: 'TICK', basePoint: Vec2(100, 50)))
-      ..addEntity(
-        const LineEntity(id: 1, start: Vec2(100, 50), end: Vec2(101, 50)),
-        blockName: 'TICK',
-      )
-      ..addEntity(
-        const InsertEntity(
-          id: 2,
+      final document = CadDocument()
+        ..putBlock(const BlockRecord(name: 'TICK', basePoint: Vec2(100, 50)))
+        ..addEntity(
+          const LineEntity(id: 1, start: Vec2(100, 50), end: Vec2(101, 50)),
           blockName: 'TICK',
-          position: Vec2(10, 20),
-          scale: Vec2(2, 3),
-          rotation: 0.25,
+        )
+        ..addEntity(
+          const InsertEntity(
+            id: 2,
+            blockName: 'TICK',
+            position: Vec2(10, 20),
+            scale: Vec2(2, 3),
+            rotation: 0.25,
+          ),
+        );
+
+      final dwgPath = '${directory.path}/tick.dwg';
+      await importer.save(dwgPath, document);
+
+      final opened = await importer.open(dwgPath);
+      expect(
+        opened.document.entities.whereType<UnknownEntity>().map(
+          (entity) => entity.originalType,
         ),
+        isNot(anyOf(contains('BLOCK'), contains('ENDBLK'))),
       );
-
-    final dwgPath = '${directory.path}/tick.dwg';
-    await importer.save(dwgPath, document);
-
-    final opened = await importer.open(dwgPath);
-    expect(
-      opened.document.entities
-          .whereType<UnknownEntity>()
-          .map((entity) => entity.originalType),
-      isNot(anyOf(contains('BLOCK'), contains('ENDBLK'))),
-    );
-    expect(
-      opened.document.blocks['TICK']?.basePoint,
-      const Vec2(100, 50),
-    );
-    expect(
-      opened.document.entities.whereType<InsertEntity>(),
-      isNotEmpty,
-      reason: 'INSERT should land after the block is closed',
-    );
-    expect(
-      opened.document.entitiesOf('TICK').whereType<LineEntity>(),
-      isNotEmpty,
-      reason: 'block members should stay inside the named block',
-    );
-    final insert = opened.document.entities.whereType<InsertEntity>().single;
-    expect(insert.position.x, closeTo(10, 1e-6));
-    expect(insert.position.y, closeTo(20, 1e-6));
-    expect(insert.scale.x, closeTo(2, 1e-6));
-    expect(insert.scale.y, closeTo(3, 1e-6));
-    expect(insert.rotation, closeTo(0.25, 1e-6));
-  });
+      expect(opened.document.blocks['TICK']?.basePoint, const Vec2(100, 50));
+      expect(
+        opened.document.entities.whereType<InsertEntity>(),
+        isNotEmpty,
+        reason: 'INSERT should land after the block is closed',
+      );
+      expect(
+        opened.document.entitiesOf('TICK').whereType<LineEntity>(),
+        isNotEmpty,
+        reason: 'block members should stay inside the named block',
+      );
+      final insert = opened.document.entities.whereType<InsertEntity>().single;
+      expect(insert.position.x, closeTo(10, 1e-6));
+      expect(insert.position.y, closeTo(20, 1e-6));
+      expect(insert.scale.x, closeTo(2, 1e-6));
+      expect(insert.scale.y, closeTo(3, 1e-6));
+      expect(insert.rotation, closeTo(0.25, 1e-6));
+    },
+  );
 
   test('INSERT still lands when the block name is not ASCII', () async {
     final directory = Directory.systemTemp.createTempSync('fancad-cjk-insert');
@@ -248,13 +247,13 @@ void main() {
       containsAll(names),
       reason: 'CJK / × block names must decode from MIF, not stay as \\U+XXXX',
     );
-    expect(
-      inserts.map((item) => item.blockName).toSet(),
-      containsAll(names),
-    );
+    expect(inserts.map((item) => item.blockName).toSet(), containsAll(names));
     expect(
       opened.document.blocks.values.where(
-        (block) => opened.document.entitiesOf(block.name).whereType<LineEntity>().isNotEmpty,
+        (block) => opened.document
+            .entitiesOf(block.name)
+            .whereType<LineEntity>()
+            .isNotEmpty,
       ),
       hasLength(3),
     );
@@ -373,7 +372,8 @@ void main() {
     expect(
       text.position.x,
       closeTo(1200, 1e-6),
-      reason: 'Justified text paints from alignment_pt, which r2000 omits '
+      reason:
+          'Justified text paints from alignment_pt, which r2000 omits '
           'when it equals ins_pt',
     );
     expect(text.position.y, closeTo(800, 1e-6));
@@ -465,9 +465,8 @@ void main() {
     await importer.save(dwgPath, document);
 
     final opened = await importer.open(dwgPath);
-    String blockNamed(String want) => opened.document.blocks.keys
-        .cast<String>()
-        .firstWhere(
+    String blockNamed(String want) =>
+        opened.document.blocks.keys.cast<String>().firstWhere(
           (name) => name.toUpperCase() == want.toUpperCase(),
           orElse: () => '',
         );
@@ -510,9 +509,7 @@ void main() {
     addTearDown(() => directory.deleteSync(recursive: true));
 
     final document = CadDocument()
-      ..addEntity(
-        const CircleEntity(id: 1, center: Vec2(3, 4), radius: 5),
-      )
+      ..addEntity(const CircleEntity(id: 1, center: Vec2(3, 4), radius: 5))
       ..addEntity(
         const ArcEntity(
           id: 2,
@@ -627,17 +624,15 @@ void main() {
     final dwgPath = '${directory.path}/sheet.dwg';
     await importer.save(
       dwgPath,
-      CadDocument()
-        ..addEntity(
-          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(100, 0)),
-        ),
+      CadDocument()..addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(100, 0)),
+      ),
     );
     await importer.save(
       dwgPath,
-      CadDocument()
-        ..addEntity(
-          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(1, 2)),
-        ),
+      CadDocument()..addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(1, 2)),
+      ),
     );
 
     expect(File('$dwgPath.bak').existsSync(), isFalse);
@@ -653,9 +648,7 @@ void main() {
 
     final document = CadDocument()
       ..putBlock(const BlockRecord(name: 'TITLE', basePoint: Vec2.zero()))
-      ..addEntity(
-        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
-      )
+      ..addEntity(const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)))
       ..addEntity(
         HatchEntity(
           id: 1,
@@ -865,6 +858,48 @@ void main() {
     expect(
       opened.document.entitiesOf(dimBlock).whereType<LineEntity>(),
       isNotEmpty,
+    );
+  });
+
+  test('a *D TEXT that kept MTEXT font codes still paints the note', () async {
+    final directory = Directory.systemTemp.createTempSync('fancad-dimcjk');
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    const raw = r'{\F宋体|c134;型材1}';
+    final document = CadDocument()
+      ..putBlock(const BlockRecord(name: '*D1', isAnonymous: true))
+      ..addEntity(
+        const TextEntity(
+          id: 1,
+          position: Vec2(5, 3),
+          content: raw,
+          height: 2.5,
+        ),
+        blockName: '*D1',
+      )
+      ..addEntity(
+        const DimensionEntity(
+          id: 2,
+          blockName: '*D1',
+          measurement: 10,
+          overrideText: raw,
+          definitionPoints: [Vec2.zero(), Vec2(10, 0), Vec2(5, 3)],
+          textPosition: Vec2(5, 3),
+        ),
+      );
+
+    final dwgPath = '${directory.path}/note.dwg';
+    await importer.save(dwgPath, document);
+    final opened = (await importer.open(dwgPath)).document;
+    final dim = opened.entities.whereType<DimensionEntity>().single;
+    final sink = PolylineSink();
+    dim.emit(opened.emitContext(tolerance: 0.1), sink);
+    final painted = sink.texts.map((item) => item.text).join();
+    expect(painted, contains('型材1'));
+    expect(
+      painted.contains(r'\F') || painted.contains('{'),
+      isFalse,
+      reason: 'a write-down to TEXT must still hide the font switch',
     );
   });
 
