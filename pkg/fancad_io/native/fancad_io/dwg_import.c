@@ -379,6 +379,102 @@ static unsigned entity_codepage(void *entity) {
   return (unsigned)obj->parent->header.codepage;
 }
 
+static int hex4(const char *p, unsigned *out) {
+  unsigned v = 0;
+  int i;
+  if (!p || !out) return 0;
+  for (i = 0; i < 4; i++) {
+    unsigned char c = (unsigned char)p[i];
+    unsigned d;
+    if (c >= '0' && c <= '9') d = (unsigned)(c - '0');
+    else if (c >= 'A' && c <= 'F') d = (unsigned)(c - 'A' + 10);
+    else if (c >= 'a' && c <= 'f') d = (unsigned)(c - 'a' + 10);
+    else return 0;
+    v = (v << 4) | d;
+  }
+  *out = v;
+  return 1;
+}
+
+static int utf8_put(char *dst, size_t cap, size_t *o, unsigned cp) {
+  if (!dst || !o) return 0;
+  if (cp < 0x80) {
+    if (*o + 1 >= cap) return 0;
+    dst[(*o)++] = (char)cp;
+    return 1;
+  }
+  if (cp < 0x800) {
+    if (*o + 2 >= cap) return 0;
+    dst[(*o)++] = (char)(0xC0 | (cp >> 6));
+    dst[(*o)++] = (char)(0x80 | (cp & 0x3F));
+    return 1;
+  }
+  if (cp < 0x10000) {
+    if (*o + 3 >= cap) return 0;
+    dst[(*o)++] = (char)(0xE0 | (cp >> 12));
+    dst[(*o)++] = (char)(0x80 | ((cp >> 6) & 0x3F));
+    dst[(*o)++] = (char)(0x80 | (cp & 0x3F));
+    return 1;
+  }
+  if (cp < 0x110000) {
+    if (*o + 4 >= cap) return 0;
+    dst[(*o)++] = (char)(0xF0 | (cp >> 18));
+    dst[(*o)++] = (char)(0x80 | ((cp >> 12) & 0x3F));
+    dst[(*o)++] = (char)(0x80 | ((cp >> 6) & 0x3F));
+    dst[(*o)++] = (char)(0x80 | (cp & 0x3F));
+    return 1;
+  }
+  return 0;
+}
+
+/* LibreDWG stores CJK table names as AutoCAD MIF (`\U+XXXX`). That form is
+ * already valid UTF-8, so tv_to_utf8 leaves it alone. Decode it here so
+ * FanCAD sees the same Unicode names it wrote. */
+static char *mif_to_utf8(const char *src) {
+  size_t cap;
+  size_t o = 0;
+  const char *p;
+  char *out;
+  int saw = 0;
+  if (!src || !src[0] || !strstr(src, "\\U+")) return NULL;
+  cap = strlen(src) + 1;
+  out = (char *)malloc(cap);
+  if (!out) return NULL;
+  p = src;
+  while (*p) {
+    unsigned cp = 0;
+    if (p[0] == '\\' && p[1] == 'U' && p[2] == '+' && p[3] && p[4] && p[5] &&
+        p[6] && hex4(p + 3, &cp)) {
+      saw = 1;
+      p += 7;
+      if (cp >= 0xD800u && cp <= 0xDBFFu && p[0] == '\\' && p[1] == 'U' &&
+          p[2] == '+' && p[3] && p[4] && p[5] && p[6]) {
+        unsigned lo = 0;
+        if (hex4(p + 3, &lo) && lo >= 0xDC00u && lo <= 0xDFFFu) {
+          cp = 0x10000u + ((cp - 0xD800u) << 10) + (lo - 0xDC00u);
+          p += 7;
+        }
+      }
+      if (!utf8_put(out, cap, &o, cp)) {
+        free(out);
+        return NULL;
+      }
+      continue;
+    }
+    if (o + 1 >= cap) {
+      free(out);
+      return NULL;
+    }
+    out[o++] = *p++;
+  }
+  out[o] = '\0';
+  if (!saw) {
+    free(out);
+    return NULL;
+  }
+  return out;
+}
+
 /* Reads a text field through the dynamic API, which transparently converts
  * the UTF-16 encoding used by R2007 and newer. The caller must call
  * dyn_text_free on the result. */
@@ -391,6 +487,12 @@ static char *dyn_text(void *entity, const char *type, const char *field,
   if (!entity) return NULL;
   if (!dwg_dynapi_entity_utf8text(entity, type, field, &value, &is_new, NULL)) {
     return NULL;
+  }
+  converted = mif_to_utf8(value);
+  if (converted) {
+    if (is_new) free(value);
+    *needs_free = 1;
+    return converted;
   }
   if (is_new) {
     *needs_free = 1;
