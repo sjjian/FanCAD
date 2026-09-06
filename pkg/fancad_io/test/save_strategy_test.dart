@@ -28,7 +28,7 @@ void main() {
     final dwg = native.plan('/work/sheet.dwg');
     expect(dwg.format, SaveFormat.dwg);
     expect(dwg.targetPath, '/work/sheet.dwg');
-    expect(dwg.dwgVersion, 2000);
+    expect(dwg.dwgVersion, 2004);
     expect(dwg.usedFallback, isFalse);
   });
 

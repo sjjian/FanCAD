@@ -18,7 +18,7 @@
 /// circle     geom [cx, cy, radius]
 /// arc        geom [cx, cy, radius, startAngle, endAngle]
 /// ellipse    geom [cx, cy, majorX, majorY, ratio, startParam, endParam]
-/// polyline   geom [x, y, bulge] * n                       flag: closed
+/// polyline   geom [x, y, bulge] * n [, constantWidth]     flag: closed
 /// spline     ints [degree, knotCount, ctrlCount, weightCount, fitCount]
 ///            geom knots ++ ctrl(x, y) ++ weights ++ fit(x, y)
 ///            flag: closed

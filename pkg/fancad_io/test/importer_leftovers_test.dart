@@ -22,6 +22,33 @@ class _DxfOnlyBackend implements DrawingBackend {
   }) async {}
 }
 
+class _CaptureDwgBackend implements DrawingBackend {
+  Uint8List? fcb;
+  String? path;
+  int? version;
+
+  @override
+  BackendCapabilities get capabilities => const BackendCapabilities(
+    writeDwg: true,
+    description: 'capture-dwg',
+  );
+
+  @override
+  Future<Uint8List> readToFcb(String path) async =>
+      throw UnsupportedError(path);
+
+  @override
+  Future<void> writeFromFcb(
+    String path,
+    Uint8List fcb, {
+    int targetVersion = 0,
+  }) async {
+    this.path = path;
+    this.fcb = fcb;
+    version = targetVersion;
+  }
+}
+
 void main() {
   test('open refuses a path the importer cannot read', () {
     final importer = DrawingImporter(backend: _DxfOnlyBackend());
@@ -98,5 +125,27 @@ void main() {
 
     final opened = await importer.open(outcome.path);
     expect(opened.document.entityCount, 1);
+  });
+
+  test('a DWG save encodes FCB and hands it to the backend', () async {
+    final backend = _CaptureDwgBackend();
+    final importer = DrawingImporter(backend: backend);
+    final document = CadDocument()
+      ..addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+      );
+
+    final outcome = await importer.save('/tmp/Drawing1.dwg', document);
+
+    expect(outcome.path, '/tmp/Drawing1.dwg');
+    expect(backend.path, '/tmp/Drawing1.dwg');
+    expect(backend.version, 2004);
+    expect(backend.fcb, isNotNull);
+    final restored = FcbReader(backend.fcb!).decode().document;
+    expect(restored.entities.whereType<LineEntity>(), hasLength(1));
+    expect(
+      restored.entities.whereType<LineEntity>().single.end.x,
+      closeTo(10, 1e-9),
+    );
   });
 }

@@ -253,6 +253,22 @@ void main() {
     expect(style.textStyle, 'Standard');
   });
 
+  test('a polyline keeps constant width', () {
+    final document = CadDocument()
+      ..addEntity(
+        PolylineEntity(
+          id: 0,
+          vertices: Float64List.fromList([0, 0, 0, 10, 0, 0]),
+          constantWidth: 0.5,
+        ),
+      );
+    final restored = FcbReader(FcbWriter().write(document)).decode().document;
+    expect(
+      restored.entities.whereType<PolylineEntity>().single.constantWidth,
+      closeTo(0.5, 1e-12),
+    );
+  });
+
   test('a large document round trips and stays within a sane size', () {
     final document = SampleDrawings.stressTest(count: 20000);
     final bytes = FcbWriter().write(document);

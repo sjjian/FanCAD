@@ -67,12 +67,10 @@ FC_EXPORT void fc_free(uint8_t *data);
  * number of bytes written excluding the terminator. */
 FC_EXPORT int32_t fc_last_error(char *out, int32_t capacity);
 
-/* Writes an FCB buffer back out as a DWG or DXF file.
+/* Writes an FCB buffer out as a DWG file (r2000 or r2004).
  *
  * target_version is a DWG release code (for example 2000 or 2004); 0 selects
- * the backend default. Returns FC_STATUS_UNSUPPORTED until the exporter is
- * implemented.
- */
+ * r2000. */
 FC_EXPORT int32_t fc_write_file(const char *path, const uint8_t *fcb,
                                 uint64_t length, int32_t target_version);
 

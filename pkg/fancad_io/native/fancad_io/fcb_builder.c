@@ -160,6 +160,7 @@ void fcb_builder_init(fcb_builder *b) {
   bytes_init(&b->blocks);
   bytes_init(&b->layouts);
   bytes_init(&b->viewports);
+  bytes_init(&b->dimstyles);
   bytes_init(&b->headervars);
   bytes_init(&b->diagnostics);
   /* Reserve index 0 for the empty string so a zeroed field reads as absent. */
@@ -177,6 +178,7 @@ void fcb_builder_dispose(fcb_builder *b) {
   bytes_dispose(&b->blocks);
   bytes_dispose(&b->layouts);
   bytes_dispose(&b->viewports);
+  bytes_dispose(&b->dimstyles);
   bytes_dispose(&b->headervars);
   bytes_dispose(&b->diagnostics);
 }
@@ -344,6 +346,22 @@ void fcb_add_viewport(fcb_builder *b, const fcb_viewport *v) {
   b->viewport_count++;
 }
 
+void fcb_add_dimstyle(fcb_builder *b, const fcb_dimstyle *v) {
+  uint8_t record[FCB_RECORD_DIMSTYLE];
+  memset(record, 0, sizeof(record));
+  put_u32(record + 0, v->name);
+  put_u32(record + 4, v->text_style);
+  put_u32(record + 8, v->decimal_places);
+  put_f64(record + 16, v->text_height);
+  put_f64(record + 24, v->arrow_size);
+  put_f64(record + 32, v->extension_line_offset);
+  put_f64(record + 40, v->extension_line_extend);
+  put_f64(record + 48, v->text_gap);
+  put_f64(record + 56, v->scale);
+  bytes_append(&b->dimstyles, record, sizeof(record));
+  b->dimstyle_count++;
+}
+
 void fcb_add_header_variable(fcb_builder *b, const char *key,
                              const char *value) {
   uint8_t record[8];
@@ -380,13 +398,13 @@ static int builder_failed(const fcb_builder *b) {
          b->doubles.failed || b->ints.failed || b->entities.failed ||
          b->layers.failed || b->linetypes.failed || b->textstyles.failed ||
          b->blocks.failed || b->layouts.failed || b->viewports.failed ||
-         b->headervars.failed || b->diagnostics.failed;
+         b->dimstyles.failed || b->headervars.failed || b->diagnostics.failed;
 }
 
 int fcb_builder_finish(fcb_builder *b, uint8_t **out_data,
                        uint64_t *out_length) {
-  fcb_section sections[12];
-  uint8_t counts[12][8];
+  fcb_section sections[16];
+  uint8_t counts[16][8];
   size_t section_count = 0;
   size_t strings_size;
   uint8_t *strings_blob = NULL;
@@ -442,6 +460,7 @@ int fcb_builder_finish(fcb_builder *b, uint8_t **out_data,
   ADD_SECTION(FCB_SECTION_BLOCKS, b->block_count, b->blocks);
   ADD_SECTION(FCB_SECTION_LAYOUTS, b->layout_count, b->layouts);
   ADD_SECTION(FCB_SECTION_VIEWPORTS, b->viewport_count, b->viewports);
+  ADD_SECTION(FCB_SECTION_DIMSTYLES, b->dimstyle_count, b->dimstyles);
   ADD_SECTION(FCB_SECTION_HEADERVARS, b->headervar_count, b->headervars);
 
 #undef ADD_SECTION

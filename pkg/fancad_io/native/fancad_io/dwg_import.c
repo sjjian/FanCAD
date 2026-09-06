@@ -519,6 +519,30 @@ static const char *dimension_type_name(Dwg_Object_Type type) {
   }
 }
 
+static int dimension_family(Dwg_Object_Type type) {
+  switch (type) {
+    case DWG_TYPE_DIMENSION_ALIGNED: return 1;
+    case DWG_TYPE_DIMENSION_ANG2LN: return 2;
+    case DWG_TYPE_DIMENSION_DIAMETER: return 3;
+    case DWG_TYPE_DIMENSION_RADIUS: return 4;
+    case DWG_TYPE_DIMENSION_ANG3PT: return 5;
+    case DWG_TYPE_DIMENSION_ORDINATE: return 6;
+    default: return 0;
+  }
+}
+
+static int dyn_push_3d(coords *g, box *bounds, void *entity, const char *type,
+                       const char *field) {
+  BITCODE_3BD p;
+  memset(&p, 0, sizeof(p));
+  if (!entity || !dwg_dynapi_entity_value(entity, type, field, &p, NULL)) {
+    return 0;
+  }
+  coords_push2(g, p.x, p.y);
+  box_add(bounds, p.x, p.y);
+  return 1;
+}
+
 /* -------------------------------------------------------------------------
  * Import state
  * ------------------------------------------------------------------------- */
@@ -564,6 +588,16 @@ typedef struct {
   uint32_t proxy_tally_count;
 } import_state;
 
+/* LibreDWG stores ByLayer / ByBlock / Default as 29 / 30 / 31. Those are
+ * not hundredths of a millimetre; treated as a stroke they make every
+ * ByLayer line 0.29 mm. FanCAD uses -1 / -2 / -3. */
+static int32_t fancad_line_weight(int raw) {
+  if (raw == 29) return -1;
+  if (raw == 30) return -2;
+  if (raw == 31) return -3;
+  return (int32_t)raw;
+}
+
 /* -------------------------------------------------------------------------
  * Table extraction
  * ------------------------------------------------------------------------- */
@@ -607,7 +641,7 @@ static void import_layers(import_state *s) {
     layer.color_packed = convert_layer_color(&entry->color);
     layer.linetype_index =
         hmap_get(&s->linetype_index, ref_handle(entry->ltype), 0);
-    layer.line_weight = (int32_t)entry->linewt;
+    layer.line_weight = fancad_line_weight(dxf_cvt_lweight(entry->linewt));
     layer.transparency = 0;
     if (entry->off) layer.flags |= FCB_LAYER_HIDDEN;
     if (entry->frozen) layer.flags |= FCB_LAYER_FROZEN;
@@ -616,6 +650,38 @@ static void import_layers(import_state *s) {
     fcb_add_layer(s->b, &layer);
     hmap_put(&s->layer_index, (uint64_t)obj->handle.value, index);
     index++;
+    dyn_text_free(name, owned);
+  }
+}
+
+static void import_dimstyles(import_state *s) {
+  uint32_t i;
+  for (i = 0; i < s->dwg->num_objects; i++) {
+    Dwg_Object *obj = &s->dwg->object[i];
+    Dwg_Object_DIMSTYLE *ds;
+    fcb_dimstyle rec;
+    char *name;
+    int owned;
+    if (obj->supertype != DWG_SUPERTYPE_OBJECT) continue;
+    if (obj->fixedtype != DWG_TYPE_DIMSTYLE) continue;
+    if (!obj->tio.object || !obj->tio.object->tio.DIMSTYLE) continue;
+    ds = obj->tio.object->tio.DIMSTYLE;
+    name = dyn_text(ds, "DIMSTYLE", "name", &owned);
+    if (!name || !name[0] || strcmp(name, "Standard") == 0) {
+      dyn_text_free(name, owned);
+      continue;
+    }
+    memset(&rec, 0, sizeof(rec));
+    rec.name = fcb_intern(s->b, name);
+    rec.text_style = fcb_intern(s->b, "Standard");
+    rec.decimal_places = ds->DIMDEC;
+    rec.text_height = ds->DIMTXT;
+    rec.arrow_size = ds->DIMASZ;
+    rec.extension_line_offset = ds->DIMEXO;
+    rec.extension_line_extend = ds->DIMEXE;
+    rec.text_gap = ds->DIMGAP;
+    rec.scale = ds->DIMSCALE;
+    fcb_add_dimstyle(s->b, &rec);
     dyn_text_free(name, owned);
   }
 }
@@ -775,13 +841,48 @@ static Dwg_Object *resolve_ref(Dwg_Data *dwg, Dwg_Object_Ref *ref,
   return NULL;
 }
 
+static int ascii_ieq(const char *a, const char *b) {
+  if (!a || !b) return a == b;
+  while (*a && *b) {
+    unsigned char ca = (unsigned char)*a++;
+    unsigned char cb = (unsigned char)*b++;
+    if (ca >= 'A' && ca <= 'Z') ca = (unsigned char)(ca + 32);
+    if (cb >= 'A' && cb <= 'Z') cb = (unsigned char)(cb + 32);
+    if (ca != cb) return 0;
+  }
+  return *a == 0 && *b == 0;
+}
+
+static int ascii_iprefix(const char *s, const char *prefix) {
+  if (!s || !prefix) return 0;
+  while (*prefix) {
+    unsigned char ca = (unsigned char)*s++;
+    unsigned char cb = (unsigned char)*prefix++;
+    if (!ca) return 0;
+    if (ca >= 'A' && ca <= 'Z') ca = (unsigned char)(ca + 32);
+    if (cb >= 'A' && cb <= 'Z') cb = (unsigned char)(cb + 32);
+    if (ca != cb) return 0;
+  }
+  return 1;
+}
+
+/* LibreDWG's default document names the sheet *PAPER_SPACE; DXF and
+ * CadDocument use *Paper_Space. Extra sheets are *Paper_Space0, ... */
+static int name_is_paper_space(const char *name) {
+  return ascii_iprefix(name, "*Paper_Space");
+}
+
+static int name_is_primary_paper_space(const char *name) {
+  return ascii_ieq(name, "*Paper_Space");
+}
+
 static int is_layout_block(const import_state *s, uint32_t block) {
   const char *name;
   if (block == s->model_space_block) return 1;
   if (block >= s->block_count) return 0;
   name = s->block_names[block];
   return name && (strcmp(name, "*Model_Space") == 0 ||
-                  strncmp(name, "*Paper_Space", 12) == 0);
+                  name_is_paper_space(name));
 }
 
 static int is_dim_anon_block(const import_state *s, uint32_t block) {
@@ -953,6 +1054,23 @@ static int is_profile_layer_intern(const import_state *s, uint32_t intern) {
          interned_equals(s, intern, "xc") ||
          interned_equals(s, intern, "问号") ||
          interned_equals(s, intern, "虚线");
+}
+
+/* R2000+ omits alignment_pt when it equals ins_pt and records that in
+ * dataflags bit 0x02. The decoder leaves the field zeroed instead of
+ * restoring it, which would park every justified string on the origin. */
+static dwg_point_2d text_alignment_point(BITCODE_RC dataflags,
+                                         const BITCODE_2DPOINT *alignment_pt,
+                                         double ins_x, double ins_y) {
+  dwg_point_2d out;
+  if (dataflags & 0x02) {
+    out.x = ins_x;
+    out.y = ins_y;
+  } else {
+    out.x = alignment_pt->x;
+    out.y = alignment_pt->y;
+  }
+  return out;
 }
 
 /* World-space span of a LINE or LWPOLYLINE, squared. 0 if the type has no
@@ -1173,8 +1291,12 @@ static uint32_t owner_block(const import_state *s, const Dwg_Object *obj) {
   if (is_dim_anon_block(s, by_header) && !is_first) {
     return s->model_space_block;
   }
-  if (by_header != 0xFFFFFFFFu && by_header < s->block_count &&
-      !dim_anon_cannot_own(s, by_header, obj)) {
+  /* ownerhandle is the file's own statement of who owns this entity, one
+   * entity at a time. entities[] is the list that overlaps on some R2004
+   * files, so the overlap guard belongs on that path above, not here. An
+   * unreferenced *D still owns whatever points at it; it just never becomes
+   * a DimensionEntity's geometry block. */
+  if (by_header != 0xFFFFFFFFu && by_header < s->block_count) {
     return by_header;
   }
   return s->model_space_block;
@@ -1346,8 +1468,7 @@ static int import_block_headers(import_state *s) {
       s->block_base_x[count] = header->base_pt.x;
       s->block_base_y[count] = header->base_pt.y;
       if (is_model) s->model_space_block = count;
-      if (s->block_names[count] &&
-          strcmp(s->block_names[count], "*Paper_Space") == 0) {
+      if (name_is_primary_paper_space(s->block_names[count])) {
         s->paper_space_block = count;
       }
       hmap_put(&s->block_index, (uint64_t)obj->handle.value, count);
@@ -1391,7 +1512,7 @@ static void fill_common(import_state *s, const Dwg_Object *obj,
         hmap_get(&s->linetype_index, ref_handle(ent->ltype), 0xFFFFFFFFu);
     out->linetype_index = found;
   }
-  out->line_weight = (int32_t)(int8_t)ent->linewt;
+  out->line_weight = fancad_line_weight((int)(int8_t)ent->linewt);
   if (ent->invisible) out->flags |= FCB_FLAG_INVISIBLE;
 
   if (ent->ltype_scale != 1.0) {
@@ -2244,6 +2365,7 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
         box_add(&bounds, o->points[i].x, o->points[i].y);
       }
       if (o->flag & 512) e.flags |= FCB_FLAG_CLOSED;
+      if (o->const_width != 0.0) coords_push(g, o->const_width);
       attach_geometry(s, &e);
       commit(s, &e, &bounds, owner_block, FCB_TYPE_POLYLINE);
       return 1;
@@ -2340,8 +2462,10 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       coords_push(g, o->oblique_angle);
       /* Justified TEXT paints from alignment_pt, not the first corner. */
       if (o->horiz_alignment != 0 || o->vert_alignment != 0) {
-        coords_push2(g, o->alignment_pt.x, o->alignment_pt.y);
-        box_add(&bounds, o->alignment_pt.x, o->alignment_pt.y);
+        dwg_point_2d ap = text_alignment_point(o->dataflags, &o->alignment_pt,
+                                               o->ins_pt.x, o->ins_pt.y);
+        coords_push2(g, ap.x, ap.y);
+        box_add(&bounds, ap.x, ap.y);
       }
       ints[0] = (int64_t)o->horiz_alignment;
       ints[1] = (int64_t)o->vert_alignment;
@@ -2387,8 +2511,10 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       coords_push(g, o->width_factor == 0.0 ? 1.0 : o->width_factor);
       coords_push(g, o->oblique_angle);
       if (o->horiz_alignment != 0 || o->vert_alignment != 0) {
-        coords_push2(g, o->alignment_pt.x, o->alignment_pt.y);
-        box_add(&bounds, o->alignment_pt.x, o->alignment_pt.y);
+        dwg_point_2d ap = text_alignment_point(o->dataflags, &o->alignment_pt,
+                                               o->ins_pt.x, o->ins_pt.y);
+        coords_push2(g, ap.x, ap.y);
+        box_add(&bounds, ap.x, ap.y);
       }
       ints[0] = (int64_t)o->horiz_alignment;
       ints[1] = (int64_t)o->vert_alignment;
@@ -2617,15 +2743,25 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
 
     case DWG_TYPE_IMAGE: {
       Dwg_Entity_IMAGE *o = ent->tio.IMAGE;
+      char *path = NULL;
+      int owned_path = 0;
       if (!o) return 0;
       coords_push2(g, o->pt0.x, o->pt0.y);
       coords_push2(g, o->uvec.x * o->image_size.x, o->uvec.y * o->image_size.x);
       coords_push2(g, o->vvec.x * o->image_size.y, o->vvec.y * o->image_size.y);
       box_add_coords(&bounds, g, 2);
-      e.string_offset = fcb_append_string(s->b, "");
+      if (o->imagedef && o->imagedef->obj &&
+          o->imagedef->obj->supertype == DWG_SUPERTYPE_OBJECT &&
+          o->imagedef->obj->tio.object &&
+          o->imagedef->obj->tio.object->tio.IMAGEDEF) {
+        path = dyn_text(o->imagedef->obj->tio.object->tio.IMAGEDEF, "IMAGEDEF",
+                        "file_path", &owned_path);
+      }
+      e.string_offset = fcb_append_string(s->b, path ? path : "");
       e.string_count = 1;
       attach_geometry(s, &e);
       commit(s, &e, &bounds, owner_block, FCB_TYPE_IMAGE);
+      dyn_text_free(path, owned_path);
       return 1;
     }
 
@@ -2730,7 +2866,6 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
         char *style_name = NULL;
         int owned_text;
         int owned_style = 0;
-        int64_t ints[2];
         double text_x, text_y, measurement;
         const char *block_name = "";
         uint32_t block;
@@ -2771,15 +2906,63 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
         }
         measurement = dyn_double(o, dimension_name, "act_measurement", 0.0);
         user_text = dyn_text(o, dimension_name, "user_text", &owned_text);
+        {
+          Dwg_Object_Ref *style_ref = dyn_handle(o, dimension_name, "dimstyle");
+          Dwg_Object *dsobj = resolve_ref(s->dwg, style_ref, obj);
+          if (dsobj && dsobj->fixedtype == DWG_TYPE_DIMSTYLE &&
+              dsobj->tio.object && dsobj->tio.object->tio.DIMSTYLE) {
+            style_name = dyn_text(dsobj->tio.object->tio.DIMSTYLE, "DIMSTYLE",
+                                  "name", &owned_style);
+          }
+        }
 
         coords_push2(g, text_x, text_y);
         coords_push(g, measurement);
         box_add(&bounds, text_x, text_y);
 
-        ints[0] = 0;
-        ints[1] = 0;
-        e.int_offset = fcb_add_ints(s->b, ints, 2);
-        e.int_count = 2;
+        {
+          BITCODE_RC flag = 0;
+          BITCODE_RC flag2 = 0;
+          int family = dimension_family(obj->fixedtype);
+          int npts = 0;
+          int64_t dim_ints[2];
+          dwg_dynapi_entity_value(o, dimension_name, "flag", &flag, NULL);
+          dwg_dynapi_entity_value(o, dimension_name, "flag2", &flag2, NULL);
+          switch (obj->fixedtype) {
+            case DWG_TYPE_DIMENSION_ALIGNED:
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline1_pt");
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline2_pt");
+              break;
+            case DWG_TYPE_DIMENSION_ANG2LN:
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "center_pt");
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline1end_pt");
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline2end_pt");
+              break;
+            case DWG_TYPE_DIMENSION_ANG3PT:
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline1_pt");
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline2_pt");
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "center_pt");
+              break;
+            case DWG_TYPE_DIMENSION_DIAMETER:
+            case DWG_TYPE_DIMENSION_RADIUS:
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "def_pt");
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "first_arc_pt");
+              break;
+            case DWG_TYPE_DIMENSION_ORDINATE:
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "feature_location_pt");
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "leader_endpt");
+              break;
+            default:
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline1_pt");
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline2_pt");
+              npts += dyn_push_3d(g, &bounds, o, dimension_name, "def_pt");
+              break;
+          }
+          dim_ints[0] = (int64_t)(family | (flag & ~0x0F) | (flag2 ? 64 : 0));
+          dim_ints[1] = (int64_t)npts;
+          e.int_offset = fcb_add_ints(s->b, dim_ints, 2);
+          e.int_count = 2;
+        }
         e.string_offset = fcb_append_string(s->b, block_name);
         fcb_append_string(s->b, user_text ? user_text : "");
         fcb_append_string(s->b, style_name ? style_name : "Standard");
@@ -3003,7 +3186,7 @@ static int import_layouts(import_state *s, uint32_t **layout_blocks_out,
   } else {
     for (i = 0; i < s->block_count; i++) {
       if (i == s->model_space_block) continue;
-      if (strncmp(s->block_names[i], "*Paper_Space", 12) == 0) paper_count++;
+      if (name_is_paper_space(s->block_names[i])) paper_count++;
     }
     items = (layout_item *)calloc(paper_count + 1, sizeof(layout_item));
     if (!items) return 0;
@@ -3017,7 +3200,7 @@ static int import_layouts(import_state *s, uint32_t **layout_blocks_out,
     for (i = 0; i < s->block_count; i++) {
       char name[64];
       if (i == s->model_space_block) continue;
-      if (strncmp(s->block_names[i], "*Paper_Space", 12) != 0) continue;
+      if (!name_is_paper_space(s->block_names[i])) continue;
       snprintf(name, sizeof(name), "Layout%u", count);
       items[count].name = strdup(name);
       items[count].block = i;
@@ -3047,6 +3230,18 @@ static int import_layouts(import_state *s, uint32_t **layout_blocks_out,
 }
 
 /* VIEWPORT entities become paper windows on a layout, not drawable proxies. */
+static int is_sheet_viewport(const Dwg_Entity_VIEWPORT *vp) {
+  /* Viewport 1 is paper space's own sheet window. R2000 does not store id,
+   * so LibreDWG also numbers a 1:1 self-view (dummy we write first) as the
+   * sheet on later paper tabs. */
+  if (vp->id == 1) return 1;
+  if (vp->height <= 0.0) return 0;
+  if (fabs(vp->VIEWSIZE - vp->height) > 1e-6) return 0;
+  if (fabs(vp->VIEWCTR.x - vp->center.x) > 1e-6) return 0;
+  if (fabs(vp->VIEWCTR.y - vp->center.y) > 1e-6) return 0;
+  return 1;
+}
+
 static void import_paper_viewports(import_state *s,
                                    const uint32_t *layout_blocks,
                                    uint32_t layout_count) {
@@ -3065,9 +3260,7 @@ static void import_paper_viewports(import_state *s,
     if (obj->fixedtype != DWG_TYPE_VIEWPORT) continue;
     if (!obj->tio.entity || !obj->tio.entity->tio.VIEWPORT) continue;
     vp = obj->tio.entity->tio.VIEWPORT;
-
-    /* Viewport 1 is paper space's own sheet window, not a model-space hole. */
-    if (vp->id == 1) continue;
+    if (is_sheet_viewport(vp)) continue;
     if (vp->width <= 0.0 || vp->height <= 0.0) continue;
 
     owner = owner_block(s, obj);
@@ -3100,6 +3293,39 @@ static void import_paper_viewports(import_state *s,
     rec.scale = scale;
     rec.rotation = vp->VIEWTWIST;
     rec.layer = interned_layer_name(s, obj);
+    if (vp->num_frozen_layers && vp->frozen_layers) {
+      char buf[4096];
+      size_t used = 0;
+      BITCODE_BL k;
+      buf[0] = '\0';
+      for (k = 0; k < vp->num_frozen_layers; k++) {
+        Dwg_Object *layer_obj = resolve_ref(s->dwg, vp->frozen_layers[k], obj);
+        char *name = NULL;
+        int owned = 0;
+        size_t len;
+        if (!layer_obj || layer_obj->fixedtype != DWG_TYPE_LAYER ||
+            !layer_obj->tio.object || !layer_obj->tio.object->tio.LAYER) {
+          continue;
+        }
+        name = dyn_text(layer_obj->tio.object->tio.LAYER, "LAYER", "name",
+                        &owned);
+        if (!name || !name[0]) {
+          dyn_text_free(name, owned);
+          continue;
+        }
+        len = strlen(name);
+        if (used && used + 1 + len >= sizeof(buf)) {
+          dyn_text_free(name, owned);
+          break;
+        }
+        if (used) buf[used++] = ',';
+        memcpy(buf + used, name, len);
+        used += len;
+        buf[used] = '\0';
+        dyn_text_free(name, owned);
+      }
+      if (used) rec.reserved = fcb_intern(s->b, buf);
+    }
     fcb_add_viewport(s->b, &rec);
   }
 }
@@ -3157,6 +3383,7 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
   import_linetypes(&state);
   import_layers(&state);
   import_textstyles(&state);
+  import_dimstyles(&state);
   if (!import_block_headers(&state)) {
     status = FC_STATUS_OUT_OF_MEMORY;
     goto cleanup;
@@ -3283,7 +3510,7 @@ int fcdwg_import(const char *path, fcb_builder *b, char *error_out,
           record.flags |= FCB_BLOCK_LAYOUT;
         }
         if (state.block_names[block][0] == '*') {
-          if (strncmp(state.block_names[block], "*Paper_Space", 12) == 0) {
+          if (name_is_paper_space(state.block_names[block])) {
             record.flags |= FCB_BLOCK_LAYOUT;
           } else if (block != state.model_space_block) {
             record.flags |= FCB_BLOCK_ANONYMOUS;
