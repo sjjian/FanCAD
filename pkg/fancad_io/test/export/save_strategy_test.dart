@@ -1,4 +1,5 @@
 import 'package:fancad_io/fancad_io.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -32,24 +33,40 @@ void main() {
     expect(dwg.usedFallback, isFalse);
   });
 
+  eachCase([
+    (
+      name: 'notes.txt falls back to FCB',
+      path: '/tmp/notes.txt',
+      target: '/tmp/notes.fcb',
+      reasonHas: '.txt',
+    ),
+    (
+      name: 'a missing extension falls back to FCB',
+      path: '/tmp/untitled',
+      target: '/tmp/untitled.fcb',
+      reasonHas: null,
+    ),
+    (
+      name: 'a dotted parent folder does not steal the file name',
+      path: '/tmp/project.v2/untitled',
+      target: '/tmp/project.v2/untitled.fcb',
+      reasonHas: null,
+    ),
+  ], (c) {
+    const strategy = SaveStrategy();
+    final plan = strategy.plan(c.path);
+    expect(plan.format, SaveFormat.fcb);
+    expect(plan.targetPath, c.target);
+    expect(plan.usedFallback, isTrue);
+    if (c.reasonHas != null) {
+      expect(plan.reason, contains(c.reasonHas));
+    }
+  });
+
   test('an unknown or missing extension falls back to FCB', () {
     const strategy = SaveStrategy();
-    final unknown = strategy.plan('/tmp/notes.txt');
-    expect(unknown.format, SaveFormat.fcb);
-    expect(unknown.targetPath, '/tmp/notes.fcb');
-    expect(unknown.usedFallback, isTrue);
-    expect(unknown.reason, contains('.txt'));
-
-    final none = strategy.plan('/tmp/untitled');
-    expect(none.targetPath, '/tmp/untitled.fcb');
-    expect(none.format, SaveFormat.fcb);
-
-    // A parent folder with a dot must not steal the file name.
-    final dottedDir = strategy.plan('/tmp/project.v2/untitled');
-    expect(dottedDir.targetPath, '/tmp/project.v2/untitled.fcb');
-    expect(dottedDir.format, SaveFormat.fcb);
-
     const blocked = SaveStrategy();
+    // A parent folder with a dot must not steal the file name.
     final dwgInDotted = blocked.plan(r'C:\proj.v2\sheet.dwg');
     expect(dwgInDotted.targetPath, r'C:\proj.v2\sheet.dxf');
 
