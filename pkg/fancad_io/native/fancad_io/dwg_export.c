@@ -345,6 +345,44 @@ static int is_primary_paper_space(const char *name) {
   return ascii_ieq(name, "*Paper_Space");
 }
 
+/* BLOCK_HEADER.anonymous is DXF 70 bit 1. Import stores FCB_BLOCK_ANONYMOUS;
+ * *D / *U names that lost the bit still need it so the header is unnamed. */
+static int is_anonymous_star_name(const char *name) {
+  if (!name || name[0] != '*') return 0;
+  return name[1] == 'D' || name[1] == 'd' || name[1] == 'U' || name[1] == 'u';
+}
+
+static void copy_pt3(BITCODE_3BD *dst, const dwg_point_3d *src) {
+  if (!dst || !src) return;
+  dst->x = src->x;
+  dst->y = src->y;
+  dst->z = src->z;
+}
+
+/* R13+ DWG stores flag1, not DXF 70. Bit 0 is the inverse of DXF 128
+ * (user text); bit 1 is DXF 32 (use the *D block). FL25-1 sets bit 3
+ * (8) on every dimension; omitting it is a file-level mismatch. */
+static BITCODE_RC dim_flag1_from_dxf(BITCODE_RC flag) {
+  BITCODE_RC flag1 = 8;
+  if ((flag & 128) == 0) flag1 |= 1;
+  if (flag & 32) flag1 |= 2;
+  return flag1;
+}
+
+static void dimstyle_lines_bylayer(Dwg_Object_DIMSTYLE *ds) {
+  if (!ds) return;
+  /* R2004 stores CMC in the rgb dword; index alone is dropped on write. */
+  ds->DIMCLRD.index = 256;
+  ds->DIMCLRD.method = DWG_COLOR_METHOD_BYLAYER;
+  ds->DIMCLRD.rgb = 0xC0000100u;
+  ds->DIMCLRE.index = 256;
+  ds->DIMCLRE.method = DWG_COLOR_METHOD_BYLAYER;
+  ds->DIMCLRE.rgb = 0xC0000100u;
+  ds->DIMCLRT.index = 256;
+  ds->DIMCLRT.method = DWG_COLOR_METHOD_BYLAYER;
+  ds->DIMCLRT.rgb = 0xC0000100u;
+}
+
 static Dwg_Object_BLOCK_HEADER *header_of(Dwg_Object *obj) {
   if (!obj || obj->supertype != DWG_SUPERTYPE_OBJECT) return NULL;
   return obj->tio.object->tio.BLOCK_HEADER;
@@ -830,6 +868,34 @@ static void *export_dimension(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
     d->act_measurement = g[2];
     d->text_midpt.x = g[0];
     d->text_midpt.y = g[1];
+    /* GstarCAD composites the *D block at ins_scale. LibreDWG's dwg_add_*
+     * leaves (0,0,0), so every tick vanishes in a host even though FanCAD
+     * still paints the block with an identity. FL25-1 stores (1,1,1). */
+    d->ins_scale.x = 1.0;
+    d->ins_scale.y = 1.0;
+    d->ins_scale.z = 1.0;
+    if (d->attachment == 0) d->attachment = 5;
+    if (d->lspace_factor <= 0.0) d->lspace_factor = 1.0;
+    /* dwg_add_* takes the origins; write the DXF 13/14/10 fields too so
+     * a host that regenerates ticks does not see three copies of the note. */
+    switch (dimtype) {
+      case 1: {
+        Dwg_Entity_DIMENSION_ALIGNED *a = (Dwg_Entity_DIMENSION_ALIGNED *)ent;
+        copy_pt3(&a->xline1_pt, &p0);
+        copy_pt3(&a->xline2_pt, &p1);
+        if (npts >= 3) copy_pt3(&a->def_pt, &p2);
+        break;
+      }
+      case 0: {
+        Dwg_Entity_DIMENSION_LINEAR *a = (Dwg_Entity_DIMENSION_LINEAR *)ent;
+        copy_pt3(&a->xline1_pt, &p0);
+        copy_pt3(&a->xline2_pt, &p1);
+        copy_pt3(&a->def_pt, &p2);
+        break;
+      }
+      default:
+        break;
+    }
     if (user[0]) {
       char stored[TEXT_CAP];
       encode_tv(dwg, stored, sizeof(stored), user);
@@ -843,10 +909,17 @@ static void *export_dimension(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
         if (href) d->dimstyle = href;
       }
     }
-    href = find_block_header(dwg, block);
-    if (href) {
-      d->block = href;
-      d->flag = (BITCODE_RC)((dimflags & ~0x0F) | dimtype | 32);
+    {
+      /* Preserve imported DXF 70 bits (do not force 128). Bit 32 means this
+       * *D is exclusive to the dimension; flag1 bit 1 then composites it. */
+      BITCODE_RC dxf70 = (BITCODE_RC)((dimflags & ~0x0F) | dimtype);
+      href = find_block_header(dwg, block);
+      if (href) {
+        d->block = href;
+        dxf70 |= 32;
+      }
+      d->flag = dxf70;
+      d->flag1 = dim_flag1_from_dxf(dxf70);
     }
   }
   return ent;
@@ -2196,6 +2269,14 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
     }
   }
 
+  /* FCB has no DIMCLRD. Cover Standard from dwg_new_Document and every
+   * custom style in one pass; index-only ByLayer does not survive R2004. */
+  for (i = 0; i < dwg->num_objects; i++) {
+    Dwg_Object *obj = &dwg->object[i];
+    if (obj->fixedtype != DWG_TYPE_DIMSTYLE || !obj->tio.object) continue;
+    dimstyle_lines_bylayer(obj->tio.object->tio.DIMSTYLE);
+  }
+
   for (i = 0; i < view.layer_count; i++) {
     const uint8_t *rec = fcb_view_layer(&view, i);
     char name[NAME_CAP];
@@ -2274,10 +2355,17 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
         const char *stored_name = mif_name(name, stored, sizeof(stored));
         headers[i] = dwg_add_BLOCK_HEADER(dwg, stored_name);
         if (headers[i]) {
+          uint32_t block_flags = fcb_u32(rec + FCB_BLOCK_FLAGS);
           dwg_add_BLOCK(headers[i], stored_name);
           headers[i]->base_pt.x = fcb_f64(rec + FCB_BLOCK_BASE_X);
           headers[i]->base_pt.y = fcb_f64(rec + FCB_BLOCK_BASE_Y);
           headers[i]->base_pt.z = 0;
+          if ((block_flags & FCB_BLOCK_ANONYMOUS) ||
+              is_anonymous_star_name(name)) {
+            headers[i]->anonymous = 1;
+            /* AutoCAD *D headers are explodable; LibreDWG leaves 0. */
+            headers[i]->explodable = 1;
+          }
           needs_endblk[i] = 1;
         }
       }
