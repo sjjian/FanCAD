@@ -202,4 +202,46 @@ EOF
     expect(polyline.bulgeAt(0), 1);
     expect(document.entities.whereType<PolylineEntity>(), hasLength(1));
   });
+
+  test('a -Z extrusion ELLIPSE bakes the opposite quadrant', () {
+    final document = reader.readString('''
+  0
+SECTION
+  2
+ENTITIES
+  0
+ELLIPSE
+ 10
+4328.3061
+ 20
+3148.7434
+ 11
+-4.975
+ 21
+-4.975
+ 40
+1
+ 41
+${5 * math.pi / 4}
+ 42
+${7 * math.pi / 4}
+ 210
+0
+ 220
+0
+ 230
+-1
+  0
+ENDSEC
+  0
+EOF
+''');
+    final ellipse = document.entities.whereType<EllipseEntity>().single;
+    expect(ellipse.startParam, closeTo(math.pi / 4, 1e-9));
+    expect(ellipse.endParam, closeTo(3 * math.pi / 4, 1e-9));
+    expect(ellipse.startPoint.x, closeTo(4328.3061, 1e-6));
+    expect(ellipse.startPoint.y, lessThan(3148.7434));
+    expect(ellipse.endPoint.y, closeTo(3148.7434, 1e-6));
+    expect(ellipse.endPoint.x, greaterThan(4328.3061));
+  });
 }
