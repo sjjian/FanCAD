@@ -803,11 +803,21 @@ void main() {
       reason: 'a standalone ATTRIB is stored as TEXT',
     );
     expect(
-      entities.whereType<MLeaderEntity>().any(
+      entities.whereType<MLeaderEntity>(),
+      isEmpty,
+      reason: 'R2004 writes MULTILEADER as LEADER+MTEXT',
+    );
+    expect(
+      entities.whereType<MTextEntity>().any(
         (item) => item.content.contains('callout'),
       ),
       isTrue,
-      reason: 'MULTILEADER must round-trip as itself',
+      reason: 'the callout note must remain visible',
+    );
+    expect(
+      entities.whereType<LeaderEntity>().length,
+      greaterThanOrEqualTo(2),
+      reason: 'the exploded MULTILEADER keeps a LEADER stem',
     );
     expect(
       entities.whereType<UnknownEntity>(),
@@ -903,10 +913,128 @@ void main() {
     );
   });
 
+  test('CJK notes are stored as GBK in an R2004 DWG, not UTF-8', () async {
+    final directory = Directory.systemTemp.createTempSync('fancad-gbk');
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    const note = '型材1';
+    final document = CadDocument()
+      ..addEntity(
+        const MTextEntity(
+          id: 1,
+          position: Vec2(0, 0),
+          content: note,
+          height: 2.5,
+        ),
+      );
+
+    final dwgPath = '${directory.path}/cjk.dwg';
+    await importer.save(dwgPath, document);
+    final opened = (await importer.open(dwgPath)).document;
+    expect(
+      opened.entities.whereType<MTextEntity>().single.content,
+      contains(note),
+    );
+
+    final bytes = File(dwgPath).readAsBytesSync();
+    const utf8Note = [0xE5, 0x9E, 0x8B, 0xE6, 0x9D, 0x90, 0x31];
+    const gbkNote = [0xD0, 0xCD, 0xB2, 0xC4, 0x31];
+    expect(
+      _containsBytes(bytes, utf8Note),
+      isFalse,
+      reason: 'raw UTF-8 in a pre-2007 TV string is what GstarCAD shows as ?',
+    );
+    if (_containsBytes(bytes, gbkNote) ||
+        _containsBytes(bytes, r'\U+578B'.codeUnits)) {
+      return;
+    }
+    // R2004 compresses the HEADER/AcDb sections, so the TV bytes may not
+    // appear as a literal in the file. dwg2dxf inflates them.
+    final dumped = _dxfFromDwg(dwgPath, '${directory.path}/cjk.dxf');
+    if (dumped == null) return;
+    expect(
+      _containsBytes(dumped, gbkNote) ||
+          _containsBytes(dumped, r'\U+578B'.codeUnits),
+      isTrue,
+      reason: 'GstarCAD reads R2004 TV bytes as GBK; UTF-8 becomes ?',
+    );
+    expect(_containsBytes(dumped, utf8Note), isFalse);
+  });
+
+  test('CJK TEXT on an empty-font style stays GBK, not question marks', () async {
+    final directory = Directory.systemTemp.createTempSync('fancad-stylecjk');
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    const note = '绘图';
+    final document = CadDocument()
+      ..putTextStyle(
+        const TextStyleDef(name: '样式 1', fontFamily: '', bigFontFamily: ''),
+      )
+      ..addEntity(
+        const TextEntity(
+          id: 1,
+          position: Vec2(0, 0),
+          content: note,
+          styleName: '样式 1',
+        ),
+      );
+
+    final dwgPath = '${directory.path}/label.dwg';
+    await importer.save(dwgPath, document);
+    final opened = (await importer.open(dwgPath)).document;
+    expect(opened.entities.whereType<TextEntity>().single.content, note);
+    expect(opened.textStyles['样式 1']!.fontFamily, isNot('txt'));
+
+    final dumped = _dxfFromDwg(dwgPath, '${directory.path}/label.dxf');
+    if (dumped == null) return;
+    const utf8Note = [0xE7, 0xBB, 0x98, 0xE5, 0x9B, 0xBE];
+    const gbkNote = [0xBB, 0xE6, 0xCD, 0xBC];
+    expect(_containsBytes(dumped, utf8Note), isFalse);
+    expect(
+      _containsBytes(dumped, gbkNote) ||
+          _containsBytes(dumped, r'\U+7ED8'.codeUnits),
+      isTrue,
+    );
+  });
+
   test('a missing file fails cleanly rather than crashing', () {
     expect(
       () => backend.readToFcb('/definitely/not-a-drawing.dwg'),
       throwsA(isA<ImportException>()),
     );
   });
+}
+
+bool _containsBytes(List<int> haystack, List<int> needle) {
+  if (needle.isEmpty || haystack.length < needle.length) return false;
+  final limit = haystack.length - needle.length;
+  for (var i = 0; i <= limit; i++) {
+    var matched = true;
+    for (var j = 0; j < needle.length; j++) {
+      if (haystack[i + j] != needle[j]) {
+        matched = false;
+        break;
+      }
+    }
+    if (matched) return true;
+  }
+  return false;
+}
+
+List<int>? _dxfFromDwg(String dwgPath, String dxfPath) {
+  final tool = _firstExisting([
+    '/opt/homebrew/bin/dwg2dxf',
+    '/usr/local/bin/dwg2dxf',
+  ]);
+  if (tool == null) return null;
+  final result = Process.runSync(tool, ['-y', '-o', dxfPath, dwgPath]);
+  if (result.exitCode != 0 || !File(dxfPath).existsSync()) return null;
+  return File(dxfPath).readAsBytesSync();
+}
+
+String? _firstExisting(List<String> paths) {
+  for (final path in paths) {
+    if (File(path).existsSync()) return path;
+  }
+  return null;
 }

@@ -42,6 +42,10 @@ int fcdwg_export_dxf_to_dwg(const char *dxf_path, const char *dwg_path,
 
 #include <dwg.h>
 #include <dwg_api.h>
+#if defined(__APPLE__) || defined(__linux__)
+#include <iconv.h>
+#define FANCAD_HAVE_ICONV 1
+#endif
 
 /* Not in the public headers; the static LibreDWG we link still exports it. */
 void dwg_set_next_objhandle(Dwg_Object *obj);
@@ -150,6 +154,150 @@ static const char *mif_name(const char *utf8, char *buf, size_t cap) {
   return buf[0] ? buf : utf8;
 }
 
+static int tv_is_ascii(const unsigned char *s) {
+  if (!s) return 1;
+  for (; *s; s++) {
+    if (*s & 0x80) return 0;
+  }
+  return 1;
+}
+
+#ifdef FANCAD_HAVE_ICONV
+static char *iconv_from_utf8(const char *src, const char *to) {
+  iconv_t cd;
+  char *in;
+  char *out;
+  char *result;
+  size_t inleft;
+  size_t outleft;
+  size_t outcap;
+  if (!src || !to) return NULL;
+  cd = iconv_open(to, "UTF-8");
+  if (cd == (iconv_t)-1) return NULL;
+  inleft = strlen(src);
+  outcap = inleft * 2 + 8;
+  result = (char *)malloc(outcap);
+  if (!result) {
+    iconv_close(cd);
+    return NULL;
+  }
+  in = (char *)src;
+  out = result;
+  outleft = outcap - 1;
+  if (iconv(cd, &in, &inleft, &out, &outleft) == (size_t)-1) {
+    free(result);
+    iconv_close(cd);
+    return NULL;
+  }
+  *out = '\0';
+  iconv_close(cd);
+  return result;
+}
+
+static const char *iconv_name_for_codepage(unsigned codepage) {
+  switch (codepage) {
+    case 2:
+      return "ISO-8859-1";
+    case 24:
+      return "BIG5";
+    case 30:
+      return "WINDOWS-1252";
+    case 31:
+      return "GB2312";
+    case 38:
+      return "CP932";
+    case 39:
+      return "CP936";
+    case 40:
+      return "CP949";
+    case 41:
+      return "CP950";
+    default:
+      return NULL;
+  }
+}
+#endif
+
+/* R2000/R2004 TEXT/MTEXT still live in the drawing codepage. FanCAD holds
+ * UTF-8; GstarCAD reads those TV bytes as GBK on a Chinese sheet and shows
+ * `?` when we leave UTF-8 in the file. Convert, and fall back to MIF when
+ * iconv cannot. */
+static void encode_tv(Dwg_Data *dwg, char *dst, size_t cap, const char *utf8) {
+  if (!dst || cap == 0) return;
+  dst[0] = '\0';
+  if (!utf8) return;
+  if (tv_is_ascii((const unsigned char *)utf8)) {
+    strncpy(dst, utf8, cap - 1);
+    dst[cap - 1] = '\0';
+    return;
+  }
+#ifdef FANCAD_HAVE_ICONV
+  {
+    char *converted = NULL;
+    const char *to =
+        dwg ? iconv_name_for_codepage((unsigned)dwg->header.codepage) : NULL;
+    if (to) converted = iconv_from_utf8(utf8, to);
+    if (!converted) {
+      converted = iconv_from_utf8(utf8, "GB18030");
+      if (!converted) converted = iconv_from_utf8(utf8, "GBK");
+      if (!converted) converted = iconv_from_utf8(utf8, "CP936");
+      if (converted && dwg) dwg->header.codepage = 39;
+    }
+    if (converted) {
+      strncpy(dst, converted, cap - 1);
+      dst[cap - 1] = '\0';
+      free(converted);
+      return;
+    }
+  }
+#endif
+  utf8_to_mif(utf8, dst, cap);
+}
+
+/* dwg_add_TEXT / MTEXT treat the argument as UTF-8. 0.13.3 then strdup's it;
+ * 0.14's bit_utf8_to_TV skips invalid UTF-8, which would drop a GBK payload.
+ * Pass ASCII through the API and write the encoded TV ourselves. */
+static const char *tv_api_arg(const char *stored) {
+  return tv_is_ascii((const unsigned char *)stored) ? stored : "x";
+}
+
+static void assign_tv(BITCODE_T *slot, const char *stored) {
+  char *copy;
+  if (!slot) return;
+  copy = strdup(stored ? stored : "");
+  if (!copy) return;
+  if (*slot) free(*slot);
+  *slot = copy;
+}
+
+static const char *dwgcodepage_name(unsigned codepage) {
+  switch (codepage) {
+    case 24:
+    case 41:
+      return "ANSI_950";
+    case 31:
+    case 39:
+      return "ANSI_936";
+    case 38:
+      return "ANSI_932";
+    case 40:
+      return "ANSI_949";
+    case 30:
+      return "ANSI_1252";
+    default:
+      return NULL;
+  }
+}
+
+static void sync_codepage_name(Dwg_Data *dwg) {
+  const char *name;
+  if (!dwg) return;
+  name = dwgcodepage_name((unsigned)dwg->header.codepage);
+  if (!name) return;
+  dwg->header_vars.codepage = (BITCODE_RS)dwg->header.codepage;
+  assign_tv(&dwg->header_vars.DWGCODEPAGE, name);
+}
+
 static BITCODE_H find_named(Dwg_Data *dwg, const char *utf8, const char *table) {
   char mif[MIF_CAP];
   BITCODE_H href;
@@ -161,6 +309,32 @@ static BITCODE_H find_named(Dwg_Data *dwg, const char *utf8, const char *table) 
     href = dwg_find_tablehandle(dwg, mif, table);
   }
   return href;
+}
+
+static Dwg_Object_STYLE *style_of_handle(Dwg_Data *dwg, BITCODE_H href) {
+  Dwg_Object *obj;
+  if (!dwg || !href) return NULL;
+  obj = dwg_resolve_handle_silent(dwg, href->absolute_ref);
+  if (!obj || obj->fixedtype != DWG_TYPE_STYLE || !obj->tio.object) return NULL;
+  return obj->tio.object->tio.STYLE;
+}
+
+/* FanCAD lays out hugging MTEXT (rect_width 0) from the insertion as the
+ * left of the column, even when attachment is a right corner: shifting by a
+ * guessed glyph width walked title notes off the sheet. GstarCAD still
+ * honours the right attachment, so write the left column instead. */
+static BITCODE_BS hugging_attachment(BITCODE_BS attachment, double rect_width) {
+  if (rect_width > 0) return attachment;
+  switch (attachment) {
+    case 3:
+      return 1;
+    case 6:
+      return 4;
+    case 9:
+      return 7;
+    default:
+      return attachment;
+  }
 }
 
 static int is_model_space(const char *name) {
@@ -656,7 +830,11 @@ static void *export_dimension(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
     d->act_measurement = g[2];
     d->text_midpt.x = g[0];
     d->text_midpt.y = g[1];
-    if (user[0]) d->user_text = strdup(user);
+    if (user[0]) {
+      char stored[TEXT_CAP];
+      encode_tv(dwg, stored, sizeof(stored), user);
+      assign_tv(&d->user_text, stored);
+    }
     if (str_count > 2) {
       char style[NAME_CAP];
       fcb_view_str(v, str_off + 2, style, sizeof(style));
@@ -907,7 +1085,11 @@ static Dwg_Entity_MULTILEADER *export_multileader(
   ctx->content.txt.location.z = 0.0;
   ctx->content.txt.height = ctx->text_height;
   ctx->content.txt.rotation = g[geom_count - 1];
-  ctx->content.txt.default_text = strdup(content);
+  {
+    char stored[TEXT_CAP];
+    encode_tv(dwg, stored, sizeof(stored), content);
+    assign_tv(&ctx->content.txt.default_text, stored);
+  }
   ctx->content.txt.direction.x = cos(ctx->content.txt.rotation);
   ctx->content.txt.direction.y = sin(ctx->content.txt.rotation);
   ctx->content.txt.normal.z = 1.0;
@@ -1040,14 +1222,17 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
     }
     case FCB_TYPE_TEXT: {
       char content[TEXT_CAP];
+      char stored[TEXT_CAP];
       Dwg_Entity_TEXT *text;
       if (geom_count < 6 || !g) return;
       fcb_view_str(v, str_count > 0 ? str_off : 0, content, sizeof(content));
+      encode_tv(dwg, stored, sizeof(stored), content);
       a = pt3(g[0], g[1]);
-      text = dwg_add_TEXT(hdr, content, &a, g[2]);
+      text = dwg_add_TEXT(hdr, tv_api_arg(stored), &a, g[2]);
       if (text) {
         uint64_t int_off = fcb_u64(rec + FCB_ENT_INT_OFFSET);
         uint32_t int_count = fcb_u32(rec + FCB_ENT_INT_COUNT);
+        assign_tv(&text->text_value, stored);
         text->rotation = g[3];
         text->width_factor = g[4] == 0 ? 1 : g[4];
         text->oblique_angle = g[5];
@@ -1102,13 +1287,17 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
             for (s = 1; s + 1 < str_count; s += 2) {
               char tag[NAME_CAP];
               char value[TEXT_CAP];
+              char stored[TEXT_CAP];
               Dwg_Entity_ATTRIB *attrib;
               fcb_view_str(v, str_off + s, tag, sizeof(tag));
               fcb_view_str(v, str_off + s + 1, value, sizeof(value));
               if (!tag[0]) continue;
+              encode_tv(dwg, stored, sizeof(stored), value);
               /* Same placeholder as ATTDEF: dwg_add_ATTRIB refuses a space,
                * '!', or lowercase letter and UNADDs the ATTRIB. */
-              attrib = dwg_add_ATTRIB(insert, 2.5, 0, &a, "TAG", value);
+              attrib = dwg_add_ATTRIB(insert, 2.5, 0, &a, "TAG",
+                                      tv_api_arg(stored));
+              if (attrib) assign_tv(&attrib->text_value, stored);
               if (attrib && tag[0]) {
                 free(attrib->tag);
                 attrib->tag = dwg_add_u8_input(dwg, tag);
@@ -1140,20 +1329,24 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
     }
     case FCB_TYPE_MTEXT: {
       char content[TEXT_CAP];
+      char stored[TEXT_CAP];
       Dwg_Entity_MTEXT *mtext;
       uint64_t int_off = fcb_u64(rec + FCB_ENT_INT_OFFSET);
       uint32_t int_count = fcb_u32(rec + FCB_ENT_INT_COUNT);
       if (geom_count < 5 || !g) return;
       fcb_view_str(v, str_count > 0 ? str_off : 0, content, sizeof(content));
+      encode_tv(dwg, stored, sizeof(stored), content);
       a = pt3(g[0], g[1]);
-      mtext = dwg_add_MTEXT(hdr, &a, g[4], content);
+      mtext = dwg_add_MTEXT(hdr, &a, g[4], tv_api_arg(stored));
       if (mtext) {
+        assign_tv(&mtext->text, stored);
         mtext->text_height = g[2];
         mtext->x_axis_dir.x = cos(g[3]);
         mtext->x_axis_dir.y = sin(g[3]);
         mtext->x_axis_dir.z = 0;
         if (ints_ok(v, int_off, int_count) && int_count >= 1) {
-          mtext->attachment = (BITCODE_BS)ints_at(v, int_off)[0];
+          mtext->attachment = hugging_attachment(
+              (BITCODE_BS)ints_at(v, int_off)[0], g[4]);
         }
         bind_style(dwg, &mtext->style, v, str_off, str_count);
       }
@@ -1186,8 +1379,12 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
       break;
     }
     case FCB_TYPE_MLEADER: {
-      Dwg_Entity_MULTILEADER *ml =
-          export_multileader(dwg, hdr, v, rec, g, geom_count, flags);
+      Dwg_Entity_MULTILEADER *ml = NULL;
+      /* MULTILEADER is an AutoCAD 2008 class. Writing it into r2000/r2004
+       * makes GstarCAD report a corrupt drawing and drop the callouts. */
+      if (dwg->header.version >= R_2007) {
+        ml = export_multileader(dwg, hdr, v, rec, g, geom_count, flags);
+      }
       if (ml) {
         ent = ml;
         break;
@@ -1195,6 +1392,7 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
       /* If the class entity cannot be built, keep the callout visible. */
       {
         char content[TEXT_CAP];
+        char stored[TEXT_CAP];
         unsigned nvert;
         unsigned i;
         dwg_point_3d *pts;
@@ -1204,9 +1402,11 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
         nvert = (unsigned)((geom_count - 4) / 2);
         if (nvert < 2) return;
         fcb_view_str(v, str_count > 0 ? str_off : 0, content, sizeof(content));
+        encode_tv(dwg, stored, sizeof(stored), content);
         a = pt3(g[geom_count - 4], g[geom_count - 3]);
-        mtext = dwg_add_MTEXT(hdr, &a, 0, content);
+        mtext = dwg_add_MTEXT(hdr, &a, 0, tv_api_arg(stored));
         if (mtext) {
+          assign_tv(&mtext->text, stored);
           mtext->text_height = g[geom_count - 2];
           mtext->x_axis_dir.x = cos(g[geom_count - 1]);
           mtext->x_axis_dir.y = sin(g[geom_count - 1]);
@@ -1296,6 +1496,16 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
       fcb_view_str(v, str_count > 0 ? str_off : 0, value, sizeof(value));
       fcb_view_str(v, str_count > 2 ? str_off + 2 : 0, tag, sizeof(tag));
       fcb_view_str(v, str_count > 3 ? str_off + 3 : 0, prompt, sizeof(prompt));
+      {
+        char stored_value[TEXT_CAP];
+        char stored_prompt[TEXT_CAP];
+        encode_tv(dwg, stored_value, sizeof(stored_value), value);
+        encode_tv(dwg, stored_prompt, sizeof(stored_prompt), prompt);
+        strncpy(value, stored_value, sizeof(value) - 1);
+        value[sizeof(value) - 1] = '\0';
+        strncpy(prompt, stored_prompt, sizeof(prompt) - 1);
+        prompt[sizeof(prompt) - 1] = '\0';
+      }
       if (ints_ok(v, int_off, int_count) && int_count >= 3) {
         mode = (int)ints_at(v, int_off)[2];
       }
@@ -1306,8 +1516,11 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
          * those tags, so build it under a placeholder and put the file's own
          * tag back. */
         Dwg_Entity_ATTDEF *ad =
-            dwg_add_ATTDEF(hdr, g[2], mode, prompt, &a, "TAG", value);
+            dwg_add_ATTDEF(hdr, g[2], mode, tv_api_arg(prompt), &a, "TAG",
+                           tv_api_arg(value));
         if (ad) {
+          assign_tv(&ad->default_value, value);
+          assign_tv(&ad->prompt, prompt);
           if (tag[0]) {
             free(ad->tag);
             ad->tag = dwg_add_u8_input(dwg, tag);
@@ -1329,10 +1542,16 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
     }
     case FCB_TYPE_ATTRIB: {
       char value[TEXT_CAP];
+      char stored[TEXT_CAP];
       if (geom_count < 6 || !g) return;
       fcb_view_str(v, str_count > 0 ? str_off : 0, value, sizeof(value));
+      encode_tv(dwg, stored, sizeof(stored), value);
       a = pt3(g[0], g[1]);
-      ent = dwg_add_TEXT(hdr, value, &a, g[2]);
+      {
+        Dwg_Entity_TEXT *text = dwg_add_TEXT(hdr, tv_api_arg(stored), &a, g[2]);
+        if (text) assign_tv(&text->text_value, stored);
+        ent = text;
+      }
       break;
     }
     case FCB_TYPE_UNKNOWN: {
@@ -1403,8 +1622,8 @@ static int is_default_dimstyle(const char *name) {
   return streq(name, "Standard");
 }
 
-static void fill_ltype_dashes(Dwg_Object_LTYPE *lt, const fcb_view *v,
-                              const uint8_t *rec) {
+static void fill_ltype_dashes(Dwg_Data *dwg, Dwg_Object_LTYPE *lt,
+                              const fcb_view *v, const uint8_t *rec) {
   uint32_t offset;
   uint32_t count;
   uint32_t n;
@@ -1413,7 +1632,11 @@ static void fill_ltype_dashes(Dwg_Object_LTYPE *lt, const fcb_view *v,
   char desc[TEXT_CAP];
   if (!lt || !rec) return;
   fcb_view_str(v, fcb_u32(rec + FCB_LTYPE_DESCRIPTION), desc, sizeof(desc));
-  if (desc[0]) lt->description = strdup(desc);
+  if (desc[0]) {
+    char stored[TEXT_CAP];
+    encode_tv(dwg, stored, sizeof(stored), desc);
+    assign_tv(&lt->description, stored);
+  }
   offset = fcb_u32(rec + FCB_LTYPE_PATTERN_OFFSET);
   count = fcb_u32(rec + FCB_LTYPE_PATTERN_COUNT);
   length = fcb_f64(rec + FCB_LTYPE_PATTERN_LENGTH);
@@ -1434,16 +1657,23 @@ static void fill_ltype_dashes(Dwg_Object_LTYPE *lt, const fcb_view *v,
   lt->pattern_len = length;
 }
 
-static void fill_style_metrics(Dwg_Object_STYLE *style, const fcb_view *v,
-                               const uint8_t *rec) {
+static void fill_style_metrics(Dwg_Data *dwg, Dwg_Object_STYLE *style,
+                               const fcb_view *v, const uint8_t *rec) {
   char font[NAME_CAP];
   char bigfont[NAME_CAP];
   uint32_t flags;
   if (!style || !rec) return;
   fcb_view_str(v, fcb_u32(rec + FCB_STYLE_FONT), font, sizeof(font));
   fcb_view_str(v, fcb_u32(rec + FCB_STYLE_BIGFONT), bigfont, sizeof(bigfont));
-  if (font[0]) style->font_file = strdup(font);
-  if (bigfont[0]) style->bigfont_file = strdup(bigfont);
+  /* dwg_add_STYLE plants txt. An empty font in the source means FONTALT
+   * (Chinese bigfont). Leaving txt makes GstarCAD stroke CJK TEXT as `?`. */
+  {
+    char stored[NAME_CAP];
+    encode_tv(dwg, stored, sizeof(stored), font);
+    assign_tv(&style->font_file, stored);
+    encode_tv(dwg, stored, sizeof(stored), bigfont);
+    assign_tv(&style->bigfont_file, stored);
+  }
   style->text_size = fcb_f64(rec + FCB_STYLE_HEIGHT);
   style->width_factor = fcb_f64(rec + FCB_STYLE_WIDTH);
   if (style->width_factor == 0.0) style->width_factor = 1.0;
@@ -1470,6 +1700,8 @@ static void apply_header_vars(Dwg_Data *dwg, const fcb_view *v) {
       dwg->header_vars.PDMODE = (BITCODE_BS)atoi(value);
     } else if (streq(key, "$PDSIZE")) {
       dwg->header_vars.PDSIZE = strtod(value, NULL);
+    } else if (streq(key, "$DWGCODEPAGE")) {
+      dwg->header.codepage = (BITCODE_RS)atoi(value);
     }
   }
 }
@@ -1842,6 +2074,11 @@ static int write_tmp_and_replace(const char *dwg_path, Dwg_Data *dwg,
   snprintf(bak, sizeof(bak), "%s.bak", dwg_path);
   remove(tmp);
   remove(bak);
+  /* dwg_new_Document sets DWG_OPTS_IN, which includes INJSON. bit_write_TV
+   * then runs bit_utf8_to_TV on every string. FanCAD already stored TV in
+   * the drawing codepage; treating those bytes as UTF-8 turns 型材 into Ѝı
+   * and GstarCAD shows `?`. */
+  dwg->opts &= (unsigned)~DWG_OPTS_INJSON;
   error = dwg_write_file(tmp, dwg);
   if (error >= DWG_ERR_CRITICAL) {
     remove(tmp);
@@ -1905,7 +2142,7 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
       char stored[MIF_CAP];
       Dwg_Object_LTYPE *lt =
           dwg_add_LTYPE(dwg, mif_name(name, stored, sizeof(stored)));
-      if (lt) fill_ltype_dashes(lt, &view, rec);
+      if (lt) fill_ltype_dashes(dwg, lt, &view, rec);
     }
   }
 
@@ -1914,12 +2151,18 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
     char name[NAME_CAP];
     if (!rec) continue;
     fcb_view_str(&view, fcb_u32(rec + FCB_STYLE_NAME), name, sizeof(name));
-    if (!name[0] || is_default_style(name)) continue;
+    if (!name[0]) continue;
+    if (is_default_style(name)) {
+      Dwg_Object_STYLE *style =
+          style_of_handle(dwg, find_named(dwg, name, "STYLE"));
+      if (style) fill_style_metrics(dwg, style, &view, rec);
+      continue;
+    }
     if (!find_named(dwg, name, "STYLE")) {
       char stored[MIF_CAP];
       Dwg_Object_STYLE *style =
           dwg_add_STYLE(dwg, mif_name(name, stored, sizeof(stored)));
-      if (style) fill_style_metrics(style, &view, rec);
+      if (style) fill_style_metrics(dwg, style, &view, rec);
     }
   }
 
@@ -2129,6 +2372,7 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
 
   export_paper_viewports(dwg, &view, headers);
   relink_block_entities(dwg);
+  sync_codepage_name(dwg);
   status = write_tmp_and_replace(dwg_path, dwg, error_out, error_capacity);
   free(headers);
   free(needs_endblk);

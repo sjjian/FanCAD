@@ -871,10 +871,6 @@ static void import_textstyles(import_state *s) {
     if (!entry) continue;
 
     name = dyn_text(entry, "STYLE", "name", &owned_name);
-    if (name && strcmp(name, "Standard") == 0) {
-      dyn_text_free(name, owned_name);
-      continue;
-    }
     font = dyn_text(entry, "STYLE", "font_file", &owned_font);
     bigfont = dyn_text(entry, "STYLE", "bigfont_file", &owned_bigfont);
 

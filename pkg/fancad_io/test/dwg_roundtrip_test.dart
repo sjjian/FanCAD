@@ -109,8 +109,9 @@ void main() {
     );
   }, timeout: Timeout.parse('2m'));
 
-  /// ATTRIB still writes as TEXT. MULTILEADER and REGION now round-trip
-  /// as themselves rather than exploding into LEADER/MTEXT or LWPOLYLINE.
+  /// ATTRIB still writes as TEXT. R2004 cannot store MULTILEADER (an
+  /// AutoCAD 2008 class); the callout stays visible as LEADER + MTEXT.
+  /// REGION still round-trips as itself.
   test(
     'MULTILEADER and REGION survive a DWG round-trip',
     () async {
@@ -169,11 +170,16 @@ void main() {
       );
       expect(
         opened.entities.whereType<MLeaderEntity>(),
-        isNotEmpty,
-        reason: 'MULTILEADER must round-trip as itself',
+        isEmpty,
+        reason: 'R2004 writes MULTILEADER as LEADER+MTEXT',
       );
       expect(
-        opened.entities.whereType<MLeaderEntity>().single.content,
+        opened.entities.whereType<LeaderEntity>(),
+        isNotEmpty,
+        reason: 'the callout stem must remain a LEADER',
+      );
+      expect(
+        opened.entities.whereType<MTextEntity>().single.content,
         contains('callout'),
       );
     },
@@ -1012,6 +1018,26 @@ void main() {
       expect(mtext.position.x, closeTo(80, 1e-6));
     });
 
+    test('hugging right-attached MTEXT is saved as top-left', () async {
+      final opened = await saveAndOpen(
+        CadDocument()..addEntity(
+          const MTextEntity(
+            id: 1,
+            position: Vec2(658, 1162),
+            content: '项目名称：瑞峰园小区',
+            height: 111,
+            attachment: 3,
+          ),
+        ),
+        'hugmtext',
+      );
+      final mtext = opened.entities.whereType<MTextEntity>().single;
+      expect(mtext.attachment, 1);
+      expect(mtext.position.x, closeTo(658, 1e-6));
+      expect(mtext.position.y, closeTo(1162, 1e-6));
+      expect(mtext.content, contains('瑞峰园'));
+    });
+
     test('an ordinate dimension keeps its *D block', () async {
       final opened = await saveAndOpen(
         CadDocument()
@@ -1382,6 +1408,50 @@ void main() {
       expect(opened.textStyles['NOTES']!.height, closeTo(2.5, 1e-6));
       expect(opened.textStyles['NOTES']!.widthFactor, closeTo(0.8, 1e-6));
       expect(opened.textStyles['NOTES']!.obliqueAngle, closeTo(0.15, 1e-6));
+    });
+
+    test('Standard keeps the file font instead of LibreDWG txt', () async {
+      final opened = await saveAndOpen(
+        CadDocument()
+          ..putTextStyle(
+            const TextStyleDef(
+              name: 'Standard',
+              fontFamily: 'simsun.ttf',
+              bigFontFamily: 'gbcbig.shx',
+            ),
+          )
+          ..addEntity(
+            const TextEntity(
+              id: 1,
+              position: Vec2(1, 1),
+              content: 's',
+            ),
+          ),
+        'stdfont',
+      );
+      expect(opened.textStyles['Standard']!.fontFamily, 'simsun.ttf');
+      expect(opened.textStyles['Standard']!.bigFontFamily, 'gbcbig.shx');
+    });
+
+    test('an empty style font is not replaced with txt', () async {
+      final opened = await saveAndOpen(
+        CadDocument()
+          ..putTextStyle(
+            const TextStyleDef(name: '样式 1', fontFamily: '', bigFontFamily: ''),
+          )
+          ..addEntity(
+            const TextEntity(
+              id: 1,
+              position: Vec2(1, 1),
+              content: '绘图',
+              styleName: '样式 1',
+            ),
+          ),
+        'emptyfont',
+      );
+      expect(opened.textStyles['样式 1']!.fontFamily, isEmpty);
+      expect(opened.textStyles['样式 1']!.bigFontFamily, isEmpty);
+      expect(opened.entities.whereType<TextEntity>().single.content, '绘图');
     });
 
     test('dimension styles survive a DWG round trip', () async {
