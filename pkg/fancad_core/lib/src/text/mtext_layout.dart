@@ -73,11 +73,16 @@ class MTextRun {
 /// loses line breaks and stacking, which is why this exists as a real
 /// layout step rather than as a regex.
 class MTextLayout {
-  const MTextLayout({this.measureWidth});
+  const MTextLayout({this.measureWidth, this.hugToAttachment = false});
 
   /// Optional measured width of a run. When null, wrapping uses 0.6 em per
   /// character — close enough for a missing font, wrong for a real SHX.
   final double Function(String text, double height)? measureWidth;
+
+  /// MULTILEADER stores the landing as the attachment corner. Hugging MTEXT
+  /// (width 0) otherwise keeps the insertion on the left of the column so
+  /// title-block notes do not walk off the sheet.
+  final bool hugToAttachment;
 
   List<MTextRun> layout(MTextEntity entity) {
     final paragraphs = _parse(entity.content);
@@ -144,6 +149,7 @@ class MTextLayout {
       if (right > maxRight) maxRight = right;
     }
     final defined = entity.rectangleWidth > 0;
+    final pin = defined || hugToAttachment;
     final columnWidth = defined
         ? entity.rectangleWidth
         : math.max(0.0, maxRight - entity.position.x);
@@ -151,7 +157,7 @@ class MTextLayout {
     final justified = [
       for (final run in runs)
         run.translated(
-          Vec2(_inlineDx(entity, run, columnWidth, defined), 0),
+          Vec2(_inlineDx(entity, run, columnWidth, pin), 0),
         ),
     ];
 
@@ -159,7 +165,7 @@ class MTextLayout {
       TextHAlign.center ||
       TextHAlign.middle ||
       TextHAlign.fit => -columnWidth / 2,
-      TextHAlign.right => defined ? -columnWidth : 0.0,
+      TextHAlign.right => pin ? -columnWidth : 0.0,
       _ => 0.0,
     };
     final dy = switch (entity.vAlign) {

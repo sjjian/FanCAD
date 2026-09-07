@@ -517,6 +517,8 @@ String? _omitVAlign(TextVAlign value) =>
 
 int? _omitAttachment(int value) => value == 1 ? null : value;
 
+int? _omitMLeaderAttachment(int value) => value == 4 ? null : value;
+
 T _enumOf<T extends Enum>(List<T> values, Object? raw, T fallback) =>
     enumFromJson(values, raw, fallback);
 

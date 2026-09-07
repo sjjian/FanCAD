@@ -568,6 +568,10 @@ class QueryCommands {
         record
           ..['text'] = content
           ..['position'] = [position.x, position.y];
+      case MLeaderEntity(:final content, :final textPosition):
+        record
+          ..['text'] = content
+          ..['position'] = [textPosition.x, textPosition.y];
       case InsertEntity(:final blockName, :final position, :final attributes):
         record
           ..['block'] = blockName

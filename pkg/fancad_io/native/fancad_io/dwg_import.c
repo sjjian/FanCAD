@@ -475,6 +475,79 @@ static char *mif_to_utf8(const char *src) {
   return out;
 }
 
+/* R2007+ BITCODE_T is UCS-2LE, NUL-terminated as 16-bit units. A C-string
+ * read stops at the first ASCII character (`{` of `{\F宋体;…}`), so the
+ * note never reaches FCB. Walk the wide string instead. */
+static char *ucs2le_to_utf8(const unsigned char *src) {
+  size_t n = 0;
+  size_t i;
+  size_t o = 0;
+  size_t cap;
+  char *out;
+  if (!src) return NULL;
+  while (src[n * 2] || src[n * 2 + 1]) n++;
+  cap = n * 4 + 1;
+  out = (char *)malloc(cap);
+  if (!out) return NULL;
+  for (i = 0; i < n; i++) {
+    unsigned cp = (unsigned)src[i * 2] | ((unsigned)src[i * 2 + 1] << 8);
+    if (cp >= 0xD800u && cp <= 0xDBFFu && i + 1 < n) {
+      unsigned lo =
+          (unsigned)src[(i + 1) * 2] | ((unsigned)src[(i + 1) * 2 + 1] << 8);
+      if (lo >= 0xDC00u && lo <= 0xDFFFu) {
+        cp = 0x10000u + ((cp - 0xD800u) << 10) + (lo - 0xDC00u);
+        i++;
+      }
+    }
+    if (!utf8_put(out, cap, &o, cp)) {
+      free(out);
+      return NULL;
+    }
+  }
+  out[o] = '\0';
+  return out;
+}
+
+static int dwg_text_is_ucs2(void *entity, const char *raw) {
+  int error = 0;
+  const Dwg_Object *obj;
+  if (raw && raw[0] && raw[1] == '\0') return 1;
+  obj = dwg_obj_generic_to_object(entity, &error);
+  if (!obj || !obj->parent) return 0;
+  return obj->parent->header.from_version >= R_2007 ||
+         obj->parent->header.version >= R_2007;
+}
+
+static char *import_t_utf8(void *entity, const char *raw, int *owned) {
+  char *text = NULL;
+  char *mif;
+  const unsigned char *bytes = (const unsigned char *)raw;
+  *owned = 0;
+  if (!bytes) return NULL;
+  if (dwg_text_is_ucs2(entity, raw)) {
+    if (!bytes[0] && !bytes[1]) return NULL;
+    text = ucs2le_to_utf8(bytes);
+    if (!text) return NULL;
+    *owned = 1;
+  } else if (!raw[0]) {
+    return NULL;
+  } else {
+    text = tv_to_utf8(raw, entity_codepage(entity));
+    if (text) {
+      *owned = 1;
+    } else {
+      text = (char *)raw;
+    }
+  }
+  mif = mif_to_utf8(text);
+  if (mif) {
+    if (*owned) free(text);
+    text = mif;
+    *owned = 1;
+  }
+  return text;
+}
+
 /* Reads a text field through the dynamic API, which transparently converts
  * the UTF-16 encoding used by R2007 and newer. The caller must call
  * dyn_text_free on the result. */
@@ -1778,18 +1851,11 @@ static int import_multileader(import_state *s, Dwg_Entity_MULTILEADER *o,
 
   if (ctx->has_content_txt) {
     char *raw = ctx->content.txt.default_text;
-    char *converted;
     text_x = ctx->content.txt.location.x;
     text_y = ctx->content.txt.location.y;
     if (ctx->content.txt.height > 0.0) text_h = ctx->content.txt.height;
     text_rot = ctx->content.txt.rotation;
-    converted = raw ? tv_to_utf8(raw, entity_codepage(o)) : NULL;
-    if (converted) {
-      text = converted;
-      owned_text = 1;
-    } else {
-      text = raw;
-    }
+    text = import_t_utf8(o, raw, &owned_text);
     box_add(bounds, text_x, text_y);
   } else {
     text_x = ctx->content_base.x;
@@ -1805,9 +1871,41 @@ static int import_multileader(import_state *s, Dwg_Entity_MULTILEADER *o,
     e->int_offset = fcb_add_ints(s->b, path_counts, path_count);
     e->int_count = path_count;
   }
-  e->string_offset = fcb_append_string(s->b, text ? text : "");
-  fcb_append_string(s->b, "Standard");
-  e->string_count = 2;
+  {
+    char attach[8];
+    Dwg_Object_Ref *style_ref = NULL;
+    char *style_name = NULL;
+    int owned_style = 0;
+    int attachment = 4;
+    if (ctx->has_content_txt) {
+      switch (ctx->content.txt.alignment) {
+        case 2:
+          attachment = 5;
+          break;
+        case 3:
+          attachment = 6;
+          break;
+        default:
+          attachment = 4;
+          break;
+      }
+      style_ref = ctx->content.txt.style;
+    }
+    if (!style_ref) style_ref = o->text_style;
+    if (style_ref && style_ref->obj &&
+        style_ref->obj->supertype == DWG_SUPERTYPE_OBJECT &&
+        style_ref->obj->tio.object->tio.STYLE) {
+      style_name = dyn_text(style_ref->obj->tio.object->tio.STYLE, "STYLE",
+                            "name", &owned_style);
+    }
+    snprintf(attach, sizeof(attach), "%d", attachment);
+    e->string_offset = fcb_append_string(s->b, text ? text : "");
+    fcb_append_string(s->b,
+                      style_name && style_name[0] ? style_name : "Standard");
+    fcb_append_string(s->b, attach);
+    e->string_count = 3;
+    dyn_text_free(style_name, owned_style);
+  }
   e->flags |= FCB_FLAG_ARROW_HEAD;
   attach_geometry(s, e);
   dyn_text_free(text, owned_text);

@@ -2,39 +2,39 @@
 library;
 
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
 import 'package:test/test.dart';
 
-/// A Chinese R2004 process drawing from the HunterDouglas sample set.
-/// CI does not ship it; the test is skipped when the file is absent.
-const String _sample = '/Users/sunjian/Downloads/亨特道格拉斯/案例2/'
-    'SOAS00002617---QC50+25mm+U型槽/工艺 -SOAS00002617.dwg';
-
 void main() {
-  test('MULTILEADER objects import as editable mleaders, not empty proxies',
-      () async {
-    if (!File(_sample).existsSync()) {
-      markTestSkipped('sample DWG is not on this machine');
-      return;
-    }
-    final opened = await DrawingImporter().open(_sample);
-    final leaders = opened.document.entities.whereType<MLeaderEntity>().toList();
-    expect(leaders, isNotEmpty);
-    expect(
-      leaders.any(
-        (entity) =>
-            entity.vertices.length >= 4 &&
-            (entity.content.isNotEmpty || entity.computeBounds().isNotEmpty),
-      ),
-      isTrue,
-    );
+  test('a CJK multileader note stays visible through DWG save', () async {
+    final directory = Directory.systemTemp.createTempSync('fancad-mleader');
+    addTearDown(() => directory.deleteSync(recursive: true));
 
-    final unknown = opened.document.entities.whereType<UnknownEntity>().toList();
-    expect(
-      unknown.where((entity) => entity.originalType.contains('MULTILEADER')),
-      isEmpty,
-    );
+    final document = CadDocument()
+      ..addEntity(
+        MLeaderEntity(
+          id: 1,
+          vertices: Float64List.fromList([0, 0, 10, 10, 16, 10]),
+          content: r'{\F宋体|c134;注释}',
+          textPosition: const Vec2(16, 10),
+          textHeight: 35,
+          attachment: 6,
+        ),
+      );
+
+    final importer = DrawingImporter();
+    final path = '${directory.path}/note.dwg';
+    await importer.save(path, document);
+    final opened = await importer.open(path);
+
+    final sink = PolylineSink();
+    for (final entity in opened.document.entities) {
+      entity.emit(const EmitContext(tolerance: 0.1), sink);
+    }
+    expect(sink.texts.any((run) => run.text.contains('注释')), isTrue);
+    expect(sink.texts.any((run) => run.fontFamily == '宋体'), isTrue);
   });
 }

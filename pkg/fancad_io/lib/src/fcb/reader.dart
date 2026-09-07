@@ -1001,6 +1001,7 @@ class FcbReader {
           textHeight: geom[textOffset + 2] == 0 ? 2.5 : geom[textOffset + 2],
           textRotation: geom[textOffset + 3],
           styleName: stringAt(1).isEmpty ? 'Standard' : stringAt(1),
+          attachment: int.tryParse(stringAt(2)) ?? 4,
         );
 
       case FcbType.solid:

@@ -626,6 +626,7 @@ class FcbWriter {
         final (stringOffset, stringCount) = _strings.internRun([
           entity.content,
           entity.styleName,
+          '${entity.attachment}',
         ]);
         return _Payload(
           geomOffset: _doubles.addAll([

@@ -116,6 +116,8 @@ Map<String, dynamic> _$MLeaderEntityToJson(MLeaderEntity instance) =>
       if (omitZero(instance.textHeight) case final value?) 'height': value,
       if (omitZero(instance.textRotation) case final value?) 'rotation': value,
       'style': instance.styleName,
+      if (_omitMLeaderAttachment(instance.attachment) case final value?)
+        'attachment': value,
     };
 
 Map<String, dynamic> _$HatchEntityToJson(
