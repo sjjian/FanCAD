@@ -53,6 +53,56 @@ void main() {
     expect(member.end, const Vec2(2, 0));
   });
 
+  test('a pasted named insert keeps nested *D in the block', () {
+    // 角码1-style: the ticks live in *D, the measured edges live in MARK.
+    // Shifting only *D by the paste delta leaves the ticks behind.
+    final source = CadDocument();
+    final build = Transaction(source, label: 'build');
+    build.putBlock(
+      const BlockRecord(name: '*D1', isAnonymous: true, entityIds: []),
+    );
+    build.add(
+      const LineEntity(id: 0, start: Vec2(100, 0), end: Vec2(110, 0)),
+      blockName: '*D1',
+    );
+    build.putBlock(const BlockRecord(name: 'MARK', entityIds: []));
+    build.add(
+      const LineEntity(id: 0, start: Vec2(100, 0), end: Vec2(110, 0)),
+      blockName: 'MARK',
+    );
+    build.add(
+      const DimensionEntity(
+        id: 0,
+        blockName: '*D1',
+        definitionPoints: [Vec2(100, 0), Vec2(110, 0), Vec2(105, 5)],
+        textPosition: Vec2(105, 5),
+        measurement: 10,
+      ),
+      blockName: 'MARK',
+    );
+    final insertId = build.add(
+      const InsertEntity(id: 0, blockName: 'MARK', position: Vec2(5, 5)),
+    );
+    build.commit();
+    final clip = DrawingClip.extract(source, [
+      insertId,
+    ], basePoint: const Vec2.zero())!;
+
+    final target = CadDocument();
+    final paste = Transaction(target, label: 'Paste');
+    final placed = clip.paste(paste, insertion: const Vec2(20, 10));
+    paste.commit();
+
+    final insert = target.entity(placed.single)! as InsertEntity;
+    expect(insert.position, const Vec2(25, 15));
+    final member = target.entitiesOf('MARK').whereType<LineEntity>().single;
+    expect(member.start, const Vec2(100, 0));
+    final dim = target.entitiesOf('MARK').whereType<DimensionEntity>().single;
+    final tick = target.entitiesOf(dim.blockName).whereType<LineEntity>().single;
+    expect(tick.start, const Vec2(100, 0));
+    expect(tick.end, const Vec2(110, 0));
+  });
+
   test('a pasted *U insert does not translate its members', () {
     final source = CadDocument();
     final build = Transaction(source, label: 'build');

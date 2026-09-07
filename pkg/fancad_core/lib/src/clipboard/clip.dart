@@ -175,6 +175,35 @@ class DrawingClip {
       toImport.add(block.name);
     }
 
+    // *D lives in the same space as the DIMENSION that names it. A nested
+    // dimension inside MARK must not have its *D shifted while MARK stays
+    // put — that is how a pasted 角码1 lost its ticks.
+    final dimContainer = <String, String>{};
+    void noteDimension(CadEntity entity, String container) {
+      if (entity is! DimensionEntity || entity.blockName.isEmpty) return;
+      dimContainer[entity.blockName] = container;
+    }
+
+    for (final entity in entities) {
+      noteDimension(entity, '');
+    }
+    for (final block in blocks.values) {
+      for (final id in block.entityIds) {
+        final entity = blockEntities[id];
+        if (entity != null) noteDimension(entity, block.name);
+      }
+    }
+
+    bool moveMembers(BlockRecord block) {
+      if (!_membersLiveInWorld(block)) return false;
+      final container = dimContainer[block.name];
+      if (container == null) return !asBlock;
+      if (container.isEmpty) return !asBlock;
+      final parent = blocks[container];
+      if (parent == null) return !asBlock;
+      return moveMembers(parent);
+    }
+
     for (final sourceName in toImport) {
       final block = blocks[sourceName]!;
       final destName = nameMap[sourceName]!;
@@ -211,13 +240,14 @@ class DrawingClip {
     for (final sourceName in toImport) {
       final block = blocks[sourceName]!;
       final destName = nameMap[sourceName]!;
-      // INSERT carries block-local geometry. Only *D lives in WCS like
-      // the dimension that owns it, so those members take the paste delta.
-      final moveMembers = _membersLiveInWorld(block);
+      // INSERT carries block-local geometry. *D follows the DIMENSION that
+      // owns it: model-space dims move with the paste delta, nested dims
+      // stay in the named block's coordinates.
+      final move = moveMembers(block);
       for (final id in block.entityIds) {
         final entity = blockEntities[id];
         if (entity == null) continue;
-        stage(entity, destName, transform: moveMembers, placed: false);
+        stage(entity, destName, transform: move, placed: false);
       }
     }
 
@@ -289,9 +319,9 @@ class DrawingClipboard {
   bool get isEmpty => clip == null || clip!.isEmpty;
 }
 
-/// `*D` dimension geometry is stored in world coordinates. Named blocks
-/// and anonymous `*U` inserts stay put; their INSERT is what the paste
-/// delta moves.
+/// `*D` dimension geometry is stored with the DIMENSION that names it.
+/// Model-space dims are WCS; a *D nested through a named insert stays in
+/// that block. The paste delta follows the owner, not the `*D` prefix.
 bool _membersLiveInWorld(BlockRecord block) {
   if (block.isLayoutBlock) return false;
   final name = block.name;
