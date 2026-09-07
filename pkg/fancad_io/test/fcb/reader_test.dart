@@ -1,7 +1,10 @@
 import 'dart:typed_data';
 
+import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_io/src/fcb/format.dart';
+import 'package:fancad_io/src/fcb/reader.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -62,6 +65,25 @@ void main() {
           contains('extends past the end of the buffer'),
         ),
       ),
+    );
+  });
+
+  eachNamed({
+    'six numbers stay at the insertion point': [0.0, 0.0, 2.5, 0.0, 1.0, 0.0],
+    'eight numbers use the trailing alignment point': [
+      0.0,
+      0.0,
+      2.5,
+      0.0,
+      1.0,
+      0.0,
+      50.0,
+      20.0,
+    ],
+  }, (geom) {
+    expect(
+      fcbTextPosition(geom),
+      geom.length > 6 ? const Vec2(50, 20) : const Vec2(0, 0),
     );
   });
 }
