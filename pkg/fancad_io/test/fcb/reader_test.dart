@@ -86,4 +86,14 @@ void main() {
       geom.length > 6 ? const Vec2(50, 20) : const Vec2(0, 0),
     );
   });
+
+  test('a bad magic is rejected', () {
+    expect(() => FcbReader(Uint8List(64)), throwsA(isA<FcbFormatException>()));
+  });
+
+  test('a truncated buffer is rejected', () {
+    final full = FcbWriter().write(CadDocument());
+    final truncated = Uint8List.sublistView(full, 0, 40);
+    expect(() => FcbReader(truncated), throwsA(isA<FcbFormatException>()));
+  });
 }
