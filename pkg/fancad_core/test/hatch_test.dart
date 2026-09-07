@@ -184,6 +184,47 @@ void main() {
         }
       }
     });
+
+    test('pattern dashes stay short instead of spanning the boundary', () {
+      // AR-CONC stores stones as a few-unit dash and a long gap. Drawing the
+      // clipped line solid fills the region with a smear of parallel lines.
+      final hatch = HatchEntity(
+        id: 1,
+        solid: false,
+        patternName: 'AR-CONC',
+        loops: [
+          HatchLoop(
+            vertices: Float64List.fromList([0, 0, 100, 0, 100, 100, 0, 100]),
+          ),
+        ],
+        patternLines: const [
+          HatchPatternLine(
+            angle: 0,
+            deltaY: 40,
+            dashes: [8, -32],
+          ),
+        ],
+      );
+      final strokes = const HatchGenerator().generate(hatch);
+      expect(strokes, isNotEmpty);
+      for (final stroke in strokes) {
+        final dx = stroke[2] - stroke[0];
+        final dy = stroke[3] - stroke[1];
+        expect(math.sqrt(dx * dx + dy * dy), closeTo(8, 1e-6));
+      }
+    });
+
+    test('zero-length dashes become dots, not a continuous line', () {
+      final strokes = const HatchGenerator().generate(
+        boxHatch(pattern: 'DOTS'),
+      );
+      expect(strokes, isNotEmpty);
+      for (final stroke in strokes) {
+        final dx = stroke[2] - stroke[0];
+        final dy = stroke[3] - stroke[1];
+        expect(math.sqrt(dx * dx + dy * dy), lessThan(1));
+      }
+    });
   });
 
   group('HatchEntity', () {
