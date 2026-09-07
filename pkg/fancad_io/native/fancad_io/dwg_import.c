@@ -718,6 +718,18 @@ static int dyn_push_3d(coords *g, box *bounds, void *entity, const char *type,
   return 1;
 }
 
+/* Dynapi misses xline/def on some R2018 class names. The struct still
+ * holds DXF 13/14/10. */
+static int dyn_or_struct_3d(coords *g, box *bounds, void *entity,
+                            const char *type, const char *field,
+                            const BITCODE_3BD *fallback) {
+  if (dyn_push_3d(g, bounds, entity, type, field)) return 1;
+  if (!fallback) return 0;
+  coords_push2(g, fallback->x, fallback->y);
+  box_add(bounds, fallback->x, fallback->y);
+  return 1;
+}
+
 /* -------------------------------------------------------------------------
  * Import state
  * ------------------------------------------------------------------------- */
@@ -3156,10 +3168,17 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
           dwg_dynapi_entity_value(o, dimension_name, "flag", &flag, NULL);
           dwg_dynapi_entity_value(o, dimension_name, "flag2", &flag2, NULL);
           switch (obj->fixedtype) {
-            case DWG_TYPE_DIMENSION_ALIGNED:
-              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline1_pt");
-              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline2_pt");
+            case DWG_TYPE_DIMENSION_ALIGNED: {
+              Dwg_Entity_DIMENSION_ALIGNED *d =
+                  (Dwg_Entity_DIMENSION_ALIGNED *)o;
+              npts += dyn_or_struct_3d(g, &bounds, o, dimension_name,
+                                       "xline1_pt", &d->xline1_pt);
+              npts += dyn_or_struct_3d(g, &bounds, o, dimension_name,
+                                       "xline2_pt", &d->xline2_pt);
+              npts += dyn_or_struct_3d(g, &bounds, o, dimension_name,
+                                       "def_pt", &d->def_pt);
               break;
+            }
             case DWG_TYPE_DIMENSION_ANG2LN:
               npts += dyn_push_3d(g, &bounds, o, dimension_name, "center_pt");
               npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline1end_pt");
@@ -3179,11 +3198,17 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
               npts += dyn_push_3d(g, &bounds, o, dimension_name, "feature_location_pt");
               npts += dyn_push_3d(g, &bounds, o, dimension_name, "leader_endpt");
               break;
-            default:
-              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline1_pt");
-              npts += dyn_push_3d(g, &bounds, o, dimension_name, "xline2_pt");
-              npts += dyn_push_3d(g, &bounds, o, dimension_name, "def_pt");
+            default: {
+              Dwg_Entity_DIMENSION_LINEAR *d =
+                  (Dwg_Entity_DIMENSION_LINEAR *)o;
+              npts += dyn_or_struct_3d(g, &bounds, o, dimension_name,
+                                       "xline1_pt", &d->xline1_pt);
+              npts += dyn_or_struct_3d(g, &bounds, o, dimension_name,
+                                       "xline2_pt", &d->xline2_pt);
+              npts += dyn_or_struct_3d(g, &bounds, o, dimension_name,
+                                       "def_pt", &d->def_pt);
               break;
+            }
           }
           dim_ints[0] = (int64_t)(family | (flag & ~0x0F) | (flag2 ? 64 : 0));
           dim_ints[1] = (int64_t)npts;

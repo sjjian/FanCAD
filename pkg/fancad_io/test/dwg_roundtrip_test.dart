@@ -639,8 +639,9 @@ void main() {
         final dim = opened.entities.whereType<DimensionEntity>().single;
         expect(dim.blockName, '*D1');
         expect(dim.measurement, closeTo(10, 1e-6));
-        expect(dim.definitionPoints, hasLength(2));
+        expect(dim.definitionPoints, hasLength(3));
         expect(dim.definitionPoints[1], const Vec2(8, 6));
+        expect(dim.definitionPoints[2], const Vec2(4, 8));
         expect(opened.entitiesOf('*D1').whereType<LineEntity>(), hasLength(1));
       },
     );
