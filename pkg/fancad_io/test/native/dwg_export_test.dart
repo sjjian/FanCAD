@@ -527,80 +527,95 @@ void main() {
       );
     });
 
-    test('a RAY keeps origin and direction', () async {
-      final source = CadDocument()
-        ..addEntity(
-          const RayEntity(id: 1, origin: Vec2(2, 3), direction: Vec2(0, 1)),
-        );
-      final opened = await rt.dwg(source, name: 'ray');
-      expectMatchingSnapshots(source, opened, step: 'ray');
-    });
-
-    test('an XLINE keeps origin and direction', () async {
-      final source = CadDocument()
-        ..addEntity(
-          const XLineEntity(id: 1, origin: Vec2(4, 5), direction: Vec2(1, 0)),
-        );
-      final opened = await rt.dwg(source, name: 'xline');
-      expectMatchingSnapshots(source, opened, step: 'xline');
-    });
-
-    test('a spline keeps degree and control points', () async {
-      final source = CadDocument()
-        ..addEntity(
-          SplineEntity(
-            id: 1,
-            controlPoints: Float64List.fromList([0, 0, 2, 4, 6, 4, 8, 0]),
-            degree: 3,
-            knots: const [0, 0, 0, 0, 1, 1, 1, 1],
-          ),
-        );
-      final opened = await rt.dwg(source, name: 'spline');
-      expectMatchingSnapshots(source, opened, step: 'spline');
-    });
-
-    test('a four-corner SOLID keeps Z-order corners', () async {
-      final source = CadDocument()
-        ..addEntity(
-          const SolidEntity(
-            id: 1,
-            corners: [Vec2(0, 0), Vec2(4, 0), Vec2(4, 3), Vec2(0, 3)],
-          ),
-        );
-      final opened = await rt.dwg(source, name: 'solid4');
-      expectMatchingSnapshots(source, opened, step: 'quad solid');
-    });
-
-    test('an ARC keeps centre, radius and sweep', () async {
-      final source = CadDocument()
-        ..addEntity(
-          const ArcEntity(
-            id: 1,
-            center: Vec2(10, 20),
-            radius: 5,
-            startAngle: 0.25,
-            endAngle: 2.5,
-          ),
-        );
-      final opened = await rt.dwg(source, name: 'arc');
-      expectMatchingSnapshots(source, opened, step: 'arc');
-    });
-
-    test('a solid hatch keeps its outer loop', () async {
-      final source = CadDocument()
-        ..addEntity(
-          HatchEntity(
-            id: 1,
-            loops: [
-              HatchLoop(
-                vertices: Float64List.fromList([0, 0, 8, 0, 8, 6, 0, 6]),
+    eachCase(
+      [
+        (
+          name: 'a RAY keeps origin and direction',
+          file: 'ray',
+          step: 'ray',
+          build: () => CadDocument()
+            ..addEntity(
+              const RayEntity(id: 1, origin: Vec2(2, 3), direction: Vec2(0, 1)),
+            ),
+        ),
+        (
+          name: 'an XLINE keeps origin and direction',
+          file: 'xline',
+          step: 'xline',
+          build: () => CadDocument()
+            ..addEntity(
+              const XLineEntity(
+                id: 1,
+                origin: Vec2(4, 5),
+                direction: Vec2(1, 0),
               ),
-            ],
-          ),
-        );
-      final opened = await rt.dwg(source, name: 'hatch');
-      expectMatchingSnapshots(source, opened, step: 'hatch');
-    });
+            ),
+        ),
+        (
+          name: 'a spline keeps degree and control points',
+          file: 'spline',
+          step: 'spline',
+          build: () => CadDocument()
+            ..addEntity(
+              SplineEntity(
+                id: 1,
+                controlPoints: Float64List.fromList([0, 0, 2, 4, 6, 4, 8, 0]),
+                degree: 3,
+                knots: const [0, 0, 0, 0, 1, 1, 1, 1],
+              ),
+            ),
+        ),
+        (
+          name: 'a four-corner SOLID keeps Z-order corners',
+          file: 'solid4',
+          step: 'quad solid',
+          build: () => CadDocument()
+            ..addEntity(
+              const SolidEntity(
+                id: 1,
+                corners: [Vec2(0, 0), Vec2(4, 0), Vec2(4, 3), Vec2(0, 3)],
+              ),
+            ),
+        ),
+        (
+          name: 'an ARC keeps centre, radius and sweep',
+          file: 'arc',
+          step: 'arc',
+          build: () => CadDocument()
+            ..addEntity(
+              const ArcEntity(
+                id: 1,
+                center: Vec2(10, 20),
+                radius: 5,
+                startAngle: 0.25,
+                endAngle: 2.5,
+              ),
+            ),
+        ),
+        (
+          name: 'a solid hatch keeps its outer loop',
+          file: 'hatch',
+          step: 'hatch',
+          build: () => CadDocument()
+            ..addEntity(
+              HatchEntity(
+                id: 1,
+                loops: [
+                  HatchLoop(
+                    vertices: Float64List.fromList([0, 0, 8, 0, 8, 6, 0, 6]),
+                  ),
+                ],
+              ),
+            ),
+        ),
+      ],
+      (c) async {
+        final source = c.build();
+        final opened = await rt.dwg(source, name: c.file);
+        expectMatchingSnapshots(source, opened, step: c.step);
+      },
+      timeout: Roundtrip.timeout,
+    );
 
     test('a hatch with a hole keeps both loops', () async {
       final opened = await rt.dwg(
@@ -675,27 +690,40 @@ void main() {
       expect(hatch.loops.single.vertices[2], closeTo(20, 1e-6));
     });
 
-    test('a POINT and CIRCLE keep their geometry', () async {
-      final source = CadDocument()
-        ..addEntity(const PointEntity(id: 1, position: Vec2(3, 4)))
-        ..addEntity(const CircleEntity(id: 2, center: Vec2(8, 9), radius: 2.5));
-      final opened = await rt.dwg(source, name: 'ptcirc');
-      expectMatchingSnapshots(source, opened, step: 'point circle');
-    });
-
-    test('a full ellipse keeps major axis and ratio', () async {
-      final source = CadDocument()
-        ..addEntity(
-          const EllipseEntity(
-            id: 1,
-            center: Vec2(1, 2),
-            majorAxis: Vec2(6, 2),
-            ratio: 0.35,
-          ),
-        );
-      final opened = await rt.dwg(source, name: 'ellipse');
-      expectMatchingSnapshots(source, opened, step: 'full ellipse');
-    });
+    eachCase(
+      [
+        (
+          name: 'a POINT and CIRCLE keep their geometry',
+          file: 'ptcirc',
+          step: 'point circle',
+          build: () => CadDocument()
+            ..addEntity(const PointEntity(id: 1, position: Vec2(3, 4)))
+            ..addEntity(
+              const CircleEntity(id: 2, center: Vec2(8, 9), radius: 2.5),
+            ),
+        ),
+        (
+          name: 'a full ellipse keeps major axis and ratio',
+          file: 'ellipse',
+          step: 'full ellipse',
+          build: () => CadDocument()
+            ..addEntity(
+              const EllipseEntity(
+                id: 1,
+                center: Vec2(1, 2),
+                majorAxis: Vec2(6, 2),
+                ratio: 0.35,
+              ),
+            ),
+        ),
+      ],
+      (c) async {
+        final source = c.build();
+        final opened = await rt.dwg(source, name: c.file);
+        expectMatchingSnapshots(source, opened, step: c.step);
+      },
+      timeout: Roundtrip.timeout,
+    );
 
     test('TEXT keeps width factor and oblique angle', () async {
       final opened = await rt.dwg(

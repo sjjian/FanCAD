@@ -7,6 +7,7 @@ import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
 /// Guards the half of the build that CI can only exercise when LibreDWG is
@@ -42,8 +43,7 @@ void main() {
   });
 
   test('an empty drawing saves as DWG and reopens', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-empty');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-empty');
 
     final dwgPath = '${directory.path}/Drawing1.dwg';
     final outcome = await importer.save(dwgPath, CadDocument());
@@ -56,8 +56,7 @@ void main() {
   });
 
   test('a line survives FCB to DWG and back', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-libredwg');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-libredwg');
 
     final document = CadDocument();
     final session = DocumentSession(id: 'native', document: document);
@@ -86,8 +85,7 @@ void main() {
   });
 
   test('DWG import keeps layout names and paper size', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-layout');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-layout');
 
     final document = CadDocument();
     document.addLayout(
@@ -151,8 +149,7 @@ void main() {
   test(
     'BLOCK/ENDBLK stay out of the entity list and base points survive',
     () async {
-      final directory = Directory.systemTemp.createTempSync('fancad-block');
-      addTearDown(() => directory.deleteSync(recursive: true));
+      final directory = tempDir(prefix: 'fancad-block');
 
       final document = CadDocument()
         ..putBlock(const BlockRecord(name: 'TICK', basePoint: Vec2(100, 50)))
@@ -201,8 +198,7 @@ void main() {
   );
 
   test('INSERT still lands when the block name is not ASCII', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-cjk-insert');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-cjk-insert');
 
     const names = ['面板信息', 'GB12618-90-4×铆厚5_5', 'A\$C73572138'];
     final document = CadDocument();
@@ -260,8 +256,7 @@ void main() {
   });
 
   test('an INSERT with attributes still points at its own block', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-attrib');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-attrib');
 
     final document = CadDocument()
       ..putBlock(BlockRecord(name: 'TITLE'))
@@ -297,8 +292,7 @@ void main() {
   });
 
   test('block members come back inside their block', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-owned');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-owned');
 
     final document = CadDocument()..putBlock(BlockRecord(name: 'PART'));
     for (var i = 0; i < 6; i++) {
@@ -339,8 +333,7 @@ void main() {
   });
 
   test('justified text and a lowercase ATTDEF tag survive', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-justify');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-justify');
 
     final document = CadDocument()
       ..addEntity(
@@ -387,8 +380,7 @@ void main() {
   });
 
   test('a polyline keeps vertex stride and bulge', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-pline');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-pline');
 
     final document = CadDocument()
       ..addEntity(
@@ -416,8 +408,7 @@ void main() {
   });
 
   test('a rotated ellipse keeps its major axis', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-ellipse');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-ellipse');
 
     final document = CadDocument()
       ..addEntity(
@@ -442,8 +433,7 @@ void main() {
   });
 
   test('a second paper tab does not share the first sheet block', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-sheets');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-sheets');
 
     final document = CadDocument();
     document.addLayout(
@@ -505,8 +495,7 @@ void main() {
   });
 
   test('circle, arc, point and text survive FCB to DWG', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-prims');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-prims');
 
     final document = CadDocument()
       ..addEntity(const CircleEntity(id: 1, center: Vec2(3, 4), radius: 5))
@@ -559,8 +548,7 @@ void main() {
   });
 
   test('a custom layer name survives FCB to DWG', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-layer');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-layer');
 
     final document = CadDocument()
       ..putLayer(const LayerDef(name: 'WALLS'))
@@ -585,8 +573,7 @@ void main() {
   });
 
   test('a CJK layer name stays bound after DWG save', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-cjk-layer');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-cjk-layer');
 
     const layerName = '标注线';
     final document = CadDocument()
@@ -618,8 +605,7 @@ void main() {
   });
 
   test('saving over an existing DWG replaces the previous drawing', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-overwrite');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-overwrite');
 
     final dwgPath = '${directory.path}/sheet.dwg';
     await importer.save(
@@ -643,8 +629,7 @@ void main() {
   });
 
   test('every FanCAD entity kind survives FCB to DWG', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-kinds');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-kinds');
 
     final document = CadDocument()
       ..putBlock(const BlockRecord(name: 'TITLE', basePoint: Vec2.zero()))
@@ -827,8 +812,7 @@ void main() {
   });
 
   test('a *D dimension is not rewritten as a ray from the origin', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-dimblock');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-dimblock');
 
     final document = CadDocument()
       ..putBlock(const BlockRecord(name: '*D1', isAnonymous: true))
@@ -872,8 +856,7 @@ void main() {
   });
 
   test('a *D TEXT that kept MTEXT font codes still paints the note', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-dimcjk');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-dimcjk');
 
     const raw = r'{\F宋体|c134;型材1}';
     final document = CadDocument()
@@ -914,8 +897,7 @@ void main() {
   });
 
   test('CJK notes are stored as GBK in an R2004 DWG, not UTF-8', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-gbk');
-    addTearDown(() => directory.deleteSync(recursive: true));
+    final directory = tempDir(prefix: 'fancad-gbk');
 
     const note = '型材1';
     final document = CadDocument()
@@ -947,45 +929,49 @@ void main() {
     expect(
       _containsBytes(bytes, gbkNote) ||
           _containsBytes(bytes, r'\U+578B'.codeUnits) ||
-          opened.entities.whereType<MTextEntity>().single.content.contains(note),
+          opened.entities.whereType<MTextEntity>().single.content.contains(
+            note,
+          ),
       isTrue,
       reason: 'GstarCAD reads R2004 TV bytes as GBK; UTF-8 becomes ?',
     );
   });
 
-  test('CJK TEXT on an empty-font style stays GBK, not question marks', () async {
-    final directory = Directory.systemTemp.createTempSync('fancad-stylecjk');
-    addTearDown(() => directory.deleteSync(recursive: true));
+  test(
+    'CJK TEXT on an empty-font style stays GBK, not question marks',
+    () async {
+      final directory = tempDir(prefix: 'fancad-stylecjk');
 
-    const note = '绘图';
-    final document = CadDocument()
-      ..putTextStyle(
-        const TextStyleDef(name: '样式 1', fontFamily: '', bigFontFamily: ''),
-      )
-      ..addEntity(
-        const TextEntity(
-          id: 1,
-          position: Vec2(0, 0),
-          content: note,
-          styleName: '样式 1',
-        ),
+      const note = '绘图';
+      final document = CadDocument()
+        ..putTextStyle(
+          const TextStyleDef(name: '样式 1', fontFamily: '', bigFontFamily: ''),
+        )
+        ..addEntity(
+          const TextEntity(
+            id: 1,
+            position: Vec2(0, 0),
+            content: note,
+            styleName: '样式 1',
+          ),
+        );
+
+      final dwgPath = '${directory.path}/label.dwg';
+      await importer.save(dwgPath, document);
+      final opened = (await importer.open(dwgPath)).document;
+      expect(opened.entities.whereType<TextEntity>().single.content, note);
+      expect(opened.textStyles['样式 1']!.fontFamily, isNot('txt'));
+
+      final dumped = const DxfWriter().writeString(opened);
+      const utf8Note = [0xE7, 0xBB, 0x98, 0xE5, 0x9B, 0xBE];
+      expect(
+        dumped.contains(note),
+        isTrue,
+        reason: 'FanCAD DXF is UTF-8; the note must still round-trip',
       );
-
-    final dwgPath = '${directory.path}/label.dwg';
-    await importer.save(dwgPath, document);
-    final opened = (await importer.open(dwgPath)).document;
-    expect(opened.entities.whereType<TextEntity>().single.content, note);
-    expect(opened.textStyles['样式 1']!.fontFamily, isNot('txt'));
-
-    final dumped = const DxfWriter().writeString(opened);
-    const utf8Note = [0xE7, 0xBB, 0x98, 0xE5, 0x9B, 0xBE];
-    expect(
-      dumped.contains(note),
-      isTrue,
-      reason: 'FanCAD DXF is UTF-8; the note must still round-trip',
-    );
-    expect(_containsBytes(dumped.codeUnits, utf8Note), isTrue);
-  });
+      expect(_containsBytes(dumped.codeUnits, utf8Note), isTrue);
+    },
+  );
 
   test('a missing file fails cleanly rather than crashing', () {
     expect(
