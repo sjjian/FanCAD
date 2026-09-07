@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
+import 'package:fancad_io/src/sample_drawing.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
 class _DxfOnlyBackend implements DrawingBackend {
@@ -90,13 +92,12 @@ void main() {
   test(
     'a DWG save falls back to a sibling DXF the backend can actually write',
     () async {
-      final dir = Directory.systemTemp.createTempSync('fancad-import-');
-      addTearDown(() => dir.deleteSync(recursive: true));
-
-      final document = CadDocument()
-        ..addEntity(
-          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
-        );
+      final dir = tempDir(prefix: 'fancad-import-');
+      final document = drawing(
+        entities: const [
+          LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+        ],
+      );
       final importer = DrawingImporter(backend: _DxfOnlyBackend());
       final outcome = await importer.save('${dir.path}/sheet.dwg', document);
 
@@ -111,11 +112,12 @@ void main() {
   );
 
   test('an unknown extension is written as FCB rather than dropped', () async {
-    final dir = Directory.systemTemp.createTempSync('fancad-import-fcb-');
-    addTearDown(() => dir.deleteSync(recursive: true));
-
-    final document = CadDocument()
-      ..addEntity(const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)));
+    final dir = tempDir(prefix: 'fancad-import-fcb-');
+    final document = drawing(
+      entities: const [
+        LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      ],
+    );
     final importer = DrawingImporter(backend: _DxfOnlyBackend());
     final outcome = await importer.save('${dir.path}/notes.txt', document);
 
@@ -130,10 +132,11 @@ void main() {
   test('a DWG save encodes FCB and hands it to the backend', () async {
     final backend = _CaptureDwgBackend();
     final importer = DrawingImporter(backend: backend);
-    final document = CadDocument()
-      ..addEntity(
-        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
-      );
+    final document = drawing(
+      entities: const [
+        LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+      ],
+    );
 
     final outcome = await importer.save('/tmp/Drawing1.dwg', document);
 
@@ -147,5 +150,40 @@ void main() {
       restored.entities.whereType<LineEntity>().single.end.x,
       closeTo(10, 1e-9),
     );
+  });
+
+  test('the importer opens a memory DWG', () async {
+    final temporary = tempDir(prefix: 'fancad-mem');
+    final document = SampleDrawings.mechanicalPart();
+    final fcb = FcbWriter().write(document);
+    final source = File('${temporary.path}/part.dwg')..writeAsBytesSync([0]);
+    final backend = MemoryDrawingBackend(files: {source.path: fcb});
+    final importer = DrawingImporter(backend: backend);
+
+    expect(importer.canOpen(source.path), isTrue);
+    expect(importer.canOpen('notes.fcb'), isTrue);
+    expect(importer.canOpen('   '), isFalse);
+
+    final opened = await importer.open(source.path);
+    expect(opened.entityCount, document.entityCount);
+    expect(opened.totalTime, greaterThanOrEqualTo(Duration.zero));
+  });
+
+  test('the importer writes and reopens its own FCB files', () async {
+    final temporary = tempDir(prefix: 'fancad-fcb-save');
+    final document = drawing(
+      entities: const [
+        LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      ],
+    );
+    final importer = DrawingImporter(backend: MemoryDrawingBackend());
+    final path = '${temporary.path}/part.fcb';
+    final outcome = await importer.save(path, document);
+    expect(outcome.usedFallback, isFalse);
+    expect(File(outcome.path).existsSync(), isTrue);
+
+    final opened = await importer.open(path);
+    expect(opened.document.entityCount, 1);
+    expect(opened.document.entities.single, isA<LineEntity>());
   });
 }
