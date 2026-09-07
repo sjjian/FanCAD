@@ -40,6 +40,28 @@ final class EllipseEntity extends CadEntity {
   @JsonKey()
   final double endParam;
 
+  /// AutoCAD's minor axis is [extrusion] × [majorAxis]. FanCAD's is the 2D
+  /// CCW perpendicular of [majorAxis]. When those disagree — typical of
+  /// extrusion `(0,0,-1)` — the same parameters draw the opposite quadrant.
+  /// Negate-and-swap so a WCS bake still traces AutoCAD's arc. Export writes
+  /// `+Z` with these baked values; writing `-Z` with them would flip twice.
+  static (double start, double end) paramsForExtrusion(
+    Vec2 majorAxis,
+    Vec3 extrusion,
+    double startParam,
+    double endParam,
+  ) {
+    final len = extrusion.length;
+    if (len < 1e-20) return (startParam, endParam);
+    final nz = extrusion.z / len;
+    final acadX = -nz * majorAxis.y;
+    final acadY = nz * majorAxis.x;
+    final fanX = -majorAxis.y;
+    final fanY = majorAxis.x;
+    if (acadX * fanX + acadY * fanY >= 0) return (startParam, endParam);
+    return (normalizeAngle(-endParam), normalizeAngle(-startParam));
+  }
+
   /// DWG treats equal parameters as a full ellipse. `endParam` defaults to
   /// `2π`, which [normalizeAngle] wraps to 0, so the comparison has to be
   /// on the circle rather than on the raw numbers.

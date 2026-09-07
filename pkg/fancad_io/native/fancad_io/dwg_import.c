@@ -2300,6 +2300,31 @@ static void append_insert_attribs(import_state *s, Dwg_Object_Ref **refs,
   }
 }
 
+/* AutoCAD's minor axis is extrusion × major. FanCAD's is 2D CCW of major.
+ * When those disagree (typical extrusion (0,0,-1)) the same parameters
+ * draw the opposite quadrant. Negate-and-swap so a WCS bake still traces
+ * AutoCAD's arc. Export writes +Z with these baked params. */
+static void ellipse_bake_wcs_params(double mx, double my, double nx, double ny,
+                                    double nz, double *start, double *end) {
+  double nlen, acad_x, acad_y, fan_x, fan_y, tmp;
+  const double tau = 6.28318530717958647692;
+  nlen = sqrt(nx * nx + ny * ny + nz * nz);
+  if (nlen < 1e-20) return;
+  nz /= nlen;
+  acad_x = -nz * my;
+  acad_y = nz * mx;
+  fan_x = -my;
+  fan_y = mx;
+  if (acad_x * fan_x + acad_y * fan_y >= 0.0) return;
+  tmp = *start;
+  *start = -(*end);
+  *end = -tmp;
+  *start = fmod(*start, tau);
+  if (*start < 0.0) *start += tau;
+  *end = fmod(*end, tau);
+  if (*end < 0.0) *end += tau;
+}
+
 /* Same arbitrary axis as Dart `Mat3.ocs` / `Mat3.ocsInsert`. Document
  * coordinates stay WCS; this bakes OCS at the import boundary. */
 static void apply_ocs_insert(double nx, double ny, double nz, double *ins_x,
@@ -2439,12 +2464,18 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
     case DWG_TYPE_ELLIPSE: {
       Dwg_Entity_ELLIPSE *o = ent->tio.ELLIPSE;
       double reach;
+      double start;
+      double end;
       if (!o) return 0;
+      start = o->start_angle;
+      end = o->end_angle;
+      ellipse_bake_wcs_params(o->sm_axis.x, o->sm_axis.y, o->extrusion.x,
+                              o->extrusion.y, o->extrusion.z, &start, &end);
       coords_push2(g, o->center.x, o->center.y);
       coords_push2(g, o->sm_axis.x, o->sm_axis.y);
       coords_push(g, o->axis_ratio);
-      coords_push(g, o->start_angle);
-      coords_push(g, o->end_angle);
+      coords_push(g, start);
+      coords_push(g, end);
       reach = sqrt(o->sm_axis.x * o->sm_axis.x + o->sm_axis.y * o->sm_axis.y);
       box_add(&bounds, o->center.x - reach, o->center.y - reach);
       box_add(&bounds, o->center.x + reach, o->center.y + reach);

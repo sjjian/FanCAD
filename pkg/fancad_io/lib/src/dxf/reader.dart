@@ -697,14 +697,21 @@ class DxfReader {
           rowSpacing: type == 'MINSERT' ? n(45) : 0,
         );
       case 'ELLIPSE':
+        final majorAxis = Vec2(n(11), n(21));
+        final params = EllipseEntity.paramsForExtrusion(
+          majorAxis,
+          _extrusion(v),
+          n(41),
+          n(42, math.pi * 2),
+        );
         return EllipseEntity(
           id: id,
           props: props,
           center: Vec2(n(10), n(20)),
-          majorAxis: Vec2(n(11), n(21)),
+          majorAxis: majorAxis,
           ratio: n(40, 1),
-          startParam: n(41),
-          endParam: n(42, math.pi * 2),
+          startParam: params.$1,
+          endParam: params.$2,
         );
       case 'SOLID':
       case '3DFACE':
