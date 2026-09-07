@@ -22,6 +22,50 @@ void main() {
     expect(entity.textPosition, const Vec2(14, 8));
     expect(entity.vertices.length, 6);
     expect(entity.hasArrowHead, isTrue);
+    expect(entity.attachment, 4);
+
+    final aligned = CadDocument()
+      ..addEntity(
+        MLeaderEntity(
+          id: 2,
+          vertices: Float64List.fromList([0, 0, 8, 8, 14, 8]),
+          content: 'NOTE',
+          textPosition: const Vec2(14, 8),
+          attachment: 6,
+        ),
+      );
+    final restoredAligned =
+        FcbReader(FcbWriter().write(aligned)).decode().document;
+    expect(
+      restoredAligned.entities.whereType<MLeaderEntity>().single.attachment,
+      6,
+    );
+  });
+
+  test('a CJK font-coded note stays attached through FCB', () {
+    final original = CadDocument()
+      ..addEntity(
+        MLeaderEntity(
+          id: 3,
+          vertices: Float64List.fromList([0, 0, 8, 8, 14, 8]),
+          content: r'{\F宋体|c134;注释}',
+          textPosition: const Vec2(14, 8),
+          textHeight: 35,
+          attachment: 6,
+        ),
+      );
+    final entity = FcbReader(FcbWriter().write(original))
+        .decode()
+        .document
+        .entities
+        .whereType<MLeaderEntity>()
+        .single;
+    expect(entity.content, r'{\F宋体|c134;注释}');
+    expect(entity.content, isNot('{'));
+    final sink = PolylineSink();
+    entity.emit(const EmitContext(tolerance: 0.1), sink);
+    expect(sink.texts.single.text, '注释');
+    expect(sink.texts.single.fontFamily, '宋体');
   });
 
   test('unknown fallback strokes survive FCB', () {

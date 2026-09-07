@@ -75,56 +75,7 @@ final class MTextEntity extends CadEntity {
 
   @override
   void emit(EmitContext context, GeometrySink sink) {
-    if (content.isEmpty) return;
-    final runs = MTextLayout(measureWidth: context.measureWidth).layout(this);
-    if (runs.isEmpty) return;
-    final style = context.styleFor(props);
-    for (final run in runs) {
-      if (run.text.isEmpty && run.barFrom == null) continue;
-      final local = run.origin - position;
-      final origin = rotation.abs() < 1e-12
-          ? run.origin
-          : position + local.rotated(rotation);
-      final runStyle = run.color == null
-          ? style
-          : style.copyWith(color: CadColor.indexed(run.color!));
-      if (run.text.isNotEmpty) {
-        emitStyledText(
-          context: context,
-          sink: sink,
-          style: runStyle,
-          text: expandDxfTextCodes(run.text),
-          origin: origin,
-          height: run.height,
-          rotation: rotation,
-          styleName: styleName,
-          widthFactor: run.widthFactor,
-          obliqueAngle: run.obliqueAngle,
-          tracking: run.tracking,
-          hAlign: run.hAlign ?? TextHAlign.left,
-          vAlign: TextVAlign.top,
-          anchor: TextAnchor.box,
-          fontOverride: run.font.isEmpty ? null : run.font,
-          underline: run.underline,
-          overline: run.overline,
-          strike: run.strike,
-        );
-      }
-      final from = run.barFrom;
-      final to = run.barTo;
-      if (from != null && to != null) {
-        final a = rotation.abs() < 1e-12
-            ? from
-            : position + (from - position).rotated(rotation);
-        final b = rotation.abs() < 1e-12
-            ? to
-            : position + (to - position).rotated(rotation);
-        sink.polyline(
-          context.applyBuffer(Float64List.fromList([a.x, a.y, b.x, b.y])),
-          runStyle,
-        );
-      }
-    }
+    _emitMText(this, context, sink);
   }
 
   @override
@@ -207,4 +158,65 @@ final class MTextEntity extends CadEntity {
 
   @override
   Map<String, Object?> geometryToJson() => _$MTextEntityToJson(this);
+}
+
+void _emitMText(
+  MTextEntity entity,
+  EmitContext context,
+  GeometrySink sink, {
+  bool hugToAttachment = false,
+}) {
+  if (entity.content.isEmpty) return;
+  final runs = MTextLayout(
+    measureWidth: context.measureWidth,
+    hugToAttachment: hugToAttachment,
+  ).layout(entity);
+  if (runs.isEmpty) return;
+  final style = context.styleFor(entity.props);
+  for (final run in runs) {
+    if (run.text.isEmpty && run.barFrom == null) continue;
+    final local = run.origin - entity.position;
+    final origin = entity.rotation.abs() < 1e-12
+        ? run.origin
+        : entity.position + local.rotated(entity.rotation);
+    final runStyle = run.color == null
+        ? style
+        : style.copyWith(color: CadColor.indexed(run.color!));
+    if (run.text.isNotEmpty) {
+      emitStyledText(
+        context: context,
+        sink: sink,
+        style: runStyle,
+        text: expandDxfTextCodes(run.text),
+        origin: origin,
+        height: run.height,
+        rotation: entity.rotation,
+        styleName: entity.styleName,
+        widthFactor: run.widthFactor,
+        obliqueAngle: run.obliqueAngle,
+        tracking: run.tracking,
+        hAlign: run.hAlign ?? TextHAlign.left,
+        vAlign: TextVAlign.top,
+        anchor: TextAnchor.box,
+        fontOverride: run.font.isEmpty ? null : run.font,
+        underline: run.underline,
+        overline: run.overline,
+        strike: run.strike,
+      );
+    }
+    final from = run.barFrom;
+    final to = run.barTo;
+    if (from != null && to != null) {
+      final a = entity.rotation.abs() < 1e-12
+          ? from
+          : entity.position + (from - entity.position).rotated(entity.rotation);
+      final b = entity.rotation.abs() < 1e-12
+          ? to
+          : entity.position + (to - entity.position).rotated(entity.rotation);
+      sink.polyline(
+        context.applyBuffer(Float64List.fromList([a.x, a.y, b.x, b.y])),
+        runStyle,
+      );
+    }
+  }
 }

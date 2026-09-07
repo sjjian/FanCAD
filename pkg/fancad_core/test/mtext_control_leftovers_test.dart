@@ -78,6 +78,20 @@ void main() {
     expect(runs.last.origin.x, closeTo(100, 1e-9));
   });
 
+  test('a hugging right leader note sits on the landing', () {
+    final runs = const MTextLayout(hugToAttachment: true).layout(
+      const MTextEntity(
+        id: 1,
+        position: Vec2(100, 50),
+        content: '注释',
+        height: 10,
+        attachment: 6,
+      ),
+    );
+    expect(runs.single.text, '注释');
+    expect(runs.single.origin.x, closeTo(100 - 2 * 10 * 0.6, 1e-9));
+  });
+
   test('a defined top-right box still sits on the insertion', () {
     final runs = const MTextLayout().layout(
       const MTextEntity(

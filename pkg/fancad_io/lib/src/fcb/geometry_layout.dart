@@ -50,7 +50,8 @@
 ///            strings [reference]
 /// mleader    geom vertices(x, y)*n ++ [textX, textY, textHeight, textRotation]
 ///            ints [pointCount per path...]
-///            strings [content, styleName]                 flag: arrowHead
+///            strings [content, styleName, attachment]     flag: arrowHead
+///            attachment is the MTEXT 1–9 code; missing (older buffers) is 4.
 /// unknown    geom [minX, minY, maxX, maxY]  (proxy extents)
 ///            optional strokes (x, y)*n
 ///            ints optional [pointCount per stroke run]

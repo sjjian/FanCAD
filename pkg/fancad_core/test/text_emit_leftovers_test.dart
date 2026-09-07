@@ -58,4 +58,21 @@ void main() {
     expect(sink.texts.single.text, 'A');
     expect(sink.polylines, isEmpty);
   });
+
+  test('a CJK note on an SHX style is not stroked as missing shapes', () {
+    final sink = PolylineSink();
+    const TextEntity(
+      id: 1,
+      position: Vec2.zero(),
+      content: '注释',
+      height: 10,
+    ).emit(
+      EmitContext(
+        tolerance: 0.1,
+        shxFonts: ShxFontTable({'txt': _glyphA()}),
+      ),
+      sink,
+    );
+    expect(sink.texts.single.text, '注释');
+  });
 }

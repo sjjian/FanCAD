@@ -22,6 +22,7 @@ final class MLeaderEntity extends CadEntity {
     this.textHeight = 2.5,
     this.textRotation = 0,
     this.styleName = 'Standard',
+    this.attachment = 4,
   });
 
   static MLeaderEntity fromGeometry(
@@ -39,6 +40,7 @@ final class MLeaderEntity extends CadEntity {
     textHeight: (json['height'] as num?)?.toDouble() ?? 2.5,
     textRotation: (json['rotation'] as num?)?.toDouble() ?? 0,
     styleName: json['style'] as String? ?? 'Standard',
+    attachment: (json['attachment'] as num?)?.toInt() ?? 4,
   );
 
   /// All leader paths concatenated as interleaved `[x, y, ...]`.
@@ -60,6 +62,12 @@ final class MLeaderEntity extends CadEntity {
   final double textRotation;
   @JsonKey(name: 'style')
   final String styleName;
+
+  /// MTEXT attachment (1 = top-left … 9 = bottom-right). MULTILEADER stores
+  /// left/center/right as 1/2/3; import maps those onto the middle row (4/5/6)
+  /// so the landing sits on the note instead of above it.
+  @JsonKey(toJson: _omitMLeaderAttachment)
+  final int attachment;
 
   @override
   EntityKind get kind => EntityKind.mleader;
@@ -93,16 +101,24 @@ final class MLeaderEntity extends CadEntity {
       _emitArrowHead(context, sink, style, xy);
     }
     if (content.isEmpty || textHeight <= 0) return;
-    emitStyledText(
-      context: context,
-      sink: sink,
-      style: style,
-      text: stripMTextFormatting(content),
-      origin: textPosition,
-      height: textHeight,
-      rotation: textRotation,
-      styleName: styleName,
-      vAlign: TextVAlign.middle,
+    // The note is MTEXT (inline `\F宋体`, `\P`, …). Drawing it as STYLE
+    // Standard / txt.shx drops every CJK glyph once the SHX face is loaded.
+    // The landing is the attachment corner, so a hugging right note has to
+    // sit left of that point — ordinary MTEXT keeps width-0 on the left.
+    _emitMText(
+      MTextEntity(
+        id: id,
+        props: props,
+        position: textPosition,
+        content: content,
+        height: textHeight,
+        rotation: textRotation,
+        styleName: styleName,
+        attachment: attachment,
+      ),
+      context,
+      sink,
+      hugToAttachment: true,
     );
   }
 
@@ -132,6 +148,7 @@ final class MLeaderEntity extends CadEntity {
     textHeight: textHeight,
     textRotation: textRotation,
     styleName: styleName,
+    attachment: attachment,
   );
 
   @override
@@ -146,6 +163,7 @@ final class MLeaderEntity extends CadEntity {
     textHeight: textHeight,
     textRotation: textRotation,
     styleName: styleName,
+    attachment: attachment,
   );
 
   @override
@@ -160,6 +178,7 @@ final class MLeaderEntity extends CadEntity {
     textHeight: textHeight * matrix.meanScale,
     textRotation: textRotation + matrix.rotation,
     styleName: styleName,
+    attachment: attachment,
   );
 
   @override
@@ -184,6 +203,7 @@ final class MLeaderEntity extends CadEntity {
         textHeight: textHeight,
         textRotation: textRotation,
         styleName: styleName,
+        attachment: attachment,
       );
     }
     if (index < 0 || index >= vertexCount) return this;
@@ -201,6 +221,7 @@ final class MLeaderEntity extends CadEntity {
       textHeight: textHeight,
       textRotation: textRotation,
       styleName: styleName,
+      attachment: attachment,
     );
   }
 

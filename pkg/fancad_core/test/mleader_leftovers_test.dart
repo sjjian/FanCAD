@@ -35,6 +35,70 @@ void main() {
     expect(moved.vertices, entity.vertices);
   });
 
+  test('a truncated MTEXT group brace is not a visible note', () {
+    final sink = PolylineSink();
+    MLeaderEntity(
+      id: 5,
+      vertices: Float64List.fromList([0, 0, 10, 10, 16, 10]),
+      content: '{',
+      textPosition: const Vec2(16, 10),
+      textHeight: 35,
+    ).emit(const EmitContext(tolerance: 0.1), sink);
+    expect(sink.texts, isEmpty);
+    expect(stripMTextFormatting('{'), isEmpty);
+    expect(stripMTextFormatting(r'{\F宋体|c134;注释}'), '注释');
+  });
+
+  test('a CJK font switch on a multileader is not drawn as txt.shx', () {
+    final sink = PolylineSink();
+    MLeaderEntity(
+      id: 3,
+      vertices: Float64List.fromList([0, 0, 10, 10, 16, 10]),
+      content: r'{\F宋体|c134;注释}',
+      textPosition: const Vec2(16, 10),
+      textHeight: 35,
+      attachment: 6,
+    ).emit(const EmitContext(tolerance: 0.1), sink);
+    expect(sink.texts, isNotEmpty);
+    expect(sink.texts.single.text, '注释');
+    expect(sink.texts.single.fontFamily, '宋体');
+    // Attachment 6 is middle-right of the landing; a 0.6-em hug is 2*35*0.6.
+    expect(sink.texts.single.origin.x, closeTo(16 - 2 * 35 * 0.6, 1e-9));
+  });
+
+  test('a CJK multileader note is not dropped when txt.shx is loaded', () {
+    final sink = PolylineSink();
+    MLeaderEntity(
+      id: 4,
+      vertices: Float64List.fromList([0, 0, 10, 10, 16, 10]),
+      content: '注释',
+      textPosition: const Vec2(16, 10),
+      textHeight: 35,
+    ).emit(
+      EmitContext(
+        tolerance: 0.1,
+        shxFonts: ShxFontTable({
+          'txt': ShxFont(
+            header: 'txt',
+            above: 1,
+            glyphs: {
+              65: const ShxGlyph(
+                code: 65,
+                name: 'A',
+                commands: [
+                  ShxDraw(to: Vec2.zero(), penDown: true),
+                  ShxDraw(to: Vec2(1, 1), penDown: true),
+                ],
+              ),
+            },
+          ),
+        }),
+      ),
+      sink,
+    );
+    expect(sink.texts.single.text, '注释');
+  });
+
   test('Construct.mleader keeps the note on the same entity', () {
     expect(
       Construct.mleader(const [Vec2.zero(), Vec2(4, 0)], textHeight: 0),

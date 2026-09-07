@@ -281,6 +281,14 @@ TextGeometry composeEmittedText({
   );
 }
 
+/// True when [text] cannot be a txt.shx shape (CJK, symbols, etc.).
+bool _hasHighCodepoint(String text) {
+  for (final unit in text.runes) {
+    if (unit > 0xFF) return true;
+  }
+  return false;
+}
+
 /// Emits [text] as SHX strokes when the style is a loaded shape font,
 /// otherwise as [TextGeometry] for the TTF fallback.
 void emitStyledText({
@@ -312,7 +320,9 @@ void emitStyledText({
       ? TextStyleDef(name: '', fontFamily: family).isShxFont
       : def.isShxFont;
   final font = wantsShx ? context.shxFonts.lookup(family) : null;
-  if (font != null) {
+  // txt.shx only has 8-bit shapes. A CJK note would be masked into a random
+  // stroke or dropped; those strings stay on the TTF path.
+  if (font != null && !_hasHighCodepoint(text)) {
     final styleHeight = def.height > 0 ? def.height : height;
     final factor = widthFactor * def.widthFactor;
     final width = font.measureWidth(
