@@ -155,6 +155,10 @@ bool _looksLikeSource(String root) {
   return hasHeader && hasBuild;
 }
 
+/// FanCAD-owned diffs applied onto the submodule before compile, then reverted
+/// so the gitlink stays fetchable. Hash is part of the `.a` stamp.
+const _libredwgPatches = ['libredwg-r2004-preview.patch'];
+
 /// Configures and builds the submodule as a static PIC library.
 ///
 /// The build lives under the hook's shared output directory so a `flutter run`
@@ -168,34 +172,42 @@ Future<_LibreDwg?> _buildFromSource(
   Directory(buildDir.toFilePath()).createSync(recursive: true);
   final archive = _findArchive(buildDir.toFilePath());
   final stamp = File('${buildDir.toFilePath()}/.fancad-built');
-  final revision = _sourceRevision(source);
+  final patchDir = input.packageRoot.resolve('native/third_party/');
+  final revision = _sourceRevision(source, patchDir);
   if (archive != null &&
       stamp.existsSync() &&
       stamp.readAsStringSync().trim() == revision) {
     logger.info('Reusing LibreDWG static library at $archive');
+    _restorePatchedSources(source, patchDir, logger);
     return _fromSourceBuild(source, archive);
   }
 
   var rebuilt = false;
-  if (File('$source/CMakeLists.txt').existsSync() && _which('cmake') != null) {
-    rebuilt = await _cmakeBuild(source, buildDir.toFilePath(), logger);
+  try {
+    _applyLibreDwgPatches(source, patchDir, logger);
+    if (File('$source/CMakeLists.txt').existsSync() &&
+        _which('cmake') != null) {
+      rebuilt = await _cmakeBuild(source, buildDir.toFilePath(), logger);
+      if (!rebuilt) {
+        logger.warning(
+          'cmake could not compile LibreDWG; trying autotools instead.',
+        );
+      }
+    }
     if (!rebuilt) {
-      logger.warning(
-        'cmake could not compile LibreDWG; trying autotools instead.',
-      );
+      final autoDir = '${buildDir.toFilePath()}/autotools';
+      Directory(autoDir).createSync(recursive: true);
+      if (await _ensureConfigure(source, logger)) {
+        rebuilt = await _autotoolsBuild(source, autoDir, logger);
+      } else if (!File('$source/CMakeLists.txt').existsSync()) {
+        logger.severe(
+          'LibreDWG has no usable build system. Install cmake, or autoconf so '
+          'autogen.sh can produce configure.',
+        );
+      }
     }
-  }
-  if (!rebuilt) {
-    final autoDir = '${buildDir.toFilePath()}/autotools';
-    Directory(autoDir).createSync(recursive: true);
-    if (await _ensureConfigure(source, logger)) {
-      rebuilt = await _autotoolsBuild(source, autoDir, logger);
-    } else if (!File('$source/CMakeLists.txt').existsSync()) {
-      logger.severe(
-        'LibreDWG has no usable build system. Install cmake, or autoconf so '
-        'autogen.sh can produce configure.',
-      );
-    }
+  } finally {
+    _restorePatchedSources(source, patchDir, logger);
   }
 
   final built = _findArchive(buildDir.toFilePath());
@@ -216,22 +228,165 @@ Future<_LibreDwg?> _buildFromSource(
   return _fromSourceBuild(source, built);
 }
 
-/// Git commit of the submodule, so bumping the pin rebuilds libredwg.a.
-String _sourceRevision(String source) {
+/// Git commit of the submodule plus FanCAD patch hashes, so bumping either
+/// rebuilds libredwg.a.
+String _sourceRevision(String source, Uri patchDir) {
+  final sha = _gitRevision(source) ?? _fallbackRevision(source);
+  final patches = _libredwgPatches
+      .map((name) => File(patchDir.resolve(name).toFilePath()))
+      .where((file) => file.existsSync())
+      .map((file) => _fnv1aHex(file.readAsStringSync()))
+      .join(',');
+  return patches.isEmpty ? sha : '$sha+$patches';
+}
+
+String? _gitRevision(String source) {
   final git = _which('git');
-  if (git != null) {
-    final result = Process.runSync(git, const [
-      'rev-parse',
-      'HEAD',
-    ], workingDirectory: source);
-    if (result.exitCode == 0) {
-      final sha = (result.stdout as String).trim();
-      if (sha.isNotEmpty) return sha;
-    }
-  }
+  if (git == null) return null;
+  final result = Process.runSync(git, const [
+    'rev-parse',
+    'HEAD',
+  ], workingDirectory: source);
+  if (result.exitCode != 0) return null;
+  final sha = (result.stdout as String).trim();
+  return sha.isEmpty ? null : sha;
+}
+
+String _fallbackRevision(String source) {
   final version = File('$source/.version');
   if (version.existsSync()) return version.readAsStringSync().trim();
   return File('$source/CMakeLists.txt').lastModifiedSync().toIso8601String();
+}
+
+void _applyLibreDwgPatches(String source, Uri patchDir, Logger logger) {
+  for (final name in _libredwgPatches) {
+    final patchFile = File(patchDir.resolve(name).toFilePath());
+    if (!patchFile.existsSync()) {
+      logger.severe('Missing LibreDWG patch ${patchFile.path}');
+      continue;
+    }
+    final relative = _unifiedDiffPath(patchFile.readAsStringSync());
+    if (relative == null) {
+      logger.severe('Patch $name has no --- a/ path');
+      continue;
+    }
+    final target = File('$source/$relative');
+    if (!target.existsSync()) {
+      logger.severe('Patch $name targets missing $relative');
+      continue;
+    }
+    final original = target.readAsStringSync();
+    final patched = _applyUnifiedDiff(original, patchFile.readAsStringSync());
+    if (patched == null) {
+      logger.severe('Patch $name does not apply to $relative');
+      continue;
+    }
+    if (patched != original) {
+      target.writeAsStringSync(patched);
+      logger.info('Applied $name to $relative');
+    }
+  }
+}
+
+void _restorePatchedSources(String source, Uri patchDir, Logger logger) {
+  final git = _which('git');
+  if (git == null) return;
+  for (final name in _libredwgPatches) {
+    final patchFile = File(patchDir.resolve(name).toFilePath());
+    if (!patchFile.existsSync()) continue;
+    final relative = _unifiedDiffPath(patchFile.readAsStringSync());
+    if (relative == null) continue;
+    final result = Process.runSync(git, [
+      'checkout',
+      'HEAD',
+      '--',
+      relative,
+    ], workingDirectory: source);
+    if (result.exitCode != 0) {
+      logger.warning(
+        'Could not restore $relative after compiling LibreDWG: '
+        '${result.stderr}',
+      );
+    }
+  }
+}
+
+String? _unifiedDiffPath(String diff) {
+  for (final line in diff.split('\n')) {
+    if (line.startsWith('--- a/')) {
+      return line.substring(6).split('\t').first.trim();
+    }
+  }
+  return null;
+}
+
+/// Applies a single-file unified diff. Returns [source] when every hunk is
+/// already present, or null when a hunk matches neither side.
+String? _applyUnifiedDiff(String source, String diff) {
+  var text = source;
+  for (final hunk in _unifiedHunks(diff)) {
+    if (text.contains(hunk.replacement)) continue;
+    if (!text.contains(hunk.original)) return null;
+    text = text.replaceFirst(hunk.original, hunk.replacement);
+  }
+  return text;
+}
+
+class _Hunk {
+  const _Hunk(this.original, this.replacement);
+  final String original;
+  final String replacement;
+}
+
+List<_Hunk> _unifiedHunks(String diff) {
+  final hunks = <_Hunk>[];
+  final original = StringBuffer();
+  final replacement = StringBuffer();
+  var inHunk = false;
+  final lines = [...diff.split('\n')];
+  if (lines.isNotEmpty && lines.last.isEmpty) lines.removeLast();
+
+  void flush() {
+    if (!inHunk) return;
+    hunks.add(
+      _Hunk(
+        original.toString().replaceFirst(RegExp(r'\n$'), ''),
+        replacement.toString().replaceFirst(RegExp(r'\n$'), ''),
+      ),
+    );
+    original.clear();
+    replacement.clear();
+  }
+
+  for (final line in lines) {
+    if (line.startsWith('@@')) {
+      flush();
+      inHunk = true;
+      continue;
+    }
+    if (!inHunk || line.startsWith('---') || line.startsWith('+++')) continue;
+    if (line.startsWith('\\')) continue;
+    if (line.startsWith('-')) {
+      original.writeln(line.substring(1));
+    } else if (line.startsWith('+')) {
+      replacement.writeln(line.substring(1));
+    } else {
+      final body = line.startsWith(' ') ? line.substring(1) : line;
+      original.writeln(body);
+      replacement.writeln(body);
+    }
+  }
+  flush();
+  return hunks;
+}
+
+String _fnv1aHex(String input) {
+  var hash = 0x811c9dc5;
+  for (final unit in input.codeUnits) {
+    hash ^= unit;
+    hash = (hash * 0x01000193) & 0xFFFFFFFF;
+  }
+  return hash.toRadixString(16).padLeft(8, '0');
 }
 
 _LibreDwg _fromSourceBuild(String source, String archive) {

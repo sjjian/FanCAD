@@ -1,0 +1,44 @@
+--- a/src/encode.c
++++ b/src/encode.c
+@@ -3925,8 +3925,19 @@
+                         // data sections are written as fixed-size pages. The
+                         // final page is zero-padded up to max_decomp_size, and
+                         // the section map stores that padded size.
+-                        sec->size = 32 + max_decomp_size;
+-                        sec->decomp_data_size = max_decomp_size;
++                        /* FANCAD: R2004 PREVIEW max_decomp_size is a read
++                         * cap (0x144400), not a write page size. An empty
++                         * thumbnail would otherwise pad the file by 1.27MB. */
++                        if (type == SECTION_PREVIEW)
++                          {
++                            sec->size = 32 + page_content;
++                            sec->decomp_data_size = page_content;
++                          }
++                        else
++                          {
++                            sec->size = 32 + max_decomp_size;
++                            sec->decomp_data_size = max_decomp_size;
++                          }
+                       }
+                     else
+                       {
+@@ -4200,7 +4211,9 @@
+ 
+           // Data sections are written as fixed-size max_decomp_size pages.
+           // Zero-pad the last page so the buffer is safe to read from.
+-          if (type < SECTION_INFO && sec_dat[type].byte > 0)
++          // FANCAD: do not pad PREVIEW to the 0x144400 read cap.
++          if (type < SECTION_INFO && type != SECTION_PREVIEW
++              && sec_dat[type].byte > 0)
+             {
+               size_t padded = ((sec_dat[type].byte + max_decomp_size - 1)
+                                / max_decomp_size)
+@@ -4324,7 +4337,7 @@
+                   uint32_t sec_mask;
+                   size_t page_hdr_pos;
+ 
+-                  content_size = sec->decomp_data_size; // = max_decomp_size
++                  content_size = sec->decomp_data_size; /* PREVIEW may be short */
+                   chain_page
+                       = sec_dat[type].chain + (size_t)k * max_decomp_size;
+                   if (dat->byte + 32 + content_size + 32 > dat->size)

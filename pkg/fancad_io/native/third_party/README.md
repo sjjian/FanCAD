@@ -11,3 +11,7 @@ hook compiles it as a static PIC library and links `libredwg.a` into
 ```bash
 git submodule update --init --recursive
 ```
+
+FanCAD applies `libredwg-r2004-preview.patch` at compile time so an empty
+R2004 preview page is not written at the 1.27MB read cap. The submodule
+working tree is restored afterwards; bumping the patch rebuilds `libredwg.a`.
