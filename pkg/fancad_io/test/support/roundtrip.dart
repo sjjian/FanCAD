@@ -26,10 +26,19 @@ class Roundtrip {
     CadDocument source, {
     String name = 'round',
   }) async {
+    final path = await writeDwg(source, name: name);
+    return (await importer.open(path)).document;
+  }
+
+  /// Writes [source] and returns the temp path so callers can inspect bytes.
+  Future<String> writeDwg(
+    CadDocument source, {
+    String name = 'round',
+  }) async {
     final directory = tempDir(prefix: 'fancad-$name');
     final path = '${directory.path}/$name.dwg';
     await importer.save(path, source);
-    return (await importer.open(path)).document;
+    return path;
   }
 
   CadDocument dxf(CadDocument source) {

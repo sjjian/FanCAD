@@ -1,6 +1,9 @@
 @Tags(['native'])
 library;
 
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
@@ -191,4 +194,64 @@ void main() {
     ];
     expect(sentinels, isEmpty, reason: sentinels.join(', '));
   }, timeout: Roundtrip.timeout);
+
+  test('a CJK multileader note stays visible through DWG save', () async {
+    final opened = await rt.dwg(
+      drawingOf(
+        MLeaderEntity(
+          id: 1,
+          vertices: Float64List.fromList([0, 0, 10, 10, 16, 10]),
+          content: r'{\F宋体|c134;注释}',
+          textPosition: const Vec2(16, 10),
+          textHeight: 35,
+          attachment: 6,
+        ),
+      ),
+      name: 'mleader',
+    );
+    final sink = PolylineSink();
+    for (final entity in opened.entities) {
+      entity.emit(opened.emitContext(tolerance: 0.1), sink);
+    }
+    expect(sink.texts.any((run) => run.text.contains('注释')), isTrue);
+    expect(sink.texts.any((run) => run.fontFamily == '宋体'), isTrue);
+  }, timeout: Roundtrip.timeout);
+
+  test('an empty R2004 save does not pad the preview page to 1.27MB', () async {
+    final path = await rt.writeDwg(
+      drawing(
+        entities: const [
+          LineEntity(id: 1, start: Vec2.zero(), end: Vec2(100, 40)),
+        ],
+      ),
+      name: 'preview',
+    );
+    final bytes = File(path).readAsBytesSync();
+    expect(String.fromCharCodes(bytes.sublist(0, 6)), 'AC1018');
+    expect(
+      bytes.length,
+      lessThan(512 * 1024),
+      reason: 'R2004 PREVIEW must not be written at the 0x144400 read cap',
+    );
+    expect(_longestZeroRun(bytes), lessThan(0x10000));
+
+    final opened = (await rt.importer.open(path)).document;
+    final lines = opened.entities.whereType<LineEntity>().toList();
+    expect(lines, isNotEmpty);
+    expect(lines.first.end.x, closeTo(100, 1e-6));
+  }, timeout: Roundtrip.timeout);
+}
+
+int _longestZeroRun(Uint8List bytes) {
+  var longest = 0;
+  var run = 0;
+  for (final b in bytes) {
+    if (b == 0) {
+      run++;
+      if (run > longest) longest = run;
+    } else {
+      run = 0;
+    }
+  }
+  return longest;
 }
