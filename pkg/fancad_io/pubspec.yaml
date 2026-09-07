@@ -23,6 +23,8 @@ dependencies:
 
 dev_dependencies:
   build_runner: ^2.5.4
+  fancad_test:
+    path: ../fancad_test
   json_serializable: ^6.9.0
   test: ^1.25.0
   lints: ^6.0.0
