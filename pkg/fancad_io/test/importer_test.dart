@@ -64,11 +64,13 @@ void main() {
     expect(
       () => importer.open('notes.txt'),
       throwsA(
-        isA<ImportException>().having(
-          (error) => error.path,
-          'path',
-          'notes.txt',
-        ),
+        isA<ImportException>()
+            .having((error) => error.path, 'path', 'notes.txt')
+            .having(
+              (error) => error.message,
+              'message',
+              contains('not a drawing'),
+            ),
       ),
     );
     expect(
@@ -185,5 +187,12 @@ void main() {
     final opened = await importer.open(path);
     expect(opened.document.entityCount, 1);
     expect(opened.document.entities.single, isA<LineEntity>());
+  });
+
+  test('encodes and decodes FanCAD native files', () {
+    final importer = DrawingImporter(backend: _DxfOnlyBackend());
+    final document = SampleDrawings.mechanicalPart();
+    final result = importer.decode(importer.encode(document));
+    expect(result.entityCount, document.entityCount);
   });
 }
