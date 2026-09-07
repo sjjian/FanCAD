@@ -50,6 +50,7 @@ class HatchGenerator {
           loops: hatch.loops,
           extraAngle: extraAngle,
           scale: scale,
+          pixelSize: pixelSize,
         ),
       );
     }
@@ -62,12 +63,16 @@ class HatchGenerator {
     required List<HatchLoop> loops,
     required double extraAngle,
     required double scale,
+    required double pixelSize,
   }) {
     final angle = line.angle + extraAngle;
     final dir = Vec2(math.cos(angle), math.sin(angle));
     final normal = Vec2(-dir.y, dir.x);
     final spacing = (line.deltaY.abs() < 1e-9 ? 3.175 : line.deltaY.abs()) * scale;
     final origin = Vec2(line.originX, line.originY) * scale;
+    final dashes = [for (final dash in line.dashes) dash * scale];
+    final shiftStep = line.deltaX * scale;
+    final dotLength = pixelSize > 0 ? pixelSize : 0.5;
 
     final corners = [
       Vec2(box.minX, box.minY),
@@ -101,9 +106,89 @@ class HatchGenerator {
       final base = along + dir * (centre - along).dot(dir);
       final a = base - dir * reach;
       final b = base + dir * reach;
-      out.addAll(_clipSegment(a, b, loops));
+      for (final clipped in _clipSegment(a, b, loops)) {
+        out.addAll(
+          _applyDashes(
+            clipped,
+            origin: origin,
+            along: along,
+            dir: dir,
+            dashes: dashes,
+            shift: i * shiftStep,
+            dotLength: dotLength,
+          ),
+        );
+      }
     }
     return out;
+  }
+
+  /// Walks the AutoCAD dash array along a clipped pattern line.
+  ///
+  /// Positive lengths are pen-down, negative are gaps, and zero is a dot.
+  /// Skipping this and stroking the whole clip is what turned AR-CONC into a
+  /// dense smear: its stones are short dashes and its aggregate is dots.
+  List<Float64List> _applyDashes(
+    Float64List clipped, {
+    required Vec2 origin,
+    required Vec2 along,
+    required Vec2 dir,
+    required List<double> dashes,
+    required double shift,
+    required double dotLength,
+  }) {
+    if (clipped.length < 4) return const [];
+    final a = Vec2(clipped[0], clipped[1]);
+    final b = Vec2(clipped[2], clipped[3]);
+    if (dashes.isEmpty) {
+      return [clipped];
+    }
+    var period = 0.0;
+    for (final dash in dashes) {
+      period += dash.abs();
+    }
+    if (period < 1e-12) {
+      return [clipped];
+    }
+    var s0 = (a - origin).dot(dir);
+    var s1 = (b - origin).dot(dir);
+    if (s1 < s0) {
+      final swap = s0;
+      s0 = s1;
+      s1 = swap;
+    }
+    final lengths = [for (final dash in dashes) dash.abs()];
+    final down = [for (final dash in dashes) dash >= 0];
+    final strokes = <Float64List>[];
+    var pattern = (s0 - shift) % period;
+    if (pattern < 0) pattern += period;
+    var s = s0 - pattern;
+    while (s < s1 - 1e-12) {
+      for (var i = 0; i < dashes.length; i++) {
+        final len = lengths[i];
+        final start = s;
+        final end = s + len;
+        s = end;
+        if (len < 1e-12) {
+          if (down[i] && start >= s0 - 1e-12 && start <= s1 + 1e-12) {
+            final mid = along + dir * start;
+            final half = dir * (dotLength * 0.5);
+            final p0 = mid - half;
+            final p1 = mid + half;
+            strokes.add(Float64List.fromList([p0.x, p0.y, p1.x, p1.y]));
+          }
+          continue;
+        }
+        final lo = math.max(start, s0);
+        final hi = math.min(end, s1);
+        if (hi - lo <= 1e-12 || !down[i]) continue;
+        final p0 = along + dir * lo;
+        final p1 = along + dir * hi;
+        strokes.add(Float64List.fromList([p0.x, p0.y, p1.x, p1.y]));
+      }
+      if (period < 1e-12) break;
+    }
+    return strokes;
   }
 
   /// Clips [a]–[b] to the even-odd interior of [loops].
