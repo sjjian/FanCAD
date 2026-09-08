@@ -36,4 +36,25 @@ void main() {
       const Color(0xFF000000),
     );
   });
+
+  test('index 7 follows the background', () {
+    expect(AciPalette.dark.indexed(7), const Color(0xFFFFFFFF));
+    expect(AciPalette.light.indexed(7), const Color(0xFF000000));
+  });
+
+  test('the primaries are the colours CAD users expect', () {
+    expect(AciPalette.dark.indexed(1), const Color(0xFFFF0000));
+    expect(AciPalette.dark.indexed(3), const Color(0xFF00FF00));
+    expect(AciPalette.dark.indexed(5).b, greaterThan(0.5));
+  });
+
+  test('near-black is lifted so it stays visible on a dark canvas', () {
+    final lifted = AciPalette.dark.colorOf(const CadColor.rgb(0x050505));
+    expect(lifted.computeLuminance(), greaterThan(0.01));
+    // On a light canvas it must be left exactly as authored.
+    expect(
+      AciPalette.light.colorOf(const CadColor.rgb(0x050505)),
+      const Color(0xFF050505),
+    );
+  });
 }
