@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:fancad_core/fancad_core.dart';
 import 'package:test/test.dart';
 
@@ -321,49 +319,6 @@ void main() {
         const MTextEntity(id: 1, position: Vec2.zero(), content: r'\pxqc;Hi'),
       );
       expect(centered.single.hAlign, TextHAlign.center);
-    });
-  });
-
-  group('ShxFont', () {
-    test('truncated or headerless buffers stay empty', () {
-      expect(ShxFont.parse(Uint8List.fromList([1, 2, 3])).isEmpty, isTrue);
-      final noSub = Uint8List.fromList(List<int>.filled(30, 65));
-      expect(ShxFont.parse(noSub).isEmpty, isTrue);
-    });
-
-    test('missing glyphs advance the cursor without throwing', () {
-      final font = ShxFont(header: 'txt', glyphs: const {});
-      expect(
-        font.layout('AB', origin: const Vec2.zero(), height: 10),
-        isEmpty,
-      );
-    });
-
-    test('a stroked glyph produces a polyline at the requested height', () {
-      final font = ShxFont(
-        header: 'txt',
-        above: 1,
-        glyphs: {
-          65: const ShxGlyph(
-            code: 65,
-            name: 'A',
-            commands: [
-              ShxDraw(to: Vec2(0, 0), penDown: true),
-              ShxDraw(to: Vec2(1, 1), penDown: true),
-            ],
-          ),
-        },
-      );
-      final strokes = font.layout(
-        'A',
-        origin: const Vec2.zero(),
-        height: 10,
-      );
-      expect(strokes, isNotEmpty);
-      expect(strokes.first.length, greaterThanOrEqualTo(2));
-      expect(font.glyph(65)?.name, 'A');
-      expect(font.measureWidth('A', height: 10), closeTo(10, 1e-9));
-      expect(font.measureWidth('AA', height: 10), closeTo(20, 1e-9));
     });
   });
 

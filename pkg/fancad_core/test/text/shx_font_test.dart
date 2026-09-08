@@ -124,4 +124,88 @@ void main() {
     expect(nameless.glyph(67)?.name, isEmpty);
     expect(nameless.glyph(67)?.commands, isNotEmpty);
   });
+
+  test('truncated or headerless buffers stay empty', () {
+    expect(ShxFont.parse(Uint8List.fromList([1, 2, 3])).isEmpty, isTrue);
+    final noSub = Uint8List.fromList(List<int>.filled(30, 65));
+    expect(ShxFont.parse(noSub).isEmpty, isTrue);
+  });
+
+  test('a truncated table after the SHX header cannot invent glyphs', () {
+    final bytes = Uint8List.fromList([
+      ...latin1.encode('AutoCAD-86 shapes 1.0'),
+      0x1A,
+      1,
+      2,
+    ]);
+    final font = ShxFont.parse(bytes);
+    expect(font.header, contains('AutoCAD-86'));
+    expect(font.isEmpty, isTrue);
+    expect(font.glyph(65), isNull);
+  });
+
+  test('an empty font cannot invent layout strokes', () {
+    final font = ShxFont(header: 'empty', glyphs: const {});
+    expect(font.isEmpty, isTrue);
+    expect(font.layout('ABC', origin: const Vec2.zero(), height: 10), isEmpty);
+    expect(font.glyph(65), isNull);
+  });
+
+  test('missing glyphs advance the cursor without throwing', () {
+    final font = ShxFont(header: 'txt', glyphs: const {});
+    expect(
+      font.layout('AB', origin: const Vec2.zero(), height: 10),
+      isEmpty,
+    );
+  });
+
+  test('a stroked glyph produces a polyline at the requested height', () {
+    final font = ShxFont(
+      header: 'txt',
+      above: 1,
+      glyphs: {
+        65: const ShxGlyph(
+          code: 65,
+          name: 'A',
+          commands: [
+            ShxDraw(to: Vec2(0, 0), penDown: true),
+            ShxDraw(to: Vec2(1, 1), penDown: true),
+          ],
+        ),
+      },
+    );
+    final strokes = font.layout(
+      'A',
+      origin: const Vec2.zero(),
+      height: 10,
+    );
+    expect(strokes, isNotEmpty);
+    expect(strokes.first.length, greaterThanOrEqualTo(2));
+    expect(font.glyph(65)?.name, 'A');
+    expect(font.measureWidth('A', height: 10), closeTo(10, 1e-9));
+    expect(font.measureWidth('AA', height: 10), closeTo(20, 1e-9));
+  });
+
+  test('an unknown code uses the fallback glyph instead of inventing strokes', () {
+    final font = ShxFont(
+      header: 'txt',
+      above: 0,
+      glyphs: {
+        0x3F: const ShxGlyph(
+          code: 0x3F,
+          name: 'Q',
+          commands: [
+            ShxDraw(to: Vec2.zero(), penDown: true),
+            ShxDraw(to: Vec2(1, 1), penDown: true),
+          ],
+        ),
+      },
+    );
+
+    expect(font.glyph(65), isNull);
+    expect(font.glyph(0x3F)?.name, 'Q');
+    final strokes = font.layout('A', origin: const Vec2.zero(), height: 10);
+    expect(strokes, isNotEmpty);
+    expect(strokes.first.last, const Vec2(10, 10));
+  });
 }
