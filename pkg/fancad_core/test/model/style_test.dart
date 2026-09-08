@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:test/test.dart';
 
@@ -15,6 +17,8 @@ void main() {
       expect(cadColorFromJson('7'), const CadColor.indexed(7));
       expect(cadColorFromJson('#00ff00'), const CadColor.rgb(0x00FF00));
       expect(cadColorFromJson('nope'), const CadColor.byLayer());
+      expect(cadColorFromJson('#zzzzzz').kind, ColorKind.byLayer);
+      expect(cadColorFromJson(<int>[]).kind, ColorKind.byLayer);
       expect(const CadColor.byLayer().isInherited, isTrue);
       expect(const CadColor.indexed(1).isInherited, isFalse);
       expect(const CadColor.indexed(1).toString(), 'ACI(1)');
@@ -48,9 +52,42 @@ void main() {
     test('keywords and millimetre conversion', () {
       expect(LineWeight.tryParse('ByBlock'), LineWeight.byBlock);
       expect(LineWeight.tryParse('Default'), LineWeight.byDefault);
+      expect(LineWeight.tryParse('bydefault'), LineWeight.byDefault);
       expect(LineWeight.tryParse('0'), LineWeight.zero);
       expect(LineWeight.toMillimetres(25), 0.25);
       expect(LineWeight.toMillimetres(LineWeight.byLayer), 0);
+    });
+
+    test('a blank or non-finite weight cannot invent a DXF value', () {
+      expect(LineWeight.tryParse(''), isNull);
+      expect(LineWeight.tryParse('   '), isNull);
+      expect(LineWeight.tryParse('-1'), isNull);
+      expect(LineWeight.tryParse('nan'), isNull);
+      expect(LineWeight.tryParse('inf'), isNull);
+    });
+
+    test('a weight past 2.11 mm cannot invent a DXF value', () {
+      expect(LineWeight.tryParse('2.12'), isNull);
+      expect(LineWeight.tryParse('212'), isNull);
+      expect(LineWeight.tryParse('3mm'), isNull);
+    });
+
+    test('DWG inherit sentinels are not 0.29 mm strokes', () {
+      expect(LineWeight.normalize(29), LineWeight.byLayer);
+      expect(LineWeight.normalize(30), LineWeight.byBlock);
+      expect(LineWeight.normalize(31), LineWeight.byDefault);
+      expect(LineWeight.normalize(25), 25);
+      expect(LineWeight.normalize(LineWeight.byLayer), LineWeight.byLayer);
+    });
+
+    test('a ByLayer-as-29 entity on a Default layer is a hairline', () {
+      final document = CadDocument()
+        ..putLayer(const LayerDef(name: '0', lineWeight: 31));
+      final style = document.resolve(
+        const EntityProps(lineWeight: 29),
+        ResolvedStyle.fallback,
+      );
+      expect(style.lineWeight, LineWeight.zero);
     });
   });
 
@@ -70,8 +107,12 @@ void main() {
     test('stock patterns resolve by name and expose a dash array', () {
       expect(LineTypeDef.builtin('dashed')?.name, 'DASHED');
       expect(LineTypeDef.builtin('nope'), isNull);
+      expect(LineTypeDef.builtin(''), isNull);
+      expect(LineTypeDef.builtin('dashed ')?.name, isNull);
       expect(LineTypeDef.continuous.isSolid, isTrue);
       expect(LineTypeDef.continuous.dashArray, isEmpty);
+      expect(const LineTypeDef(name: 'X', patternLength: 0).isSolid, isTrue);
+      expect(const LineTypeDef(name: 'X', patternLength: 0).dashArray, isEmpty);
       expect(LineTypeDef.dashed.dashArray, [12, 6]);
       expect(LineTypeDef.dot.dashArray.first, greaterThan(0));
       expect(LineTypeDef.builtins, hasLength(8));
@@ -97,8 +138,119 @@ void main() {
       expect(broken.scaledTextHeight, 2.5);
       expect(broken.clampedDecimals, 8);
       expect(const DimStyleDef(name: 'X', decimalPlaces: -1).clampedDecimals, 0);
+      expect(const DimStyleDef(name: 'X', decimalPlaces: -3).clampedDecimals, 0);
+      expect(const DimStyleDef(name: 'X', decimalPlaces: 99).clampedDecimals, 8);
+      expect(const DimStyleDef(name: 'X', decimalPlaces: 2).clampedDecimals, 2);
+      expect(const DimStyleDef(name: 'X', scale: 0).overallScale, 1);
+      expect(const DimStyleDef(name: 'X', scale: 0, textHeight: 2.5).scaledTextHeight, 2.5);
+      expect(const DimStyleDef(name: 'X', scale: double.nan).overallScale, 1);
       expect(DimStyleDef.standard.copyWith(name: 'A').name, 'A');
       expect(DimStyleDef.standard.toString(), 'DimStyleDef(Standard)');
+    });
+
+    test('header DIMSCALE fills an identity style so fallback text is readable', () {
+      final document = CadDocument()..setHeaderVariable(r'$DIMSCALE', '14');
+      expect(document.dimStyle('Standard').scaledTextHeight, closeTo(35, 1e-9));
+      expect(document.dimStyle('Standard').scale, closeTo(14, 1e-9));
+    });
+
+    test('an explicit dimstyle scale cannot be replaced by the header', () {
+      final document = CadDocument()
+        ..putDimStyle(const DimStyleDef(name: 'ARCH', textHeight: 5, scale: 2))
+        ..setHeaderVariable(r'$DIMSCALE', '14');
+      expect(document.dimStyle('ARCH').scaledTextHeight, closeTo(10, 1e-9));
+    });
+
+    test('regenerated dimensions follow the named DIMSTYLE', () {
+      final document = CadDocument()
+        ..putDimStyle(
+          const DimStyleDef(
+            name: 'ARCH',
+            textHeight: 5,
+            arrowSize: 4,
+            decimalPlaces: 0,
+            scale: 2,
+          ),
+        );
+      final dim = Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(5, 4),
+        styleName: 'ARCH',
+      )!;
+      document.addEntity(dim);
+
+      final sink = PolylineSink();
+      dim.emit(document.emitContext(tolerance: 0.1), sink);
+
+      expect(sink.texts, hasLength(1));
+      expect(sink.texts.single.text, '10');
+      expect(sink.texts.single.height, closeTo(10, 1e-9));
+      expect(sink.texts.single.styleName, 'Standard');
+      expect(sink.fills, hasLength(2));
+      final arrow = sink.fills.first;
+      final tip = Vec2(arrow[0], arrow[1]);
+      final left = Vec2(arrow[2], arrow[3]);
+      expect(tip.distanceTo(left), closeTo(8 * math.sqrt(1 + 0.35 * 0.35), 1e-9));
+    });
+
+    test('a missing style falls back to Standard', () {
+      final document = CadDocument();
+      final dim = Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(5, 4),
+        styleName: 'MISSING',
+      )!;
+      document.addEntity(dim);
+
+      final sink = PolylineSink();
+      dim.emit(document.emitContext(tolerance: 0.1), sink);
+
+      expect(sink.texts.single.text, '10.00');
+      expect(sink.texts.single.height, closeTo(2.5, 1e-9));
+    });
+
+    test('putDimStyle is undoable', () {
+      final session = DocumentSession(id: '1', document: CadDocument());
+      session.edit('DimStyle', (transaction) {
+        transaction.putDimStyle(
+          const DimStyleDef(name: 'ARCH', textHeight: 5, decimalPlaces: 0),
+        );
+        transaction.setCurrentDimStyle('ARCH');
+      });
+      expect(session.document.namedDimStyle('ARCH')!.textHeight, 5);
+      expect(session.document.currentDimStyle, 'ARCH');
+
+      expect(session.undo(), isTrue);
+      expect(session.document.namedDimStyle('ARCH'), isNull);
+      expect(session.document.currentDimStyle, 'Standard');
+
+      expect(session.redo(), isTrue);
+      expect(session.document.namedDimStyle('ARCH')!.decimalPlaces, 0);
+      expect(session.document.currentDimStyle, 'ARCH');
+    });
+
+    test('explode uses the style for text height and decimals', () {
+      final dim = Construct.linearDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(5, 4),
+      )!;
+      final pieces = Construct.explodeDimension(
+        dim,
+        style: const DimStyleDef(
+          name: 'ARCH',
+          textHeight: 5,
+          decimalPlaces: 0,
+        ),
+      );
+
+      final text = pieces.whereType<TextEntity>().single;
+      expect(text.content, '10');
+      expect(text.height, closeTo(5, 1e-9));
+      expect(pieces.whereType<LineEntity>(), hasLength(3));
+      expect(pieces.whereType<SolidEntity>(), hasLength(2));
     });
   });
 

@@ -118,9 +118,11 @@ void main() {
       expect(document.layer('0'), isNotNull);
       expect(document.removeLayer('WALLS')?.name, 'WALLS');
       expect(document.removeDimStyle('Standard'), isNull);
+      expect(document.removeDimStyle('nope'), isNull);
       expect(document.removeDimStyle('arch')?.name, 'ARCH');
       expect(document.currentDimStyle, 'Standard');
       expect(document.dimStyle('missing').name, 'Standard');
+      expect(document.namedDimStyle('nope'), isNull);
     });
 
     test('blocks rename unless they are layout containers', () {
