@@ -24,13 +24,15 @@ void main() {
 
     test('rollback restores the document exactly', () {
       final document = newDocument();
-      final baseId = document.addEntity(
-        CircleEntity(id: 0, center: const Vec2.zero(), radius: 5),
-      ).id;
+      final baseId = document
+          .addEntity(CircleEntity(id: 0, center: const Vec2.zero(), radius: 5))
+          .id;
       final before = document.entityCount;
 
       final transaction = Transaction(document)
-        ..add(LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(1, 1)))
+        ..add(
+          LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(1, 1)),
+        )
         ..erase(baseId);
       expect(document.entityCount, before);
       expect(document.entity(baseId), isNull);
@@ -43,24 +45,71 @@ void main() {
     test('refuses edits on a locked layer and reports them', () {
       final document = newDocument()
         ..putLayer(const LayerDef(name: 'LOCKED', locked: true));
-      final id = document.addEntity(
-        LineEntity(
-          id: 0,
-          props: const EntityProps(layer: 'LOCKED'),
-          start: const Vec2.zero(),
-          end: const Vec2(1, 0),
-        ),
-      ).id;
+      final id = document
+          .addEntity(
+            LineEntity(
+              id: 0,
+              props: const EntityProps(layer: 'LOCKED'),
+              start: const Vec2.zero(),
+              end: const Vec2(1, 0),
+            ),
+          )
+          .id;
 
       final transaction = Transaction(document);
       expect(transaction.erase(id), isFalse);
-      expect(transaction.skipped, [id]);
+      expect(transaction.transform(id, const Mat3.translation(1, 0)), isFalse);
+      expect(transaction.isEmpty, isTrue);
+      expect(transaction.skipped, [id, id]);
       expect(document.entity(id), isNotNull);
     });
 
     test('commit returns null when nothing changed', () {
       final document = newDocument();
-      expect(Transaction(document).commit(), isNull);
+      final transaction = Transaction(document, label: 'noop');
+      expect(transaction.commit(), isNull);
+      expect(transaction.isCommitted, isTrue);
+    });
+
+    test('rolling back an empty transaction cannot invent a change', () {
+      final document = CadDocument();
+      final transaction = Transaction(document, label: 'noop');
+      expect(transaction.rollback().isEmpty, isTrue);
+      expect(transaction.isCommitted, isTrue);
+      expect(document.isEmpty, isTrue);
+    });
+
+    test('a missing or identical entity cannot invent a mutation', () {
+      final document = CadDocument();
+      final transaction = Transaction(document);
+      const missing = LineEntity(id: 99, start: Vec2.zero(), end: Vec2(10, 0));
+
+      expect(transaction.erase(99), isFalse);
+      expect(transaction.modify(missing), isFalse);
+      expect(transaction.eraseAll([99, 100]), 0);
+      expect(transaction.isEmpty, isTrue);
+
+      final id = transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+      );
+      final current = document.entity(id)!;
+      expect(transaction.modify(current), isFalse);
+      expect(transaction.transform(id, const Mat3.identity()), isFalse);
+    });
+
+    test('a layer still in use cannot invent a drop', () {
+      final document = CadDocument();
+      final transaction = Transaction(document);
+      transaction.putLayer(const LayerDef(name: 'WALLS'));
+      transaction.add(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(layer: 'WALLS'),
+          start: Vec2.zero(),
+          end: Vec2(4, 0),
+        ),
+      );
+      expect(transaction.removeLayer('WALLS'), isFalse);
     });
   });
 
@@ -102,9 +151,7 @@ void main() {
       final ids = session
           .edit('draw three', (t) {
             for (var i = 0; i < 3; i++) {
-              t.add(
-                CircleEntity(id: 0, center: Vec2(i * 10, 0), radius: 4),
-              );
+              t.add(CircleEntity(id: 0, center: Vec2(i * 10, 0), radius: 4));
             }
           })!
           .change
@@ -114,10 +161,7 @@ void main() {
       final orderBefore = session.document.blocks[block]!.entityIds.toList();
 
       session.edit('erase middle', (t) => t.erase(ids[1]));
-      expect(
-        session.document.blocks[block]!.entityIds,
-        [ids[0], ids[2]],
-      );
+      expect(session.document.blocks[block]!.entityIds, [ids[0], ids[2]]);
 
       session.undo();
       expect(session.document.blocks[block]!.entityIds, orderBefore);
@@ -142,6 +186,7 @@ void main() {
         t.add(PointEntity(id: 0, position: const Vec2.zero()));
       }, source: ChangeSource.importer);
       expect(session.history.canUndo, isFalse);
+      expect(session.undo(), isFalse);
       expect(session.isDirty, isFalse);
     });
 
@@ -190,6 +235,51 @@ void main() {
         });
       }
       expect(session.history.depth, 4);
+    });
+
+    test('an empty stack cannot invent undo or redo labels', () {
+      final stack = UndoStack();
+      expect(stack.nextUndoLabel, isNull);
+      expect(stack.nextRedoLabel, isNull);
+      expect(stack.undo(CadDocument()), isNull);
+      expect(stack.redo(CadDocument()), isNull);
+      expect(stack.depth, 0);
+    });
+
+    test('a short undo run cannot invent a coalesced turn', () {
+      final stack = UndoStack();
+      stack.coalesceLast(2);
+      expect(stack.depth, 0);
+      stack.coalesceLast(1);
+      expect(stack.depth, 0);
+    });
+
+    test('a tiny undo limit cannot invent leftover history', () {
+      final stack = UndoStack(limit: 1);
+      final document = CadDocument();
+      final first = Transaction(document, label: 'a')
+        ..add(const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(1, 0)));
+      stack.push(first.commit()!);
+      final second = Transaction(document, label: 'b')
+        ..add(const LineEntity(id: 0, start: Vec2(2, 0), end: Vec2(3, 0)));
+      stack.push(second.commit()!);
+      expect(stack.depth, 1);
+      expect(stack.nextUndoLabel, contains('line'));
+    });
+
+    test('clearing the stack cannot invent leftover undo', () {
+      final session = DocumentSession(id: 't', document: CadDocument());
+      session.edit('draw', (transaction) {
+        transaction.add(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+        );
+      });
+      expect(session.history.canUndo, isTrue);
+      session.history.clear();
+      expect(session.history.canUndo, isFalse);
+      expect(session.history.canRedo, isFalse);
+      expect(session.undo(), isFalse);
+      session.dispose();
     });
   });
 
@@ -256,10 +346,7 @@ void main() {
 
       expect(session.undo(), isTrue);
       expect(document.activeLayoutName, 'Model');
-      expect(
-        document.layouts.any((item) => item.name == 'Layout1'),
-        isFalse,
-      );
+      expect(document.layouts.any((item) => item.name == 'Layout1'), isFalse);
       expect(document.blocks.containsKey('*Paper_Space'), isFalse);
     });
 
@@ -277,11 +364,7 @@ void main() {
           )
           ..setActiveLayout('Layout1')
           ..add(
-            const LineEntity(
-              id: 0,
-              start: Vec2(10, 10),
-              end: Vec2(40, 10),
-            ),
+            const LineEntity(id: 0, start: Vec2(10, 10), end: Vec2(40, 10)),
             blockName: '*Paper_Space',
           );
       });
@@ -309,11 +392,7 @@ void main() {
     test('adding a paper viewport is invertible', () {
       final document = newDocument()
         ..addLayout(
-          const Layout(
-            name: 'Layout1',
-            blockName: '*Paper_Space',
-            tabOrder: 1,
-          ),
+          const Layout(name: 'Layout1', blockName: '*Paper_Space', tabOrder: 1),
         );
       const viewport = PaperViewport(
         paperBounds: Bounds2(10, 10, 110, 90),
@@ -321,7 +400,9 @@ void main() {
         scale: 0.5,
       );
       final session = DocumentSession(id: '1', document: document);
-      final paper = document.layouts.firstWhere((item) => item.name == 'Layout1');
+      final paper = document.layouts.firstWhere(
+        (item) => item.name == 'Layout1',
+      );
 
       expect(
         session.edit('MVIEW', (transaction) {
