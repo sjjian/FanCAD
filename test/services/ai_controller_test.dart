@@ -1,8 +1,9 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/workspace.dart';
 
 Future<CommandResult> _noop(CommandContext context) async =>
     const CommandResult.ok();
@@ -10,15 +11,8 @@ Future<CommandResult> _noop(CommandContext context) async =>
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  Workspace workspace({SettingsStore? settings}) {
-    final created = Workspace(
-      commands: CommandRegistry(),
-      importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      drawing: DrawingSettings(settings ?? SettingsStore.inMemory()),
-    );
-    addTearDown(created.dispose);
-    return created;
-  }
+  Workspace workspace({SettingsStore? settings}) =>
+      Headless(settings: settings, document: false).workspace;
 
   AiController controller({SettingsStore? settings}) {
     final store = settings ?? SettingsStore.inMemory();
