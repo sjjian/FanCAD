@@ -408,6 +408,22 @@ void main() {
       expect(stack.depth, 0);
     });
 
+    test('coalescing undo entries makes one turn one undo', () {
+      final document = CadDocument();
+      final session = DocumentSession(id: 't', document: document);
+      session.edit('a', (t) {
+        t.add(LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(1, 0)));
+      });
+      session.edit('b', (t) {
+        t.add(LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(0, 1)));
+      });
+      expect(session.history.depth, 2);
+      session.history.coalesceLast(2, label: 'Assistant turn');
+      expect(session.history.depth, 1);
+      session.undo();
+      expect(document.entities, isEmpty);
+    });
+
     test('a tiny undo limit cannot invent leftover history', () {
       final stack = UndoStack(limit: 1);
       final document = CadDocument();
