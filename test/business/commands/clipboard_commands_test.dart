@@ -1,46 +1,25 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-late Workspace workspace;
+import '../../support/workspace.dart';
 
-CadDocument get document => workspace.active!.document;
+late Headless app;
+
+CadDocument get document => app.document;
+
+Workspace get workspace => app.workspace;
 
 Future<CommandResult> run(String id, [Map<String, Object?> args = const {}]) =>
-    workspace.runHeadless(id, args: args);
+    app.run(id, args);
+
+Future<int> drawLine(double x1, double y1, double x2, double y2) =>
+    app.drawLine(x1, y1, x2, y2);
 
 void main() {
   setUp(() {
-    workspace = Workspace(
-      commands: CommandRegistry(),
-      importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      drawing: DrawingSettings(SettingsStore.inMemory()),
-    );
-    registerBuiltinCommands(
-      workspace.commands,
-      fileCommands: FileCommands(
-        openFile: (_) async => false,
-        newDocument: workspace.newDocument,
-        closeActive: (session, {bool force = false}) => true,
-        saveActive: (session, path) async => path,
-        recentFiles: () => const [],
-      ),
-      clipboard: workspace.clipboard,
-    );
-    workspace.newDocument();
+    app = Headless();
   });
-
-  tearDown(() => workspace.dispose());
-
-  Future<int> drawLine(double x1, double y1, double x2, double y2) async {
-    final result = await run('draw.line', {
-      'start': [x1, y1],
-      'end': [x2, y2],
-    });
-    expect(result.status, CommandStatus.ok, reason: result.message);
-    return (result.data!['ids']! as List).first as int;
-  }
 
   test(
     'COPYCLIP then PASTECLIP in another tab places relative to the base',
@@ -129,7 +108,7 @@ void main() {
       const raw = r'{\F宋体|c134;型材1}';
       const rotation = 1.5707963267948966;
       late final int dimId;
-      workspace.active!.session.edit('seed', (transaction) {
+      workspace.active!.session.edit('seed', (Transaction transaction) {
         transaction.putBlock(
           const BlockRecord(name: '*D1', isAnonymous: true, entityIds: []),
         );
