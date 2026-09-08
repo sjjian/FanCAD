@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -347,6 +348,199 @@ void main() {
     final pdf = const Plotter().toPdf(CadDocument());
     expect(pdf, isNotEmpty);
     expect(String.fromCharCodes(pdf.take(5)), '%PDF-');
+  });
+
+  test('a plot of a line is a well-formed PDF', () {
+    final document = CadDocument();
+    final session = DocumentSession(id: 't', document: document);
+    session.edit('line', (transaction) {
+      transaction.add(
+        LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(10, 5)),
+      );
+    });
+    final pdf = const Plotter().toPdf(document);
+    final text = utf8.decode(pdf, allowMalformed: true);
+    expect(pdf[0], 0x25); // %
+    expect(text, startsWith('%PDF'));
+    expect(text, contains('%%EOF'));
+    expect(text, contains(' m\n'));
+    expect(text, contains('\nS\n'));
+    expect(text, contains('/MediaBox'));
+  });
+
+  test('a paper layout plot uses the sheet as the PDF page', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+        viewports: [
+          PaperViewport(
+            paperBounds: Bounds2(20, 20, 200, 160),
+            modelCenter: Vec2(5, 2.5),
+            scale: 1,
+          ),
+        ],
+      ),
+    );
+    document.setActiveLayout('A3');
+    document.addEntity(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 5)),
+    );
+
+    final text = utf8.decode(
+      const Plotter().toPdf(document),
+      allowMalformed: true,
+    );
+    // 420 mm × 297 mm in points (72/25.4).
+    expect(text, contains('1190.55'));
+    expect(text, contains('841.88'));
+    expect(text, contains('W n'));
+  });
+
+  test('a 90 degree plot swaps the PDF page', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+        plotRotation: 90,
+      ),
+    );
+    document.setActiveLayout('A3');
+
+    final text = utf8.decode(
+      const Plotter().toPdf(document),
+      allowMalformed: true,
+    );
+    expect(text, contains('841.88'));
+    expect(text, contains('1190.55'));
+    expect(text, contains('0 1 -1 0 297 0 cm'));
+
+    final svg = const Plotter().toSvg(document);
+    expect(svg, contains('width="297'));
+    expect(svg, contains('height="420'));
+    expect(svg, contains('rotate(-90'));
+  });
+
+  test('a stored plot window becomes the SVG page', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+        plotWindow: Bounds2(10, 20, 110, 80),
+      ),
+    );
+    document.setActiveLayout('A3');
+
+    final svg = const Plotter().toSvg(document);
+    expect(svg, contains('width="100'));
+    expect(svg, contains('height="60'));
+  });
+
+  test('plot scale and offset place content on the sheet', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+        plotScale: 0.5,
+        plotOffsetX: 10,
+        plotOffsetY: 20,
+      ),
+    );
+    document.setActiveLayout('A3');
+
+    final svg = const Plotter().toSvg(document);
+    expect(svg, contains('width="420'));
+    expect(svg, contains('height="297'));
+    expect(svg, contains('translate(10.0 -20.0)'));
+    expect(svg, contains('scale(0.5)'));
+  });
+
+  test('plot fit scales the window onto the sheet', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A4',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 200,
+        paperHeight: 100,
+        plotWindow: Bounds2(0, 0, 20, 10),
+        plotFit: true,
+      ),
+    );
+    document.setActiveLayout('A4');
+
+    final svg = const Plotter().toSvg(document);
+    expect(svg, contains('width="200'));
+    expect(svg, contains('height="100'));
+    expect(svg, contains('scale(10.0)'));
+  });
+
+  test('a paper viewport plot clips model geometry in SVG', () {
+    final document = CadDocument();
+    document.addLayout(
+      const Layout(
+        name: 'A3',
+        blockName: '*Paper_Space',
+        tabOrder: 1,
+        paperWidth: 420,
+        paperHeight: 297,
+        viewports: [
+          PaperViewport(
+            paperBounds: Bounds2(20, 20, 200, 160),
+            modelCenter: Vec2(5, 2.5),
+            scale: 1,
+          ),
+        ],
+      ),
+    );
+    document.setActiveLayout('A3');
+    document.addEntity(
+      const LineEntity(id: 0, start: Vec2(-100, 0), end: Vec2(400, 0)),
+    );
+
+    final svg = const Plotter().toSvg(document);
+    expect(svg, contains('<clipPath id="vp1">'));
+    expect(
+      svg,
+      contains(
+        '<rect x="20.0" y="-160.0" width="180.0" height="140.0"/>',
+      ),
+    );
+    expect(svg, contains('clip-path="url(#vp1)"'));
+    expect(svg, contains('</g>'));
+    expect(svg, contains('<path'));
+  });
+
+  test('a plot of a line is a well-formed SVG', () {
+    final document = CadDocument();
+    final session = DocumentSession(id: 't', document: document);
+    session.edit('line', (transaction) {
+      transaction.add(
+        LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(10, 5)),
+      );
+    });
+    final svg = const Plotter().toSvg(document);
+    expect(svg, startsWith('<?xml'));
+    expect(svg, contains('<svg'));
+    expect(svg, contains('<path'));
+    expect(svg, contains('</svg>'));
   });
 
   test('a viewport-frozen layer cannot invent plot strokes', () {

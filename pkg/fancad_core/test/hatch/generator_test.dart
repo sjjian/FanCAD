@@ -49,6 +49,9 @@ void main() {
       // loops entirely and every hatch came out empty.
       final atOrigin = const HatchGenerator().generate(boxHatch());
       expect(atOrigin, isNotEmpty);
+      for (final stroke in atOrigin) {
+        expect(stroke.length, greaterThanOrEqualTo(4));
+      }
 
       for (final offset in <(double, double)>[
         (5000, 500),

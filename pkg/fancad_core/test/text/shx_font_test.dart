@@ -127,6 +127,7 @@ void main() {
 
   test('truncated or headerless buffers stay empty', () {
     expect(ShxFont.parse(Uint8List.fromList([1, 2, 3])).isEmpty, isTrue);
+    expect(ShxFont.parse(Uint8List(0)).isEmpty, isTrue);
     final noSub = Uint8List.fromList(List<int>.filled(30, 65));
     expect(ShxFont.parse(noSub).isEmpty, isTrue);
   });

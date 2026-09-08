@@ -97,6 +97,25 @@ void main() {
     expect(viewport.withGrip(0, const Vec2(-10, -8)).scale, viewport.scale);
   });
 
+  test('a centre grip moves the window and keeps the model view', () {
+    const framed = PaperViewport(
+      paperBounds: Bounds2(10, 10, 200, 150),
+      modelCenter: Vec2(40, 0),
+      scale: 0.5,
+    );
+    expect(framed.grips(), hasLength(9));
+    expect(framed.grips()[8], const Vec2(105, 80));
+
+    final grown = framed.withGrip(2, const Vec2(220, 170));
+    expect(grown.paperBounds, const Bounds2(10, 10, 220, 170));
+    expect(grown.modelCenter, const Vec2(40, 0));
+    expect(grown.scale, 0.5);
+
+    final moved = framed.withGrip(8, const Vec2(115, 90));
+    expect(moved.paperBounds, const Bounds2(20, 20, 210, 160));
+    expect(moved.modelCenter, const Vec2(40, 0));
+  });
+
   test(
     'blank frozen names and a missing centre cannot invent viewport data',
     () {
