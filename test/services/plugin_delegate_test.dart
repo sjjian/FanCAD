@@ -1,20 +1,14 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/workspace.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  Workspace workspace({SettingsStore? settings}) {
-    final created = Workspace(
-      commands: CommandRegistry(),
-      importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      drawing: DrawingSettings(settings ?? SettingsStore.inMemory()),
-    );
-    addTearDown(created.dispose);
-    return created;
-  }
+  Workspace workspace({SettingsStore? settings}) =>
+      Headless(settings: settings, document: false).workspace;
 
   test('session follows the active tab and is null with no drawing', () {
     final ws = workspace();
