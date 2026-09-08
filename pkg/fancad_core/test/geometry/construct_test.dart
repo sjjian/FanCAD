@@ -520,6 +520,39 @@ void main() {
       );
     });
 
+    test(
+      'a coincident vertex or collapsed sweep cannot invent an angular dim',
+      () {
+        expect(
+          Construct.angularDimension(
+            const Vec2.zero(),
+            const Vec2.zero(),
+            const Vec2(10, 0),
+            const Vec2(4, 4),
+          ),
+          isNull,
+        );
+        expect(
+          Construct.angularDimension(
+            const Vec2.zero(),
+            const Vec2(10, 0),
+            const Vec2(10, 0),
+            const Vec2(4, 4),
+          ),
+          isNull,
+        );
+        expect(
+          Construct.angularDimension(
+            const Vec2.zero(),
+            const Vec2(10, 0),
+            const Vec2(20, 0),
+            const Vec2.zero(),
+          ),
+          isNull,
+        );
+      },
+    );
+
     test('from two lines labels the sector that contains the dim-arc pick', () {
       final horizontal = line(-10, 0, 10, 0);
       final tilted = LineEntity(
@@ -557,6 +590,18 @@ void main() {
       );
     });
 
+    test('a collapsed line cannot invent an angular dim', () {
+      const left = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
+      expect(
+        Construct.angularDimensionFromLines(
+          const LineEntity(id: 3, start: Vec2.zero(), end: Vec2.zero()),
+          left,
+          const Vec2(5, 2),
+        ),
+        isNull,
+      );
+    });
+
     test('from an arc labels the sweep or its complement', () {
       final quarter = ArcEntity(
         id: 1,
@@ -579,6 +624,35 @@ void main() {
       );
       expect(exterior, isNotNull);
       expect(exterior!.measurement, closeTo(270, 1e-9));
+    });
+
+    test('a vanished or closed arc cannot invent an angular dim', () {
+      expect(
+        Construct.angularDimensionFromArc(
+          const ArcEntity(
+            id: 1,
+            center: Vec2.zero(),
+            radius: 0,
+            startAngle: 0,
+            endAngle: math.pi / 2,
+          ),
+          const Vec2(4, 4),
+        ),
+        isNull,
+      );
+      expect(
+        Construct.angularDimensionFromArc(
+          const ArcEntity(
+            id: 2,
+            center: Vec2.zero(),
+            radius: 10,
+            startAngle: 0,
+            endAngle: 0,
+          ),
+          const Vec2(4, 4),
+        ),
+        isNull,
+      );
     });
   });
 
@@ -1698,6 +1772,35 @@ void main() {
         isNull,
       );
     });
+
+    test('a negative or non-finite radius cannot invent a fillet', () {
+      const vertical = LineEntity(id: 1, start: Vec2(0, 10), end: Vec2.zero());
+      const horizontal = LineEntity(
+        id: 2,
+        start: Vec2.zero(),
+        end: Vec2(10, 0),
+      );
+      expect(
+        Construct.filletLines(
+          vertical,
+          horizontal,
+          -2,
+          const Vec2(0, 5),
+          const Vec2(5, 0),
+        ),
+        isNull,
+      );
+      expect(
+        Construct.filletLines(
+          vertical,
+          horizontal,
+          double.nan,
+          const Vec2(0, 5),
+          const Vec2(5, 0),
+        ),
+        isNull,
+      );
+    });
   });
 
   group('filletPolylineVertex', () {
@@ -1729,6 +1832,28 @@ void main() {
         isNull,
       );
     });
+
+    test('a zero radius or lone corner cannot invent a rounded vertex', () {
+      final square = Construct.rectangle(
+        const Vec2.zero(),
+        const Vec2(10, 10),
+      )!;
+      expect(
+        Construct.filletPolylineVertex(square, const Vec2.zero(), 0),
+        isNull,
+      );
+      expect(
+        Construct.filletPolylineVertex(
+          PolylineEntity.fromPoints(
+            id: 1,
+            points: const [Vec2.zero(), Vec2(10, 0)],
+          ),
+          const Vec2(10, 0),
+          2,
+        ),
+        isNull,
+      );
+    });
   });
 
   group('filletPolyline', () {
@@ -1757,6 +1882,16 @@ void main() {
       expect(filleted, isNotNull);
       expect(filleted!.vertexCount, 5);
       expect(filleted.vertexAt(3), const Vec2(10, 10));
+    });
+
+    test('a non-finite radius cannot invent a fillet', () {
+      expect(
+        Construct.filletPolyline(
+          Construct.rectangle(const Vec2.zero(), const Vec2(10, 10))!,
+          double.infinity,
+        ),
+        isNull,
+      );
     });
   });
 
@@ -1827,6 +1962,37 @@ void main() {
         isNull,
       );
     });
+
+    test('a negative or non-finite distance cannot invent a chamfer', () {
+      const vertical = LineEntity(id: 1, start: Vec2(0, 10), end: Vec2.zero());
+      const horizontal = LineEntity(
+        id: 2,
+        start: Vec2.zero(),
+        end: Vec2(10, 0),
+      );
+      expect(
+        Construct.chamferLines(
+          vertical,
+          horizontal,
+          -2,
+          2,
+          const Vec2(0, 5),
+          const Vec2(5, 0),
+        ),
+        isNull,
+      );
+      expect(
+        Construct.chamferLines(
+          vertical,
+          horizontal,
+          2,
+          double.nan,
+          const Vec2(0, 5),
+          const Vec2(5, 0),
+        ),
+        isNull,
+      );
+    });
   });
 
   group('chamferPolylineVertex', () {
@@ -1851,6 +2017,28 @@ void main() {
       final square = Construct.rectangle(const Vec2(0, 0), const Vec2(4, 4))!;
       expect(
         Construct.chamferPolylineVertex(square, const Vec2(0, 0), dist1: 5),
+        isNull,
+      );
+    });
+
+    test('a zero distance or lone corner cannot invent a bevel', () {
+      final square = Construct.rectangle(
+        const Vec2.zero(),
+        const Vec2(10, 10),
+      )!;
+      expect(
+        Construct.chamferPolylineVertex(square, const Vec2.zero(), dist1: 0),
+        isNull,
+      );
+      expect(
+        Construct.chamferPolylineVertex(
+          PolylineEntity.fromPoints(
+            id: 1,
+            points: const [Vec2.zero(), Vec2(10, 0)],
+          ),
+          const Vec2(10, 0),
+          dist1: 2,
+        ),
         isNull,
       );
     });
@@ -1882,6 +2070,16 @@ void main() {
       expect(chamfered, isNotNull);
       expect(chamfered!.vertexCount, 5);
       expect(chamfered.vertexAt(3), const Vec2(10, 10));
+    });
+
+    test('a non-finite distance cannot invent a chamfer', () {
+      expect(
+        Construct.chamferPolyline(
+          Construct.rectangle(const Vec2.zero(), const Vec2(10, 10))!,
+          dist1: double.infinity,
+        ),
+        isNull,
+      );
     });
   });
 
@@ -1920,6 +2118,11 @@ void main() {
 
     test('returns null when a single point is an endpoint', () {
       expect(Construct.breakLine(line(0, 0, 10, 0), const Vec2(0, 0)), isNull);
+    });
+
+    test('a collapsed span cannot invent a break', () {
+      const collapsed = LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero());
+      expect(Construct.breakLine(collapsed, const Vec2.zero()), isNull);
     });
   });
 
@@ -1999,6 +2202,16 @@ void main() {
       expect(pieces[1].vertexAt(0), const Vec2(10, 10));
       expect(pieces[1].vertexAt(1), const Vec2(20, 10));
     });
+
+    test('a lone vertex cannot invent a remnant', () {
+      expect(
+        Construct.breakPolyline(
+          PolylineEntity.fromPoints(id: 1, points: const [Vec2.zero()]),
+          const Vec2.zero(),
+        ),
+        isNull,
+      );
+    });
   });
 
   group('breakArc', () {
@@ -2033,6 +2246,17 @@ void main() {
       expect(pieces, hasLength(1));
       expect(pieces!.first.endAngle, closeTo(math.pi / 2, 1e-9));
     });
+
+    test('a zero-radius arc cannot invent a break', () {
+      const zeroRadius = ArcEntity(
+        id: 2,
+        center: Vec2.zero(),
+        radius: 0,
+        startAngle: 0,
+        endAngle: math.pi,
+      );
+      expect(Construct.breakArc(zeroRadius, const Vec2.zero()), isNull);
+    });
   });
 
   group('breakCircle', () {
@@ -2053,6 +2277,25 @@ void main() {
       expect(
         Construct.breakCircle(
           const CircleEntity(id: 1, center: Vec2(0, 0), radius: 10),
+          const Vec2(10, 0),
+        ),
+        isNull,
+      );
+    });
+
+    test('a zero-radius or coincident pair cannot invent a remnant', () {
+      expect(
+        Construct.breakCircle(
+          const CircleEntity(id: 2, center: Vec2.zero(), radius: 0),
+          const Vec2(1, 0),
+          const Vec2(0, 1),
+        ),
+        isNull,
+      );
+      expect(
+        Construct.breakCircle(
+          const CircleEntity(id: 3, center: Vec2.zero(), radius: 10),
+          const Vec2(10, 0),
           const Vec2(10, 0),
         ),
         isNull,
@@ -2439,6 +2682,38 @@ void main() {
         Construct.lengthenLine(line(0, 0, 10, 0), const Vec2(10, 0), total: 0),
         isNull,
       );
+      expect(
+        Construct.lengthenLine(
+          line(0, 0, 10, 0),
+          const Vec2(10, 0),
+          delta: -10,
+        ),
+        isNull,
+      );
+    });
+
+    test('a collapsed span cannot invent a lengthened remnant', () {
+      const collapsed = LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero());
+      expect(
+        Construct.lengthenLine(collapsed, const Vec2.zero(), total: 10),
+        isNull,
+      );
+    });
+
+    test('a non-finite total cannot invent a length change', () {
+      const source = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
+      expect(
+        Construct.lengthenLine(source, const Vec2(10, 0), total: double.nan),
+        isNull,
+      );
+      expect(
+        Construct.lengthenLine(
+          source,
+          const Vec2(10, 0),
+          total: double.infinity,
+        ),
+        isNull,
+      );
     });
   });
 
@@ -2499,6 +2774,39 @@ void main() {
           Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!,
           const Vec2(0, 0),
           total: 50,
+        ),
+        isNull,
+      );
+    });
+
+    test('a lone or collapsed vertex cannot invent a lengthened remnant', () {
+      expect(
+        Construct.lengthenPolyline(
+          PolylineEntity.fromPoints(id: 2, points: const [Vec2.zero()]),
+          const Vec2.zero(),
+          total: 10,
+        ),
+        isNull,
+      );
+      expect(
+        Construct.lengthenPolyline(
+          PolylineEntity.fromPoints(
+            id: 3,
+            points: const [Vec2.zero(), Vec2.zero()],
+          ),
+          const Vec2.zero(),
+          total: 10,
+        ),
+        isNull,
+      );
+    });
+
+    test('a non-finite total cannot invent a length change', () {
+      expect(
+        Construct.lengthenPolyline(
+          elbow,
+          const Vec2(10, 10),
+          total: double.nan,
         ),
         isNull,
       );
@@ -2589,6 +2897,42 @@ void main() {
     test('refuses a sweep that would close the circle', () {
       expect(
         Construct.lengthenArc(quarter, const Vec2(0, 10), total: 20 * math.pi),
+        isNull,
+      );
+    });
+
+    test('a zero-radius or closed arc cannot invent a length change', () {
+      const zeroArc = ArcEntity(
+        id: 4,
+        center: Vec2.zero(),
+        radius: 0,
+        startAngle: 0,
+        endAngle: math.pi / 2,
+      );
+      expect(
+        Construct.lengthenArc(zeroArc, const Vec2.zero(), total: 10),
+        isNull,
+      );
+      expect(
+        Construct.lengthenArc(
+          quarter,
+          const Vec2(0, 10),
+          total: double.infinity,
+        ),
+        isNull,
+      );
+      expect(
+        Construct.lengthenArc(
+          const ArcEntity(
+            id: 4,
+            center: Vec2.zero(),
+            radius: 10,
+            startAngle: 0,
+            endAngle: 0,
+          ),
+          const Vec2(10, 0),
+          total: 10,
+        ),
         isNull,
       );
     });
