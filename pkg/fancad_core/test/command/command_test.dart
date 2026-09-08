@@ -23,6 +23,16 @@ void main() {
       final bag = DisposableBag()..dispose();
       bag.add(Disposable.callback(() => ran = true));
       expect(ran, isTrue);
+      expect(bag.length, 0);
+      Disposable.noop.dispose();
+    });
+
+    test('disposing twice cannot invent a second teardown', () {
+      var runs = 0;
+      final disposable = Disposable.callback(() => runs++);
+      disposable.dispose();
+      disposable.dispose();
+      expect(runs, 1);
       Disposable.noop.dispose();
     });
   });
@@ -152,6 +162,30 @@ void main() {
       expect(
         const ParamSpec(name: 'layer', type: ParamType.layer).effectivePrompt,
         'Specify layer:',
+      );
+      expect(
+        const ParamSpec(name: 'payload', type: ParamType.json).toJsonSchema()['type'],
+        'object',
+      );
+      expect(
+        const ParamSpec(name: 'points', type: ParamType.points).toJsonSchema()['type'],
+        'array',
+      );
+      expect(
+        const ParamSpec(name: 'cell', type: ParamType.block).toJsonSchema()['type'],
+        'string',
+      );
+      expect(
+        const ParamSpec(name: 'id', type: ParamType.entity).toJsonSchema()['type'],
+        'integer',
+      );
+      expect(
+        const ParamSpec(
+          name: 'opt',
+          type: ParamType.text,
+          required: false,
+        ).toString(),
+        contains('?'),
       );
     });
   });
