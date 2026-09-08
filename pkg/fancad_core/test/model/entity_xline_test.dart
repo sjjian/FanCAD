@@ -1,4 +1,5 @@
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -8,9 +9,7 @@ void main() {
       origin: Vec2(3, 4),
       direction: Vec2.zero(),
     );
-    final sink = PolylineSink();
-    xline.emit(const EmitContext(tolerance: 0.1), sink);
-    expect(sink.polylines, isEmpty);
+    expect(emit(xline).polylines, isEmpty);
     expect(xline.computeBounds(), const Bounds2(3, 4, 3, 4));
   });
 
