@@ -129,4 +129,16 @@ void main() {
     );
     expect(sink.texts.single.text, 'Ø10');
   });
+
+  test('TEXT that kept MTEXT codes still paints the glyphs', () {
+    final sink = emit(
+      const TextEntity(
+        id: 1,
+        position: Vec2.zero(),
+        content: r'{\F宋体|c134;型材1}',
+        height: 2.5,
+      ),
+    );
+    expect(sink.texts.single.text, '型材1');
+  });
 }
