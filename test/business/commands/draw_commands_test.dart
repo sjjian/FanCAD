@@ -1175,6 +1175,21 @@ void main() {
       expect(polyline.closed, isTrue);
       expect(polyline.vertexCount, 3);
     });
+
+    test('a point lands at the supplied location', () async {
+      final result = await run('draw.point', {
+        'at': [3, 7],
+      });
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final point = document.entities.whereType<PointEntity>().single;
+      expect(point.position, const Vec2(3, 7));
+    });
+
+    test('a missing location cannot invent a point', () async {
+      final result = await run('draw.point');
+      expect(result.status, CommandStatus.cancelled);
+      expect(document.entityCount, 0);
+    });
   });
 }
 
