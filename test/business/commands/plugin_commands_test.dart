@@ -5,12 +5,15 @@ import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
 JsEngineFactory scriptedEngine() =>
     ({required int memoryLimit, required int stackSize}) {
-      final engine = ScriptedJsEngine();
+      final engine = ScriptedJsEngine(
+        onEvaluate: (source, name) => source == '1+1' ? 2 : null,
+      );
       engine.globals[BootstrapGlobals.registered] = () =>
           jsonEncode({'commands': <String>[]});
       engine.globals[BootstrapGlobals.deactivate] = () =>
@@ -29,7 +32,7 @@ void main() {
   late PluginHost host;
 
   setUp(() async {
-    root = await Directory.systemTemp.createTemp('fancad-plugins-');
+    root = tempDir(prefix: 'fancad-plugins');
     workspace = Workspace(
       commands: CommandRegistry(),
       importer: DrawingImporter(backend: MemoryDrawingBackend()),
@@ -57,7 +60,6 @@ void main() {
   tearDown(() async {
     await host.dispose();
     workspace.dispose();
-    if (root.existsSync()) await root.delete(recursive: true);
   });
 
   Future<CommandResult> run(
@@ -157,4 +159,46 @@ void main() {
       );
     },
   );
+
+  test(
+    'disable unloads a scaffolded extension until it is enabled again',
+    () async {
+      expect(
+        (await run('plugins.scaffold', {'id': 'acme.safe'})).status,
+        CommandStatus.ok,
+      );
+      expect(host.plugin('acme.safe')!.state, isNot(PluginState.disabled));
+
+      final disabled = await run('plugins.disable', {'id': 'acme.safe'});
+      expect(disabled.status, CommandStatus.ok);
+      expect(disabled.data!['enabled'], isFalse);
+      expect(host.plugin('acme.safe')!.state, PluginState.disabled);
+
+      final enabled = await run('plugins.enable', {'id': 'acme.safe'});
+      expect(enabled.status, CommandStatus.ok);
+      expect(enabled.data!['enabled'], isTrue);
+      expect(host.plugin('acme.safe')!.state, PluginState.installed);
+    },
+  );
+
+  test('read and eval stay inside a live extension folder', () async {
+    expect(
+      (await run('plugins.scaffold', {'id': 'acme.safe'})).status,
+      CommandStatus.ok,
+    );
+
+    final read = await run('plugins.read', {
+      'id': 'acme.safe',
+      'path': 'main.js',
+    });
+    expect(read.status, CommandStatus.ok, reason: read.message);
+    expect(read.data!['content'], contains('fancad.commands.register'));
+
+    final eval = await run('plugins.eval', {
+      'id': 'acme.safe',
+      'source': '1+1',
+    });
+    expect(eval.status, CommandStatus.ok, reason: eval.message);
+    expect(eval.data!['value'], 2);
+  });
 }
