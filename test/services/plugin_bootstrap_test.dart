@@ -5,6 +5,7 @@ import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -60,12 +61,8 @@ void main() {
   test(
     'start discovers bundled then user plugins once, and forwards document events',
     () async {
-      final bundled = await Directory.systemTemp.createTemp('fancad-bundled-');
-      final user = await Directory.systemTemp.createTemp('fancad-user-');
-      addTearDown(() async {
-        if (bundled.existsSync()) await bundled.delete(recursive: true);
-        if (user.existsSync()) await user.delete(recursive: true);
-      });
+      final bundled = tempDir(prefix: 'fancad-bundled');
+      final user = tempDir(prefix: 'fancad-user');
 
       await writePlugin(bundled.path, 'shipped.tools', startup: true);
       await writePlugin(user.path, 'user.tools');
