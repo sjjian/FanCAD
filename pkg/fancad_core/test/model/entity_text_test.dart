@@ -149,4 +149,17 @@ void main() {
       const Vec2(2, 3),
     );
   });
+
+  test('text keeps its glyph below the sub-pixel threshold', () {
+    const text = TextEntity(
+      id: 2,
+      position: Vec2.zero(),
+      content: 'A',
+      height: 2.5,
+    );
+    final labels = PolylineSink();
+    text.emit(const EmitContext(tolerance: 0.1, minExtent: 100), labels);
+    expect(labels.texts, isNotEmpty);
+    expect(labels.points, isEmpty);
+  });
 }

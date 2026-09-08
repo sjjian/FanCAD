@@ -114,4 +114,21 @@ void main() {
     );
     expect(spline.computeBounds(), Bounds2.fromXY(spline.fitPointBuffer));
   });
+
+  test('a weighted spline emits flattened strokes', () {
+    final spline = SplineEntity(
+      id: 2,
+      controlPoints: Float64List.fromList([0, 0, 4, 4, 8, 0, 12, 4]),
+      knots: const [0, 0, 0, 0, 1, 1, 1, 1],
+      weights: const [1, 1, 1, 1],
+      degree: 3,
+    );
+    final sink = PolylineSink();
+    spline.emit(const EmitContext(tolerance: 0.1), sink);
+    expect(sink.polylines, isNotEmpty);
+    expect(
+      spline.transformed(const Mat3.translation(1, 0)).controlPoints[0],
+      1,
+    );
+  });
 }

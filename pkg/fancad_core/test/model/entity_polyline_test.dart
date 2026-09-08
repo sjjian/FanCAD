@@ -104,4 +104,27 @@ void main() {
     expect(edited.vertexAt(1), const Vec2(8, 1));
     expect(edited.vertexAt(0), const Vec2.zero());
   });
+
+  test('a wide or bulged polyline emits a fill and keeps a flipped bulge', () {
+    final wide = PolylineEntity(
+      id: 1,
+      vertices: Float64List.fromList([0, 0, 0, 10, 0, 0, 10, 4, 0]),
+      constantWidth: 2,
+    );
+    final fillSink = PolylineSink();
+    wide.emit(const EmitContext(tolerance: 0.1), fillSink);
+    expect(fillSink.fills, isNotEmpty);
+    expect(wide.computeBounds().height, greaterThan(4));
+
+    final bulged = PolylineEntity(
+      id: 2,
+      vertices: Float64List.fromList([0, 0, 0.5, 10, 0, 0]),
+    );
+    expect(bulged.hasBulges, isTrue);
+    expect(bulged.computeBounds().width, greaterThan(0));
+    final mirrored = bulged.transformed(
+      Mat3.mirror(const Vec2.zero(), const Vec2(1, 0)),
+    );
+    expect(mirrored.bulgeAt(0), -0.5);
+  });
 }

@@ -46,4 +46,17 @@ void main() {
     expect(tall.ratio, lessThanOrEqualTo(1));
     expect(tall.majorLength, closeTo(10, 1e-9));
   });
+
+  test('a sub-pixel circle collapses to a point', () {
+    const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 1);
+    final collapsed = PolylineSink();
+    circle.emit(const EmitContext(tolerance: 0.1, minExtent: 10), collapsed);
+    expect(collapsed.polylines, isEmpty);
+    expect(collapsed.points, hasLength(1));
+
+    final ring = PolylineSink();
+    circle.emit(const EmitContext(tolerance: 0.1), ring);
+    expect(ring.polylines, isNotEmpty);
+    expect(ring.points, isEmpty);
+  });
 }
