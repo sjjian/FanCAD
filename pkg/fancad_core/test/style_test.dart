@@ -84,6 +84,8 @@ void main() {
       expect(TextStyleDef.standard.isShxFont, isTrue);
       expect(const TextStyleDef(name: 'A', fontFamily: 'arial.shx').isShxFont, isTrue);
       expect(const TextStyleDef(name: 'A', fontFamily: 'Arial').isShxFont, isFalse);
+      expect(const TextStyleDef(name: 'A', fontFamily: 'txt').isShxFont, isTrue);
+      expect(const TextStyleDef(name: 'A', fontFamily: 'ROMANS').isShxFont, isTrue);
       expect(TextStyleDef.standard.toString(), 'TextStyleDef(Standard)');
     });
   });

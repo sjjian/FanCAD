@@ -4364,6 +4364,10 @@ void main() {
           name: 'fit cannot invent an alignment',
           keyword: 'fit',
         ),
+        (
+          name: 'an unknown justify keyword cannot invent an alignment',
+          keyword: 'nope',
+        ),
       ],
       (c) {
         expect(
@@ -4386,6 +4390,10 @@ void main() {
         (
           name: 'fit cannot invent an mtext attachment',
           keyword: 'fit',
+        ),
+        (
+          name: 'align cannot invent an mtext attachment',
+          keyword: 'align',
         ),
       ],
       (c) {

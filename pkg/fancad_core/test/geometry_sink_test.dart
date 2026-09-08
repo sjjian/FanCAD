@@ -60,6 +60,19 @@ void main() {
       expect(box.minX, closeTo(-12, 1e-9));
       expect(box.maxY, closeTo(6.2, 1e-9));
     });
+
+    test('empty text cannot invent a width', () {
+      const geometry = TextGeometry(
+        text: '',
+        origin: Vec2.zero(),
+        height: 10,
+        rotation: 0,
+        styleName: 'Standard',
+      );
+      final box = geometry.estimatedBounds();
+      expect(box.width, 0);
+      expect(box.height, closeTo(12, 1e-9));
+    });
   });
 
   group('EmitContext', () {
