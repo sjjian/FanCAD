@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:fancad/fancad.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -67,4 +68,55 @@ void main() {
       reopened.dispose();
     },
   );
+
+  test(
+    'a missing file is treated as empty rather than a failed start',
+    () async {
+      final dir = tempDir(prefix: 'fancad-settings-missing');
+      final store = await SettingsStore.open(dir.path);
+      expect(store.values, isEmpty);
+      expect(store.getString('missing', fallback: 'dark'), 'dark');
+      expect(store.getDouble('missing', fallback: 1.5), 1.5);
+      expect(store.getInt('missing', fallback: 7), 7);
+      store.dispose();
+    },
+  );
+
+  test(
+    'a JSON array is treated as empty so a non-object file cannot load',
+    () async {
+      final dir = tempDir(prefix: 'fancad-settings-array');
+      File('${dir.path}/settings.json').writeAsStringSync('[1, 2]');
+
+      final store = await SettingsStore.open(dir.path);
+      expect(store.values, isEmpty);
+      store.dispose();
+    },
+  );
+
+  test(
+    'flush creates a missing support directory so first run can persist',
+    () async {
+      final parent = tempDir(prefix: 'fancad-settings-first');
+      final support = Directory('${parent.path}/nested/support');
+      expect(support.existsSync(), isFalse);
+
+      final store = await SettingsStore.open(support.path);
+      store.set(SettingsKeys.themeBrightness, 'light');
+      await store.flush();
+
+      expect(File('${support.path}/settings.json').existsSync(), isTrue);
+      final reopened = await SettingsStore.open(support.path);
+      expect(reopened.getString(SettingsKeys.themeBrightness), 'light');
+      store.dispose();
+      reopened.dispose();
+    },
+  );
+
+  test('an in-memory store does not arm a disk flush timer', () {
+    final store = SettingsStore.inMemory();
+    store.set(SettingsKeys.themeBrightness, 'light');
+    expect(store.getString(SettingsKeys.themeBrightness), 'light');
+    store.dispose();
+  });
 }
