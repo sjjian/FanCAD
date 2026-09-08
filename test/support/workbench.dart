@@ -31,18 +31,8 @@ class LocalizedWorkbench extends ConsumerWidget {
   }
 }
 
-/// In-memory settings, a stub importer, and a pumped [Workbench].
-Future<ProviderContainer> pumpWorkbench(
-  WidgetTester tester, {
-  SettingsStore? settings,
-  Size size = const Size(1600, 1000),
-  bool document = false,
-}) async {
-  tester.view.physicalSize = size;
-  tester.view.devicePixelRatio = 1;
-  addTearDown(tester.view.reset);
-  addTearDown(debugResetSettingsDialog);
-
+/// In-memory settings and a stub importer. Does not pump a widget.
+ProviderContainer workbenchContainer({SettingsStore? settings}) {
   final container = ProviderContainer(
     overrides: [
       settingsProvider.overrideWithValue(settings ?? SettingsStore.inMemory()),
@@ -54,7 +44,25 @@ Future<ProviderContainer> pumpWorkbench(
     ],
   );
   addTearDown(container.dispose);
+  return container;
+}
+
+/// In-memory settings, a stub importer, and a pumped [Workbench].
+Future<ProviderContainer> pumpWorkbench(
+  WidgetTester tester, {
+  SettingsStore? settings,
+  Size size = const Size(1600, 1000),
+  bool document = false,
+  void Function(ProviderContainer container)? prepare,
+}) async {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  addTearDown(debugResetSettingsDialog);
+
+  final container = workbenchContainer(settings: settings);
   if (document) container.read(workspaceProvider).newDocument();
+  prepare?.call(container);
 
   await tester.pumpWidget(
     UncontrolledProviderScope(
@@ -65,3 +73,4 @@ Future<ProviderContainer> pumpWorkbench(
   await tester.pump();
   return container;
 }
+
