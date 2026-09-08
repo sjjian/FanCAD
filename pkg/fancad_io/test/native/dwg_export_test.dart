@@ -9,14 +9,19 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
+import '../support/native.dart';
 import '../support/roundtrip.dart';
 import '../support/snapshots.dart';
 
 void main() {
+  nativeGroup('DWG export', _dwgExport);
+}
+
+void _dwgExport() {
   late Roundtrip rt;
 
   setUpAll(() {
-    rt = Roundtrip()..requireDwg();
+    rt = Roundtrip();
   });
 
   test(

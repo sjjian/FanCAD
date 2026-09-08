@@ -8,46 +8,57 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
+import '../support/native.dart';
 import '../support/roundtrip.dart';
 
 void main() {
-  group('UCS-2 text', () {
-    eachCase([
-      (
-        name: 'a UCS-2 MTEXT brace is not a C-string terminator',
-        note: r'{\F宋体|c134;注释}',
-        check: (Uint8List tu, String note) {
-          expect(String.fromCharCodes(_cStringBytes(tu)), '{');
-          expect(_decodeUcs2Le(tu), note);
-        },
-      ),
-      (
-        name: 'a CJK-only UCS-2 note survives the wide-string walk',
-        note: '注释',
-        check: (Uint8List tu, String note) {
-          expect(String.fromCharCodes(_cStringBytes(tu)), isNot(note));
-          expect(_decodeUcs2Le(tu), note);
-        },
-      ),
-    ], (c) {
-      final tu = _encodeUcs2Le(c.note);
-      c.check(tu, c.note);
-    });
+  nativeGroup('DWG import', _dwgImport);
+}
 
-    test('an ASCII-leading UCS-2 field is recognized without a DWG version', () {
-      final tu = _encodeUcs2Le(r'{\F宋体|c134;注释}');
-      expect(tu[0], 0x7B);
-      expect(tu[1], 0);
-      expect(_looksLikeUcs2(tu), isTrue);
-      expect(_looksLikeUcs2(r'{\F宋体|c134;注释}'.codeUnits), isFalse);
-    });
+void _dwgImport() {
+  group('UCS-2 text', () {
+    eachCase(
+      [
+        (
+          name: 'a UCS-2 MTEXT brace is not a C-string terminator',
+          note: r'{\F宋体|c134;注释}',
+          check: (Uint8List tu, String note) {
+            expect(String.fromCharCodes(_cStringBytes(tu)), '{');
+            expect(_decodeUcs2Le(tu), note);
+          },
+        ),
+        (
+          name: 'a CJK-only UCS-2 note survives the wide-string walk',
+          note: '注释',
+          check: (Uint8List tu, String note) {
+            expect(String.fromCharCodes(_cStringBytes(tu)), isNot(note));
+            expect(_decodeUcs2Le(tu), note);
+          },
+        ),
+      ],
+      (c) {
+        final tu = _encodeUcs2Le(c.note);
+        c.check(tu, c.note);
+      },
+    );
+
+    test(
+      'an ASCII-leading UCS-2 field is recognized without a DWG version',
+      () {
+        final tu = _encodeUcs2Le(r'{\F宋体|c134;注释}');
+        expect(tu[0], 0x7B);
+        expect(tu[1], 0);
+        expect(_looksLikeUcs2(tu), isTrue);
+        expect(_looksLikeUcs2(r'{\F宋体|c134;注释}'.codeUnits), isFalse);
+      },
+    );
   });
 
   group('ownership fields', () {
     late Roundtrip rt;
 
     setUpAll(() {
-      rt = Roundtrip()..requireDwg();
+      rt = Roundtrip();
     });
 
     test(
@@ -78,7 +89,16 @@ void main() {
               id: 7,
               loops: [
                 HatchLoop(
-                  vertices: Float64List.fromList([40, 0, 50, 0, 50, 10, 40, 10]),
+                  vertices: Float64List.fromList([
+                    40,
+                    0,
+                    50,
+                    0,
+                    50,
+                    10,
+                    40,
+                    10,
+                  ]),
                 ),
               ],
             ),
@@ -211,7 +231,9 @@ void main() {
         };
         expect(referenced, isEmpty);
         expect(
-          opened.entitiesOf(opened.modelSpaceBlockName).whereType<LeaderEntity>(),
+          opened
+              .entitiesOf(opened.modelSpaceBlockName)
+              .whereType<LeaderEntity>(),
           isNotEmpty,
         );
       },
@@ -223,28 +245,32 @@ void main() {
     late Roundtrip rt;
 
     setUpAll(() {
-      rt = Roundtrip()..requireDwg();
+      rt = Roundtrip();
     });
 
-    test('a REGION keeps SAT loops instead of one scribble', () async {
-      final outer = _ring(126, 96.5, 126, 96.5);
-      final inner = _ring(126, 96.5, 40, 30);
-      final source = drawingOf(
-        UnknownEntity(
-          id: 1,
-          originalType: 'REGION',
-          strokes: Float64List.fromList([...outer, ...inner]),
-          strokeCounts: [outer.length ~/ 2, inner.length ~/ 2],
-        ),
-      );
+    test(
+      'a REGION keeps SAT loops instead of one scribble',
+      () async {
+        final outer = _ring(126, 96.5, 126, 96.5);
+        final inner = _ring(126, 96.5, 40, 30);
+        final source = drawingOf(
+          UnknownEntity(
+            id: 1,
+            originalType: 'REGION',
+            strokes: Float64List.fromList([...outer, ...inner]),
+            strokeCounts: [outer.length ~/ 2, inner.length ~/ 2],
+          ),
+        );
 
-      final opened = await rt.dwg(source, name: 'region');
-      final region = opened.entities.whereType<UnknownEntity>().single;
-      expect(region.originalType, 'REGION');
-      expect(region.strokeCounts, hasLength(2));
-      expect(region.strokeCounts.every((count) => count >= 8), isTrue);
-      expect(region.strokeCounts, isNot(equals([56])));
-    }, timeout: Roundtrip.timeout);
+        final opened = await rt.dwg(source, name: 'region');
+        final region = opened.entities.whereType<UnknownEntity>().single;
+        expect(region.originalType, 'REGION');
+        expect(region.strokeCounts, hasLength(2));
+        expect(region.strokeCounts.every((count) => count >= 8), isTrue);
+        expect(region.strokeCounts, isNot(equals([56])));
+      },
+      timeout: Roundtrip.timeout,
+    );
   });
 }
 

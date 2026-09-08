@@ -1,5 +1,6 @@
 tags:
-  # Requires a build in which LibreDWG was found and linked. Skipped by
-  # default so a checkout without the library still has a green test run.
+  # nativeGroup tests. Skipped by default so a checkout without LibreDWG
+  # still has a green run. `--tags native --run-skipped` fails and names
+  # FANCAD_LIBREDWG_ROOT when the backend is not linked.
   native:
     skip: "Run with --tags native in a build that links LibreDWG"
