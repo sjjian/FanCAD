@@ -1395,6 +1395,14 @@ void main() {
       expect(donut.vertexAt(0).x, closeTo(-4, 1e-9));
       expect(donut.vertexAt(1).x, closeTo(4, 1e-9));
       expect(donut.bulgeAt(0), closeTo(1, 1e-9));
+
+      final sink = PolylineSink();
+      donut.emit(
+        const EmitContext(tolerance: 0.1),
+        sink,
+      );
+      expect(sink.fills, isNotEmpty);
+      expect(sink.fills.first.length, greaterThan(8));
     });
 
     test('swaps inverted radii and treats a zero inner as a disk', () {

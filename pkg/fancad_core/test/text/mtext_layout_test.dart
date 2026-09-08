@@ -12,6 +12,10 @@ void main() {
       expect(stripMTextFormatting(r'\X99;Hi'), 'Hi');
       expect(stripMTextFormatting(r'A\PB'), 'A\nB');
       expect(stripMTextFormatting(r'A\pi-2;B'), 'AB');
+      expect(
+        stripMTextFormatting(r'{\fArial|b1;Bold}\Pnext'),
+        'Bold\nnext',
+      );
     });
   });
 
@@ -42,6 +46,20 @@ void main() {
       );
       expect(runs.length, greaterThan(1));
       expect(runs.every((run) => run.text.split(' ').length <= 2), isTrue);
+    });
+
+    test('wrapping splits a paragraph that already contains a break', () {
+      final runs = const MTextLayout().layout(
+        const MTextEntity(
+          id: 1,
+          position: Vec2.zero(),
+          content: r'Hello\Pworld {\fArial|b1;bold} text',
+          height: 2.5,
+          rectangleWidth: 20,
+        ),
+      );
+      expect(runs, isNotEmpty);
+      expect(runs.any((run) => run.text.contains('Hello')), isTrue);
     });
 
     test('font and colour codes attach to the following run', () {

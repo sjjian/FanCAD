@@ -56,6 +56,11 @@ void main() {
       expect(LineWeight.tryParse('0'), LineWeight.zero);
       expect(LineWeight.toMillimetres(25), 0.25);
       expect(LineWeight.toMillimetres(LineWeight.byLayer), 0);
+      expect(LineWeight.tryParse('0.25'), 25);
+      expect(LineWeight.tryParse('25'), 25);
+      expect(LineWeight.tryParse('0.25mm'), 25);
+      expect(LineWeight.tryParse('ByLayer'), LineWeight.byLayer);
+      expect(LineWeight.tryParse('hairline'), LineWeight.zero);
     });
 
     test('a blank or non-finite weight cannot invent a DXF value', () {
@@ -70,6 +75,9 @@ void main() {
       expect(LineWeight.tryParse('2.12'), isNull);
       expect(LineWeight.tryParse('212'), isNull);
       expect(LineWeight.tryParse('3mm'), isNull);
+      expect(LineWeight.tryParse('300'), isNull);
+      expect(LineWeight.tryParse('5mm'), isNull);
+      expect(LineWeight.tryParse('nope'), isNull);
     });
 
     test('DWG inherit sentinels are not 0.29 mm strokes', () {

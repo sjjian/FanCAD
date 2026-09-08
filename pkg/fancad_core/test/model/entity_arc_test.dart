@@ -85,4 +85,19 @@ void main() {
     expect(rotated.startAngle, closeTo(math.pi / 2, 1e-9));
     expect(rotated.endAngle, closeTo(math.pi, 1e-9));
   });
+
+  test('arc bounds are exact, not the full circle', () {
+    final arc = ArcEntity(
+      id: 1,
+      center: const Vec2.zero(),
+      radius: 10,
+      startAngle: 0,
+      endAngle: math.pi / 2,
+    );
+    final bounds = arc.computeBounds();
+    expect(bounds.minX, closeTo(0, 1e-9));
+    expect(bounds.minY, closeTo(0, 1e-9));
+    expect(bounds.maxX, closeTo(10, 1e-9));
+    expect(bounds.maxY, closeTo(10, 1e-9));
+  });
 }
