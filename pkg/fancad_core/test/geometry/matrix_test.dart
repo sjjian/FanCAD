@@ -36,8 +36,10 @@ void main() {
       flipped.transform(const Vec2(513651.937, 170415.059)),
       const Vec2(-513651.937, 170415.059),
     );
-    expect(flipped.transform(const Vec2(-513651.937, 170415.059)).x,
-        closeTo(513651.937, 1e-9));
+    expect(
+      flipped.transform(const Vec2(-513651.937, 170415.059)).x,
+      closeTo(513651.937, 1e-9),
+    );
   });
 
   test('OCS tilted extrusion uses the arbitrary axis', () {
@@ -60,15 +62,20 @@ void main() {
     expect(parts.scale.x, closeTo(4.17, 1e-9));
     expect(parts.scale.y, closeTo(4.17, 1e-9));
     expect(parts.rotation, closeTo(0, 1e-9));
-    expect(
-      world.transform(Vec2.zero()),
-      parts.position,
-    );
+    expect(world.transform(Vec2.zero()), parts.position);
   });
 
   test('transformDirection ignores translation', () {
     final matrix = const Mat3.translation(10, 20).multiplied(Mat3.rotation(0));
     expect(matrix.transformDirection(const Vec2(3, 4)), const Vec2(3, 4));
     expect(matrix.transform(const Vec2(3, 4)), const Vec2(13, 24));
+  });
+
+  test('a vanished mirror direction cannot invent a flip', () {
+    final matrix = Mat3.mirror(const Vec2.zero(), const Vec2.zero());
+    final image = matrix.transform(const Vec2(3, 2));
+    expect(image.x.isFinite, isTrue);
+    expect(image.y.isFinite, isTrue);
+    expect(image, const Vec2.zero());
   });
 }
