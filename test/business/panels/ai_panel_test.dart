@@ -246,6 +246,79 @@ void main() {
       expect(find.byKey(const Key('assistant-approval-card')), findsNothing);
     },
   );
+
+  testWidgets(
+    'new-session leftover sits after the last tab, not the strip end',
+    (tester) async {
+      final ai = panelAi();
+
+      tester.view.physicalSize = const Size(1600, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await pumpAiPanel(tester, ai);
+
+      expect(
+        tester.widget(find.byKey(Key('assistant-session-${ai.activeChat.id}'))),
+        isA<ShellTab>(),
+      );
+      final tab = tester.getRect(
+        find.byKey(Key('assistant-session-${ai.activeChat.id}')),
+      );
+      final plus = tester.getRect(
+        find.byKey(const Key('assistant-new-session')),
+      );
+      expect(plus.left - tab.right, lessThan(8));
+      expect(plus.left, lessThan(200));
+    },
+  );
+
+  testWidgets('new chat keeps leftover messages on a session tab', (
+    tester,
+  ) async {
+    final ai = panelAi();
+    ai.conversation.addUser('画个小乌龟');
+    final previous = ai.activeChat.id;
+    ai.newSession();
+
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await pumpAiPanel(tester, ai);
+
+    expect(find.byKey(const Key('assistant-session-tabs')), findsOneWidget);
+    expect(find.byKey(const Key('assistant-new-session')), findsOneWidget);
+    expect(find.byKey(Key('assistant-session-$previous')), findsOneWidget);
+    expect(find.text('画个小乌龟'), findsOneWidget);
+
+    await tester.tap(find.byKey(Key('assistant-session-$previous')));
+    await tester.pump();
+    expect(find.text('画个小乌龟'), findsWidgets);
+    expect(ai.messages.single.text, '画个小乌龟');
+  });
+
+  testWidgets('closing a leftover tab keeps the other thread', (tester) async {
+    final ai = panelAi();
+    ai.conversation.addUser('画个小乌龟');
+    final previous = ai.activeChat.id;
+    ai.newSession();
+    ai.conversation.addUser('draw a square');
+
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await pumpAiPanel(tester, ai);
+
+    await tester.tap(
+      find.byKey(Key('assistant-session-close-${ai.activeChat.id}')),
+    );
+    await tester.pump();
+    expect(ai.activeChat.id, previous);
+    expect(find.text('画个小乌龟'), findsWidgets);
+    expect(find.text('draw a square'), findsNothing);
+  });
 }
 
 PendingChangeSet _leftoverPending() => const PendingChangeSet(
