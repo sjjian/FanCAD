@@ -191,5 +191,27 @@ void main() {
         expect(notes['count'], 0);
       },
     );
+
+    test('query.selection is palette-visible and read_skill is not', () {
+      expect(
+        workspace.commands.find('query.selection')?.title,
+        'Query Selection',
+      );
+      expect(workspace.commands.find('query.viewport')?.title, 'Query Viewport');
+      expect(workspace.commands.find('read_skill'), isNull);
+      expect(workspace.commands.findByToolName('read_skill'), isNull);
+      expect(
+        workspace.commands.search('query.selection').map((item) => item.id),
+        contains('query.selection'),
+      );
+      expect(
+        workspace.commands.search('read_skill').map((item) => item.id),
+        isEmpty,
+      );
+      expect(
+        workspace.commands.aiTools().map((item) => item.id),
+        containsAll(['query.selection', 'query.viewport']),
+      );
+    });
   });
 }
