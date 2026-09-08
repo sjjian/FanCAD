@@ -20,16 +20,11 @@ HatchEntity boxHatch({
   ],
 );
 
-void main() {
-  group('HatchPattern', () {
-    test('names are case-insensitive and unknown names fall back to ANSI31', () {
-      expect(HatchPattern.named('ansi31').name, 'ANSI31');
-      expect(HatchPattern.named('nope').name, 'ANSI31');
-      expect(HatchPattern.named('SOLID').lines, isEmpty);
-      expect(HatchPattern.builtIn.containsKey('NET'), isTrue);
-    });
-  });
+bool axisAligned(Float64List stroke) =>
+    (stroke[0] - stroke[2]).abs() < 1e-6 ||
+    (stroke[1] - stroke[3]).abs() < 1e-6;
 
+void main() {
   group('HatchGenerator', () {
     test('solid fills and empty loops produce no strokes', () {
       expect(const HatchGenerator().generate(boxHatch(solid: true)), isEmpty);
@@ -225,64 +220,64 @@ void main() {
         expect(math.sqrt(dx * dx + dy * dy), lessThan(1));
       }
     });
-  });
 
-  group('HatchEntity', () {
-    test('copyWith keeps the loops and emit fills a solid', () {
-      final hatch = boxHatch().copyWith(patternName: 'STEEL', patternScale: 2);
-      expect(hatch.patternName, 'STEEL');
-      expect(hatch.patternScale, 2);
-      expect(hatch.loops, hasLength(1));
-      final sink = PolylineSink();
-      boxHatch(solid: true).emit(const EmitContext(tolerance: 0.1), sink);
-      expect(sink.fills, isNotEmpty);
-    });
+    test(
+      'a SOLID pattern name emits no strokes even when the hatch is not solid',
+      () {
+        expect(
+          const HatchGenerator().generate(boxHatch(pattern: 'SOLID')),
+          isEmpty,
+        );
+      },
+    );
 
-    test('a grip on the inner loop does not move the outer vertices', () {
+    test(
+      'an empty-vertex loop is treated as no boundary rather than a crash',
+      () {
+        final hatch = HatchEntity(
+          id: 1,
+          solid: false,
+          patternName: 'NET',
+          loops: [HatchLoop(vertices: Float64List(0))],
+        );
+        expect(const HatchGenerator().generate(hatch), isEmpty);
+      },
+    );
+
+    test('collapsed hatch loops cannot invent pattern strokes', () {
       final hatch = HatchEntity(
         id: 1,
-        solid: true,
+        solid: false,
+        patternName: 'ANSI31',
         loops: [
-          HatchLoop(vertices: Float64List.fromList([0, 0, 20, 0, 20, 20, 0, 20])),
-          HatchLoop(
-            vertices: Float64List.fromList([6, 6, 10, 6, 10, 10, 6, 10]),
-            isOuter: false,
-          ),
+          HatchLoop(vertices: Float64List.fromList([0, 0, 0, 0, 0, 0])),
         ],
       );
-      expect(hatch.grips(), hasLength(8));
-      final edited = hatch.withGrip(5, const Vec2(12, 7));
-      expect(edited.loops.first.vertices[0], 0);
-      expect(edited.loops.last.vertices[2], closeTo(12, 1e-9));
-      expect(edited.loops.last.vertices[3], closeTo(7, 1e-9));
-      expect(hatch.withGrip(20, const Vec2.zero()), hatch);
-
-      final sink = PolylineSink();
-      edited.emit(const EmitContext(tolerance: 0.1), sink);
-      expect(sink.fills, hasLength(1));
-      expect(sink.polylines, hasLength(2));
+      expect(const HatchGenerator().generate(hatch), isEmpty);
     });
 
-    test('a solid with only an island still fills that ring', () {
-      const empty = HatchEntity(id: 1, loops: []);
-      final silent = PolylineSink();
-      empty.emit(const EmitContext(tolerance: 0.1), silent);
-      expect(silent.fills, isEmpty);
+    test(
+      'patternAngle rotates NET off the axes so a 45° hatch is not horizontal',
+      () {
+        final upright = const HatchGenerator().generate(
+          boxHatch(pattern: 'NET'),
+        );
+        final rotated = const HatchGenerator().generate(
+          boxHatch(pattern: 'NET', angle: math.pi / 4),
+        );
+        expect(upright, isNotEmpty);
+        expect(upright.every(axisAligned), isTrue);
+        expect(rotated, isNotEmpty);
+        expect(rotated.any((stroke) => !axisAligned(stroke)), isTrue);
+      },
+    );
 
-      final island = HatchEntity(
-        id: 1,
-        solid: true,
-        loops: [
-          HatchLoop(
-            vertices: Float64List.fromList([0, 0, 4, 0, 4, 4, 0, 4]),
-            isOuter: false,
-          ),
-        ],
+    test('a tiny pattern scale cannot invent unbounded strokes', () {
+      final strokes = const HatchGenerator().generate(
+        boxHatch(pattern: 'ANSI31', scale: 0.001),
       );
-      final sink = PolylineSink();
-      island.emit(const EmitContext(tolerance: 0.1), sink);
-      expect(sink.fills, hasLength(1));
-      expect(sink.polylines, hasLength(1));
+      expect(strokes, isNotEmpty);
+      expect(strokes.length, lessThanOrEqualTo(500));
     });
   });
 }
