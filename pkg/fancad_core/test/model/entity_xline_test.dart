@@ -23,4 +23,16 @@ void main() {
     expect(xline.indexBounds().minY, lessThan(-1e6));
     expect(xline.indexBounds().maxY, greaterThan(1e6));
   });
+
+  test('an xline grip moves the origin and emits both ways', () {
+    const xline = XLineEntity(id: 1, origin: Vec2(3, 4), direction: Vec2(0, 1));
+    expect(xline.grips(), const [Vec2(3, 4)]);
+    expect(
+      xline.withGrip(0, const Vec2(1, 1)).origin,
+      const Vec2(1, 1),
+    );
+    final bothWays = PolylineSink();
+    xline.emit(const EmitContext(tolerance: 0.1), bothWays);
+    expect(bothWays.polylines.single.length, 4);
+  });
 }
