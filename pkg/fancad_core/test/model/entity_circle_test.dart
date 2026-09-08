@@ -45,6 +45,8 @@ void main() {
     final tall = circle.transformed(const Mat3.scaling(1, 2)) as EllipseEntity;
     expect(tall.ratio, lessThanOrEqualTo(1));
     expect(tall.majorLength, closeTo(10, 1e-9));
+    final wide = circle.transformed(const Mat3.scaling(2, 1)) as EllipseEntity;
+    expect(wide.ratio, closeTo(0.5, 1e-12));
   });
 
   test('a sub-pixel circle collapses to a point', () {

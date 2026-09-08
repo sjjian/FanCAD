@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
@@ -88,5 +89,42 @@ void main() {
 
   test('an empty xy buffer cannot invent a box', () {
     expect(Bounds2.fromXY(Float64List(0)).isEmpty, isTrue);
+  });
+
+  test('union of an empty box is the other box', () {
+    const box = Bounds2(0, 0, 10, 5);
+    expect(const Bounds2.empty().union(box), box);
+  });
+
+  test('detects intersection and containment', () {
+    const outer = Bounds2(0, 0, 10, 10);
+    expect(outer.intersects(const Bounds2(5, 5, 15, 15)), isTrue);
+    expect(outer.intersects(const Bounds2(11, 11, 12, 12)), isFalse);
+    expect(outer.containsBox(const Bounds2(2, 2, 3, 3)), isTrue);
+    expect(outer.containsPoint(5, 5), isTrue);
+  });
+
+  test('factories and metrics keep the enclosing box', () {
+    expect(
+      Bounds2.fromPoints(const [Vec2(2, 5), Vec2(-1, 1)]),
+      const Bounds2(-1, 1, 2, 5),
+    );
+    expect(
+      Bounds2.fromCorners(const Vec2(4, 1), const Vec2(0, 3)),
+      const Bounds2(0, 1, 4, 3),
+    );
+    const box = Bounds2(0, 0, 10, 4);
+    expect(box.union(const Bounds2.empty()), box);
+    expect(box.inflated(1), const Bounds2(-1, -1, 11, 5));
+    expect(box.center, const Vec2(5, 2));
+    expect(box.min, const Vec2.zero());
+    expect(box.max, const Vec2(10, 4));
+    expect(box.diagonal, closeTo(math.sqrt(116), 1e-12));
+    final rotated = box.transformed(Mat3.rotation(math.pi / 2));
+    expect(rotated.minX, closeTo(-4, 1e-12));
+    expect(rotated.maxY, closeTo(10, 1e-12));
+    expect(box.enlargementFor(const Bounds2(8, -2, 12, 1)), greaterThan(0));
+    expect(box, const Bounds2(0, 0, 10, 4));
+    expect({box}.contains(const Bounds2(0, 0, 10, 4)), isTrue);
   });
 }

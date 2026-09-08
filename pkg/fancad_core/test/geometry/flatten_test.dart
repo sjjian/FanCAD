@@ -313,6 +313,163 @@ void main() {
       expect(_maxY(points) - _minY(points), lessThan(12));
     },
   );
+
+  test('a circle is discretised within tolerance', () {
+    const radius = 100.0;
+    const tolerance = 0.01;
+    final points = Flatten.circle(
+      center: const Vec2.zero(),
+      radius: radius,
+      tolerance: tolerance,
+    );
+    expect(points.length, greaterThanOrEqualTo(8));
+    // Every chord midpoint must stay inside the tolerance band.
+    for (var i = 0; i + 3 < points.length; i += 2) {
+      final midX = (points[i] + points[i + 2]) / 2;
+      final midY = (points[i + 1] + points[i + 3]) / 2;
+      final sagitta = radius - math.sqrt(midX * midX + midY * midY);
+      expect(sagitta, lessThan(tolerance * 1.5));
+    }
+  });
+
+  test('a 90 degree bulge produces a quarter arc', () {
+    final quarter = Flatten.bulgeArc(
+      const Vec2(10, 0),
+      const Vec2(0, 10),
+      math.tan(math.pi / 8),
+    );
+    expect(quarter, isNotNull);
+    expect(quarter!.center.x, closeTo(0, 1e-9));
+    expect(quarter.center.y, closeTo(0, 1e-9));
+    expect(quarter.radius, closeTo(10, 1e-9));
+
+    final vertices = Float64List.fromList([
+      0, 0, math.tan(math.pi / 8),
+      10, 10, 0,
+    ]);
+    final points = Flatten.polylineWithBulges(
+      vertices: vertices,
+      closed: false,
+      tolerance: 1e-4,
+    );
+    expect(points.first, closeTo(0, 1e-9));
+    expect(points[points.length - 2], closeTo(10, 1e-6));
+    expect(points.last, closeTo(10, 1e-6));
+    // The arc bulges away from the chord, so some point must sit off it.
+    var maxDeviation = 0.0;
+    for (var i = 0; i < points.length; i += 2) {
+      final deviation = (points[i] - points[i + 1]).abs();
+      maxDeviation = math.max(maxDeviation, deviation);
+    }
+    expect(maxDeviation, greaterThan(1));
+  });
+
+  test('a wide open stroke is a strip around the centreline', () {
+    final stroke = Flatten.wideStroke(
+      Float64List.fromList([0, 0, 10, 0]),
+      2,
+      closed: false,
+    );
+
+    expect(stroke, isNotNull);
+    expect(stroke!.hole, isNull);
+    for (var i = 1; i < stroke.outer.length; i += 2) {
+      expect(stroke.outer[i].abs(), closeTo(1, 1e-9));
+    }
+  });
+
+  test('a wide closed ring keeps a hole in the middle', () {
+    final stroke = Flatten.wideStroke(
+      Float64List.fromList([0, 0, 10, 0, 10, 10, 0, 10]),
+      2,
+      closed: true,
+    );
+
+    expect(stroke, isNotNull);
+    expect(stroke!.hole, isNotNull);
+    expect(Bounds2.fromXY(stroke.outer).width, closeTo(12, 1e-6));
+    expect(Bounds2.fromXY(stroke.hole!).width, closeTo(8, 1e-6));
+  });
+
+  test('arc and ellipse sample the expected endpoints', () {
+    expect(Flatten.arcSegmentCount(0, math.pi, 0.1), 1);
+    expect(Flatten.arcSegmentCount(10, 0, 0.1), 1);
+    expect(Flatten.arcSegmentCount(10, math.pi, 0), Flatten.minSegments);
+    final quarter = Flatten.arc(
+      center: const Vec2.zero(),
+      radius: 10,
+      startAngle: 0,
+      endAngle: math.pi / 2,
+      tolerance: 0.05,
+    );
+    expect(quarter[0], closeTo(10, 1e-9));
+    expect(quarter[1], closeTo(0, 1e-9));
+    expect(quarter[quarter.length - 2], closeTo(0, 1e-6));
+    expect(quarter.last, closeTo(10, 1e-6));
+    final oval = Flatten.ellipse(
+      center: const Vec2.zero(),
+      major: const Vec2(4, 0),
+      ratio: 0.5,
+      startParam: 0,
+      endParam: math.pi * 2,
+      tolerance: 0.1,
+    );
+    expect(oval.length, greaterThan(8));
+    expect(oval[0], closeTo(4, 1e-9));
+  });
+
+  test('a clamped cubic NURBS evaluates the endpoints', () {
+    final controls = Float64List.fromList([0, 0, 1, 2, 3, 2, 4, 0]);
+    const knots = [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0];
+    final samples = Flatten.bspline(
+      controlPoints: controls,
+      knots: knots,
+      degree: 3,
+      tolerance: 0.1,
+    );
+    expect(samples[0], closeTo(0, 1e-9));
+    expect(samples[1], closeTo(0, 1e-9));
+    expect(samples[samples.length - 2], closeTo(4, 1e-6));
+    expect(samples.last, closeTo(0, 1e-6));
+    expect(
+      Flatten.bsplineEvaluate(
+        controlPoints: controls,
+        knots: knots,
+        degree: 3,
+        t: 0,
+      ),
+      const Vec2.zero(),
+    );
+    expect(
+      Flatten.bspline(
+        controlPoints: controls,
+        knots: const [0, 1],
+        degree: 3,
+        tolerance: 0.1,
+      ),
+      controls,
+    );
+    expect(
+      Flatten.bsplineBasis(
+        knots: knots,
+        count: 4,
+        degree: 3,
+        t: 0,
+      ).first,
+      closeTo(1, 1e-12),
+    );
+  });
+
+  test('wideStroke refuses a zero-width or single-point path', () {
+    expect(
+      Flatten.wideStroke(Float64List.fromList([0, 0, 1, 0]), 0, closed: false),
+      isNull,
+    );
+    expect(
+      Flatten.wideStroke(Float64List.fromList([0, 0]), 2, closed: false),
+      isNull,
+    );
+  });
 }
 
 double _polyLength(Float64List points) {
