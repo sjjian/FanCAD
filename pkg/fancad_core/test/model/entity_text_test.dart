@@ -141,4 +141,12 @@ void main() {
     );
     expect(sink.texts.single.text, '型材1');
   });
+
+  test('a text grip stays on the insertion', () {
+    const text = TextEntity(id: 1, position: Vec2.zero(), content: 'A');
+    expect(
+      text.withGrip(0, const Vec2(2, 3)).position,
+      const Vec2(2, 3),
+    );
+  });
 }

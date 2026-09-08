@@ -21,4 +21,15 @@ void main() {
     expect(sink.polylines, isNotEmpty);
     expect(sink.polylines.first.length, 8);
   });
+
+  test('unknown entities occupy their proxy box and emit nothing', () {
+    final unknown = UnknownEntity(
+      id: 1,
+      originalType: 'PROXY',
+      proxyBounds: const Bounds2(0, 0, 4, 2),
+    );
+    expect(unknown.computeBounds(), const Bounds2(0, 0, 4, 2));
+    expect(unknown.grips(), isEmpty);
+    expect(emit(unknown).polylines, isEmpty);
+  });
 }

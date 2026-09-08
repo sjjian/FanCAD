@@ -5,6 +5,11 @@ import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('parse falls back to unknown', () {
+    expect(EntityKind.parse('line'), EntityKind.line);
+    expect(EntityKind.parse('nope'), EntityKind.unknown);
+  });
+
   eachCase(
     [
       (

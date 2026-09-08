@@ -24,4 +24,15 @@ void main() {
     expect(line.end, const Vec2.zero());
     expect(line.length, 0);
   });
+
+  test('a line midpoint grip moves the whole segment', () {
+    const line = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
+    expect(line.grips(), const [Vec2.zero(), Vec2(5, 0), Vec2(10, 0)]);
+    final moved = line.withGrip(1, const Vec2(5, 4)) as LineEntity;
+    expect(moved.start, const Vec2(0, 4));
+    expect(moved.end, const Vec2(10, 4));
+    expect(line.withGrip(9, const Vec2(1, 1)), line);
+    expect(line.withId(2).id, 2);
+    expect(line.withProps(const EntityProps(layer: 'A')).props.layer, 'A');
+  });
 }
