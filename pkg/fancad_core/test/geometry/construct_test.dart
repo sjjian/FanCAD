@@ -309,6 +309,25 @@ void main() {
       final radial = Construct.radiusDimension(circle, const Vec2(8, 0))!;
       expect(Construct.baselineDimension(radial, const Vec2(12, 0)), isNull);
     });
+
+    test('a vertical linear stack steps the dimension line sideways', () {
+      final first = Construct.linearDimension(
+        const Vec2.zero(),
+        const Vec2(0, 10),
+        const Vec2(4, 5),
+      )!;
+      final next = Construct.baselineDimension(
+        first,
+        const Vec2(0, 18),
+        spacing: 6,
+      );
+
+      expect(next, isNotNull);
+      expect(next!.measurement, closeTo(18, 1e-9));
+      expect(next.definitionPoints[0], const Vec2.zero());
+      expect(next.definitionPoints[1], const Vec2(0, 18));
+      expect(next.textPosition.x, closeTo(10, 1e-9));
+    });
   });
 
   group('radiusDimension', () {
@@ -408,6 +427,16 @@ void main() {
       expect(dim!.measurement, closeTo(10, 1e-9));
       expect(dim.dimensionType, 3);
       expect(dim.displayText, 'Ø10.00');
+    });
+
+    test('a line cannot invent a diameter', () {
+      expect(
+        Construct.diameterDimension(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+          const Vec2(5, 0),
+        ),
+        isNull,
+      );
     });
   });
 
@@ -714,6 +743,87 @@ void main() {
       final pieces = Construct.explodeDimension(hidden);
       expect(pieces.whereType<TextEntity>(), isEmpty);
     });
+
+    test('an aligned dimension explodes along the measured chord', () {
+      final dim = Construct.alignedDimension(
+        const Vec2.zero(),
+        const Vec2(6, 8),
+        const Vec2(-2, 2),
+      )!;
+      final pieces = Construct.explodeDimension(dim);
+      final lines = pieces.whereType<LineEntity>().toList();
+
+      expect(lines, isNotEmpty);
+      expect(pieces.whereType<TextEntity>(), isNotEmpty);
+      expect(lines.any((line) => line.length > 9), isTrue);
+    });
+
+    test('a radius dimension explodes to a spoke, not extension lines', () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+      final dim = Construct.radiusDimension(circle, const Vec2(8, 0))!;
+      final pieces = Construct.explodeDimension(dim);
+
+      final lines = pieces.whereType<LineEntity>().toList();
+      expect(lines, isNotEmpty);
+      expect(lines.first.start, const Vec2.zero());
+      expect(lines.first.end, const Vec2(8, 0));
+      expect(pieces.whereType<TextEntity>().single.content, 'R5.00');
+      expect(pieces.whereType<LineEntity>(), hasLength(1));
+    });
+
+    test('a diameter explodes to opposite spokes, not a single radius', () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+      final dim = Construct.diameterDimension(circle, const Vec2(8, 0))!;
+      final pieces = Construct.explodeDimension(dim);
+
+      final lines = pieces.whereType<LineEntity>().toList();
+      expect(lines, hasLength(2));
+      expect(lines[0].start, const Vec2.zero());
+      expect(lines[0].end, const Vec2(8, 0));
+      expect(lines[1].start, const Vec2.zero());
+      expect(lines[1].end, const Vec2(-8, 0));
+      expect(pieces.whereType<TextEntity>().single.content, 'Ø10.00');
+    });
+
+    test('empty definition points cannot invent exploded pieces', () {
+      const dim = DimensionEntity(
+        id: 1,
+        definitionPoints: [],
+        textPosition: Vec2.zero(),
+        measurement: 5,
+        overrideText: ' ',
+      );
+      expect(Construct.explodeDimension(dim), isEmpty);
+    });
+
+    test('a collapsed chord cannot invent a diameter', () {
+      const collapsed = DimensionEntity(
+        id: 1,
+        definitionPoints: [Vec2.zero(), Vec2.zero()],
+        textPosition: Vec2.zero(),
+        measurement: 10,
+        overrideText: ' ',
+        dimensionType: 3,
+      );
+      expect(
+        Construct.explodeDimension(collapsed).whereType<LineEntity>(),
+        isEmpty,
+      );
+    });
+
+    test('a collapsed radial chord cannot invent a dim line', () {
+      const dim = DimensionEntity(
+        id: 1,
+        definitionPoints: [Vec2.zero(), Vec2.zero()],
+        textPosition: Vec2.zero(),
+        measurement: 5,
+        overrideText: ' ',
+        dimensionType: 4,
+      );
+      final pieces = Construct.explodeDimension(dim);
+      expect(pieces.whereType<LineEntity>(), isEmpty);
+      expect(pieces.whereType<TextEntity>(), isEmpty);
+    });
   });
 
   group('leader', () {
@@ -799,6 +909,39 @@ void main() {
         ),
         isNull,
       );
+      expect(
+        Construct.circleTangentRadius(
+          line(0, 10, 0, 0),
+          line(0, 0, 10, 0),
+          -2,
+          const Vec2(0, 5),
+          const Vec2(5, 0),
+        ),
+        isNull,
+      );
+      expect(
+        Construct.circleTangentRadius(
+          line(0, 10, 0, 0),
+          line(0, 0, 10, 0),
+          double.nan,
+          const Vec2(0, 5),
+          const Vec2(5, 0),
+        ),
+        isNull,
+      );
+    });
+
+    test('parallel lines cannot invent a tangent circle', () {
+      expect(
+        Construct.circleTangentRadius(
+          const LineEntity(id: 3, start: Vec2.zero(), end: Vec2(10, 0)),
+          const LineEntity(id: 4, start: Vec2(0, 4), end: Vec2(10, 4)),
+          2,
+          const Vec2(5, 1),
+          const Vec2(5, 5),
+        ),
+        isNull,
+      );
     });
 
     test('finds an external tangent to a line and a circle', () {
@@ -813,6 +956,37 @@ void main() {
       expect(circle, isNotNull);
       expect(circle!.center.x, closeTo(0, 1e-9));
       expect(circle.center.y, closeTo(1, 1e-9));
+    });
+
+    test('a circle then a line still finds the same tangent', () {
+      final circle = Construct.circleTangentRadius(
+        const CircleEntity(id: 1, center: Vec2(0, 5), radius: 3),
+        const LineEntity(id: 2, start: Vec2(-10, 0), end: Vec2(10, 0)),
+        1,
+        const Vec2(0, 10),
+        const Vec2(0, 1),
+      );
+
+      expect(circle, isNotNull);
+      expect(circle!.center.x, closeTo(0, 1e-9));
+      expect(circle.center.y, closeTo(1, 1e-9));
+    });
+
+    test('two circles name an external tangent centre', () {
+      const left = CircleEntity(id: 1, center: Vec2.zero(), radius: 3);
+      const right = CircleEntity(id: 2, center: Vec2(8, 0), radius: 3);
+      final circle = Construct.circleTangentRadius(
+        left,
+        right,
+        2,
+        const Vec2(0, 8),
+        const Vec2(8, 8),
+      );
+
+      expect(circle, isNotNull);
+      expect(circle!.radius, 2);
+      expect(circle.center.x, closeTo(4, 1e-6));
+      expect(circle.center.y.abs(), greaterThan(1));
     });
   });
 
@@ -851,6 +1025,29 @@ void main() {
         isNull,
       );
     });
+
+    eachCase(
+      [
+        (
+          name: 'a non-positive radius cannot invent an ellipse',
+          otherRadius: 0.0,
+        ),
+        (
+          name: 'a non-finite radius cannot invent an ellipse',
+          otherRadius: double.nan,
+        ),
+      ],
+      (c) {
+        expect(
+          Construct.ellipse(
+            center: const Vec2.zero(),
+            axisEnd: const Vec2(10, 0),
+            otherRadius: c.otherRadius,
+          ),
+          isNull,
+        );
+      },
+    );
   });
 
   group('splineFromControls', () {
@@ -1006,7 +1203,33 @@ void main() {
         ),
         isNull,
       );
+      expect(
+        Construct.donut(
+          center: const Vec2.zero(),
+          innerRadius: 1e-15,
+          outerRadius: -1e-15,
+        ),
+        isNull,
+      );
     });
+  });
+
+  group('rectangle', () {
+    eachCase(
+      [
+        (
+          name: 'a collapsed rectangle cannot invent a primitive',
+          opposite: const Vec2(10, 0),
+        ),
+        (
+          name: 'coincident corners cannot invent a rectangle',
+          opposite: const Vec2.zero(),
+        ),
+      ],
+      (c) {
+        expect(Construct.rectangle(const Vec2.zero(), c.opposite), isNull);
+      },
+    );
   });
 
   group('polygon', () {
@@ -3533,6 +3756,15 @@ void main() {
 
     test('reports zero area for open geometry', () {
       expect(Construct.areaOf(line(0, 0, 10, 0)), 0);
+    });
+
+    test('an open polyline cannot invent an enclosed area', () {
+      final open = PolylineEntity.fromPoints(
+        id: 1,
+        points: const [Vec2.zero(), Vec2(10, 0), Vec2(10, 10)],
+      );
+      expect(Construct.areaOf(open), 0);
+      expect(Construct.lengthOf(open), closeTo(20, 1e-9));
     });
 
     test('an open or unsupported entity cannot invent an area or length', () {
