@@ -1,11 +1,11 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/workbench.dart';
 
 /// Shell-level tests.
 ///
@@ -14,33 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// registry the palette shows is the same one an AI turn would call. The
 /// geometry itself is covered by the package tests.
 void main() {
-  tearDown(debugResetSettingsDialog);
-
-  Widget wrap(ProviderContainer container) => UncontrolledProviderScope(
-    container: container,
-    child: const _LocalizedWorkbench(),
-  );
-
-  ProviderContainer makeContainer() => ProviderContainer(
-    overrides: [
-      settingsProvider.overrideWithValue(SettingsStore.inMemory()),
-      // No cache and a stub backend, so a test run never touches the disk or
-      // requires the native library to be present.
-      importerProvider.overrideWithValue(
-        DrawingImporter(backend: MemoryDrawingBackend()),
-      ),
-    ],
-  );
-
   testWidgets('the workbench mounts and shows the empty state', (tester) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    await tester.pumpWidget(wrap(container));
-    await tester.pump();
+    await pumpWorkbench(tester);
 
     expect(find.text('FanCAD'), findsWidgets);
     expect(find.text('New drawing'), findsOneWidget);
@@ -59,14 +34,7 @@ void main() {
   testWidgets('switching to Simplified Chinese localizes chrome', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    await tester.pumpWidget(wrap(container));
-    await tester.pump();
+    await pumpWorkbench(tester);
 
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pump();
@@ -86,14 +54,7 @@ void main() {
   });
 
   testWidgets('the settings dialog writes the assistant model', (tester) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    await tester.pumpWidget(wrap(container));
-    await tester.pump();
+    final container = await pumpWorkbench(tester);
 
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pump();
@@ -117,14 +78,7 @@ void main() {
   testWidgets('assistant open settings lands on the assistant page', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    await tester.pumpWidget(wrap(container));
-    await tester.pump();
+    await pumpWorkbench(tester);
 
     await tester.tap(find.byIcon(Icons.auto_awesome_outlined));
     await tester.pump();
@@ -140,14 +94,7 @@ void main() {
   testWidgets('the assistant opens on the right without replacing Layers', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    await tester.pumpWidget(wrap(container));
-    await tester.pump();
+    await pumpWorkbench(tester);
 
     await tester.tap(find.byIcon(Icons.auto_awesome_outlined));
     await tester.pump();
@@ -161,14 +108,7 @@ void main() {
   testWidgets('revealPanel(ai) opens the right dock, not the left sidebar', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    await tester.pumpWidget(wrap(container));
-    await tester.pump();
+    final container = await pumpWorkbench(tester);
 
     container.read(workspaceProvider).revealPanel('ai');
     await tester.pump();
@@ -182,15 +122,7 @@ void main() {
   testWidgets('layout chips sit in the left sidebar, not under the canvas', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    container.read(workspaceProvider).newDocument();
-    await tester.pumpWidget(wrap(container));
-    await tester.pump();
+    await pumpWorkbench(tester, document: true);
 
     expect(find.text('Model'), findsNothing);
     expect(find.text('Layouts'), findsNothing);
@@ -226,14 +158,7 @@ void main() {
   testWidgets('the command palette opens and lists built-in commands', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    await tester.pumpWidget(wrap(container));
-    await tester.pump();
+    final container = await pumpWorkbench(tester);
 
     container.read(paletteOpenProvider.notifier).setOpen(true);
     await tester.pumpAndSettle();
@@ -254,8 +179,7 @@ void main() {
   });
 
   test('a headless command run reaches the document', () async {
-    final container = makeContainer();
-    addTearDown(container.dispose);
+    final container = workbenchContainer();
     final workspace = container.read(workspaceProvider);
     workspace.newDocument();
 
@@ -276,24 +200,21 @@ void main() {
   });
 
   testWidgets('escape cancels even when chrome has focus', (tester) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    final workspace = container.read(workspaceProvider)..newDocument();
-    workspace.active!.session.edit('LINE', (transaction) {
-      transaction.add(
-        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
-      );
-    });
-    workspace.active!.selection.replace([
-      workspace.active!.document.entities.single.id,
-    ]);
-
-    await tester.pumpWidget(wrap(container));
-    await tester.pump();
+    late Workspace workspace;
+    await pumpWorkbench(
+      tester,
+      prepare: (container) {
+        workspace = container.read(workspaceProvider)..newDocument();
+        workspace.active!.session.edit('LINE', (transaction) {
+          transaction.add(
+            const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+          );
+        });
+        workspace.active!.selection.replace([
+          workspace.active!.document.entities.single.id,
+        ]);
+      },
+    );
 
     await tester.tap(find.byKey(const Key('activity-layers')));
     await tester.pump();
@@ -307,24 +228,21 @@ void main() {
   testWidgets(
     'escape clears a selection after the canvas takes command-line focus',
     (tester) async {
-      tester.view.physicalSize = const Size(1600, 1000);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-
-      final container = makeContainer();
-      addTearDown(container.dispose);
-      final workspace = container.read(workspaceProvider)..newDocument();
-      workspace.active!.session.edit('LINE', (transaction) {
-        transaction.add(
-          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
-        );
-      });
-      workspace.active!.selection.replace([
-        workspace.active!.document.entities.single.id,
-      ]);
-
-      await tester.pumpWidget(wrap(container));
-      await tester.pump();
+      late Workspace workspace;
+      await pumpWorkbench(
+        tester,
+        prepare: (container) {
+          workspace = container.read(workspaceProvider)..newDocument();
+          workspace.active!.session.edit('LINE', (transaction) {
+            transaction.add(
+              const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+            );
+          });
+          workspace.active!.selection.replace([
+            workspace.active!.document.entities.single.id,
+          ]);
+        },
+      );
 
       await tester.tap(find.byType(CadCanvas));
       await tester.pump();
@@ -337,9 +255,7 @@ void main() {
   );
 
   test('every registered command has a description for the model', () {
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    final registry = container.read(workspaceProvider).commands;
+    final registry = workbenchContainer().read(workspaceProvider).commands;
 
     // A command with no description is a tool the model cannot use correctly,
     // so this is enforced rather than left to reviewers.
@@ -353,9 +269,7 @@ void main() {
   });
 
   test('command aliases are unique across the registry', () {
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    final registry = container.read(workspaceProvider).commands;
+    final registry = workbenchContainer().read(workspaceProvider).commands;
 
     final seen = <String, String>{};
     for (final descriptor in registry.all) {
@@ -371,30 +285,4 @@ void main() {
       }
     }
   });
-}
-
-class _LocalizedWorkbench extends ConsumerWidget {
-  const _LocalizedWorkbench();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final language = ref.watch(languageProvider);
-    ref.watch(themeBrightnessProvider);
-    final themeMode = switch (ref
-        .read(themeBrightnessProvider.notifier)
-        .preference) {
-      'light' => ThemeMode.light,
-      'system' => ThemeMode.system,
-      _ => ThemeMode.dark,
-    };
-    return MaterialApp(
-      theme: FanCadTheme.light(),
-      darkTheme: FanCadTheme.dark(),
-      themeMode: themeMode,
-      locale: Locale(language),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: const Workbench(),
-    );
-  }
 }
