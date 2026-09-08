@@ -34,25 +34,36 @@ void main() {
     );
   });
 
-  test('a small clockwise bulge cannot inflate the bounds to the other half', () {
-    final polyline = PolylineEntity(
-      id: 1,
-      vertices: Float64List.fromList([0, 0, -0.008, 0, 100, 0]),
-    );
-    final box = polyline.computeBounds();
-    expect(box.width, lessThan(2));
-    expect(box.height, closeTo(100, 0.5));
-  });
+  test(
+    'a small clockwise bulge cannot inflate the bounds to the other half',
+    () {
+      final polyline = PolylineEntity(
+        id: 1,
+        vertices: Float64List.fromList([0, 0, -0.008, 0, 100, 0]),
+      );
+      final box = polyline.computeBounds();
+      expect(box.width, lessThan(2));
+      expect(box.height, closeTo(100, 0.5));
+    },
+  );
 
   test('a closed mix of small opposite bulges stays near its vertices', () {
     final polyline = PolylineEntity(
       id: 1,
       closed: true,
       vertices: Float64List.fromList([
-        0, 10, 0,
-        30, 10, 0.008,
-        30, 0, 0,
-        0, 0, -0.008,
+        0,
+        10,
+        0,
+        30,
+        10,
+        0.008,
+        30,
+        0,
+        0,
+        0,
+        0,
+        -0.008,
       ]),
     );
     final box = polyline.computeBounds();

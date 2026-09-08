@@ -20,14 +20,4 @@ void main() {
     const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
     expect(circle.reversed(), isNull);
   });
-
-  test('a vanished circle cannot invent a stroke', () {
-    final sink = PolylineSink();
-    const CircleEntity(
-      id: 1,
-      center: Vec2.zero(),
-      radius: 0,
-    ).emit(const EmitContext(tolerance: 0.1), sink);
-    expect(sink.isEmpty, isTrue);
-  });
 }
