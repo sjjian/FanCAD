@@ -61,16 +61,77 @@ void main() {
       expect(CommandArgs.parsePoint(['5', '6']), const Vec2(5, 6));
       expect(CommandArgs.parsePoint({'x': 7, 'y': 8}), const Vec2(7, 8));
       expect(CommandArgs.parsePoint('nope'), isNull);
+      expect(CommandArgs.parsePoint({'x': 1}), isNull);
+      expect(CommandArgs.parsePoint([1]), isNull);
+    });
+
+    test('a maybe keyword cannot invent a boolean', () {
+      final args = CommandArgs({
+        'flag': 'maybe',
+        'count': 'nope',
+        'scale': true,
+      });
+      expect(args.boolean('flag'), isNull);
+      expect(args.integer('count'), isNull);
+      expect(args.number('scale'), isNull);
+      expect(args.boolean('missing'), isNull);
+    });
+
+    test('a broken point or id list cannot invent a pick', () {
+      final args = CommandArgs({
+        'at': '1,',
+        'ids': 'nope',
+        'payload': [1, 2],
+      });
+      expect(args.point('at'), isNull);
+      expect(args.ids('ids'), isNull);
+      expect(args.object('payload'), isNull);
+    });
+
+    test('leftover point lists still parse as vertices', () {
+      expect(CommandArgs.parsePoints('[[0,0],[10,0],[10,10]]'), const [
+        Vec2.zero(),
+        Vec2(10, 0),
+        Vec2(10, 10),
+      ]);
+      expect(
+        CommandArgs.parsePoints({
+          'vertices': [
+            {'x': 0, 'y': 0},
+            {'x': 4, 'y': 1},
+          ],
+        }),
+        const [Vec2.zero(), Vec2(4, 1)],
+      );
+      expect(
+        CommandArgs.parsePoints({
+          '0': [0, 0],
+          '1': [2, 3],
+        }),
+        const [Vec2.zero(), Vec2(2, 3)],
+      );
+      expect(CommandArgs.parsePoints([0, 0, 8, 0, 8, 4]), const [
+        Vec2.zero(),
+        Vec2(8, 0),
+        Vec2(8, 4),
+      ]);
+      expect(CommandArgs.parsePoints({'leftover': true}), isEmpty);
+      expect(
+        CommandArgs({
+          'vertices': [
+            [1, 2],
+            [3, 4],
+          ],
+        }).points('points'),
+        const [Vec2(1, 2), Vec2(3, 4)],
+      );
     });
   });
 
   group('ParamSpec', () {
     test('JSON schema matches the parameter kind', () {
       expect(const ParamSpec.point('at').toJsonSchema()['type'], 'array');
-      expect(
-        const ParamSpec.selection('ids').toJsonSchema()['type'],
-        'array',
-      );
+      expect(const ParamSpec.selection('ids').toJsonSchema()['type'], 'array');
       expect(
         const ParamSpec(
           name: 'kind',
@@ -128,9 +189,7 @@ void main() {
 
     test('finds by id, alias, title and tool name', () {
       final registry = CommandRegistry()
-        ..register(
-          cmd(id: 'draw.line', title: 'Line', aliases: ['l', 'LINE']),
-        );
+        ..register(cmd(id: 'draw.line', title: 'Line', aliases: ['l', 'LINE']));
       expect(registry.find('draw.line')?.id, 'draw.line');
       expect(registry.find('L')?.id, 'draw.line');
       expect(registry.find('DRAW.LINE')?.id, 'draw.line');
@@ -187,7 +246,13 @@ void main() {
       expect(parsed.extra, ['leftover']);
       expect(parsed.toCommandArgs().point('start'), const Vec2.zero());
       expect(registry.parseCommandLine('nope')!.isResolved, isFalse);
+      expect(registry.parseCommandLine('nope')!.descriptor, isNull);
+      expect(registry.parseCommandLine('nope')!.verb, 'nope');
+      expect(registry.parseCommandLine('nope')!.args, isEmpty);
       expect(registry.parseCommandLine(''), isNull);
+      expect(registry.parseCommandLine('   '), isNull);
+      expect(registry.parseCommandLine('""'), isNull);
+      expect(registry.parseCommandLine('""   ""'), isNull);
       expect(
         registry.parseCommandLine('line start=1,1 end=2,2')!.args['start'],
         '1,1',
@@ -205,10 +270,7 @@ void main() {
           ),
         )
         ..register(
-          cmd(
-            id: 'draw.boom',
-            handler: (_) => throw StateError('broken'),
-          ),
+          cmd(id: 'draw.boom', handler: (_) => throw StateError('broken')),
         )
         ..register(
           cmd(
@@ -243,55 +305,79 @@ void main() {
       expect(registry.history.first.toJson()['command'], 'draw.ok');
       registry.dispose();
     });
+
+    test('a missing command cannot invent a lookup or an extension unload', () {
+      final registry = CommandRegistry()..register(cmd(id: 'draw.line'));
+
+      expect(registry.find('nope'), isNull);
+      expect(registry.findByToolName('no_such_tool'), isNull);
+      expect(registry.contains('nope'), isFalse);
+      expect(registry.search('zzzz-no-such-verb'), isEmpty);
+      expect(registry.unregisterExtension('ghost'), 0);
+      expect(registry.find('draw.line'), isNotNull);
+
+      registry.dispose();
+    });
+
+    test('an empty registry cannot invent a verb from a blank search', () {
+      final registry = CommandRegistry();
+      expect(registry.search(''), isEmpty);
+      expect(registry.search('   '), isEmpty);
+      expect(registry.find(''), isNull);
+      expect(registry.findByToolName(''), isNull);
+    });
   });
 
   group('ArgsCommandInput', () {
-    test('answers prompts from the argument map in declaration order', () async {
-      final input = ArgsCommandInput(
-        args: CommandArgs({
-          'start': [0, 0],
-          'end': {'x': 4, 'y': 0},
-          'len': 4,
-          'rot': 90,
-          'n': 2.5,
-          'i': 3,
-          'name': 'A',
-          'mode': 'ce',
-          'ok': true,
-          'ids': [1, 2],
-        }),
-        params: const [
-          ParamSpec.point('start'),
-          ParamSpec.point('end'),
-          ParamSpec(name: 'len', type: ParamType.distance),
-          ParamSpec(name: 'rot', type: ParamType.angle),
-          ParamSpec(name: 'n', type: ParamType.number),
-          ParamSpec(name: 'i', type: ParamType.integer),
-          ParamSpec(name: 'name', type: ParamType.text),
-          ParamSpec(
-            name: 'mode',
-            type: ParamType.choice,
-            options: ['center', 'end'],
-          ),
-          ParamSpec(name: 'ok', type: ParamType.boolean),
-          ParamSpec.selection('ids'),
-        ],
-      );
+    test(
+      'answers prompts from the argument map in declaration order',
+      () async {
+        final input = ArgsCommandInput(
+          args: CommandArgs({
+            'start': [0, 0],
+            'end': {'x': 4, 'y': 0},
+            'len': 4,
+            'rot': 90,
+            'n': 2.5,
+            'i': 3,
+            'name': 'A',
+            'mode': 'ce',
+            'ok': true,
+            'ids': [1, 2],
+          }),
+          params: const [
+            ParamSpec.point('start'),
+            ParamSpec.point('end'),
+            ParamSpec(name: 'len', type: ParamType.distance),
+            ParamSpec(name: 'rot', type: ParamType.angle),
+            ParamSpec(name: 'n', type: ParamType.number),
+            ParamSpec(name: 'i', type: ParamType.integer),
+            ParamSpec(name: 'name', type: ParamType.text),
+            ParamSpec(
+              name: 'mode',
+              type: ParamType.choice,
+              options: ['center', 'end'],
+            ),
+            ParamSpec(name: 'ok', type: ParamType.boolean),
+            ParamSpec.selection('ids'),
+          ],
+        );
 
-      expect(input.isInteractive, isFalse);
-      expect(await input.point('s'), const Vec2.zero());
-      expect(await input.pointOrNull('e'), const Vec2(4, 0));
-      expect(await input.distance('d'), 4);
-      expect(await input.angle('a'), closeTo(math.pi / 2, 1e-12));
-      expect(await input.number('n'), 2.5);
-      expect(await input.integer('i'), 3);
-      expect(await input.text('t'), 'A');
-      expect(await input.keyword('m', ['center', 'end']), 'center');
-      expect(await input.confirm('c'), isTrue);
-      expect(await input.selection('sel'), [1, 2]);
-      input.write('hello');
-      expect(input.transcript, ['hello']);
-    });
+        expect(input.isInteractive, isFalse);
+        expect(await input.point('s'), const Vec2.zero());
+        expect(await input.pointOrNull('e'), const Vec2(4, 0));
+        expect(await input.distance('d'), 4);
+        expect(await input.angle('a'), closeTo(math.pi / 2, 1e-12));
+        expect(await input.number('n'), 2.5);
+        expect(await input.integer('i'), 3);
+        expect(await input.text('t'), 'A');
+        expect(await input.keyword('m', ['center', 'end']), 'center');
+        expect(await input.confirm('c'), isTrue);
+        expect(await input.selection('sel'), [1, 2]);
+        input.write('hello');
+        expect(input.transcript, ['hello']);
+      },
+    );
 
     test('window uses two points and cancel stops a later prompt', () async {
       final input = ArgsCommandInput(
@@ -299,10 +385,7 @@ void main() {
           'a': [0, 0],
           'b': [4, 2],
         }),
-        params: const [
-          ParamSpec.point('a'),
-          ParamSpec.point('b'),
-        ],
+        params: const [ParamSpec.point('a'), ParamSpec.point('b')],
       );
       expect(await input.window('w'), const Bounds2(0, 0, 4, 2));
       input.cancel();
@@ -346,10 +429,7 @@ void main() {
     });
 
     test('matchKeyword requires a unique prefix', () {
-      expect(
-        ArgsCommandInput.matchKeyword('ce', ['center', 'end']),
-        'center',
-      );
+      expect(ArgsCommandInput.matchKeyword('ce', ['center', 'end']), 'center');
       expect(ArgsCommandInput.matchKeyword('e', ['end', 'edge']), isNull);
       expect(ArgsCommandInput.matchKeyword('END', ['end']), 'end');
     });
@@ -367,10 +447,7 @@ void main() {
           'name': 'X',
           'ids': [9],
         }),
-        input: ArgsCommandInput(
-          args: CommandArgs.empty(),
-          params: const [],
-        ),
+        input: ArgsCommandInput(args: CommandArgs.empty(), params: const []),
       );
       expect(await context.resolvePoint('at', 'p'), const Vec2(1, 2));
       expect(await context.resolveNumber('n', 'n'), 3);
@@ -380,10 +457,7 @@ void main() {
         await CommandContext(
           session: session,
           args: CommandArgs.empty(),
-          input: ArgsCommandInput(
-            args: CommandArgs.empty(),
-            params: const [],
-          ),
+          input: ArgsCommandInput(args: CommandArgs.empty(), params: const []),
         ).resolveSelection('ids', 's'),
         [7],
       );
@@ -398,11 +472,7 @@ void main() {
         description: 'Draw a segment',
         params: const [
           ParamSpec.point('start'),
-          ParamSpec(
-            name: 'layer',
-            type: ParamType.layer,
-            required: false,
-          ),
+          ParamSpec(name: 'layer', type: ParamType.layer, required: false),
         ],
         handler: (_) async => const CommandResult.ok(),
       );
