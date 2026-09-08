@@ -1,8 +1,8 @@
 import 'package:fancad/fancad.dart';
-import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/workspace.dart';
 
 void main() {
   test(
@@ -38,13 +38,7 @@ void main() {
   testWidgets(
     'new-tab leftover sits after the last drawing, not the strip end',
     (tester) async {
-      final workspace = Workspace(
-        commands: CommandRegistry(),
-        importer: DrawingImporter(backend: MemoryDrawingBackend()),
-        drawing: DrawingSettings(SettingsStore.inMemory()),
-      );
-      addTearDown(workspace.dispose);
-      workspace.newDocument();
+      final workspace = Headless().workspace;
 
       tester.view.physicalSize = const Size(1600, 1000);
       tester.view.devicePixelRatio = 1;
