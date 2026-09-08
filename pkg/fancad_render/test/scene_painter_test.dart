@@ -313,4 +313,44 @@ void main() {
       lessThan(litThreshold),
     );
   });
+
+  test('a vertical dimension label still rasterises when wrap is unset', () async {
+    const labelled = CadViewport(
+      center: Vec2.zero(),
+      scale: 1,
+      size: Size(200, 200),
+    );
+    final scene = RenderScene.single(
+      viewport: labelled,
+      texts: const [
+        TextItem(
+          text: 'AL',
+          origin: Offset(100, 100),
+          pixelHeight: 20,
+          rotation: -1.5707963267948966,
+          color: Color(0xFFFFFF00),
+          hAlign: 1,
+          vAlign: 2,
+          boxAnchor: true,
+          fontFamily: 'Roboto',
+        ),
+      ],
+      entityCount: 1,
+      coverage: const Bounds2(-100, -100, 100, 100),
+    );
+    final picture = ScenePainter().record(scene);
+    final image = await picture.toImage(200, 200);
+    final bytes = await image.toByteData();
+    var yellow = 0;
+    for (var i = 0; i + 3 < (bytes?.lengthInBytes ?? 0); i += 4) {
+      if (bytes!.getUint8(i) > 180 &&
+          bytes.getUint8(i + 1) > 180 &&
+          bytes.getUint8(i + 2) < 80) {
+        yellow++;
+      }
+    }
+    expect(yellow, greaterThan(10));
+    image.dispose();
+    picture.dispose();
+  });
 }
