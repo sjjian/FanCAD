@@ -1,25 +1,18 @@
 import 'dart:io';
 
 import 'package:fancad/fancad.dart';
-import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_ops/fancad_ops.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/workspace.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('ops host lock lets a client list and run on the open drawing', () async {
-    final workspace = Workspace(
-      commands: CommandRegistry(),
-      importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      drawing: DrawingSettings(SettingsStore.inMemory()),
-    );
-    addTearDown(workspace.dispose);
-    workspace.newDocument(title: 'MCP');
-    registerBuiltinCommands(
-      workspace.commands,
-      fileCommands: FileCommands(
+    final app = Headless(
+      files: (workspace) => FileCommands(
         openFile: (_) async => false,
         newDocument: workspace.newDocument,
         closeActive: (session, {bool force = false}) => false,
@@ -27,9 +20,9 @@ void main() {
         recentFiles: () => const <String>[],
       ),
     );
+    final workspace = app.workspace;
 
-    final dir = Directory.systemTemp.createTempSync('fancad-mcp');
-    addTearDown(() => dir.deleteSync(recursive: true));
+    final dir = tempDir(prefix: 'fancad-mcp');
     final lockPath = '${dir.path}${Platform.pathSeparator}mcp.lock';
     final host = FanCadOpsHost(
       workspace: workspace,
