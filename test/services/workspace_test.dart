@@ -6,6 +6,7 @@ import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_render/fancad_render.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -95,8 +96,7 @@ void main() {
 
   test('the same drawing reached via two paths stays one tab', () async {
     final ws = workspace();
-    final dir = Directory.systemTemp.createTempSync('fancad-open-id');
-    addTearDown(() => dir.deleteSync(recursive: true));
+    final dir = tempDir(prefix: 'fancad-open-id');
     final file = File('${dir.path}/part.dxf')
       ..writeAsStringSync('0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n');
 
