@@ -43,9 +43,9 @@ void main() {
     test('merge unions ids and regeneration flags', () {
       const empty = DocumentChange();
       expect(empty.isEmpty, isTrue);
-      final merged = const DocumentChange(added: [1]).merge(
-        const DocumentChange(removed: [2], tablesChanged: true),
-      );
+      final merged = const DocumentChange(
+        added: [1],
+      ).merge(const DocumentChange(removed: [2], tablesChanged: true));
       expect(merged.added, [1]);
       expect(merged.removed, [2]);
       expect(merged.requiresFullRegeneration, isTrue);
@@ -96,11 +96,10 @@ void main() {
         blockName: document.modelSpaceBlockName,
         index: 1,
       );
-      expect(document.entitiesOf(document.modelSpaceBlockName).map((e) => e.id), [
-        a.id,
-        50,
-        c.id,
-      ]);
+      expect(
+        document.entitiesOf(document.modelSpaceBlockName).map((e) => e.id),
+        [a.id, 50, c.id],
+      );
     });
 
     test('layer 0 and Standard dimstyle cannot be removed', () {
@@ -111,6 +110,8 @@ void main() {
         ..putDimStyle(const DimStyleDef(name: 'ARCH'))
         ..currentDimStyle = 'ARCH';
       expect(document.removeLayer('0'), isNull);
+      expect(document.removeLayer('NOPE'), isNull);
+      expect(document.layer('0'), isNotNull);
       expect(document.removeLayer('WALLS')?.name, 'WALLS');
       expect(document.removeDimStyle('Standard'), isNull);
       expect(document.removeDimStyle('arch')?.name, 'ARCH');
@@ -138,12 +139,9 @@ void main() {
     test('paper layouts can be added, activated and removed', () {
       final document = CadDocument();
       expect(document.setActiveLayout('missing'), isFalse);
+      expect(document.activeLayoutName, 'Model');
       document.addLayout(
-        const Layout(
-          name: 'A3',
-          blockName: '*Paper_Space',
-          tabOrder: 1,
-        ),
+        const Layout(name: 'A3', blockName: '*Paper_Space', tabOrder: 1),
       );
       expect(document.setActiveLayout('A3'), isTrue);
       expect(document.activeLayoutName, 'A3');
@@ -152,29 +150,31 @@ void main() {
       expect(document.activeLayoutName, 'Model');
     });
 
-    test('block bounds ignore frozen members and refresh when a layer changes',
-        () {
-      final document = CadDocument()
-        ..putLayer(const LayerDef(name: 'FAR'))
-        ..putBlock(const BlockRecord(name: 'MARK', entityIds: []));
-      document.addEntity(
-        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
-        blockName: 'MARK',
-      );
-      document.addEntity(
-        const LineEntity(
-          id: 0,
-          props: EntityProps(layer: 'FAR'),
-          start: Vec2.zero(),
-          end: Vec2(400, 0),
-        ),
-        blockName: 'MARK',
-      );
-      expect(document.boundsOf('MARK').maxX, closeTo(400, 1e-9));
+    test(
+      'block bounds ignore frozen members and refresh when a layer changes',
+      () {
+        final document = CadDocument()
+          ..putLayer(const LayerDef(name: 'FAR'))
+          ..putBlock(const BlockRecord(name: 'MARK', entityIds: []));
+        document.addEntity(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+          blockName: 'MARK',
+        );
+        document.addEntity(
+          const LineEntity(
+            id: 0,
+            props: EntityProps(layer: 'FAR'),
+            start: Vec2.zero(),
+            end: Vec2(400, 0),
+          ),
+          blockName: 'MARK',
+        );
+        expect(document.boundsOf('MARK').maxX, closeTo(400, 1e-9));
 
-      document.putLayer(const LayerDef(name: 'FAR', frozen: true));
-      expect(document.boundsOf('MARK').maxX, closeTo(4, 1e-9));
-    });
+        document.putLayer(const LayerDef(name: 'FAR', frozen: true));
+        expect(document.boundsOf('MARK').maxX, closeTo(4, 1e-9));
+      },
+    );
 
     test('queryVisible refreshes insert bounds after a layer freeze', () {
       final document = CadDocument()
@@ -194,11 +194,7 @@ void main() {
         blockName: 'MARK',
       );
       final insert = document.addEntity(
-        const InsertEntity(
-          id: 0,
-          blockName: 'MARK',
-          position: Vec2.zero(),
-        ),
+        const InsertEntity(id: 0, blockName: 'MARK', position: Vec2.zero()),
       );
       const far = Bounds2(190, -1, 410, 1);
       const near = Bounds2(-1, -1, 5, 1);
@@ -265,6 +261,110 @@ void main() {
       expect(document.headerVariables['\$INSUNITS'], '4');
       document.invalidateCaches();
       expect(document.queryVisible(const Bounds2(-1, -1, 6, 6)), [visible.id]);
+      expect(document.queryVisible(const Bounds2(20, 20, 21, 21)), isEmpty);
+    });
+
+    test('a missing layer stays plottable and editable', () {
+      final document = CadDocument();
+      expect(document.isLayerPlottable('Notes'), isTrue);
+      expect(document.isLayerEditable('Notes'), isTrue);
+
+      document.putLayer(const LayerDef(name: 'Notes', plottable: false));
+      expect(document.isLayerPlottable('Notes'), isFalse);
+
+      document.putLayer(const LayerDef(name: 'Ice', frozen: true));
+      expect(document.isLayerPlottable('Ice'), isFalse);
+      expect(document.isLayerEditable('Ice'), isFalse);
+    });
+
+    test('a hidden entity or missing id cannot invent a pick or a remove', () {
+      final document = CadDocument();
+      const hidden = LineEntity(
+        id: 1,
+        props: EntityProps(visible: false),
+        start: Vec2.zero(),
+        end: Vec2(10, 0),
+      );
+      expect(document.isSelectable(hidden), isFalse);
+      expect(document.removeEntity(99), isNull);
+      expect(document.entity(99), isNull);
+    });
+
+    test('a locked layer can still be selected', () {
+      final document = CadDocument()
+        ..putLayer(const LayerDef(name: 'Lock', locked: true));
+      const line = LineEntity(
+        id: 1,
+        props: EntityProps(layer: 'Lock'),
+        start: Vec2.zero(),
+        end: Vec2(10, 0),
+      );
+      expect(document.isLayerEditable('Lock'), isFalse);
+      expect(document.isSelectable(line), isTrue);
+    });
+
+    test('a missing id cannot invent an owner', () {
+      final document = CadDocument();
+      expect(document.ownerOf(99), isNull);
+      document.registerImportedEntity(
+        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+      expect(document.ownerOf(1), isNull);
+    });
+
+    test('a missing owner cannot invent a draw-order index', () {
+      final document = CadDocument();
+      expect(document.entityIndexOf(99), isNull);
+      document.registerImportedEntity(
+        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+      expect(document.entityIndexOf(1), isNull);
+    });
+
+    test('a missing id cannot invent a replacement', () {
+      final document = CadDocument();
+      expect(
+        document.replaceEntity(
+          const LineEntity(id: 99, start: Vec2.zero(), end: Vec2(4, 0)),
+        ),
+        isNull,
+      );
+      expect(document.entity(99), isNull);
+      expect(document.entities, isEmpty);
+    });
+
+    test('an orphan import cannot invent a spatial hit after reindex', () {
+      final document = CadDocument()
+        ..registerImportedEntity(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(4, 0)),
+        )
+        ..reindex();
+      expect(document.queryVisible(const Bounds2(-1, -1, 5, 1)), isEmpty);
+      expect(document.entity(1), isNotNull);
+    });
+
+    test('a missing block cannot invent members or emission', () {
+      final document = CadDocument();
+      expect(document.entityIdsOf('NOPE'), isNull);
+      expect(document.entitiesOf('NOPE'), isEmpty);
+
+      final sink = PolylineSink();
+      document.emitBlock('NOPE', const EmitContext(tolerance: 0.1), sink);
+      expect(sink.isEmpty, isTrue);
+    });
+
+    test('a missing or colliding name cannot invent a rename', () {
+      final document = CadDocument()
+        ..putBlock(const BlockRecord(name: 'DOOR'))
+        ..putBlock(const BlockRecord(name: 'LEAF'));
+
+      expect(document.renameBlock('DOOR', ''), isFalse);
+      expect(document.renameBlock('DOOR', 'DOOR'), isFalse);
+      expect(document.renameBlock('NOPE', 'NEXT'), isFalse);
+      expect(document.renameBlock('DOOR', 'LEAF'), isFalse);
+      expect(document.removeBlock('NOPE'), isNull);
+      expect(document.removeLayout('NOPE'), isFalse);
+      expect(document.blocks.containsKey('DOOR'), isTrue);
     });
   });
 }
