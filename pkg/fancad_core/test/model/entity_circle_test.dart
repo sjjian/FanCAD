@@ -20,4 +20,30 @@ void main() {
     const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
     expect(circle.reversed(), isNull);
   });
+
+  test('circle quadrant grips change radius and a non-uniform scale becomes an ellipse', () {
+    const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+    expect(circle.grips(), const [
+      Vec2.zero(),
+      Vec2(5, 0),
+      Vec2(0, 5),
+      Vec2(-5, 0),
+      Vec2(0, -5),
+    ]);
+    final stretched = circle.withGrip(1, const Vec2(8, 0));
+    expect(stretched.center, const Vec2.zero());
+    expect(stretched.radius, 8);
+    final north = circle.withGrip(2, const Vec2(0, 3));
+    expect(north.radius, 3);
+    expect(
+      circle.withGrip(0, const Vec2(1, 1)).center,
+      const Vec2(1, 1),
+    );
+    final uniform = circle.transformed(const Mat3.scaling(2, 2)) as CircleEntity;
+    expect(uniform.radius, 10);
+    expect(uniform.center, const Vec2.zero());
+    final tall = circle.transformed(const Mat3.scaling(1, 2)) as EllipseEntity;
+    expect(tall.ratio, lessThanOrEqualTo(1));
+    expect(tall.majorLength, closeTo(10, 1e-9));
+  });
 }

@@ -12,4 +12,12 @@ void main() {
     nested.emit(const EmitContext(tolerance: 0.1, depth: 32), sink);
     expect(sink.isEmpty, isTrue);
   });
+
+  test('an insert grip stays on the insertion', () {
+    const insert = InsertEntity(id: 1, blockName: 'B', position: Vec2.zero());
+    expect(
+      insert.withGrip(0, const Vec2(4, 5)).position,
+      const Vec2(4, 5),
+    );
+  });
 }

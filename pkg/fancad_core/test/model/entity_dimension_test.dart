@@ -62,4 +62,32 @@ void main() {
     expect(sink.texts, hasLength(1));
     expect(sink.texts.single.text, '40');
   });
+
+  test('a dimension override substitutes the measured value', () {
+    const dim = DimensionEntity(
+      id: 1,
+      definitionPoints: [Vec2.zero(), Vec2(10, 0)],
+      measurement: 10,
+      overrideText: 'L=<>',
+    );
+    expect(dim.displayText, 'L=10.00');
+    expect(dim.formatMeasurement(0), 'L=10');
+    expect(dim.formatMeasurement(20), 'L=10.00000000');
+    final dragged = dim.withGrip(2, const Vec2(5, 4));
+    expect(dragged.textPosition, const Vec2(5, 4));
+  });
+
+  test('scaling an angular dimension does not scale the degrees', () {
+    final dim = Construct.angularDimension(
+      const Vec2.zero(),
+      const Vec2(10, 0),
+      const Vec2(0, 10),
+      const Vec2(4, 4),
+    )!;
+    expect(dim.measurement, closeTo(90, 1e-9));
+    final scaled = dim.transformed(const Mat3.scaling(2, 2));
+    expect(scaled.measurement, closeTo(90, 1e-9));
+    final gripped = dim.withGrip(2, const Vec2(-10, 0));
+    expect(gripped.measurement, closeTo(180, 1e-9));
+  });
 }

@@ -94,4 +94,14 @@ void main() {
     expect(reversed.bulgeAt(0), closeTo(0.008, 1e-12));
     expect(reversed.computeBounds().width, lessThan(2));
   });
+
+  test('a polyline vertex grip edits one point', () {
+    final pline = PolylineEntity.fromPoints(
+      id: 1,
+      points: const [Vec2.zero(), Vec2(10, 0), Vec2(10, 4)],
+    );
+    final edited = pline.withGrip(1, const Vec2(8, 1));
+    expect(edited.vertexAt(1), const Vec2(8, 1));
+    expect(edited.vertexAt(0), const Vec2.zero());
+  });
 }
