@@ -64,4 +64,50 @@ void main() {
       expect(sink.polylines, isEmpty);
     },
   );
+
+  test('an out-of-range grip cannot invent a new control point', () {
+    const line = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
+    expect(line.withGrip(-1, const Vec2(1, 1)), same(line));
+    expect(line.withGrip(99, const Vec2(1, 1)), same(line));
+
+    final unknown = UnknownEntity(id: 2, originalType: 'PROXY');
+    expect(unknown.withGrip(0, const Vec2(4, 4)), same(unknown));
+  });
+
+  test('a point or unknown cannot invent an offset or a length', () {
+    const point = PointEntity(id: 1, position: Vec2.zero());
+    final unknown = UnknownEntity(id: 2, originalType: 'REGION');
+
+    expect(point.offsetBy(2, const Vec2(1, 1)), isNull);
+    expect(unknown.offsetBy(2, const Vec2(1, 1)), isNull);
+    expect(point.reversed(), isNull);
+    expect(unknown.reversed(), isNull);
+    expect(point.pathLength, 0);
+    expect(unknown.pathLength, 0);
+    expect(point.signedArea, 0);
+    expect(unknown.signedArea, 0);
+  });
+
+  test('missing or unknown JSON cannot invent drawable geometry', () {
+    final unknown = CadEntity.fromJson(const {});
+    expect(unknown, isA<UnknownEntity>());
+    expect(unknown.computeBounds().isEmpty, isTrue);
+    expect((unknown as UnknownEntity).originalType, 'UNKNOWN');
+
+    expect(CadEntity.fromJson(const {'type': 'nope'}), isA<UnknownEntity>());
+
+    final line = CadEntity.fromJson(const {'type': 'line'}) as LineEntity;
+    expect(line.start, const Vec2.zero());
+    expect(line.end, const Vec2.zero());
+    expect(line.length, 0);
+
+    final circle = CadEntity.fromJson(const {'type': 'circle'}) as CircleEntity;
+    expect(circle.center, const Vec2.zero());
+    expect(circle.radius, 0);
+
+    final polyline =
+        CadEntity.fromJson(const {'type': 'polyline'}) as PolylineEntity;
+    expect(polyline.vertices, isEmpty);
+  });
 }
+
