@@ -140,6 +140,17 @@ void main() {
         isNull,
       );
     });
+
+    test('coincident origins cannot invent a linear dim', () {
+      expect(
+        Construct.linearDimension(
+          const Vec2.zero(),
+          const Vec2.zero(),
+          const Vec2(0, 4),
+        ),
+        isNull,
+      );
+    });
   });
 
   group('alignedDimension', () {
@@ -227,6 +238,25 @@ void main() {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
       final radial = Construct.radiusDimension(circle, const Vec2(8, 0))!;
       expect(Construct.continueDimension(radial, const Vec2(12, 0)), isNull);
+    });
+
+    test('a coincident origin cannot invent a continue dim', () {
+      final first = Construct.linearDimension(
+        const Vec2.zero(),
+        const Vec2(10, 0),
+        const Vec2(5, 4),
+      )!;
+      expect(Construct.continueDimension(first, const Vec2(10, 0)), isNull);
+    });
+
+    test('an empty stack cannot invent a continue dim', () {
+      const empty = DimensionEntity(
+        id: 1,
+        definitionPoints: [],
+        textPosition: Vec2.zero(),
+        measurement: 0,
+      );
+      expect(Construct.continueDimension(empty, const Vec2(10, 0)), isNull);
     });
   });
 
@@ -328,6 +358,48 @@ void main() {
       expect(next.definitionPoints[1], const Vec2(0, 18));
       expect(next.textPosition.x, closeTo(10, 1e-9));
     });
+
+    eachCase(
+      [
+        (
+          name: 'a zero spacing cannot invent a baseline dim',
+          first: Construct.linearDimension(
+            const Vec2.zero(),
+            const Vec2(10, 0),
+            const Vec2(5, 4),
+          )!,
+          origin: const Vec2(18, 0),
+          spacing: 0.0,
+        ),
+        (
+          name: 'a coincident origin cannot invent a baseline dim',
+          first: Construct.linearDimension(
+            const Vec2.zero(),
+            const Vec2(10, 0),
+            const Vec2(5, 4),
+          )!,
+          origin: const Vec2.zero(),
+          spacing: 8.0,
+        ),
+        (
+          name: 'an empty stack cannot invent a baseline dim',
+          first: const DimensionEntity(
+            id: 1,
+            definitionPoints: [Vec2.zero()],
+            textPosition: Vec2.zero(),
+            measurement: 0,
+          ),
+          origin: const Vec2(10, 0),
+          spacing: 8.0,
+        ),
+      ],
+      (c) {
+        expect(
+          Construct.baselineDimension(c.first, c.origin, spacing: c.spacing),
+          isNull,
+        );
+      },
+    );
   });
 
   group('radiusDimension', () {
@@ -354,6 +426,26 @@ void main() {
       expect(
         Construct.radiusDimension(line(0, 0, 10, 0), const Vec2(5, 0)),
         isNull,
+      );
+    });
+
+    test('a vanished radius cannot invent a radial dim', () {
+      expect(
+        Construct.radiusDimension(
+          const CircleEntity(id: 1, center: Vec2.zero(), radius: 0),
+          const Vec2(8, 0),
+        ),
+        isNull,
+      );
+    });
+
+    test('a pick at the centre still names a radius', () {
+      expect(
+        Construct.radiusDimension(
+          const CircleEntity(id: 3, center: Vec2.zero(), radius: 5),
+          const Vec2.zero(),
+        ),
+        isNotNull,
       );
     });
   });
@@ -485,6 +577,29 @@ void main() {
       expect(Construct.centerMark(arc, extend: false), hasLength(2));
       expect(Construct.centerMark(line(0, 0, 10, 0)), isNull);
     });
+
+    eachCase(
+      [
+        (
+          name: 'a zero size cannot invent a center mark',
+          entity: const CircleEntity(id: 1, center: Vec2.zero(), radius: 8),
+          size: 0.0,
+        ),
+        (
+          name: 'a negative size cannot invent a center mark',
+          entity: const CircleEntity(id: 1, center: Vec2.zero(), radius: 8),
+          size: -2.0,
+        ),
+        (
+          name: 'a vanished radius cannot invent a center mark',
+          entity: const CircleEntity(id: 2, center: Vec2.zero(), radius: 0),
+          size: 1.0,
+        ),
+      ],
+      (c) {
+        expect(Construct.centerMark(c.entity, size: c.size), isNull);
+      },
+    );
   });
 
   group('centerLine', () {
@@ -537,6 +652,35 @@ void main() {
         isNull,
       );
     });
+
+    eachCase(
+      [
+        (
+          name: 'a negative extension cannot invent a centerline',
+          first: const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+          second: const LineEntity(id: 2, start: Vec2(0, 4), end: Vec2(10, 4)),
+          extension: -1.0,
+        ),
+        (
+          name: 'a collapsed pair cannot invent a centerline',
+          first: const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+          second: const LineEntity(id: 3, start: Vec2.zero(), end: Vec2.zero()),
+          extension: 0.0,
+        ),
+        (
+          name: 'a circle cannot invent a centerline with a line',
+          first: const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+          second: const CircleEntity(id: 4, center: Vec2.zero(), radius: 2),
+          extension: 0.0,
+        ),
+      ],
+      (c) {
+        expect(
+          Construct.centerLine(c.first, c.second, extension: c.extension),
+          isNull,
+        );
+      },
+    );
   });
 
   group('angularDimension', () {
@@ -824,6 +968,38 @@ void main() {
       expect(pieces.whereType<LineEntity>(), isEmpty);
       expect(pieces.whereType<TextEntity>(), isEmpty);
     });
+
+    test('an angular dimension explodes to two rays and a dim arc', () {
+      final dim = Construct.angularDimension(
+        const Vec2(0, 0),
+        const Vec2(10, 0),
+        const Vec2(0, 10),
+        const Vec2(4, 4),
+      )!;
+      final pieces = Construct.explodeDimension(dim);
+
+      expect(pieces.whereType<LineEntity>(), hasLength(2));
+      expect(
+        pieces.whereType<ArcEntity>().single.radius,
+        closeTo(math.sqrt(32), 1e-9),
+      );
+      expect(pieces.whereType<TextEntity>().single.content, '90.00°');
+    });
+
+    test('a dim-arc pick on the vertex cannot invent an arc', () {
+      const dim = DimensionEntity(
+        id: 1,
+        definitionPoints: [Vec2.zero(), Vec2(10, 0), Vec2(0, 10)],
+        textPosition: Vec2.zero(),
+        measurement: 90,
+        overrideText: ' ',
+        dimensionType: 2,
+      );
+      final pieces = Construct.explodeDimension(dim);
+      expect(pieces.whereType<ArcEntity>(), isEmpty);
+      expect(pieces.whereType<LineEntity>(), hasLength(2));
+      expect(pieces.whereType<TextEntity>(), isEmpty);
+    });
   });
 
   group('leader', () {
@@ -879,6 +1055,44 @@ void main() {
     test('returns null for fewer than two distinct points', () {
       expect(Construct.leader(const [Vec2(1, 1)]), isNull);
       expect(Construct.leader(const [Vec2(1, 1), Vec2(1, 1)]), isNull);
+      expect(
+        Construct.leader(const [Vec2.zero(), Vec2.zero(), Vec2.zero()]),
+        isNull,
+      );
+    });
+
+    eachCase(
+      [
+        (
+          name: 'a zero text height cannot invent a leader note',
+          height: 0.0,
+        ),
+        (
+          name: 'a negative text height cannot invent a leader note',
+          height: -2.0,
+        ),
+      ],
+      (c) {
+        expect(
+          Construct.leader(
+            const [Vec2.zero(), Vec2(10, 5)],
+            annotation: 'NOTE',
+            textHeight: c.height,
+          ),
+          isNull,
+        );
+      },
+    );
+
+    test('duplicate vertices cannot invent a second landing point', () {
+      final created = Construct.leader(const [
+        Vec2.zero(),
+        Vec2(10, 0),
+        Vec2(10, 0),
+      ]);
+      expect(created, isNotNull);
+      final leader = created!.single as LeaderEntity;
+      expect(leader.grips(), const [Vec2.zero(), Vec2(10, 0)]);
     });
   });
 
@@ -3054,6 +3268,33 @@ void main() {
         isEmpty,
       );
     });
+
+    eachCase(
+      [
+        (
+          name: 'a zero spacing cannot invent measure points',
+          spacing: 0.0,
+        ),
+        (
+          name: 'a negative spacing cannot invent measure points',
+          spacing: -3.0,
+        ),
+        (
+          name: 'a non-finite spacing cannot invent measure points',
+          spacing: double.nan,
+        ),
+        (
+          name: 'an infinite spacing cannot invent measure points',
+          spacing: double.infinity,
+        ),
+      ],
+      (c) {
+        expect(
+          Construct.measureLine(line(0, 0, 10, 0), c.spacing, const Vec2.zero()),
+          isEmpty,
+        );
+      },
+    );
   });
 
   group('measurePolyline', () {
@@ -3113,6 +3354,44 @@ void main() {
       expect(points.first.x, closeTo(10 * math.cos(math.pi / 4), 1e-9));
       expect(points.first.y, closeTo(10 * math.sin(math.pi / 4), 1e-9));
     });
+
+    eachCase(
+      [
+        (
+          name: 'a zero spacing cannot invent measure points',
+          polyline: PolylineEntity.fromPoints(
+            id: 2,
+            points: const [Vec2.zero(), Vec2(10, 0), Vec2(10, 10)],
+          ),
+          spacing: 0.0,
+          pick: const Vec2.zero(),
+        ),
+        (
+          name: 'a lone vertex cannot invent measure points',
+          polyline: PolylineEntity.fromPoints(
+            id: 1,
+            points: const [Vec2.zero()],
+          ),
+          spacing: 2.0,
+          pick: const Vec2.zero(),
+        ),
+        (
+          name: 'a span shorter than the spacing cannot invent measure points',
+          polyline: PolylineEntity.fromPoints(
+            id: 2,
+            points: const [Vec2.zero(), Vec2(1, 0)],
+          ),
+          spacing: 6.0,
+          pick: const Vec2.zero(),
+        ),
+      ],
+      (c) {
+        expect(
+          Construct.measurePolyline(c.polyline, c.spacing, c.pick),
+          isEmpty,
+        );
+      },
+    );
   });
 
   group('measureArc', () {
@@ -3130,6 +3409,50 @@ void main() {
       expect(points.first.x, closeTo(10 * math.cos(0.5), 1e-9));
       expect(points.first.y, closeTo(10 * math.sin(0.5), 1e-9));
     });
+
+    eachCase(
+      [
+        (
+          name: 'a negative spacing cannot invent measure points',
+          arc: const ArcEntity(
+            id: 3,
+            center: Vec2.zero(),
+            radius: 10,
+            startAngle: 0,
+            endAngle: math.pi / 2,
+          ),
+          spacing: -1.0,
+          pick: const Vec2(10, 0),
+        ),
+        (
+          name: 'a zero-radius arc cannot invent measure points',
+          arc: const ArcEntity(
+            id: 3,
+            center: Vec2.zero(),
+            radius: 0,
+            startAngle: 0,
+            endAngle: math.pi,
+          ),
+          spacing: 1.0,
+          pick: const Vec2.zero(),
+        ),
+        (
+          name: 'a short arc cannot invent measure points past its sweep',
+          arc: const ArcEntity(
+            id: 4,
+            center: Vec2.zero(),
+            radius: 10,
+            startAngle: 0,
+            endAngle: 0.1,
+          ),
+          spacing: 20.0,
+          pick: const Vec2(10, 0),
+        ),
+      ],
+      (c) {
+        expect(Construct.measureArc(c.arc, c.spacing, c.pick), isEmpty);
+      },
+    );
   });
 
   group('measureCircle', () {
@@ -3140,6 +3463,66 @@ void main() {
       expect(points, hasLength(6));
       expect(points.first.x, closeTo(5 * math.cos(1), 1e-9));
       expect(points.first.y, closeTo(5 * math.sin(1), 1e-9));
+    });
+
+    eachCase(
+      [
+        (
+          name: 'a zero spacing cannot invent measure points',
+          circle: const CircleEntity(id: 4, center: Vec2.zero(), radius: 5),
+          spacing: 0.0,
+          pick: const Vec2(5, 0),
+        ),
+        (
+          name: 'a zero-radius circle cannot invent measure points',
+          circle: const CircleEntity(id: 5, center: Vec2.zero(), radius: 0),
+          spacing: 1.0,
+          pick: const Vec2.zero(),
+        ),
+        (
+          name: 'a spacing longer than the circumference cannot invent points',
+          circle: const CircleEntity(id: 6, center: Vec2.zero(), radius: 1),
+          spacing: 20.0,
+          pick: const Vec2(1, 0),
+        ),
+      ],
+      (c) {
+        expect(
+          Construct.measureCircle(c.circle, c.spacing, c.pick),
+          isEmpty,
+        );
+      },
+    );
+
+    test('a pick at the circle center still walks from angle zero', () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 10);
+      final points = Construct.measureCircle(circle, 10, const Vec2.zero());
+
+      expect(points, isNotEmpty);
+      expect(points.first.x, closeTo(10 * math.cos(1), 1e-9));
+      expect(points.first.y, closeTo(10 * math.sin(1), 1e-9));
+    });
+  });
+
+  group('resizedLine', () {
+    const source = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
+
+    test('a parameter span keeps only that remnant of the line', () {
+      final mid = Construct.resizedLine(source, 0.25, 0.75);
+      expect(mid.start.x, closeTo(2.5, 1e-9));
+      expect(mid.end.x, closeTo(7.5, 1e-9));
+      expect(mid.id, source.id);
+
+      final whole = Construct.resizedLine(source, 0, 1);
+      expect(whole.start, source.start);
+      expect(whole.end, source.end);
+    });
+
+    test('a collapsed parameter range cannot invent a remnant length', () {
+      final point = Construct.resizedLine(source, 0.4, 0.4);
+      expect(point.start, point.end);
+      expect(point.start.x, closeTo(4, 1e-9));
+      expect(point.start.distanceTo(point.end), 0);
     });
   });
 
@@ -3881,6 +4264,17 @@ void main() {
 
       expect(Construct.overkill([first, other]).isEmpty, isTrue);
     });
+
+    test('empty or collapsed geometry cannot invent an overkill erase', () {
+      expect(Construct.overkill(const []).isEmpty, isTrue);
+      expect(Construct.overkillIds(const []), isEmpty);
+
+      const collapsed = LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero());
+      expect(Construct.overkill([collapsed]).isEmpty, isTrue);
+
+      const point = PointEntity(id: 2, position: Vec2.zero());
+      expect(Construct.overkill([point]).isEmpty, isTrue);
+    });
   });
 
   group('justifyText', () {
@@ -3938,7 +4332,50 @@ void main() {
 
       expect(Construct.justifyText(text, 'align'), isNull);
       expect(Construct.justifyText(text, 'widget'), isNull);
+      expect(Construct.justifyText(text, 'fit'), isNull);
     });
+
+    test('centre and spaced keywords still map to the same alignment', () {
+      final parsed = Construct.parseTextJustify(
+        'Top Left',
+        currentH: TextHAlign.right,
+        currentV: TextVAlign.baseline,
+      );
+      expect(parsed, isNotNull);
+      expect(parsed!.h, TextHAlign.left);
+      expect(parsed.v, TextVAlign.top);
+
+      final centre = Construct.parseTextJustify(
+        'centre',
+        currentH: TextHAlign.left,
+        currentV: TextVAlign.baseline,
+      );
+      expect(centre!.h, TextHAlign.center);
+      expect(centre.v, TextVAlign.baseline);
+    });
+
+    eachCase(
+      [
+        (
+          name: 'an empty keyword cannot invent an alignment',
+          keyword: '   ',
+        ),
+        (
+          name: 'fit cannot invent an alignment',
+          keyword: 'fit',
+        ),
+      ],
+      (c) {
+        expect(
+          Construct.parseTextJustify(
+            c.keyword,
+            currentH: TextHAlign.left,
+            currentV: TextVAlign.baseline,
+          ),
+          isNull,
+        );
+      },
+    );
 
     eachCase(
       [
