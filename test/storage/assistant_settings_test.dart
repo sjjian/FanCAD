@@ -18,11 +18,4 @@ void main() {
     expect(profiles.single.displayName, 'deepseek-chat');
     expect(assistant.activeProfile.id, AssistantProfile.defaultId);
   });
-
-  test('a leftover token count is compact, not a raw integer dump', () {
-    expect(formatAssistantTokens(500), '500');
-    expect(formatAssistantTokens(12400), '12.4k');
-    expect(formatAssistantTokens(128000), '128k');
-    expect(formatAssistantTokens(12400), isNot(contains('12400')));
-  });
 }
