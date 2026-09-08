@@ -3,25 +3,61 @@ import 'dart:ui';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/testing.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('an empty overlay stays empty until a cursor, snap or selection lands',
-      () {
-    expect(OverlayModel.empty.isEmpty, isTrue);
-    expect(const OverlayModel(hotGripIndex: 2).isEmpty, isTrue);
-    expect(const OverlayModel(showCrosshair: false).isEmpty, isTrue);
-    expect(const OverlayModel(cursor: Vec2.zero()).isEmpty, isFalse);
-    expect(const OverlayModel(selectedIds: [1]).isEmpty, isFalse);
-    expect(const OverlayModel(highlightedIds: [2]).isEmpty, isFalse);
-    expect(const OverlayModel(grips: [Vec2.zero()]).isEmpty, isFalse);
-    expect(
-      const OverlayModel(shapes: [OverlayLine(Vec2.zero(), Vec2(1, 0))]).isEmpty,
-      isFalse,
-    );
-  });
+  eachCase(
+    [
+      (
+        name: 'an empty overlay stays empty',
+        model: OverlayModel.empty,
+        empty: true,
+      ),
+      (
+        name: 'a hot grip alone stays empty',
+        model: const OverlayModel(hotGripIndex: 2),
+        empty: true,
+      ),
+      (
+        name: 'a hidden crosshair stays empty',
+        model: const OverlayModel(showCrosshair: false),
+        empty: true,
+      ),
+      (
+        name: 'a cursor lands in the overlay',
+        model: const OverlayModel(cursor: Vec2.zero()),
+        empty: false,
+      ),
+      (
+        name: 'a selection lands in the overlay',
+        model: const OverlayModel(selectedIds: [1]),
+        empty: false,
+      ),
+      (
+        name: 'a highlight lands in the overlay',
+        model: const OverlayModel(highlightedIds: [2]),
+        empty: false,
+      ),
+      (
+        name: 'a grip lands in the overlay',
+        model: const OverlayModel(grips: [Vec2.zero()]),
+        empty: false,
+      ),
+      (
+        name: 'a preview shape lands in the overlay',
+        model: const OverlayModel(
+          shapes: [OverlayLine(Vec2.zero(), Vec2(1, 0))],
+        ),
+        empty: false,
+      ),
+    ],
+    (row) {
+      expect(row.model.isEmpty, row.empty);
+    },
+  );
 
   test('copyWith can replace a snap or clear it without dropping selection', () {
     const snap = SnapMarker(

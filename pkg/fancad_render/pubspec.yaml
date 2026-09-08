@@ -18,3 +18,5 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  fancad_test:
+    path: ../fancad_test
