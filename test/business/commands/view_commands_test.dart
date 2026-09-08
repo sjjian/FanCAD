@@ -292,6 +292,76 @@ void main() {
       expect(result.status, CommandStatus.failed);
       expect(result.message, contains('no insertable block'));
     });
+
+    test('deselect clears a leftover pick', () async {
+      await run('draw.line', {
+        'start': [0, 0],
+        'end': [1, 0],
+      });
+      expect(workspace.active!.session.selection.ids, isNotEmpty);
+
+      final result = await run('select.none');
+      expect(result.status, CommandStatus.ok);
+      expect(workspace.active!.session.selection.ids, isEmpty);
+    });
+
+    test('invert swaps the leftover pick for everything else', () async {
+      final first = await run('draw.line', {
+        'start': [0, 0],
+        'end': [1, 0],
+      });
+      final second = await run('draw.circle', {
+        'center': [0, 0],
+        'radius': 2,
+      });
+      final a = (first.data!['ids']! as List).first as int;
+      final b = (second.data!['ids']! as List).first as int;
+      workspace.active!.session.selection.replace([a]);
+
+      final result = await run('select.invert');
+      expect(result.status, CommandStatus.ok);
+      expect(workspace.active!.session.selection.ids.toSet(), {b});
+    });
+
+    test(
+      'similar grows the selection by kind and layer, not by a missing pick',
+      () async {
+        expect((await run('select.similar')).status, CommandStatus.failed);
+
+        await run('layer.new', {'name': 'WALLS'});
+        await run('layer.setCurrent', {'name': '0'});
+        final seed = await run('draw.line', {
+          'start': [0, 0],
+          'end': [1, 0],
+        });
+        await run('draw.line', {
+          'start': [2, 0],
+          'end': [3, 0],
+        });
+        await run('layer.setCurrent', {'name': 'WALLS'});
+        await run('draw.line', {
+          'start': [4, 0],
+          'end': [5, 0],
+        });
+        await run('draw.circle', {
+          'center': [0, 0],
+          'radius': 1,
+        });
+
+        final id = (seed.data!['ids']! as List).first as int;
+        workspace.active!.session.selection.replace([id]);
+        final result = await run('select.similar');
+        expect(result.status, CommandStatus.ok);
+        expect(workspace.active!.session.selection.ids, hasLength(2));
+        expect(
+          workspace.active!.session.selection.ids.every((each) {
+            final entity = document.entity(each);
+            return entity is LineEntity && entity.props.layer == '0';
+          }),
+          isTrue,
+        );
+      },
+    );
   });
 
   group('zoom', () {
