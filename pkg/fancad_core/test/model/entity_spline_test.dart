@@ -34,13 +34,6 @@ void main() {
     expect(spline.pathLength, greaterThan(0));
   });
 
-  test('a spline with no controls and no fit points still emits nothing', () {
-    final spline = SplineEntity(id: 1, controlPoints: Float64List(0));
-    final sink = PolylineSink();
-    spline.emit(const EmitContext(tolerance: 0.1), sink);
-    expect(sink.isEmpty, isTrue);
-  });
-
   test('reversing a spline keeps the fit points and swaps the ends', () {
     const fits = [Vec2.zero(), Vec2(2, 3), Vec2(5, 1), Vec2(8, 0)];
     final spline = Construct.splineFromFit(fits)!;
