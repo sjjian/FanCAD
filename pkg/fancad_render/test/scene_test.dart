@@ -258,6 +258,328 @@ void main() {
       );
       expect(scene.drawCallCount, 0);
     });
+
+    test('an invisible entity cannot invent scene strokes', () {
+      const view = CadViewport(
+        center: Vec2(5, 0),
+        scale: 10,
+        size: Size(200, 200),
+      );
+      final document = CadDocument()
+        ..addEntity(
+          const LineEntity(
+            id: 0,
+            props: EntityProps(visible: false),
+            start: Vec2.zero(),
+            end: Vec2(10, 0),
+          ),
+        );
+      final scene = newBuilder().build(document, view);
+      expect(scene.entityCount, 0);
+      expect(scene.lineBatches, isEmpty);
+    });
+
+    test('a visible line still lands in a batch', () {
+      const view = CadViewport(
+        center: Vec2(5, 0),
+        scale: 10,
+        size: Size(200, 200),
+      );
+      final document = CadDocument()
+        ..addEntity(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+        );
+      final scene = newBuilder().build(document, view);
+      expect(scene.entityCount, 1);
+      expect(scene.lineBatches, hasLength(1));
+    });
+
+    test('a NaN neighbour cannot empty the scene', () {
+      const view = CadViewport(
+        center: Vec2(5, 0),
+        scale: 10,
+        size: Size(200, 200),
+      );
+      final document = CadDocument()
+        ..addEntity(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+        )
+        ..addEntity(
+          const LineEntity(
+            id: 1,
+            start: Vec2(-1e41, 0),
+            end: Vec2(-1e41, double.nan),
+          ),
+        );
+      final scene = newBuilder().build(document, view);
+      expect(scene.entityCount, 1);
+      expect(scene.lineBatches, hasLength(1));
+    });
+
+    test('a paper millimetre stroke does not grow past its paper width', () {
+      final document = CadDocument()
+        ..addEntity(
+          const LineEntity(
+            id: 0,
+            props: EntityProps(lineWeight: 50),
+            start: Vec2.zero(),
+            end: Vec2(40, 0),
+          ),
+        );
+      const strokeSize = Size(200, 200);
+      const paper = 0.50 / 25.4 * 96;
+
+      final atOne = newBuilder().build(
+        document,
+        const CadViewport(center: Vec2(20, 0), scale: 1, size: strokeSize),
+      );
+      final atTwo = newBuilder().build(
+        document,
+        const CadViewport(center: Vec2(20, 0), scale: 2, size: strokeSize),
+      );
+      expect(atOne.lineBatches, hasLength(1));
+      expect(atTwo.lineBatches, hasLength(1));
+      expect(atOne.lineBatches.single.key.strokeWidth, closeTo(paper, 1e-9));
+      expect(atTwo.lineBatches.single.key.strokeWidth, closeTo(paper, 1e-9));
+    });
+
+    test('a paper millimetre stroke is physical pixels, not logical ones', () {
+      final document = CadDocument()
+        ..addEntity(
+          const LineEntity(
+            id: 0,
+            props: EntityProps(lineWeight: 50),
+            start: Vec2.zero(),
+            end: Vec2(40, 0),
+          ),
+        );
+      const strokeSize = Size(200, 200);
+      const paper = 0.50 / 25.4 * 96;
+
+      final onePixel = newBuilder().build(
+        document,
+        const CadViewport(center: Vec2(20, 0), scale: 1, size: strokeSize),
+      );
+      final retina = newBuilder().build(
+        document,
+        const CadViewport(
+          center: Vec2(20, 0),
+          scale: 1,
+          size: strokeSize,
+          devicePixelRatio: 2,
+        ),
+      );
+
+      // Half a millimetre of ink is half a millimetre on both displays, which
+      // means twice as many pixels on the denser one. Reporting the same number
+      // for both is what made a Retina hairline draw two pixels wide.
+      expect(onePixel.lineBatches.single.key.strokeWidth, closeTo(paper, 1e-9));
+      expect(retina.lineBatches.single.key.strokeWidth, closeTo(paper * 2, 1e-9));
+    });
+
+    test('a paper millimetre stroke shrinks when the viewport shrinks', () {
+      final document = CadDocument()
+        ..addEntity(
+          const LineEntity(
+            id: 0,
+            props: EntityProps(lineWeight: 100),
+            start: Vec2.zero(),
+            end: Vec2(40, 0),
+          ),
+        );
+      const strokeSize = Size(200, 200);
+      const paper = 1.00 / 25.4 * 96;
+
+      final atOne = newBuilder().build(
+        document,
+        const CadViewport(center: Vec2(20, 0), scale: 1, size: strokeSize),
+      );
+      final atHalf = newBuilder().build(
+        document,
+        const CadViewport(center: Vec2(20, 0), scale: 0.5, size: strokeSize),
+      );
+      expect(atOne.lineBatches.single.key.strokeWidth, closeTo(paper, 1e-9));
+      expect(
+        atHalf.lineBatches.single.key.strokeWidth,
+        closeTo(paper * 0.5, 1e-9),
+      );
+    });
+
+    test('a hairline stays the hairline sentinel after a zoom change', () {
+      final document = CadDocument()
+        ..addEntity(
+          const LineEntity(
+            id: 0,
+            props: EntityProps(lineWeight: 0),
+            start: Vec2.zero(),
+            end: Vec2(40, 0),
+          ),
+        );
+      const strokeSize = Size(200, 200);
+
+      final near = newBuilder().build(
+        document,
+        const CadViewport(center: Vec2(20, 0), scale: 1, size: strokeSize),
+      );
+      final far = newBuilder().build(
+        document,
+        const CadViewport(center: Vec2(20, 0), scale: 10, size: strokeSize),
+      );
+      expect(near.lineBatches.single.key.strokeWidth, 0);
+      expect(far.lineBatches.single.key.strokeWidth, 0);
+    });
+
+    test('a sub-pixel insert still leaves a mark so it does not vanish', () {
+      final document = CadDocument();
+      document.addEntity(
+        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(8, 0)),
+        blockName: 'TICK',
+      );
+      document
+        ..putBlock(
+          const BlockRecord(name: 'TICK', entityIds: [1]),
+        )
+        ..addEntity(
+          const InsertEntity(id: 2, blockName: 'TICK', position: Vec2(100, 100)),
+        );
+      // Zoomed so the 8-unit tick is well under the 1.5 px collapse size.
+      const view = CadViewport(
+        center: Vec2(100, 100),
+        scale: 0.1,
+        size: Size(200, 200),
+      );
+      final scene = newBuilder().build(document, view);
+      expect(
+        scene.lineBatches.isNotEmpty || scene.pointBatches.isNotEmpty,
+        isTrue,
+      );
+    });
+
+    test('a visible insert collapses members smaller than a pixel', () {
+      final document = CadDocument();
+      // A 200-unit frame stays several pixels at this zoom; the 4-unit ticks
+      // inside it are well under 1.5 px and must not dump as linework.
+      document
+        ..addEntity(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(200, 0)),
+          blockName: 'CELL',
+        )
+        ..addEntity(
+          const LineEntity(id: 2, start: Vec2(200, 0), end: Vec2(200, 200)),
+          blockName: 'CELL',
+        )
+        ..addEntity(
+          const LineEntity(id: 3, start: Vec2(200, 200), end: Vec2(0, 200)),
+          blockName: 'CELL',
+        )
+        ..addEntity(
+          const LineEntity(id: 4, start: Vec2.zero(), end: Vec2(0, 200)),
+          blockName: 'CELL',
+        );
+      for (var i = 0; i < 40; i++) {
+        document.addEntity(
+          LineEntity(
+            id: 10 + i,
+            start: Vec2(10.0 + i * 4, 10),
+            end: Vec2(12.0 + i * 4, 12),
+          ),
+          blockName: 'CELL',
+        );
+      }
+      document
+        ..putBlock(
+          BlockRecord(
+            name: 'CELL',
+            entityIds: [1, 2, 3, 4, for (var i = 0; i < 40; i++) 10 + i],
+          ),
+        )
+        ..addEntity(
+          const InsertEntity(id: 100, blockName: 'CELL', position: Vec2.zero()),
+        );
+      const view = CadViewport(
+        center: Vec2(100, 100),
+        scale: 0.2,
+        size: Size(200, 200),
+      );
+      final scene = newBuilder().build(document, view);
+      expect(scene.lineBatches, isNotEmpty);
+      expect(scene.segmentCount, lessThan(10));
+      expect(scene.pointBatches, isNotEmpty);
+    });
+
+    test('an insert cached against a miss clip still draws later', () {
+      final document = CadDocument();
+      document.addEntity(
+        const LineEntity(id: 1, start: Vec2(-40, 0), end: Vec2(40, 0)),
+        blockName: 'FRAME',
+      );
+      document
+        ..putBlock(
+          const BlockRecord(name: 'FRAME', entityIds: [1]),
+        )
+        ..addEntity(
+          const InsertEntity(id: 2, blockName: 'FRAME', position: Vec2.zero()),
+        );
+      final cache = TessellationCache();
+      final builder = SceneBuilder(palette: AciPalette.dark, cache: cache);
+      const miss = CadViewport(
+        center: Vec2(400, 0),
+        scale: 1,
+        size: Size(80, 80),
+      );
+      builder.build(document, miss);
+      const hit = CadViewport(
+        center: Vec2.zero(),
+        scale: 1,
+        size: Size(80, 80),
+      );
+      final scene = builder.build(document, hit);
+      expect(scene.lineBatches, isNotEmpty);
+      expect(scene.lineBatches.single.segmentCount, greaterThan(0));
+    });
+
+    test('MTEXT attachment 1 stays on the box, not a baseline lift', () {
+      const view = CadViewport(
+        center: Vec2(20, 20),
+        scale: 1,
+        size: Size(200, 200),
+      );
+      final document = CadDocument()
+        ..addEntity(
+          const MTextEntity(
+            id: 1,
+            position: Vec2(10, 30),
+            content: 'Note',
+            height: 8,
+            attachment: 1,
+          ),
+        );
+      final scene = newBuilder().build(document, view);
+      expect(scene.texts, isNotEmpty);
+      expect(scene.texts.single.boxAnchor, isTrue);
+      expect(scene.texts.single.vAlign, TextVAlign.top.index);
+    });
+
+    test('an MTEXT underline reaches the text item', () {
+      const view = CadViewport(
+        center: Vec2(20, 20),
+        scale: 1,
+        size: Size(200, 200),
+      );
+      final document = CadDocument()
+        ..addEntity(
+          const MTextEntity(
+            id: 1,
+            position: Vec2(10, 30),
+            content: r'\LNote\l',
+            height: 8,
+          ),
+        );
+      final scene = newBuilder().build(document, view);
+      expect(scene.texts, isNotEmpty);
+      expect(scene.texts.single.underline, isTrue);
+      expect(scene.texts.single.text, 'Note');
+    });
   });
 
   group('RenderScene reuse', () {
