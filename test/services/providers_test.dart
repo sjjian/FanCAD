@@ -1,4 +1,6 @@
 import 'package:fancad/fancad.dart';
+import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +14,45 @@ ProviderContainer containerOf(SettingsStore settings) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('an empty plugins folder does not spawn a host', () {
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWithValue(SettingsStore.inMemory()),
+        pluginsDirectoryProvider.overrideWithValue(''),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(pluginHostProvider), isNull);
+    expect(container.read(pluginCommandsProvider), isNull);
+  });
+
+  test(
+    'a plugins folder wires a host without starting the isolate transport',
+    () {
+      final root = tempDir(prefix: 'fancad-plugins');
+
+      final container = ProviderContainer(
+        overrides: [
+          settingsProvider.overrideWithValue(SettingsStore.inMemory()),
+          pluginsDirectoryProvider.overrideWithValue(root.path),
+          pluginTransportProvider.overrideWithValue(LocalTransport()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final host = container.read(pluginHostProvider);
+      expect(host, isNotNull);
+      expect(container.read(pluginCommandsProvider), isNotNull);
+      expect(
+        container.read(pluginCommandsProvider)!.pluginsDirectory,
+        root.path,
+      );
+    },
+  );
+
   test('selecting the open sidebar icon collapses it, as VS Code does', () {
     final settings = SettingsStore.inMemory({
       SettingsKeys.sidebarView: 'layers',
