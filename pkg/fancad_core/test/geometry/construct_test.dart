@@ -52,6 +52,14 @@ void main() {
         ),
         isNull,
       );
+      expect(
+        Construct.arcThrough(
+          const Vec2.zero(),
+          const Vec2.zero(),
+          const Vec2(4, 0),
+        ),
+        isNull,
+      );
     });
   });
 
@@ -75,6 +83,22 @@ void main() {
           const Vec2(0, 0),
           const Vec2(1, 1),
           const Vec2(2, 2),
+        ),
+        isNull,
+      );
+      expect(
+        Construct.circleThrough(
+          const Vec2.zero(),
+          const Vec2(2, 0),
+          const Vec2(4, 0),
+        ),
+        isNull,
+      );
+      expect(
+        Construct.circleThrough(
+          const Vec2.zero(),
+          const Vec2.zero(),
+          const Vec2.zero(),
         ),
         isNull,
       );
@@ -865,6 +889,22 @@ void main() {
       expect(spline!.degree, 1);
       expect(spline.knots, [0, 0, 1, 1]);
     });
+
+    eachCase(
+      [
+        (
+          name: 'no points cannot invent a control spline',
+          points: const <Vec2>[],
+        ),
+        (
+          name: 'one point cannot invent a control spline',
+          points: const [Vec2.zero()],
+        ),
+      ],
+      (c) {
+        expect(Construct.splineFromControls(c.points), isNull);
+      },
+    );
   });
 
   group('splineFromFit', () {
@@ -911,6 +951,22 @@ void main() {
       expect(mid, isNotNull);
       expect((mid! - fits[1]).length, greaterThan(0.2));
     });
+
+    eachCase(
+      [
+        (
+          name: 'no points cannot invent a fit spline',
+          points: const <Vec2>[],
+        ),
+        (
+          name: 'one point cannot invent a fit spline',
+          points: const [Vec2(1, 1)],
+        ),
+      ],
+      (c) {
+        expect(Construct.splineFromFit(c.points), isNull);
+      },
+    );
   });
 
   group('donut', () {
@@ -1206,6 +1262,39 @@ void main() {
       ],
       (c) {
         expect(Construct.offset(c.entity, c.distance, c.pick), isNull);
+      },
+    );
+  });
+
+  group('crossingsAlong', () {
+    test('a line still reports the crossing used by TRIM', () {
+      const line = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
+      const edge = LineEntity(id: 2, start: Vec2(4, -2), end: Vec2(4, 2));
+      expect(Construct.crossingsAlong(line, edge), const [Vec2(4, 0)]);
+    });
+
+    test('a circle target cannot invent trim points', () {
+      const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
+      const edge = LineEntity(id: 2, start: Vec2(-10, 0), end: Vec2(10, 0));
+      expect(Construct.crossingsAlong(circle, edge), isEmpty);
+    });
+  });
+
+  group('crossingsWith', () {
+    eachCase(
+      [
+        (
+          name: 'a point cannot invent a crossing',
+          edge: const PointEntity(id: 2, position: Vec2(5, 0)),
+        ),
+        (
+          name: 'a text cannot invent a crossing',
+          edge: const TextEntity(id: 3, position: Vec2.zero(), content: 'A'),
+        ),
+      ],
+      (c) {
+        const line = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
+        expect(Construct.crossingsWith(line, c.edge), isEmpty);
       },
     );
   });
@@ -2387,6 +2476,92 @@ void main() {
       expect(joined.bulgeAt(0), closeTo(1, 1e-9));
       expect(joined.bulgeAt(1), closeTo(1, 1e-9));
     });
+
+    eachCase(
+      [
+        (
+          name: 'a lone piece cannot invent a join',
+          entities: [
+            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+          ],
+        ),
+        (
+          name: 'an empty list cannot invent a join',
+          entities: <CadEntity>[],
+        ),
+        (
+          name: 'a circle cannot invent a join',
+          entities: [
+            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+            const CircleEntity(id: 2, center: Vec2.zero(), radius: 5),
+          ],
+        ),
+        (
+          name: 'a closed rectangle cannot invent a join',
+          entities: [
+            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+            Construct.rectangle(const Vec2.zero(), const Vec2(10, 10))!,
+          ],
+        ),
+        (
+          name: 'a collapsed span cannot invent a join',
+          entities: [
+            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+            const LineEntity(id: 3, start: Vec2.zero(), end: Vec2.zero()),
+          ],
+        ),
+        (
+          name: 'a zero-sweep arc cannot invent a join',
+          entities: [
+            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+            const ArcEntity(
+              id: 4,
+              center: Vec2.zero(),
+              radius: 10,
+              startAngle: 0,
+              endAngle: 0,
+            ),
+          ],
+        ),
+      ],
+      (c) {
+        expect(Construct.joinEntities(c.entities), isNull);
+      },
+    );
+
+    test('a piece that meets the start is prepended, not dropped', () {
+      final prepended = Construct.joinEntities([
+        const LineEntity(id: 1, start: Vec2(10, 0), end: Vec2(20, 0)),
+        const LineEntity(id: 2, start: Vec2.zero(), end: Vec2(10, 0)),
+      ]);
+      expect(prepended, isNotNull);
+      expect(prepended!.vertexAt(0), const Vec2.zero());
+      expect(prepended.vertexAt(2), const Vec2(20, 0));
+
+      final reversed = Construct.joinEntities([
+        const LineEntity(id: 1, start: Vec2(10, 0), end: Vec2(20, 0)),
+        const LineEntity(id: 2, start: Vec2(10, 0), end: Vec2.zero()),
+      ]);
+      expect(reversed, isNotNull);
+      expect(reversed!.vertexAt(0), const Vec2.zero());
+      expect(reversed.vertexAt(2), const Vec2(20, 0));
+    });
+
+    test('a wide polyline keeps its width when joined onto a line', () {
+      final wide = PolylineEntity(
+        id: 1,
+        vertices: Float64List.fromList([0, 0, 0, 10, 0, 0]),
+        constantWidth: 2,
+      );
+      final joined = Construct.joinEntities([
+        wide,
+        const LineEntity(id: 2, start: Vec2(10, 0), end: Vec2(20, 0)),
+      ]);
+
+      expect(joined, isNotNull);
+      expect(joined!.constantWidth, 2);
+      expect(joined.vertexCount, 3);
+    });
   });
 
   group('reverse', () {
@@ -2450,6 +2625,7 @@ void main() {
 
     test('returns nothing for fewer than two segments', () {
       expect(Construct.divideLine(line(0, 0, 10, 0), 1), isEmpty);
+      expect(Construct.divideLine(line(0, 0, 10, 0), 0), isEmpty);
     });
   });
 
@@ -2499,6 +2675,38 @@ void main() {
       expect(points.first.x, closeTo(10 * math.cos(math.pi / 4), 1e-9));
       expect(points.first.y, closeTo(10 * math.sin(math.pi / 4), 1e-9));
     });
+
+    eachCase(
+      [
+        (
+          name: 'fewer than two segments cannot invent divide points',
+          polyline: PolylineEntity.fromPoints(
+            id: 2,
+            points: const [Vec2.zero(), Vec2(10, 0), Vec2(10, 10)],
+          ),
+          segments: 1,
+        ),
+        (
+          name: 'a lone vertex cannot invent divide points',
+          polyline: PolylineEntity.fromPoints(
+            id: 1,
+            points: const [Vec2.zero()],
+          ),
+          segments: 4,
+        ),
+        (
+          name: 'a collapsed span cannot invent divide points',
+          polyline: PolylineEntity.fromPoints(
+            id: 2,
+            points: const [Vec2.zero(), Vec2.zero()],
+          ),
+          segments: 4,
+        ),
+      ],
+      (c) {
+        expect(Construct.dividePolyline(c.polyline, c.segments), isEmpty);
+      },
+    );
   });
 
   group('divideArc', () {
@@ -2517,6 +2725,47 @@ void main() {
       expect(points.first.x, closeTo(10 * math.cos(math.pi / 4), 1e-9));
       expect(points.first.y, closeTo(10 * math.sin(math.pi / 4), 1e-9));
     });
+
+    eachCase(
+      [
+        (
+          name: 'fewer than two segments cannot invent divide points',
+          arc: const ArcEntity(
+            id: 3,
+            center: Vec2.zero(),
+            radius: 10,
+            startAngle: 0,
+            endAngle: math.pi / 2,
+          ),
+          segments: 1,
+        ),
+        (
+          name: 'a zero-radius curve cannot invent divide points',
+          arc: const ArcEntity(
+            id: 3,
+            center: Vec2.zero(),
+            radius: 0,
+            startAngle: 0,
+            endAngle: math.pi,
+          ),
+          segments: 4,
+        ),
+        (
+          name: 'a zero-sweep arc cannot invent divide points',
+          arc: const ArcEntity(
+            id: 4,
+            center: Vec2.zero(),
+            radius: 10,
+            startAngle: 0,
+            endAngle: 0,
+          ),
+          segments: 4,
+        ),
+      ],
+      (c) {
+        expect(Construct.divideArc(c.arc, c.segments), isEmpty);
+      },
+    );
   });
 
   group('divideCircle', () {
@@ -2530,6 +2779,24 @@ void main() {
       expect(points[1].y, closeTo(5, 1e-9));
       expect(points[2].x, closeTo(-5, 1e-9));
     });
+
+    eachCase(
+      [
+        (
+          name: 'fewer than two segments cannot invent divide points',
+          circle: const CircleEntity(id: 4, center: Vec2.zero(), radius: 5),
+          segments: 1,
+        ),
+        (
+          name: 'a zero-radius circle cannot invent divide points',
+          circle: const CircleEntity(id: 5, center: Vec2.zero(), radius: 0),
+          segments: 4,
+        ),
+      ],
+      (c) {
+        expect(Construct.divideCircle(c.circle, c.segments), isEmpty);
+      },
+    );
   });
 
   group('measureLine', () {
@@ -3267,6 +3534,23 @@ void main() {
     test('reports zero area for open geometry', () {
       expect(Construct.areaOf(line(0, 0, 10, 0)), 0);
     });
+
+    test('an open or unsupported entity cannot invent an area or length', () {
+      const point = PointEntity(id: 1, position: Vec2.zero());
+      const text = TextEntity(id: 2, position: Vec2.zero(), content: 'A');
+      const insert = InsertEntity(
+        id: 3,
+        blockName: 'CELL',
+        position: Vec2.zero(),
+      );
+
+      expect(Construct.areaOf(point), 0);
+      expect(Construct.areaOf(text), 0);
+      expect(Construct.areaOf(insert), 0);
+      expect(Construct.lengthOf(point), 0);
+      expect(Construct.lengthOf(text), 0);
+      expect(Construct.lengthOf(insert), 0);
+    });
   });
 
   group('overkill', () {
@@ -3423,5 +3707,27 @@ void main() {
       expect(Construct.justifyText(text, 'align'), isNull);
       expect(Construct.justifyText(text, 'widget'), isNull);
     });
+
+    eachCase(
+      [
+        (
+          name: 'an unknown mtext justify cannot invent an attachment',
+          keyword: 'nope',
+        ),
+        (
+          name: 'fit cannot invent an mtext attachment',
+          keyword: 'fit',
+        ),
+      ],
+      (c) {
+        expect(
+          Construct.justifyMText(
+            const MTextEntity(id: 1, position: Vec2.zero(), content: 'A'),
+            c.keyword,
+          ),
+          isNull,
+        );
+      },
+    );
   });
 }
