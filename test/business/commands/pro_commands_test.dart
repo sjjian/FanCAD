@@ -615,8 +615,7 @@ void main() {
     test('plots a named paper layout without switching tabs', () async {
       await run('layout.new', {'name': 'A3', 'width': 420, 'height': 297});
       await run('layout.set', {'name': 'Model'});
-      final dir = Directory.systemTemp.createTempSync('fancad_plot');
-      addTearDown(() => dir.deleteSync(recursive: true));
+      final dir = tempDir(prefix: 'fancad_plot');
       final path = '${dir.path}/sheet.svg';
 
       final result = await run('print.exportSvg', {
@@ -634,8 +633,7 @@ void main() {
 
     test('plot honours a window on the named layout', () async {
       await run('layout.new', {'name': 'A3', 'width': 420, 'height': 297});
-      final dir = Directory.systemTemp.createTempSync('fancad_plot');
-      addTearDown(() => dir.deleteSync(recursive: true));
+      final dir = tempDir(prefix: 'fancad_plot');
       final path = '${dir.path}/window.svg';
 
       final result = await run('print.exportSvg', {
@@ -662,8 +660,7 @@ void main() {
 
   group('xrefs', () {
     test('attach places an insert in model space', () async {
-      final dir = Directory.systemTemp.createTempSync('fancad_xref');
-      addTearDown(() => dir.deleteSync(recursive: true));
+      final dir = tempDir(prefix: 'fancad_xref');
       final path = '${dir.path}/bracket.dxf';
       final foreign = CadDocument()
         ..addEntity(
@@ -684,8 +681,7 @@ void main() {
     });
 
     test('reload rereads the file and keeps the insert', () async {
-      final dir = Directory.systemTemp.createTempSync('fancad_xref');
-      addTearDown(() => dir.deleteSync(recursive: true));
+      final dir = tempDir(prefix: 'fancad_xref');
       final path = '${dir.path}/part.dxf';
       File(path).writeAsStringSync(
         const DxfWriter().writeString(
@@ -729,8 +725,7 @@ void main() {
     });
 
     test('reload refuses a missing file', () async {
-      final dir = Directory.systemTemp.createTempSync('fancad_xref');
-      addTearDown(() => dir.deleteSync(recursive: true));
+      final dir = tempDir(prefix: 'fancad_xref');
       final path = '${dir.path}/gone.dxf';
       File(path).writeAsStringSync(
         const DxfWriter().writeString(
@@ -749,8 +744,7 @@ void main() {
     });
 
     test('detach removes the insert and the xref block', () async {
-      final dir = Directory.systemTemp.createTempSync('fancad_xref');
-      addTearDown(() => dir.deleteSync(recursive: true));
+      final dir = tempDir(prefix: 'fancad_xref');
       final path = '${dir.path}/part.dxf';
       File(path).writeAsStringSync(
         const DxfWriter().writeString(
@@ -784,8 +778,7 @@ void main() {
     });
 
     test('bind keeps the insert and drops the file path', () async {
-      final dir = Directory.systemTemp.createTempSync('fancad_xref');
-      addTearDown(() => dir.deleteSync(recursive: true));
+      final dir = tempDir(prefix: 'fancad_xref');
       final path = '${dir.path}/part.dxf';
       File(path).writeAsStringSync(
         const DxfWriter().writeString(
