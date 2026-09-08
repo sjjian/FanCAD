@@ -1073,10 +1073,67 @@ void main() {
       expect(offset.vertexAt(2).y, closeTo(8, 1e-9));
     });
 
-    test('returns null for types it cannot offset', () {
-      const text = TextEntity(id: 1, position: Vec2.zero(), content: 'x');
-      expect(Construct.offset(text, 1, const Vec2(1, 1)), isNull);
-    });
+    eachCase(
+      [
+        (
+          name: 'a point cannot invent an offset',
+          entity: const PointEntity(id: 1, position: Vec2.zero()),
+          distance: 2.0,
+          pick: const Vec2(1, 1),
+        ),
+        (
+          name: 'a text cannot invent an offset',
+          entity: const TextEntity(id: 1, position: Vec2.zero(), content: 'x'),
+          distance: 1.0,
+          pick: const Vec2(1, 1),
+        ),
+        (
+          name: 'a zero distance cannot invent an offset',
+          entity: const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+          distance: 0.0,
+          pick: const Vec2(5, 5),
+        ),
+        (
+          name: 'a negative distance cannot invent an offset',
+          entity: const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+          distance: -2.0,
+          pick: const Vec2(5, 5),
+        ),
+        (
+          name: 'a collapsed span cannot invent an offset',
+          entity: const LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero()),
+          distance: 2.0,
+          pick: const Vec2(0, 1),
+        ),
+        (
+          name: 'an inward arc cannot invent an offset remnant',
+          entity: const ArcEntity(
+            id: 2,
+            center: Vec2.zero(),
+            radius: 5,
+            startAngle: 0,
+            endAngle: math.pi / 2,
+          ),
+          distance: 5.0,
+          pick: Vec2.zero(),
+        ),
+        (
+          name: 'an oversized inward arc cannot invent an offset remnant',
+          entity: const ArcEntity(
+            id: 2,
+            center: Vec2.zero(),
+            radius: 5,
+            startAngle: 0,
+            endAngle: math.pi / 2,
+          ),
+          distance: 9.0,
+          pick: Vec2.zero(),
+        ),
+      ],
+      (c) {
+        expect(Construct.offset(c.entity, c.distance, c.pick), isNull);
+      },
+    );
   });
 
   group('trimLine', () {
@@ -1118,6 +1175,26 @@ void main() {
     test('returns null when there is nothing to cut against', () {
       expect(
         Construct.trimLine(line(0, 0, 10, 0), const [], const Vec2(5, 0)),
+        isNull,
+      );
+    });
+
+    test('a collapsed span cannot invent a remnant', () {
+      const collapsed = LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero());
+      expect(
+        Construct.trimLine(collapsed, const [Vec2.zero()], const Vec2.zero()),
+        isNull,
+      );
+    });
+
+    test('an endpoint-only crossing cannot invent a remnant', () {
+      const source = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
+      expect(
+        Construct.trimLine(source, const [Vec2.zero()], const Vec2(5, 0)),
+        isNull,
+      );
+      expect(
+        Construct.trimLine(source, const [Vec2(10, 0)], const Vec2(5, 0)),
         isNull,
       );
     });
@@ -1220,6 +1297,31 @@ void main() {
         isNull,
       );
     });
+
+    test('empty crossings cannot invent a remnant', () {
+      expect(
+        Construct.trimPolyline(
+          PolylineEntity.fromPoints(
+            id: 2,
+            points: const [Vec2.zero(), Vec2(10, 0), Vec2(10, 10)],
+          ),
+          const [],
+          const Vec2(5, 0),
+        ),
+        isNull,
+      );
+    });
+
+    test('a lone vertex cannot invent a remnant', () {
+      expect(
+        Construct.trimPolyline(
+          PolylineEntity.fromPoints(id: 3, points: const [Vec2.zero()]),
+          const [Vec2.zero()],
+          const Vec2.zero(),
+        ),
+        isNull,
+      );
+    });
   });
 
   group('trimArc', () {
@@ -1256,6 +1358,20 @@ void main() {
         isNull,
       );
     });
+
+    test('a zero-radius arc cannot invent a remnant', () {
+      const zeroRadius = ArcEntity(
+        id: 2,
+        center: Vec2.zero(),
+        radius: 0,
+        startAngle: 0,
+        endAngle: 1,
+      );
+      expect(
+        Construct.trimArc(zeroRadius, const [Vec2.zero()], const Vec2(1, 0)),
+        isNull,
+      );
+    });
   });
 
   group('extendLine', () {
@@ -1282,6 +1398,26 @@ void main() {
       // The infinite line crosses x = 10, but not within the edge's extent.
       expect(
         Construct.extendLine(line(0, 0, 5, 0), [line(10, 20, 10, 30)]),
+        isNull,
+      );
+    });
+
+    test('empty edges cannot invent an extension', () {
+      expect(
+        Construct.extendLine(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
+          const [],
+        ),
+        isNull,
+      );
+    });
+
+    test('a collapsed span cannot invent an extension', () {
+      const collapsed = LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero());
+      expect(
+        Construct.extendLine(collapsed, [
+          const LineEntity(id: 2, start: Vec2(10, -5), end: Vec2(10, 5)),
+        ]),
         isNull,
       );
     });
@@ -1362,6 +1498,29 @@ void main() {
       );
     });
 
+    test('empty edges cannot invent an extension', () {
+      expect(
+        Construct.extendPolyline(
+          PolylineEntity.fromPoints(
+            id: 2,
+            points: const [Vec2.zero(), Vec2(10, 0)],
+          ),
+          const [],
+        ),
+        isNull,
+      );
+    });
+
+    test('a lone vertex cannot invent an extension', () {
+      expect(
+        Construct.extendPolyline(
+          PolylineEntity.fromPoints(id: 1, points: const [Vec2.zero()]),
+          [const LineEntity(id: 2, start: Vec2(10, -5), end: Vec2(10, 5))],
+        ),
+        isNull,
+      );
+    });
+
     test('grows a bulge along its circle to a boundary', () {
       final quarter = PolylineEntity(
         id: 1,
@@ -1422,6 +1581,38 @@ void main() {
 
     test('ignores a boundary the circle would miss', () {
       expect(Construct.extendArc(quarter, [line(-10, 20, -10, 15)]), isNull);
+    });
+
+    test('a zero-radius arc cannot invent an extension', () {
+      const zeroRadius = ArcEntity(
+        id: 3,
+        center: Vec2.zero(),
+        radius: 0,
+        startAngle: 0,
+        endAngle: math.pi / 2,
+      );
+      expect(
+        Construct.extendArc(zeroRadius, [
+          const LineEntity(id: 4, start: Vec2(-15, 0), end: Vec2(-5, 0)),
+        ]),
+        isNull,
+      );
+    });
+
+    test('a closed loop cannot invent an extension', () {
+      const fullCircle = ArcEntity(
+        id: 3,
+        center: Vec2.zero(),
+        radius: 10,
+        startAngle: 0,
+        endAngle: math.pi * 2,
+      );
+      expect(
+        Construct.extendArc(fullCircle, [
+          const LineEntity(id: 4, start: Vec2(-15, 0), end: Vec2(-5, 0)),
+        ]),
+        isNull,
+      );
     });
   });
 
@@ -1619,6 +1810,22 @@ void main() {
       expect(result!.cut, isNull);
       expect(result.first.start, const Vec2(0, 0));
       expect(result.second.start, const Vec2(0, 0));
+    });
+
+    test('parallel lines cannot invent a chamfer cut', () {
+      const left = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
+      const right = LineEntity(id: 2, start: Vec2(0, 4), end: Vec2(10, 4));
+      expect(
+        Construct.chamferLines(
+          left,
+          right,
+          2,
+          2,
+          const Vec2(5, 0),
+          const Vec2(5, 4),
+        ),
+        isNull,
+      );
     });
   });
 
@@ -1959,6 +2166,34 @@ void main() {
       expect(reversed.bulgeAt(1), closeTo(-1, 1e-9));
       expect(reversed.bulgeAt(2), 0);
     });
+
+    eachCase(
+      [
+        (
+          name: 'a collapsed span cannot invent a reversed line',
+          entity: const LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero()),
+        ),
+        (
+          name: 'a lone vertex cannot invent a reverse',
+          entity: PolylineEntity.fromPoints(id: 3, points: const [Vec2.zero()]),
+        ),
+        (
+          name: 'a point cannot invent a reverse',
+          entity: const PointEntity(id: 1, position: Vec2.zero()),
+        ),
+        (
+          name: 'an insert cannot invent a reverse',
+          entity: const InsertEntity(
+            id: 2,
+            blockName: 'CELL',
+            position: Vec2.zero(),
+          ),
+        ),
+      ],
+      (c) {
+        expect(Construct.reverse(c.entity), isNull);
+      },
+    );
   });
 
   group('divideLine', () {
