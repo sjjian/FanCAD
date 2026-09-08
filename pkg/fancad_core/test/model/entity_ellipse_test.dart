@@ -101,4 +101,22 @@ void main() {
     expect(ellipse.endPoint.y, closeTo(center.y, 1e-6));
     expect(ellipse.endPoint.x, greaterThan(center.x));
   });
+
+  test('an ellipse emits a closed flattened stroke', () {
+    const ellipse = EllipseEntity(
+      id: 1,
+      center: Vec2.zero(),
+      majorAxis: Vec2(10, 0),
+      ratio: 0.5,
+    );
+    final sink = PolylineSink();
+    ellipse.emit(const EmitContext(tolerance: 0.1), sink);
+    expect(sink.polylines, isNotEmpty);
+    expect(sink.closedFlags.first, isTrue);
+    expect(ellipse.withId(9).id, 9);
+    expect(
+      ellipse.transformed(const Mat3.translation(2, 0)).center,
+      const Vec2(2, 0),
+    );
+  });
 }
