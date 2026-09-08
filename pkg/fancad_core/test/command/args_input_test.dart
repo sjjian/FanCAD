@@ -55,6 +55,12 @@ void main() {
     expect(ArgsCommandInput.matchKeyword('  ', ['center', 'end']), isNull);
   });
 
+  test('an ambiguous prefix cannot invent a keyword', () {
+    expect(ArgsCommandInput.matchKeyword('c', ['center', 'close']), isNull);
+    expect(ArgsCommandInput.matchKeyword('ce', ['center', 'close']), 'center');
+    expect(ArgsCommandInput.matchKeyword('nope', ['center', 'end']), isNull);
+  });
+
   test('a missing optional point cannot invent a coordinate', () async {
     final input = ArgsCommandInput(
       args: CommandArgs.empty(),
