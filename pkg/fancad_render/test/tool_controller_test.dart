@@ -105,4 +105,45 @@ void main() {
     expect(controller.isPrompting, isFalse);
     expect(controller.activeTool, isA<SelectionTool>());
   });
+
+  test('the overlay ray is omitted unless the cursor is on an axis', () {
+    const view = CadViewport(
+      center: Vec2.zero(),
+      scale: 1,
+      size: Size(800, 600),
+    );
+    final controller = ToolController(
+      session: DocumentSession(id: 't', document: CadDocument()),
+      viewportProvider: () => view,
+      snapEngine: SnapEngine(
+        modes: {},
+        tracking: const TrackingSettings(polar: true),
+      ),
+    );
+    addTearDown(controller.dispose);
+    controller.push(
+      PointPromptTool(message: 'Specify stretch point:', anchor: Vec2.zero()),
+    );
+
+    controller.onPointerMove(
+      const Vec2(171, 103),
+      const PointerMoveEvent(pointer: 1, position: Offset(171, 103)),
+    );
+    expect(
+      controller.buildOverlay().shapes.whereType<OverlayTrackingLine>(),
+      isEmpty,
+    );
+
+    controller.onPointerMove(
+      const Vec2(200, 5),
+      const PointerMoveEvent(pointer: 1, position: Offset(200, 5)),
+    );
+    final rays = controller
+        .buildOverlay()
+        .shapes
+        .whereType<OverlayTrackingLine>()
+        .toList();
+    expect(rays, hasLength(1));
+    expect(TrackingSettings.isCardinalAngle(rays.single.angle), isTrue);
+  });
 }
