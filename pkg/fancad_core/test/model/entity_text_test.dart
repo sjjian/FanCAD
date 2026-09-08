@@ -1,4 +1,5 @@
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
 ShxFont _glyphA() => ShxFont(
@@ -18,13 +19,9 @@ ShxFont _glyphA() => ShxFont(
 
 void main() {
   test('empty text cannot invent a glyph', () {
-    final sink = PolylineSink();
-    const TextEntity(
-      id: 1,
-      position: Vec2.zero(),
-      content: '',
-      height: 2.5,
-    ).emit(const EmitContext(tolerance: 0.1), sink);
+    final sink = emit(
+      const TextEntity(id: 1, position: Vec2.zero(), content: '', height: 2.5),
+    );
     expect(sink.texts, isEmpty);
     expect(sink.polylines, isEmpty);
   });
@@ -37,10 +34,7 @@ void main() {
       content: 'A',
       height: 10,
     ).emit(
-      EmitContext(
-        tolerance: 0.1,
-        shxFonts: ShxFontTable({'txt': _glyphA()}),
-      ),
+      EmitContext(tolerance: 0.1, shxFonts: ShxFontTable({'txt': _glyphA()})),
       sink,
     );
     expect(sink.texts, isEmpty);
@@ -48,13 +42,9 @@ void main() {
   });
 
   test('an empty SHX table still emits TextGeometry', () {
-    final sink = PolylineSink();
-    const TextEntity(
-      id: 1,
-      position: Vec2.zero(),
-      content: 'A',
-      height: 10,
-    ).emit(const EmitContext(tolerance: 0.1), sink);
+    final sink = emit(
+      const TextEntity(id: 1, position: Vec2.zero(), content: 'A', height: 10),
+    );
     expect(sink.texts.single.text, 'A');
     expect(sink.polylines, isEmpty);
   });
@@ -67,10 +57,7 @@ void main() {
       content: '注释',
       height: 10,
     ).emit(
-      EmitContext(
-        tolerance: 0.1,
-        shxFonts: ShxFontTable({'txt': _glyphA()}),
-      ),
+      EmitContext(tolerance: 0.1, shxFonts: ShxFontTable({'txt': _glyphA()})),
       sink,
     );
     expect(sink.texts.single.text, '注释');
