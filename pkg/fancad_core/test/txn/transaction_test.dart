@@ -111,6 +111,160 @@ void main() {
       );
       expect(transaction.removeLayer('WALLS'), isFalse);
     });
+
+    test('layer 0 or a missing name cannot invent a drop', () {
+      final document = CadDocument();
+      final transaction = Transaction(document);
+      expect(transaction.removeLayer('0'), isFalse);
+      expect(transaction.removeLayer('NOPE'), isFalse);
+      expect(transaction.isEmpty, isTrue);
+    });
+
+    test('model space or a missing tab cannot invent a drop', () {
+      final document = CadDocument();
+      final transaction = Transaction(document);
+      expect(transaction.removeLayout('NOPE'), isFalse);
+      expect(transaction.removeLayout('Model'), isFalse);
+      expect(transaction.isEmpty, isTrue);
+    });
+
+    test('a missing or layout block cannot invent a drop', () {
+      final document = CadDocument();
+      final transaction = Transaction(document);
+      expect(transaction.removeBlock('NOPE'), isFalse);
+      expect(transaction.removeBlock('*Model_Space'), isFalse);
+      expect(transaction.isEmpty, isTrue);
+    });
+
+    test('a missing or reserved block cannot invent a rename', () {
+      final document = CadDocument();
+      final transaction = Transaction(document)
+        ..putBlock(const BlockRecord(name: 'DOOR'))
+        ..putBlock(const BlockRecord(name: 'LEAF'))
+        ..putBlock(const BlockRecord(name: '*U1', isAnonymous: true))
+        ..putBlock(const BlockRecord(name: 'EXT', xrefPath: '/tmp/a.dwg'));
+
+      expect(transaction.renameBlock('NOPE', 'NEXT'), isFalse);
+      expect(transaction.renameBlock('DOOR', ''), isFalse);
+      expect(transaction.renameBlock('DOOR', 'DOOR'), isFalse);
+      expect(transaction.renameBlock('DOOR', 'LEAF'), isFalse);
+      expect(transaction.renameBlock('*Model_Space', 'Nope'), isFalse);
+      expect(transaction.renameBlock('*U1', 'CELL'), isFalse);
+      expect(transaction.renameBlock('EXT', 'CELL'), isFalse);
+      expect(document.blocks.containsKey('DOOR'), isTrue);
+      expect(document.blocks.containsKey('LEAF'), isTrue);
+      expect(document.blocks.containsKey('*U1'), isTrue);
+      expect(document.blocks.containsKey('EXT'), isTrue);
+    });
+
+    test('setting the current layer to itself cannot invent a patch', () {
+      final document = CadDocument();
+      final transaction = Transaction(document);
+      transaction.setCurrentLayer('0');
+      expect(transaction.isEmpty, isTrue);
+      transaction.setCurrentDimStyle('Standard');
+      expect(transaction.isEmpty, isTrue);
+    });
+
+    test('a missing id cannot invent a color or linetype edit', () {
+      final document = CadDocument();
+      final transaction = Transaction(document);
+      expect(transaction.setColorOf([99], const CadColor.indexed(3)), 0);
+      expect(transaction.setLineTypeOf([99], 'DASHED'), 0);
+      expect(transaction.setLineWeightOf([99], 25), 0);
+      expect(transaction.isEmpty, isTrue);
+    });
+
+    test('identical props cannot invent a property edit', () {
+      final document = CadDocument();
+      final transaction = Transaction(document);
+      final id = transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+      final current = document.entity(id)!;
+      expect(transaction.setProps(id, current.props), isFalse);
+      expect(transaction.setLayerOf([99], 'WALLS'), 0);
+      expect(transaction.setVisibleOf([99], false), 0);
+    });
+
+    test('an out-of-range grip cannot invent a mutation', () {
+      final document = CadDocument();
+      final transaction = Transaction(document);
+      final id = transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+      expect(transaction.moveGrip(id, 99, const Vec2(1, 1)), isFalse);
+      expect(transaction.moveGrip(99, 0, const Vec2(1, 1)), isFalse);
+    });
+
+    test('duplicating a missing id cannot invent a copy', () {
+      final document = CadDocument();
+      final transaction = Transaction(document);
+      expect(transaction.duplicate([99], Mat3.translation(10, 0)), isEmpty);
+      expect(transaction.isEmpty, isTrue);
+    });
+
+    test('an identity transform cannot invent leftover moves', () {
+      final document = CadDocument();
+      final transaction = Transaction(document);
+      final id = transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+      expect(transaction.transformAll([id, 99], const Mat3.identity()), 0);
+      expect(transaction.transform(99, Mat3.translation(1, 0)), isFalse);
+    });
+  });
+
+  group('CommittedTransaction', () {
+    test('an empty transaction summary stays the label', () {
+      final committed = CommittedTransaction(
+        label: 'Edit',
+        source: ChangeSource.user,
+        forward: const [],
+        inverse: const [],
+        change: const DocumentChange(),
+        timestamp: DateTime.utc(2026, 1, 1),
+      );
+      expect(committed.summarize(), 'Edit');
+      expect(committed.patchCount, 0);
+    });
+
+    test('repeated patches collapse and mixed patches keep the label', () {
+      const line = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
+      final add = AddEntityPatch(entity: line, blockName: '*Model_Space');
+      final one = CommittedTransaction(
+        label: 'Draw',
+        source: ChangeSource.command,
+        forward: [add],
+        inverse: const [],
+        change: const DocumentChange(added: [1]),
+        timestamp: DateTime.utc(2026, 1, 1),
+      );
+      expect(one.summarize(), add.describe());
+
+      final two = CommittedTransaction(
+        label: 'Draw',
+        source: ChangeSource.command,
+        forward: [add, add],
+        inverse: const [],
+        change: const DocumentChange(added: [1, 2]),
+        timestamp: DateTime.utc(2026, 1, 1),
+      );
+      expect(two.summarize(), '${add.describe()} x2');
+
+      final mixed = CommittedTransaction(
+        label: 'Edit',
+        source: ChangeSource.user,
+        forward: [
+          add,
+          RemoveEntityPatch(entity: line, blockName: '*Model_Space'),
+        ],
+        inverse: const [],
+        change: const DocumentChange(),
+        timestamp: DateTime.utc(2026, 1, 1),
+      );
+      expect(mixed.summarize(), 'Edit (2 changes)');
+    });
   });
 
   group('UndoStack', () {
