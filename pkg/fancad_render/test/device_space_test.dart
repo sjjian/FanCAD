@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/testing.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -47,48 +48,71 @@ void main() {
     /// Cameras chosen so the screen origin lands off the grid by a different
     /// fraction each time.
     const cameras = [
-      CadViewport(
-        center: Vec2(0.3333, -1.777),
-        scale: 3.5,
-        size: Size(801, 601),
+      (
+        name: 'fractional origin',
+        camera: CadViewport(
+          center: Vec2(0.3333, -1.777),
+          scale: 3.5,
+          size: Size(801, 601),
+        ),
       ),
-      CadViewport(
-        center: Vec2(-12345.6789, 9876.54321),
-        scale: 0.017,
-        size: Size(1024, 768),
-        devicePixelRatio: 2,
+      (
+        name: 'far origin at 2×',
+        camera: CadViewport(
+          center: Vec2(-12345.6789, 9876.54321),
+          scale: 0.017,
+          size: Size(1024, 768),
+          devicePixelRatio: 2,
+        ),
       ),
-      CadViewport(
-        center: Vec2(1e6 + 0.4, -1e6 - 0.6),
-        scale: 137.25,
-        size: Size(1600, 900),
-        devicePixelRatio: 3,
+      (
+        name: 'huge coordinates at 3×',
+        camera: CadViewport(
+          center: Vec2(1e6 + 0.4, -1e6 - 0.6),
+          scale: 137.25,
+          size: Size(1600, 900),
+          devicePixelRatio: 3,
+        ),
       ),
     ];
 
-    test('the screen origin lands on a whole physical pixel', () {
-      for (final camera in cameras) {
-        final pixels = camera.pixelLocked().pixels;
+    eachCase(
+      cameras,
+      (row) {
+        final pixels = row.camera.pixelLocked().pixels;
         expect(pixels.originX, closeTo(pixels.originX.roundToDouble(), 1e-6));
         expect(pixels.originY, closeTo(pixels.originY.roundToDouble(), 1e-6));
-      }
-    });
+      },
+      name: (row) =>
+          'the screen origin lands on a whole physical pixel (${row.name})',
+    );
 
-    test('the camera moves by at most half a physical pixel', () {
-      for (final camera in cameras) {
-        final locked = camera.pixelLocked();
-        final scale = camera.pixels.scale;
-        expect((locked.center.x - camera.center.x).abs() * scale, lessThan(0.5001));
-        expect((locked.center.y - camera.center.y).abs() * scale, lessThan(0.5001));
-      }
-    });
+    eachCase(
+      cameras,
+      (row) {
+        final locked = row.camera.pixelLocked();
+        final scale = row.camera.pixels.scale;
+        expect(
+          (locked.center.x - row.camera.center.x).abs() * scale,
+          lessThan(0.5001),
+        );
+        expect(
+          (locked.center.y - row.camera.center.y).abs() * scale,
+          lessThan(0.5001),
+        );
+      },
+      name: (row) =>
+          'the camera moves by at most half a physical pixel (${row.name})',
+    );
 
-    test('locking twice is the same as locking once', () {
-      for (final camera in cameras) {
-        final once = camera.pixelLocked();
+    eachCase(
+      cameras,
+      (row) {
+        final once = row.camera.pixelLocked();
         expect(once.pixelLocked(), once);
-      }
-    });
+      },
+      name: (row) => 'locking twice is the same as locking once (${row.name})',
+    );
 
     test('an unusable camera is left alone', () {
       const empty = CadViewport(
@@ -100,8 +124,7 @@ void main() {
     });
 
     test('every camera the controller hands out is locked', () {
-      final controller = ViewportController()
-        ..setSize(const Size(801, 601), 2);
+      final controller = ViewportController()..setSize(const Size(801, 601), 2);
       addTearDown(controller.dispose);
 
       void expectLocked() {
