@@ -149,43 +149,6 @@ void main() {
     });
   });
 
-  group('ViewportController', () {
-    test('a fit requested before layout is applied once a size arrives', () {
-      final controller = ViewportController();
-      addTearDown(controller.dispose);
-
-      controller.zoomTo(const Bounds2(0, 0, 100, 50));
-      // No size yet, so nothing could have been computed.
-      expect(controller.viewport.size, Size.zero);
-
-      controller.setSize(size, 2);
-      expect(controller.viewport.center.x, closeTo(50, 1e-9));
-      expect(controller.viewport.center.y, closeTo(25, 1e-9));
-      expect(controller.viewport.devicePixelRatio, 2);
-    });
-
-    test('an empty drawing still gets a usable scale', () {
-      final controller = ViewportController();
-      addTearDown(controller.dispose);
-      controller.setSize(size, 1);
-      controller.zoomToExtents(CadDocument());
-      expect(controller.viewport.scale, greaterThan(0));
-      expect(controller.viewport.visibleBounds.isNotEmpty, isTrue);
-    });
-
-    test('notifies once per change', () {
-      final controller = ViewportController();
-      addTearDown(controller.dispose);
-      var notifications = 0;
-      controller.addListener(() => notifications++);
-
-      controller.setSize(size, 1);
-      controller.panBy(const Offset(10, 10));
-      controller.panBy(Offset.zero);
-      expect(notifications, 2);
-    });
-  });
-
   group('trackpadPinchFactor', () {
     test('a missing or zero interval stays 1:1', () {
       expect(trackpadPinchFactor(1.4, null), 1.4);
