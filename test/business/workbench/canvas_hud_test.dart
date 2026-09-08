@@ -1,43 +1,17 @@
 import 'dart:async';
 
 import 'package:fancad/fancad.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/workbench.dart';
+
 void main() {
-  Widget wrap(ProviderContainer container) => UncontrolledProviderScope(
-    container: container,
-    child: MaterialApp(
-      theme: FanCadTheme.dark(),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: const Workbench(),
-    ),
-  );
-
-  ProviderContainer makeContainer() => ProviderContainer(
-    overrides: [
-      settingsProvider.overrideWithValue(SettingsStore.inMemory()),
-      importerProvider.overrideWithValue(
-        DrawingImporter(backend: MemoryDrawingBackend()),
-      ),
-    ],
-  );
-
   testWidgets('clickable leftovers sit on the canvas, not in window chrome', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    final container = makeContainer();
-    addTearDown(container.dispose);
-    container.read(workspaceProvider).newDocument();
-    await tester.pumpWidget(wrap(container));
-    await tester.pump();
+    final container = await pumpWorkbench(tester, document: true);
 
     expect(find.byKey(const Key('canvas-hud')), findsOneWidget);
     expect(find.byKey(const Key('canvas-bottom-card')), findsOneWidget);
@@ -317,8 +291,7 @@ void main() {
   testWidgets(
     'a long prompt and keyword chips stay inside a narrow command dock',
     (tester) async {
-      final container = makeContainer();
-      addTearDown(container.dispose);
+      final container = workbenchContainer();
       final workspace = container.read(workspaceProvider);
       final focus = FocusNode();
       addTearDown(focus.dispose);
