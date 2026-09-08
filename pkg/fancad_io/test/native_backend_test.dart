@@ -10,10 +10,16 @@ import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
+import 'support/native.dart';
+
 /// Guards the half of the build that CI can only exercise when LibreDWG is
 /// actually present. Without these, a broken link step would look identical to
 /// a deliberate backend-less build.
 void main() {
+  nativeGroup('native backend', _nativeBackend);
+}
+
+void _nativeBackend() {
   late NativeDrawingBackend backend;
   late DrawingImporter importer;
 
