@@ -19,6 +19,9 @@ void main() {
     test('plot rotation snaps to quarters and copy can clear the window', () {
       expect(Layout.normalizePlotRotation(80), 90);
       expect(Layout.normalizePlotRotation(-90), 270);
+      expect(Layout.normalizePlotRotation(20), 0);
+      expect(Layout.normalizePlotRotation(400), 0);
+      expect(Layout.normalizePlotRotation(-45), 270);
       const sheet = Layout(
         name: 'A3',
         blockName: '*Paper_Space',
@@ -31,6 +34,7 @@ void main() {
         ],
       );
       expect(sheet.hasCustomPlotPlacement, isFalse);
+      expect(sheet.copyWith(plotOffsetX: 0.5).hasCustomPlotPlacement, isTrue);
       expect(sheet.viewportIndexAt(50, 50), 0);
       expect(sheet.viewportIndexAt(0, 0), isNull);
       expect(sheet.copyWith(plotWindow: null).plotWindow, isNull);
