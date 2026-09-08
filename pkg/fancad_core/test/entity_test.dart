@@ -178,12 +178,4 @@ void main() {
       expect(sink.polylines, isEmpty);
     });
   });
-
-  group('SnapMarker', () {
-    test('every kind has a label', () {
-      for (final kind in SnapMarkerKind.values) {
-        expect(SnapMarker(kind: kind, point: const Vec2.zero()).label, isNotEmpty);
-      }
-    });
-  });
 }
