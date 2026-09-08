@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/testing.dart';
@@ -82,5 +83,98 @@ void main() {
     cache.obtain(circle, 0, emit, minExtent: 0);
     expect(emits, 2);
     expect(cache.hits, 2);
+  });
+
+  test('curves hit the cache on a repeated build', () {
+    const size = Size(1000, 800);
+    final document = CadDocument();
+    for (var i = 0; i < 200; i++) {
+      document.addEntity(
+        CircleEntity(id: 0, center: Vec2(i * 10, 0), radius: 4),
+      );
+    }
+    final cache = TessellationCache();
+    final builder = SceneBuilder(palette: AciPalette.dark, cache: cache);
+    final view = CadViewport.fit(document.extents, size);
+
+    builder.build(document, view);
+    final firstMisses = cache.misses;
+    expect(firstMisses, greaterThan(0));
+
+    cache.resetStatistics();
+    builder.build(document, view);
+    expect(cache.misses, 0);
+    expect(cache.hits, firstMisses);
+  });
+
+  test('straight geometry is not cached', () {
+    const size = Size(1000, 800);
+    final cache = TessellationCache();
+    final builder = SceneBuilder(palette: AciPalette.dark, cache: cache);
+    final document = CadDocument();
+    for (var i = 0; i < 100; i++) {
+      document.addEntity(
+        LineEntity(
+          id: i,
+          start: Vec2(i * 10, 0),
+          end: Vec2(i * 10 + 8, 8),
+        ),
+      );
+    }
+    builder.build(document, CadViewport.fit(document.extents, size));
+    expect(cache.entryCount, 0);
+  });
+
+  test('invalidation drops only the affected entities', () {
+    const size = Size(1000, 800);
+    final document = CadDocument();
+    final ids = [
+      for (var i = 0; i < 20; i++)
+        document
+            .addEntity(
+              CircleEntity(id: 0, center: Vec2(i * 10, 0), radius: 4),
+            )
+            .id,
+    ];
+    final cache = TessellationCache();
+    final builder = SceneBuilder(palette: AciPalette.dark, cache: cache);
+    final view = CadViewport.fit(document.extents, size);
+    builder.build(document, view);
+    final before = cache.entryCount;
+
+    cache.invalidate([ids.first]);
+    expect(cache.entryCount, before - 1);
+  });
+
+  test('the cache stays inside its budget', () {
+    const size = Size(1000, 800);
+    final document = CadDocument();
+    for (var i = 0; i < 400; i++) {
+      document.addEntity(
+        CircleEntity(id: 0, center: Vec2(i * 20, 0), radius: 9),
+      );
+    }
+    // A budget far too small for the whole drawing.
+    final cache = TessellationCache(budget: 2000);
+    SceneBuilder(palette: AciPalette.dark, cache: cache).build(
+      document,
+      CadViewport.fit(document.extents, size),
+    );
+    expect(cache.totalWeight, lessThanOrEqualTo(2000));
+  });
+
+  test('tolerance bucketing reuses entries across a small zoom change', () {
+    const size = Size(1000, 800);
+    const a = CadViewport(center: Vec2.zero(), scale: 100, size: size);
+    final b = a.copyWith(scale: 105);
+    expect(
+      TessellationCache.toleranceBucket(a.tolerance),
+      TessellationCache.toleranceBucket(b.tolerance),
+    );
+    // A large zoom change must land in a different band.
+    expect(
+      TessellationCache.toleranceBucket(a.copyWith(scale: 1600).tolerance),
+      isNot(TessellationCache.toleranceBucket(a.tolerance)),
+    );
   });
 }
