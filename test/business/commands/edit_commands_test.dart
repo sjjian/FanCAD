@@ -1,0 +1,1474 @@
+import 'dart:math' as math;
+
+import 'package:fancad/fancad.dart';
+import 'package:fancad_core/fancad_core.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/workspace.dart';
+
+late Headless app;
+
+CadDocument get document => app.document;
+
+Workspace get workspace => app.workspace;
+
+Future<CommandResult> run(String id, [Map<String, Object?> args = const {}]) =>
+    app.run(id, args);
+
+Future<int> drawLine(double x1, double y1, double x2, double y2) =>
+    app.drawLine(x1, y1, x2, y2);
+
+void main() {
+  setUp(() {
+    app = Headless();
+  });
+
+  group('editing', () {
+    test('move displaces the selection', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.move', {
+        'ids': [id],
+        'from': [0, 0],
+        'to': [0, 5],
+      });
+
+      expect(result.status, CommandStatus.ok);
+      final moved = document.entity(id)! as LineEntity;
+      expect(moved.start, const Vec2(0, 5));
+      expect(moved.end, const Vec2(10, 5));
+    });
+
+    test('moving a measured line updates the associative dimension', () async {
+      final line = await drawLine(0, 0, 10, 0);
+      final drawn = await run('draw.dimLinear', {
+        'target': line,
+        'dimLine': [5, 4],
+      });
+      expect(drawn.status, CommandStatus.ok, reason: drawn.message);
+      final dimId = (drawn.data!['ids']! as List).first as int;
+
+      final moved = await run('edit.move', {
+        'ids': [line],
+        'from': [0, 0],
+        'to': [4, 0],
+      });
+      expect(moved.status, CommandStatus.ok, reason: moved.message);
+      final dim = document.entity(dimId)! as DimensionEntity;
+      expect(dim.measurement, closeTo(10, 1e-9));
+      expect(dim.definitionPoints[0], const Vec2(4, 0));
+      expect(dim.definitionPoints[1], const Vec2(14, 0));
+      expect(dim.definitionPoints[2].y, closeTo(4, 1e-9));
+    });
+
+    test('stretch moves vertices inside the crossing window', () async {
+      final id = await drawLine(-8, 0, 0, 0);
+
+      final result = await run('edit.stretch', {
+        'corner1': [-1, -1],
+        'corner2': [1, 1],
+        'from': [0, 0],
+        'to': [0, 4],
+        'ids': [id],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final stretched = document.entity(id)! as LineEntity;
+      expect(stretched.start, const Vec2(-8, 0));
+      expect(stretched.end, const Vec2(0, 4));
+    });
+
+    test('copy leaves the original in place', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      await run('edit.copy', {
+        'ids': [id],
+        'from': [0, 0],
+        'to': [0, 5],
+      });
+
+      expect(document.entityCount, 2);
+      expect((document.entity(id)! as LineEntity).start, const Vec2(0, 0));
+    });
+
+    test('copy places every extra destination from the same base', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.copy', {
+        'ids': [id],
+        'from': [0, 0],
+        'to': [0, 5],
+        'destinations': [
+          [10, 0],
+          [0, 10],
+        ],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 4);
+      expect(
+        document.entities.whereType<LineEntity>().map((line) => line.start),
+        containsAll(const [Vec2(0, 0), Vec2(0, 5), Vec2(10, 0), Vec2(0, 10)]),
+      );
+    });
+
+    test('align rotates the selection to match two point pairs', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.align', {
+        'ids': [id],
+        'source1': [0, 0],
+        'dest1': [0, 0],
+        'source2': [10, 0],
+        'dest2': [0, 10],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final aligned = document.entity(id)! as LineEntity;
+      expect(aligned.start.x, closeTo(0, 1e-9));
+      expect(aligned.start.y, closeTo(0, 1e-9));
+      expect(aligned.end.x, closeTo(0, 1e-9));
+      expect(aligned.end.y, closeTo(10, 1e-9));
+    });
+
+    test('rotate turns the selection about the base point', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      await run('edit.rotate', {
+        'ids': [id],
+        'base': [0, 0],
+        'angle': 90,
+      });
+
+      final rotated = document.entity(id)! as LineEntity;
+      expect(rotated.end.x, closeTo(0, 1e-9));
+      expect(rotated.end.y, closeTo(10, 1e-9));
+    });
+
+    test('scale multiplies about the base point', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      await run('edit.scale', {
+        'ids': [id],
+        'base': [0, 0],
+        'factor': 2,
+      });
+
+      expect((document.entity(id)! as LineEntity).end.x, closeTo(20, 1e-9));
+    });
+
+    test('mirror keeps the original by default', () async {
+      final id = await drawLine(0, 1, 10, 1);
+
+      await run('edit.mirror', {
+        'ids': [id],
+        'first': [0, 0],
+        'second': [10, 0],
+      });
+
+      expect(document.entityCount, 2);
+      final mirrored = document.entities.last as LineEntity;
+      expect(mirrored.start.y, closeTo(-1, 1e-9));
+    });
+
+    test('array creates a grid of copies', () async {
+      final id = await drawLine(0, 0, 1, 0);
+
+      await run('edit.array', {
+        'ids': [id],
+        'columns': 3,
+        'rows': 2,
+        'columnSpacing': 10,
+        'rowSpacing': 10,
+      });
+
+      expect(document.entityCount, 6);
+    });
+
+    test('polar array copies around a centre', () async {
+      final id = await drawLine(10, 0, 12, 0);
+
+      final result = await run('edit.polarArray', {
+        'ids': [id],
+        'center': [0, 0],
+        'count': 4,
+        'fillAngle': 360,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 4);
+      final rotated = document.entities.whereType<LineEntity>().where(
+        (line) => line.id != id,
+      );
+      expect(
+        rotated.any(
+          (line) =>
+              line.start.x.abs() < 1e-9 &&
+              (line.start.y - 10).abs() < 1e-9 &&
+              (line.end.y - 12).abs() < 1e-9,
+        ),
+        isTrue,
+      );
+    });
+
+    test('change lineweight stores hundredths of a millimetre', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.changeLineweight', {
+        'ids': [id],
+        'weight': '0.25',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entity(id)!.props.lineWeight, 25);
+    });
+
+    test('change linetype installs a stock pattern and assigns it', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.changeLinetype', {
+        'ids': [id],
+        'linetype': 'dashed',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entity(id)!.props.lineType, 'DASHED');
+      expect(document.lineTypes['DASHED'], isNotNull);
+      expect(document.lineTypes['DASHED']!.pattern, isNotEmpty);
+    });
+
+    test('change linetype rejects an unknown name', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.changeLinetype', {
+        'ids': [id],
+        'linetype': 'NOT-A-TYPE',
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entity(id)!.props.lineType, 'ByLayer');
+    });
+
+    test('match properties copies layer and colour onto the target', () async {
+      final target = await drawLine(0, 5, 10, 5);
+      await run('layer.new', {'name': 'WALLS', 'color': '1'});
+      final source = await drawLine(0, 0, 10, 0);
+      await run('edit.changeColor', {
+        'ids': [source],
+        'color': '1',
+      });
+
+      final result = await run('edit.matchProp', {
+        'source': source,
+        'ids': [target],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final painted = document.entity(target)!;
+      expect(painted.props.layer, 'WALLS');
+      expect(painted.props.color, CadColor.indexed(1));
+      expect(document.entity(source)!.props.layer, 'WALLS');
+    });
+
+    test('overkill deletes a line drawn twice', () async {
+      final keep = await drawLine(0, 0, 10, 0);
+      await drawLine(10, 0, 0, 0);
+
+      final result = await run('edit.overkill');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 1);
+      expect(document.entity(keep), isNotNull);
+    });
+
+    test('overkill folds overlapping collinear lines into one', () async {
+      final keep = await drawLine(0, 0, 10, 0);
+      await drawLine(5, 0, 15, 0);
+
+      final result = await run('edit.overkill');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 1);
+      final grown = document.entity(keep)! as LineEntity;
+      expect(grown.start, const Vec2(0, 0));
+      expect(grown.end.x, closeTo(15, 1e-9));
+    });
+
+    test('erase removes the selection', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.erase', {
+        'ids': [id],
+      });
+
+      expect(result.status, CommandStatus.ok);
+      expect(document.entityCount, 0);
+    });
+
+    test('offset creates a parallel copy on the picked side', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.offset', {
+        'distance': 2,
+        'ids': [id],
+        'side': [5, 5],
+      });
+
+      expect(result.status, CommandStatus.ok);
+      expect(document.entityCount, 2);
+      final offset = document.entities.last as LineEntity;
+      expect(offset.start.y, closeTo(2, 1e-9));
+    });
+
+    test('offset keeps the bulge of a joined line and arc', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {
+        'ids': [lineId, arcId],
+      });
+      final id = document.entities.first.id;
+
+      final result = await run('edit.offset', {
+        'distance': 2,
+        'ids': [id],
+        'side': [0, 5],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final offset = document.entities.last as PolylineEntity;
+      expect(offset.hasBulges, isTrue);
+      expect(offset.vertexAt(0).y, closeTo(2, 1e-6));
+      expect(offset.vertexAt(2).y, closeTo(8, 1e-6));
+    });
+
+    test('trim shortens a line back to a cutting edge', () async {
+      final target = await drawLine(0, 0, 10, 0);
+      final cutter = await drawLine(4, -5, 4, 5);
+
+      final result = await run('edit.trim', {
+        'edges': [cutter],
+        'target': target,
+        'pick': [8, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(target)! as LineEntity).end.x, closeTo(4, 1e-9));
+    });
+
+    test('trim shortens a polyline back to a cutting edge', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final target = (created.data!['ids']! as List).first as int;
+      final cutter = await drawLine(5, -5, 5, 5);
+
+      final result = await run('edit.trim', {
+        'edges': [cutter],
+        'target': target,
+        'pick': [8, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(target)! as PolylineEntity;
+      expect(polyline.vertexCount, 2);
+      expect(polyline.vertexAt(1).x, closeTo(5, 1e-9));
+    });
+
+    test('trim opens a closed polyline at the picked span', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      final target = (created.data!['ids']! as List).first as int;
+      final cutter = await drawLine(5, -5, 5, 15);
+
+      final result = await run('edit.trim', {
+        'edges': [cutter],
+        'target': target,
+        'pick': [10, 5],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(target)! as PolylineEntity;
+      expect(polyline.closed, isFalse);
+      expect(polyline.vertexAt(0).x, closeTo(5, 1e-9));
+      expect(polyline.vertexAt(0).y, closeTo(10, 1e-9));
+    });
+
+    test('trim cuts a joined bulge on the arc', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {
+        'ids': [lineId, arcId],
+      });
+      final target = document.entities.first.id;
+      final cutter = await drawLine(
+        0,
+        14.142135623730951,
+        14.142135623730951,
+        0,
+      );
+
+      final result = await run('edit.trim', {
+        'edges': [cutter],
+        'target': target,
+        'pick': [0, 10],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(target)! as PolylineEntity;
+      expect(polyline.vertexAt(2).x, closeTo(7.0710678118654755, 1e-6));
+      expect(polyline.vertexAt(2).y, closeTo(7.0710678118654755, 1e-6));
+      expect(polyline.hasBulges, isTrue);
+    });
+
+    test('trim shortens an arc back to a cutting edge', () async {
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [0, 10],
+        'end': [-10, 0],
+      });
+      final target = (created.data!['ids']! as List).first as int;
+      final cutter = await drawLine(0, -5, 0, 15);
+
+      final result = await run('edit.trim', {
+        'edges': [cutter],
+        'target': target,
+        'pick': [8, 6],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final arc = document.entity(target)! as ArcEntity;
+      expect(arc.startAngle, closeTo(3.141592653589793 / 2, 1e-6));
+      expect(arc.endAngle, closeTo(3.141592653589793, 1e-6));
+    });
+
+    test('fillet rounds two lines and adds an arc', () async {
+      final vertical = await drawLine(0, 10, 0, 0);
+      final horizontal = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.fillet', {
+        'radius': 2,
+        'first': vertical,
+        'second': horizontal,
+        'pick1': [0, 5],
+        'pick2': [5, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 3);
+      final trimmed = document.entity(vertical)! as LineEntity;
+      expect(trimmed.start.y, closeTo(2, 1e-9));
+      expect(document.entities.whereType<ArcEntity>(), hasLength(1));
+    });
+
+    test('fillet rounds a polyline vertex into a bulge', () async {
+      final drawn = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      expect(drawn.status, CommandStatus.ok);
+      final id = (drawn.data!['ids']! as List).first as int;
+
+      final result = await run('edit.fillet', {
+        'radius': 2,
+        'first': id,
+        'pick1': [0, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(id)! as PolylineEntity;
+      expect(polyline.vertexCount, 5);
+      expect(polyline.vertexAt(0).x, closeTo(0, 1e-9));
+      expect(polyline.vertexAt(0).y, closeTo(2, 1e-9));
+      expect(polyline.vertexAt(1).x, closeTo(2, 1e-9));
+      expect(polyline.vertexAt(1).y, closeTo(0, 1e-9));
+    });
+
+    test('fillet all rounds every polyline vertex', () async {
+      final drawn = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      final id = (drawn.data!['ids']! as List).first as int;
+
+      final result = await run('edit.fillet', {
+        'radius': 2,
+        'first': id,
+        'all': true,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(id)! as PolylineEntity;
+      expect(polyline.vertexCount, 8);
+    });
+
+    test('fillet with zero radius makes a sharp corner', () async {
+      final vertical = await drawLine(0, 10, 0, 2);
+      final horizontal = await drawLine(2, 0, 10, 0);
+
+      final result = await run('edit.fillet', {
+        'radius': 0,
+        'first': vertical,
+        'second': horizontal,
+        'pick1': [0, 6],
+        'pick2': [6, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      expect(
+        (document.entity(vertical)! as LineEntity).start,
+        const Vec2(0, 0),
+      );
+    });
+
+    test('chamfer bevels a polyline vertex', () async {
+      final drawn = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      final id = (drawn.data!['ids']! as List).first as int;
+
+      final result = await run('edit.chamfer', {
+        'dist1': 2,
+        'first': id,
+        'pick1': [0, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(id)! as PolylineEntity;
+      expect(polyline.vertexCount, 5);
+      expect(polyline.vertexAt(0).y, closeTo(2, 1e-9));
+      expect(polyline.vertexAt(1).x, closeTo(2, 1e-9));
+    });
+
+    test('chamfer all bevels every polyline vertex', () async {
+      final drawn = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      final id = (drawn.data!['ids']! as List).first as int;
+
+      final result = await run('edit.chamfer', {
+        'dist1': 2,
+        'first': id,
+        'all': true,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(id)! as PolylineEntity;
+      expect(polyline.vertexCount, 8);
+    });
+
+    test('chamfer bevels two lines and adds the cut', () async {
+      final vertical = await drawLine(0, 10, 0, 0);
+      final horizontal = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.chamfer', {
+        'dist1': 2,
+        'dist2': 2,
+        'first': vertical,
+        'second': horizontal,
+        'pick1': [0, 5],
+        'pick2': [5, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 3);
+      expect(
+        (document.entity(vertical)! as LineEntity).start.y,
+        closeTo(2, 1e-9),
+      );
+    });
+
+    test('break splits a line at a point', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.break', {
+        'target': id,
+        'first': [4, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      expect((document.entity(id)! as LineEntity).end.x, closeTo(4, 1e-9));
+    });
+
+    test('break removes the portion between two points', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.break', {
+        'target': id,
+        'first': [2, 0],
+        'second': [8, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      expect((document.entity(id)! as LineEntity).end.x, closeTo(2, 1e-9));
+    });
+
+    test('break splits a polyline at a vertex', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.break', {
+        'target': id,
+        'first': [10, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      final remnant = document.entity(id)! as PolylineEntity;
+      expect(remnant.vertexCount, 2);
+      expect(remnant.vertexAt(1), const Vec2(10, 0));
+    });
+
+    test('break splits a bulged polyline at a point on the arc', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {
+        'ids': [lineId, arcId],
+      });
+      final id = document.entities.first.id;
+
+      final result = await run('edit.break', {
+        'target': id,
+        'first': [7.0710678118654755, 7.0710678118654755],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      final first = document.entity(id)! as PolylineEntity;
+      expect(first.hasBulges, isTrue);
+      expect(first.vertexAt(first.vertexCount - 1).y, closeTo(7.071, 1e-3));
+    });
+
+    test('break splits an arc at a point', () async {
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [0, 10],
+        'end': [-10, 0],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.break', {
+        'target': id,
+        'first': [0, 10],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 2);
+      expect(document.entities.every((each) => each is ArcEntity), isTrue);
+    });
+
+    test('lengthen sets the total length from the picked end', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.lengthen', {
+        'target': id,
+        'pick': [10, 0],
+        'total': 16,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as LineEntity).end.x, closeTo(16, 1e-9));
+    });
+
+    test('lengthen extends a polyline from the picked end', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.lengthen', {
+        'target': id,
+        'pick': [10, 10],
+        'total': 25,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(id)! as PolylineEntity;
+      expect(polyline.vertexAt(2).y, closeTo(15, 1e-9));
+    });
+
+    test('lengthen grows a joined bulge along its arc', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {
+        'ids': [lineId, arcId],
+      });
+      final id = document.entities.first.id;
+
+      final result = await run('edit.lengthen', {
+        'target': id,
+        'pick': [0, 10],
+        'delta': 5 * 3.141592653589793 / 2,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(id)! as PolylineEntity;
+      expect(polyline.vertexAt(2).x, closeTo(-7.0710678118654755, 1e-6));
+      expect(polyline.vertexAt(2).y, closeTo(7.0710678118654755, 1e-6));
+    });
+
+    test('lengthen extends an arc from the picked end', () async {
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [0, 10],
+        'end': [-10, 0],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.lengthen', {
+        'target': id,
+        'pick': [-10, 0],
+        'total': 15 * 3.141592653589793,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final arc = document.entity(id)! as ArcEntity;
+      expect(arc.sweep, closeTo(1.5 * 3.141592653589793, 1e-6));
+    });
+
+    test('lengthen accepts a signed delta', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.lengthen', {
+        'target': id,
+        'pick': [0, 0],
+        'delta': -2,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as LineEntity).start.x, closeTo(2, 1e-9));
+    });
+
+    test('extend lengthens a line to a boundary', () async {
+      final target = await drawLine(0, 0, 5, 0);
+      final boundary = await drawLine(10, -5, 10, 5);
+
+      final result = await run('edit.extend', {
+        'edges': [boundary],
+        'target': target,
+        'pick': [4, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(target)! as LineEntity).end.x, closeTo(10, 1e-9));
+    });
+
+    test('extend lengthens an arc to a boundary', () async {
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final target = (created.data!['ids']! as List).first as int;
+      final boundary = await drawLine(-15, 0, -5, 0);
+
+      final result = await run('edit.extend', {
+        'edges': [boundary],
+        'target': target,
+        'pick': [0, 10],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final arc = document.entity(target)! as ArcEntity;
+      expect(arc.startAngle, closeTo(0, 1e-6));
+      expect(arc.endAngle, closeTo(3.141592653589793, 1e-6));
+    });
+
+    test('extend grows a joined bulge to a boundary', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+      await run('edit.join', {
+        'ids': [lineId, arcId],
+      });
+      final target = document.entities.first.id;
+      final boundary = await drawLine(-15, 0, -5, 0);
+
+      final result = await run('edit.extend', {
+        'edges': [boundary],
+        'target': target,
+        'pick': [0, 10],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final polyline = document.entity(target)! as PolylineEntity;
+      expect(polyline.vertexAt(2).x, closeTo(-10, 1e-6));
+      expect(polyline.vertexAt(2).y, closeTo(0, 1e-6));
+      expect(polyline.bulgeAt(1), closeTo(1, 1e-6));
+    });
+
+    test('extend lengthens a polyline to a boundary', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 5],
+        ],
+      });
+      final target = (created.data!['ids']! as List).first as int;
+      final boundary = await drawLine(5, 10, 15, 10);
+
+      final result = await run('edit.extend', {
+        'edges': [boundary],
+        'target': target,
+        'pick': [10, 5],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(
+        (document.entity(target)! as PolylineEntity).vertexAt(2).y,
+        closeTo(10, 1e-9),
+      );
+    });
+
+    test('explode turns a polyline into its segments', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.explode', {
+        'ids': [id],
+      });
+
+      expect(result.status, CommandStatus.ok);
+      expect(document.entityCount, 2);
+      expect(document.entities.every((each) => each is LineEntity), isTrue);
+    });
+
+    test('explode turns a dimension into lines, arrows and text', () async {
+      final created = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [10, 0],
+        'dimLine': [5, 4],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.explode', {
+        'ids': [id],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entity(id), isNull);
+      expect(document.entities.whereType<LineEntity>(), isNotEmpty);
+      expect(document.entities.whereType<TextEntity>().single.content, '10.00');
+      expect(document.entities.whereType<SolidEntity>(), hasLength(2));
+    });
+
+    test('block replaces a selection with one insert', () async {
+      final a = await drawLine(0, 0, 10, 0);
+      final b = await drawLine(0, 0, 0, 10);
+
+      final result = await run('edit.block', {
+        'ids': [a, b],
+        'name': 'CORNER',
+        'base': [0, 0],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeEntities, hasLength(1));
+      final insert = document.activeEntities.first as InsertEntity;
+      expect(insert.blockName, 'CORNER');
+      expect(insert.position, const Vec2(0, 0));
+      expect(document.blocks['CORNER']!.entityIds, hasLength(2));
+      expect(document.blocks['CORNER']!.basePoint, const Vec2(0, 0));
+    });
+
+    test('block refuses a name that already exists', () async {
+      await drawLine(0, 0, 4, 0);
+      await run('edit.block', {
+        'ids': [document.activeEntities.first.id],
+        'name': 'BOLT',
+        'base': [0, 0],
+      });
+      final extra = await drawLine(8, 0, 12, 0);
+
+      final result = await run('edit.block', {
+        'ids': [extra],
+        'name': 'bolt',
+        'base': [8, 0],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(result.message, contains('already exists'));
+    });
+
+    test('explode restores the objects a block insert draws', () async {
+      final a = await drawLine(0, 0, 6, 0);
+      final b = await drawLine(0, 2, 6, 2);
+      final created = await run('edit.block', {
+        'ids': [a, b],
+        'name': 'SLOT',
+        'base': [0, 0],
+      });
+      final insertId = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.explode', {
+        'ids': [insertId],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeEntities.whereType<LineEntity>(), hasLength(2));
+      expect(document.activeEntities.whereType<InsertEntity>(), isEmpty);
+    });
+
+    test('insert places another reference to a named block', () async {
+      final a = await drawLine(0, 0, 4, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'STUD',
+        'base': [0, 0],
+      });
+
+      final result = await run('edit.insert', {
+        'name': 'stud',
+        'at': [20, 5],
+        'scale': 2,
+        'rotation': 90,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeEntities.whereType<InsertEntity>(), hasLength(2));
+      final placed =
+          document.entity((result.data!['ids']! as List).first as int)!
+              as InsertEntity;
+      expect(placed.blockName, 'STUD');
+      expect(placed.position, const Vec2(20, 5));
+      expect(placed.scale, const Vec2(2, 2));
+      expect(placed.rotation, closeTo(math.pi / 2, 1e-9));
+    });
+
+    test('insert stores attribute values and attedit changes them', () async {
+      final created = await run('draw.attdef', {
+        'tag': 'NO',
+        'prompt': 'Drawing number',
+        'value': 'A-00',
+        'at': [2, 3],
+        'height': 2.5,
+      });
+      expect(created.status, CommandStatus.ok, reason: created.message);
+      final defId = (created.data!['ids']! as List).first as int;
+
+      await run('edit.block', {
+        'ids': [defId],
+        'name': 'TITLE',
+        'base': [0, 0],
+      });
+
+      final inserted = await run('edit.insert', {
+        'name': 'TITLE',
+        'at': [10, 0],
+        'NO': 'A-01',
+      });
+      expect(inserted.status, CommandStatus.ok, reason: inserted.message);
+      final insertId = (inserted.data!['ids']! as List).first as int;
+      expect(
+        (document.entity(insertId)! as InsertEntity).attributes['NO'],
+        'A-01',
+      );
+
+      final edited = await run('edit.attedit', {
+        'ids': [insertId],
+        'tag': 'NO',
+        'value': 'A-02',
+      });
+      expect(edited.status, CommandStatus.ok, reason: edited.message);
+      expect(
+        (document.entity(insertId)! as InsertEntity).attributes['NO'],
+        'A-02',
+      );
+    });
+
+    test('insert stamps a block at several points', () async {
+      final a = await drawLine(0, 0, 2, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'PIN',
+        'base': [0, 0],
+      });
+
+      final result = await run('edit.insert', {
+        'name': 'PIN',
+        'points': [
+          [10, 0],
+          [20, 0],
+          [30, 0],
+        ],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(result.data!['ids']! as List, hasLength(3));
+      expect(document.activeEntities.whereType<InsertEntity>(), hasLength(4));
+    });
+
+    test('insert refuses an unknown block', () async {
+      final result = await run('edit.insert', {
+        'name': 'MISSING',
+        'at': [0, 0],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.activeEntities, isEmpty);
+    });
+
+    test('minsert places a block as one rectangular array', () async {
+      final a = await drawLine(0, 0, 2, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'RIVET',
+        'base': [0, 0],
+      });
+
+      final result = await run('edit.minsert', {
+        'name': 'rivet',
+        'at': [10, 4],
+        'columns': 3,
+        'rows': 2,
+        'columnSpacing': 5,
+        'rowSpacing': 8,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.activeEntities.whereType<InsertEntity>(), hasLength(2));
+      final grid =
+          document.entity((result.data!['ids']! as List).first as int)!
+              as InsertEntity;
+      expect(grid.blockName, 'RIVET');
+      expect(grid.position, const Vec2(10, 4));
+      expect(grid.columnCount, 3);
+      expect(grid.rowCount, 2);
+      expect(grid.columnSpacing, 5);
+      expect(grid.rowSpacing, 8);
+      expect(grid.isArray, isTrue);
+    });
+
+    test('minsert refuses a 1 by 1 grid', () async {
+      final a = await drawLine(0, 0, 2, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'DOT',
+        'base': [0, 0],
+      });
+
+      final result = await run('edit.minsert', {
+        'name': 'DOT',
+        'at': [0, 0],
+        'columns': 1,
+        'rows': 1,
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.activeEntities.whereType<InsertEntity>(), hasLength(1));
+    });
+
+    test(
+      'purge blocks removes a definition with no remaining insert',
+      () async {
+        final a = await drawLine(0, 0, 4, 0);
+        final created = await run('edit.block', {
+          'ids': [a],
+          'name': 'SCRAP',
+          'base': [0, 0],
+        });
+        final insertId = (created.data!['ids']! as List).first as int;
+        await run('edit.explode', {
+          'ids': [insertId],
+        });
+        expect(document.blocks.containsKey('SCRAP'), isTrue);
+
+        final result = await run('block.purge');
+
+        expect(result.status, CommandStatus.ok, reason: result.message);
+        expect(document.blocks.containsKey('SCRAP'), isFalse);
+        expect(document.insertableBlocks, isEmpty);
+      },
+    );
+
+    test('purge blocks keeps a definition that still has an insert', () async {
+      final a = await drawLine(0, 0, 4, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'KEEP',
+        'base': [0, 0],
+      });
+
+      final result = await run('block.purge');
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(result.message, contains('No unused'));
+      expect(document.blocks.containsKey('KEEP'), isTrue);
+    });
+
+    test('rename block updates the definition and every insert', () async {
+      final a = await drawLine(0, 0, 4, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'CORNER',
+        'base': [0, 0],
+      });
+      await run('edit.insert', {
+        'name': 'CORNER',
+        'at': [20, 0],
+      });
+
+      final result = await run('block.rename', {
+        'name': 'corner',
+        'newName': 'ANGLE',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.blocks.containsKey('CORNER'), isFalse);
+      expect(document.blocks['ANGLE']!.entityIds, hasLength(1));
+      expect(
+        document.activeEntities.whereType<InsertEntity>().every(
+          (insert) => insert.blockName == 'ANGLE',
+        ),
+        isTrue,
+      );
+      expect(document.activeEntities.whereType<InsertEntity>(), hasLength(2));
+    });
+
+    test('rename block refuses a name that already exists', () async {
+      final a = await drawLine(0, 0, 2, 0);
+      await run('edit.block', {
+        'ids': [a],
+        'name': 'ONE',
+        'base': [0, 0],
+      });
+      final b = await drawLine(0, 2, 2, 2);
+      await run('edit.block', {
+        'ids': [b],
+        'name': 'TWO',
+        'base': [0, 2],
+      });
+
+      final result = await run('block.rename', {
+        'name': 'ONE',
+        'newName': 'two',
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.blocks.containsKey('ONE'), isTrue);
+      expect(document.blocks.containsKey('TWO'), isTrue);
+    });
+
+    test('join merges connected lines into one polyline', () async {
+      final a = await drawLine(0, 0, 10, 0);
+      final b = await drawLine(10, 0, 10, 10);
+
+      final result = await run('edit.join', {
+        'ids': [a, b],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 1);
+      expect((document.entities.first as PolylineEntity).vertexCount, 3);
+    });
+
+    test('join merges a line onto an open polyline', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final polylineId = (created.data!['ids']! as List).first as int;
+      final lineId = await drawLine(10, 10, 20, 10);
+
+      final result = await run('edit.join', {
+        'ids': [polylineId, lineId],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 1);
+      expect((document.entities.first as PolylineEntity).vertexCount, 4);
+    });
+
+    test('join merges a line onto an arc', () async {
+      final lineId = await drawLine(0, 0, 10, 0);
+      final created = await run('draw.arc', {
+        'start': [10, 0],
+        'via': [7.0710678118654755, 7.0710678118654755],
+        'end': [0, 10],
+      });
+      final arcId = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.join', {
+        'ids': [lineId, arcId],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entityCount, 1);
+      final polyline = document.entities.first as PolylineEntity;
+      expect(polyline.vertexCount, 3);
+      expect(polyline.bulgeAt(1), closeTo(0.41421356237, 1e-6));
+    });
+
+    test('join refuses lines that do not touch', () async {
+      final a = await drawLine(0, 0, 10, 0);
+      final b = await drawLine(50, 50, 60, 50);
+
+      final result = await run('edit.join', {
+        'ids': [a, b],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entityCount, 2);
+    });
+
+    test('close marks an open polyline as closed', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+      expect((document.entity(id)! as PolylineEntity).closed, isFalse);
+
+      final result = await run('edit.close', {
+        'ids': [id],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as PolylineEntity).closed, isTrue);
+    });
+
+    test('close refuses a polyline that is already closed', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [4, 3],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.close', {
+        'ids': [id],
+      });
+
+      expect(result.status, CommandStatus.failed);
+    });
+
+    test('convert turns a line into a two-vertex polyline', () async {
+      final id = await drawLine(0, 0, 8, 2);
+
+      final result = await run('edit.toPolyline', {
+        'ids': [id],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(document.entity(id), isNull);
+      final polyline = document.entities.first as PolylineEntity;
+      expect(polyline.vertexCount, 2);
+      expect(polyline.vertexAt(0), const Vec2(0, 0));
+      expect(polyline.vertexAt(1), const Vec2(8, 2));
+    });
+
+    test('open drops the closing segment of a polyline', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [4, 3],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.open', {
+        'ids': [id],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as PolylineEntity).closed, isFalse);
+    });
+
+    test('polyline width stores a constant stroke', () async {
+      final created = await run('draw.polyline', {
+        'points': [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.polylineWidth', {
+        'ids': [id],
+        'width': 2,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as PolylineEntity).constantWidth, 2);
+    });
+
+    test('polyline width refuses a line', () async {
+      final id = await drawLine(0, 0, 10, 0);
+
+      final result = await run('edit.polylineWidth', {
+        'ids': [id],
+        'width': 2,
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entity(id), isA<LineEntity>());
+    });
+
+    test('hatch edit changes pattern scale and angle', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [20, 10],
+      });
+      final boundary = (created.data!['ids']! as List).first as int;
+      await run('draw.hatch', {
+        'ids': [boundary],
+        'pattern': 'ANSI31',
+        'scale': 1,
+      });
+      final hatchId = document.entities.whereType<HatchEntity>().single.id;
+
+      final result = await run('edit.hatch', {
+        'ids': [hatchId],
+        'scale': 2.5,
+        'angle': 45,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final hatch = document.entity(hatchId)! as HatchEntity;
+      expect(hatch.patternName, 'ANSI31');
+      expect(hatch.patternScale, closeTo(2.5, 1e-9));
+      expect(hatch.patternAngle, closeTo(math.pi / 4, 1e-9));
+
+      await run('edit.undo');
+      expect(
+        (document.entity(hatchId)! as HatchEntity).patternScale,
+        closeTo(1, 1e-9),
+      );
+    });
+
+    test('hatch edit can switch a fill to solid', () async {
+      final created = await run('draw.rectangle', {
+        'corner1': [0, 0],
+        'corner2': [10, 10],
+      });
+      final boundary = (created.data!['ids']! as List).first as int;
+      await run('draw.hatch', {
+        'ids': [boundary],
+        'pattern': 'ANSI31',
+      });
+      final hatchId = document.entities.whereType<HatchEntity>().single.id;
+
+      final result = await run('edit.hatch', {
+        'ids': [hatchId],
+        'pattern': 'SOLID',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final hatch = document.entity(hatchId)! as HatchEntity;
+      expect(hatch.patternName, 'SOLID');
+      expect(hatch.solid, isTrue);
+    });
+
+    test('reverse swaps the ends of a line', () async {
+      final id = await drawLine(0, 0, 10, 4);
+
+      final result = await run('edit.reverse', {
+        'ids': [id],
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final reversed = document.entity(id)! as LineEntity;
+      expect(reversed.start, const Vec2(10, 4));
+      expect(reversed.end, const Vec2(0, 0));
+    });
+
+    test('a locked layer refuses edits', () async {
+      final id = await drawLine(0, 0, 10, 0);
+      await run('layer.toggleLock', {'name': '0', 'locked': true});
+
+      final result = await run('edit.move', {
+        'ids': [id],
+        'from': [0, 0],
+        'to': [0, 5],
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect((document.entity(id)! as LineEntity).start, const Vec2(0, 0));
+    });
+  });
+
+  group('undo', () {
+    test('undo and redo walk one command at a time', () async {
+      await drawLine(0, 0, 10, 0);
+      await drawLine(0, 5, 10, 5);
+      expect(document.entityCount, 2);
+
+      await run('edit.undo');
+      expect(document.entityCount, 1);
+
+      await run('edit.undo');
+      expect(document.entityCount, 0);
+
+      await run('edit.redo');
+      expect(document.entityCount, 1);
+    });
+
+    test('undo reports failure when the stack is empty', () async {
+      final result = await run('edit.undo');
+      expect(result.status, CommandStatus.failed);
+    });
+
+    test('a rejected command leaves no undo entry', () async {
+      await run('draw.circle', {
+        'center': [0, 0],
+        'radius': -1,
+      });
+      expect(workspace.active!.history.canUndo, isFalse);
+    });
+  });
+}
