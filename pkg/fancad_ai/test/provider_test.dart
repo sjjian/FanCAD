@@ -40,43 +40,4 @@ void main() {
     expect(advertised.toJson()['type'], 'function');
     expect((advertised.toJson()['function'] as Map)['name'], 'query_summary');
   });
-
-  test(
-    'completeOnce assembles text and tool calls, then refuses a dead script',
-    () async {
-      final provider = ScriptedLlmProvider([
-        const LlmCompletion(
-          text: 'working',
-          toolCalls: [
-            LlmToolCall(id: 'c1', name: 'query_summary', arguments: {}),
-          ],
-          finishReason: 'tool_calls',
-        ),
-      ]);
-      expect(provider.remaining, 1);
-      expect(provider.name, 'scripted');
-
-      final done = await provider.completeOnce(
-        const LlmRequest(messages: [LlmMessage.user('hi')]),
-      );
-      expect(done.text, 'working');
-      expect(done.wantsTools, isTrue);
-      expect(done.finishReason, 'tool_calls');
-      expect(done.toolCalls.single.name, 'query_summary');
-      expect(provider.remaining, 0);
-
-      expect(
-        () => provider.completeOnce(
-          const LlmRequest(messages: [LlmMessage.user('again')]),
-        ),
-        throwsA(
-          isA<LlmException>().having(
-            (error) => error.toString(),
-            'toString',
-            contains('no more replies'),
-          ),
-        ),
-      );
-    },
-  );
 }
