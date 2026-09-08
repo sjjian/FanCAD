@@ -53,8 +53,7 @@ void main() {
   test(
     'a corrupt file is treated as empty and a flush can be reread',
     () async {
-      final dir = Directory.systemTemp.createTempSync('fancad-settings');
-      addTearDown(() => dir.deleteSync(recursive: true));
+      final dir = tempDir(prefix: 'fancad-settings');
       File('${dir.path}/settings.json').writeAsStringSync('{not json');
 
       final store = await SettingsStore.open(dir.path);
