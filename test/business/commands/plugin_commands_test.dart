@@ -3,11 +3,12 @@ import 'dart:io';
 
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+
+import '../../support/workspace.dart';
 
 JsEngineFactory scriptedEngine() =>
     ({required int memoryLimit, required int stackSize}) {
@@ -24,20 +25,18 @@ JsEngineFactory scriptedEngine() =>
       return engine;
     };
 
+late Headless app;
+late Directory root;
+late PluginHost host;
+
+Workspace get workspace => app.workspace;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late Directory root;
-  late Workspace workspace;
-  late PluginHost host;
-
   setUp(() async {
     root = tempDir(prefix: 'fancad-plugins');
-    workspace = Workspace(
-      commands: CommandRegistry(),
-      importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      drawing: DrawingSettings(SettingsStore.inMemory()),
-    );
+    app = Headless();
     final delegate = WorkspacePluginDelegate(
       workspace: () => workspace,
       plugins: PluginSettings(SettingsStore.inMemory()),
@@ -54,12 +53,10 @@ void main() {
     ).descriptors()) {
       workspace.commands.register(descriptor);
     }
-    workspace.newDocument();
   });
 
   tearDown(() async {
     await host.dispose();
-    workspace.dispose();
   });
 
   Future<CommandResult> run(
