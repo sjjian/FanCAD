@@ -59,4 +59,30 @@ void main() {
       isNull,
     );
   });
+
+  test('arc grips change start, radius, end or the centre', () {
+    const arc = ArcEntity(
+      id: 1,
+      center: Vec2.zero(),
+      radius: 10,
+      startAngle: 0,
+      endAngle: math.pi / 2,
+    );
+    final grips = arc.grips();
+    expect(grips, hasLength(4));
+    expect(grips[0].distanceTo(const Vec2(10, 0)), closeTo(0, 1e-9));
+    expect(grips[1].distanceTo(Vec2.polar(math.pi / 4, 10)), closeTo(0, 1e-9));
+    expect(grips[2].distanceTo(const Vec2(0, 10)), closeTo(0, 1e-9));
+    expect(grips[3], const Vec2.zero());
+
+    expect(arc.withGrip(0, const Vec2(0, 10)).startAngle, closeTo(math.pi / 2, 1e-9));
+    expect(arc.withGrip(2, const Vec2(10, 0)).endAngle, closeTo(0, 1e-9));
+    expect(arc.withGrip(1, const Vec2(20, 0)).radius, closeTo(20, 1e-9));
+    expect(arc.withGrip(3, const Vec2(1, 2)).center, const Vec2(1, 2));
+
+    final rotated = arc.transformed(Mat3.rotation(math.pi / 2));
+    expect(rotated.center, const Vec2.zero());
+    expect(rotated.startAngle, closeTo(math.pi / 2, 1e-9));
+    expect(rotated.endAngle, closeTo(math.pi, 1e-9));
+  });
 }

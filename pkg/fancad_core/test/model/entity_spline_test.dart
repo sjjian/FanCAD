@@ -15,6 +15,16 @@ void main() {
     expect(spline.withGrip(99, const Vec2(1, 1)), same(spline));
   });
 
+  test('a spline grip edits one control point', () {
+    final spline = SplineEntity(
+      id: 1,
+      controlPoints: Float64List.fromList([0, 0, 4, 2, 8, 0]),
+      degree: 2,
+    );
+    expect(spline.grips(), const [Vec2.zero(), Vec2(4, 2), Vec2(8, 0)]);
+    expect(spline.withGrip(1, const Vec2(4, 5)).grips()[1], const Vec2(4, 5));
+  });
+
   test('an empty spline cannot invent an offset', () {
     final spline = SplineEntity(id: 1, controlPoints: Float64List(0));
     expect(spline.offsetBy(2, const Vec2(1, 1)), isNull);

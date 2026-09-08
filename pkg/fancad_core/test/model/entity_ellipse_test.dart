@@ -119,4 +119,73 @@ void main() {
       const Vec2(2, 0),
     );
   });
+
+  test('ellipse grips stretch the axes and a half ellipse stays open', () {
+    const ellipse = EllipseEntity(
+      id: 1,
+      center: Vec2.zero(),
+      majorAxis: Vec2(10, 0),
+      ratio: 0.5,
+      startParam: 0,
+      endParam: 0,
+    );
+    expect(ellipse.isFullEllipse, isTrue);
+    const fromDefaults = EllipseEntity(
+      id: 2,
+      center: Vec2.zero(),
+      majorAxis: Vec2(10, 0),
+      ratio: 0.5,
+    );
+    expect(fromDefaults.endParam, math.pi * 2);
+    expect(fromDefaults.isFullEllipse, isTrue);
+    expect(ellipse.grips(), const [
+      Vec2.zero(),
+      Vec2(10, 0),
+      Vec2(-10, 0),
+      Vec2(0, 5),
+      Vec2(0, -5),
+    ]);
+    expect(
+      ellipse.withGrip(0, const Vec2(2, 1)).center,
+      const Vec2(2, 1),
+    );
+    expect(
+      ellipse.withGrip(1, const Vec2(20, 0)).majorAxis,
+      const Vec2(20, 0),
+    );
+    expect(
+      ellipse.withGrip(2, const Vec2(-8, 0)).majorAxis,
+      const Vec2(8, 0),
+    );
+    expect(
+      ellipse.withGrip(3, const Vec2(0, 10)).ratio,
+      closeTo(1, 1e-9),
+    );
+
+    const arc = EllipseEntity(
+      id: 1,
+      center: Vec2.zero(),
+      majorAxis: Vec2(10, 0),
+      ratio: 0.5,
+      startParam: 0,
+      endParam: math.pi,
+    );
+    expect(arc.isFullEllipse, isFalse);
+    final half = PolylineSink();
+    arc.emit(const EmitContext(tolerance: 0.1), half);
+    expect(half.closedFlags.single, isFalse);
+
+    const oval = EllipseEntity(
+      id: 3,
+      center: Vec2.zero(),
+      majorAxis: Vec2(10, 0),
+      ratio: 0.5,
+    );
+    final stretched = oval.transformed(const Mat3.scaling(1, 4));
+    expect(stretched.ratio, closeTo(0.5, 1e-9));
+    expect(stretched.majorLength, closeTo(20, 1e-9));
+    final same = oval.transformed(const Mat3.identity());
+    expect(same.majorAxis.x, closeTo(10, 1e-9));
+    expect(same.ratio, closeTo(0.5, 1e-9));
+  });
 }
