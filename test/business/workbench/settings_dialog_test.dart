@@ -1,5 +1,6 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_io/fancad_io.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,21 +9,43 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   tearDown(debugResetSettingsDialog);
 
-  test('preferences panel leftovers map to settings tabs', () {
-    expect(isPreferencesPanel('preferences'), isTrue);
-    expect(isPreferencesPanel('preferences:assistant'), isTrue);
-    expect(isPreferencesPanel('preferences:general'), isTrue);
-    expect(isPreferencesPanel('ai'), isFalse);
-    expect(isPreferencesPanel('layers'), isFalse);
-
-    expect(settingsTabFromPanelId('preferences'), SettingsTab.general);
-    expect(settingsTabFromPanelId('preferences:general'), SettingsTab.general);
-    expect(
-      settingsTabFromPanelId('preferences:assistant'),
-      SettingsTab.assistant,
-    );
-    expect(settingsTabFromPanelId('preferences:mcp'), SettingsTab.mcp);
-  });
+  eachCase(
+    [
+      (
+        name: 'preferences',
+        panel: 'preferences',
+        isPanel: true,
+        tab: SettingsTab.general,
+      ),
+      (
+        name: 'preferences:assistant',
+        panel: 'preferences:assistant',
+        isPanel: true,
+        tab: SettingsTab.assistant,
+      ),
+      (
+        name: 'preferences:general',
+        panel: 'preferences:general',
+        isPanel: true,
+        tab: SettingsTab.general,
+      ),
+      (
+        name: 'preferences:mcp',
+        panel: 'preferences:mcp',
+        isPanel: true,
+        tab: SettingsTab.mcp,
+      ),
+      (name: 'ai', panel: 'ai', isPanel: false, tab: null),
+      (name: 'layers', panel: 'layers', isPanel: false, tab: null),
+    ],
+    (row) {
+      expect(isPreferencesPanel(row.panel), row.isPanel);
+      if (row.tab != null) {
+        expect(settingsTabFromPanelId(row.panel), row.tab);
+      }
+    },
+    name: (row) => 'panel leftover ${row.name} maps to a settings tab',
+  );
 
   testWidgets('a leftover model id still shows in the free-text field', (
     tester,
