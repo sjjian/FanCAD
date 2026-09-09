@@ -1,5 +1,6 @@
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -32,6 +33,8 @@ void main() {
     expect(prompt, contains('query.entities'));
     expect(prompt, contains('selection: none'));
     expect(prompt, contains('skill.read'));
+    expect(prompt, contains(fancadCallExample));
+    expect(prompt, contains('never inside args'));
   });
 
   test('summaryJson leaves extents null on a blank drawing', () {
