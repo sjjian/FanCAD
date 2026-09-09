@@ -1,4 +1,5 @@
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_ops/fancad_ops.dart';
 
 import 'skills/skill.dart';
 
@@ -247,5 +248,6 @@ class DocumentContextBuilder {
       'skill.read first and follow it. For the current pick run query.selection; '
       'for the camera run query.viewport; then query.entities with a layer, '
       'kind or window filter. To change the drawing, run the matching draw.* '
-      'or edit.* path and pass ids explicitly.';
+      'or edit.* path and pass ids explicitly. Example: $fancadCallExample. '
+      'path is a sibling of action, never inside args.';
 }

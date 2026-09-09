@@ -31,6 +31,8 @@ void main() {
     expect(tools, hasLength(1));
     expect(tools.single.name, fancadToolName);
     expect(tools.single.parameters['required'], ['action']);
+    expect(tools.single.description, contains(fancadCallExample));
+    expect(tools.single.description, contains('never inside args'));
   });
 
   test('a dotted path resolves back to the original command', () {

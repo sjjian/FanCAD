@@ -1,6 +1,10 @@
 /// The only tool advertised to a model or an MCP client.
 const fancadToolName = 'fancad';
 
+/// Wire shape so models do not nest `path` inside `args`.
+const fancadCallExample =
+    '{"action":"run","path":"draw.circle","args":{"center":[0,0],"radius":10}}';
+
 /// Instructions that teach progressive discovery instead of listing 150 tools.
 const fancadToolDescription =
     'FanCAD CLI. One entry for every drawing command and host operation. '
@@ -10,6 +14,7 @@ const fancadToolDescription =
     '3. action=help path=draw.line for parameters, aliases and risk. '
     '4. action=schema path=draw.line for the JSON Schema. '
     '5. action=run path=draw.line with args from that help. '
+    'Example: $fancadCallExample. path is a sibling of action, never inside args. '
     'To operate a background drawing, call file.list then pass tab with that id. '
     'Skills load with action=run path=skill.read args={name: inspect-drawing}.';
 
@@ -31,7 +36,8 @@ const fancadToolParameters = <String, Object?>{
     },
     'args': {
       'type': 'object',
-      'description': 'Arguments for action=run, taken from help/schema.',
+      'description':
+          'Command parameters from help/schema. Do not put path here.',
     },
     'tab': {
       'type': 'string',
