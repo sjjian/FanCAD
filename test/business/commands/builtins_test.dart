@@ -44,5 +44,43 @@ void main() {
       final result = await run('does.not.exist');
       expect(result.status, CommandStatus.failed);
     });
+
+    test('every former workbench chord lives on its descriptor', () {
+      const expected = <String, List<String>>{
+        'file.new': ['ctrl+n'],
+        'file.open': ['ctrl+o'],
+        'file.save': ['ctrl+s'],
+        'file.saveAs': ['ctrl+shift+s'],
+        'file.close': ['ctrl+w'],
+        'edit.undo': ['ctrl+z'],
+        'edit.redo': ['ctrl+shift+z'],
+        'select.all': ['ctrl+a'],
+        'select.none': ['ctrl+shift+a'],
+        'edit.copyClip': ['ctrl+c'],
+        'edit.copyBase': ['ctrl+shift+c'],
+        'edit.pasteClip': ['ctrl+v'],
+        'edit.pasteBlock': ['ctrl+shift+v'],
+        'edit.cutClip': ['ctrl+x'],
+        'view.zoomExtents': ['ctrl+shift+e', 'home'],
+        'view.isolateObjects': ['ctrl+shift+i'],
+        'view.hideObjects': ['ctrl+shift+h'],
+        'view.unisolateObjects': ['ctrl+shift+u'],
+        'view.zoomIn': ['ctrl+=', 'ctrl+numpadadd'],
+        'view.zoomOut': ['ctrl+-', 'ctrl+numpadsubtract'],
+        'workbench.preferences': ['ctrl+,'],
+      };
+      for (final entry in expected.entries) {
+        final descriptor = workspace.commands.find(entry.key);
+        expect(descriptor, isNotNull, reason: entry.key);
+        expect(descriptor!.keybindings, entry.value, reason: entry.key);
+        for (final spec in descriptor.keybindings) {
+          expect(
+            parseKeybinding(spec),
+            isNotEmpty,
+            reason: '${descriptor.id} keybinding "$spec"',
+          );
+        }
+      }
+    });
   });
 }

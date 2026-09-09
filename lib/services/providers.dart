@@ -11,8 +11,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../business/commands/builtins.dart';
-import '../business/commands/file_commands.dart';
-import '../business/commands/plugin_commands.dart';
+import '../business/commands/file/commands.dart';
+import '../business/commands/plugin/commands.dart';
 import '../business/l10n/locale.dart';
 import '../business/theme/tokens.dart';
 import '../storage/app_settings.dart';

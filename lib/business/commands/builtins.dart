@@ -1,13 +1,13 @@
 import 'package:fancad_core/fancad_core.dart';
 
-import 'clipboard_commands.dart';
-import 'draw_commands.dart';
-import 'edit_commands.dart';
-import 'file_commands.dart';
-import 'plugin_commands.dart';
-import 'pro_commands.dart';
-import 'query_commands.dart';
-import 'view_commands.dart';
+import 'clipboard/commands.dart';
+import 'draw/commands.dart';
+import 'edit/commands.dart';
+import 'file/commands.dart';
+import 'plugin/commands.dart';
+import 'pro/commands.dart';
+import 'query/commands.dart';
+import 'view/commands.dart';
 
 /// Registers the built-in command set.
 ///
