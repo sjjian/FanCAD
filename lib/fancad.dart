@@ -10,6 +10,7 @@ export 'business/commands/command_base.dart';
 export 'business/commands/draw/commands.dart';
 export 'business/commands/edit/commands.dart';
 export 'business/commands/file/commands.dart';
+export 'business/commands/keybindings.dart';
 export 'business/commands/plugin/commands.dart';
 export 'business/commands/pro/commands.dart';
 export 'business/commands/query/commands.dart';

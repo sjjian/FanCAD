@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../../services/document_tab.dart';
 import '../../services/workspace.dart';
+import '../commands/keybindings.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 import 'command_line.dart';
@@ -163,18 +164,28 @@ canvasQuickTools = [
   (commandId: 'edit.move', icon: Icons.open_with, alias: 'M', fallback: 'Move'),
 ];
 
-String _undoTooltip(AppLocalizations l10n, DocumentTab? tab) {
+String _undoTooltip(
+  AppLocalizations l10n,
+  DocumentTab? tab,
+  CommandRegistry commands,
+) {
   final label = tab?.history.nextUndoLabel;
+  final chord = shortcutLabelForCommand(commands, 'edit.undo') ?? '';
   return label == null
       ? l10n.nothing_to_undo
-      : '${l10n.undo_named(label)}  ${shellShortcut('Z')}';
+      : '${l10n.undo_named(label)}  $chord';
 }
 
-String _redoTooltip(AppLocalizations l10n, DocumentTab? tab) {
+String _redoTooltip(
+  AppLocalizations l10n,
+  DocumentTab? tab,
+  CommandRegistry commands,
+) {
   final label = tab?.history.nextRedoLabel;
+  final chord = shortcutLabelForCommand(commands, 'edit.redo') ?? '';
   return label == null
       ? l10n.nothing_to_redo
-      : '${l10n.redo_named(label)}  ${shellShortcut('Z', shift: true)}';
+      : '${l10n.redo_named(label)}  $chord';
 }
 
 class _ActionBar extends StatelessWidget {
@@ -201,14 +212,14 @@ class _ActionBar extends StatelessWidget {
                 ShellIconButton(
                   key: const Key('canvas-tool-undo'),
                   icon: Icons.undo,
-                  tooltip: _undoTooltip(l10n, tab),
+                  tooltip: _undoTooltip(l10n, tab, workspace.commands),
                   enabled: tab?.history.canUndo ?? false,
                   onPressed: () => workspace.run('edit.undo'),
                 ),
                 ShellIconButton(
                   key: const Key('canvas-tool-redo'),
                   icon: Icons.redo,
-                  tooltip: _redoTooltip(l10n, tab),
+                  tooltip: _redoTooltip(l10n, tab, workspace.commands),
                   enabled: tab?.history.canRedo ?? false,
                   onPressed: () => workspace.run('edit.redo'),
                 ),

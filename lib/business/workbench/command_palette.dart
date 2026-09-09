@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../services/workspace.dart';
+import '../commands/keybindings.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 import 'shell_widgets.dart';
@@ -372,7 +373,7 @@ class _PaletteRow extends StatelessWidget {
             if (descriptor.defaultKeybinding != null) ...[
               const SizedBox(width: FanCadTokens.space3),
               Text(
-                descriptor.defaultKeybinding!.toUpperCase(),
+                formatKeybinding(descriptor.defaultKeybinding!),
                 style: tokens.monoStyle.copyWith(
                   fontSize: 10.5,
                   color: tokens.textFaint,

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../commands/keybindings.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 import '../widgets/shell_icon_button.dart';
@@ -82,18 +83,18 @@ class EmptyWorkspace extends StatelessWidget {
                 const SizedBox(height: FanCadTokens.space5),
                 _PrimaryAction(
                   label: context.l10n.new_drawing,
-                  shortcut: shellShortcut('N'),
+                  shortcut: formatKeybinding('ctrl+n'),
                   onPressed: onNew,
                 ),
                 const SizedBox(height: FanCadTokens.space2),
                 _Action(
                   label: context.l10n.open_drawing_file,
-                  shortcut: shellShortcut('O'),
+                  shortcut: formatKeybinding('ctrl+o'),
                   onPressed: onOpen,
                 ),
                 _Action(
                   label: context.l10n.show_all_commands,
-                  shortcut: shellShortcut('P', shift: true),
+                  shortcut: formatKeybinding('ctrl+shift+p'),
                   onPressed: onShowCommands,
                 ),
                 if (recentFiles.isNotEmpty) ...[

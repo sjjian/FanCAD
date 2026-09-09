@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../services/document_tab.dart';
 import '../../services/workspace.dart';
+import '../commands/keybindings.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 import 'shell_widgets.dart';
@@ -74,23 +75,28 @@ class TitleBar extends StatelessWidget {
           SizedBox(width: leadingInset(usesNativeTrafficLights: nativeLights)),
           ShellIconButton(
             icon: Icons.insert_drive_file_outlined,
-            tooltip: '${l10n.new_drawing}  ${shellShortcut('N')}',
+            tooltip:
+                '${l10n.new_drawing}  ${shortcutLabelForCommand(workspace.commands, 'file.new')}',
             onPressed: () => workspace.run('file.new'),
           ),
           ShellIconButton(
             icon: Icons.folder_open_outlined,
-            tooltip: '${l10n.open}  ${shellShortcut('O')}',
+            tooltip:
+                '${l10n.open}  ${shortcutLabelForCommand(workspace.commands, 'file.open')}',
             onPressed: () => workspace.run('file.open'),
           ),
           ShellIconButton(
             icon: tab?.isDirty == true ? Icons.save : Icons.save_outlined,
             tooltip: tab == null
-                ? '${l10n.save}  ${shellShortcut('S')}'
+                ? '${l10n.save}  ${shortcutLabelForCommand(workspace.commands, 'file.save')}'
                 : tab.isDirty
-                ? '${l10n.save_unsaved_changes}  ${shellShortcut('S')}'
+                ? '${l10n.save_unsaved_changes}  ${shortcutLabelForCommand(workspace.commands, 'file.save')}'
                 : tab.filePath == null
-                ? '${l10n.save_this_drawing}  ${shellShortcut('S')}'
-                : l10n.saved_write_again(shellShortcut('S')),
+                ? '${l10n.save_this_drawing}  ${shortcutLabelForCommand(workspace.commands, 'file.save')}'
+                : l10n.saved_write_again(
+                    shortcutLabelForCommand(workspace.commands, 'file.save') ??
+                        '',
+                  ),
             enabled: tab != null,
             onPressed: () => workspace.run('file.save'),
           ),
@@ -99,7 +105,7 @@ class TitleBar extends StatelessWidget {
           ShellIconButton(
             icon: Icons.search,
             tooltip:
-                '${l10n.command_palette}  ${shellShortcut('P', shift: true)}',
+                '${l10n.command_palette}  ${formatKeybinding('ctrl+shift+p')}',
             onPressed: onTogglePalette,
           ),
           ShellIconButton(
@@ -171,13 +177,13 @@ class _FileMenu extends StatelessWidget {
           context,
           value: 'file.new',
           label: l10n.new_drawing,
-          shortcut: shellShortcut('N'),
+          shortcut: shortcutLabelForCommand(workspace.commands, 'file.new'),
         ),
         shellMenuItem(
           context,
           value: 'file.open',
           label: l10n.open_ellipsis,
-          shortcut: shellShortcut('O'),
+          shortcut: shortcutLabelForCommand(workspace.commands, 'file.open'),
         ),
         if (recent.isNotEmpty) ...[
           const PopupMenuDivider(),
@@ -200,21 +206,21 @@ class _FileMenu extends StatelessWidget {
           context,
           value: 'file.save',
           label: l10n.save,
-          shortcut: shellShortcut('S'),
+          shortcut: shortcutLabelForCommand(workspace.commands, 'file.save'),
           enabled: tab != null,
         ),
         shellMenuItem(
           context,
           value: 'file.saveAs',
           label: l10n.save_as,
-          shortcut: shellShortcut('S', shift: true),
+          shortcut: shortcutLabelForCommand(workspace.commands, 'file.saveAs'),
           enabled: tab != null,
         ),
         shellMenuItem(
           context,
           value: 'file.close',
           label: l10n.close_drawing,
-          shortcut: shellShortcut('W'),
+          shortcut: shortcutLabelForCommand(workspace.commands, 'file.close'),
           enabled: tab != null,
         ),
       ],
@@ -339,7 +345,8 @@ class DocumentTabStrip extends StatelessWidget {
           ShellIconButton(
             key: const Key('document-new-tab'),
             icon: Icons.add,
-            tooltip: '${context.l10n.new_drawing}  ${shellShortcut('N')}',
+            tooltip:
+                '${context.l10n.new_drawing}  ${shortcutLabelForCommand(workspace.commands, 'file.new')}',
             onPressed: () => workspace.run('file.new'),
           ),
           if (tabs.length > 1) _OpenDrawingsMenu(workspace: workspace),
@@ -481,8 +488,8 @@ class _TabState extends State<_Tab> {
                     size: 18,
                     iconSize: FanCadTokens.iconSmall,
                     tooltip: tab.isDirty
-                        ? '${context.l10n.close_unsaved}  ${shellShortcut('W')}'
-                        : '${context.l10n.close}  ${shellShortcut('W')}',
+                        ? '${context.l10n.close_unsaved}  ${shortcutLabelForCommand(widget.workspace.commands, 'file.close')}'
+                        : '${context.l10n.close}  ${shortcutLabelForCommand(widget.workspace.commands, 'file.close')}',
                     onPressed: widget.onClose,
                   )
                 : tab.isDirty
