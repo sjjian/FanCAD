@@ -45,7 +45,11 @@ enum AiExposure {
 
 /// The outcome of running a command.
 @immutable
-@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
+@JsonSerializable(
+  createFactory: false,
+  includeIfNull: false,
+  ignoreUnannotated: true,
+)
 class CommandResult {
   const CommandResult({
     required this.status,
@@ -185,7 +189,11 @@ abstract class CommandInput {
 
   /// One of [options]. Values are matched case-insensitively by prefix, the
   /// way AutoCAD keyword prompts work.
-  Future<String> keyword(String message, List<String> options, {String? defaultOption});
+  Future<String> keyword(
+    String message,
+    List<String> options, {
+    String? defaultOption,
+  });
 
   Future<bool> confirm(String message, {bool defaultValue = false});
 
@@ -310,7 +318,11 @@ class CommandContext {
 
   /// Resolves a point parameter: an explicit argument wins, otherwise the user
   /// is prompted. This ordering is what lets the same command be scripted.
-  Future<Vec2> resolvePoint(String name, String prompt, {Vec2? basePoint}) async {
+  Future<Vec2> resolvePoint(
+    String name,
+    String prompt, {
+    Vec2? basePoint,
+  }) async {
     final provided = args.point(name);
     if (provided != null) return provided;
     return input.point(prompt, basePoint: basePoint);
@@ -374,7 +386,11 @@ Map<String, Object?>? _transactionChange(CommittedTransaction? transaction) {
 /// This single declaration is simultaneously a command palette entry, a
 /// command-line verb, a keybinding target, a plugin API surface and an AI tool.
 @immutable
-@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
+@JsonSerializable(
+  createFactory: false,
+  includeIfNull: false,
+  ignoreUnannotated: true,
+)
 class CommandDescriptor {
   const CommandDescriptor({
     required this.id,
@@ -387,7 +403,7 @@ class CommandDescriptor {
     this.risk = CommandRisk.edit,
     this.aiExposure = AiExposure.tool,
     this.icon,
-    this.defaultKeybinding,
+    this.keybindings = const [],
     this.when,
     this.extensionId = '',
     this.repeatable = true,
@@ -428,9 +444,14 @@ class CommandDescriptor {
   @JsonKey(includeToJson: false)
   final String? icon;
 
-  /// A keybinding such as `ctrl+shift+p`.
+  /// Chord strings such as `ctrl+shift+p`. The first is shown in the palette;
+  /// extras are additional activators (numpad keys, Home).
   @JsonKey(includeToJson: false)
-  final String? defaultKeybinding;
+  final List<String> keybindings;
+
+  /// The chord shown in the UI, or null when the command has no keybinding.
+  String? get defaultKeybinding =>
+      keybindings.isEmpty ? null : keybindings.first;
 
   /// Context expression that gates availability, for example
   /// `hasSelection && !readOnly`.

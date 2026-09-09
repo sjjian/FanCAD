@@ -218,7 +218,7 @@ class CommandContribution {
     risk: risk,
     aiExposure: aiExposure,
     icon: icon,
-    defaultKeybinding: keybinding,
+    keybindings: [?keybinding],
     when: when,
     extensionId: extensionId,
     repeatable: repeatable,
