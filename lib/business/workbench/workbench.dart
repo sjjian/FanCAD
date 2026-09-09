@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../services/plugin_bootstrap.dart';
 import '../../services/providers.dart';
 import '../../services/workspace.dart';
+import '../commands/keybindings.dart';
 import '../l10n/l10n.dart';
 import '../panels/ai_panel.dart';
 import '../panels/extensions_panel.dart';
@@ -46,6 +47,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
 
   StreamSubscription<String>? _panelReveals;
   StreamSubscription<ApprovalRequest>? _approvals;
+  StreamSubscription<CommandRegistry>? _commandChanges;
+  StreamSubscription<void>? _contributionChanges;
   bool _listeningForWindowClose = false;
   bool _closingWindow = false;
 
@@ -70,12 +73,15 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       ref.read(sidebarProvider.notifier).reveal(panelId);
     });
     _approvals = workspace.approvals.listen(_showApproval);
+    _commandChanges = workspace.commands.changes.listen((_) {
+      if (mounted) setState(() {});
+    });
     unawaited(_bindWindowClose());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _commandFocus.requestFocus();
       // The extension host is started after the first frame so third-party
       // code cannot sit between launch and a usable window.
-      unawaited(ref.read(pluginBootstrapProvider).start());
+      unawaited(_startPlugins());
     });
   }
 
@@ -88,8 +94,22 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     }
     _panelReveals?.cancel();
     _approvals?.cancel();
+    _commandChanges?.cancel();
+    _contributionChanges?.cancel();
     _commandFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _startPlugins() async {
+    await ref.read(pluginBootstrapProvider).start();
+    if (!mounted) return;
+    _contributionChanges = ref
+        .read(pluginHostProvider)
+        ?.contributions
+        .changes
+        .listen((_) {
+          if (mounted) setState(() {});
+        });
   }
 
   /// Text fields on macOS swallow Escape before Focus.onKeyEvent. This runs
@@ -476,8 +496,24 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   };
 
   Map<ShortcutActivator, VoidCallback> _shortcuts(Workspace workspace) {
-    // Control and Meta are both bound because Flutter treats them as
-    // different keys: Ctrl+S on Windows/Linux, ⌘S on a Mac.
+    final pluginKeys = [
+      if (ref.read(pluginHostProvider) case final host?)
+        for (final binding in host.contributions.keybindings)
+          (binding.key, binding.commandId),
+    ];
+    return {
+      ...commandShortcutBindings(
+        workspace.commands,
+        workspace.run,
+        extra: pluginKeys,
+      ),
+      ..._shellShortcuts(workspace),
+    };
+  }
+
+  /// Chrome that is not a command: palette, sidebar, command-line focus, and
+  /// the F-key drawing aids.
+  Map<ShortcutActivator, VoidCallback> _shellShortcuts(Workspace workspace) {
     Map<ShortcutActivator, VoidCallback> chord(
       LogicalKeyboardKey key,
       VoidCallback run, {
@@ -486,7 +522,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       SingleActivator(key, control: true, shift: shift): run,
       SingleActivator(key, meta: true, shift: shift): run,
     };
-
     return {
       ...chord(
         LogicalKeyboardKey.keyP,
@@ -497,77 +532,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         LogicalKeyboardKey.keyB,
         ref.read(sidebarProvider.notifier).toggle,
       ),
-      ...chord(
-        LogicalKeyboardKey.comma,
-        () => workspace.run('workbench.preferences'),
-      ),
-      ...chord(LogicalKeyboardKey.keyN, () => workspace.run('file.new')),
-      ...chord(LogicalKeyboardKey.keyO, () => workspace.run('file.open')),
-      ...chord(LogicalKeyboardKey.keyS, () => workspace.run('file.save')),
-      ...chord(
-        LogicalKeyboardKey.keyS,
-        () => workspace.run('file.saveAs'),
-        shift: true,
-      ),
-      ...chord(LogicalKeyboardKey.keyW, () => workspace.run('file.close')),
-      ...chord(LogicalKeyboardKey.keyZ, () => workspace.run('edit.undo')),
-      ...chord(
-        LogicalKeyboardKey.keyZ,
-        () => workspace.run('edit.redo'),
-        shift: true,
-      ),
-      ...chord(LogicalKeyboardKey.keyA, () => workspace.run('select.all')),
-      ...chord(
-        LogicalKeyboardKey.keyA,
-        () => workspace.run('select.none'),
-        shift: true,
-      ),
-      ...chord(LogicalKeyboardKey.keyC, () => workspace.run('edit.copyClip')),
-      ...chord(
-        LogicalKeyboardKey.keyC,
-        () => workspace.run('edit.copyBase'),
-        shift: true,
-      ),
-      ...chord(LogicalKeyboardKey.keyV, () => workspace.run('edit.pasteClip')),
-      ...chord(
-        LogicalKeyboardKey.keyV,
-        () => workspace.run('edit.pasteBlock'),
-        shift: true,
-      ),
-      ...chord(LogicalKeyboardKey.keyX, () => workspace.run('edit.cutClip')),
-      ...chord(
-        LogicalKeyboardKey.keyE,
-        () => workspace.run('view.zoomExtents'),
-        shift: true,
-      ),
-      ...chord(
-        LogicalKeyboardKey.keyI,
-        () => workspace.run('view.isolateObjects'),
-        shift: true,
-      ),
-      ...chord(
-        LogicalKeyboardKey.keyH,
-        () => workspace.run('view.hideObjects'),
-        shift: true,
-      ),
-      ...chord(
-        LogicalKeyboardKey.keyU,
-        () => workspace.run('view.unisolateObjects'),
-        shift: true,
-      ),
-      ...chord(LogicalKeyboardKey.equal, () => workspace.run('view.zoomIn')),
-      ...chord(LogicalKeyboardKey.minus, () => workspace.run('view.zoomOut')),
-      ...chord(
-        LogicalKeyboardKey.numpadAdd,
-        () => workspace.run('view.zoomIn'),
-      ),
-      ...chord(
-        LogicalKeyboardKey.numpadSubtract,
-        () => workspace.run('view.zoomOut'),
-      ),
       const SingleActivator(LogicalKeyboardKey.f2): _commandFocus.requestFocus,
-      const SingleActivator(LogicalKeyboardKey.home): () =>
-          workspace.run('view.zoomExtents'),
       const SingleActivator(LogicalKeyboardKey.f3): () =>
           workspace.setSnapEnabled(!workspace.snapEngine.enabled),
       const SingleActivator(LogicalKeyboardKey.f8): () =>
@@ -660,7 +625,7 @@ class _ActivityBar extends StatelessWidget {
                 : Icons.settings_outlined,
             tooltip: activeViewId == 'preferences'
                 ? '${l10n.hide_view(l10n.settings)}\n${l10n.settings_tooltip}'
-                : '${l10n.settings}\n${l10n.settings_tooltip}  ${shellShortcut(',')}',
+                : '${l10n.settings}\n${l10n.settings_tooltip}  ${formatKeybinding('ctrl+,')}',
             size: FanCadTokens.activityBarWidth - FanCadTokens.space3,
             iconSize: 22,
             isActive: activeViewId == 'preferences',
@@ -671,8 +636,8 @@ class _ActivityBar extends StatelessWidget {
           ShellIconButton(
             icon: Icons.menu,
             tooltip: activeViewId.isEmpty
-                ? '${l10n.show_sidebar}  ${shellShortcut('B')}'
-                : '${l10n.hide_sidebar}  ${shellShortcut('B')}',
+                ? '${l10n.show_sidebar}  ${formatKeybinding('ctrl+b')}'
+                : '${l10n.hide_sidebar}  ${formatKeybinding('ctrl+b')}',
             size: FanCadTokens.activityBarWidth - FanCadTokens.space3,
             iconSize: 22,
             onPressed: () =>
@@ -741,7 +706,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
             ShellIconButton(
               icon: Icons.search,
               tooltip:
-                  '${l10n.command_palette}  ${shellShortcut('P', shift: true)}',
+                  '${l10n.command_palette}  ${formatKeybinding('ctrl+shift+p')}',
               iconSize: FanCadTokens.iconMedium,
               onPressed: widget.onOpenPalette,
             ),
@@ -841,7 +806,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
       if (descriptor.aliases.isNotEmpty)
         l10n.alias_named(descriptor.aliases.first.toUpperCase()),
       if (descriptor.defaultKeybinding != null)
-        descriptor.defaultKeybinding!.toUpperCase(),
+        formatKeybinding(descriptor.defaultKeybinding!),
     ].join('\n');
     final row = ShellRow(
       isSelected: widget.workspace.runningCommand == descriptor.id,
@@ -857,7 +822,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
           ),
           if (descriptor.defaultKeybinding != null)
             Text(
-              descriptor.defaultKeybinding!.toUpperCase(),
+              formatKeybinding(descriptor.defaultKeybinding!),
               style: tokens.monoStyle.copyWith(
                 fontSize: 10.5,
                 color: tokens.textFaint,

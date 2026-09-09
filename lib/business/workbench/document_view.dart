@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../services/document_tab.dart';
 import '../../services/workspace.dart';
+import '../commands/keybindings.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 import 'dynamic_input_hud.dart';
@@ -122,6 +123,8 @@ class _DocumentViewState extends State<DocumentView> {
               if (descriptor == null) return running;
               return l10n.commandTitle(descriptor.id, descriptor.title);
             }();
+      String? chord(String id) =>
+          shortcutLabelForCommand(widget.workspace.commands, id);
       showShellMenu<String>(
         context: context,
         position: RelativeRect.fromLTRB(
@@ -173,26 +176,32 @@ class _DocumentViewState extends State<DocumentView> {
               context,
               value: 'edit.copyClip',
               label: l10n.copy_to_clipboard,
-              shortcut: shellShortcut('C'),
+              shortcut: chord('edit.copyClip'),
             ),
             shellMenuItem(
               context,
               value: 'edit.copyBase',
               label: l10n.copy_with_base,
-              shortcut: shellShortcut('C', shift: true),
+              shortcut: chord('edit.copyBase'),
             ),
             shellMenuItem(
               context,
               value: 'edit.cutClip',
               label: l10n.cut,
-              shortcut: shellShortcut('X'),
+              shortcut: chord('edit.cutClip'),
             ),
             shellMenuItem(
               context,
               value: 'view.isolateObjects',
               label: l10n.isolate,
+              shortcut: chord('view.isolateObjects'),
             ),
-            shellMenuItem(context, value: 'view.hideObjects', label: l10n.hide),
+            shellMenuItem(
+              context,
+              value: 'view.hideObjects',
+              label: l10n.hide,
+              shortcut: chord('view.hideObjects'),
+            ),
             shellMenuItem(context, value: 'select.none', label: l10n.deselect),
           ] else ...[
             shellMenuItem(context, value: 'select.all', label: l10n.select_all),
@@ -211,7 +220,7 @@ class _DocumentViewState extends State<DocumentView> {
             context,
             value: 'edit.pasteClip',
             label: l10n.paste,
-            shortcut: shellShortcut('V'),
+            shortcut: chord('edit.pasteClip'),
             enabled: hasClip,
           ),
           shellMenuItem(
@@ -224,7 +233,7 @@ class _DocumentViewState extends State<DocumentView> {
             context,
             value: 'edit.pasteBlock',
             label: l10n.paste_as_block,
-            shortcut: shellShortcut('V', shift: true),
+            shortcut: chord('edit.pasteBlock'),
             enabled: hasClip,
           ),
           shellMenuItem(
@@ -242,7 +251,7 @@ class _DocumentViewState extends State<DocumentView> {
             label: tab.history.nextUndoLabel == null
                 ? l10n.undo
                 : l10n.undo_named(tab.history.nextUndoLabel!),
-            shortcut: shellShortcut('Z'),
+            shortcut: chord('edit.undo'),
             enabled: tab.history.canUndo,
           ),
           shellMenuItem(
@@ -251,7 +260,7 @@ class _DocumentViewState extends State<DocumentView> {
             label: tab.history.nextRedoLabel == null
                 ? l10n.redo
                 : l10n.redo_named(tab.history.nextRedoLabel!),
-            shortcut: shellShortcut('Z', shift: true),
+            shortcut: chord('edit.redo'),
             enabled: tab.history.canRedo,
           ),
         ],
