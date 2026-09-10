@@ -329,7 +329,7 @@ TextEditPlacement? textEditPlacementOf(CadEntity entity) => switch (entity) {
   _ => null,
 };
 
-/// The entity under a canvas double-click, or null to keep zoom / VPMAX.
+/// The entity under a canvas double-click, or null to leave VPMAX / VPMIN.
 CadEntity? canvasTextEditTarget({
   required CadDocument document,
   required int? entityId,

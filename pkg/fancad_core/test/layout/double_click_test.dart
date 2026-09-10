@@ -2,7 +2,7 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('a model-space double-click zooms extents when not maximized', () {
+  test('a model-space double-click does not zoom extents', () {
     expect(
       canvasDoubleClick(
         layout: const Layout(
@@ -11,8 +11,8 @@ void main() {
           isModelSpace: true,
         ),
         point: const Vec2.zero(),
-      ).id,
-      'view.zoomExtents',
+      ),
+      isNull,
     );
   });
 
@@ -28,8 +28,7 @@ void main() {
       ],
     );
     final miss = canvasDoubleClick(layout: layout, point: const Vec2(0, 0));
-    expect(miss.id, 'view.zoomExtents');
-    expect(miss.args.containsKey('index'), isFalse);
+    expect(miss, isNull);
   });
 
   test('a double-click inside a paper viewport maximizes it', () {
@@ -46,17 +45,17 @@ void main() {
       ],
     );
     expect(
-      canvasDoubleClick(layout: layout, point: const Vec2(20, 20)).id,
+      canvasDoubleClick(layout: layout, point: const Vec2(20, 20))?.id,
       'layout.vpmax',
     );
     expect(
-      canvasDoubleClick(layout: layout, point: const Vec2(20, 20)).args['index'],
+      canvasDoubleClick(
+        layout: layout,
+        point: const Vec2(20, 20),
+      )?.args['index'],
       0,
     );
-    expect(
-      canvasDoubleClick(layout: layout, point: const Vec2(0, 0)).id,
-      'view.zoomExtents',
-    );
+    expect(canvasDoubleClick(layout: layout, point: const Vec2(0, 0)), isNull);
     expect(
       canvasDoubleClick(
         layout: const Layout(
@@ -66,7 +65,7 @@ void main() {
         ),
         point: const Vec2.zero(),
         isMaximized: true,
-      ).id,
+      )?.id,
       'layout.vpmin',
     );
   });

@@ -74,7 +74,8 @@ class CadCanvas extends StatefulWidget {
   /// A right-click that did not become a pan. The shell owns the menu.
   final void Function(Offset localPosition)? onContextMenu;
 
-  /// A primary-button double-click. The shell uses this to zoom extents.
+  /// A primary-button double-click. The shell uses this for text edit and
+  /// viewport max / min, not zoom extents.
   final void Function(Offset localPosition)? onDoubleClick;
 
   final bool showGrid;
