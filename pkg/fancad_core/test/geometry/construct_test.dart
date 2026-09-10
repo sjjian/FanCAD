@@ -4335,6 +4335,74 @@ void main() {
       expect(justified.vAlign, TextVAlign.top);
     });
 
+    test('justify attrib moves the insertion like text', () {
+      const attrib = AttribEntity(
+        id: 1,
+        position: Vec2.zero(),
+        tag: 'T',
+        value: 'ABC',
+        height: 10,
+      );
+
+      final justified = Construct.justifyAttrib(attrib, 'right');
+
+      expect(justified, isNotNull);
+      expect(justified!.hAlign, TextHAlign.right);
+      expect(justified.position.x, closeTo(3 * 10 * 0.62, 1e-9));
+    });
+
+    test('justify attdef keeps flags and uses the displayed glyphs', () {
+      const def = AttdefEntity(
+        id: 1,
+        position: Vec2.zero(),
+        tag: 'NO',
+        defaultValue: 'ABC',
+        height: 10,
+        constant: true,
+        verify: true,
+      );
+
+      final justified = Construct.justifyAttdef(def, 'right');
+
+      expect(justified, isNotNull);
+      expect(justified!.hAlign, TextHAlign.right);
+      expect(justified.constant, isTrue);
+      expect(justified.verify, isTrue);
+      expect(justified.position.x, closeTo(3 * 10 * 0.62, 1e-9));
+    });
+
+    test('justify attdef with no default uses the tag for width', () {
+      const def = AttdefEntity(
+        id: 1,
+        position: Vec2.zero(),
+        tag: 'TITLE',
+        defaultValue: '',
+        height: 10,
+      );
+
+      final justified = Construct.justifyAttdef(def, 'right');
+
+      expect(justified, isNotNull);
+      expect(justified!.position.x, closeTo(5 * 10 * 0.62, 1e-9));
+    });
+
+    test('justify mleader rewrites the note attachment', () {
+      final leader = MLeaderEntity(
+        id: 1,
+        vertices: Float64List.fromList([0, 0, 4, 0]),
+        content: 'Hi',
+        textHeight: 10,
+        attachment: 4,
+      );
+
+      final justified = Construct.justifyMLeader(leader, 'tr');
+
+      expect(justified, isNotNull);
+      expect(justified!.attachment, 3);
+      expect(justified.vertices.toList(), leader.vertices.toList());
+      expect(justified.hasArrowHead, isTrue);
+    });
+
     test('rejects align and unknown keywords', () {
       final text = TextEntity(id: 1, position: const Vec2.zero(), content: 'A');
 

@@ -3990,6 +3990,103 @@ class Construct {
     );
   }
 
+  /// Same as [justifyText] for a standalone ATTRIB.
+  static AttribEntity? justifyAttrib(AttribEntity entity, String justify) {
+    final next = parseTextJustify(
+      justify,
+      currentH: entity.hAlign,
+      currentV: entity.vAlign,
+    );
+    if (next == null) return null;
+    final width =
+        entity.value.length * entity.height * 0.62 * entity.widthFactor;
+    final totalHeight = entity.height * 1.2;
+    final delta =
+        (_textAlignOffset(entity.hAlign, entity.vAlign, width, totalHeight) -
+                _textAlignOffset(next.h, next.v, width, totalHeight))
+            .rotated(entity.rotation);
+    return AttribEntity(
+      id: entity.id,
+      props: entity.props,
+      position: entity.position + delta,
+      tag: entity.tag,
+      value: entity.value,
+      height: entity.height,
+      rotation: entity.rotation,
+      styleName: entity.styleName,
+      widthFactor: entity.widthFactor,
+      obliqueAngle: entity.obliqueAngle,
+      hAlign: next.h,
+      vAlign: next.v,
+      invisible: entity.invisible,
+    );
+  }
+
+  /// Same as [justifyText] for an ATTDEF.
+  static AttdefEntity? justifyAttdef(AttdefEntity entity, String justify) {
+    final next = parseTextJustify(
+      justify,
+      currentH: entity.hAlign,
+      currentV: entity.vAlign,
+    );
+    if (next == null) return null;
+    final glyphs = entity.displayText;
+    final width = glyphs.length * entity.height * 0.62 * entity.widthFactor;
+    final totalHeight = entity.height * 1.2;
+    final delta =
+        (_textAlignOffset(entity.hAlign, entity.vAlign, width, totalHeight) -
+                _textAlignOffset(next.h, next.v, width, totalHeight))
+            .rotated(entity.rotation);
+    return AttdefEntity(
+      id: entity.id,
+      props: entity.props,
+      position: entity.position + delta,
+      tag: entity.tag,
+      prompt: entity.prompt,
+      defaultValue: entity.defaultValue,
+      height: entity.height,
+      rotation: entity.rotation,
+      styleName: entity.styleName,
+      widthFactor: entity.widthFactor,
+      obliqueAngle: entity.obliqueAngle,
+      hAlign: next.h,
+      vAlign: next.v,
+      invisible: entity.invisible,
+      constant: entity.constant,
+      verify: entity.verify,
+      preset: entity.preset,
+    );
+  }
+
+  /// Same as [justifyMText] for a MULTILEADER note.
+  static MLeaderEntity? justifyMLeader(MLeaderEntity entity, String justify) {
+    final asMtext = MTextEntity(
+      id: entity.id,
+      props: entity.props,
+      position: entity.textPosition,
+      content: entity.content,
+      height: entity.textHeight,
+      rotation: entity.textRotation,
+      styleName: entity.styleName,
+      attachment: entity.attachment,
+    );
+    final next = justifyMText(asMtext, justify);
+    if (next == null) return null;
+    return MLeaderEntity(
+      id: entity.id,
+      props: entity.props,
+      vertices: entity.vertices,
+      pathLengths: entity.pathLengths,
+      hasArrowHead: entity.hasArrowHead,
+      content: entity.content,
+      textPosition: next.position,
+      textHeight: entity.textHeight,
+      textRotation: entity.textRotation,
+      styleName: entity.styleName,
+      attachment: next.attachment,
+    );
+  }
+
   /// Left / Center / Right keep the current vertical; TL…BR set both axes.
   /// Align and Fit return null.
   static ({TextHAlign h, TextVAlign v})? parseTextJustify(
