@@ -532,6 +532,28 @@ void main() {
       expect((document.entity(id)! as TextEntity).content, 'HALL');
     });
 
+    test('edit text changes an attribute value', () async {
+      late final int id;
+      workspace.active!.session.edit('seed', (transaction) {
+        id = transaction.add(
+          const AttribEntity(
+            id: 0,
+            position: Vec2.zero(),
+            tag: 'TITLE',
+            value: 'OLD',
+          ),
+        );
+      });
+
+      final result = await run('edit.textContent', {
+        'ids': [id],
+        'text': 'NEW',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect((document.entity(id)! as AttribEntity).value, 'NEW');
+    });
+
     test('edit text overrides a dimension like DIMEDIT', () async {
       final created = await run('draw.dimLinear', {
         'first': [0, 0],
@@ -547,6 +569,85 @@ void main() {
 
       expect(result.status, CommandStatus.ok, reason: result.message);
       expect((document.entity(id)! as DimensionEntity).displayText, '6.00 mm');
+    });
+
+    test('edit text object changes height without moving the insertion', () async {
+      final created = await run('draw.text', {
+        'content': 'A',
+        'at': [4, 2],
+        'height': 2.5,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.textObject', {
+        'ids': [id],
+        'height': 10,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final text = document.entity(id)! as TextEntity;
+      expect(text.height, 10);
+      expect(text.position, const Vec2(4, 2));
+    });
+
+    test('edit text object justifies and recolors in one undo', () async {
+      final created = await run('draw.text', {
+        'content': 'ABC',
+        'at': [0, 0],
+        'height': 10,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.textObject', {
+        'ids': [id],
+        'text': 'XYZ',
+        'color': 1,
+        'justify': 'right',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final text = document.entity(id)! as TextEntity;
+      expect(text.content, 'XYZ');
+      expect(text.hAlign, TextHAlign.right);
+      expect(text.position.x, closeTo(3 * 10 * 0.62, 1e-9));
+      expect(text.props.color, const CadColor.indexed(1));
+    });
+
+    test('edit text object ignores height on a dimension', () async {
+      final created = await run('draw.dimLinear', {
+        'first': [0, 0],
+        'second': [6, 0],
+        'dimLine': [3, 2],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+      final before = document.entity(id)! as DimensionEntity;
+
+      final result = await run('edit.textObject', {
+        'ids': [id],
+        'height': 12,
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect(document.entity(id)!.props.color, before.props.color);
+    });
+
+    test('edit text object refuses a locked layer', () async {
+      final created = await run('draw.text', {
+        'content': 'A',
+        'at': [0, 0],
+      });
+      final id = (created.data!['ids']! as List).first as int;
+      workspace.active!.session.edit('lock', (transaction) {
+        transaction.putLayer(const LayerDef(name: '0', locked: true));
+      });
+
+      final result = await run('edit.textObject', {
+        'ids': [id],
+        'height': 8,
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect((document.entity(id)! as TextEntity).height, 2.5);
     });
 
     test('leader draws an arrowed polyline from the supplied points', () async {

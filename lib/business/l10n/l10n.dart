@@ -102,6 +102,7 @@ extension FanCadL10nLookups on AppLocalizations {
       'edit.dimensionText' => command_edit_dimension_text,
       'edit.dimTedit' => command_edit_dim_tedit,
       'edit.textContent' => command_edit_text_content,
+      'edit.textObject' => command_edit_text_object,
       'edit.justifyText' => command_edit_justify_text,
       'edit.matchProp' => command_edit_match_prop,
       'view.zoomExtents' => command_view_zoom_extents,

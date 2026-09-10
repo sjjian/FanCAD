@@ -1981,6 +1981,10 @@
   "@command_edit_text_content": {
     "description": "command edit text content"
   },
+  "command_edit_text_object": "编辑文字对象",
+  "@command_edit_text_object": {
+    "description": "command edit text object"
+  },
   "command_edit_justify_text": "文字对正",
   "@command_edit_justify_text": {
     "description": "command edit justify text"

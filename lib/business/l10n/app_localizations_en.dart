@@ -1440,6 +1440,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get command_edit_text_content => 'Edit Text';
 
   @override
+  String get command_edit_text_object => 'Edit Text Object';
+
+  @override
   String get command_edit_justify_text => 'Justify Text';
 
   @override

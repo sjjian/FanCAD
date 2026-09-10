@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/document_tab.dart';
 import '../../services/workspace.dart';
+import '../commands/edit/helpers.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 import '../workbench/shell_widgets.dart';
@@ -268,9 +269,9 @@ class PropertiesPanel extends StatelessWidget {
           _read(context, l10n.closed, entity.closed ? l10n.yes : l10n.no),
           _read(context, l10n.length, _number(Construct.lengthOf(entity))),
         ];
-      case TextEntity(:final content, :final position, :final height):
+      case TextEntity(:final position, :final height):
         return [
-          _read(context, l10n.contents, content),
+          _read(context, l10n.contents, textEditFieldValue(entity)),
           _read(context, l10n.position, _point(position)),
           _read(context, l10n.height, _number(height)),
           _read(
@@ -280,9 +281,9 @@ class PropertiesPanel extends StatelessWidget {
           ),
           _read(context, l10n.style, entity.styleName),
         ];
-      case MTextEntity(:final content, :final position):
+      case MTextEntity(:final position):
         return [
-          _read(context, l10n.contents, content),
+          _read(context, l10n.contents, textEditFieldValue(entity)),
           _read(context, l10n.position, _point(position)),
           _read(context, l10n.column_width, _number(entity.rectangleWidth)),
         ];
