@@ -208,6 +208,50 @@ void main() {
     expect(target.entities.whereType<LineEntity>().single.props.layer, 'WALL');
   });
 
+  test('a second paste that imports a new layer still draws the first paste', () {
+    DrawingClip clipWithLayer(String layer, Vec2 start) {
+      final source = CadDocument()
+        ..putLayer(LayerDef(name: layer, color: const CadColor.indexed(1)));
+      final drawn = Transaction(source, label: 'draw')
+        ..add(
+          LineEntity(
+            id: 0,
+            props: EntityProps(layer: layer),
+            start: start,
+            end: start + const Vec2(4, 0),
+          ),
+        )
+        ..commit();
+      return DrawingClip.extract(
+        source,
+        drawn.change.added,
+        basePoint: start,
+      )!;
+    }
+
+    final target = CadDocument();
+    final first = Transaction(target, label: 'Paste');
+    final firstIds = clipWithLayer('WALL', Vec2.zero()).paste(
+      first,
+      insertion: Vec2.zero(),
+    );
+    first.commit();
+    expect(target.queryVisible(const Bounds2(-1, -1, 5, 1)), firstIds);
+
+    final second = Transaction(target, label: 'Paste');
+    final secondIds = clipWithLayer('ROOF', const Vec2(10, 0)).paste(
+      second,
+      insertion: const Vec2(10, 0),
+    );
+    second.commit();
+
+    expect(target.activeEntities, hasLength(2));
+    expect(
+      target.queryVisible(const Bounds2(-1, -1, 15, 1)),
+      unorderedEquals([...firstIds, ...secondIds]),
+    );
+  });
+
   test('a pasted *D note keeps height and rotation after the translation', () {
     const raw = r'{\F宋体|c134;型材1}';
     final source = CadDocument();
