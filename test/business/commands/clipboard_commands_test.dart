@@ -1,3 +1,4 @@
+import 'package:fancad/business/commands/clipboard/capture.dart';
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -188,5 +189,56 @@ void main() {
     expect(document.activeEntities.whereType<LineEntity>(), isEmpty);
     final insert = document.activeEntities.whereType<InsertEntity>().single;
     expect(insert.position, const Vec2(1, 1));
+  });
+
+  test('a large clip still ghosts as outlines, not a crossing box', () async {
+    final ids = <int>[];
+    workspace.active!.session.edit('seed', (transaction) {
+      for (var i = 0; i < 220; i++) {
+        ids.add(
+          transaction.add(
+            LineEntity(
+              id: 0,
+              start: Vec2(i.toDouble(), 0),
+              end: Vec2(i.toDouble(), 1),
+            ),
+          ),
+        );
+      }
+    });
+    final copied = await run('edit.copyClip', {'ids': ids});
+    expect(copied.status, CommandStatus.ok, reason: copied.message);
+    final clip = workspace.clipboard.clip!;
+    expect(clip.entities, hasLength(220));
+
+    final ghost = pastePreviewShapes(clip);
+    expect(ghost.whereType<OverlayRect>(), isEmpty);
+    expect(ghost.whereType<OverlayPolyline>(), isNotEmpty);
+  });
+
+  test('a clip insert ghosts the block contents, not the destination', () {
+    final source = CadDocument();
+    final build = Transaction(source, label: 'build');
+    build.putBlock(const BlockRecord(name: 'MARK', entityIds: []));
+    build.add(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(8, 0)),
+      blockName: 'MARK',
+    );
+    final insertId = build.add(
+      const InsertEntity(id: 0, blockName: 'MARK', position: Vec2(3, 1)),
+    );
+    build.commit();
+    final clip = DrawingClip.extract(source, [
+      insertId,
+    ], basePoint: const Vec2(3, 1))!;
+
+    final ghost = pastePreviewShapes(clip);
+    expect(ghost, isNotEmpty);
+    expect(ghost.whereType<OverlayRect>(), isEmpty);
+    final points = ghost.whereType<OverlayPolyline>().expand(
+      (shape) => shape.points,
+    );
+    expect(points, contains(const Vec2(3, 1)));
+    expect(points, contains(const Vec2(11, 1)));
   });
 }

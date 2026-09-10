@@ -105,32 +105,40 @@ Future<CommandResult> pasteClipboard(
 }
 
 /// Ghost of the clip follows the cursor, offset from the stored base.
+///
+/// Outlines are flattened once. A large clip used to fall back to a crossing
+/// box because emit-on-every-move stuttered; translating cached polylines
+/// does not.
 void _installPastePreview(CommandContext context, DrawingClip clip) {
   final base = clip.basePoint;
+  final ghost = pastePreviewShapes(clip, styles: context.document);
   context.input.setPreview((cursor) {
-    final transform = Mat3.translation(cursor.x - base.x, cursor.y - base.y);
-    final shapes = <OverlayShape>[];
-    if (clip.entities.length > 200) {
-      var box = const Bounds2.empty();
-      for (final entity in clip.entities) {
-        box = box.union(entity.computeBounds(blocks: context.document));
-      }
-      if (box.isNotEmpty) {
-        final moved = box.transformed(transform);
-        shapes.add(OverlayRect(moved.min, moved.max, crossing: true));
-      }
-      return shapes;
-    }
-    for (final entity in clip.entities) {
-      shapes.addAll(_outline(context.document, entity.transformed(transform)));
-    }
-    return shapes;
+    final delta = cursor - base;
+    return [for (final shape in ghost) shape.translated(delta)];
   });
 }
 
-List<OverlayShape> _outline(CadDocument document, CadEntity entity) {
+/// Clip geometry in source coordinates, including INSERT contents from the
+/// clip rather than the destination drawing.
+List<OverlayShape> pastePreviewShapes(
+  DrawingClip clip, {
+  StyleResolver styles = StyleResolver.passthrough,
+}) {
+  final emit = EmitContext(
+    tolerance: 0.05,
+    blocks: _ClipBlocks(clip),
+    styles: styles,
+  );
+  final shapes = <OverlayShape>[];
+  for (final entity in clip.entities) {
+    shapes.addAll(_outline(emit, entity));
+  }
+  return shapes;
+}
+
+List<OverlayShape> _outline(EmitContext emit, CadEntity entity) {
   final sink = PolylineSink();
-  entity.emit(document.emitContext(tolerance: 0.05), sink);
+  entity.emit(emit, sink);
   return [
     for (var i = 0; i < sink.polylines.length; i++)
       OverlayPolyline([
@@ -138,4 +146,60 @@ List<OverlayShape> _outline(CadDocument document, CadEntity entity) {
           Vec2(sink.polylines[i][j], sink.polylines[i][j + 1]),
       ], closed: sink.closedFlags[i]),
   ];
+}
+
+/// Block table carried on the clip, so a paste into an empty drawing can
+/// still flatten INSERTs that do not exist in the target yet.
+class _ClipBlocks implements BlockLookup {
+  _ClipBlocks(this.clip);
+
+  final DrawingClip clip;
+  final Map<String, Bounds2> _bounds = {};
+
+  BlockRecord? _block(String name) {
+    final direct = clip.blocks[name];
+    if (direct != null) return direct;
+    final needle = name.toUpperCase();
+    for (final block in clip.blocks.values) {
+      if (block.name.toUpperCase() == needle) return block;
+    }
+    return null;
+  }
+
+  @override
+  List<int>? entityIdsOf(String blockName) => _block(blockName)?.entityIds;
+
+  @override
+  void emitBlock(String blockName, EmitContext context, GeometrySink sink) {
+    final block = _block(blockName);
+    if (block == null) return;
+    final needsOffset = block.basePoint != const Vec2.zero();
+    final effective = needsOffset
+        ? context.descend(
+            Mat3.translation(-block.basePoint.x, -block.basePoint.y),
+            context.inheritedStyle,
+          )
+        : context;
+    for (final id in block.entityIds) {
+      final entity = clip.blockEntities[id];
+      if (entity == null || !entity.props.visible) continue;
+      entity.emit(effective, sink);
+    }
+  }
+
+  @override
+  Bounds2 boundsOf(String blockName) {
+    final cached = _bounds[blockName];
+    if (cached != null) return cached;
+    final block = _block(blockName);
+    if (block == null) return const Bounds2.empty();
+    _bounds[blockName] = const Bounds2.empty();
+    var box = const Bounds2.empty();
+    for (final id in block.entityIds) {
+      final entity = clip.blockEntities[id];
+      if (entity == null || !entity.props.visible) continue;
+      box = box.union(entity.computeBounds(blocks: this));
+    }
+    return _bounds[blockName] = box;
+  }
 }
