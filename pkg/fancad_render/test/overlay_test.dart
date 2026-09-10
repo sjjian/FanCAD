@@ -59,63 +59,76 @@ void main() {
     },
   );
 
-  test('copyWith can replace a snap or clear it without dropping selection', () {
-    const snap = SnapMarker(
-      kind: SnapMarkerKind.endpoint,
-      point: Vec2.zero(),
-    );
-    const model = OverlayModel(
-      selectedIds: [4],
-      snap: snap,
-      showCrosshair: true,
-    );
+  test(
+    'copyWith can replace a snap or clear it without dropping selection',
+    () {
+      const snap = SnapMarker(
+        kind: SnapMarkerKind.endpoint,
+        point: Vec2.zero(),
+      );
+      const model = OverlayModel(
+        selectedIds: [4],
+        snap: snap,
+        showCrosshair: true,
+      );
 
-    final moved = model.copyWith(cursor: const Vec2(3, 1), hotGripIndex: 0);
-    expect(moved.selectedIds, [4]);
-    expect(moved.snap, snap);
-    expect(moved.cursor, const Vec2(3, 1));
-    expect(moved.hotGripIndex, 0);
-    expect(moved.isEmpty, isFalse);
+      final moved = model.copyWith(cursor: const Vec2(3, 1), hotGripIndex: 0);
+      expect(moved.selectedIds, [4]);
+      expect(moved.snap, snap);
+      expect(moved.cursor, const Vec2(3, 1));
+      expect(moved.hotGripIndex, 0);
+      expect(moved.isEmpty, isFalse);
 
-    final cleared = moved.copyWith(clearSnap: true, showCrosshair: false);
-    expect(cleared.snap, isNull);
-    expect(cleared.selectedIds, [4]);
-    expect(cleared.showCrosshair, isFalse);
-    expect(cleared.cursor, const Vec2(3, 1));
+      final cleared = moved.copyWith(clearSnap: true, showCrosshair: false);
+      expect(cleared.snap, isNull);
+      expect(cleared.selectedIds, [4]);
+      expect(cleared.showCrosshair, isFalse);
+      expect(cleared.cursor, const Vec2(3, 1));
 
-    final leftCanvas = cleared.copyWith(clearCursor: true);
-    expect(leftCanvas.cursor, isNull);
-    expect(leftCanvas.selectedIds, [4]);
-    expect(leftCanvas.isEmpty, isFalse);
+      final leftCanvas = cleared.copyWith(clearCursor: true);
+      expect(leftCanvas.cursor, isNull);
+      expect(leftCanvas.selectedIds, [4]);
+      expect(leftCanvas.isEmpty, isFalse);
 
-    expect(const OverlayTheme().gripSize, 7);
-    expect(const OverlayTheme().snapSize, 9);
-  });
+      final hidden = model.copyWith(hiddenIds: const [9]);
+      expect(hidden.hiddenIds, [9]);
+      expect(hidden.selectedIds, [4]);
+      expect(hidden.isEmpty, isFalse);
 
-  test('a hovered or selected outline is dashed instead of one solid stroke', () {
-    final dashes = dashOutline(
-      Float32List.fromList(const [0, 0, 21, 0]),
-      on: 4,
-      off: 3,
-    );
-    expect(dashes.length, greaterThan(4));
-    expect(dashes[0], 0);
-    expect(dashes[2], 4);
-    expect(dashes[4], 7);
-  });
+      expect(const OverlayTheme().gripSize, 7);
+      expect(const OverlayTheme().snapSize, 9);
+    },
+  );
 
-  test('selection dashes stay light on a dark canvas and dark on a light one',
-      () {
-    final dark = const OverlayTheme().withCanvas(const Color(0xFF1B1D21));
-    expect(dark.selectionMask.toARGB32(), 0xFF1B1D21);
-    expect(dark.selectionStroke.toARGB32(), 0xFFFFFFFF);
-    expect(dark.preview.toARGB32(), 0xFFFFFFFF);
+  test(
+    'a hovered or selected outline is dashed instead of one solid stroke',
+    () {
+      final dashes = dashOutline(
+        Float32List.fromList(const [0, 0, 21, 0]),
+        on: 4,
+        off: 3,
+      );
+      expect(dashes.length, greaterThan(4));
+      expect(dashes[0], 0);
+      expect(dashes[2], 4);
+      expect(dashes[4], 7);
+    },
+  );
 
-    final light = const OverlayTheme().withCanvas(const Color(0xFFF7F8FA));
-    expect(light.selectionMask.toARGB32(), 0xFFF7F8FA);
-    expect(light.selectionStroke.toARGB32(), 0xFF000000);
-    expect(light.preview.toARGB32(), 0xFF000000);
-  });
+  test(
+    'selection dashes stay light on a dark canvas and dark on a light one',
+    () {
+      final dark = const OverlayTheme().withCanvas(const Color(0xFF1B1D21));
+      expect(dark.selectionMask.toARGB32(), 0xFF1B1D21);
+      expect(dark.selectionStroke.toARGB32(), 0xFFFFFFFF);
+      expect(dark.preview.toARGB32(), 0xFFFFFFFF);
+
+      final light = const OverlayTheme().withCanvas(const Color(0xFFF7F8FA));
+      expect(light.selectionMask.toARGB32(), 0xFFF7F8FA);
+      expect(light.selectionStroke.toARGB32(), 0xFF000000);
+      expect(light.preview.toARGB32(), 0xFF000000);
+    },
+  );
 
   test('an unusable viewport cannot invent overlay strokes', () {
     const unusable = CadViewport(

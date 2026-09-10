@@ -86,9 +86,7 @@ void main() {
 
     test('hidden layers contribute nothing', () {
       final document = gridDocument(50, layer: 'OFF')
-        ..putLayer(
-          const LayerDef(name: 'OFF', visible: false),
-        );
+        ..putLayer(const LayerDef(name: 'OFF', visible: false));
       final scene = newBuilder().build(
         document,
         const CadViewport(center: Vec2(30, 30), scale: 4, size: size),
@@ -135,6 +133,22 @@ void main() {
       );
     });
 
+    test('hidden ids skip a glyph so an in-place editor can sit on top', () {
+      final document = CadDocument();
+      final a = document.addEntity(
+        const TextEntity(id: 1, position: Vec2.zero(), content: 'A'),
+      );
+      document.addEntity(
+        const TextEntity(id: 2, position: Vec2(20, 0), content: 'B'),
+      );
+      final view = CadViewport.fit(document.extents, size);
+      expect(newBuilder().build(document, view).entityCount, 2);
+      expect(
+        newBuilder().build(document, view, hiddenIds: {a.id}).entityCount,
+        1,
+      );
+    });
+
     test('dashed line types become multiple segments', () {
       final document = CadDocument()
         ..putLineType(
@@ -144,9 +158,7 @@ void main() {
             patternLength: 10,
           ),
         )
-        ..putLayer(
-          const LayerDef(name: 'D', lineType: 'DASHED'),
-        )
+        ..putLayer(const LayerDef(name: 'D', lineType: 'DASHED'))
         ..addEntity(
           LineEntity(
             id: 0,
@@ -374,7 +386,10 @@ void main() {
       // means twice as many pixels on the denser one. Reporting the same number
       // for both is what made a Retina hairline draw two pixels wide.
       expect(onePixel.lineBatches.single.key.strokeWidth, closeTo(paper, 1e-9));
-      expect(retina.lineBatches.single.key.strokeWidth, closeTo(paper * 2, 1e-9));
+      expect(
+        retina.lineBatches.single.key.strokeWidth,
+        closeTo(paper * 2, 1e-9),
+      );
     });
 
     test('a paper millimetre stroke shrinks when the viewport shrinks', () {
@@ -436,11 +451,13 @@ void main() {
         blockName: 'TICK',
       );
       document
-        ..putBlock(
-          const BlockRecord(name: 'TICK', entityIds: [1]),
-        )
+        ..putBlock(const BlockRecord(name: 'TICK', entityIds: [1]))
         ..addEntity(
-          const InsertEntity(id: 2, blockName: 'TICK', position: Vec2(100, 100)),
+          const InsertEntity(
+            id: 2,
+            blockName: 'TICK',
+            position: Vec2(100, 100),
+          ),
         );
       // Zoomed so the 8-unit tick is well under the 1.5 px collapse size.
       const view = CadViewport(
@@ -514,9 +531,7 @@ void main() {
         blockName: 'FRAME',
       );
       document
-        ..putBlock(
-          const BlockRecord(name: 'FRAME', entityIds: [1]),
-        )
+        ..putBlock(const BlockRecord(name: 'FRAME', entityIds: [1]))
         ..addEntity(
           const InsertEntity(id: 2, blockName: 'FRAME', position: Vec2.zero()),
         );
@@ -586,11 +601,7 @@ void main() {
     test('a layout viewport draws the model onto the sheet', () {
       final document = CadDocument();
       document.addEntity(
-        LineEntity(
-          id: 0,
-          start: const Vec2(0, 0),
-          end: const Vec2(80, 0),
-        ),
+        LineEntity(id: 0, start: const Vec2(0, 0), end: const Vec2(80, 0)),
         blockName: document.modelSpaceBlockName,
       );
       document.addLayout(
@@ -623,11 +634,7 @@ void main() {
     test('an off viewport keeps its frame and hides the model', () {
       final document = CadDocument();
       document.addEntity(
-        LineEntity(
-          id: 0,
-          start: const Vec2(0, 0),
-          end: const Vec2(80, 0),
-        ),
+        LineEntity(id: 0, start: const Vec2(0, 0), end: const Vec2(80, 0)),
         blockName: document.modelSpaceBlockName,
       );
       document.addLayout(
@@ -697,11 +704,7 @@ void main() {
     test('model space does not composite paper viewports', () {
       final document = CadDocument();
       document.addEntity(
-        LineEntity(
-          id: 0,
-          start: const Vec2(0, 0),
-          end: const Vec2(80, 0),
-        ),
+        LineEntity(id: 0, start: const Vec2(0, 0), end: const Vec2(80, 0)),
       );
       document.addLayout(
         Layout(
