@@ -35,6 +35,62 @@ void main() {
     },
   );
 
+  test('preview shapes translate without changing style flags', () {
+    const delta = Vec2(10, 4);
+    final line = const OverlayLine(Vec2.zero(), Vec2(4, 0)).translated(delta);
+    expect(line.from, const Vec2(10, 4));
+    expect(line.to, const Vec2(14, 4));
+    expect(line.dashed, isTrue);
+
+    final poly = const OverlayPolyline([
+      Vec2.zero(),
+      Vec2(1, 0),
+    ], closed: true).translated(delta);
+    expect(poly.points, const [Vec2(10, 4), Vec2(11, 4)]);
+    expect(poly.closed, isTrue);
+
+    final arc = const OverlayArc(
+      center: Vec2(1, 1),
+      radius: 5,
+    ).translated(delta);
+    expect(arc.center, const Vec2(11, 5));
+    expect(arc.radius, 5);
+
+    final window = const OverlayRect(
+      Vec2.zero(),
+      Vec2(2, 1),
+      crossing: true,
+    ).translated(delta);
+    expect(window.from, const Vec2(10, 4));
+    expect(window.to, const Vec2(12, 5));
+    expect(window.crossing, isTrue);
+
+    expect(
+      const OverlayPoint(Vec2(2, 3)).translated(delta).at,
+      const Vec2(12, 7),
+    );
+    expect(
+      const OverlayTrackingLine(
+        Vec2.zero(),
+        1,
+        label: '90',
+      ).translated(delta).origin,
+      const Vec2(10, 4),
+    );
+  });
+
+  test('preview shapes follow a matrix so a rotate still shows objects', () {
+    const poly = OverlayPolyline([Vec2(1, 0), Vec2(2, 0)]);
+    final rotated = poly.transformed(Mat3.rotation(math.pi / 2));
+    expect(rotated.points.first.x, closeTo(0, 1e-9));
+    expect(rotated.points.first.y, closeTo(1, 1e-9));
+    expect(rotated.points.last.x, closeTo(0, 1e-9));
+    expect(rotated.points.last.y, closeTo(2, 1e-9));
+
+    final moved = poly.transformed(const Mat3.translation(3, 4));
+    expect(moved.points, const [Vec2(4, 4), Vec2(5, 4)]);
+  });
+
   test(
     'snap marker labels stay distinct so a glyph cannot steal another name',
     () {

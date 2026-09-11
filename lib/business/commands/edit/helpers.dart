@@ -408,9 +408,8 @@ CommandResult applyEditTransform(
 
 /// Shows the selection as it will look once the transform is applied.
 ///
-/// Past a few hundred entities the outlines cost more than the edit itself, so
-/// the bounding box stands in for them. That threshold is the difference
-/// between a preview that helps and one that makes the drag stutter.
+/// Outlines are flattened once so every selected object still ghosts;
+/// each cursor move only transforms the cached polylines.
 void installTransformPreview(
   CommandContext context,
   List<int> ids,
@@ -418,34 +417,18 @@ void installTransformPreview(
   Mat3 Function(Vec2 cursor) matrix, {
   List<OverlayShape> Function(Vec2 cursor)? extra,
 }) {
+  final ghost = [
+    for (final id in ids)
+      if (context.document.entity(id) case final CadEntity entity)
+        ...editOutline(context.document, entity),
+  ];
   context.input.setPreview((cursor) {
     final transform = matrix(cursor);
-    final shapes = <OverlayShape>[
+    return [
       OverlayLine(base, cursor),
       ...?extra?.call(cursor),
+      for (final shape in ghost) shape.transformed(transform),
     ];
-    if (ids.length > 200) {
-      var box = const Bounds2.empty();
-      for (final id in ids) {
-        final entity = context.document.entity(id);
-        if (entity != null) {
-          box = box.union(context.document.boundsOfEntity(entity));
-        }
-      }
-      if (box.isNotEmpty) {
-        final moved = box.transformed(transform);
-        shapes.add(OverlayRect(moved.min, moved.max, crossing: true));
-      }
-      return shapes;
-    }
-    for (final id in ids) {
-      final entity = context.document.entity(id);
-      if (entity == null) continue;
-      shapes.addAll(
-        editOutline(context.document, entity.transformed(transform)),
-      );
-    }
-    return shapes;
   });
 }
 
