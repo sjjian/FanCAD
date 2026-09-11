@@ -94,9 +94,9 @@ class _DocumentViewState extends State<DocumentView> {
     };
   }
 
-  /// Paper viewport interiors run VPMAX; a maximized model view runs VPMIN;
-  /// everything else is zoom extents. A double-click on text opens a card
-  /// aligned with the click instead.
+  /// Paper viewport interiors run VPMAX; a maximized model view runs VPMIN.
+  /// Empty space does not zoom. A double-click on text opens a card aligned
+  /// with the click instead.
   void _onDoubleClick(Offset local) {
     final tab = widget.tab;
     final world = tab.viewport.viewport.toWorld(local);
@@ -121,7 +121,9 @@ class _DocumentViewState extends State<DocumentView> {
       point: world,
       isMaximized: tab.session.maximizedLayoutName != null,
     );
-    widget.workspace.run(action.id, args: action.args);
+    if (action != null) {
+      widget.workspace.run(action.id, args: action.args);
+    }
   }
 
   void _cancelTextEdit() {
