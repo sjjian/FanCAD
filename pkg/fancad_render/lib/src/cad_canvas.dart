@@ -174,6 +174,10 @@ class CadCanvasState extends State<CadCanvas> {
         oldWidget.onlyLayers != widget.onlyLayers) {
       _paintEpoch++;
     }
+    if (!_sameIds(oldWidget.overlay.hiddenIds, widget.overlay.hiddenIds)) {
+      _cache.invalidate();
+      _paintEpoch++;
+    }
     if (oldWidget.palette != widget.palette ||
         oldWidget.background != widget.background ||
         oldWidget.overlayTheme != widget.overlayTheme) {
@@ -299,6 +303,7 @@ class CadCanvasState extends State<CadCanvas> {
                           quality: widget.controller.quality,
                           paintEpoch: _paintEpoch,
                           onlyLayers: widget.onlyLayers,
+                          hiddenIds: widget.overlay.hiddenIds,
                           onSceneBuilt: widget.onSceneBuilt,
                           grid: widget.showGrid
                               ? _GridStyle(
@@ -519,6 +524,7 @@ class _DrawingLayerPainter extends CustomPainter {
     required this.quality,
     required this.paintEpoch,
     required this.onlyLayers,
+    required this.hiddenIds,
     required this.onSceneBuilt,
     required this.grid,
   });
@@ -536,6 +542,7 @@ class _DrawingLayerPainter extends CustomPainter {
   final RenderQuality quality;
   final int paintEpoch;
   final Set<String>? onlyLayers;
+  final List<int> hiddenIds;
   final void Function(RenderScene scene)? onSceneBuilt;
   final _GridStyle? grid;
 
@@ -562,7 +569,12 @@ class _DrawingLayerPainter extends CustomPainter {
       return;
     }
 
-    final scene = builder.build(document, viewport, onlyLayers: onlyLayers);
+    final scene = builder.build(
+      document,
+      viewport,
+      onlyLayers: onlyLayers,
+      hiddenIds: hiddenIds.isEmpty ? null : hiddenIds.toSet(),
+    );
     final recorded = painter.record(scene);
     cache.store(scene, recorded, documentVersion);
     canvas.drawPicture(recorded);
@@ -647,7 +659,17 @@ class _DrawingLayerPainter extends CustomPainter {
       old.viewport != viewport ||
       old.quality != quality ||
       old.onlyLayers != onlyLayers ||
+      !_sameIds(old.hiddenIds, hiddenIds) ||
       (old.grid == null) != (grid == null);
+}
+
+bool _sameIds(List<int> a, List<int> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
 
 class _OverlayLayerPainter extends CustomPainter {

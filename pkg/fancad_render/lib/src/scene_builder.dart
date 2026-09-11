@@ -62,6 +62,7 @@ class SceneBuilder {
     CadDocument document,
     CadViewport viewport, {
     Set<String>? onlyLayers,
+    Set<int>? hiddenIds,
   }) {
     if (!viewport.isUsable) return RenderScene.empty(viewport);
 
@@ -83,15 +84,12 @@ class SceneBuilder {
           double.tryParse(document.headerVariables[r'$LTSCALE'] ?? '') ?? 1,
     );
 
-    final measureWidth = (String text, double height) => paragraphs.measureWidth(
-      text,
-      height: height,
-      fontFamily: fonts.resolve(
-        styleFont: 'txt',
-        bigFont: '',
-        text: text,
-      ),
-    );
+    final measureWidth = (String text, double height) =>
+        paragraphs.measureWidth(
+          text,
+          height: height,
+          fontFamily: fonts.resolve(styleFont: 'txt', bigFont: '', text: text),
+        );
     var drawn = 0;
     var culled = 0;
 
@@ -110,6 +108,7 @@ class SceneBuilder {
         context: space.context,
         query: space.query,
         onlyLayers: onlyLayers,
+        hiddenIds: hiddenIds,
         hiddenLayers: space.hiddenLayers.isEmpty ? null : space.hiddenLayers,
         bucket: bucket,
         worldClip: space.paperClip,
@@ -214,17 +213,26 @@ class SceneBuilder {
       for (final order in orders)
         RenderPass(
           order: order,
-          images: [for (final i in images) if (i.order == order) i],
+          images: [
+            for (final i in images)
+              if (i.order == order) i,
+          ],
           fillBatches: [
-            for (final b in fillBatches) if (b.key.order == order) b,
+            for (final b in fillBatches)
+              if (b.key.order == order) b,
           ],
           lineBatches: [
-            for (final b in lineBatches) if (b.key.order == order) b,
+            for (final b in lineBatches)
+              if (b.key.order == order) b,
           ],
           pointBatches: [
-            for (final b in pointBatches) if (b.key.order == order) b,
+            for (final b in pointBatches)
+              if (b.key.order == order) b,
           ],
-          texts: [for (final t in texts) if (t.order == order) t],
+          texts: [
+            for (final t in texts)
+              if (t.order == order) t,
+          ],
         ),
     ];
   }
@@ -236,6 +244,7 @@ class SceneBuilder {
     required EmitContext context,
     required Bounds2 query,
     required Set<String>? onlyLayers,
+    Set<int>? hiddenIds,
     Set<String>? hiddenLayers,
     required int bucket,
     Bounds2? worldClip,
@@ -252,6 +261,7 @@ class SceneBuilder {
       if (onlyLayers != null && !onlyLayers.contains(entity.props.layer)) {
         continue;
       }
+      if (hiddenIds != null && hiddenIds.contains(id)) continue;
       if (hiddenLayers != null &&
           hiddenLayers.contains(entity.props.layer.toLowerCase())) {
         continue;
@@ -266,7 +276,9 @@ class SceneBuilder {
         continue;
       }
 
-      final hinted = bounds.isNotEmpty ? context.withExtentHint(bounds) : context;
+      final hinted = bounds.isNotEmpty
+          ? context.withExtentHint(bounds)
+          : context;
       // Cached tessellation is in the entity's own space. A paper viewport
       // applies a transform, so replaying the cache would put model geometry
       // on the sheet at the wrong coordinates.
@@ -281,12 +293,7 @@ class SceneBuilder {
         } else {
           final recorder = RecordingSink();
           entity.emit(hinted.withoutClip(), TeeSink(sink, recorder));
-          cache.remember(
-            entity,
-            bucket,
-            recorder,
-            minExtent: hinted.minExtent,
-          );
+          cache.remember(entity, bucket, recorder, minExtent: hinted.minExtent);
         }
       } else {
         entity.emit(hinted, sink);
@@ -314,4 +321,3 @@ class SceneBuilder {
     );
   }
 }
-

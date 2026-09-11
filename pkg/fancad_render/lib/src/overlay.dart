@@ -20,6 +20,7 @@ class OverlayModel {
   const OverlayModel({
     this.selectedIds = const [],
     this.highlightedIds = const [],
+    this.hiddenIds = const [],
     this.grips = const [],
     this.hotGripIndex = -1,
     this.shapes = const [],
@@ -31,6 +32,10 @@ class OverlayModel {
   static const OverlayModel empty = OverlayModel();
 
   final List<int> selectedIds;
+
+  /// Entities skipped by the drawing layer so an in-place editor can sit
+  /// on top without doubling the glyph.
+  final List<int> hiddenIds;
 
   /// Entities under the cursor, or entities an AI change is about to touch.
   /// Drawn dashed, same as [selectedIds], not as a solid glow.
@@ -57,6 +62,7 @@ class OverlayModel {
   OverlayModel copyWith({
     List<int>? selectedIds,
     List<int>? highlightedIds,
+    List<int>? hiddenIds,
     List<Vec2>? grips,
     int? hotGripIndex,
     List<OverlayShape>? shapes,
@@ -68,6 +74,7 @@ class OverlayModel {
   }) => OverlayModel(
     selectedIds: selectedIds ?? this.selectedIds,
     highlightedIds: highlightedIds ?? this.highlightedIds,
+    hiddenIds: hiddenIds ?? this.hiddenIds,
     grips: grips ?? this.grips,
     hotGripIndex: hotGripIndex ?? this.hotGripIndex,
     shapes: shapes ?? this.shapes,
@@ -125,9 +132,7 @@ class OverlayTheme {
       snap: snap,
       tracking: tracking,
       crosshair: crosshair,
-      preview: dark
-          ? const ui.Color(0xFFFFFFFF)
-          : const ui.Color(0xFF000000),
+      preview: dark ? const ui.Color(0xFFFFFFFF) : const ui.Color(0xFF000000),
       selectionStroke: dark
           ? const ui.Color(0xFFFFFFFF)
           : const ui.Color(0xFF000000),
@@ -309,7 +314,12 @@ class OverlayPainter {
             dashed: dashed,
           );
         }
-      case OverlayArc(:final center, :final radius, :final startAngle, :final sweep):
+      case OverlayArc(
+        :final center,
+        :final radius,
+        :final startAngle,
+        :final sweep,
+      ):
         final screenCenter = _pixels.offsetOf(center);
         final screenRadius = radius * _pixels.scale;
         if (screenRadius <= 0.5) return;
@@ -346,9 +356,7 @@ class OverlayPainter {
           ..strokeWidth = _dpr;
       case OverlayTrackingLine(:final origin, :final angle):
         final screenOrigin = _pixels.offsetOf(origin);
-        final reach = _pixels.fromLogical(
-          view.size.width + view.size.height,
-        );
+        final reach = _pixels.fromLogical(view.size.width + view.size.height);
         final dx = math.cos(angle) * reach;
         final dy = -math.sin(angle) * reach;
         _stroke.color = theme.tracking.withValues(alpha: 0.7);
@@ -379,11 +387,7 @@ class OverlayPainter {
     var travelled = 0.0;
     while (travelled < total) {
       final end = math.min(travelled + on, total);
-      canvas.drawLine(
-        a + direction * travelled,
-        a + direction * end,
-        _stroke,
-      );
+      canvas.drawLine(a + direction * travelled, a + direction * end, _stroke);
       travelled = end + off;
     }
   }
@@ -449,8 +453,16 @@ class OverlayPainter {
           );
       case SnapMarkerKind.perpendicular:
         canvas
-          ..drawLine(at.translate(-half, -half), at.translate(-half, half), _stroke)
-          ..drawLine(at.translate(-half, half), at.translate(half, half), _stroke)
+          ..drawLine(
+            at.translate(-half, -half),
+            at.translate(-half, half),
+            _stroke,
+          )
+          ..drawLine(
+            at.translate(-half, half),
+            at.translate(half, half),
+            _stroke,
+          )
           ..drawLine(at.translate(0, half), at.translate(0, 0), _stroke)
           ..drawLine(at.translate(0, 0), at.translate(half, 0), _stroke);
       case SnapMarkerKind.tangent:
@@ -508,11 +520,7 @@ class OverlayPainter {
 /// Dash lengths are in pixels so the selected look stays the same at every
 /// zoom, which is what the user is reading, not the drawing units.
 @visibleForTesting
-Float32List dashOutline(
-  Float32List src, {
-  double on = 4,
-  double off = 3,
-}) {
+Float32List dashOutline(Float32List src, {double on = 4, double off = 3}) {
   if (src.length < 4 || on <= 0) return src;
   var buffer = Float32List(src.length * 2);
   var length = 0;
