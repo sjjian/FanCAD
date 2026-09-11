@@ -85,4 +85,17 @@ void main() {
     expect(dropped.single.tablesChanged, isTrue);
     expect(ticks, greaterThan(0));
   });
+
+  test('markSaved replaces an untitled Drawing1 label with the file name', () {
+    final tab = DocumentTab(
+      session: DocumentSession(
+        id: '1',
+        document: CadDocument(),
+        title: 'Drawing1',
+      ),
+    );
+    addTearDown(tab.dispose);
+    tab.markSaved('/tmp/plan.dxf');
+    expect(tab.title, 'plan.dxf');
+  });
 }

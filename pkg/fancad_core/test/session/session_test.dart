@@ -53,6 +53,18 @@ void main() {
       expect(session.title, 'a.dxf');
     });
 
+    test('markSaved replaces an untitled tab label with the file name', () {
+      final session = DocumentSession(
+        id: '1',
+        document: CadDocument(),
+        title: 'Drawing1',
+      );
+      expect(session.title, 'Drawing1');
+      session.markSaved('/tmp/plan.dxf');
+      expect(session.title, 'plan.dxf');
+      session.dispose();
+    });
+
     test('erasing a selected entity prunes the selection', () {
       final session = DocumentSession(id: 't', document: CadDocument());
       final id = session
