@@ -66,6 +66,9 @@ class DocumentSession {
 
   void markSaved(String path) {
     filePath = path;
+    // Untitled tabs keep an explicit label such as Drawing1. Once there is a
+    // file, the tab should follow that name, including after Save As.
+    _title = null;
     _dirty = false;
     _emit(const DocumentChange(tablesChanged: true));
   }
