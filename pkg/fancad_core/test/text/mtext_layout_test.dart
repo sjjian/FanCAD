@@ -12,10 +12,7 @@ void main() {
       expect(stripMTextFormatting(r'\X99;Hi'), 'Hi');
       expect(stripMTextFormatting(r'A\PB'), 'A\nB');
       expect(stripMTextFormatting(r'A\pi-2;B'), 'AB');
-      expect(
-        stripMTextFormatting(r'{\fArial|b1;Bold}\Pnext'),
-        'Bold\nnext',
-      );
+      expect(stripMTextFormatting(r'{\fArial|b1;Bold}\Pnext'), 'Bold\nnext');
     });
   });
 
@@ -176,6 +173,13 @@ void main() {
             .text,
         '型材1',
       );
+    });
+
+    test('an in-place edit keeps paragraph codes around the glyphs', () {
+      expect(replaceMTextPlain(r'\pxqc;外墙', '内墙'), r'\pxqc;内墙');
+      expect(replaceMTextPlain(r'{\F宋体|c134;型材1}', '型材2'), r'{\F宋体|c134;型材2}');
+      expect(replaceMTextPlain(r'\pxqc;外墙', '外墙'), r'\pxqc;外墙');
+      expect(replaceMTextPlain(r'A\PB', 'A\nC'), r'A\PC');
     });
 
     test('a paragraph indent cannot leak into the glyph string', () {
@@ -341,28 +345,35 @@ void main() {
   });
 
   test('MTEXT wrapping uses a supplied measured width', () {
-    final runs = MTextLayout(
-      measureWidth: (text, height) => text.length * height,
-    ).layout(
-      const MTextEntity(
-        id: 1,
-        position: Vec2.zero(),
-        content: 'aa bb',
-        height: 10,
-        rectangleWidth: 25,
-      ),
-    );
+    final runs =
+        MTextLayout(
+          measureWidth: (text, height) => text.length * height,
+        ).layout(
+          const MTextEntity(
+            id: 1,
+            position: Vec2.zero(),
+            content: 'aa bb',
+            height: 10,
+            rectangleWidth: 25,
+          ),
+        );
     expect(runs.map((run) => run.text), ['aa', 'bb']);
   });
 
   group('MTextEntity', () {
     test('attachment points map to the nine AutoCAD corners', () {
-      TextHAlign hOf(int attachment) =>
-          MTextEntity(id: 1, position: Vec2.zero(), content: 'A', attachment: attachment)
-              .hAlign;
-      TextVAlign vOf(int attachment) =>
-          MTextEntity(id: 1, position: Vec2.zero(), content: 'A', attachment: attachment)
-              .vAlign;
+      TextHAlign hOf(int attachment) => MTextEntity(
+        id: 1,
+        position: Vec2.zero(),
+        content: 'A',
+        attachment: attachment,
+      ).hAlign;
+      TextVAlign vOf(int attachment) => MTextEntity(
+        id: 1,
+        position: Vec2.zero(),
+        content: 'A',
+        attachment: attachment,
+      ).vAlign;
 
       expect(hOf(1), TextHAlign.left);
       expect(vOf(1), TextVAlign.top);
@@ -389,10 +400,11 @@ void main() {
         attachment: 3,
       );
       final emptySink = PolylineSink();
-      const MTextEntity(id: 2, position: Vec2.zero(), content: '').emit(
-        const EmitContext(tolerance: 0.1),
-        emptySink,
-      );
+      const MTextEntity(
+        id: 2,
+        position: Vec2.zero(),
+        content: '',
+      ).emit(const EmitContext(tolerance: 0.1), emptySink);
       expect(emptySink.texts, isEmpty);
 
       final sink = PolylineSink();
@@ -402,14 +414,14 @@ void main() {
       expect(sink.texts.first.hAlign, TextHAlign.left);
       expect(sink.texts.first.vAlign, TextVAlign.top);
       expect(sink.texts.first.origin.x, closeTo(text.position.x, 1e-9));
-      expect(sink.texts.last.origin.x, closeTo(sink.texts.first.origin.x, 1e-9));
+      expect(
+        sink.texts.last.origin.x,
+        closeTo(sink.texts.first.origin.x, 1e-9),
+      );
       expect(sink.texts.last.origin.y, lessThan(sink.texts.first.origin.y));
 
       expect(text.grips(), const [Vec2(2, 3)]);
-      expect(
-        text.withGrip(0, const Vec2(8, 1)).position,
-        const Vec2(8, 1),
-      );
+      expect(text.withGrip(0, const Vec2(8, 1)).position, const Vec2(8, 1));
       final scaled = text.transformed(const Mat3.scaling(2, 2));
       expect(scaled.height, 5);
       expect(scaled.attachment, 3);

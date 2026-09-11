@@ -106,8 +106,7 @@ class MTextLayout {
           continue;
         }
         final style = line.first.style;
-        final indent =
-            style.leftIndent + (firstLine ? style.firstIndent : 0);
+        final indent = style.leftIndent + (firstLine ? style.firstIndent : 0);
         firstLine = false;
         final placed = _placeLine(
           entity,
@@ -156,9 +155,7 @@ class MTextLayout {
 
     final justified = [
       for (final run in runs)
-        run.translated(
-          Vec2(_inlineDx(entity, run, columnWidth, pin), 0),
-        ),
+        run.translated(Vec2(_inlineDx(entity, run, columnWidth, pin), 0)),
     ];
 
     final dx = switch (entity.hAlign) {
@@ -302,9 +299,7 @@ class MTextLayout {
             stack.lower,
             Vec2(x + (stackW - lowerW) / 2, top - partH * 1.15),
             partH,
-            barFrom: stack.kind == _StackKind.none
-                ? null
-                : Vec2(x, midY),
+            barFrom: stack.kind == _StackKind.none ? null : Vec2(x, midY),
             barTo: stack.kind == _StackKind.none
                 ? null
                 : stack.kind == _StackKind.slash
@@ -469,7 +464,9 @@ class MTextLayout {
             (directive[0] == 'S' || directive[0] == 's')) {
           final stack = _Stack.parse(directive.substring(1));
           if (stack != null) {
-            paragraphs.last.add(_Frag(text: '', style: style.copy(), stack: stack));
+            paragraphs.last.add(
+              _Frag(text: '', style: style.copy(), stack: stack),
+            );
           }
         } else {
           style = style.applying(directive);
@@ -595,6 +592,84 @@ String decodeMTextPlain(String raw) {
   return buffer.toString();
 }
 
+/// Puts [plain] back into [raw], keeping the codes around the first glyphs.
+///
+/// `\pxqc;外墙` stays `\pxqc;…` after an in-place edit. Codes before the first
+/// glyph and braces after the last glyph are kept; `\P` between glyphs is
+/// rebuilt from newlines in [plain].
+String replaceMTextPlain(String raw, String plain) {
+  final encoded = plain.replaceAll('\n', r'\P');
+  if (decodeMTextPlain(raw) == plain) return raw;
+  var i = 0;
+  var first = -1;
+  var lastEnd = -1;
+  while (i < raw.length) {
+    final char = raw[i];
+    if (char == '\\' && i + 1 < raw.length) {
+      final code = raw[i + 1];
+      switch (code) {
+        case 'P':
+        case '~':
+        case '\\':
+        case '{':
+        case '}':
+        case 'L':
+        case 'l':
+        case 'O':
+        case 'o':
+        case 'K':
+        case 'k':
+          i += 2;
+          continue;
+        case 'U':
+          if (i + 6 < raw.length && raw[i + 2] == '+') {
+            final value = int.tryParse(raw.substring(i + 3, i + 7), radix: 16);
+            if (value != null) {
+              if (first < 0) first = i;
+              lastEnd = i + 7;
+              i += 7;
+              continue;
+            }
+          }
+          break;
+        case 'M':
+          if (i + 7 < raw.length && raw[i + 2] == '+') {
+            final value = int.tryParse(raw.substring(i + 4, i + 8), radix: 16);
+            if (value != null) {
+              if (first < 0) first = i;
+              lastEnd = i + 8;
+              i += 8;
+              continue;
+            }
+          }
+          break;
+      }
+      final end = raw.indexOf(';', i);
+      if (end == -1) {
+        i += 2;
+        continue;
+      }
+      final directive = raw.substring(i + 1, end);
+      if (directive.isNotEmpty &&
+          (directive[0] == 'S' || directive[0] == 's')) {
+        if (first < 0) first = i;
+        lastEnd = end + 1;
+      }
+      i = end + 1;
+      continue;
+    }
+    if (char == '{' || char == '}') {
+      i++;
+      continue;
+    }
+    if (first < 0) first = i;
+    lastEnd = i + 1;
+    i++;
+  }
+  if (first < 0) return '$raw$encoded';
+  return '${raw.substring(0, first)}$encoded${raw.substring(lastEnd)}';
+}
+
 class _Frag {
   const _Frag({required this.text, required this.style, this.stack});
 
@@ -621,7 +696,9 @@ class _Stack {
     final caret = rest.indexOf('^');
     var at = -1;
     var kind = _StackKind.none;
-    if (hash >= 0 && (slash < 0 || hash < slash) && (caret < 0 || hash < caret)) {
+    if (hash >= 0 &&
+        (slash < 0 || hash < slash) &&
+        (caret < 0 || hash < caret)) {
       at = hash;
       kind = _StackKind.bar;
     } else if (slash >= 0 && (caret < 0 || slash < caret)) {
@@ -809,7 +886,12 @@ class _Style {
       }
       i++;
     }
-    return copy(firstIndent: first, leftIndent: left, rightIndent: right, hAlign: alignH);
+    return copy(
+      firstIndent: first,
+      leftIndent: left,
+      rightIndent: right,
+      hAlign: alignH,
+    );
   }
 
   @override
