@@ -5,11 +5,13 @@ import 'package:flutter/services.dart';
 
 import '../../services/document_tab.dart';
 import '../../services/workspace.dart';
+import '../commands/edit/helpers.dart';
 import '../commands/keybindings.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
 import 'dynamic_input_hud.dart';
 import 'shell_widgets.dart';
+import 'text_edit_overlay.dart';
 
 /// The drawing area for one tab.
 ///
@@ -41,6 +43,8 @@ class _DocumentViewState extends State<DocumentView> {
       GlobalKey<DynamicInputHudState>();
   final FocusNode _dynDistanceFocus = FocusNode(debugLabel: 'dyn-distance');
   final FocusNode _dynAngleFocus = FocusNode(debugLabel: 'dyn-angle');
+  int? _editingTextId;
+  Vec2? _editingAnchor;
 
   @override
   void initState() {
@@ -54,6 +58,8 @@ class _DocumentViewState extends State<DocumentView> {
     if (oldWidget.tab != widget.tab) {
       oldWidget.tab.onGeometryInvalidated = null;
       oldWidget.tab.tools.onHudTypeIn = null;
+      _editingTextId = null;
+      _editingAnchor = null;
       _bind(widget.tab);
     }
   }
@@ -89,15 +95,63 @@ class _DocumentViewState extends State<DocumentView> {
   }
 
   /// Paper viewport interiors run VPMAX; a maximized model view runs VPMIN;
-  /// everything else is zoom extents.
+  /// everything else is zoom extents. A double-click on text opens a card
+  /// aligned with the click instead.
   void _onDoubleClick(Offset local) {
     final tab = widget.tab;
+    final world = tab.viewport.viewport.toWorld(local);
+    final hit = Picker(
+      cache: tab.tessellation,
+    ).pickTopmost(tab.document, tab.viewport.viewport, world);
+    final target = canvasTextEditTarget(
+      document: tab.document,
+      entityId: hit?.entityId,
+      commandRunning: widget.workspace.runningCommand != null,
+    );
+    if (target != null) {
+      tab.selection.replace([target.id]);
+      setState(() {
+        _editingTextId = target.id;
+        _editingAnchor = world;
+      });
+      return;
+    }
     final action = canvasDoubleClick(
       layout: tab.document.activeLayout,
-      point: tab.viewport.viewport.toWorld(local),
+      point: world,
       isMaximized: tab.session.maximizedLayoutName != null,
     );
     widget.workspace.run(action.id, args: action.args);
+  }
+
+  void _cancelTextEdit() {
+    if (_editingTextId == null) return;
+    setState(() {
+      _editingTextId = null;
+      _editingAnchor = null;
+    });
+  }
+
+  void _commitTextEdit(TextEditCommit commit) {
+    final id = _editingTextId;
+    if (id == null) return;
+    final entity = widget.tab.document.entity(id);
+    setState(() {
+      _editingTextId = null;
+      _editingAnchor = null;
+    });
+    if (entity == null) return;
+    final textChanged = commit.field != textEditFieldValue(entity);
+    final color = commit.color;
+    final args = <String, Object?>{
+      'ids': [id],
+      if (textChanged) 'text': textEditCommitValue(entity, commit.field),
+      if (commit.height != null) 'height': commit.height,
+      if (color != null) 'color': cadColorToJson(color),
+      if (commit.justify != null) 'justify': commit.justify,
+    };
+    if (args.length == 1) return;
+    widget.workspace.run('edit.textObject', args: args);
   }
 
   /// A click, not a drag. Deferred a frame so the pointer-up does not
@@ -292,6 +346,10 @@ class _DocumentViewState extends State<DocumentView> {
     final tab = widget.tab;
     final overlay = tab.tools.buildOverlay();
     final pending = widget.workspace.pendingHighlightIds;
+    final editingId = _editingTextId;
+    final editingEntity = editingId == null
+        ? null
+        : tab.document.entity(editingId);
     final effectiveOverlay = pending.isEmpty
         ? overlay
         : overlay.copyWith(
@@ -310,6 +368,10 @@ class _DocumentViewState extends State<DocumentView> {
       onKeyEvent: (node, event) {
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
         if (event.logicalKey == LogicalKeyboardKey.escape) {
+          if (_editingTextId != null) {
+            _cancelTextEdit();
+            return KeyEventResult.handled;
+          }
           widget.workspace.cancelActive();
           return KeyEventResult.handled;
         }
@@ -327,6 +389,7 @@ class _DocumentViewState extends State<DocumentView> {
       },
       child: Listener(
         onPointerDown: (_) {
+          if (_editingTextId != null) return;
           if (tab.tools.showDynamicInput) return;
           widget.commandLineFocus.requestFocus();
         },
@@ -418,6 +481,14 @@ class _DocumentViewState extends State<DocumentView> {
                                 prompt: prompt.isNotEmpty ? prompt : toolPrompt,
                                 distanceFocus: _dynDistanceFocus,
                                 angleFocus: _dynAngleFocus,
+                              ),
+                            if (editingEntity != null)
+                              TextEditOverlay(
+                                entity: editingEntity,
+                                viewport: tab.viewport.viewport,
+                                anchor: _editingAnchor,
+                                onCommit: _commitTextEdit,
+                                onCancel: _cancelTextEdit,
                               ),
                           ],
                         );

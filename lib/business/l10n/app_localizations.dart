@@ -2732,6 +2732,12 @@ abstract class AppLocalizations {
   /// **'Edit Text'**
   String get command_edit_text_content;
 
+  /// command edit text object
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Text Object'**
+  String get command_edit_text_object;
+
   /// command edit justify text
   ///
   /// In en, this message translates to:

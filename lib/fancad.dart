@@ -28,6 +28,7 @@ export 'business/theme/theme.dart';
 export 'business/theme/tokens.dart';
 export 'business/widgets/shell_badge.dart';
 export 'business/widgets/shell_banner.dart';
+export 'business/widgets/shell_canvas_window.dart';
 export 'business/widgets/shell_chip.dart';
 export 'business/widgets/shell_empty.dart';
 export 'business/widgets/shell_field.dart';

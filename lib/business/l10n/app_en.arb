@@ -1996,6 +1996,10 @@
   "@command_edit_text_content": {
     "description": "command edit text content"
   },
+  "command_edit_text_object": "Edit Text Object",
+  "@command_edit_text_object": {
+    "description": "command edit text object"
+  },
   "command_edit_justify_text": "Justify Text",
   "@command_edit_justify_text": {
     "description": "command edit justify text"

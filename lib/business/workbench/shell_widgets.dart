@@ -10,6 +10,7 @@ import '../widgets/shell_row.dart';
 
 export '../widgets/shell_badge.dart';
 export '../widgets/shell_banner.dart';
+export '../widgets/shell_canvas_window.dart';
 export '../widgets/shell_chip.dart';
 export '../widgets/shell_empty.dart';
 export '../widgets/shell_field.dart';

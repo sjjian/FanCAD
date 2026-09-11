@@ -38,6 +38,7 @@ import 'rotate.dart';
 import 'scale.dart';
 import 'stretch.dart';
 import 'text_content.dart';
+import 'text_object.dart';
 import 'to_polyline.dart';
 import 'trim.dart';
 import 'undo.dart';
@@ -93,6 +94,7 @@ class EditCommands {
     EditDimensionTextCommand().toDescriptor(),
     EditDimTeditCommand().toDescriptor(),
     EditTextContentCommand().toDescriptor(),
+    EditTextObjectCommand().toDescriptor(),
     EditAtteditCommand().toDescriptor(),
     EditJustifyTextCommand().toDescriptor(),
     EditMatchPropCommand().toDescriptor(),

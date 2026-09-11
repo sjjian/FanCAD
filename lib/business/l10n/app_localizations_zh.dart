@@ -1418,6 +1418,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_edit_text_content => '编辑文字';
 
   @override
+  String get command_edit_text_object => '编辑文字对象';
+
+  @override
   String get command_edit_justify_text => '文字对正';
 
   @override
