@@ -214,6 +214,28 @@ void main() {
       expect(document.queryVisible(far), [insert.id]);
     });
 
+    test('queryVisible still finds earlier entities after a new layer is added', () {
+      final document = CadDocument();
+      final first = document.addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+      expect(document.queryVisible(const Bounds2(-1, -1, 5, 1)), [first.id]);
+
+      document.putLayer(const LayerDef(name: 'ROOF'));
+      final second = document.addEntity(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(layer: 'ROOF'),
+          start: Vec2(10, 0),
+          end: Vec2(14, 0),
+        ),
+      );
+      expect(
+        document.queryVisible(const Bounds2(-1, -1, 15, 1)),
+        unorderedEquals([first.id, second.id]),
+      );
+    });
+
     test('extents ignore frozen layers and hidden entities', () {
       final document = CadDocument()
         ..putLayer(const LayerDef(name: 'FAR', frozen: true))

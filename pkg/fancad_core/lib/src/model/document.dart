@@ -313,7 +313,7 @@ class CadDocument implements BlockLookup, StyleResolver {
         entityIds: [...block.entityIds, stored.id],
       );
     }
-    _indexOf(target).insert(stored.id, indexBoundsOf(stored));
+    _indexInsert(target, stored.id, indexBoundsOf(stored));
     _blockBounds.remove(target);
     _version++;
     return stored;
@@ -344,7 +344,7 @@ class CadDocument implements BlockLookup, StyleResolver {
       ids.insert(at, entity.id);
       _blocks[blockName] = block.copyWith(entityIds: ids);
     }
-    _indexOf(blockName).insert(entity.id, indexBoundsOf(entity));
+    _indexInsert(blockName, entity.id, indexBoundsOf(entity));
     _blockBounds.remove(blockName);
     _version++;
     return entity;
@@ -384,7 +384,7 @@ class CadDocument implements BlockLookup, StyleResolver {
     _entities[entity.id] = entity;
     final owner = _ownerOf[entity.id];
     if (owner != null) {
-      _indexOf(owner).update(entity.id, indexBoundsOf(entity));
+      _indexUpdate(owner, entity.id, indexBoundsOf(entity));
       _blockBounds.remove(owner);
     }
     _version++;
@@ -598,8 +598,16 @@ class CadDocument implements BlockLookup, StyleResolver {
   // Queries
   // -------------------------------------------------------------------------
 
-  SpatialIndex _indexOf(String blockName) =>
-      _indexes.putIfAbsent(blockName, SpatialIndex.new);
+  /// Mutates a live spatial cache. [putLayer] drops the indexes so freeze
+  /// bounds can refresh; the next [indexFor] rebuilds from entity ids. A
+  /// fresh empty tree here would hide every object that was already drawn.
+  void _indexInsert(String blockName, int id, Bounds2 bounds) {
+    _indexes[blockName]?.insert(id, bounds);
+  }
+
+  void _indexUpdate(String blockName, int id, Bounds2 bounds) {
+    _indexes[blockName]?.update(id, bounds);
+  }
 
   /// The spatial index of a block, building it on first use.
   SpatialIndex indexFor(String blockName) {
