@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -16,9 +18,9 @@ class EditTextObjectCommand extends FanCadCommand {
   String get category => _category;
   @override
   String get description =>
-      'Updates content, height, colour and justification of selected text, '
-      'mtext, attributes or leaders in one undo. Dimension text height is '
-      'a dimstyle property and is ignored.';
+      'Updates content, height, colour, justification or rotation of selected '
+      'text, mtext, attributes or leaders in one undo. Dimension text height '
+      'is a dimstyle property and is ignored.';
   @override
   List<ParamSpec> get params => const [
     ParamSpec.selection('ids'),
@@ -46,6 +48,12 @@ class EditTextObjectCommand extends FanCadCommand {
       description: 'Left, Center, Right, TL, TC, TR, ML, MC, MR, BL, BC, BR',
       required: false,
     ),
+    ParamSpec(
+      name: 'rotation',
+      type: ParamType.angle,
+      description: 'Rotation in degrees, counter-clockwise, about the insertion',
+      required: false,
+    ),
   ];
 
   @override
@@ -70,9 +78,10 @@ class EditTextObjectCommand extends FanCadCommand {
     final hasHeight = context.args.has('height');
     final hasColor = context.args.has('color');
     final hasJustify = context.args.has('justify');
-    if (!hasText && !hasHeight && !hasColor && !hasJustify) {
+    final hasRotation = context.args.has('rotation');
+    if (!hasText && !hasHeight && !hasColor && !hasJustify && !hasRotation) {
       return const CommandResult.failed(
-        'Specify text, height, colour or justification.',
+        'Specify text, height, colour, justification or rotation.',
       );
     }
 
@@ -87,6 +96,10 @@ class EditTextObjectCommand extends FanCadCommand {
     final justify = hasJustify
         ? (context.args.text('justify') ?? '').trim()
         : null;
+    final rotationDegrees = hasRotation ? context.args.number('rotation') : null;
+    if (hasRotation && rotationDegrees == null) {
+      return const CommandResult.failed('Rotation must be a number of degrees.');
+    }
     if (hasJustify &&
         (justify == null ||
             Construct.parseTextJustify(
@@ -120,6 +133,10 @@ class EditTextObjectCommand extends FanCadCommand {
         }
         if (justify != null && justify.isNotEmpty) {
           next = entityWithJustify(next, justify) ?? next;
+        }
+        if (rotationDegrees != null) {
+          next =
+              entityWithRotation(next, rotationDegrees * math.pi / 180) ?? next;
         }
         if (color != null && next.props.color != color) {
           next = next.withProps(next.props.copyWith(color: color));

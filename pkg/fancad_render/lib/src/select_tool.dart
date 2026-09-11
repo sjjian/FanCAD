@@ -317,13 +317,7 @@ class SelectionTool extends CadTool {
           ),
           sink,
         );
-        return [
-          for (var i = 0; i < sink.polylines.length; i++)
-            OverlayPolyline(
-              _toPoints(sink.polylines[i]),
-              closed: sink.closedFlags[i],
-            ),
-        ];
+        return overlayOutlinesOf(sink);
       }
     }
 
@@ -381,8 +375,4 @@ class SelectionTool extends CadTool {
 
   @override
   int get hotGripIndex => _hotGrip;
-
-  static List<Vec2> _toPoints(List<double> xy) => [
-    for (var i = 0; i + 1 < xy.length; i += 2) Vec2(xy[i], xy[i + 1]),
-  ];
 }

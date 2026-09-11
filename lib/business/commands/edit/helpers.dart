@@ -204,6 +204,50 @@ CadEntity? entityWithHeight(CadEntity entity, double height) {
   };
 }
 
+/// Note rotation in radians. Dimensions have none (the whole dim rotates).
+double? textRotationOf(CadEntity entity) => switch (entity) {
+  TextEntity(:final rotation) => rotation,
+  MTextEntity(:final rotation) => rotation,
+  AttribEntity(:final rotation) => rotation,
+  AttdefEntity(:final rotation) => rotation,
+  MLeaderEntity(:final textRotation) => textRotation,
+  _ => null,
+};
+
+/// Sets the note angle around the insertion point. Leader vertices stay put.
+CadEntity? entityWithRotation(CadEntity entity, double radians) {
+  final current = textRotationOf(entity);
+  if (current == null || (current - radians).abs() < 1e-12) return null;
+  return switch (entity) {
+    TextEntity() => entity.transformed(
+      Mat3.rotationAbout(radians - current, entity.position),
+    ),
+    MTextEntity() => entity.transformed(
+      Mat3.rotationAbout(radians - current, entity.position),
+    ),
+    AttribEntity() => entity.transformed(
+      Mat3.rotationAbout(radians - current, entity.position),
+    ),
+    AttdefEntity() => entity.transformed(
+      Mat3.rotationAbout(radians - current, entity.position),
+    ),
+    MLeaderEntity() => MLeaderEntity(
+      id: entity.id,
+      props: entity.props,
+      vertices: entity.vertices,
+      pathLengths: entity.pathLengths,
+      hasArrowHead: entity.hasArrowHead,
+      content: entity.content,
+      textPosition: entity.textPosition,
+      textHeight: entity.textHeight,
+      textRotation: radians,
+      styleName: entity.styleName,
+      attachment: entity.attachment,
+    ),
+    _ => null,
+  };
+}
+
 ({TextHAlign h, TextVAlign v})? textAlignOf(CadEntity entity) =>
     switch (entity) {
       TextEntity(:final hAlign, :final vAlign) => (h: hAlign, v: vAlign),
@@ -440,11 +484,5 @@ List<OverlayShape> editOutline(
 }) {
   final sink = PolylineSink();
   entity.emit(document.emitContext(tolerance: tolerance), sink);
-  return [
-    for (var i = 0; i < sink.polylines.length; i++)
-      OverlayPolyline([
-        for (var j = 0; j + 1 < sink.polylines[i].length; j += 2)
-          Vec2(sink.polylines[i][j], sink.polylines[i][j + 1]),
-      ], closed: sink.closedFlags[i]),
-  ];
+  return overlayOutlinesOf(sink);
 }

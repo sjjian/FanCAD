@@ -159,19 +159,22 @@ final class TextEntity extends CadEntity {
   List<Vec2> grips() => [position];
 
   @override
-  TextEntity withGrip(int index, Vec2 target) => TextEntity(
-    id: id,
-    props: props,
-    position: target,
-    content: content,
-    height: height,
-    rotation: rotation,
-    styleName: styleName,
-    widthFactor: widthFactor,
-    obliqueAngle: obliqueAngle,
-    hAlign: hAlign,
-    vAlign: vAlign,
-  );
+  TextEntity withGrip(int index, Vec2 target) {
+    if (index != 0) return this;
+    return TextEntity(
+      id: id,
+      props: props,
+      position: target,
+      content: content,
+      height: height,
+      rotation: rotation,
+      styleName: styleName,
+      widthFactor: widthFactor,
+      obliqueAngle: obliqueAngle,
+      hAlign: hAlign,
+      vAlign: vAlign,
+    );
+  }
 
   @override
   CadEntity? stretchBy(Bounds2 window, Vec2 delta) {

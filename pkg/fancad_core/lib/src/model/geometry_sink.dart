@@ -162,6 +162,16 @@ class TextGeometry {
   /// the spatial index are seeded with this estimate and refined lazily by the
   /// renderer once the glyphs are actually measured.
   Bounds2 estimatedBounds() {
+    var box = const Bounds2.empty();
+    for (final corner in estimatedCorners()) {
+      box = box.expandToInclude(corner.x, corner.y);
+    }
+    return box;
+  }
+
+  /// The four corners of [estimatedBounds], still in drawing coordinates, so a
+  /// rotated note ghosts as a parallelogram rather than an axis-aligned box.
+  List<Vec2> estimatedCorners() {
     final lines = isMultiline ? text.split('\n') : [text];
     var longest = 0;
     for (final line in lines) {
@@ -184,18 +194,12 @@ class TextGeometry {
       TextVAlign.top => -totalHeight,
     };
 
-    final corners = [
-      Vec2(dx, dy),
-      Vec2(dx + width, dy),
-      Vec2(dx + width, dy + totalHeight),
-      Vec2(dx, dy + totalHeight),
+    return [
+      Vec2(dx, dy).rotated(rotation) + origin,
+      Vec2(dx + width, dy).rotated(rotation) + origin,
+      Vec2(dx + width, dy + totalHeight).rotated(rotation) + origin,
+      Vec2(dx, dy + totalHeight).rotated(rotation) + origin,
     ];
-    var box = const Bounds2.empty();
-    for (final corner in corners) {
-      final rotated = corner.rotated(rotation) + origin;
-      box = box.expandToInclude(rotated.x, rotated.y);
-    }
-    return box;
   }
 }
 

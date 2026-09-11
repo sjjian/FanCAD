@@ -4,6 +4,7 @@ import 'package:meta/meta.dart';
 
 import '../geometry/matrix.dart';
 import '../geometry/vector.dart';
+import 'geometry_sink.dart';
 
 /// A shape drawn as feedback while a command is running.
 ///
@@ -245,3 +246,17 @@ class SnapMarker {
 /// preview is a pure function of "what has been collected so far" plus "where
 /// the cursor is now" rather than mutable state the command has to keep in sync.
 typedef PreviewBuilder = List<OverlayShape> Function(Vec2 cursor);
+
+/// Overlay polylines from a flattened emit, including TEXT / MTEXT boxes.
+///
+/// TTF notes go through [PolylineSink.texts] rather than stroked segments, so
+/// MOVE / ROTATE / grip ghosts would otherwise vanish.
+List<OverlayShape> overlayOutlinesOf(PolylineSink sink) => [
+  for (var i = 0; i < sink.polylines.length; i++)
+    OverlayPolyline([
+      for (var j = 0; j + 1 < sink.polylines[i].length; j += 2)
+        Vec2(sink.polylines[i][j], sink.polylines[i][j + 1]),
+    ], closed: sink.closedFlags[i]),
+  for (final text in sink.texts)
+    OverlayPolyline(text.estimatedCorners(), closed: true),
+];

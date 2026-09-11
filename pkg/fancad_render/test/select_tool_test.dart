@@ -101,6 +101,30 @@ void main() {
     expect(line.end, const Vec2(10, 0));
   });
 
+  test('stretching a TEXT grip ghosts the note box', () {
+    final document = CadDocument();
+    final id = document
+        .addEntity(
+          const TextEntity(
+            id: 0,
+            position: Vec2.zero(),
+            content: 'A',
+            height: 10,
+          ),
+        )
+        .id;
+    final session = DocumentSession(id: 't', document: document);
+    session.selection.replace([id]);
+    final controller = controllerFor(session);
+    final tool = controller.activeTool as SelectionTool;
+
+    controller.onPointerDown(const Vec2(0, 0), down(Offset.zero));
+    expect(tool.isEditingGrip, isTrue);
+    controller.onPointerMove(const Vec2(4, 0), move(const Offset(4, 0)));
+    final ghost = tool.buildPreview(controller).whereType<OverlayPolyline>();
+    expect(ghost.where((shape) => shape.closed), isNotEmpty);
+  });
+
   test('escape during a window drag drops the box', () {
     final env = sessionWithLine();
     final controller = controllerFor(env.session);

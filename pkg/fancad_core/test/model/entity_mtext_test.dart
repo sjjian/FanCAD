@@ -65,4 +65,51 @@ void main() {
     );
     expect(sink.texts.single.text, 'Hi');
   });
+
+  test('a left-aligned width grip changes the column, not the insertion', () {
+    const note = MTextEntity(
+      id: 1,
+      position: Vec2.zero(),
+      content: 'ABCD',
+      height: 10,
+      attachment: 1,
+    );
+    expect(note.grips(), hasLength(2));
+    expect(note.grips().first, Vec2.zero());
+    final dragged = note.withGrip(1, const Vec2(40, 0));
+    expect(dragged.position, Vec2.zero());
+    expect(dragged.rectangleWidth, closeTo(40, 1e-9));
+    expect(dragged.rotation, 0);
+    expect(note.withGrip(2, const Vec2(40, 0)), same(note));
+  });
+
+  test('a centered width grip grows about the attachment', () {
+    const note = MTextEntity(
+      id: 1,
+      position: Vec2.zero(),
+      content: 'ABCD',
+      height: 10,
+      rectangleWidth: 20,
+      attachment: 2,
+    );
+    expect(note.grips(), hasLength(3));
+    final dragged = note.withGrip(2, const Vec2(15, 0));
+    expect(dragged.position, Vec2.zero());
+    expect(dragged.rectangleWidth, closeTo(30, 1e-9));
+  });
+
+  test('a right-aligned width grip keeps the attachment', () {
+    const note = MTextEntity(
+      id: 1,
+      position: Vec2.zero(),
+      content: 'ABCD',
+      height: 10,
+      rectangleWidth: 20,
+      attachment: 3,
+    );
+    expect(note.grips().first, Vec2.zero());
+    final dragged = note.withGrip(1, const Vec2(-40, 0));
+    expect(dragged.position, Vec2.zero());
+    expect(dragged.rectangleWidth, closeTo(40, 1e-9));
+  });
 }

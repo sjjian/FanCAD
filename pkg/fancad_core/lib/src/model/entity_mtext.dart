@@ -132,21 +132,76 @@ final class MTextEntity extends CadEntity {
     attachment: attachment,
   );
 
-  @override
-  List<Vec2> grips() => [position];
+  /// Column width used by grips. A zero [rectangleWidth] is unbounded MTEXT;
+  /// the estimate matches [TextGeometry.estimatedBounds] so the first drag
+  /// writes a real width instead of collapsing the box.
+  double get _columnWidth {
+    if (rectangleWidth > 0) return rectangleWidth;
+    final lines = plainText.split('\n');
+    var longest = 0;
+    for (final line in lines) {
+      if (line.length > longest) longest = line.length;
+    }
+    return longest * height * 0.62;
+  }
+
+  Vec2 get _textAxis => Vec2.polar(rotation, 1);
 
   @override
-  MTextEntity withGrip(int index, Vec2 target) => MTextEntity(
-    id: id,
-    props: props,
-    position: target,
-    content: content,
-    height: height,
-    rotation: rotation,
-    styleName: styleName,
-    rectangleWidth: rectangleWidth,
-    attachment: attachment,
-  );
+  List<Vec2> grips() {
+    final width = _columnWidth;
+    final axis = _textAxis;
+    return switch (hAlign) {
+      TextHAlign.center || TextHAlign.middle => [
+        position,
+        position - axis * (width / 2),
+        position + axis * (width / 2),
+      ],
+      TextHAlign.right => [position, position - axis * width],
+      _ => [position, position + axis * width],
+    };
+  }
+
+  @override
+  MTextEntity withGrip(int index, Vec2 target) {
+    if (index == 0) {
+      return MTextEntity(
+        id: id,
+        props: props,
+        position: target,
+        content: content,
+        height: height,
+        rotation: rotation,
+        styleName: styleName,
+        rectangleWidth: rectangleWidth,
+        attachment: attachment,
+      );
+    }
+    if (index != 1 && index != 2) return this;
+    if (index == 2 &&
+        hAlign != TextHAlign.center &&
+        hAlign != TextHAlign.middle) {
+      return this;
+    }
+    final localX = (target - position).dot(_textAxis);
+    final width = switch (hAlign) {
+      TextHAlign.center || TextHAlign.middle => 2 * localX.abs(),
+      TextHAlign.right => -localX,
+      _ => localX,
+    };
+    final next = width < 1e-9 ? 1e-9 : width;
+    return MTextEntity(
+      id: id,
+      props: props,
+      position: position,
+      content: content,
+      height: height,
+      rotation: rotation,
+      styleName: styleName,
+      rectangleWidth: next,
+      attachment: attachment,
+    );
+  }
 
   @override
   CadEntity? stretchBy(Bounds2 window, Vec2 delta) {

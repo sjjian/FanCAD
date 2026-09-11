@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:fancad/business/commands/edit/helpers.dart';
@@ -130,6 +131,47 @@ void main() {
       entityWithHeight(const DimensionEntity(id: 2), 5),
       isNull,
     );
+  });
+
+  test('rotation turns the note about the insertion', () {
+    const entity = TextEntity(
+      id: 1,
+      position: Vec2(4, 2),
+      content: 'A',
+      rotation: 0,
+    );
+    final updated = entityWithRotation(entity, math.pi / 2) as TextEntity;
+    expect(updated.position, entity.position);
+    expect(updated.rotation, closeTo(math.pi / 2, 1e-12));
+    expect(entityWithRotation(entity, 0), isNull);
+    expect(
+      entityWithRotation(const DimensionEntity(id: 2), math.pi / 2),
+      isNull,
+    );
+    final leader = MLeaderEntity(
+      id: 3,
+      vertices: Float64List.fromList([0, 0, 10, 0]),
+      content: 'N',
+      textPosition: const Vec2(10, 0),
+    );
+    final turned = entityWithRotation(leader, math.pi / 2) as MLeaderEntity;
+    expect(turned.textPosition, const Vec2(10, 0));
+    expect(turned.textRotation, closeTo(math.pi / 2, 1e-12));
+    expect(turned.vertices, leader.vertices);
+  });
+
+  test('editOutline ghosts a TEXT box when there are no strokes', () {
+    final document = CadDocument();
+    const entity = TextEntity(
+      id: 1,
+      position: Vec2.zero(),
+      content: 'A',
+      height: 10,
+    );
+    final ghost = editOutline(document, entity);
+    final boxes = ghost.whereType<OverlayPolyline>().where((shape) => shape.closed);
+    expect(boxes, isNotEmpty);
+    expect(boxes.first.points, hasLength(4));
   });
 
   test('justify key maps baseline text onto the bottom row', () {

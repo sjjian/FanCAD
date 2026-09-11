@@ -241,4 +241,31 @@ void main() {
     expect(points, contains(const Vec2(3, 1)));
     expect(points, contains(const Vec2(11, 1)));
   });
+
+  test('a clip of TEXT ghosts a closed box, not a crossing rectangle', () {
+    final source = CadDocument();
+    final drawn = Transaction(source, label: 'draw')
+      ..add(
+        const TextEntity(
+          id: 0,
+          position: Vec2.zero(),
+          content: 'A',
+          height: 10,
+        ),
+      )
+      ..commit();
+    final clip = DrawingClip.extract(
+      source,
+      drawn.change.added,
+      basePoint: Vec2.zero(),
+    )!;
+
+    final ghost = pastePreviewShapes(clip);
+    expect(ghost.whereType<OverlayRect>(), isEmpty);
+    final boxes = ghost
+        .whereType<OverlayPolyline>()
+        .where((shape) => shape.closed);
+    expect(boxes, isNotEmpty);
+    expect(boxes.first.points, hasLength(4));
+  });
 }

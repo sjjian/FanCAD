@@ -420,7 +420,7 @@ void main() {
       );
       expect(sink.texts.last.origin.y, lessThan(sink.texts.first.origin.y));
 
-      expect(text.grips(), const [Vec2(2, 3)]);
+      expect(text.grips().first, const Vec2(2, 3));
       expect(text.withGrip(0, const Vec2(8, 1)).position, const Vec2(8, 1));
       final scaled = text.transformed(const Mat3.scaling(2, 2));
       expect(scaled.height, 5);

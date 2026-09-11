@@ -36,7 +36,8 @@ void main() {
   });
 
   group('edit.textObject', () {
-    test('refuses a call with no content, height, colour or justify', () async {
+    test('refuses a call with no content, height, colour, justify or rotation',
+        () async {
       final id = await addText();
 
       final result = await run('edit.textObject', {
@@ -463,6 +464,25 @@ void main() {
       expect(text.position, const Vec2(1, 2));
       expect(text.rotation, closeTo(math.pi / 2, 1e-9));
       expect(text.styleName, 'Standard');
+    });
+
+    test('rotation turns TEXT about the insertion', () async {
+      final created = await run('draw.text', {
+        'content': 'A',
+        'at': [1, 2],
+        'height': 2.5,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.textObject', {
+        'ids': [id],
+        'rotation': 90,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final text = document.entity(id)! as TextEntity;
+      expect(text.position, const Vec2(1, 2));
+      expect(text.rotation, closeTo(math.pi / 2, 1e-9));
     });
   });
 }

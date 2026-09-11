@@ -143,11 +143,16 @@ void main() {
   });
 
   test('a text grip stays on the insertion', () {
-    const text = TextEntity(id: 1, position: Vec2.zero(), content: 'A');
-    expect(
-      text.withGrip(0, const Vec2(2, 3)).position,
-      const Vec2(2, 3),
+    const text = TextEntity(
+      id: 1,
+      position: Vec2.zero(),
+      content: 'A',
+      rotation: 0.4,
     );
+    final moved = text.withGrip(0, const Vec2(2, 3));
+    expect(moved.position, const Vec2(2, 3));
+    expect(moved.rotation, 0.4);
+    expect(text.withGrip(1, const Vec2(9, 9)), same(text));
   });
 
   test('text keeps its glyph below the sub-pixel threshold', () {

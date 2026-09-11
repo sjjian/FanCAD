@@ -139,13 +139,7 @@ List<OverlayShape> pastePreviewShapes(
 List<OverlayShape> _outline(EmitContext emit, CadEntity entity) {
   final sink = PolylineSink();
   entity.emit(emit, sink);
-  return [
-    for (var i = 0; i < sink.polylines.length; i++)
-      OverlayPolyline([
-        for (var j = 0; j + 1 < sink.polylines[i].length; j += 2)
-          Vec2(sink.polylines[i][j], sink.polylines[i][j + 1]),
-      ], closed: sink.closedFlags[i]),
-  ];
+  return overlayOutlinesOf(sink);
 }
 
 /// Block table carried on the clip, so a paste into an empty drawing can

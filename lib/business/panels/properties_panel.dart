@@ -286,6 +286,11 @@ class PropertiesPanel extends StatelessWidget {
           _read(context, l10n.contents, textEditFieldValue(entity)),
           _read(context, l10n.position, _point(position)),
           _read(context, l10n.column_width, _number(entity.rectangleWidth)),
+          _read(
+            context,
+            l10n.rotation,
+            '${_number(entity.rotation * 180 / math.pi)}°',
+          ),
         ];
       case InsertEntity(:final blockName, :final position):
         return [

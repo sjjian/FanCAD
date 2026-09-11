@@ -59,6 +59,10 @@ void main() {
       final box = rotated.estimatedBounds();
       expect(box.minX, closeTo(-12, 1e-9));
       expect(box.maxY, closeTo(6.2, 1e-9));
+      final corners = rotated.estimatedCorners();
+      expect(corners, hasLength(4));
+      expect(corners[1].x, closeTo(0, 1e-9));
+      expect(corners[1].y, closeTo(6.2, 1e-9));
     });
 
     test('empty text cannot invent a width', () {

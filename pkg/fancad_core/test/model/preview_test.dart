@@ -91,6 +91,20 @@ void main() {
     expect(moved.points, const [Vec2(4, 4), Vec2(5, 4)]);
   });
 
+  test('overlay outlines include a closed box for TEXT', () {
+    final sink = PolylineSink();
+    const TextEntity(
+      id: 1,
+      position: Vec2.zero(),
+      content: 'A',
+      height: 10,
+    ).emit(const EmitContext(tolerance: 0.1), sink);
+    final shapes = overlayOutlinesOf(sink);
+    final boxes = shapes.whereType<OverlayPolyline>().where((shape) => shape.closed);
+    expect(boxes, isNotEmpty);
+    expect(boxes.first.points, hasLength(4));
+  });
+
   test(
     'snap marker labels stay distinct so a glyph cannot steal another name',
     () {
