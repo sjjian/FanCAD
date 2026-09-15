@@ -299,6 +299,80 @@ void main() {
       expect(document.namedDimStyle('ARCH'), isNull);
     });
 
+    test('textstyle drives new TEXT and is undoable', () async {
+      final created = await run('annot.textstyle', {
+        'name': 'Notes',
+        'font': 'Arial',
+        'widthFactor': 0.8,
+        'oblique': 15,
+      });
+      expect(created.status, CommandStatus.ok, reason: created.message);
+      expect(document.currentTextStyle, 'Notes');
+      expect(document.namedTextStyle('Notes')!.fontFamily, 'Arial');
+      expect(
+        document.namedTextStyle('Notes')!.obliqueAngle,
+        closeTo(15 * math.pi / 180, 1e-12),
+      );
+
+      final drawn = await run('draw.text', {
+        'content': 'A',
+        'at': [0, 0],
+        'height': 2.5,
+      });
+      expect(drawn.status, CommandStatus.ok, reason: drawn.message);
+      final text =
+          document.entity((drawn.data!['ids']! as List).first as int)!
+              as TextEntity;
+      expect(text.styleName, 'Notes');
+
+      expect(workspace.active!.session.undo(), isTrue);
+      expect(workspace.active!.session.undo(), isTrue);
+      expect(document.namedTextStyle('Notes'), isNull);
+      expect(document.currentTextStyle, 'Standard');
+    });
+
+    test('textstyle lists the table when no name is given', () async {
+      final result = await run('annot.textstyle');
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(result.data!['current'], 'Standard');
+      final styles = result.data!['styles']! as List;
+      expect(styles, isNotEmpty);
+    });
+
+    test('TEXT justify at create keeps the picked point', () async {
+      final result = await run('draw.text', {
+        'content': 'ABC',
+        'at': [0, 0],
+        'height': 10,
+        'justify': 'right',
+      });
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final text =
+          document.entity((result.data!['ids']! as List).first as int)!
+              as TextEntity;
+      expect(text.hAlign, TextHAlign.right);
+      expect(text.position, const Vec2(0, 0));
+    });
+
+    test('TEXT refuses Align and a missing style', () async {
+      expect(
+        (await run('draw.text', {
+          'content': 'A',
+          'at': [0, 0],
+          'justify': 'align',
+        })).status,
+        CommandStatus.failed,
+      );
+      expect(
+        (await run('draw.text', {
+          'content': 'A',
+          'at': [0, 0],
+          'style': 'Missing',
+        })).status,
+        CommandStatus.failed,
+      );
+    });
+
     test('continue dimension chains from the previous second origin', () async {
       final created = await run('draw.dimLinear', {
         'first': [0, 0],

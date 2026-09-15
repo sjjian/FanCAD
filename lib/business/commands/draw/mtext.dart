@@ -53,6 +53,7 @@ class DrawMtextCommand extends FanCadCommand {
       required: false,
       defaultValue: 0,
     ),
+    textStyleParam,
     ParamSpec(
       name: 'justify',
       type: ParamType.text,
@@ -77,9 +78,19 @@ class DrawMtextCommand extends FanCadCommand {
         .replaceAll('\r\n', '\n')
         .replaceAll('\r', '\n')
         .replaceAll('\n', r'\P');
+    final styleName = textStyleName(context);
+    final style = context.document.namedTextStyle(styleName);
+    if (style == null) {
+      return CommandResult.failed('There is no text style named "$styleName".');
+    }
     final height =
         context.args.number('height') ??
-        await context.input.number('MTEXT  Specify height:', defaultValue: 2.5);
+        (style.height > 0
+            ? style.height
+            : await context.input.number(
+                'MTEXT  Specify height:',
+                defaultValue: 2.5,
+              ));
     if (height <= 0) {
       return const CommandResult.failed('Text height must be positive.');
     }
@@ -102,7 +113,7 @@ class DrawMtextCommand extends FanCadCommand {
         origin: cursor,
         height: height,
         rotation: rotation,
-        styleName: 'Standard',
+        styleName: style.name,
         rectangleWidth: width,
         isMultiline: true,
       ).estimatedBounds();
@@ -122,6 +133,7 @@ class DrawMtextCommand extends FanCadCommand {
         content: content,
         height: height,
         rotation: rotation,
+        styleName: style.name,
         rectangleWidth: width,
         attachment: attachment,
       ),
