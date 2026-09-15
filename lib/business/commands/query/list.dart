@@ -29,13 +29,16 @@ class QueryListCommand extends FanCadCommand {
     final ids = await context.resolveSelection('ids', 'LIST  Select objects:');
     if (ids.isEmpty) return const CommandResult.cancelled();
     final records = <Map<String, Object?>>[];
+    var written = 0;
     for (final id in ids.take(500)) {
       final entity = context.document.entity(id);
       if (entity == null) continue;
-      records.add(describeEntity(context.document, entity));
-    }
-    for (final record in records.take(20)) {
-      context.input.write(_formatRecord(record));
+      final record = describeEntity(context.document, entity);
+      records.add(record);
+      if (written < 20) {
+        context.input.write(_formatRecord(entity, record));
+        written++;
+      }
     }
     if (records.length > 20) {
       context.input.write('... and ${records.length - 20} more.');
@@ -49,7 +52,7 @@ class QueryListCommand extends FanCadCommand {
   }
 }
 
-String _formatRecord(Map<String, Object?> record) {
+String _formatRecord(CadEntity entity, Map<String, Object?> record) {
   final parts = <String>[];
   for (final entry in record.entries) {
     if (entry.key == 'id' || entry.key == 'kind') continue;
@@ -65,5 +68,5 @@ String _formatRecord(Map<String, Object?> record) {
       parts.add('${entry.key}=$value');
     }
   }
-  return '${record['kind']} #${record['id']}  ${parts.join('  ')}';
+  return '${entity.displayId}  ${parts.join('  ')}';
 }

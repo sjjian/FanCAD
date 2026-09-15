@@ -132,6 +132,7 @@ void main() {
       final entities = result.data!['entities']! as List;
       final record = entities.single as Map;
       expect(record['kind'], 'line');
+      expect(record['id'], id);
       expect(record['length'], closeTo(4, 1e-9));
       expect(record['start'], [0.0, 0.0]);
     });
@@ -197,7 +198,10 @@ void main() {
         workspace.commands.find('query.selection')?.title,
         'Query Selection',
       );
-      expect(workspace.commands.find('query.viewport')?.title, 'Query Viewport');
+      expect(
+        workspace.commands.find('query.viewport')?.title,
+        'Query Viewport',
+      );
       expect(workspace.commands.find('read_skill'), isNull);
       expect(workspace.commands.findByToolName('read_skill'), isNull);
       expect(

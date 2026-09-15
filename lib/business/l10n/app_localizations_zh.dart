@@ -853,6 +853,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get style => '样式';
 
   @override
+  String get justify => '对正';
+
+  @override
+  String get width_factor => '宽度因子';
+
+  @override
+  String get oblique => '倾斜';
+
+  @override
   String get column_width => '列宽';
 
   @override
@@ -1280,6 +1289,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_annot_dimstyle => '标注样式';
 
   @override
+  String get command_annot_textstyle => '文字样式';
+
+  @override
   String get command_edit_erase => '删除';
 
   @override
@@ -1419,6 +1431,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get command_edit_text_object => '编辑文字对象';
+
+  @override
+  String edit_text_object_window(String entity) {
+    return '编辑 $entity';
+  }
 
   @override
   String get command_edit_justify_text => '文字对正';

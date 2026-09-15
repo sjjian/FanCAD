@@ -594,7 +594,7 @@ String decodeMTextPlain(String raw) {
 
 /// Puts [plain] back into [raw], keeping the codes around the first glyphs.
 ///
-/// `\pxqc;外墙` stays `\pxqc;…` after an in-place edit. Codes before the first
+/// `\pxqc;外墙` stays `\pxqc;…` after a content edit. Codes before the first
 /// glyph and braces after the last glyph are kept; `\P` between glyphs is
 /// rebuilt from newlines in [plain].
 String replaceMTextPlain(String raw, String plain) {

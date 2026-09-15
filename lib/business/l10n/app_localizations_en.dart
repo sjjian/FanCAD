@@ -869,6 +869,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get style => 'Style';
 
   @override
+  String get justify => 'Justify';
+
+  @override
+  String get width_factor => 'Width factor';
+
+  @override
+  String get oblique => 'Oblique';
+
+  @override
   String get column_width => 'Column width';
 
   @override
@@ -1302,6 +1311,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get command_annot_dimstyle => 'Dimension Style';
 
   @override
+  String get command_annot_textstyle => 'Text Style';
+
+  @override
   String get command_edit_erase => 'Erase';
 
   @override
@@ -1441,6 +1453,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get command_edit_text_object => 'Edit Text Object';
+
+  @override
+  String edit_text_object_window(String entity) {
+    return 'Edit $entity';
+  }
 
   @override
   String get command_edit_justify_text => 'Justify Text';

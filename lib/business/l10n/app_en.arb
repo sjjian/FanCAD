@@ -1226,6 +1226,18 @@
   "@style": {
     "description": "style"
   },
+  "justify": "Justify",
+  "@justify": {
+    "description": "justify"
+  },
+  "width_factor": "Width factor",
+  "@width_factor": {
+    "description": "width factor"
+  },
+  "oblique": "Oblique",
+  "@oblique": {
+    "description": "oblique"
+  },
   "column_width": "Column width",
   "@column_width": {
     "description": "column width"
@@ -1812,6 +1824,10 @@
   "@command_annot_dimstyle": {
     "description": "command annot dimstyle"
   },
+  "command_annot_textstyle": "Text Style",
+  "@command_annot_textstyle": {
+    "description": "command annot textstyle"
+  },
   "command_edit_erase": "Erase",
   "@command_edit_erase": {
     "description": "command edit erase"
@@ -1999,6 +2015,15 @@
   "command_edit_text_object": "Edit Text Object",
   "@command_edit_text_object": {
     "description": "command edit text object"
+  },
+  "edit_text_object_window": "Edit {entity}",
+  "@edit_text_object_window": {
+    "description": "floating editor title with entity kind and handle",
+    "placeholders": {
+      "entity": {
+        "type": "String"
+      }
+    }
   },
   "command_edit_justify_text": "Justify Text",
   "@command_edit_justify_text": {

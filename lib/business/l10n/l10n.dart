@@ -56,6 +56,7 @@ extension FanCadL10nLookups on AppLocalizations {
       'draw.dimContinue' => command_draw_dim_continue,
       'draw.dimBaseline' => command_draw_dim_baseline,
       'annot.dimstyle' => command_annot_dimstyle,
+      'annot.textstyle' => command_annot_textstyle,
       'edit.erase' => command_edit_erase,
       'edit.overkill' => command_edit_overkill,
       'edit.move' => command_edit_move,

@@ -27,7 +27,7 @@ void main() {
     expect(textEditCommitValue(entity, 'A\nC'), r'A\PC');
   });
 
-  test('an in-place field hides paragraph codes such as \\pxqc', () {
+  test('the edit field hides paragraph codes such as \\pxqc', () {
     const entity = MTextEntity(
       id: 1,
       position: Vec2.zero(),
@@ -58,7 +58,7 @@ void main() {
     expect(updated.overrideText, 'B');
   });
 
-  test('a locked layer is not an in-place target', () {
+  test('a locked layer is not a canvas edit target', () {
     final document = CadDocument()
       ..putLayer(const LayerDef(name: 'LOCK', locked: true));
     final text = document.addEntity(
@@ -127,10 +127,7 @@ void main() {
     expect(updated.position, entity.position);
     expect(entityWithHeight(entity, 2.5), isNull);
     expect(textHeightOf(const DimensionEntity(id: 2)), isNull);
-    expect(
-      entityWithHeight(const DimensionEntity(id: 2), 5),
-      isNull,
-    );
+    expect(entityWithHeight(const DimensionEntity(id: 2), 5), isNull);
   });
 
   test('rotation turns the note about the insertion', () {
@@ -160,6 +157,43 @@ void main() {
     expect(turned.vertices, leader.vertices);
   });
 
+  test('style, column width, width factor and oblique rewrite the object', () {
+    const text = TextEntity(
+      id: 1,
+      position: Vec2(4, 2),
+      content: 'A',
+      styleName: 'Standard',
+    );
+    final styled = entityWithStyle(text, 'Notes') as TextEntity;
+    expect(styled.styleName, 'Notes');
+    expect(styled.position, text.position);
+    expect(entityWithStyle(text, 'Standard'), isNull);
+
+    final tall = entityWithStyle(text, 'Title', fixedHeight: 8) as TextEntity;
+    expect(tall.styleName, 'Title');
+    expect(tall.height, 8);
+
+    const note = MTextEntity(
+      id: 2,
+      position: Vec2(10, 20),
+      content: 'N',
+      rectangleWidth: 40,
+    );
+    final wider = entityWithColumnWidth(note, 80) as MTextEntity;
+    expect(wider.rectangleWidth, 80);
+    expect(wider.position, note.position);
+    expect(entityWithColumnWidth(note, 40), isNull);
+    expect(entityWithColumnWidth(text, 80), isNull);
+
+    final wide = entityWithWidthFactor(text, 1.2) as TextEntity;
+    expect(wide.widthFactor, closeTo(1.2, 1e-12));
+    expect(entityWithWidthFactor(text, 1), isNull);
+
+    final slanted = entityWithOblique(text, math.pi / 12) as TextEntity;
+    expect(slanted.obliqueAngle, closeTo(math.pi / 12, 1e-12));
+    expect(entityWithOblique(text, 0), isNull);
+  });
+
   test('editOutline ghosts a TEXT box when there are no strokes', () {
     final document = CadDocument();
     const entity = TextEntity(
@@ -169,17 +203,15 @@ void main() {
       height: 10,
     );
     final ghost = editOutline(document, entity);
-    final boxes = ghost.whereType<OverlayPolyline>().where((shape) => shape.closed);
+    final boxes = ghost.whereType<OverlayPolyline>().where(
+      (shape) => shape.closed,
+    );
     expect(boxes, isNotEmpty);
     expect(boxes.first.points, hasLength(4));
   });
 
   test('justify key maps baseline text onto the bottom row', () {
-    const entity = TextEntity(
-      id: 1,
-      position: Vec2.zero(),
-      content: 'A',
-    );
+    const entity = TextEntity(id: 1, position: Vec2.zero(), content: 'A');
     expect(textJustifyKeyOf(entity), 'bl');
     final moved = entityWithJustify(entity, 'right') as TextEntity;
     expect(moved.hAlign, TextHAlign.right);
@@ -196,7 +228,12 @@ void main() {
     );
     expect(
       textHeightOf(
-        const MTextEntity(id: 2, position: Vec2.zero(), content: 'A', height: 4),
+        const MTextEntity(
+          id: 2,
+          position: Vec2.zero(),
+          content: 'A',
+          height: 4,
+        ),
       ),
       4,
     );
@@ -236,7 +273,9 @@ void main() {
     );
     expect(textHeightOf(const DimensionEntity(id: 6)), isNull);
     expect(
-      textHeightOf(const LineEntity(id: 7, start: Vec2.zero(), end: Vec2(1, 0))),
+      textHeightOf(
+        const LineEntity(id: 7, start: Vec2.zero(), end: Vec2(1, 0)),
+      ),
       isNull,
     );
   });
@@ -269,7 +308,10 @@ void main() {
       invisible: true,
     );
     expect((entityWithHeight(attrib, 9) as AttribEntity).invisible, isTrue);
-    expect((entityWithHeight(attrib, 9) as AttribEntity).position, attrib.position);
+    expect(
+      (entityWithHeight(attrib, 9) as AttribEntity).position,
+      attrib.position,
+    );
 
     const def = AttdefEntity(
       id: 3,
@@ -431,12 +473,7 @@ void main() {
     );
     expect(
       textEditRequiresContent(
-        const AttribEntity(
-          id: 4,
-          position: Vec2.zero(),
-          tag: 'T',
-          value: 'A',
-        ),
+        const AttribEntity(id: 4, position: Vec2.zero(), tag: 'T', value: 'A'),
       ),
       isFalse,
     );
@@ -474,10 +511,7 @@ void main() {
   test('the same stored string is not rewritten', () {
     const text = TextEntity(id: 1, position: Vec2.zero(), content: 'A');
     expect(entityWithEditedText(text, 'A'), isNull);
-    expect(
-      (entityWithEditedText(text, 'B') as TextEntity).content,
-      'B',
-    );
+    expect((entityWithEditedText(text, 'B') as TextEntity).content, 'B');
 
     const def = AttdefEntity(
       id: 2,
@@ -486,14 +520,8 @@ void main() {
       defaultValue: 'A',
     );
     expect(entityWithEditedText(def, 'A'), isNull);
-    expect(
-      (entityWithEditedText(def, 'B') as AttdefEntity).tag,
-      'NO',
-    );
-    expect(
-      (entityWithEditedText(def, 'B') as AttdefEntity).defaultValue,
-      'B',
-    );
+    expect((entityWithEditedText(def, 'B') as AttdefEntity).tag, 'NO');
+    expect((entityWithEditedText(def, 'B') as AttdefEntity).defaultValue, 'B');
   });
 
   test('a leader note turns field newlines into paragraph marks', () {
@@ -516,9 +544,6 @@ void main() {
     );
     final placed = textEditPlacementOf(text)!;
     expect(placed.origin, const Vec2(4, 2));
-    expect(placed.height, 3);
-    expect(placed.rotation, 0.5);
-    expect(placed.baseline, isTrue);
     expect(placed.multiline, isFalse);
 
     const mtext = MTextEntity(
@@ -531,14 +556,11 @@ void main() {
     final paragraph = textEditPlacementOf(mtext)!;
     expect(paragraph.origin, mtext.position);
     expect(paragraph.multiline, isTrue);
-    expect(paragraph.baseline, isFalse);
-    expect(paragraph.width, 40);
 
     const dim = DimensionEntity(id: 3, textPosition: Vec2(8, 1));
     final dimPlace = textEditPlacementOf(dim)!;
     expect(dimPlace.origin, const Vec2(8, 1));
-    expect(dimPlace.baseline, isFalse);
-    expect(dimPlace.height, 2.5);
+    expect(dimPlace.multiline, isFalse);
 
     const attrib = AttribEntity(
       id: 4,
@@ -549,12 +571,7 @@ void main() {
     );
     expect(textEditPlacementOf(attrib)!.origin, attrib.position);
 
-    const def = AttdefEntity(
-      id: 5,
-      position: Vec2(6, 7),
-      tag: 'NO',
-      height: 6,
-    );
+    const def = AttdefEntity(id: 5, position: Vec2(6, 7), tag: 'NO', height: 6);
     expect(textEditPlacementOf(def)!.origin, def.position);
 
     final leader = MLeaderEntity(
@@ -566,10 +583,7 @@ void main() {
     );
     final note = textEditPlacementOf(leader)!;
     expect(note.origin, const Vec2(4, 1));
-    expect(note.height, 7);
-    expect(note.rotation, 0.25);
     expect(note.multiline, isTrue);
-    expect(note.baseline, isFalse);
 
     expect(
       textEditPlacementOf(
@@ -624,7 +638,7 @@ void main() {
     expect(entityWithJustify(text, 'left'), isNull);
   });
 
-  test('a missing or non-text pick is not an in-place target', () {
+  test('a missing or non-text pick is not a canvas edit target', () {
     final document = CadDocument()
       ..addEntity(const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(1, 0)));
     expect(
@@ -651,5 +665,61 @@ void main() {
       ),
       isNull,
     );
+  });
+
+  test('a live preview updates height and colour from the original', () {
+    const entity = TextEntity(
+      id: 1,
+      position: Vec2.zero(),
+      content: 'A',
+      height: 2.5,
+    );
+    final taller =
+        textEditPreviewOf(entity, const TextEditCommit(field: 'A', height: 10))
+            as TextEntity;
+    expect(taller.height, 10);
+    expect(taller.content, 'A');
+
+    final coloured =
+        textEditPreviewOf(
+              entity,
+              const TextEditCommit(field: 'A', color: CadColor.indexed(1)),
+            )
+            as TextEntity;
+    expect(coloured.props.color, const CadColor.indexed(1));
+    expect(coloured.height, 2.5);
+  });
+
+  test('an unchanged live preview leaves the original entity', () {
+    const entity = TextEntity(
+      id: 1,
+      position: Vec2.zero(),
+      content: 'A',
+      height: 2.5,
+    );
+    expect(
+      textEditPreviewOf(
+        entity,
+        const TextEditCommit(field: 'A', height: 2.5, justify: 'bl'),
+      ),
+      isNull,
+    );
+  });
+
+  test('a second preview does not stack rotation on the original', () {
+    const entity = TextEntity(id: 1, position: Vec2.zero(), content: 'A');
+    final once =
+        textEditPreviewOf(
+              entity,
+              const TextEditCommit(field: 'A', rotation: 90),
+            )
+            as TextEntity;
+    final twice =
+        textEditPreviewOf(
+              entity,
+              const TextEditCommit(field: 'A', rotation: 90),
+            )
+            as TextEntity;
+    expect(twice.rotation, once.rotation);
   });
 }

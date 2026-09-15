@@ -1634,6 +1634,24 @@ abstract class AppLocalizations {
   /// **'Style'**
   String get style;
 
+  /// justify
+  ///
+  /// In en, this message translates to:
+  /// **'Justify'**
+  String get justify;
+
+  /// width factor
+  ///
+  /// In en, this message translates to:
+  /// **'Width factor'**
+  String get width_factor;
+
+  /// oblique
+  ///
+  /// In en, this message translates to:
+  /// **'Oblique'**
+  String get oblique;
+
   /// column width
   ///
   /// In en, this message translates to:
@@ -2456,6 +2474,12 @@ abstract class AppLocalizations {
   /// **'Dimension Style'**
   String get command_annot_dimstyle;
 
+  /// command annot textstyle
+  ///
+  /// In en, this message translates to:
+  /// **'Text Style'**
+  String get command_annot_textstyle;
+
   /// command edit erase
   ///
   /// In en, this message translates to:
@@ -2737,6 +2761,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Edit Text Object'**
   String get command_edit_text_object;
+
+  /// floating editor title with entity kind and handle
+  ///
+  /// In en, this message translates to:
+  /// **'Edit {entity}'**
+  String edit_text_object_window(String entity);
 
   /// command edit justify text
   ///

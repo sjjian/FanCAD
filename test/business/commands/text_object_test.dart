@@ -484,5 +484,81 @@ void main() {
       expect(text.position, const Vec2(1, 2));
       expect(text.rotation, closeTo(math.pi / 2, 1e-9));
     });
+
+    test('style, width factor and oblique change TEXT', () async {
+      final createdStyle = await run('annot.textstyle', {
+        'name': 'Notes',
+        'font': 'Arial',
+        'height': 0,
+        'widthFactor': 0.8,
+        'oblique': 15,
+      });
+      expect(createdStyle.status, CommandStatus.ok, reason: createdStyle.message);
+      final id = await addText(content: 'A', at: const [1, 2]);
+
+      final result = await run('edit.textObject', {
+        'ids': [id],
+        'style': 'Notes',
+        'widthFactor': 1.2,
+        'oblique': 10,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final text = document.entity(id)! as TextEntity;
+      expect(text.styleName, 'Notes');
+      expect(text.position, const Vec2(1, 2));
+      expect(text.widthFactor, closeTo(1.2, 1e-12));
+      expect(text.obliqueAngle, closeTo(10 * math.pi / 180, 1e-12));
+    });
+
+    test('a missing text style is refused', () async {
+      final id = await addText();
+
+      final result = await run('edit.textObject', {
+        'ids': [id],
+        'style': 'Missing',
+      });
+
+      expect(result.status, CommandStatus.failed);
+      expect((document.entity(id)! as TextEntity).styleName, 'Standard');
+    });
+
+    test('mtext column width can be set without moving the attachment', () async {
+      final created = await run('draw.mtext', {
+        'content': 'NOTE',
+        'at': [10, 20],
+        'height': 2.5,
+        'width': 40,
+      });
+      final id = (created.data!['ids']! as List).first as int;
+
+      final result = await run('edit.textObject', {
+        'ids': [id],
+        'width': 80,
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final note = document.entity(id)! as MTextEntity;
+      expect(note.rectangleWidth, 80);
+      expect(note.position, const Vec2(10, 20));
+    });
+
+    test('a fixed-height style writes that height onto TEXT', () async {
+      await run('annot.textstyle', {
+        'name': 'Title',
+        'height': 8,
+      });
+      final id = await addText(height: 2.5);
+
+      final result = await run('edit.textObject', {
+        'ids': [id],
+        'style': 'Title',
+      });
+
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final text = document.entity(id)! as TextEntity;
+      expect(text.styleName, 'Title');
+      expect(text.height, 8);
+    });
   });
 }

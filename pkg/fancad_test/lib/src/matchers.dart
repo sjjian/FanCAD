@@ -13,9 +13,5 @@ Matcher closeVec(Vec2 expected, {double epsilon = 1e-6}) {
 
 /// Asserts [entity] is owned by [blockName] in [document].
 void expectOwner(CadDocument document, CadEntity entity, String blockName) {
-  expect(
-    document.ownerOf(entity.id),
-    blockName,
-    reason: '${entity.kind.name}#${entity.id}',
-  );
+  expect(document.ownerOf(entity.id), blockName, reason: entity.displayId);
 }

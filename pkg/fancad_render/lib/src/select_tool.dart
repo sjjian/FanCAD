@@ -338,7 +338,7 @@ class SelectionTool extends CadTool {
       final entity = host.document.entity(host.selection.single!);
       if (entity != null) {
         host.prompt(
-          'Selected ${entity.kind.name} on layer ${entity.props.layer}',
+          'Selected ${entity.displayId} on layer ${entity.props.layer}',
         );
         return;
       }

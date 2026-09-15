@@ -114,13 +114,7 @@ class PropertiesPanel extends StatelessWidget {
     );
   }
 
-  static String _titleFor(CadEntity entity) {
-    final kind = entity.kind.name;
-    final pretty = kind.isEmpty
-        ? kind
-        : '${kind[0].toUpperCase()}${kind.substring(1)}';
-    return '$pretty #${entity.id}';
-  }
+  static String _titleFor(CadEntity entity) => entity.displayId;
 
   static String _selectionTitle(List<CadEntity> entities) {
     if (entities.length == 1) return _titleFor(entities.first);
@@ -221,6 +215,95 @@ class PropertiesPanel extends StatelessWidget {
         onCopied: (value) => _copied(context, value),
       );
 
+  PropertyRow _edit(
+    BuildContext context,
+    String label,
+    String text,
+    VoidCallback onTap,
+  ) => PropertyRow(
+    label: label,
+    isEditable: true,
+    copyText: text,
+    onCopied: (value) => _copied(context, value),
+    value: Text(text),
+    onTap: onTap,
+  );
+
+  void _textObject(String field) =>
+      workspace.run('edit.textObject', args: {'prompt': field});
+
+  List<Widget> _textGeometryRows(
+    BuildContext context,
+    CadEntity entity, {
+    required String position,
+    bool columnWidth = false,
+    bool widthFactor = false,
+    bool oblique = false,
+  }) {
+    final l10n = context.l10n;
+    final height = textHeightOf(entity);
+    final rotation = textRotationOf(entity);
+    final style = textStyleNameOf(entity);
+    final justify = textJustifyKeyOf(entity);
+    return [
+      _edit(
+        context,
+        l10n.contents,
+        textEditFieldValue(entity),
+        () => workspace.run('edit.textContent'),
+      ),
+      _read(context, l10n.position, position),
+      if (height != null)
+        _edit(
+          context,
+          l10n.height,
+          _number(height),
+          () => _textObject('height'),
+        ),
+      if (columnWidth && entity is MTextEntity)
+        _edit(
+          context,
+          l10n.column_width,
+          _number(entity.rectangleWidth),
+          () => _textObject('width'),
+        ),
+      if (rotation != null)
+        _edit(
+          context,
+          l10n.rotation,
+          '${_number(rotation * 180 / math.pi)}°',
+          () => _textObject('rotation'),
+        ),
+      if (style != null)
+        _edit(context, l10n.style, style, () => _textObject('style')),
+      if (justify != null)
+        _edit(
+          context,
+          l10n.justify,
+          justify.toUpperCase(),
+          () => _textObject('justify'),
+        ),
+      if (widthFactor) ...[
+        if (textWidthFactorOf(entity) case final factor?)
+          _edit(
+            context,
+            l10n.width_factor,
+            _number(factor),
+            () => _textObject('widthFactor'),
+          ),
+      ],
+      if (oblique) ...[
+        if (textObliqueOf(entity) case final angle?)
+          _edit(
+            context,
+            l10n.oblique,
+            '${_number(angle * 180 / math.pi)}°',
+            () => _textObject('oblique'),
+          ),
+      ],
+    ];
+  }
+
   List<Widget> _geometryRows(BuildContext context, CadEntity entity) {
     final l10n = context.l10n;
     switch (entity) {
@@ -269,29 +352,43 @@ class PropertiesPanel extends StatelessWidget {
           _read(context, l10n.closed, entity.closed ? l10n.yes : l10n.no),
           _read(context, l10n.length, _number(Construct.lengthOf(entity))),
         ];
-      case TextEntity(:final position, :final height):
-        return [
-          _read(context, l10n.contents, textEditFieldValue(entity)),
-          _read(context, l10n.position, _point(position)),
-          _read(context, l10n.height, _number(height)),
-          _read(
-            context,
-            l10n.rotation,
-            '${_number(entity.rotation * 180 / math.pi)}°',
-          ),
-          _read(context, l10n.style, entity.styleName),
-        ];
+      case TextEntity(:final position):
+        return _textGeometryRows(
+          context,
+          entity,
+          position: _point(position),
+          widthFactor: true,
+          oblique: true,
+        );
       case MTextEntity(:final position):
-        return [
-          _read(context, l10n.contents, textEditFieldValue(entity)),
-          _read(context, l10n.position, _point(position)),
-          _read(context, l10n.column_width, _number(entity.rectangleWidth)),
-          _read(
-            context,
-            l10n.rotation,
-            '${_number(entity.rotation * 180 / math.pi)}°',
-          ),
-        ];
+        return _textGeometryRows(
+          context,
+          entity,
+          position: _point(position),
+          columnWidth: true,
+        );
+      case AttribEntity(:final position):
+        return _textGeometryRows(
+          context,
+          entity,
+          position: _point(position),
+          widthFactor: true,
+          oblique: true,
+        );
+      case AttdefEntity(:final position):
+        return _textGeometryRows(
+          context,
+          entity,
+          position: _point(position),
+          widthFactor: true,
+          oblique: true,
+        );
+      case MLeaderEntity(:final textPosition):
+        return _textGeometryRows(
+          context,
+          entity,
+          position: _point(textPosition),
+        );
       case InsertEntity(:final blockName, :final position):
         return [
           _read(context, l10n.block, blockName),
@@ -318,7 +415,12 @@ class PropertiesPanel extends StatelessWidget {
       case DimensionEntity(:final measurement, :final displayText):
         return [
           _read(context, l10n.measurement, _number(measurement)),
-          _read(context, l10n.text, displayText),
+          _edit(
+            context,
+            l10n.text,
+            displayText,
+            () => workspace.run('edit.textContent'),
+          ),
           _read(context, l10n.style, entity.styleName),
         ];
       default:

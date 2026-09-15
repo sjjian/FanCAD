@@ -45,6 +45,7 @@ class _DocumentViewState extends State<DocumentView> {
   final FocusNode _dynAngleFocus = FocusNode(debugLabel: 'dyn-angle');
   int? _editingTextId;
   Vec2? _editingAnchor;
+  CadEntity? _editingOriginal;
 
   @override
   void initState() {
@@ -56,16 +57,19 @@ class _DocumentViewState extends State<DocumentView> {
   void didUpdateWidget(DocumentView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.tab != widget.tab) {
+      _restoreEditingOriginal(tab: oldWidget.tab, notify: true);
       oldWidget.tab.onGeometryInvalidated = null;
       oldWidget.tab.tools.onHudTypeIn = null;
       _editingTextId = null;
       _editingAnchor = null;
+      _editingOriginal = null;
       _bind(widget.tab);
     }
   }
 
   @override
   void dispose() {
+    _restoreEditingOriginal(notify: false);
     widget.tab.onGeometryInvalidated = null;
     widget.tab.tools.onHudTypeIn = null;
     _dynDistanceFocus.dispose();
@@ -95,13 +99,14 @@ class _DocumentViewState extends State<DocumentView> {
   }
 
   /// Paper viewport interiors run VPMAX; a maximized model view runs VPMIN.
-  /// Empty space does not zoom. A double-click on text opens a card aligned
-  /// with the click instead.
+  /// Empty space does not zoom. A double-click on text opens a form card
+  /// parked at the click.
   void _onDoubleClick(Offset local) {
     final tab = widget.tab;
     final world = tab.viewport.viewport.toWorld(local);
     final hit = Picker(
       cache: tab.tessellation,
+      shxFonts: widget.workspace.shxFonts,
     ).pickTopmost(tab.document, tab.viewport.viewport, world);
     final target = canvasTextEditTarget(
       document: tab.document,
@@ -113,6 +118,7 @@ class _DocumentViewState extends State<DocumentView> {
       setState(() {
         _editingTextId = target.id;
         _editingAnchor = world;
+        _editingOriginal = target;
       });
       return;
     }
@@ -126,34 +132,64 @@ class _DocumentViewState extends State<DocumentView> {
     }
   }
 
+  void _restoreEditingOriginal({DocumentTab? tab, required bool notify}) {
+    final original = _editingOriginal;
+    if (original == null) return;
+    final document = (tab ?? widget.tab).document;
+    if (document.entity(original.id) == null) return;
+    document.replaceEntity(original);
+    if (notify) {
+      (tab ?? widget.tab).session.notifyExternalChange(
+        DocumentChange(modified: [original.id]),
+      );
+    }
+  }
+
+  void _previewTextEdit(TextEditCommit live) {
+    final original = _editingOriginal;
+    if (original == null) return;
+    final next =
+        textEditPreviewOf(original, live, document: widget.tab.document) ??
+        original;
+    if (widget.tab.document.entity(original.id) == null) return;
+    widget.tab.document.replaceEntity(next);
+    widget.tab.session.notifyExternalChange(
+      DocumentChange(modified: [original.id]),
+    );
+  }
+
   void _cancelTextEdit() {
     if (_editingTextId == null) return;
+    _restoreEditingOriginal(notify: true);
     setState(() {
       _editingTextId = null;
       _editingAnchor = null;
+      _editingOriginal = null;
     });
   }
 
   void _commitTextEdit(TextEditCommit commit) {
+    final original = _editingOriginal;
     final id = _editingTextId;
-    if (id == null) return;
-    final entity = widget.tab.document.entity(id);
+    final preview = id == null ? null : widget.tab.document.entity(id);
     setState(() {
       _editingTextId = null;
       _editingAnchor = null;
+      _editingOriginal = null;
     });
-    if (entity == null) return;
-    final textChanged = commit.field != textEditFieldValue(entity);
-    final color = commit.color;
-    final args = <String, Object?>{
-      'ids': [id],
-      if (textChanged) 'text': textEditCommitValue(entity, commit.field),
-      if (commit.height != null) 'height': commit.height,
-      if (color != null) 'color': cadColorToJson(color),
-      if (commit.justify != null) 'justify': commit.justify,
-    };
-    if (args.length == 1) return;
-    widget.workspace.run('edit.textObject', args: args);
+    if (original == null || id == null || preview == null) return;
+    final stored = textEditCommitValue(original, commit.field);
+    if (textEditRequiresContent(original) && stored.isEmpty) {
+      widget.tab.document.replaceEntity(original);
+      widget.tab.session.notifyExternalChange(
+        DocumentChange(modified: [original.id]),
+      );
+      return;
+    }
+    if (identical(preview, original)) return;
+    widget.tab.session.edit('Edit Text', (transaction) {
+      transaction.applyRaw(ModifyEntityPatch(before: original, after: preview));
+    });
   }
 
   /// A click, not a drag. Deferred a frame so the pointer-up does not
@@ -348,10 +384,7 @@ class _DocumentViewState extends State<DocumentView> {
     final tab = widget.tab;
     final overlay = tab.tools.buildOverlay();
     final pending = widget.workspace.pendingHighlightIds;
-    final editingId = _editingTextId;
-    final editingEntity = editingId == null
-        ? null
-        : tab.document.entity(editingId);
+    final editingEntity = _editingOriginal;
     final effectiveOverlay = pending.isEmpty
         ? overlay
         : overlay.copyWith(
@@ -446,6 +479,7 @@ class _DocumentViewState extends State<DocumentView> {
                     onDoubleClick: _onDoubleClick,
                     onlyLayers: tab.isolatedLayers,
                     tessellation: tab.tessellation,
+                    shxFonts: widget.workspace.shxFonts,
                   ),
                   Positioned.fill(
                     child: ListenableBuilder(
@@ -488,8 +522,10 @@ class _DocumentViewState extends State<DocumentView> {
                               TextEditOverlay(
                                 entity: editingEntity,
                                 viewport: tab.viewport.viewport,
+                                styleNames: [...tab.document.textStyles.keys],
                                 anchor: _editingAnchor,
                                 onCommit: _commitTextEdit,
+                                onPreview: _previewTextEdit,
                                 onCancel: _cancelTextEdit,
                               ),
                           ],

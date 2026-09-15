@@ -437,7 +437,7 @@ class _ShellCanvasWindowState extends State<ShellCanvasWindow> {
                                             alignment: Alignment.centerLeft,
                                             child: Text(
                                               widget.title,
-                                              style: tokens.dialogTitleStyle,
+                                              style: tokens.bodyStyle,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),

@@ -11,6 +11,29 @@ void main() {
     expect(EntityKind.parse('nope'), EntityKind.unknown);
   });
 
+  test('displayId is the DXF type and hexadecimal handle', () {
+    expect(
+      const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(1, 0)).displayId,
+      'LINE#1',
+    );
+    expect(
+      const MTextEntity(
+        id: 10306432,
+        position: Vec2.zero(),
+        content: 'A',
+      ).displayId,
+      'MTEXT#9D4380',
+    );
+    expect(
+      const MTextEntity(
+        id: 10306432,
+        position: Vec2.zero(),
+        content: 'A',
+      ).toString(),
+      'MTEXT#9D4380',
+    );
+  });
+
   eachCase(
     [
       (
@@ -233,16 +256,8 @@ void main() {
         id: 11,
         corners: [Vec2.zero(), Vec2(4, 0), Vec2(4, 3), Vec2(0, 3)],
       ),
-      const RayEntity(
-        id: 12,
-        origin: Vec2(1, 2),
-        direction: Vec2(0, 1),
-      ),
-      const XLineEntity(
-        id: 13,
-        origin: Vec2(2, 3),
-        direction: Vec2(1, 1),
-      ),
+      const RayEntity(id: 12, origin: Vec2(1, 2), direction: Vec2(0, 1)),
+      const XLineEntity(id: 13, origin: Vec2(2, 3), direction: Vec2(1, 1)),
       const ImageEntity(
         id: 14,
         reference: 'photo.png',
@@ -266,32 +281,43 @@ void main() {
   });
 
   test('map points and numeric alignments still parse', () {
-    final point = CadEntity.fromJson(const {
-      'type': 'point',
-      'position': {'x': 3, 'y': 4},
-    }) as PointEntity;
+    final point =
+        CadEntity.fromJson(const {
+              'type': 'point',
+              'position': {'x': 3, 'y': 4},
+            })
+            as PointEntity;
     expect(point.position, const Vec2(3, 4));
 
-    final text = CadEntity.fromJson(const {
-      'type': 'text',
-      'position': [0, 0],
-      'text': 'A',
-      'hAlign': 1,
-      'vAlign': 3,
-    }) as TextEntity;
+    final text =
+        CadEntity.fromJson(const {
+              'type': 'text',
+              'position': [0, 0],
+              'text': 'A',
+              'hAlign': 1,
+              'vAlign': 3,
+            })
+            as TextEntity;
     expect(text.hAlign, TextHAlign.center);
     expect(text.vAlign, TextVAlign.top);
 
-    final hatch = CadEntity.fromJson(const {
-      'type': 'hatch',
-      'loops': [
-        'nope',
-        {'outer': false, 'points': [[1, 2], [3, 4]]},
-      ],
-    }) as HatchEntity;
+    final hatch =
+        CadEntity.fromJson(const {
+              'type': 'hatch',
+              'loops': [
+                'nope',
+                {
+                  'outer': false,
+                  'points': [
+                    [1, 2],
+                    [3, 4],
+                  ],
+                },
+              ],
+            })
+            as HatchEntity;
     expect(hatch.loops, hasLength(1));
     expect(hatch.loops.single.isOuter, isFalse);
     expect(hatch.loops.single.pointCount, 2);
   });
 }
-

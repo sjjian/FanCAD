@@ -175,7 +175,7 @@ void main() {
       );
     });
 
-    test('an in-place edit keeps paragraph codes around the glyphs', () {
+    test('a content edit keeps paragraph codes around the glyphs', () {
       expect(replaceMTextPlain(r'\pxqc;外墙', '内墙'), r'\pxqc;内墙');
       expect(replaceMTextPlain(r'{\F宋体|c134;型材1}', '型材2'), r'{\F宋体|c134;型材2}');
       expect(replaceMTextPlain(r'\pxqc;外墙', '外墙'), r'\pxqc;外墙');

@@ -7,6 +7,8 @@ import 'helpers.dart';
 
 const _category = 'Modify';
 
+const _alignFit = {'a', 'align', 'aligned', 'f', 'fit'};
+
 class EditTextObjectCommand extends FanCadCommand {
   const EditTextObjectCommand();
 
@@ -18,9 +20,10 @@ class EditTextObjectCommand extends FanCadCommand {
   String get category => _category;
   @override
   String get description =>
-      'Updates content, height, colour, justification or rotation of selected '
-      'text, mtext, attributes or leaders in one undo. Dimension text height '
-      'is a dimstyle property and is ignored.';
+      'Updates content, height, colour, justification, rotation, style, '
+      'column width, width factor or oblique of selected text, mtext, '
+      'attributes or leaders in one undo. Dimension text height is a '
+      'dimstyle property and is ignored.';
   @override
   List<ParamSpec> get params => const [
     ParamSpec.selection('ids'),
@@ -54,6 +57,38 @@ class EditTextObjectCommand extends FanCadCommand {
       description: 'Rotation in degrees, counter-clockwise, about the insertion',
       required: false,
     ),
+    ParamSpec(
+      name: 'style',
+      type: ParamType.text,
+      description: 'Text style name',
+      required: false,
+    ),
+    ParamSpec(
+      name: 'width',
+      type: ParamType.distance,
+      description: 'MTEXT wrapping width. 0 means no wrap.',
+      required: false,
+    ),
+    ParamSpec(
+      name: 'widthFactor',
+      type: ParamType.number,
+      description: 'TEXT width factor. Must be positive.',
+      required: false,
+    ),
+    ParamSpec(
+      name: 'oblique',
+      type: ParamType.angle,
+      description: 'TEXT oblique angle in degrees',
+      required: false,
+    ),
+    ParamSpec(
+      name: 'prompt',
+      type: ParamType.text,
+      description:
+          'Property to ask for: height, rotation, style, width, '
+          'widthFactor, oblique or justify',
+      required: false,
+    ),
   ];
 
   @override
@@ -74,31 +109,115 @@ class EditTextObjectCommand extends FanCadCommand {
       );
     }
 
+    final prompt = _fieldKey(context.args.text('prompt') ?? '');
     final hasText = context.args.has('text');
-    final hasHeight = context.args.has('height');
+    final hasHeight = context.args.has('height') || prompt == 'height';
     final hasColor = context.args.has('color');
-    final hasJustify = context.args.has('justify');
-    final hasRotation = context.args.has('rotation');
-    if (!hasText && !hasHeight && !hasColor && !hasJustify && !hasRotation) {
+    final hasJustify = context.args.has('justify') || prompt == 'justify';
+    final hasRotation = context.args.has('rotation') || prompt == 'rotation';
+    final hasStyle = context.args.has('style') || prompt == 'style';
+    final hasWidth = context.args.has('width') || prompt == 'width';
+    final hasWidthFactor =
+        context.args.has('widthFactor') || prompt == 'widthfactor';
+    final hasOblique = context.args.has('oblique') || prompt == 'oblique';
+    if (!hasText &&
+        !hasHeight &&
+        !hasColor &&
+        !hasJustify &&
+        !hasRotation &&
+        !hasStyle &&
+        !hasWidth &&
+        !hasWidthFactor &&
+        !hasOblique) {
       return const CommandResult.failed(
-        'Specify text, height, colour, justification or rotation.',
+        'Specify text, height, colour, justification, rotation, style, '
+        'width, width factor or oblique.',
       );
     }
 
+    final first = targets.first;
     final text = hasText ? (context.args.text('text') ?? '') : null;
-    final height = hasHeight ? context.args.number('height') : null;
+    final height = hasHeight
+        ? await context.resolveNumber(
+            'height',
+            'Specify new height:',
+            defaultValue: textHeightOf(first) ?? 2.5,
+          )
+        : null;
     if (hasHeight && (height == null || height <= 0)) {
       return const CommandResult.failed('Text height must be positive.');
     }
     final color = hasColor
         ? cadColorFromJson(context.args.text('color'))
         : null;
-    final justify = hasJustify
-        ? (context.args.text('justify') ?? '').trim()
+    var justify = hasJustify ? (context.args.text('justify') ?? '').trim() : null;
+    if (hasJustify && (justify == null || justify.isEmpty)) {
+      justify = (await context.resolveText(
+        'justify',
+        'Enter justification [Left/Center/Right/TL/TC/TR/ML/MC/MR/BL/BC/BR]:',
+        defaultValue: textJustifyKeyOf(first) ?? 'left',
+      )).trim();
+    }
+    final rotationDegrees = hasRotation
+        ? await context.resolveNumber(
+            'rotation',
+            'Specify rotation angle:',
+            defaultValue:
+                (textRotationOf(first) ?? 0) * 180 / math.pi,
+          )
         : null;
-    final rotationDegrees = hasRotation ? context.args.number('rotation') : null;
     if (hasRotation && rotationDegrees == null) {
       return const CommandResult.failed('Rotation must be a number of degrees.');
+    }
+    var styleName = hasStyle ? (context.args.text('style') ?? '').trim() : null;
+    if (hasStyle && (styleName == null || styleName.isEmpty)) {
+      styleName = (await context.resolveText(
+        'style',
+        'Enter text style name:',
+        defaultValue: textStyleNameOf(first) ?? context.document.currentTextStyle,
+      )).trim();
+    }
+    TextStyleDef? styleDef;
+    if (hasStyle) {
+      if (styleName == null || styleName.isEmpty) {
+        return const CommandResult.failed('A text style needs a name.');
+      }
+      styleDef = context.document.namedTextStyle(styleName);
+      if (styleDef == null) {
+        return CommandResult.failed('There is no text style named "$styleName".');
+      }
+    }
+    final width = hasWidth
+        ? await context.resolveNumber(
+            'width',
+            'Specify column width:',
+            defaultValue: textColumnWidthOf(first) ?? 0,
+          )
+        : null;
+    if (hasWidth && (width == null || width < 0)) {
+      return const CommandResult.failed('Text width cannot be negative.');
+    }
+    final widthFactor = hasWidthFactor
+        ? await context.resolveNumber(
+            'widthFactor',
+            'Specify width factor:',
+            defaultValue: textWidthFactorOf(first) ?? 1,
+          )
+        : null;
+    if (hasWidthFactor && (widthFactor == null || widthFactor <= 0)) {
+      return const CommandResult.failed('Width factor must be positive.');
+    }
+    final obliqueDegrees = hasOblique
+        ? await context.resolveNumber(
+            'oblique',
+            'Specify oblique angle:',
+            defaultValue: (textObliqueOf(first) ?? 0) * 180 / math.pi,
+          )
+        : null;
+    if (hasOblique && obliqueDegrees == null) {
+      return const CommandResult.failed(
+        'Oblique must be a number of degrees.',
+      );
     }
     if (hasJustify &&
         (justify == null ||
@@ -108,7 +227,7 @@ class EditTextObjectCommand extends FanCadCommand {
                   currentV: TextVAlign.baseline,
                 ) ==
                 null ||
-            const {'a', 'align', 'aligned', 'f', 'fit'}.contains(
+            _alignFit.contains(
               justify.toLowerCase().replaceAll(RegExp(r'[\s_-]+'), ''),
             ))) {
       return CommandResult.failed(
@@ -138,6 +257,25 @@ class EditTextObjectCommand extends FanCadCommand {
           next =
               entityWithRotation(next, rotationDegrees * math.pi / 180) ?? next;
         }
+        if (styleDef != null) {
+          next =
+              entityWithStyle(
+                next,
+                styleDef.name,
+                fixedHeight: styleDef.height > 0 ? styleDef.height : null,
+              ) ??
+              next;
+        }
+        if (width != null) {
+          next = entityWithColumnWidth(next, width) ?? next;
+        }
+        if (widthFactor != null) {
+          next = entityWithWidthFactor(next, widthFactor) ?? next;
+        }
+        if (obliqueDegrees != null) {
+          next =
+              entityWithOblique(next, obliqueDegrees * math.pi / 180) ?? next;
+        }
         if (color != null && next.props.color != color) {
           next = next.withProps(next.props.copyWith(color: color));
         }
@@ -157,3 +295,6 @@ class EditTextObjectCommand extends FanCadCommand {
     );
   }
 }
+
+String _fieldKey(String raw) =>
+    raw.trim().toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '');

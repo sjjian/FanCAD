@@ -1226,6 +1226,18 @@
   "@style": {
     "description": "style"
   },
+  "justify": "对正",
+  "@justify": {
+    "description": "justify"
+  },
+  "width_factor": "宽度因子",
+  "@width_factor": {
+    "description": "width factor"
+  },
+  "oblique": "倾斜",
+  "@oblique": {
+    "description": "oblique"
+  },
   "column_width": "列宽",
   "@column_width": {
     "description": "column width"
@@ -1797,6 +1809,10 @@
   "@command_annot_dimstyle": {
     "description": "command annot dimstyle"
   },
+  "command_annot_textstyle": "文字样式",
+  "@command_annot_textstyle": {
+    "description": "command annot textstyle"
+  },
   "command_edit_erase": "删除",
   "@command_edit_erase": {
     "description": "command edit erase"
@@ -1984,6 +2000,10 @@
   "command_edit_text_object": "编辑文字对象",
   "@command_edit_text_object": {
     "description": "command edit text object"
+  },
+  "edit_text_object_window": "编辑 {entity}",
+  "@edit_text_object_window": {
+    "description": "floating editor title with entity kind and handle"
   },
   "command_edit_justify_text": "文字对正",
   "@command_edit_justify_text": {

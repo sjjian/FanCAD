@@ -174,6 +174,13 @@ sealed class CadEntity {
     ...geometryToJson(),
   };
 
+  /// DXF type and hexadecimal handle, e.g. `MTEXT#9D4380`.
+  ///
+  /// Group code 5 in the file is this integer printed as hex. The UI and LIST
+  /// use this string; maps and commands keep [id] as an int.
+  String get displayId =>
+      '${kind.name.toUpperCase()}#${id.toRadixString(16).toUpperCase()}';
+
   /// Offsets this entity by [distance] to whichever side [towards] falls on.
   ///
   /// Types that have no parallel curve return null. Offset copies keep id 0
@@ -248,7 +255,7 @@ sealed class CadEntity {
   }
 
   @override
-  String toString() => '${kind.name}#$id';
+  String toString() => displayId;
 }
 
 /// Rebuilds an ellipse after an affine map from its transformed conjugate
