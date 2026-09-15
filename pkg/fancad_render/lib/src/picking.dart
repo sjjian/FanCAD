@@ -56,7 +56,11 @@ class GripHit {
 /// hit-test implementation to keep consistent — and inconsistency between what
 /// is drawn and what is selectable is the kind of bug users never forgive.
 class Picker {
-  const Picker({this.pickRadiusPixels = 6, this.cache});
+  const Picker({
+    this.pickRadiusPixels = 6,
+    this.cache,
+    this.shxFonts = const ShxFontTable(),
+  });
 
   /// The aperture, in pixels. Six is roughly what AutoCAD uses and what a
   /// mouse can be aimed at reliably.
@@ -65,6 +69,9 @@ class Picker {
   /// Shared with the drawing layer when the shell injects one. Hover and
   /// selection then replay flattened geometry instead of tessellating again.
   final TessellationCache? cache;
+
+  /// Parsed SHX faces used when the tessellation cache misses.
+  final ShxFontTable shxFonts;
 
   /// The entity nearest [world], or null when nothing is within the aperture.
   PickHit? pickTopmost(
@@ -97,7 +104,12 @@ class Picker {
     final tolerance = viewport.tolerance;
     final hits = <PickHit>[];
 
-    for (final space in spacesUnder(document, aperture, tolerance: tolerance)) {
+    for (final space in spacesUnder(
+      document,
+      aperture,
+      tolerance: tolerance,
+      shxFonts: shxFonts,
+    )) {
       for (final id in document.indexFor(space.blockName).search(space.query)) {
         final entity = document.entity(id);
         if (entity == null) continue;
@@ -152,7 +164,12 @@ class Picker {
     final seen = <int>{};
     final tolerance = viewport.tolerance;
 
-    for (final space in spacesUnder(document, window, tolerance: tolerance)) {
+    for (final space in spacesUnder(
+      document,
+      window,
+      tolerance: tolerance,
+      shxFonts: shxFonts,
+    )) {
       for (final id in document.indexFor(space.blockName).search(space.query)) {
         if (!seen.add(id)) continue;
         final entity = document.entity(id);
@@ -195,23 +212,14 @@ class Picker {
   }) {
     if (cache != null && context.transform.isIdentity) {
       final bucket = TessellationCache.toleranceBucket(context.tolerance);
-      final cached = cache.lookup(
-        entity,
-        bucket,
-        minExtent: context.minExtent,
-      );
+      final cached = cache.lookup(entity, bucket, minExtent: context.minExtent);
       if (cached != null) {
         replayCachedPrimitives(sink, cached);
         return;
       }
       final recorder = RecordingSink();
       entity.emit(context.withoutClip(), TeeSink(sink, recorder));
-      cache.remember(
-        entity,
-        bucket,
-        recorder,
-        minExtent: context.minExtent,
-      );
+      cache.remember(entity, bucket, recorder, minExtent: context.minExtent);
       return;
     }
     entity.emit(context, sink);
@@ -343,6 +351,7 @@ class Picker {
     required double tolerance,
     Bounds2? visible,
     TessellationCache? cache,
+    ShxFontTable shxFonts = const ShxFontTable(),
   }) {
     final layout = document.activeLayout;
     for (final id in ids) {
@@ -354,7 +363,11 @@ class Picker {
       if (onSheet) {
         emitInto(
           entity,
-          document.emitContext(tolerance: tolerance, clip: visible),
+          document.emitContext(
+            tolerance: tolerance,
+            clip: visible,
+            shxFonts: shxFonts,
+          ),
           sink,
           cache: cache,
         );
@@ -374,6 +387,7 @@ class Picker {
             tolerance: scale < 1e-12 ? tolerance : tolerance / scale,
             clip: viewport.modelWindow,
             transform: viewport.modelToPaper(),
+            shxFonts: shxFonts,
           ),
           sink,
           cache: cache,
@@ -453,10 +467,7 @@ class Picker {
   /// Model-space grips are mapped through every on paper viewport that
   /// actually shows them, so a stretch on a layout tab aims at the square
   /// the user can see rather than at the untransformed model point.
-  List<GripHit> displayGrips(
-    CadDocument document,
-    Iterable<int> entityIds,
-  ) {
+  List<GripHit> displayGrips(CadDocument document, Iterable<int> entityIds) {
     final result = <GripHit>[];
     final layout = document.activeLayout;
     for (final id in entityIds) {
@@ -466,17 +477,10 @@ class Picker {
       final local = entity.grips();
       if (local.isEmpty) continue;
 
-      final onActiveSheet =
-          layout.isModelSpace || owner == layout.blockName;
+      final onActiveSheet = layout.isModelSpace || owner == layout.blockName;
       if (onActiveSheet) {
         for (var i = 0; i < local.length; i++) {
-          result.add(
-            GripHit(
-              entityId: id,
-              gripIndex: i,
-              paperPoint: local[i],
-            ),
-          );
+          result.add(GripHit(entityId: id, gripIndex: i, paperPoint: local[i]));
         }
         continue;
       }
@@ -557,10 +561,7 @@ class Picker {
     final sink = PolylineSink();
     final entity = document.entity(entityId);
     if (entity == null) return sink;
-    entity.emit(
-      document.emitContext(tolerance: tolerance, clip: clip),
-      sink,
-    );
+    entity.emit(document.emitContext(tolerance: tolerance, clip: clip), sink);
     return sink;
   }
 
@@ -569,10 +570,7 @@ class Picker {
   static double lengthOf(PolylineSink sink) {
     var total = 0.0;
     for (var i = 0; i < sink.polylines.length; i++) {
-      total += _polylineLength(
-        sink.polylines[i],
-        closed: sink.closedFlags[i],
-      );
+      total += _polylineLength(sink.polylines[i], closed: sink.closedFlags[i]);
     }
     return total;
   }

@@ -113,6 +113,7 @@ class EditPolarArrayCommand extends FanCadCommand {
               ...editOutline(
                 context.document,
                 entity.transformed(matrixFor(step, cursor)),
+                shxFonts: context.services.shxFonts,
               ),
       ];
     });

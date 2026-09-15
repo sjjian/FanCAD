@@ -84,7 +84,13 @@ class EditStretchCommand extends FanCadCommand {
         if (entity == null) continue;
         final stretched = Construct.stretch(entity, window, delta);
         if (stretched != null) {
-          shapes.addAll(editOutline(context.document, stretched));
+          shapes.addAll(
+            editOutline(
+              context.document,
+              stretched,
+              shxFonts: context.services.shxFonts,
+            ),
+          );
         }
       }
       return shapes;

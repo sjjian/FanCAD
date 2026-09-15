@@ -133,7 +133,7 @@ void main() {
       );
     });
 
-    test('hidden ids skip a glyph so an in-place editor can sit on top', () {
+    test('hidden ids skip a glyph', () {
       final document = CadDocument();
       final a = document.addEntity(
         const TextEntity(id: 1, position: Vec2.zero(), content: 'A'),
@@ -147,6 +147,43 @@ void main() {
         newBuilder().build(document, view, hiddenIds: {a.id}).entityCount,
         1,
       );
+    });
+
+    test('a loaded SHX face strokes TEXT instead of a TTF run', () {
+      final font = ShxFont(
+        header: 'txt',
+        above: 1,
+        glyphs: {
+          65: const ShxGlyph(
+            code: 65,
+            name: 'A',
+            commands: [
+              ShxDraw(to: Vec2.zero(), penDown: true),
+              ShxDraw(to: Vec2(1, 1), penDown: true),
+            ],
+          ),
+        },
+      );
+      final document = CadDocument();
+      document.addEntity(
+        const TextEntity(
+          id: 1,
+          position: Vec2.zero(),
+          content: 'A',
+          height: 10,
+        ),
+      );
+      final view = CadViewport.fit(document.extents, size);
+      final fallback = newBuilder().build(document, view);
+      expect(fallback.texts, isNotEmpty);
+      expect(fallback.lineBatches, isEmpty);
+
+      final stroked = SceneBuilder(
+        palette: AciPalette.dark,
+        shxFonts: ShxFontTable({'txt': font}),
+      ).build(document, view);
+      expect(stroked.texts, isEmpty);
+      expect(stroked.lineBatches, isNotEmpty);
     });
 
     test('dashed line types become multiple segments', () {

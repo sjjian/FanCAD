@@ -52,6 +52,7 @@ class CadCanvas extends StatefulWidget {
     this.showGrid = true,
     this.onlyLayers,
     this.tessellation,
+    this.shxFonts = const ShxFontTable(),
     super.key,
   });
 
@@ -86,6 +87,9 @@ class CadCanvas extends StatefulWidget {
   /// Shared with tools and overlay so hover/pick replay the drawing's flatten.
   /// The canvas creates its own when omitted.
   final TessellationCache? tessellation;
+
+  /// Parsed SHX faces. Empty keeps the TTF fallback for every STYLE.
+  final ShxFontTable shxFonts;
 
   @override
   State<CadCanvas> createState() => CadCanvasState();
@@ -145,10 +149,12 @@ class CadCanvasState extends State<CadCanvas> {
       palette: _palette,
       cache: _tessellation,
       paragraphs: _paragraphs,
+      shxFonts: widget.shxFonts,
     );
     _overlayPainter = OverlayPainter(
       theme: widget.overlayTheme.withCanvas(widget.background),
       cache: _tessellation,
+      shxFonts: widget.shxFonts,
     );
   }
 
@@ -173,6 +179,13 @@ class CadCanvasState extends State<CadCanvas> {
     }
     if (oldWidget.showGrid != widget.showGrid ||
         oldWidget.onlyLayers != widget.onlyLayers) {
+      _paintEpoch++;
+    }
+    if (oldWidget.shxFonts != widget.shxFonts) {
+      _bindAppearance();
+      _tessellation.clear();
+      _paragraphs.clear();
+      _cache.invalidate();
       _paintEpoch++;
     }
     if (!_sameIds(oldWidget.overlay.hiddenIds, widget.overlay.hiddenIds)) {

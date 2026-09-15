@@ -58,7 +58,13 @@ class EditOffsetCommand extends FanCadCommand {
         if (entity == null) continue;
         final offset = Construct.offset(entity, distance, cursor);
         if (offset == null) continue;
-        shapes.addAll(editOutline(context.document, offset));
+        shapes.addAll(
+          editOutline(
+            context.document,
+            offset,
+            shxFonts: context.services.shxFonts,
+          ),
+        );
       }
       return shapes;
     });

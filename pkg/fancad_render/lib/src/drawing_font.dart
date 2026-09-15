@@ -1,16 +1,18 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/foundation.dart';
 
 /// Maps a drawing STYLE font name onto a system face.
 ///
-/// SHX files are not loaded this round. A shape style still has to pick a
-/// TTF so Chinese notes keep a CJK width instead of a Western mono fallback
-/// that squeezes the title block.
+/// SHX strokes go through the scene builder's font table. This map still
+/// picks a TTF for CJK notes that SHX cannot stroke.
 class DrawingFontMap {
   const DrawingFontMap();
 
   static final _cjk = RegExp(
     r'[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]',
   );
+  static final _capRatios = <String, double>{};
 
   static bool containsCjk(String text) => _cjk.hasMatch(text);
 
@@ -26,6 +28,24 @@ class DrawingFontMap {
     if (_isShx(styleFont)) return latinFallback;
     if (styleFont.isEmpty) return latinFallback;
     return styleFont;
+  }
+
+  /// Cap-height of [family] as a fraction of em size.
+  double capRatioOf(String family) =>
+      _capRatios.putIfAbsent(family, () => _measureCapRatio(family));
+
+  static double _measureCapRatio(String family) {
+    const em = 100.0;
+    final builder = ui.ParagraphBuilder(
+      ui.ParagraphStyle(fontFamily: family, fontSize: em),
+    )..addText('H');
+    final paragraph = builder.build()
+      ..layout(const ui.ParagraphConstraints(width: 1000));
+    final boxes = paragraph.getBoxesForRange(0, 1);
+    if (boxes.isEmpty) return 0.72;
+    final ratio = (boxes.first.bottom - boxes.first.top) / em;
+    if (!ratio.isFinite || ratio < 0.4 || ratio > 1.2) return 0.72;
+    return ratio;
   }
 
   String get cjkFamily => switch (defaultTargetPlatform) {
@@ -56,7 +76,10 @@ class DrawingFontMap {
       'calibri' => 'Calibri',
       'verdana' => 'Verdana',
       'tahoma' => 'Tahoma',
-      'simsun' || 'song' || '宋体' || 'nsimsun' => switch (defaultTargetPlatform) {
+      'simsun' ||
+      'song' ||
+      '宋体' ||
+      'nsimsun' => switch (defaultTargetPlatform) {
         TargetPlatform.macOS || TargetPlatform.iOS => 'Songti SC',
         TargetPlatform.windows => 'SimSun',
         _ => 'Noto Serif CJK SC',

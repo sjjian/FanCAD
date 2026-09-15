@@ -12,6 +12,7 @@ import '../business/workbench/command_line_model.dart';
 import '../business/workbench/interactive_input.dart';
 import '../storage/drawing_settings.dart';
 import 'document_tab.dart';
+import 'shx_fonts.dart';
 
 part 'workspace.freezed.dart';
 
@@ -97,6 +98,9 @@ class Workspace extends ChangeNotifier implements CommandServices {
   /// Geometry clipboard shared by every open tab. COPYCLIP writes here;
   /// PASTECLIP in another drawing reads it. Not the OS clipboard.
   final DrawingClipboard clipboard = DrawingClipboard();
+
+  ShxFontTable _shxFonts = const ShxFontTable();
+  bool _disposed = false;
 
   final List<DocumentTab> _tabs = [];
   int _activeIndex = -1;
@@ -205,6 +209,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
       );
       tab.viewport.zoomToExtents(result.document);
       drawing.pushRecent(stored);
+      unawaited(reloadShxFonts(drawingPath: stored));
       commandLine.writeSuccess(
         'Opened ${result.entityCount} entities in '
         '${result.totalTime.inMilliseconds} ms.',
@@ -806,6 +811,23 @@ class Workspace extends ChangeNotifier implements CommandServices {
   }
 
   @override
+  ShxFontTable get shxFonts => _shxFonts;
+
+  /// Loads SHX from `FANCAD_FONT_PATH` and the drawing directory.
+  ///
+  /// Not called from the constructor: headless tests must not walk the disk.
+  Future<void> reloadShxFonts({String? drawingPath}) async {
+    if (_disposed) return;
+    _shxFonts = ShxFontCatalog.load(
+      drawingPath: drawingPath ?? active?.filePath,
+    );
+    for (final tab in _tabs) {
+      tab.invalidateAll();
+    }
+    notifyListeners();
+  }
+
+  @override
   Map<String, Object?> describeView() {
     final tab = active;
     if (tab == null) return const {};
@@ -862,6 +884,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   @override
   void dispose() {
+    _disposed = true;
     for (final tab in _tabs) {
       tab.removeListener(notifyListeners);
       tab.dispose();

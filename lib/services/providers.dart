@@ -94,6 +94,7 @@ Workspace workspace(Ref ref) {
     registration.dispose();
     workspace.dispose();
   });
+  unawaited(workspace.reloadShxFonts());
   return workspace;
 }
 

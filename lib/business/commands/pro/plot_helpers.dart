@@ -34,6 +34,7 @@ Future<CommandResult> writePdf(
     context.document,
     layout: layout,
     window: window,
+    shxFonts: context.services.shxFonts,
   );
   await File(path).writeAsBytes(pdf);
   return CommandResult.ok(

@@ -71,6 +71,7 @@ class PrintExportSvgCommand extends FanCadCommand {
       context.document,
       layout: layout,
       window: window.$2,
+      shxFonts: context.services.shxFonts,
     );
     await File(path).writeAsString(svg);
     return CommandResult.ok(

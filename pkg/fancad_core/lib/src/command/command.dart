@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 import '../geometry/bounds.dart';
 import '../geometry/vector.dart';
 import '../model/document.dart';
+import '../model/geometry_sink.dart';
 import '../model/preview.dart';
 import '../session/selection.dart';
 import '../session/session.dart';
@@ -254,6 +255,10 @@ abstract class CommandServices {
   /// as a `query.entities` filter. Headless tests leave this empty.
   Map<String, Object?> describeView() => const {};
 
+  /// Parsed SHX faces for emit, plot and transform ghosts. Empty until the
+  /// host loads fonts from disk; headless tests keep the TTF fallback.
+  ShxFontTable get shxFonts => const ShxFontTable();
+
   /// Asks the user to approve a set of pending changes. Returns true when the
   /// caller may proceed. Non-interactive hosts return their default policy.
   Future<bool> requestApproval(String title, String details);
@@ -284,6 +289,9 @@ class _NullServices implements CommandServices {
 
   @override
   Map<String, Object?> describeView() => const {};
+
+  @override
+  ShxFontTable get shxFonts => const ShxFontTable();
 
   @override
   Future<bool> requestApproval(String title, String details) async => false;

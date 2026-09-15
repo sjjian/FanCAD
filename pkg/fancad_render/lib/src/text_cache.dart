@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'dart:ui' as ui;
 
 import 'batch.dart';
+import 'drawing_font.dart';
 
 /// Caches laid-out paragraphs.
 ///
@@ -21,7 +22,6 @@ class ParagraphCache {
   final int capacity;
 
   final LinkedHashMap<_Key, ui.Paragraph> _entries = LinkedHashMap();
-  final Map<String, double> _capRatios = {};
   int _hits = 0;
   int _misses = 0;
 
@@ -31,27 +31,13 @@ class ParagraphCache {
 
   /// Height quantisation, in pixels. Laying out the same label at 12.0 and
   /// 12.02 pixels is wasted work, and the difference is invisible.
-  static double quantiseHeight(double pixels) => (pixels * 4).roundToDouble() / 4;
+  static double quantiseHeight(double pixels) =>
+      (pixels * 4).roundToDouble() / 4;
 
   /// Cap-height of [family] as a fraction of em size. DWG height is cap
   /// height; a font size is the em, so this is how a 5 mm TEXT becomes 5 mm
   /// on paper instead of the 0.72 guess that only fitted one face.
-  double capRatio(String family) =>
-      _capRatios.putIfAbsent(family, () => _measureCapRatio(family));
-
-  double _measureCapRatio(String family) {
-    const em = 100.0;
-    final builder = ui.ParagraphBuilder(
-      ui.ParagraphStyle(fontFamily: family, fontSize: em),
-    )..addText('H');
-    final paragraph = builder.build()
-      ..layout(const ui.ParagraphConstraints(width: 1000));
-    final boxes = paragraph.getBoxesForRange(0, 1);
-    if (boxes.isEmpty) return 0.72;
-    final ratio = (boxes.first.bottom - boxes.first.top) / em;
-    if (!ratio.isFinite || ratio < 0.4 || ratio > 1.2) return 0.72;
-    return ratio;
-  }
+  double capRatio(String family) => const DrawingFontMap().capRatioOf(family);
 
   ui.Paragraph obtain(TextItem item, {required String fontFamily}) {
     final family = item.fontFamily.isEmpty ? fontFamily : item.fontFamily;
@@ -126,28 +112,29 @@ class ParagraphCache {
     final letterSpacing = item.tracking == 1
         ? 0.0
         : (item.tracking - 1) * fontSize;
-    final builder = ui.ParagraphBuilder(
-      ui.ParagraphStyle(
-        fontFamily: fontFamily,
-        fontSize: fontSize,
-        textAlign: switch (item.hAlign) {
-          1 => ui.TextAlign.center,
-          2 => ui.TextAlign.right,
-          _ => ui.TextAlign.left,
-        },
-        maxLines: item.isMultiline ? null : 1,
-        textDirection: ui.TextDirection.ltr,
-      ),
-    )
-      ..pushStyle(
-        ui.TextStyle(
-          color: item.color,
-          fontFamily: fontFamily,
-          fontSize: fontSize,
-          letterSpacing: letterSpacing,
-        ),
-      )
-      ..addText(item.text);
+    final builder =
+        ui.ParagraphBuilder(
+            ui.ParagraphStyle(
+              fontFamily: fontFamily,
+              fontSize: fontSize,
+              textAlign: switch (item.hAlign) {
+                1 => ui.TextAlign.center,
+                2 => ui.TextAlign.right,
+                _ => ui.TextAlign.left,
+              },
+              maxLines: item.isMultiline ? null : 1,
+              textDirection: ui.TextDirection.ltr,
+            ),
+          )
+          ..pushStyle(
+            ui.TextStyle(
+              color: item.color,
+              fontFamily: fontFamily,
+              fontSize: fontSize,
+              letterSpacing: letterSpacing,
+            ),
+          )
+          ..addText(item.text);
     final paragraph = builder.build()
       ..layout(
         // An unwrapped run still needs a finite constraint; a width far wider
@@ -168,7 +155,6 @@ class ParagraphCache {
 
   void clear() {
     _entries.clear();
-    _capRatios.clear();
   }
 }
 

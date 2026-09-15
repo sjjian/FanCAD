@@ -13,6 +13,7 @@
 library;
 
 export 'src/cad_canvas.dart';
+export 'src/drawing_font.dart' show DrawingFontMap;
 export 'src/dynamic_input.dart';
 export 'src/overlay.dart' show OverlayModel, OverlayTheme;
 export 'src/palette.dart';

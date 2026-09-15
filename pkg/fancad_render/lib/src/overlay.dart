@@ -33,8 +33,7 @@ class OverlayModel {
 
   final List<int> selectedIds;
 
-  /// Entities skipped by the drawing layer so an in-place editor can sit
-  /// on top without doubling the glyph.
+  /// Entities skipped by the drawing layer.
   final List<int> hiddenIds;
 
   /// Entities under the cursor, or entities an AI change is about to touch.
@@ -152,10 +151,15 @@ class OverlayTheme {
 /// physical pixel; the sizes a person chose by eye are scaled up from logical
 /// pixels so they look the same on any display.
 class OverlayPainter {
-  OverlayPainter({this.theme = const OverlayTheme(), this.cache});
+  OverlayPainter({
+    this.theme = const OverlayTheme(),
+    this.cache,
+    this.shxFonts = const ShxFontTable(),
+  });
 
   final OverlayTheme theme;
   final TessellationCache? cache;
+  final ShxFontTable shxFonts;
 
   final Paint _stroke = Paint()
     ..style = PaintingStyle.stroke
@@ -189,7 +193,7 @@ class OverlayPainter {
     if (model.highlightedIds.isNotEmpty) {
       _paintEntityOutlines(
         canvas,
-        model.highlightedIds,
+        _visibleIds(model.highlightedIds, model),
         viewport,
         document,
         theme.selectionStroke,
@@ -200,7 +204,7 @@ class OverlayPainter {
     if (model.selectedIds.isNotEmpty) {
       _paintEntityOutlines(
         canvas,
-        model.selectedIds,
+        _visibleIds(model.selectedIds, model),
         viewport,
         document,
         theme.selectionStroke,
@@ -232,6 +236,15 @@ class OverlayPainter {
     canvas.restore();
   }
 
+  List<int> _visibleIds(List<int> ids, OverlayModel model) {
+    if (model.hiddenIds.isEmpty) return ids;
+    final hidden = {for (final id in model.hiddenIds) id};
+    return [
+      for (final id in ids)
+        if (!hidden.contains(id)) id,
+    ];
+  }
+
   /// Re-emits the selected entities and strokes them on top of the drawing.
   ///
   /// Re-emitting rather than caching an outline is deliberate: hover and
@@ -256,6 +269,7 @@ class OverlayPainter {
       tolerance: viewport.tolerance,
       visible: viewport.visibleBounds,
       cache: cache,
+      shxFonts: shxFonts,
     );
     if (sink.length == 0) return;
     final solid = Float32List.sublistView(sink.buffer, 0, sink.length);
