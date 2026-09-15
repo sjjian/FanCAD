@@ -112,7 +112,8 @@ void main() {
         ..putLineType(LineTypeDef.dashed)
         ..putTextStyle(const TextStyleDef(name: 'Notes'))
         ..putDimStyle(const DimStyleDef(name: 'ARCH'))
-        ..currentDimStyle = 'ARCH';
+        ..currentDimStyle = 'ARCH'
+        ..currentTextStyle = 'Notes';
       expect(document.removeLayer('0'), isNull);
       expect(document.removeLayer('NOPE'), isNull);
       expect(document.layer('0'), isNotNull);
@@ -121,6 +122,11 @@ void main() {
       expect(document.removeDimStyle('nope'), isNull);
       expect(document.removeDimStyle('arch')?.name, 'ARCH');
       expect(document.currentDimStyle, 'Standard');
+      expect(document.removeTextStyle('Standard'), isNull);
+      expect(document.removeTextStyle('nope'), isNull);
+      expect(document.removeTextStyle('notes')?.name, 'Notes');
+      expect(document.currentTextStyle, 'Standard');
+      expect(document.namedTextStyle('nope'), isNull);
       expect(document.dimStyle('missing').name, 'Standard');
       expect(document.namedDimStyle('nope'), isNull);
     });

@@ -410,6 +410,7 @@ void main() {
 
     final dxf = const DxfWriter().writeString(original);
     expect(dxf, contains(r'$DIMSTYLE'));
+    expect(dxf, contains(r'$TEXTSTYLE'));
     expect(dxf, contains('DIMENSION'));
 
     final restored = const DxfReader().readString(dxf);
@@ -421,6 +422,18 @@ void main() {
     expect(dim.definitionPoints[0], const Vec2(0, 0));
     expect(dim.definitionPoints[1], const Vec2(10, 0));
     expect(dim.definitionPoints[2], const Vec2(5, 4));
+  });
+
+  test('the current text style round-trips through DXF', () {
+    final original = drawing(
+      textStyles: const [TextStyleDef(name: 'Notes', fontFamily: 'Arial')],
+    )..currentTextStyle = 'Notes';
+
+    final restored = const DxfReader().readString(
+      const DxfWriter().writeString(original),
+    );
+    expect(restored.currentTextStyle, 'Notes');
+    expect(restored.namedTextStyle('Notes')!.fontFamily, 'Arial');
   });
 
   test('a non-plottable layer stays off the plot through DXF', () {

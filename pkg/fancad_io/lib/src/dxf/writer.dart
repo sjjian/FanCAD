@@ -30,6 +30,8 @@ class DxfWriter {
     pair(8, document.currentLayer);
     pair(9, r'$DIMSTYLE');
     pair(2, document.currentDimStyle);
+    pair(9, r'$TEXTSTYLE');
+    pair(7, document.currentTextStyle);
     pair(0, 'ENDSEC');
 
     // LibreDWG 0.14 wires LAYOUT through DXF 330, not the block name.

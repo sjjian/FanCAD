@@ -238,6 +238,9 @@ class CadDocument implements BlockLookup, StyleResolver {
   /// Dimension style new dimensions are created with.
   String currentDimStyle = 'Standard';
 
+  /// Text style new TEXT / MTEXT are created with.
+  String currentTextStyle = 'Standard';
+
   /// Tolerance used when the caller does not supply one, in model units.
   double defaultTolerance = 1e-3;
 
@@ -427,6 +430,37 @@ class CadDocument implements BlockLookup, StyleResolver {
     _version++;
   }
 
+  /// The named text style, or null when the table has no match.
+  TextStyleDef? namedTextStyle(String name) {
+    final direct = _textStyles[name];
+    if (direct != null) return direct;
+    final needle = name.toLowerCase();
+    for (final style in _textStyles.values) {
+      if (style.name.toLowerCase() == needle) return style;
+    }
+    return null;
+  }
+
+  /// Removes a text style. Refuses to drop Standard.
+  TextStyleDef? removeTextStyle(String name) {
+    if (name.toLowerCase() == 'standard') return null;
+    TextStyleDef? removed = _textStyles.remove(name);
+    if (removed == null) {
+      final match = namedTextStyle(name);
+      if (match == null || match.name.toLowerCase() == 'standard') {
+        return null;
+      }
+      removed = _textStyles.remove(match.name);
+    }
+    if (removed != null) {
+      if (currentTextStyle.toLowerCase() == removed.name.toLowerCase()) {
+        currentTextStyle = 'Standard';
+      }
+      _version++;
+    }
+    return removed;
+  }
+
   void putDimStyle(DimStyleDef style) {
     _dimStyles[style.name] = style;
     _version++;
@@ -465,15 +499,10 @@ class CadDocument implements BlockLookup, StyleResolver {
   }
 
   @override
-  TextStyleDef textStyle(String name) {
-    final direct = _textStyles[name];
-    if (direct != null) return direct;
-    final needle = name.toLowerCase();
-    for (final style in _textStyles.values) {
-      if (style.name.toLowerCase() == needle) return style;
-    }
-    return _textStyles['Standard'] ?? TextStyleDef.standard;
-  }
+  TextStyleDef textStyle(String name) =>
+      namedTextStyle(name) ??
+      namedTextStyle('Standard') ??
+      TextStyleDef.standard;
 
   /// Removes a dimension style. Refuses to drop Standard.
   DimStyleDef? removeDimStyle(String name) {

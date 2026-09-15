@@ -402,7 +402,13 @@ class Transaction {
   );
 
   void putTextStyle(TextStyleDef style) =>
-      _run(PutTextStylePatch(style, document.textStyles[style.name]));
+      _run(PutTextStylePatch(style, document.namedTextStyle(style.name)));
+
+  /// Sets the style new TEXT / MTEXT are created with.
+  void setCurrentTextStyle(String name) {
+    if (document.currentTextStyle == name) return;
+    _run(CurrentTextStylePatch(name, document.currentTextStyle));
+  }
 
   void putDimStyle(DimStyleDef style) =>
       _run(PutDimStylePatch(style, document.namedDimStyle(style.name)));

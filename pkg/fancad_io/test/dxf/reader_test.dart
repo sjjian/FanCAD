@@ -140,6 +140,24 @@ EOF
     });
   });
 
+  test('TEXTSTYLE header sets the current text style', () {
+    final document = parse(r'''
+  0
+SECTION
+  2
+HEADER
+  9
+$TEXTSTYLE
+  7
+Notes
+  0
+ENDSEC
+  0
+EOF
+''');
+    expect(document.currentTextStyle, 'Notes');
+  });
+
   group('tables', () {
     test('an unnamed STYLE or LTYPE is skipped rather than stored blank', () {
       final document = parse('''

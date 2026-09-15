@@ -210,11 +210,32 @@ final class PutTextStylePatch extends Patch {
   }
 
   @override
-  Patch inverse(CadDocument document) =>
-      PutTextStylePatch(previous ?? TextStyleDef(name: style.name), style);
+  Patch inverse(CadDocument document) => previous == null
+      ? RemoveTextStylePatch(style.name, style)
+      : PutTextStylePatch(previous!, style);
 
   @override
   String describe() => 'Text style "${style.name}"';
+}
+
+/// Deletes a text style definition.
+final class RemoveTextStylePatch extends Patch {
+  const RemoveTextStylePatch(this.name, this.previous);
+
+  final String name;
+  final TextStyleDef previous;
+
+  @override
+  DocumentChange applyTo(CadDocument document) {
+    document.removeTextStyle(name);
+    return const DocumentChange(tablesChanged: true);
+  }
+
+  @override
+  Patch inverse(CadDocument document) => PutTextStylePatch(previous, null);
+
+  @override
+  String describe() => 'Delete text style "$name"';
 }
 
 /// Creates or updates a dimension style definition.
@@ -398,6 +419,26 @@ final class CurrentDimStylePatch extends Patch {
 
   @override
   String describe() => 'Set current dimension style to "$name"';
+}
+
+/// Switches the style new text is created with.
+final class CurrentTextStylePatch extends Patch {
+  const CurrentTextStylePatch(this.name, this.previous);
+
+  final String name;
+  final String previous;
+
+  @override
+  DocumentChange applyTo(CadDocument document) {
+    document.currentTextStyle = name;
+    return const DocumentChange(tablesChanged: true);
+  }
+
+  @override
+  Patch inverse(CadDocument document) => CurrentTextStylePatch(previous, name);
+
+  @override
+  String describe() => 'Set current text style to "$name"';
 }
 
 final class ActiveLayoutPatch extends Patch {

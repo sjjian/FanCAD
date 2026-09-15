@@ -239,6 +239,26 @@ void main() {
       expect(session.document.currentDimStyle, 'ARCH');
     });
 
+    test('putTextStyle is undoable', () {
+      final session = DocumentSession(id: '1', document: CadDocument());
+      session.edit('Text Style', (transaction) {
+        transaction.putTextStyle(
+          const TextStyleDef(name: 'Notes', fontFamily: 'Arial', height: 5),
+        );
+        transaction.setCurrentTextStyle('Notes');
+      });
+      expect(session.document.namedTextStyle('Notes')!.fontFamily, 'Arial');
+      expect(session.document.currentTextStyle, 'Notes');
+
+      expect(session.undo(), isTrue);
+      expect(session.document.namedTextStyle('Notes'), isNull);
+      expect(session.document.currentTextStyle, 'Standard');
+
+      expect(session.redo(), isTrue);
+      expect(session.document.namedTextStyle('Notes')!.height, 5);
+      expect(session.document.currentTextStyle, 'Notes');
+    });
+
     test('explode uses the style for text height and decimals', () {
       final dim = Construct.linearDimension(
         const Vec2(0, 0),

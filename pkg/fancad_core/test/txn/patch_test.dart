@@ -121,10 +121,14 @@ void main() {
       PutTextStylePatch(const TextStyleDef(name: 'Notes'), null).describe(),
       contains('Notes'),
     );
-    expect(
-      CurrentDimStylePatch('ARCH', 'Standard').describe(),
-      contains('ARCH'),
-    );
+      expect(
+        CurrentDimStylePatch('ARCH', 'Standard').describe(),
+        contains('ARCH'),
+      );
+      expect(
+        CurrentTextStylePatch('Notes', 'Standard').describe(),
+        contains('Notes'),
+      );
   });
 
   test('undoing a new block cannot invent a previous definition', () {
@@ -140,7 +144,7 @@ void main() {
     expect(document.blocks.containsKey('TEMP'), isFalse);
   });
 
-  test('undoing a new text style cannot invent a previous font', () {
+    test('undoing a new text style removes it', () {
     final document = CadDocument();
     const style = TextStyleDef(name: 'Notes', fontFamily: 'Arial', height: 5);
     final put = PutTextStylePatch(style, null);
@@ -149,8 +153,7 @@ void main() {
     put.applyTo(document);
     expect(document.textStyles['Notes']?.fontFamily, 'Arial');
     undo.applyTo(document);
-    expect(document.textStyles['Notes']?.fontFamily, 'txt');
-    expect(document.textStyles['Notes']?.height, 0);
+    expect(document.namedTextStyle('Notes'), isNull);
   });
 
   test('undoing a new linetype cannot invent a previous dash pattern', () {

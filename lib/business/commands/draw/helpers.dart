@@ -12,6 +12,18 @@ String dimStyleName(CommandContext context) {
   return name.isEmpty ? context.document.currentDimStyle : name;
 }
 
+const ParamSpec textStyleParam = ParamSpec(
+  name: 'style',
+  type: ParamType.text,
+  description: 'Text style. Defaults to the current TEXTSTYLE.',
+  required: false,
+);
+
+String textStyleName(CommandContext context) {
+  final name = context.args.text('style')?.trim() ?? '';
+  return name.isEmpty ? context.document.currentTextStyle : name;
+}
+
 List<String> vertexKeywords(int count) => [
   if (count >= 1) 'Undo',
   if (count >= 3) 'Close',

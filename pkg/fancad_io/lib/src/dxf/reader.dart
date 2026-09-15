@@ -263,6 +263,8 @@ class DxfReader {
         document.currentLayer = pair.value;
       } else if (name == r'$DIMSTYLE' && (pair.code == 2 || pair.code == 7)) {
         document.currentDimStyle = pair.value;
+      } else if (name == r'$TEXTSTYLE' && (pair.code == 2 || pair.code == 7)) {
+        document.currentTextStyle = pair.value;
       } else if (name != null && name.startsWith(r'$')) {
         document.setHeaderVariable(name, pair.value);
       }

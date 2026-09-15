@@ -28,6 +28,7 @@ import 'ray.dart';
 import 'rectangle.dart';
 import 'spline.dart';
 import 'text.dart';
+import 'textstyle.dart';
 import 'xline.dart';
 
 /// The drawing commands.
@@ -73,5 +74,6 @@ class DrawCommands {
     DrawCenterLineCommand().toDescriptor(),
     DrawDimAngularCommand().toDescriptor(),
     AnnotDimstyleCommand().toDescriptor(),
+    AnnotTextstyleCommand().toDescriptor(),
   ];
 }
