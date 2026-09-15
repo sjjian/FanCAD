@@ -1,3 +1,4 @@
+import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -7,6 +8,71 @@ import '../theme/tokens.dart';
 import 'command_line_model.dart';
 import 'dynamic_input_hud.dart';
 import 'shell_widgets.dart';
+
+/// Ranked command matches shown above the canvas HUD while a verb is typed.
+class CommandSuggestController extends ChangeNotifier {
+  List<CommandDescriptor> _matches = const [];
+  int _highlighted = 0;
+  VoidCallback? _onAccept;
+
+  /// Enough rows to scan, short enough that the drawing stays visible.
+  static const int limit = 8;
+
+  List<CommandDescriptor> get matches => _matches;
+  int get highlighted => _highlighted;
+  bool get isOpen => _matches.isNotEmpty;
+  CommandDescriptor? get current => isOpen ? _matches[_highlighted] : null;
+
+  /// [CommandLinePane] binds this so a click on a row can clear the field
+  /// and start the command, the same path as Enter.
+  void bindAccept(VoidCallback? handler) {
+    _onAccept = handler;
+  }
+
+  void update({
+    required String query,
+    required CommandRegistry registry,
+    required AppLocalizations l10n,
+    required bool awaiting,
+  }) {
+    if (awaiting || query.trim().isEmpty) {
+      clear();
+      return;
+    }
+    final matches = searchCommandsLocalized(
+      registry,
+      query,
+      l10n,
+      limit: limit,
+    );
+    _matches = matches;
+    _highlighted = 0;
+    notifyListeners();
+  }
+
+  void move(int delta) {
+    if (_matches.isEmpty) return;
+    _highlighted = (_highlighted + delta).clamp(0, _matches.length - 1);
+    notifyListeners();
+  }
+
+  void highlight(int index) {
+    if (_matches.isEmpty) return;
+    final next = index.clamp(0, _matches.length - 1);
+    if (next == _highlighted) return;
+    _highlighted = next;
+    notifyListeners();
+  }
+
+  void clear() {
+    if (_matches.isEmpty) return;
+    _matches = const [];
+    _highlighted = 0;
+    notifyListeners();
+  }
+
+  void accept() => _onAccept?.call();
+}
 
 /// The command line on the canvas dock.
 ///
@@ -21,6 +87,7 @@ class CommandLinePane extends StatefulWidget {
     required this.focusNode,
     required this.onOpenHistory,
     this.historyOpen = false,
+    this.suggest,
   });
 
   final Workspace workspace;
@@ -30,6 +97,9 @@ class CommandLinePane extends StatefulWidget {
   /// Owned by the workbench so that the canvas can hand focus back here after
   /// a click, which is what keeps typed input working mid-command.
   final FocusNode focusNode;
+
+  /// Live matches above the HUD. Absent when this pane is hosted alone.
+  final CommandSuggestController? suggest;
 
   @override
   State<CommandLinePane> createState() => _CommandLinePaneState();
@@ -47,6 +117,7 @@ class _CommandLinePaneState extends State<CommandLinePane> {
     // The canvas focuses this node, not the wrapping Focus widget, so Escape
     // has to be handled on the node that actually owns focus.
     widget.focusNode.onKeyEvent = _onKey;
+    widget.suggest?.bindAccept(_acceptSuggest);
   }
 
   @override
@@ -56,11 +127,16 @@ class _CommandLinePaneState extends State<CommandLinePane> {
       oldWidget.focusNode.onKeyEvent = null;
       widget.focusNode.onKeyEvent = _onKey;
     }
+    if (oldWidget.suggest != widget.suggest) {
+      oldWidget.suggest?.bindAccept(null);
+      widget.suggest?.bindAccept(_acceptSuggest);
+    }
   }
 
   @override
   void dispose() {
     widget.focusNode.onKeyEvent = null;
+    widget.suggest?.bindAccept(null);
     _model.removeListener(_onModelChanged);
     _input.dispose();
     super.dispose();
@@ -75,24 +151,62 @@ class _CommandLinePaneState extends State<CommandLinePane> {
         widget.focusNode.requestFocus();
       }
     }
+    _syncSuggest();
     setState(() {});
   }
 
   void _submit(String raw) {
     final remaining = _model.submit(raw);
     _input.clear();
+    _syncSuggest();
     if (remaining == null) return;
     // Not consumed by a prompt, so it is a command to run. An empty line
     // repeats the previous command, which the workspace handles.
     widget.workspace.submitCommandLine(remaining);
   }
 
+  void _acceptSuggest() {
+    final descriptor = widget.suggest?.current;
+    _input.clear();
+    widget.suggest?.clear();
+    if (descriptor == null) return;
+    widget.workspace.run(descriptor.id);
+  }
+
+  void _syncSuggest() {
+    widget.suggest?.update(
+      query: _input.text,
+      registry: widget.workspace.commands,
+      l10n: context.l10n,
+      awaiting: _model.isAwaitingInput,
+    );
+  }
+
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final suggestOpen = widget.suggest?.isOpen == true;
+    if (suggestOpen) {
+      switch (event.logicalKey) {
+        case LogicalKeyboardKey.arrowUp:
+          widget.suggest!.move(-1);
+          return KeyEventResult.handled;
+        case LogicalKeyboardKey.arrowDown:
+          widget.suggest!.move(1);
+          return KeyEventResult.handled;
+        case LogicalKeyboardKey.enter:
+        case LogicalKeyboardKey.numpadEnter:
+          if (event is KeyDownEvent) _acceptSuggest();
+          return KeyEventResult.handled;
+      }
+    }
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     switch (event.logicalKey) {
       case LogicalKeyboardKey.escape:
         widget.workspace.cancelActive();
         _input.clear();
+        _syncSuggest();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowUp:
         final recalled = _model.recallPrevious();
@@ -127,6 +241,7 @@ class _CommandLinePaneState extends State<CommandLinePane> {
     _input
       ..text = value
       ..selection = TextSelection.collapsed(offset: value.length);
+    _syncSuggest();
   }
 
   @override
@@ -199,6 +314,7 @@ class _CommandLinePaneState extends State<CommandLinePane> {
                 const SingleActivator(LogicalKeyboardKey.escape): () {
                   widget.workspace.cancelActive();
                   _input.clear();
+                  _syncSuggest();
                 },
               },
               child: Focus(
@@ -213,7 +329,18 @@ class _CommandLinePaneState extends State<CommandLinePane> {
                       : prompt.isEmpty
                       ? context.l10n.hint_type_command
                       : null,
-                  onSubmitted: _submit,
+                  onChanged: (_) => _syncSuggest(),
+                  onSubmitted: (raw) {
+                    if (widget.suggest?.isOpen == true) {
+                      _acceptSuggest();
+                      return;
+                    }
+                    // Enter on an open popup already cleared the field in
+                    // [_onKey]; the text-input action still delivers the old
+                    // string and must not parse it as a second command.
+                    if (raw.isNotEmpty && _input.text.isEmpty) return;
+                    _submit(raw);
+                  },
                 ),
               ),
             ),
@@ -246,6 +373,7 @@ class _CommandLinePaneState extends State<CommandLinePane> {
                           onPressed: () {
                             widget.workspace.cancelActive();
                             _input.clear();
+                            _syncSuggest();
                           },
                         ),
                       ),

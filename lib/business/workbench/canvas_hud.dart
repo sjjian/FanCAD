@@ -49,20 +49,11 @@ class CanvasHud extends StatelessWidget {
             alignment: Alignment.bottomCenter,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: canvasHudMaxWidth),
-              child: _HudCard(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _ActionBar(workspace: workspace),
-                    const ShellHairline(),
-                    _CommandBar(
-                      workspace: workspace,
-                      commandFocus: commandFocus,
-                      historyOpen: historyOpen,
-                      onOpenHistory: onOpenHistory,
-                    ),
-                  ],
-                ),
+              child: _HudDock(
+                workspace: workspace,
+                commandFocus: commandFocus,
+                historyOpen: historyOpen,
+                onOpenHistory: onOpenHistory,
               ),
             ),
           ),
@@ -117,6 +108,191 @@ const canvasHudRadius = FanCadTokens.radiusLarge;
 /// Inset so tools and mode chips sit inside the rounded corners.
 @visibleForTesting
 const canvasHudPadding = EdgeInsets.symmetric(horizontal: FanCadTokens.space3);
+
+/// The bottom card plus the command-suggest popup stacked above it so both
+/// share the same max width and stretch to the same left and right edges.
+class _HudDock extends StatefulWidget {
+  const _HudDock({
+    required this.workspace,
+    required this.commandFocus,
+    required this.onOpenHistory,
+    required this.historyOpen,
+  });
+
+  final Workspace workspace;
+  final FocusNode commandFocus;
+  final VoidCallback onOpenHistory;
+  final bool historyOpen;
+
+  @override
+  State<_HudDock> createState() => _HudDockState();
+}
+
+class _HudDockState extends State<_HudDock> {
+  final CommandSuggestController _suggest = CommandSuggestController();
+
+  @override
+  void dispose() {
+    _suggest.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _suggest,
+      builder: (context, _) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_suggest.isOpen) ...[
+              _CommandSuggestPopup(suggest: _suggest),
+              const SizedBox(height: FanCadTokens.space2),
+            ],
+            _HudCard(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ActionBar(workspace: widget.workspace),
+                  const ShellHairline(),
+                  _CommandBar(
+                    workspace: widget.workspace,
+                    commandFocus: widget.commandFocus,
+                    historyOpen: widget.historyOpen,
+                    onOpenHistory: widget.onOpenHistory,
+                    suggest: _suggest,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _CommandSuggestPopup extends StatelessWidget {
+  const _CommandSuggestPopup({required this.suggest});
+
+  final CommandSuggestController suggest;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    return Material(
+      color: tokens.surfaceOverlay,
+      elevation: 3,
+      shadowColor: tokens.shadow,
+      borderRadius: BorderRadius.circular(canvasHudRadius),
+      child: Container(
+        key: const Key('canvas-command-suggest'),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(canvasHudRadius),
+          border: Border.all(color: tokens.borderStrong),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < suggest.matches.length; i++)
+              _CommandSuggestRow(
+                descriptor: suggest.matches[i],
+                isHighlighted: i == suggest.highlighted,
+                title: l10n.commandTitle(
+                  suggest.matches[i].id,
+                  suggest.matches[i].title,
+                ),
+                onHover: () => suggest.highlight(i),
+                onTap: () {
+                  suggest.highlight(i);
+                  suggest.accept();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CommandSuggestRow extends StatelessWidget {
+  const _CommandSuggestRow({
+    required this.descriptor,
+    required this.isHighlighted,
+    required this.title,
+    required this.onHover,
+    required this.onTap,
+  });
+
+  final CommandDescriptor descriptor;
+  final bool isHighlighted;
+  final String title;
+  final VoidCallback onHover;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return MouseRegion(
+      onEnter: (_) => onHover(),
+      child: ShellRow(
+        key: Key('canvas-command-suggest-row-${descriptor.id}'),
+        isSelected: isHighlighted,
+        onTap: onTap,
+        height: FanCadTokens.rowHeight,
+        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      title,
+                      style: tokens.bodyStyle.copyWith(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (descriptor.description.isNotEmpty) ...[
+                    const SizedBox(width: FanCadTokens.space2),
+                    Expanded(
+                      child: Text(
+                        descriptor.description,
+                        style: tokens.labelStyle.copyWith(fontSize: 10.5),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: FanCadTokens.space3),
+            Expanded(
+              child: descriptor.aliases.isEmpty
+                  ? const SizedBox.shrink()
+                  : Text(
+                      descriptor.aliases.first.toUpperCase(),
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tokens.monoStyle.copyWith(
+                        fontSize: 10.5,
+                        color: tokens.textFaint,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _HudCard extends StatelessWidget {
   const _HudCard({required this.child});
@@ -250,12 +426,14 @@ class _CommandBar extends StatelessWidget {
     required this.commandFocus,
     required this.historyOpen,
     required this.onOpenHistory,
+    required this.suggest,
   });
 
   final Workspace workspace;
   final FocusNode commandFocus;
   final bool historyOpen;
   final VoidCallback onOpenHistory;
+  final CommandSuggestController suggest;
 
   @override
   Widget build(BuildContext context) {
@@ -267,6 +445,7 @@ class _CommandBar extends StatelessWidget {
         focusNode: commandFocus,
         historyOpen: historyOpen,
         onOpenHistory: onOpenHistory,
+        suggest: suggest,
       ),
     );
   }

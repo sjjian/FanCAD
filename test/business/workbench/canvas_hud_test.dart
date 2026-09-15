@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fancad/fancad.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -339,4 +340,117 @@ void main() {
       expect(find.text('Cancel'), findsOneWidget);
     },
   );
+
+  testWidgets('typing a verb shows command matches aligned with the HUD', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    expect(find.byKey(const Key('canvas-command-suggest')), findsNothing);
+
+    await tester.enterText(_commandField, 'L');
+    await tester.pump();
+
+    expect(find.byKey(const Key('canvas-command-suggest')), findsOneWidget);
+    final card = tester.getRect(find.byKey(const Key('canvas-bottom-card')));
+    final popup = tester.getRect(
+      find.byKey(const Key('canvas-command-suggest')),
+    );
+    expect(popup.left, closeTo(card.left, 0.5));
+    expect(popup.right, closeTo(card.right, 0.5));
+    expect(popup.bottom, lessThanOrEqualTo(card.top));
+
+    final rows = find.descendant(
+      of: find.byKey(const Key('canvas-command-suggest')),
+      matching: find.byType(ShellRow),
+    );
+    expect(rows, findsAtLeastNWidgets(2));
+    expect(tester.widget<ShellRow>(rows.at(0)).isSelected, isTrue);
+    expect(
+      tester.widget<ShellRow>(rows.at(0)).key,
+      const Key('canvas-command-suggest-row-draw.line'),
+    );
+    final lineDescription = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const Key('canvas-command-suggest-row-draw.line')),
+        matching: find.textContaining(
+          'Draws one or more connected straight line segments',
+        ),
+      ),
+    );
+    expect(lineDescription.maxLines, 1);
+    expect(lineDescription.overflow, TextOverflow.ellipsis);
+    final descriptionRect = tester.getRect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-command-suggest-row-draw.line')),
+        matching: find.textContaining(
+          'Draws one or more connected straight line segments',
+        ),
+      ),
+    );
+    final alias = tester.getRect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-command-suggest-row-draw.line')),
+        matching: find.text('L'),
+      ),
+    );
+    expect(alias.right, closeTo(popup.right - FanCadTokens.space3, 1));
+    expect(descriptionRect.right, lessThan(alias.left));
+    expect(descriptionRect.right, lessThan(popup.left + popup.width * 0.72));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(tester.widget<ShellRow>(rows.at(0)).isSelected, isFalse);
+    expect(tester.widget<ShellRow>(rows.at(1)).isSelected, isTrue);
+
+    final secondId = _suggestRowId(tester, 1);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(find.byKey(const Key('canvas-command-suggest')), findsNothing);
+    final workspace = container.read(workspaceProvider);
+    expect(
+      workspace.runningCommand ?? workspace.commands.lastCommandId,
+      secondId,
+    );
+  });
+
+  testWidgets('a prompt waiting for input does not open command matches', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceProvider);
+    unawaited(
+      workspace.commandLine.request(
+        PendingEntry(
+          message: 'Specify next point:',
+          completer: Completer<Object?>(),
+          accept: (raw) => raw,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(_commandField, 'L');
+    await tester.pump();
+    expect(find.byKey(const Key('canvas-command-suggest')), findsNothing);
+  });
+}
+
+Finder get _commandField => find.descendant(
+  of: find.byKey(const Key('canvas-command-dock')),
+  matching: find.byType(TextField),
+);
+
+String _suggestRowId(WidgetTester tester, int index) {
+  final row = tester.widget<ShellRow>(
+    find
+        .descendant(
+          of: find.byKey(const Key('canvas-command-suggest')),
+          matching: find.byType(ShellRow),
+        )
+        .at(index),
+  );
+  final key = row.key! as ValueKey<String>;
+  const prefix = 'canvas-command-suggest-row-';
+  return key.value.substring(prefix.length);
 }
