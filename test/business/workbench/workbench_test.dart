@@ -29,6 +29,8 @@ void main() {
     expect(find.byIcon(Icons.auto_awesome_outlined), findsOneWidget);
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
     expect(find.byKey(const Key('activity-preferences')), findsOneWidget);
+    expect(find.byKey(const Key('activity-plugins')), findsNothing);
+    expect(find.byKey(const Key('activity-editor')), findsNothing);
   });
 
   testWidgets('switching to Simplified Chinese localizes chrome', (

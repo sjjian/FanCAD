@@ -565,12 +565,7 @@ class _ActivityBar extends StatelessWidget {
     ),
     (id: 'history', icon: Icons.history_outlined, activeIcon: Icons.history),
     (id: 'commands', icon: Icons.terminal_outlined, activeIcon: Icons.terminal),
-    (
-      id: 'plugins',
-      icon: Icons.extension_outlined,
-      activeIcon: Icons.extension,
-    ),
-    (id: 'editor', icon: Icons.code_outlined, activeIcon: Icons.code),
+    // plugins / editor stay off the strip until the extension UI is designed.
   ];
 
   ({String label, String hint}) _copy(AppLocalizations l10n, String id) {
