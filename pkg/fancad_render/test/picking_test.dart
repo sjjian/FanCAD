@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:fancad_core/fancad_core.dart';
@@ -340,5 +341,39 @@ void main() {
     expect(cache.hits, greaterThan(0));
     expect(cache.misses, 0);
     expect(misses, greaterThan(0));
+  });
+
+  test('a rotated dimension is pickable on its moved *D stroke', () {
+    final document = CadDocument();
+    document.addEntity(
+      const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 4)),
+      blockName: r'*D1',
+    );
+    final dim = document
+        .addEntity(
+          const DimensionEntity(
+            id: 2,
+            blockName: r'*D1',
+            definitionPoints: [Vec2.zero(), Vec2(10, 0), Vec2(5, 4)],
+            textPosition: Vec2(5, 4),
+            measurement: 10,
+          ),
+        )
+        .id;
+    document.indexFor(document.modelSpaceBlockName);
+
+    Transaction(document).transform(
+      dim,
+      Mat3.rotationAbout(math.pi / 2, Vec2.zero()),
+    );
+
+    const view = CadViewport(
+      center: Vec2(-2, 5),
+      scale: 10,
+      size: Size(400, 400),
+    );
+    final hit = const Picker().pickTopmost(document, view, const Vec2(-2, 5));
+    expect(hit, isNotNull);
+    expect(hit!.entityId, dim);
   });
 }

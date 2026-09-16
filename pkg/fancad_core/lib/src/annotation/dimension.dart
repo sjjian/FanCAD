@@ -67,14 +67,13 @@ class DimensionGraphics {
     final p1 = points[0];
     final p2 = points[1];
     final dimLine = points.length > 2 ? points[2] : entity.textPosition;
-    // Type 0 with a dim-line pick is DIMLINEAR: the dimension line is
-    // horizontal or vertical, not parallel to the two origins.
+    // Type 0 with a dim-line pick is DIMLINEAR: the dimension line goes
+    // through that pick, perpendicular to the origin-midpoint offset, so a
+    // rotated horizontal/vertical dim is not snapped back to the axes.
     if ((entity.dimensionType & 0x0F) == 0 && points.length >= 3) {
-      final mid = p1.lerp(p2, 0.5);
-      final horizontal = (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
-      final a = horizontal ? Vec2(p1.x, dimLine.y) : Vec2(dimLine.x, p1.y);
-      final b = horizontal ? Vec2(p2.x, dimLine.y) : Vec2(dimLine.x, p2.y);
-      if (a.distanceTo(b) < 1e-9) return;
+      final line = DimensionEntity.linearDimLine(points);
+      if (line == null) return;
+      final (a, b) = line;
       final unit = (b - a).normalized();
       _extension(context, sink, style, p1, a, dim);
       _extension(context, sink, style, p2, b, dim);
@@ -260,15 +259,14 @@ class DimensionGraphics {
     final Vec2 a;
     final Vec2 b;
     if ((entity.dimensionType & 0x0F) == 0 && points.length >= 3) {
-      final mid = points[0].lerp(points[1], 0.5);
-      final dimLine = points[2];
-      final horizontal = (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
-      a = horizontal
-          ? Vec2(points[0].x, dimLine.y)
-          : Vec2(dimLine.x, points[0].y);
-      b = horizontal
-          ? Vec2(points[1].x, dimLine.y)
-          : Vec2(dimLine.x, points[1].y);
+      final line = DimensionEntity.linearDimLine(points);
+      if (line == null) {
+        a = points[0];
+        b = points[1];
+      } else {
+        a = line.$1;
+        b = line.$2;
+      }
     } else {
       a = points[0];
       b = points[1];
@@ -278,6 +276,8 @@ class DimensionGraphics {
     return _readableTextAngle(delta.angle);
   }
 
+  /// CAD keeps fallback labels in `(-π/2, π/2]`: 90° reads up the page,
+  /// 180° becomes 0°.
   static double _readableTextAngle(double angle) {
     var readable = angle;
     while (readable <= -math.pi / 2) {

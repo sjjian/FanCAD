@@ -101,7 +101,7 @@ class PropertiesPanel extends StatelessWidget {
                     if (entities.length == 1)
                       PanelSection(
                         title: context.l10n.geometry,
-                        children: _geometryRows(context, entities.first),
+                        children: _geometryRows(context, tab, entities.first),
                       ),
                     PanelSection(
                       title: context.l10n.measurements,
@@ -234,6 +234,7 @@ class PropertiesPanel extends StatelessWidget {
 
   List<Widget> _textGeometryRows(
     BuildContext context,
+    DocumentTab tab,
     CadEntity entity, {
     required String position,
     bool columnWidth = false,
@@ -249,7 +250,7 @@ class PropertiesPanel extends StatelessWidget {
       _edit(
         context,
         l10n.contents,
-        textEditFieldValue(entity),
+        textEditFieldValue(entity, document: tab.document),
         () => workspace.run('edit.textContent'),
       ),
       _read(context, l10n.position, position),
@@ -304,7 +305,11 @@ class PropertiesPanel extends StatelessWidget {
     ];
   }
 
-  List<Widget> _geometryRows(BuildContext context, CadEntity entity) {
+  List<Widget> _geometryRows(
+    BuildContext context,
+    DocumentTab tab,
+    CadEntity entity,
+  ) {
     final l10n = context.l10n;
     switch (entity) {
       case LineEntity(:final start, :final end, :final length):
@@ -355,6 +360,7 @@ class PropertiesPanel extends StatelessWidget {
       case TextEntity(:final position):
         return _textGeometryRows(
           context,
+          tab,
           entity,
           position: _point(position),
           widthFactor: true,
@@ -363,6 +369,7 @@ class PropertiesPanel extends StatelessWidget {
       case MTextEntity(:final position):
         return _textGeometryRows(
           context,
+          tab,
           entity,
           position: _point(position),
           columnWidth: true,
@@ -370,6 +377,7 @@ class PropertiesPanel extends StatelessWidget {
       case AttribEntity(:final position):
         return _textGeometryRows(
           context,
+          tab,
           entity,
           position: _point(position),
           widthFactor: true,
@@ -378,6 +386,7 @@ class PropertiesPanel extends StatelessWidget {
       case AttdefEntity(:final position):
         return _textGeometryRows(
           context,
+          tab,
           entity,
           position: _point(position),
           widthFactor: true,
@@ -386,6 +395,7 @@ class PropertiesPanel extends StatelessWidget {
       case MLeaderEntity(:final textPosition):
         return _textGeometryRows(
           context,
+          tab,
           entity,
           position: _point(textPosition),
         );
@@ -412,15 +422,23 @@ class PropertiesPanel extends StatelessWidget {
           _read(context, l10n.solid_fill, solid ? l10n.yes : l10n.no),
           _read(context, l10n.boundaries, '${entity.loops.length}'),
         ];
-      case DimensionEntity(:final measurement, :final displayText):
+      case DimensionEntity(:final measurement):
+        final rotation = textRotationOf(entity, document: tab.document);
         return [
           _read(context, l10n.measurement, _number(measurement)),
           _edit(
             context,
             l10n.text,
-            displayText,
+            textEditFieldValue(entity, document: tab.document),
             () => workspace.run('edit.textContent'),
           ),
+          if (rotation != null)
+            _edit(
+              context,
+              l10n.rotation,
+              '${_number(rotation * 180 / math.pi)}°',
+              () => _textObject('rotation'),
+            ),
           _read(context, l10n.style, entity.styleName),
         ];
       default:

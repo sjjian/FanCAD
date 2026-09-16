@@ -185,9 +185,7 @@ class Transaction {
     if (!_isEditable(id)) return false;
     final before = document.entity(id);
     if (before == null) return false;
-    _run(
-      ModifyEntityPatch(before: before, after: before.transformed(matrix)),
-    );
+    _transformEntity(before, matrix);
     _regenAssociated({id});
     return true;
   }
@@ -197,16 +195,74 @@ class Transaction {
     if (matrix.isIdentity) return 0;
     final list = ids.toList();
     var count = 0;
+    final movedBlocks = <String>{};
     _regenerating = true;
     try {
       for (final id in list) {
-        if (transform(id, matrix)) count++;
+        if (!_isEditable(id)) continue;
+        final before = document.entity(id);
+        if (before == null) continue;
+        _transformEntity(before, matrix, movedBlocks: movedBlocks);
+        count++;
       }
     } finally {
       _regenerating = false;
     }
     if (count > 0) _regenAssociated(list.toSet());
     return count;
+  }
+
+  void _transformEntity(
+    CadEntity before,
+    Mat3 matrix, {
+    Set<String>? movedBlocks,
+  }) {
+    final after = before.transformed(matrix);
+    if (before is DimensionEntity &&
+        after is DimensionEntity &&
+        before.blockName.isNotEmpty) {
+      _run(
+        ModifyEntityPatch(
+          before: before,
+          after: after.copyWith(
+            blockName: before.blockName,
+            measurement: _keptBlockMeasurement(before, after, matrix),
+          ),
+        ),
+      );
+      if (movedBlocks == null || movedBlocks.add(before.blockName)) {
+        _transformAnonymousBlock(before.blockName, matrix);
+      }
+      return;
+    }
+    _run(ModifyEntityPatch(before: before, after: after));
+  }
+
+  /// Lengths in a kept `*D` stay on the stored measurement. Rereading the
+  /// definition points would drop DIMLFAC and disagree with the painted note.
+  static double _keptBlockMeasurement(
+    DimensionEntity before,
+    DimensionEntity after,
+    Mat3 matrix,
+  ) {
+    final family = before.dimensionType & 0x0F;
+    if (family == 2 || family == 5) return after.measurement;
+    return before.measurement * matrix.meanScale;
+  }
+
+  /// A dimension's `*D` block is already in world coordinates. Rotating the
+  /// definition points without these strokes would drop the cached graphics
+  /// and rebuild an axis-snapped DIMLINEAR on top of neighbouring notes.
+  void _transformAnonymousBlock(String name, Mat3 matrix) {
+    final ids = document.entityIdsOf(name);
+    if (ids == null || ids.isEmpty) return;
+    for (final id in ids) {
+      final entity = document.entity(id);
+      if (entity == null) continue;
+      _run(
+        ModifyEntityPatch(before: entity, after: entity.transformed(matrix)),
+      );
+    }
   }
 
   void _regenAssociated(Set<int> movedIds) {
@@ -217,6 +273,9 @@ class Transaction {
         if (entity is! DimensionEntity || entity.sourceIds.isEmpty) continue;
         final sourcesMoved = entity.sourceIds.any(movedIds.contains);
         if (!sourcesMoved && !movedIds.contains(entity.id)) continue;
+        // The dimension was transformed with its sources. Regenerating would
+        // drop the *D block and snap DIMLINEAR back onto the axes.
+        if (sourcesMoved && movedIds.contains(entity.id)) continue;
         final sources = <CadEntity>[
           for (final id in entity.sourceIds) ?document.entity(id),
         ];

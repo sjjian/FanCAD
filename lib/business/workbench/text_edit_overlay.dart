@@ -26,6 +26,7 @@ class TextEditOverlay extends StatefulWidget {
     required this.entity,
     required this.viewport,
     this.styleNames = const [],
+    this.document,
     this.anchor,
     required this.onCommit,
     this.onPreview,
@@ -37,6 +38,10 @@ class TextEditOverlay extends StatefulWidget {
 
   /// Drawing text styles, used by the style menu.
   final List<String> styleNames;
+
+  /// Needed so a dimension field can read the `*D` note instead of the
+  /// stored measurement.
+  final CadDocument? document;
 
   /// World point under the double-click. The card's top-left sits here so
   /// it lines up with the cursor instead of the CAD insertion.
@@ -83,7 +88,7 @@ class _TextEditOverlayState extends State<TextEditOverlay> {
     final entity = widget.entity;
     _multiline = textEditPlacementOf(entity)?.multiline ?? false;
     _canHeight = textHeightOf(entity) != null;
-    _canRotation = textRotationOf(entity) != null;
+    _canRotation = textRotationOf(entity, document: widget.document) != null;
     _canStyle = textStyleNameOf(entity) != null;
     _canColumnWidth = textColumnWidthOf(entity) != null;
     _canWidthFactor = textWidthFactorOf(entity) != null;
@@ -94,14 +99,18 @@ class _TextEditOverlayState extends State<TextEditOverlay> {
     _justify = _initialJustify;
     _style = _initialStyle;
     _color = entity.props.color;
-    _controller = TextEditingController(text: textEditFieldValue(entity));
+    _controller = TextEditingController(
+      text: textEditFieldValue(entity, document: widget.document),
+    );
     _controller.selection = TextSelection(
       baseOffset: 0,
       extentOffset: _controller.text.length,
     );
     _height = TextEditingController(text: _numberOrEmpty(textHeightOf(entity)));
     _rotation = TextEditingController(
-      text: _numberOrEmpty(_degreesOf(textRotationOf(entity))),
+      text: _numberOrEmpty(
+        _degreesOf(textRotationOf(entity, document: widget.document)),
+      ),
     );
     _columnWidth = TextEditingController(
       text: _numberOrEmpty(textColumnWidthOf(entity)),
@@ -269,7 +278,7 @@ class _TextEditOverlayState extends State<TextEditOverlay> {
         width: _changedNumber(_columnWidth, textColumnWidthOf(widget.entity)),
         rotation: _changedNumber(
           _rotation,
-          _degreesOf(textRotationOf(widget.entity)),
+          _degreesOf(textRotationOf(widget.entity, document: widget.document)),
         ),
         style: _canStyle && _style != null && _style != _initialStyle
             ? _style

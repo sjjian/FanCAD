@@ -57,7 +57,10 @@ class EditTextContentCommand extends FanCadCommand {
         ? (context.args.text('text') ?? '')
         : await context.input.text(
             context.commandPrompt('DDEDIT', context.l10n.prompt_enter_new_text),
-            defaultValue: textEditFieldValue(targets.first),
+            defaultValue: textEditFieldValue(
+              targets.first,
+              document: context.document,
+            ),
           );
     final text = context.args.has('text')
         ? incoming
@@ -66,10 +69,24 @@ class EditTextContentCommand extends FanCadCommand {
       return const CommandResult.failed('Text cannot be empty.');
     }
 
+    final field = context.args.has('text') ? decodeDrawnText(text) : incoming;
     final committed = context.edit('Edit Text', (transaction) {
       for (final entity in targets) {
-        final updated = entityWithEditedText(entity, text);
-        if (updated != null) transaction.modify(updated);
+        if (textEditFieldValue(entity, document: context.document) != field) {
+          final updated = entityWithEditedText(
+            entity,
+            textEditCommitValue(entity, field),
+          );
+          if (updated != null) transaction.modify(updated);
+        }
+        if (entity is DimensionEntity) {
+          final label = editedDimensionBlockLabel(
+            context.document,
+            entity,
+            field,
+          );
+          if (label != null) transaction.modify(label);
+        }
       }
     });
     if (committed == null) {

@@ -45,6 +45,49 @@ void main() {
     expect(updated.overrideText, '<> mm');
   });
 
+  test(
+    'a dimension field shows the *D note when the measurement disagrees',
+    () {
+      final document = CadDocument();
+      document.addEntity(
+        const TextEntity(
+          id: 1,
+          position: Vec2(5, 4),
+          content: '114.6',
+          height: 2.5,
+        ),
+        blockName: r'*D1',
+      );
+      final dim =
+          document.addEntity(
+                const DimensionEntity(
+                  id: 2,
+                  blockName: r'*D1',
+                  textPosition: Vec2(5, 4),
+                  measurement: 269.82,
+                ),
+              )
+              as DimensionEntity;
+      expect(textEditFieldValue(dim, document: document), '114.6');
+      expect(textRotationOf(dim, document: document), 0);
+      expect(
+        (editedDimensionBlockLabel(document, dim, '120') as TextEntity).content,
+        '120',
+      );
+      expect(
+        (editedDimensionBlockLabel(
+                  document,
+                  dim,
+                  '114.6',
+                  rotationRadians: math.pi,
+                )
+                as TextEntity)
+            .rotation,
+        closeTo(math.pi, 1e-12),
+      );
+    },
+  );
+
   test('entityWithEditedText keeps a dimension block name', () {
     const entity = DimensionEntity(
       id: 1,

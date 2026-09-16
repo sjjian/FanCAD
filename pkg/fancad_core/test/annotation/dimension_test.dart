@@ -26,6 +26,23 @@ void main() {
     expect(sink.texts.single.rotation, closeTo(math.pi / 2, 1e-12));
   });
 
+  test('aligned fallback text on a leftward line is not drawn upside-down', () {
+    final sink = PolylineSink();
+    graphics.emit(
+      const DimensionEntity(
+        id: 1,
+        definitionPoints: [Vec2(10, 0), Vec2.zero()],
+        textPosition: Vec2(5, 4),
+        measurement: 10,
+        overrideText: '10',
+        dimensionType: 1,
+      ),
+      context,
+      sink,
+    );
+    expect(sink.texts.single.rotation, closeTo(0, 1e-12));
+  });
+
   test('a short definition list only emits the measurement text', () {
     final sink = PolylineSink();
     graphics.emit(
@@ -275,6 +292,32 @@ void main() {
     );
     expect(sink.texts, isEmpty);
     expect(sink.polylines, isEmpty);
+  });
+
+  test('a rotated DIMLINEAR keeps its dimension line off the axes', () {
+    const dim = DimensionEntity(
+      id: 1,
+      definitionPoints: [Vec2.zero(), Vec2(10, 0), Vec2(5, 4)],
+      textPosition: Vec2(5, 4),
+      measurement: 10,
+      dimensionType: 0,
+    );
+    final rotated = dim.transformed(
+      Mat3.rotationAbout(math.pi / 4, const Vec2.zero()),
+    );
+    final sink = PolylineSink();
+    graphics.emit(rotated, context, sink);
+    expect(
+      sink.polylines.any((xy) {
+        if (xy.length != 4) return false;
+        final dx = (xy[2] - xy[0]).abs();
+        final dy = (xy[3] - xy[1]).abs();
+        return dx > 1 && dy > 1;
+      }),
+      isTrue,
+      reason: 'the dimension line should stay at 45°, not snap to X or Y',
+    );
+    expect(rotated.measurement, closeTo(10, 1e-9));
   });
 }
 

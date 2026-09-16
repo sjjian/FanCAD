@@ -213,6 +213,131 @@ void main() {
       expect(transaction.transformAll([id, 99], const Mat3.identity()), 0);
       expect(transaction.transform(99, Mat3.translation(1, 0)), isFalse);
     });
+
+    test('rotating a dimension moves its *D block with it', () {
+      final document = CadDocument();
+      document.addEntity(
+        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 4)),
+        blockName: r'*D1',
+      );
+      final dim = document
+          .addEntity(
+            const DimensionEntity(
+              id: 2,
+              blockName: r'*D1',
+              definitionPoints: [Vec2.zero(), Vec2(10, 0), Vec2(5, 4)],
+              textPosition: Vec2(5, 4),
+              measurement: 10,
+              overrideText: '528',
+            ),
+          )
+          .id;
+      final transaction = Transaction(document);
+      expect(
+        transaction.transform(
+          dim,
+          Mat3.rotationAbout(math.pi / 2, Vec2.zero()),
+        ),
+        isTrue,
+      );
+      final rotated = document.entity(dim)! as DimensionEntity;
+      expect(rotated.blockName, r'*D1');
+      expect(rotated.overrideText, '528');
+      expect(rotated.measurement, closeTo(10, 1e-9));
+      final stroke = document.entitiesOf(r'*D1').single as LineEntity;
+      expect(stroke.start.x, closeTo(0, 1e-9));
+      expect(stroke.start.y, closeTo(0, 1e-9));
+      expect(stroke.end.x, closeTo(-4, 1e-9));
+      expect(stroke.end.y, closeTo(10, 1e-9));
+    });
+
+    test('rotating a *D dimension keeps the stored measurement', () {
+      final document = CadDocument();
+      document.addEntity(
+        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 4)),
+        blockName: r'*D1',
+      );
+      document.addEntity(
+        const TextEntity(
+          id: 3,
+          position: Vec2(5, 4),
+          content: '114.6',
+          height: 2.5,
+        ),
+        blockName: r'*D1',
+      );
+      final dim = document
+          .addEntity(
+            const DimensionEntity(
+              id: 2,
+              blockName: r'*D1',
+              definitionPoints: [Vec2.zero(), Vec2(10, 4), Vec2(5, 8)],
+              textPosition: Vec2(5, 4),
+              measurement: 0,
+              dimensionType: 0,
+            ),
+          )
+          .id;
+      Transaction(
+        document,
+      ).transform(dim, Mat3.rotationAbout(math.pi / 2, Vec2.zero()));
+      final rotated = document.entity(dim)! as DimensionEntity;
+      expect(rotated.measurement, 0);
+      expect(rotated.blockName, r'*D1');
+      final note = document.entitiesOf(r'*D1').whereType<TextEntity>().single;
+      expect(note.content, '114.6');
+      expect(note.rotation, closeTo(math.pi / 2, 1e-9));
+    });
+
+    test('rotating a note 180 degrees keeps the inverted angle', () {
+      final document = CadDocument();
+      final id = document
+          .addEntity(
+            const TextEntity(
+              id: 1,
+              position: Vec2(10, 0),
+              content: 'JOINT E',
+              height: 2.5,
+            ),
+          )
+          .id;
+      Transaction(document).transform(id, Mat3.rotation(math.pi));
+      final rotated = document.entity(id)! as TextEntity;
+      expect(rotated.position.x, closeTo(-10, 1e-9));
+      expect(rotated.rotation, closeTo(math.pi, 1e-9));
+    });
+
+    test('rotating a dimension updates its model-space pick box', () {
+      final document = CadDocument();
+      document.addEntity(
+        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 4)),
+        blockName: r'*D1',
+      );
+      final dim = document
+          .addEntity(
+            const DimensionEntity(
+              id: 2,
+              blockName: r'*D1',
+              definitionPoints: [Vec2.zero(), Vec2(10, 0), Vec2(5, 4)],
+              textPosition: Vec2(5, 4),
+              measurement: 10,
+              overrideText: '528',
+            ),
+          )
+          .id;
+      // The canvas builds this index on first paint. Replacing the
+      // dimension first, then its *D strokes, used to leave the pick box
+      // on the unmoved ticks.
+      final index = document.indexFor(document.modelSpaceBlockName);
+      expect(index.search(const Bounds2(4, 1, 6, 3)), contains(dim));
+
+      Transaction(
+        document,
+      ).transform(dim, Mat3.rotationAbout(math.pi / 2, Vec2.zero()));
+
+      expect(index.search(const Bounds2(4, 1, 6, 3)), isEmpty);
+      expect(index.search(const Bounds2(-3, 4, -1, 6)), contains(dim));
+    });
   });
 
   group('CommittedTransaction', () {
@@ -412,10 +537,14 @@ void main() {
       final document = CadDocument();
       final session = DocumentSession(id: 't', document: document);
       session.edit('a', (t) {
-        t.add(LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(1, 0)));
+        t.add(
+          LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(1, 0)),
+        );
       });
       session.edit('b', (t) {
-        t.add(LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(0, 1)));
+        t.add(
+          LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(0, 1)),
+        );
       });
       expect(session.history.depth, 2);
       session.history.coalesceLast(2, label: 'Assistant turn');
@@ -660,8 +789,11 @@ void main() {
 
       final stretch = Transaction(document, label: 'Stretch');
       stretch.modify(
-        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(16, 0))
-            .withId(lineId),
+        const LineEntity(
+          id: 0,
+          start: Vec2.zero(),
+          end: Vec2(16, 0),
+        ).withId(lineId),
       );
       stretch.commit();
 
@@ -764,7 +896,10 @@ void main() {
       transaction.commit();
 
       final copy = Transaction(document, label: 'Copy');
-      final created = copy.duplicate([lineId, dimId], const Mat3.translation(0, 5));
+      final created = copy.duplicate([
+        lineId,
+        dimId,
+      ], const Mat3.translation(0, 5));
       copy.commit();
 
       expect(created, hasLength(2));

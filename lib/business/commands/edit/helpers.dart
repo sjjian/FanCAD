@@ -53,14 +53,71 @@ String editableTextOf(CadEntity entity) => switch (entity) {
   _ => '',
 };
 
+/// TEXT / MTEXT inside a dimension's `*D` that paints the measurement.
+CadEntity? dimensionBlockLabel(CadDocument document, DimensionEntity dim) {
+  if (dim.blockName.isEmpty) return null;
+  CadEntity? best;
+  var bestDist = double.infinity;
+  for (final entity in document.entitiesOf(dim.blockName)) {
+    final plain = switch (entity) {
+      TextEntity(:final content) => decodeDrawnText(content),
+      MTextEntity(:final content) => decodeDrawnText(content),
+      _ => '',
+    };
+    if (plain.trim().isEmpty) continue;
+    final pos = switch (entity) {
+      TextEntity(:final position) => position,
+      MTextEntity(:final position) => position,
+      _ => dim.textPosition,
+    };
+    final dist = pos.distanceTo(dim.textPosition);
+    if (best == null || dist < bestDist) {
+      best = entity;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
 /// What the overlay / properties field shows.
 ///
 /// MTEXT codes (`\pxqc;`, `{\f…;…}`) stay in the stored string; the field
-/// only has the glyphs, with `\P` as a newline.
-String textEditFieldValue(CadEntity entity) {
+/// only has the glyphs, with `\P` as a newline. A dimension with an empty
+/// override shows the `*D` note when that is what is actually drawn.
+String textEditFieldValue(CadEntity entity, {CadDocument? document}) {
   final raw = editableTextOf(entity);
-  if (entity is DimensionEntity && raw.isEmpty) return entity.displayText;
+  if (entity is DimensionEntity && raw.isEmpty) {
+    if (document != null) {
+      final label = dimensionBlockLabel(document, entity);
+      if (label != null) {
+        final plain = decodeDrawnText(editableTextOf(label));
+        if (plain.isNotEmpty) return plain;
+      }
+    }
+    return entity.displayText;
+  }
   return decodeDrawnText(raw);
+}
+
+/// Writes [field] into the `*D` note, keeping MTEXT codes when present.
+CadEntity? editedDimensionBlockLabel(
+  CadDocument document,
+  DimensionEntity dim,
+  String field, {
+  CadEntity? originalLabel,
+  double? rotationRadians,
+}) {
+  final label = originalLabel ?? dimensionBlockLabel(document, dim);
+  if (label == null) return null;
+  var next = label;
+  if (textEditFieldValue(label) != field) {
+    next =
+        entityWithEditedText(next, textEditCommitValue(label, field)) ?? next;
+  }
+  if (rotationRadians != null) {
+    next = entityWithRotation(next, rotationRadians) ?? next;
+  }
+  return identical(next, label) ? null : next;
 }
 
 /// Inverse of [textEditFieldValue] for a commit.
@@ -208,15 +265,24 @@ CadEntity? entityWithHeight(CadEntity entity, double height) {
   };
 }
 
-/// Note rotation in radians. Dimensions have none (the whole dim rotates).
-double? textRotationOf(CadEntity entity) => switch (entity) {
-  TextEntity(:final rotation) => rotation,
-  MTextEntity(:final rotation) => rotation,
-  AttribEntity(:final rotation) => rotation,
-  AttdefEntity(:final rotation) => rotation,
-  MLeaderEntity(:final textRotation) => textRotation,
-  _ => null,
-};
+/// Note rotation in radians. A dimension uses the `*D` label when [document]
+/// can see that block.
+double? textRotationOf(CadEntity entity, {CadDocument? document}) =>
+    switch (entity) {
+      TextEntity(:final rotation) => rotation,
+      MTextEntity(:final rotation) => rotation,
+      AttribEntity(:final rotation) => rotation,
+      AttdefEntity(:final rotation) => rotation,
+      MLeaderEntity(:final textRotation) => textRotation,
+      DimensionEntity() => switch (document == null
+          ? null
+          : dimensionBlockLabel(document, entity)) {
+        TextEntity(:final rotation) => rotation,
+        MTextEntity(:final rotation) => rotation,
+        _ => null,
+      },
+      _ => null,
+    };
 
 /// Sets the note angle around the insertion point. Leader vertices stay put.
 CadEntity? entityWithRotation(CadEntity entity, double radians) {
@@ -599,7 +665,7 @@ CadEntity? textEditPreviewOf(
   CadDocument? document,
 }) {
   var next = entity;
-  if (commit.field != textEditFieldValue(entity)) {
+  if (commit.field != textEditFieldValue(entity, document: document)) {
     next =
         entityWithEditedText(next, textEditCommitValue(entity, commit.field)) ??
         next;

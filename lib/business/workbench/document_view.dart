@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +48,7 @@ class _DocumentViewState extends State<DocumentView> {
   int? _editingTextId;
   Vec2? _editingAnchor;
   CadEntity? _editingOriginal;
+  CadEntity? _editingBlockLabel;
 
   @override
   void initState() {
@@ -63,6 +66,7 @@ class _DocumentViewState extends State<DocumentView> {
       _editingTextId = null;
       _editingAnchor = null;
       _editingOriginal = null;
+      _editingBlockLabel = null;
       _bind(widget.tab);
     }
   }
@@ -119,6 +123,9 @@ class _DocumentViewState extends State<DocumentView> {
         _editingTextId = target.id;
         _editingAnchor = world;
         _editingOriginal = target;
+        _editingBlockLabel = target is DimensionEntity
+            ? dimensionBlockLabel(tab.document, target)
+            : null;
       });
       return;
     }
@@ -138,9 +145,13 @@ class _DocumentViewState extends State<DocumentView> {
     final document = (tab ?? widget.tab).document;
     if (document.entity(original.id) == null) return;
     document.replaceEntity(original);
+    final label = _editingBlockLabel;
+    if (label != null && document.entity(label.id) != null) {
+      document.replaceEntity(label);
+    }
     if (notify) {
       (tab ?? widget.tab).session.notifyExternalChange(
-        DocumentChange(modified: [original.id]),
+        DocumentChange(modified: [original.id, if (label != null) label.id]),
       );
     }
   }
@@ -148,14 +159,28 @@ class _DocumentViewState extends State<DocumentView> {
   void _previewTextEdit(TextEditCommit live) {
     final original = _editingOriginal;
     if (original == null) return;
+    final document = widget.tab.document;
     final next =
-        textEditPreviewOf(original, live, document: widget.tab.document) ??
-        original;
-    if (widget.tab.document.entity(original.id) == null) return;
-    widget.tab.document.replaceEntity(next);
-    widget.tab.session.notifyExternalChange(
-      DocumentChange(modified: [original.id]),
-    );
+        textEditPreviewOf(original, live, document: document) ?? original;
+    if (document.entity(original.id) == null) return;
+    document.replaceEntity(next);
+    final modified = <int>[original.id];
+    if (original is DimensionEntity) {
+      final label = editedDimensionBlockLabel(
+        document,
+        original,
+        live.field,
+        originalLabel: _editingBlockLabel,
+        rotationRadians: live.rotation == null
+            ? null
+            : live.rotation! * math.pi / 180,
+      );
+      if (label != null) {
+        document.replaceEntity(label);
+        modified.add(label.id);
+      }
+    }
+    widget.tab.session.notifyExternalChange(DocumentChange(modified: modified));
   }
 
   void _cancelTextEdit() {
@@ -165,30 +190,56 @@ class _DocumentViewState extends State<DocumentView> {
       _editingTextId = null;
       _editingAnchor = null;
       _editingOriginal = null;
+      _editingBlockLabel = null;
     });
   }
 
   void _commitTextEdit(TextEditCommit commit) {
     final original = _editingOriginal;
+    final labelOriginal = _editingBlockLabel;
     final id = _editingTextId;
-    final preview = id == null ? null : widget.tab.document.entity(id);
+    final document = widget.tab.document;
+    final preview = id == null ? null : document.entity(id);
+    final labelPreview = labelOriginal == null
+        ? null
+        : document.entity(labelOriginal.id);
     setState(() {
       _editingTextId = null;
       _editingAnchor = null;
       _editingOriginal = null;
+      _editingBlockLabel = null;
     });
     if (original == null || id == null || preview == null) return;
     final stored = textEditCommitValue(original, commit.field);
     if (textEditRequiresContent(original) && stored.isEmpty) {
-      widget.tab.document.replaceEntity(original);
+      document.replaceEntity(original);
+      if (labelOriginal != null && document.entity(labelOriginal.id) != null) {
+        document.replaceEntity(labelOriginal);
+      }
       widget.tab.session.notifyExternalChange(
-        DocumentChange(modified: [original.id]),
+        DocumentChange(
+          modified: [original.id, if (labelOriginal != null) labelOriginal.id],
+        ),
       );
       return;
     }
-    if (identical(preview, original)) return;
+    final dimChanged = !identical(preview, original);
+    final labelChanged =
+        labelOriginal != null &&
+        labelPreview != null &&
+        !identical(labelPreview, labelOriginal);
+    if (!dimChanged && !labelChanged) return;
     widget.tab.session.edit('Edit Text', (transaction) {
-      transaction.applyRaw(ModifyEntityPatch(before: original, after: preview));
+      if (dimChanged) {
+        transaction.applyRaw(
+          ModifyEntityPatch(before: original, after: preview),
+        );
+      }
+      if (labelChanged) {
+        transaction.applyRaw(
+          ModifyEntityPatch(before: labelOriginal, after: labelPreview),
+        );
+      }
     });
   }
 
@@ -521,6 +572,7 @@ class _DocumentViewState extends State<DocumentView> {
                             if (editingEntity != null)
                               TextEditOverlay(
                                 entity: editingEntity,
+                                document: tab.document,
                                 viewport: tab.viewport.viewport,
                                 styleNames: [...tab.document.textStyles.keys],
                                 anchor: _editingAnchor,

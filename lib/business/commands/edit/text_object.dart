@@ -165,7 +165,10 @@ class EditTextObjectCommand extends FanCadCommand {
         ? await context.resolveNumber(
             'rotation',
             context.l10n.prompt_specify_rotation_angle,
-            defaultValue: (textRotationOf(first) ?? 0) * 180 / math.pi,
+            defaultValue:
+                (textRotationOf(first, document: context.document) ?? 0) *
+                180 /
+                math.pi,
           )
         : null;
     if (hasRotation && rotationDegrees == null) {
@@ -173,6 +176,9 @@ class EditTextObjectCommand extends FanCadCommand {
         'Rotation must be a number of degrees.',
       );
     }
+    final rotationRadians = rotationDegrees == null
+        ? null
+        : rotationDegrees * math.pi / 180;
     var styleName = hasStyle ? (context.args.text('style') ?? '').trim() : null;
     if (hasStyle && (styleName == null || styleName.isEmpty)) {
       styleName = (await context.resolveText(
@@ -256,9 +262,8 @@ class EditTextObjectCommand extends FanCadCommand {
         if (justify != null && justify.isNotEmpty) {
           next = entityWithJustify(next, justify) ?? next;
         }
-        if (rotationDegrees != null) {
-          next =
-              entityWithRotation(next, rotationDegrees * math.pi / 180) ?? next;
+        if (rotationRadians != null) {
+          next = entityWithRotation(next, rotationRadians) ?? next;
         }
         if (styleDef != null) {
           next =
@@ -283,6 +288,18 @@ class EditTextObjectCommand extends FanCadCommand {
           next = next.withProps(next.props.copyWith(color: color));
         }
         if (!identical(next, entity)) transaction.modify(next);
+        if (entity is DimensionEntity) {
+          final field = text != null
+              ? decodeDrawnText(text)
+              : textEditFieldValue(entity, document: context.document);
+          final label = editedDimensionBlockLabel(
+            context.document,
+            entity,
+            field,
+            rotationRadians: rotationRadians,
+          );
+          if (label != null) transaction.modify(label);
+        }
       }
     });
     if (committed == null) {

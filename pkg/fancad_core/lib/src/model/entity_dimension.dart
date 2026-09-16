@@ -72,18 +72,39 @@ final class DimensionEntity extends CadEntity {
   /// Length shown on a linear or aligned dimension.
   ///
   /// Type 0 with a third definition point is DIMLINEAR: the pick that placed
-  /// the dimension line chooses horizontal vs vertical, so the text is |Δx|
-  /// or |Δy|, not the slanted distance between the origins.
+  /// the dimension line chooses the measurement axis, so the text is the
+  /// projected length, not the slanted distance between the origins.
   static double measuredLength(List<Vec2> points, int dimensionType) {
     if (points.length < 2) return 0;
     if ((dimensionType & 0x0F) == 0 && points.length >= 3) {
-      final mid = points[0].lerp(points[1], 0.5);
-      final horizontal = (points[2] - mid).y.abs() >= (points[2] - mid).x.abs();
-      return horizontal
-          ? (points[1].x - points[0].x).abs()
-          : (points[1].y - points[0].y).abs();
+      final line = linearDimLine(points);
+      return line == null ? 0 : line.$1.distanceTo(line.$2);
     }
     return points[0].distanceTo(points[1]);
+  }
+
+  /// Ends of a DIMLINEAR dimension line through [points] `2`.
+  ///
+  /// Type 0 stores a pick on the dimension line, not an axis flag. The line
+  /// through that pick, perpendicular to the vector from the origin midpoint,
+  /// is the dimension line — so a rotation of a horizontal or vertical dim
+  /// stays a dim, instead of snapping back to X or Y.
+  static (Vec2, Vec2)? linearDimLine(List<Vec2> points) {
+    if (points.length < 3) return null;
+    final p1 = points[0];
+    final p2 = points[1];
+    final seat = points[2];
+    final mid = p1.lerp(p2, 0.5);
+    var axis = (seat - mid).perpendicular;
+    if (axis.lengthSquared < 1e-20) {
+      axis = p2 - p1;
+    }
+    if (axis.lengthSquared < 1e-20) return null;
+    final unit = axis.normalized();
+    final a = seat + unit * (p1 - seat).dot(unit);
+    final b = seat + unit * (p2 - seat).dot(unit);
+    if (a.distanceTo(b) < 1e-9) return null;
+    return (a, b);
   }
 
   /// Degrees shown on an angular dimension.
@@ -236,8 +257,10 @@ final class DimensionEntity extends CadEntity {
     return DimensionEntity(
       id: id,
       props: props,
-      // The cached block geometry is no longer valid once the definition points
-      // move, so drop it and let the fallback or a regeneration pass rebuild it.
+      // The cached *D block is in world coordinates. A pure [transformed]
+      // call cannot move those entities, so the name is dropped and
+      // [DimensionGraphics] rebuilds from the new points. [Transaction.transform]
+      // restores the name after it has moved the block contents.
       blockName: matrix.isIdentity ? blockName : '',
       definitionPoints: points,
       textPosition: matrix.transform(textPosition),

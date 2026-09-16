@@ -318,6 +318,7 @@ class CadDocument implements BlockLookup, StyleResolver {
     }
     _indexInsert(target, stored.id, indexBoundsOf(stored));
     _blockBounds.remove(target);
+    _reindexDimensionsUsingBlock(target);
     _version++;
     return stored;
   }
@@ -349,6 +350,7 @@ class CadDocument implements BlockLookup, StyleResolver {
     }
     _indexInsert(blockName, entity.id, indexBoundsOf(entity));
     _blockBounds.remove(blockName);
+    _reindexDimensionsUsingBlock(blockName);
     _version++;
     return entity;
   }
@@ -375,6 +377,7 @@ class CadDocument implements BlockLookup, StyleResolver {
       }
       _indexes[owner]?.remove(id);
       _blockBounds.remove(owner);
+      _reindexDimensionsUsingBlock(owner);
     }
     _version++;
     return existing;
@@ -389,6 +392,7 @@ class CadDocument implements BlockLookup, StyleResolver {
     if (owner != null) {
       _indexUpdate(owner, entity.id, indexBoundsOf(entity));
       _blockBounds.remove(owner);
+      _reindexDimensionsUsingBlock(owner);
     }
     _version++;
     return previous;
@@ -637,6 +641,27 @@ class CadDocument implements BlockLookup, StyleResolver {
   void _indexUpdate(String blockName, int id, Bounds2 bounds) {
     _indexes[blockName]?.update(id, bounds);
   }
+
+  /// A dimension's pick box is the emitted `*D` strokes, not just the
+  /// definition points. Moving those strokes without refreshing the
+  /// dimension leaves it selectable only where it used to be.
+  void _reindexDimensionsUsingBlock(String blockName) {
+    if (!_isDimensionBlockName(blockName)) return;
+    for (final entity in _entities.values) {
+      if (entity is! DimensionEntity || entity.blockName != blockName) {
+        continue;
+      }
+      final owner = _ownerOf[entity.id];
+      if (owner == null) continue;
+      _indexUpdate(owner, entity.id, indexBoundsOf(entity));
+      _blockBounds.remove(owner);
+    }
+  }
+
+  static bool _isDimensionBlockName(String name) =>
+      name.length >= 2 &&
+      name.codeUnitAt(0) == 0x2A &&
+      (name.codeUnitAt(1) == 0x44 || name.codeUnitAt(1) == 0x64);
 
   /// The spatial index of a block, building it on first use.
   SpatialIndex indexFor(String blockName) {

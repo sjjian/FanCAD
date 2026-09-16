@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:test/test.dart';
 
@@ -89,5 +91,24 @@ void main() {
     expect(scaled.measurement, closeTo(90, 1e-9));
     final gripped = dim.withGrip(2, const Vec2(-10, 0));
     expect(gripped.measurement, closeTo(180, 1e-9));
+  });
+
+  test('rotating a DIMLINEAR keeps the projected length', () {
+    const dim = DimensionEntity(
+      id: 1,
+      definitionPoints: [Vec2.zero(), Vec2(10, 3), Vec2(5, 8)],
+      textPosition: Vec2(5, 8),
+      measurement: 10,
+      dimensionType: 0,
+    );
+    expect(
+      DimensionEntity.measuredLength(dim.definitionPoints, 0),
+      closeTo(10, 1e-9),
+    );
+    final rotated = dim.transformed(
+      Mat3.rotationAbout(math.pi / 4, const Vec2.zero()),
+    );
+    expect(rotated.measurement, closeTo(10, 1e-9));
+    expect(rotated.blockName, isEmpty);
   });
 }
