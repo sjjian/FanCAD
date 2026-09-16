@@ -117,6 +117,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   final List<DocumentTab> _tabs = [];
   int _activeIndex = -1;
   int _nextSessionId = 1;
+  final Map<DocumentTab, StreamSubscription<Set<int>>> _selectionReveals = {};
 
   final List<Notice> _notices = [];
   final StreamController<ApprovalRequest> _approvals =
@@ -307,6 +308,12 @@ class Workspace extends ChangeNotifier implements CommandServices {
     _activeIndex = _tabs.length - 1;
     tab.setShowGrid(drawing.showGrid);
     tab.addListener(notifyListeners);
+    // A pick that names objects brings Properties forward so the left pane
+    // matches what is on the canvas, instead of staying on Layers.
+    _selectionReveals[tab] = tab.session.selection.changes.listen((ids) {
+      if (ids.isEmpty || !identical(tab, active)) return;
+      revealPanel('properties');
+    });
     notifyListeners();
     return tab;
   }
@@ -447,6 +454,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
     final tab = _tabs[index];
     if (tab.isDirty && !force) return false;
     _tabs.removeAt(index);
+    _selectionReveals.remove(tab)?.cancel();
     tab.removeListener(notifyListeners);
     tab.dispose();
     if (_tabs.isEmpty) {
@@ -925,6 +933,10 @@ class Workspace extends ChangeNotifier implements CommandServices {
       tab.removeListener(notifyListeners);
       tab.dispose();
     }
+    for (final sub in _selectionReveals.values) {
+      sub.cancel();
+    }
+    _selectionReveals.clear();
     _tabs.clear();
     _approvals.close();
     _panelReveals.close();

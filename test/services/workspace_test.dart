@@ -53,6 +53,25 @@ void main() {
     expect(ws.activeIndex, -1);
   });
 
+  test('selecting an object reveals the properties panel', () async {
+    final ws = workspace();
+    final tab = ws.newDocument();
+    final line = tab.session.document.addEntity(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+    );
+    final revealed = <String>[];
+    final sub = ws.panelReveals.listen(revealed.add);
+    addTearDown(sub.cancel);
+
+    tab.session.selection.replace([line.id]);
+    await Future<void>.value();
+    expect(revealed, ['properties']);
+
+    tab.session.selection.clear();
+    await Future<void>.value();
+    expect(revealed, ['properties']);
+  });
+
   test('closing a tab to the left keeps the same drawing active', () {
     final ws = workspace();
     ws.newDocument(title: 'A');

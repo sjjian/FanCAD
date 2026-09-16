@@ -121,6 +121,25 @@ void main() {
     expect(find.text('ASSISTANT'), findsNothing);
   });
 
+  testWidgets('selecting an object switches the left sidebar to Properties', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    expect(container.read(sidebarProvider).viewId, 'layers');
+    expect(find.text('Layers'), findsOneWidget);
+
+    final tab = container.read(workspaceProvider).active!;
+    final line = tab.document.addEntity(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+    );
+    tab.session.selection.replace([line.id]);
+    await tester.pump();
+
+    expect(container.read(sidebarProvider).viewId, 'properties');
+    expect(find.text('Properties'), findsOneWidget);
+    expect(find.text('Layers'), findsNothing);
+  });
+
   testWidgets('layout chips sit in the left sidebar, not under the canvas', (
     tester,
   ) async {
