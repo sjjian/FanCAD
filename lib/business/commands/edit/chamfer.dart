@@ -76,7 +76,10 @@ class EditChamferCommand extends FanCadCommand {
     final dist1 =
         context.args.number('dist1') ??
         await context.input.number(
-          'CHAMFER  Specify first chamfer distance:',
+          context.commandPrompt(
+            'CHAMFER',
+            context.l10n.prompt_specify_first_chamfer,
+          ),
           defaultValue: 0,
         );
     if (dist1 < 0) {
@@ -86,7 +89,10 @@ class EditChamferCommand extends FanCadCommand {
         context.args.number('dist2') ??
         (context.input.isInteractive
             ? await context.input.number(
-                'CHAMFER  Specify second chamfer distance:',
+                context.commandPrompt(
+                  'CHAMFER',
+                  context.l10n.prompt_specify_second_chamfer,
+                ),
                 defaultValue: dist1,
               )
             : dist1);
@@ -107,7 +113,10 @@ class EditChamferCommand extends FanCadCommand {
     } else {
       context.selection.clear();
       final firstPick = await context.input.selection(
-        'CHAMFER  Select first object:',
+        context.commandPrompt(
+          'CHAMFER',
+          context.l10n.prompt_select_first_object,
+        ),
         useExistingSelection: false,
         single: true,
       );
@@ -118,7 +127,10 @@ class EditChamferCommand extends FanCadCommand {
         return _chamferPolyline(context, firstEntity, dist1, dist2);
       }
       final secondPick = await context.input.selection(
-        'CHAMFER  Select second line:',
+        context.commandPrompt(
+          'CHAMFER',
+          context.l10n.prompt_select_second_line,
+        ),
         useExistingSelection: false,
         single: true,
       );
@@ -204,10 +216,14 @@ Future<CommandResult> _chamferPolyline(
       (context.args.point('pick1') == null &&
           context.args.point('pick') == null &&
           context.input.isInteractive &&
-          await context.input.keyword('CHAMFER  Chamfer [Vertex/All]:', const [
-                'Vertex',
-                'All',
-              ], defaultOption: 'Vertex') ==
+          await context.input.keyword(
+                context.commandPrompt(
+                  'CHAMFER',
+                  context.l10n.prompt_chamfer_vertex_all,
+                ),
+                const ['Vertex', 'All'],
+                defaultOption: 'Vertex',
+              ) ==
               'All');
   final PolylineEntity? result;
   if (chamferAll) {
@@ -216,7 +232,12 @@ Future<CommandResult> _chamferPolyline(
     final pick =
         context.args.point('pick1') ??
         context.args.point('pick') ??
-        await context.input.point('CHAMFER  Specify a vertex to bevel:');
+        await context.input.point(
+          context.commandPrompt(
+            'CHAMFER',
+            context.l10n.prompt_specify_vertex_to_bevel,
+          ),
+        );
     result = Construct.chamferPolylineVertex(
       polyline,
       pick,

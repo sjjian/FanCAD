@@ -797,7 +797,8 @@ class _CommandListPanelState extends State<_CommandListPanel> {
   Widget _commandRow(FanCadTokens tokens, CommandDescriptor descriptor) {
     final l10n = context.l10n;
     final hint = [
-      if (descriptor.description.isNotEmpty) descriptor.description,
+      if (descriptor.description.isNotEmpty)
+        l10n.commandDescription(descriptor.id, descriptor.description),
       if (descriptor.aliases.isNotEmpty)
         l10n.alias_named(descriptor.aliases.first.toUpperCase()),
       if (descriptor.defaultKeybinding != null)

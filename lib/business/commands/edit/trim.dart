@@ -93,7 +93,15 @@ Future<CommandResult> _trimOrExtend(
   final verb = extend ? 'EXTEND' : 'TRIM';
   final edgeIds = await context.resolveSelection(
     'edges',
-    extend ? 'EXTEND  Select boundary edges:' : 'TRIM  Select cutting edges:',
+    extend
+        ? context.commandPrompt(
+            'EXTEND',
+            context.l10n.prompt_select_boundary_edges,
+          )
+        : context.commandPrompt(
+            'TRIM',
+            context.l10n.prompt_select_cutting_edges,
+          ),
   );
   if (edgeIds.isEmpty) return const CommandResult.cancelled();
   // The edges are now fixed; clearing the selection stops the next prompt
@@ -120,8 +128,12 @@ Future<CommandResult> _trimOrExtend(
       targetId = suppliedTarget;
     } else {
       final picked = await context.input.selection(
-        '$verb  Select an object to ${extend ? 'extend' : 'trim'} '
-        '(Escape to finish):',
+        context.commandPrompt(
+          verb,
+          extend
+              ? context.l10n.prompt_select_object_to_extend
+              : context.l10n.prompt_select_object_to_trim,
+        ),
         useExistingSelection: false,
         single: true,
       );

@@ -43,7 +43,10 @@ class DrawDimRadiusCommand extends FanCadCommand {
     } else {
       context.selection.clear();
       final picked = await context.input.selection(
-        'DIMRADIUS  Select arc or circle:',
+        context.commandPrompt(
+          'DIMRADIUS',
+          context.l10n.prompt_select_arc_or_circle,
+        ),
         useExistingSelection: false,
         single: true,
       );
@@ -62,7 +65,7 @@ class DrawDimRadiusCommand extends FanCadCommand {
     context.input.setPreview((cursor) => [OverlayLine(center, cursor)]);
     final dimLine = await context.resolvePoint(
       'dimLine',
-      'DIMRADIUS  Specify dimension line location:',
+      context.commandPrompt('DIMRADIUS', context.l10n.prompt_specify_dim_line),
       basePoint: center,
     );
     context.input.setPreview(null);
@@ -119,7 +122,10 @@ class DrawDimDiameterCommand extends FanCadCommand {
     } else {
       context.selection.clear();
       final picked = await context.input.selection(
-        'DIMDIAMETER  Select arc or circle:',
+        context.commandPrompt(
+          'DIMDIAMETER',
+          context.l10n.prompt_select_arc_or_circle,
+        ),
         useExistingSelection: false,
         single: true,
       );
@@ -143,7 +149,10 @@ class DrawDimDiameterCommand extends FanCadCommand {
     });
     final dimLine = await context.resolvePoint(
       'dimLine',
-      'DIMDIAMETER  Specify dimension line location:',
+      context.commandPrompt(
+        'DIMDIAMETER',
+        context.l10n.prompt_specify_dim_line,
+      ),
       basePoint: center,
     );
     context.input.setPreview(null);

@@ -4,6 +4,7 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 
 import 'command_line_model.dart';
+import '../l10n/l10n.dart';
 
 /// A [CommandInput] that prompts a real user.
 ///
@@ -18,10 +19,12 @@ class InteractiveCommandInput implements CommandInput {
     required this.commandLine,
     required this.args,
     required List<ParamSpec> params,
+    this.locale = 'en',
   }) : _params = params;
 
   final ToolController tools;
   final CommandLineController commandLine;
+  final String locale;
 
   /// Arguments supplied up front, for example by the command line's own
   /// `line 0,0 10,10` form. A prompt whose value is already known is not shown.
@@ -412,7 +415,12 @@ class InteractiveCommandInput implements CommandInput {
       return tools.selection.ids.toList();
     }
 
-    final tool = SelectionPromptTool(message: message, single: single);
+    final tool = SelectionPromptTool(
+      message: message,
+      single: single,
+      formatPicked: (prompt, count) =>
+          l10nForLanguage(locale).prompt_selection_found(prompt, count),
+    );
     // Typed entry at a selection prompt means "all", "last" or "previous",
     // which are the three selection keywords worth supporting.
     final typed = commandLine.request(

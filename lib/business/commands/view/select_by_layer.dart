@@ -22,7 +22,10 @@ class SelectByLayerCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final layer = await context.resolveText('layer', 'Enter layer name:');
+    final layer = await context.resolveText(
+      'layer',
+      context.l10n.prompt_enter_layer_name,
+    );
     if (context.document.layer(layer) == null) {
       return CommandResult.failed('There is no layer named "$layer".');
     }

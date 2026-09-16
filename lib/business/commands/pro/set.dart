@@ -23,7 +23,10 @@ class LayoutSetCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final name = await context.resolveText('name', 'Layout name:');
+    final name = await context.resolveText(
+      'name',
+      context.l10n.prompt_layout_name,
+    );
     if (!context.document.setActiveLayout(name)) {
       return CommandResult.failed('No layout named $name');
     }

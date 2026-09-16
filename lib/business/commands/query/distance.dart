@@ -32,12 +32,12 @@ class QueryDistanceCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final from = await context.resolvePoint(
       'from',
-      'DIST  Specify first point:',
+      context.commandPrompt('DIST', context.l10n.prompt_specify_first_point),
     );
     context.input.setPreview((cursor) => [OverlayLine(from, cursor)]);
     final to = await context.resolvePoint(
       'to',
-      'DIST  Specify second point:',
+      context.commandPrompt('DIST', context.l10n.prompt_specify_second_point),
       basePoint: from,
     );
     context.input.setPreview(null);

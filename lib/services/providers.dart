@@ -70,6 +70,7 @@ Workspace workspace(Ref ref) {
     commands: ref.watch(commandRegistryProvider),
     importer: ref.watch(importerProvider),
     drawing: ref.watch(appSettingsProvider).drawing,
+    localeOf: () => ref.read(languageProvider),
   );
 
   // The file commands are the one group that has to act on the workspace

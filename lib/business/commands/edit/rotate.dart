@@ -39,12 +39,15 @@ class EditRotateCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'ROTATE  Select objects to rotate:',
+      context.commandPrompt(
+        'ROTATE',
+        context.l10n.prompt_select_objects_to_rotate,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final base = await context.resolvePoint(
       'base',
-      'ROTATE  Specify base point:',
+      context.commandPrompt('ROTATE', context.l10n.prompt_specify_base_point),
     );
 
     final supplied = context.args.number('angle');
@@ -62,7 +65,10 @@ class EditRotateCommand extends FanCadCommand {
         ],
       );
       angle = await context.input.angle(
-        'ROTATE  Specify rotation angle:',
+        context.commandPrompt(
+          'ROTATE',
+          context.l10n.prompt_specify_rotation_angle,
+        ),
         basePoint: base,
       );
       context.input.setPreview(null);

@@ -35,7 +35,7 @@ class EditDimensionTextCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'DIMEDIT  Select dimensions:',
+      context.commandPrompt('DIMEDIT', context.l10n.prompt_select_dimensions),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final targets = <DimensionEntity>[
@@ -49,7 +49,10 @@ class EditDimensionTextCommand extends FanCadCommand {
     final text = context.args.has('text')
         ? (context.args.text('text') ?? '')
         : await context.input.text(
-            'DIMEDIT  Enter dimension text (<> = measured):',
+            context.commandPrompt(
+              'DIMEDIT',
+              context.l10n.prompt_enter_dimension_text,
+            ),
             defaultValue: targets.first.overrideText,
           );
 

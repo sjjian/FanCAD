@@ -38,7 +38,10 @@ class FileOpenRecentCommand extends FanCadCommand {
     }
     var path = context.args.text('path')?.trim();
     if (path == null || path.isEmpty) {
-      path = (await context.input.keyword('Open recent:', recent)).trim();
+      path = (await context.input.keyword(
+        context.l10n.prompt_open_recent,
+        recent,
+      )).trim();
     }
     if (path.isEmpty) {
       return const CommandResult.failed('No recent file was chosen.');

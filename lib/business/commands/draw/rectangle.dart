@@ -31,12 +31,18 @@ class DrawRectangleCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final first = await context.resolvePoint(
       'corner1',
-      'RECTANG  Specify first corner:',
+      context.commandPrompt(
+        'RECTANG',
+        context.l10n.prompt_specify_first_corner,
+      ),
     );
     context.input.setPreview((cursor) => [OverlayRect(first, cursor)]);
     final second = await context.resolvePoint(
       'corner2',
-      'RECTANG  Specify opposite corner:',
+      context.commandPrompt(
+        'RECTANG',
+        context.l10n.prompt_specify_opposite_corner,
+      ),
       basePoint: first,
     );
     context.input.setPreview(null);

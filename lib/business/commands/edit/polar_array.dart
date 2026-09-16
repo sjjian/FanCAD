@@ -53,14 +53,17 @@ class EditPolarArrayCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'ARRAY  Select objects to array:',
+      context.commandPrompt(
+        'ARRAY',
+        context.l10n.prompt_select_objects_to_array,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
 
     final count =
         context.args.integer('count') ??
         await context.input.integer(
-          'ARRAY  Enter number of items:',
+          context.commandPrompt('ARRAY', context.l10n.prompt_enter_items),
           defaultValue: 6,
         );
     if (count < 2) {
@@ -72,7 +75,10 @@ class EditPolarArrayCommand extends FanCadCommand {
         context.args.number('fillAngle') ??
         (context.input.isInteractive
             ? await context.input.number(
-                'ARRAY  Enter the angle to fill:',
+                context.commandPrompt(
+                  'ARRAY',
+                  context.l10n.prompt_enter_fill_angle,
+                ),
                 defaultValue: 360,
               )
             : 360);
@@ -119,7 +125,7 @@ class EditPolarArrayCommand extends FanCadCommand {
     });
     final center = await context.resolvePoint(
       'center',
-      'ARRAY  Specify center point:',
+      context.commandPrompt('ARRAY', context.l10n.prompt_specify_center_point),
     );
     context.input.setPreview(null);
 

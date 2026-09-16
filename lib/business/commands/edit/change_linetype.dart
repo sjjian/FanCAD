@@ -35,12 +35,15 @@ class EditChangeLinetypeCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'LINETYPE  Select objects:',
+      context.commandPrompt('LINETYPE', context.l10n.prompt_select_objects),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final raw = (await context.resolveText(
       'linetype',
-      'LINETYPE  Enter name (DASHED, HIDDEN, CENTER, ByLayer):',
+      context.commandPrompt(
+        'LINETYPE',
+        context.l10n.prompt_enter_linetype_name,
+      ),
     )).trim();
     if (raw.isEmpty) {
       return const CommandResult.failed('A linetype name is required.');

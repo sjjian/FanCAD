@@ -28,7 +28,10 @@ class QueryIdCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final at = await context.resolvePoint('at', 'ID  Specify point:');
+    final at = await context.resolvePoint(
+      'at',
+      context.commandPrompt('ID', context.l10n.prompt_specify_point),
+    );
     context.input.write(
       '  X = ${at.x.toStringAsFixed(4)}  Y = ${at.y.toStringAsFixed(4)}',
     );

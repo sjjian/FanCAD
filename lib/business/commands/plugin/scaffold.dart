@@ -47,7 +47,10 @@ class PluginsScaffoldCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final id = await context.resolveText('id', 'Extension id:');
+    final id = await context.resolveText(
+      'id',
+      context.l10n.prompt_extension_id,
+    );
     if (id.isEmpty) return const CommandResult.failed('An id is required');
     if (plugins.host.plugin(id) != null) {
       return CommandResult.failed('$id is already installed');

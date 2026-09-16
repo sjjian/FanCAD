@@ -36,7 +36,10 @@ class LayoutRenameCommand extends FanCadCommand {
     var requested = context.args.text('name')?.trim() ?? '';
     if (requested.isEmpty) {
       if (context.document.activeLayout.isModelSpace) {
-        requested = await context.resolveText('name', 'Layout to rename:');
+        requested = await context.resolveText(
+          'name',
+          context.l10n.prompt_layout_to_rename,
+        );
       } else {
         requested = context.document.activeLayoutName;
       }
@@ -51,7 +54,7 @@ class LayoutRenameCommand extends FanCadCommand {
 
     final destName = (await context.resolveText(
       'to',
-      'New layout name:',
+      context.l10n.prompt_new_layout_name,
     )).trim();
     if (destName.isEmpty) {
       return const CommandResult.failed('The new name is empty.');

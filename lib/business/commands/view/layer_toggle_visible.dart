@@ -28,7 +28,10 @@ class LayerToggleVisibleCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final name = await context.resolveText('name', 'Enter layer name:');
+    final name = await context.resolveText(
+      'name',
+      context.l10n.prompt_enter_layer_name,
+    );
     final layer = context.document.layer(name);
     if (layer == null) {
       return CommandResult.failed('There is no layer named "$name".');

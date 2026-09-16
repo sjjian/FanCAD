@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:fancad_core/fancad_core.dart';
 
+import '../../l10n/l10n.dart';
+
 List<Vec2> editPointList(Object? value) => CommandArgs.parsePoints(value);
 
 Future<Map<String, String>> attributeValues(
@@ -699,13 +701,19 @@ Future<CommandResult> editTransform(
   required bool copy,
   required Mat3 Function(Vec2 from, Vec2 to) matrix,
 }) async {
-  final ids = await context.resolveSelection('ids', '$verb  Select objects:');
+  final ids = await context.resolveSelection(
+    'ids',
+    context.commandPrompt(verb, context.l10n.prompt_select_objects),
+  );
   if (ids.isEmpty) return const CommandResult.cancelled();
-  final from = await context.resolvePoint('from', '$verb  Specify base point:');
+  final from = await context.resolvePoint(
+    'from',
+    context.commandPrompt(verb, context.l10n.prompt_specify_base_point),
+  );
   installTransformPreview(context, ids, from, (cursor) => matrix(from, cursor));
   final to = await context.resolvePoint(
     'to',
-    '$verb  Specify second point:',
+    context.commandPrompt(verb, context.l10n.prompt_specify_second_point),
     basePoint: from,
   );
   context.input.setPreview(null);

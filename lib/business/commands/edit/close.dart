@@ -26,7 +26,10 @@ class EditCloseCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'PEDIT  Select polylines to close:',
+      context.commandPrompt(
+        'PEDIT',
+        context.l10n.prompt_select_plines_to_close,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
 

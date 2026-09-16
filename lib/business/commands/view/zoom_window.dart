@@ -27,12 +27,15 @@ class ViewZoomWindowCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final first = await context.resolvePoint(
       'corner1',
-      'ZOOM  Specify first corner:',
+      context.commandPrompt('ZOOM', context.l10n.prompt_specify_first_corner),
     );
     context.input.setPreview((cursor) => [OverlayRect(first, cursor)]);
     final second = await context.resolvePoint(
       'corner2',
-      'ZOOM  Specify opposite corner:',
+      context.commandPrompt(
+        'ZOOM',
+        context.l10n.prompt_specify_opposite_corner,
+      ),
       basePoint: first,
     );
     context.input.setPreview(null);

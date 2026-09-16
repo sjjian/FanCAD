@@ -34,7 +34,10 @@ class EditJustifyTextCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'JUSTIFYTEXT  Select text objects:',
+      context.commandPrompt(
+        'JUSTIFYTEXT',
+        context.l10n.prompt_select_text_objects,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final targets = <CadEntity>[
@@ -47,7 +50,10 @@ class EditJustifyTextCommand extends FanCadCommand {
     }
     final justify = (await context.resolveText(
       'justify',
-      'JUSTIFYTEXT  Enter justification [Left/Center/Right/TL/TC/TR/ML/MC/MR/BL/BC/BR]:',
+      context.commandPrompt(
+        'JUSTIFYTEXT',
+        context.l10n.prompt_enter_justification,
+      ),
     )).trim();
     if (justify.isEmpty) {
       return const CommandResult.failed('JUSTIFYTEXT needs a justification.');

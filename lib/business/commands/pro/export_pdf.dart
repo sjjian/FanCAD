@@ -50,7 +50,10 @@ class PrintExportPdfCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final path = await context.resolveText('path', 'PDF path:');
+    final path = await context.resolveText(
+      'path',
+      context.l10n.prompt_pdf_path,
+    );
     final layout = plotLayout(context);
     if (layout == null) {
       return CommandResult.failed(

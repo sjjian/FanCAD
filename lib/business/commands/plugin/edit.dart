@@ -38,7 +38,10 @@ class PluginsEditCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final id = await context.resolveText('id', 'Extension id:');
+    final id = await context.resolveText(
+      'id',
+      context.l10n.prompt_extension_id,
+    );
     final handle = plugins.host.plugin(id);
     if (handle == null) return CommandResult.failed('$id is not installed');
     final relative = context.args.text('path') ?? handle.manifest.entryPoint;

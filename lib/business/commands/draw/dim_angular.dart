@@ -76,14 +76,17 @@ class DrawDimAngularCommand extends FanCadCommand {
     }
     final vertex = await context.resolvePoint(
       'vertex',
-      'DIMANGULAR  Specify vertex:',
+      context.commandPrompt('DIMANGULAR', context.l10n.prompt_specify_vertex),
     );
     context.input
       ..setMarkers([vertex])
       ..setPreview((cursor) => [OverlayLine(vertex, cursor)]);
     final first = await context.resolvePoint(
       'first',
-      'DIMANGULAR  Specify a point on the first ray:',
+      context.commandPrompt(
+        'DIMANGULAR',
+        context.l10n.prompt_specify_first_ray_point,
+      ),
       basePoint: vertex,
     );
     context.input
@@ -93,7 +96,10 @@ class DrawDimAngularCommand extends FanCadCommand {
       );
     final second = await context.resolvePoint(
       'second',
-      'DIMANGULAR  Specify a point on the second ray:',
+      context.commandPrompt(
+        'DIMANGULAR',
+        context.l10n.prompt_specify_second_ray_point,
+      ),
       basePoint: vertex,
     );
     context.input
@@ -103,7 +109,7 @@ class DrawDimAngularCommand extends FanCadCommand {
       );
     final dimLine = await context.resolvePoint(
       'dimLine',
-      'DIMANGULAR  Specify dimension arc location:',
+      context.commandPrompt('DIMANGULAR', context.l10n.prompt_specify_dim_arc),
       basePoint: vertex,
     );
     context.input
@@ -167,7 +173,10 @@ Future<CommandResult> _dimAngularFromObjects(CommandContext context) async {
   } else {
     context.selection.clear();
     final firstPick = await context.input.selection(
-      'DIMANGULAR  Select arc or first line:',
+      context.commandPrompt(
+        'DIMANGULAR',
+        context.l10n.prompt_select_arc_or_first_line,
+      ),
       useExistingSelection: false,
       single: true,
     );
@@ -178,7 +187,10 @@ Future<CommandResult> _dimAngularFromObjects(CommandContext context) async {
       return _dimAngularFromArc(context, id1);
     }
     final secondPick = await context.input.selection(
-      'DIMANGULAR  Select second line:',
+      context.commandPrompt(
+        'DIMANGULAR',
+        context.l10n.prompt_select_second_line,
+      ),
       useExistingSelection: false,
       single: true,
     );
@@ -211,7 +223,7 @@ Future<CommandResult> _dimAngularFromObjects(CommandContext context) async {
     );
   final dimLine = await context.resolvePoint(
     'dimLine',
-    'DIMANGULAR  Specify dimension arc location:',
+    context.commandPrompt('DIMANGULAR', context.l10n.prompt_specify_dim_arc),
     basePoint: vertex,
   );
   context.input
@@ -254,7 +266,7 @@ Future<CommandResult> _dimAngularFromArc(
     );
   final dimLine = await context.resolvePoint(
     'dimLine',
-    'DIMANGULAR  Specify dimension arc location:',
+    context.commandPrompt('DIMANGULAR', context.l10n.prompt_specify_dim_arc),
     basePoint: target.center,
   );
   context.input

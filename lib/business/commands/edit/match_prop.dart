@@ -42,7 +42,10 @@ class EditMatchPropCommand extends FanCadCommand {
     } else {
       context.selection.clear();
       final picked = await context.input.selection(
-        'MATCHPROP  Select source object:',
+        context.commandPrompt(
+          'MATCHPROP',
+          context.l10n.prompt_select_source_object,
+        ),
         single: true,
       );
       if (picked.isEmpty) return const CommandResult.cancelled();
@@ -57,7 +60,10 @@ class EditMatchPropCommand extends FanCadCommand {
     context.selection.clear();
     final destinations = (await context.resolveSelection(
       'ids',
-      'MATCHPROP  Select destination objects:',
+      context.commandPrompt(
+        'MATCHPROP',
+        context.l10n.prompt_select_destination_objects,
+      ),
     )).where((id) => id != sourceId).toList();
     if (destinations.isEmpty) return const CommandResult.cancelled();
 

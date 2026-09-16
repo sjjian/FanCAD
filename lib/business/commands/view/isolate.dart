@@ -29,7 +29,10 @@ class ViewIsolateObjectsCommand extends FanCadCommand
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'ISOLATE  Select objects to keep visible:',
+      context.commandPrompt(
+        'ISOLATE',
+        context.l10n.prompt_select_objects_keep_visible,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final keep = ids.toSet();
@@ -76,7 +79,7 @@ class ViewHideObjectsCommand extends FanCadCommand
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'HIDE  Select objects to hide:',
+      context.commandPrompt('HIDE', context.l10n.prompt_select_objects_to_hide),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final committed = context.edit('Hide Objects', (transaction) {

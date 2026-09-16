@@ -1,5 +1,7 @@
 import 'package:fancad_core/fancad_core.dart';
 
+import '../../l10n/l10n.dart';
+
 Future<CommandResult> captureClipboard(
   CommandContext context,
   DrawingClipboard store, {
@@ -9,9 +11,15 @@ Future<CommandResult> captureClipboard(
 }) async {
   Vec2? base;
   if (askBase) {
-    base = await context.resolvePoint('from', '$verb  Specify base point:');
+    base = await context.resolvePoint(
+      'from',
+      context.commandPrompt(verb, context.l10n.prompt_specify_base_point),
+    );
   }
-  final ids = await context.resolveSelection('ids', '$verb  Select objects:');
+  final ids = await context.resolveSelection(
+    'ids',
+    context.commandPrompt(verb, context.l10n.prompt_select_objects),
+  );
   if (ids.isEmpty) return const CommandResult.cancelled();
   base ??= DrawingClip.lowerLeftOf(context.document, ids);
   final clip = DrawingClip.extract(context.document, ids, basePoint: base);
@@ -67,8 +75,14 @@ Future<CommandResult> pasteClipboard(
     insertion = await context.resolvePoint(
       'to',
       asBlock
-          ? 'PASTEBLOCK  Specify insertion point:'
-          : 'PASTECLIP  Specify insertion point:',
+          ? context.commandPrompt(
+              'PASTEBLOCK',
+              context.l10n.prompt_specify_insertion_point,
+            )
+          : context.commandPrompt(
+              'PASTECLIP',
+              context.l10n.prompt_specify_insertion_point,
+            ),
       basePoint: clip.basePoint,
     );
     context.input.setPreview(null);

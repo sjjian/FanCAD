@@ -66,7 +66,7 @@ class LayoutVplayerCommand extends FanCadCommand {
 
     final raw = await context.resolveText(
       'layers',
-      'VPLAYER  Enter layer name(s):',
+      context.commandPrompt('VPLAYER', context.l10n.prompt_enter_layer_names),
     );
     final requested = [
       for (final part in raw.split(RegExp(r'[,;]')))

@@ -67,7 +67,7 @@ class DrawDimLinearCommand extends FanCadCommand {
     );
     final dimLine = await context.resolvePoint(
       'dimLine',
-      'DIMLINEAR  Specify dimension line location:',
+      context.commandPrompt('DIMLINEAR', context.l10n.prompt_specify_dim_line),
       basePoint: first.lerp(second, 0.5),
     );
     context.input.setPreview(null);
@@ -151,7 +151,7 @@ class DrawDimAlignedCommand extends FanCadCommand {
     );
     final dimLine = await context.resolvePoint(
       'dimLine',
-      'DIMALIGNED  Specify dimension line location:',
+      context.commandPrompt('DIMALIGNED', context.l10n.prompt_specify_dim_line),
       basePoint: first.lerp(second, 0.5),
     );
     context.input.setPreview(null);
@@ -197,11 +197,17 @@ _resolveDimOrigins(
   }
   final first = await context.resolvePoint(
     'first',
-    '$command  Specify first extension line origin:',
+    context.commandPrompt(
+      command,
+      context.l10n.prompt_specify_first_ext_origin,
+    ),
   );
   final second = await context.resolvePoint(
     'second',
-    '$command  Specify second extension line origin:',
+    context.commandPrompt(
+      command,
+      context.l10n.prompt_specify_second_ext_origin,
+    ),
     basePoint: first,
   );
   return (first: first, second: second, sourceId: null, error: null);

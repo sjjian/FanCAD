@@ -34,7 +34,7 @@ class DrawCircleCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final center = await context.resolvePoint(
       'center',
-      'CIRCLE  Specify center point:',
+      context.commandPrompt('CIRCLE', context.l10n.prompt_specify_center_point),
     );
     context.input
       ..setMarkers([center])
@@ -47,7 +47,7 @@ class DrawCircleCommand extends FanCadCommand {
     final radius =
         context.args.number('radius') ??
         await context.input.distance(
-          'CIRCLE  Specify radius:',
+          context.commandPrompt('CIRCLE', context.l10n.prompt_specify_radius),
           basePoint: center,
         );
     context.input

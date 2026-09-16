@@ -36,12 +36,15 @@ class EditMirrorCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'MIRROR  Select objects to mirror:',
+      context.commandPrompt(
+        'MIRROR',
+        context.l10n.prompt_select_objects_to_mirror,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final first = await context.resolvePoint(
       'first',
-      'MIRROR  Specify first point of mirror line:',
+      context.commandPrompt('MIRROR', context.l10n.prompt_specify_mirror_first),
     );
 
     final keep = context.args.boolean('keepOriginal') ?? true;
@@ -53,7 +56,10 @@ class EditMirrorCommand extends FanCadCommand {
     );
     final second = await context.resolvePoint(
       'second',
-      'MIRROR  Specify second point of mirror line:',
+      context.commandPrompt(
+        'MIRROR',
+        context.l10n.prompt_specify_mirror_second,
+      ),
       basePoint: first,
     );
     context.input.setPreview(null);

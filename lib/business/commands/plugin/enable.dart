@@ -17,6 +17,9 @@ class PluginsEnableCommand extends FanCadCommand {
   @override
   String get category => _category;
   @override
+  String get description =>
+      'Loads an extension so it can contribute commands again.';
+  @override
   List<ParamSpec> get params => const [
     ParamSpec(name: 'id', type: ParamType.text),
   ];
@@ -57,7 +60,7 @@ Future<CommandResult> _setEnabled(
   PluginCommands plugins,
   bool enabled,
 ) async {
-  final id = await context.resolveText('id', 'Extension id:');
+  final id = await context.resolveText('id', context.l10n.prompt_extension_id);
   if (plugins.host.plugin(id) == null) {
     return CommandResult.failed('$id is not installed');
   }

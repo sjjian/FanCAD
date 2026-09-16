@@ -40,7 +40,10 @@ class EditAtteditCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'ATTEDIT  Select a block reference:',
+      context.commandPrompt(
+        'ATTEDIT',
+        context.l10n.prompt_select_block_reference,
+      ),
     );
     final inserts = [
       for (final id in ids)

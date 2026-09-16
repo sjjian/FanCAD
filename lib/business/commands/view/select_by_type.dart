@@ -33,7 +33,7 @@ class SelectByTypeCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final raw = await context.resolveText(
       'kind',
-      'SELECT  Enter object type (LINE, CIRCLE, INSERT, …):',
+      context.commandPrompt('SELECT', context.l10n.prompt_enter_object_type),
     );
     final kind = _tryEntityKind(raw);
     if (kind == null) {

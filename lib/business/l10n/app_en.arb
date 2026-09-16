@@ -2313,6 +2313,1459 @@
   "@command_plugins_eval": {
     "description": "command plugins eval"
   },
+  "command_file_list": "List Drawings",
+  "@command_file_list": {
+    "description": "command file list"
+  },
+  "command_file_activate": "Activate Drawing",
+  "@command_file_activate": {
+    "description": "command file activate"
+  },
+  "command_draw_attdef": "Attribute Definition",
+  "@command_draw_attdef": {
+    "description": "command draw attdef"
+  },
+  "command_edit_attedit": "Edit Attributes",
+  "@command_edit_attedit": {
+    "description": "command edit attedit"
+  },
+  "command_view_units": "Units",
+  "@command_view_units": {
+    "description": "command view units"
+  },
+  "command_file_new_desc": "Creates an empty drawing in a new tab.",
+  "@command_file_new_desc": {
+    "description": "command file new desc"
+  },
+  "command_file_open_desc": "Opens a DWG or DXF file.",
+  "@command_file_open_desc": {
+    "description": "command file open desc"
+  },
+  "command_file_save_desc": "Saves the drawing this command is targeting, asking for a path when it has never been saved.",
+  "@command_file_save_desc": {
+    "description": "command file save desc"
+  },
+  "command_file_save_as_desc": "Saves the drawing this command is targeting to a new file.",
+  "@command_file_save_as_desc": {
+    "description": "command file save as desc"
+  },
+  "command_file_close_desc": "Closes the drawing this command is targeting.",
+  "@command_file_close_desc": {
+    "description": "command file close desc"
+  },
+  "command_file_open_recent_desc": "Reopens a recently used file.",
+  "@command_file_open_recent_desc": {
+    "description": "command file open recent desc"
+  },
+  "command_file_audit_desc": "Writes the drawing to a temp DXF and reports anything a round trip would lose.",
+  "@command_file_audit_desc": {
+    "description": "command file audit desc"
+  },
+  "command_file_list_desc": "Lists every open drawing tab: id, title, path, dirty, whether it is active, entity count, and the current layout. Use the id as the fancad tab selector to operate on a drawing without switching the UI.",
+  "@command_file_list_desc": {
+    "description": "command file list desc"
+  },
+  "command_file_activate_desc": "Brings an open drawing to the front. Pass id from file.list, or a unique path or title.",
+  "@command_file_activate_desc": {
+    "description": "command file activate desc"
+  },
+  "command_draw_line_desc": "Draws one or more connected straight line segments. Supply start and end to draw a single segment non-interactively.",
+  "@command_draw_line_desc": {
+    "description": "command draw line desc"
+  },
+  "command_draw_polyline_desc": "Draws a connected sequence of segments as one polyline entity. Pass a points array to create it non-interactively.",
+  "@command_draw_polyline_desc": {
+    "description": "command draw polyline desc"
+  },
+  "command_draw_spline_desc": "Draws a clamped B-spline. Control-point mode pulls the curve toward the clicks and only guarantees the ends. Fit mode interpolates every point. Pass a points array to create it non-interactively.",
+  "@command_draw_spline_desc": {
+    "description": "command draw spline desc"
+  },
+  "command_draw_rectangle_desc": "Draws an axis-aligned rectangle as a closed polyline.",
+  "@command_draw_rectangle_desc": {
+    "description": "command draw rectangle desc"
+  },
+  "command_draw_circle_desc": "Draws a circle from a centre point and a radius.",
+  "@command_draw_circle_desc": {
+    "description": "command draw circle desc"
+  },
+  "command_draw_circle_2p_desc": "Draws a circle whose diameter is the segment between two points.",
+  "@command_draw_circle_2p_desc": {
+    "description": "command draw circle 2p desc"
+  },
+  "command_draw_circle_3p_desc": "Draws the unique circle that passes through three specified points.",
+  "@command_draw_circle_3p_desc": {
+    "description": "command draw circle 3p desc"
+  },
+  "command_draw_circle_ttr_desc": "Draws a circle of a given radius tangent to two lines, circles or arcs. The pick on each object chooses the side (and, for a circle, external versus internal tangent).",
+  "@command_draw_circle_ttr_desc": {
+    "description": "command draw circle ttr desc"
+  },
+  "command_draw_donut_desc": "Draws a filled ring from an inside and outside diameter. A zero inside diameter is a filled disk. The result is a closed wide polyline, which is how DWG stores a donut.",
+  "@command_draw_donut_desc": {
+    "description": "command draw donut desc"
+  },
+  "command_draw_arc_desc": "Draws a circular arc through three points: start, a point on the arc, and end.",
+  "@command_draw_arc_desc": {
+    "description": "command draw arc desc"
+  },
+  "command_draw_polygon_desc": "Draws a regular polygon inscribed in a circle.",
+  "@command_draw_polygon_desc": {
+    "description": "command draw polygon desc"
+  },
+  "command_draw_ellipse_desc": "Draws an ellipse from a centre, one axis endpoint, and the distance to the other axis.",
+  "@command_draw_ellipse_desc": {
+    "description": "command draw ellipse desc"
+  },
+  "command_draw_xline_desc": "Draws an infinite construction line through a point in a given direction. The second point only sets the angle; both sides extend without end.",
+  "@command_draw_xline_desc": {
+    "description": "command draw xline desc"
+  },
+  "command_draw_ray_desc": "Draws a semi-infinite ray from a start point through a second point. Unlike XLINE, it has a beginning.",
+  "@command_draw_ray_desc": {
+    "description": "command draw ray desc"
+  },
+  "command_draw_point_desc": "Places a point marker.",
+  "@command_draw_point_desc": {
+    "description": "command draw point desc"
+  },
+  "command_draw_divide_desc": "Places point markers that split a line, polyline, arc or circle into equal segments. Open objects leave the endpoints unmarked; a circle or closed polyline places a marker at every interval. A bulge is followed as its arc, not the chord.",
+  "@command_draw_divide_desc": {
+    "description": "command draw divide desc"
+  },
+  "command_draw_measure_desc": "Places point markers at a fixed spacing along a line, polyline, arc or circle. Open objects start from the nearer end; a circle starts at the pick. Endpoints are not marked. A bulge is followed as its arc, not the chord.",
+  "@command_draw_measure_desc": {
+    "description": "command draw measure desc"
+  },
+  "command_draw_text_desc": "Places a single line of text. Style defaults to the current TEXTSTYLE. Justify is Left, Center, Right or a corner code such as TL.",
+  "@command_draw_text_desc": {
+    "description": "command draw text desc"
+  },
+  "command_draw_mtext_desc": "Places multiline text. Newlines become \\P. Width 0 does not wrap. Justify is TL…BR or attachment 1–9 (1 is top-left).",
+  "@command_draw_mtext_desc": {
+    "description": "command draw mtext desc"
+  },
+  "command_draw_attdef_desc": "Places an attribute definition. Include it in a BLOCK so INSERT and ATTEDIT can fill the tag — title blocks and schedules.",
+  "@command_draw_attdef_desc": {
+    "description": "command draw attdef desc"
+  },
+  "command_draw_leader_desc": "Draws a leader from an arrow tip through one or more vertices. Optional annotation text sits on a horizontal landing at the last point, the same way AutoCAD LEADER places a callout.",
+  "@command_draw_leader_desc": {
+    "description": "command draw leader desc"
+  },
+  "command_draw_hatch_desc": "Fills the area around an internal point, or around selected closed boundaries. Four lines that meet still count as a boundary.",
+  "@command_draw_hatch_desc": {
+    "description": "command draw hatch desc"
+  },
+  "command_draw_dim_linear_desc": "Places a horizontal or vertical dimension. The dimension-line pick chooses the axis: above or below the origins measures width; left or right measures height. A line can stand in for the two origins.",
+  "@command_draw_dim_linear_desc": {
+    "description": "command draw dim linear desc"
+  },
+  "command_draw_dim_aligned_desc": "Places a dimension parallel to the two origins. The text is the true distance, not the horizontal or vertical component. A line can stand in for the two origins.",
+  "@command_draw_dim_aligned_desc": {
+    "description": "command draw dim aligned desc"
+  },
+  "command_draw_dim_radius_desc": "Places a radius dimension on a circle or arc. The second pick is the arrow tip; the text is the radius, prefixed with R.",
+  "@command_draw_dim_radius_desc": {
+    "description": "command draw dim radius desc"
+  },
+  "command_draw_dim_diameter_desc": "Places a diameter dimension on a circle or arc. The second pick is the arrow tip; the text is the diameter, prefixed with Ø.",
+  "@command_draw_dim_diameter_desc": {
+    "description": "command draw dim diameter desc"
+  },
+  "command_draw_center_mark_desc": "Draws a centre mark on selected circles or arcs. A short cross sits on the centre; optional extensions continue past the circumference, the usual shop-drawing DIMCENTER.",
+  "@command_draw_center_mark_desc": {
+    "description": "command draw center mark desc"
+  },
+  "command_draw_center_line_desc": "Draws a centreline between two parallel lines, or through the centres of two circles or arcs. The line spans both objects and extends a little past each end.",
+  "@command_draw_center_line_desc": {
+    "description": "command draw center line desc"
+  },
+  "command_draw_dim_angular_desc": "Places an angular dimension. Pick an arc and its centre is the vertex; pick two lines and their intersection is the vertex; the last pick sits on the dimension arc and chooses which sector is labelled. Three points still work when a vertex is supplied.",
+  "@command_draw_dim_angular_desc": {
+    "description": "command draw dim angular desc"
+  },
+  "command_draw_dim_continue_desc": "Places the next linear or aligned dimension from the previous second origin, on the same dimension line. Chain several next points to walk a row of features.",
+  "@command_draw_dim_continue_desc": {
+    "description": "command draw dim continue desc"
+  },
+  "command_draw_dim_baseline_desc": "Places the next linear or aligned dimension from the same first origin, on a dimension line stepped outward. Chain several next points to stack overall lengths.",
+  "@command_draw_dim_baseline_desc": {
+    "description": "command draw dim baseline desc"
+  },
+  "command_annot_dimstyle_desc": "Creates or edits a dimension style. Regenerated dimensions read text height, arrow size, extension offsets, scale and decimal places from the named style. Omit the name to list styles or to edit the current one.",
+  "@command_annot_dimstyle_desc": {
+    "description": "command annot dimstyle desc"
+  },
+  "command_annot_textstyle_desc": "Creates or edits a text style. New TEXT and MTEXT read the font, fixed height, width factor and oblique from the named style. Omit the name to list styles or to edit the current one.",
+  "@command_annot_textstyle_desc": {
+    "description": "command annot textstyle desc"
+  },
+  "command_edit_erase_desc": "Deletes the selected objects.",
+  "@command_edit_erase_desc": {
+    "description": "command edit erase desc"
+  },
+  "command_edit_overkill_desc": "Deletes exact geometric duplicates and folds overlapping or abutting collinear lines into one stroke. The first copy is kept and stretched to the union. Omitted ids means the whole current space, so a leftover selection cannot hide the rest of the duplicates.",
+  "@command_edit_overkill_desc": {
+    "description": "command edit overkill desc"
+  },
+  "command_edit_move_desc": "Moves the selected objects by a displacement.",
+  "@command_edit_move_desc": {
+    "description": "command edit move desc"
+  },
+  "command_edit_copy_desc": "Copies the selected objects to one or more locations. Each second point is another copy from the same base; Escape finishes.",
+  "@command_edit_copy_desc": {
+    "description": "command edit copy desc"
+  },
+  "command_edit_copy_clip_desc": "Copies the selected objects to the clipboard. The lower-left of the selection is the paste base. Paste in this drawing or another tab with PASTECLIP.",
+  "@command_edit_copy_clip_desc": {
+    "description": "command edit copy clip desc"
+  },
+  "command_edit_copy_base_desc": "Copies the selected objects to the clipboard with a base point you pick, so PASTECLIP can land that point on the insertion.",
+  "@command_edit_copy_base_desc": {
+    "description": "command edit copy base desc"
+  },
+  "command_edit_cut_clip_desc": "Copies the selected objects to the clipboard and deletes them from the drawing. Objects on a locked layer stay; the clipboard still holds a copy.",
+  "@command_edit_cut_clip_desc": {
+    "description": "command edit cut clip desc"
+  },
+  "command_edit_paste_clip_desc": "Pastes clipboard objects at an insertion point. The stored base point lands on that click.",
+  "@command_edit_paste_clip_desc": {
+    "description": "command edit paste clip desc"
+  },
+  "command_edit_paste_orig_desc": "Pastes clipboard objects at the coordinates they had in the source drawing, without asking for an insertion point.",
+  "@command_edit_paste_orig_desc": {
+    "description": "command edit paste orig desc"
+  },
+  "command_edit_paste_block_desc": "Pastes clipboard objects as one anonymous block reference. The stored base point lands on the insertion point you pick.",
+  "@command_edit_paste_block_desc": {
+    "description": "command edit paste block desc"
+  },
+  "command_edit_stretch_desc": "Moves vertices inside a crossing window and leaves the rest anchored. Objects wholly captured by the window move as a body.",
+  "@command_edit_stretch_desc": {
+    "description": "command edit stretch desc"
+  },
+  "command_edit_rotate_desc": "Rotates the selected objects about a base point. The angle is in degrees, counter-clockwise.",
+  "@command_edit_rotate_desc": {
+    "description": "command edit rotate desc"
+  },
+  "command_edit_scale_desc": "Scales the selected objects uniformly about a base point.",
+  "@command_edit_scale_desc": {
+    "description": "command edit scale desc"
+  },
+  "command_edit_mirror_desc": "Mirrors the selected objects across a line.",
+  "@command_edit_mirror_desc": {
+    "description": "command edit mirror desc"
+  },
+  "command_edit_align_desc": "Moves the selection so a source point lands on a destination point. A second pair rotates to match the two directions; an optional scale matches the two lengths.",
+  "@command_edit_align_desc": {
+    "description": "command edit align desc"
+  },
+  "command_edit_array_desc": "Creates a rectangular grid of copies of the selected objects.",
+  "@command_edit_array_desc": {
+    "description": "command edit array desc"
+  },
+  "command_edit_polar_array_desc": "Creates copies of the selected objects rotated about a centre. A fill of 360° spaces items around the full circle; a smaller fill spaces them from the original through that angle, inclusive.",
+  "@command_edit_polar_array_desc": {
+    "description": "command edit polar array desc"
+  },
+  "command_edit_offset_desc": "Creates parallel copies of lines, arcs, circles and polylines at a fixed distance.",
+  "@command_edit_offset_desc": {
+    "description": "command edit offset desc"
+  },
+  "command_edit_trim_desc": "Shortens a line, polyline or arc back to where it crosses the selected cutting edges. The part containing the pick point is removed. A closed polyline opens; a bulge is cut on the arc, not the chord.",
+  "@command_edit_trim_desc": {
+    "description": "command edit trim desc"
+  },
+  "command_edit_extend_desc": "Lengthens a line, open polyline or arc until it meets the selected boundary edges. A bulge grows along its circle. On a polyline or arc the pick chooses which end moves.",
+  "@command_edit_extend_desc": {
+    "description": "command edit extend desc"
+  },
+  "command_edit_fillet_desc": "Rounds the corner between two lines, or vertices of a polyline, with an arc of a given radius. Pass all=true to fillet every straight corner of a polyline. A radius of zero trims or extends two lines to a sharp corner.",
+  "@command_edit_fillet_desc": {
+    "description": "command edit fillet desc"
+  },
+  "command_edit_chamfer_desc": "Cuts a straight bevel between two lines, or at vertices of a polyline. Pass all=true to chamfer every straight corner. The two distances are measured from the corner back along each segment; omit the second to use the same length on both.",
+  "@command_edit_chamfer_desc": {
+    "description": "command edit chamfer desc"
+  },
+  "command_edit_break_desc": "Splits a line, polyline or arc at a point, or removes the portion between two points. A bulge is split into two smaller arcs. A circle needs two points and keeps the counter-clockwise remnant from the second pick back to the first. Omit the second point to only split (arcs and open chains).",
+  "@command_edit_break_desc": {
+    "description": "command edit break desc"
+  },
+  "command_edit_lengthen_desc": "Changes the length of a line, open polyline or arc by moving the end you pick. A bulge grows or shrinks along its arc. Supply a total length, or a signed delta to add to the current length. An arc cannot be closed into a full circle.",
+  "@command_edit_lengthen_desc": {
+    "description": "command edit lengthen desc"
+  },
+  "command_edit_explode_desc": "Breaks polylines into their segments, block references into copies of their contents, and dimensions into the lines, arrows and text they draw.",
+  "@command_edit_explode_desc": {
+    "description": "command edit explode desc"
+  },
+  "command_edit_block_desc": "Defines a named block from selected objects and replaces them with one insert at the base point, so the drawing looks the same and the definition can be inserted again.",
+  "@command_edit_block_desc": {
+    "description": "command edit block desc"
+  },
+  "command_edit_insert_desc": "Places one or more references to a named block. Scale is uniform; rotation is in degrees. Pass a points array to stamp the same block at several locations.",
+  "@command_edit_insert_desc": {
+    "description": "command edit insert desc"
+  },
+  "command_edit_minsert_desc": "Places a rectangular array of a named block as one insert. The copies stay one object, so moving the insert moves the whole grid.",
+  "@command_edit_minsert_desc": {
+    "description": "command edit minsert desc"
+  },
+  "command_block_purge_desc": "Deletes named block definitions that no insert references. Nested unused definitions are removed in the same pass, so a block that only existed inside another unused block is cleared too. Xrefs and layout blocks are left alone.",
+  "@command_block_purge_desc": {
+    "description": "command block purge desc"
+  },
+  "command_block_rename_desc": "Renames a block definition and every insert that still points at the old name. Layout blocks, anonymous blocks and xrefs cannot be renamed.",
+  "@command_block_rename_desc": {
+    "description": "command block rename desc"
+  },
+  "command_edit_join_desc": "Joins selected lines, arcs and open polylines whose endpoints meet into a single polyline. A piece is reversed when that is how it touches the chain; a loop whose ends meet is stored closed.",
+  "@command_edit_join_desc": {
+    "description": "command edit join desc"
+  },
+  "command_edit_close_desc": "Closes the selected open polylines by connecting the last vertex back to the first. Already-closed polylines are left alone.",
+  "@command_edit_close_desc": {
+    "description": "command edit close desc"
+  },
+  "command_edit_open_desc": "Opens the selected closed polylines by dropping the closing segment. The vertices stay; only the loop is broken.",
+  "@command_edit_open_desc": {
+    "description": "command edit open desc"
+  },
+  "command_edit_polyline_width_desc": "Sets the constant width of selected polylines. Zero is a hairline; a donut is the same field, so this is how a wide stroke is edited after it is drawn.",
+  "@command_edit_polyline_width_desc": {
+    "description": "command edit polyline width desc"
+  },
+  "command_edit_hatch_desc": "Changes the pattern, scale or angle of selected hatches. Omit a field to leave it. Angle is in degrees.",
+  "@command_edit_hatch_desc": {
+    "description": "command edit hatch desc"
+  },
+  "command_edit_to_polyline_desc": "Turns selected lines into two-vertex polylines so they can be closed, opened or reversed as a chain.",
+  "@command_edit_to_polyline_desc": {
+    "description": "command edit to polyline desc"
+  },
+  "command_edit_reverse_desc": "Reverses the direction of selected lines and polylines. The drawn shape stays the same; start and end swap, which matters for linetypes and for commands that follow a chain.",
+  "@command_edit_reverse_desc": {
+    "description": "command edit reverse desc"
+  },
+  "command_edit_undo_desc": "Reverses the most recent change.",
+  "@command_edit_undo_desc": {
+    "description": "command edit undo desc"
+  },
+  "command_edit_redo_desc": "Re-applies the most recently undone change.",
+  "@command_edit_redo_desc": {
+    "description": "command edit redo desc"
+  },
+  "command_edit_change_layer_desc": "Moves the selected objects onto a different layer.",
+  "@command_edit_change_layer_desc": {
+    "description": "command edit change layer desc"
+  },
+  "command_edit_change_color_desc": "Sets the colour of the selected objects. Accepts an AutoCAD Color Index (1-255), a #rrggbb value, or ByLayer.",
+  "@command_edit_change_color_desc": {
+    "description": "command edit change color desc"
+  },
+  "command_edit_change_linetype_desc": "Sets the linetype of the selected objects. Stock names (DASHED, HIDDEN, CENTER, PHANTOM, DOT, DASHDOT, DIVIDE, Continuous) are added to the drawing if they are not there yet. ByLayer and ByBlock inherit instead.",
+  "@command_edit_change_linetype_desc": {
+    "description": "command edit change linetype desc"
+  },
+  "command_edit_change_lineweight_desc": "Sets the lineweight of the selected objects. Accepts a millimetre value (0.25), hundredths (25), ByLayer, ByBlock, Default or hairline.",
+  "@command_edit_change_lineweight_desc": {
+    "description": "command edit change lineweight desc"
+  },
+  "command_edit_dimension_text_desc": "Overrides the text of selected dimensions. Empty restores the measured value; <> stands for that value; a single space hides the text.",
+  "@command_edit_dimension_text_desc": {
+    "description": "command edit dimension text desc"
+  },
+  "command_edit_dim_tedit_desc": "Moves the text of selected dimensions to a new point. On a linear dimension the dimension line follows without flipping width and height; aligned, radial and angular dimensions keep their type.",
+  "@command_edit_dim_tedit_desc": {
+    "description": "command edit dim tedit desc"
+  },
+  "command_edit_text_content_desc": "Changes the content of selected text, mtext, dimensions, attributes or leaders. On a dimension, empty restores the measured value and <> stands for that value, same as DIMEDIT.",
+  "@command_edit_text_content_desc": {
+    "description": "command edit text content desc"
+  },
+  "command_edit_text_object_desc": "Updates content, height, colour, justification, rotation, style, column width, width factor or oblique of selected text, mtext, attributes or leaders in one undo. Dimension text height is a dimstyle property and is ignored.",
+  "@command_edit_text_object_desc": {
+    "description": "command edit text object desc"
+  },
+  "command_edit_justify_text_desc": "Changes the justification of selected text or mtext and moves the insertion point so the letters stay where they are. Align and Fit are not offered; they need a second point.",
+  "@command_edit_justify_text_desc": {
+    "description": "command edit justify text desc"
+  },
+  "command_edit_match_prop_desc": "Copies layer, colour, linetype, lineweight and the other display properties from a source object onto the destination objects. Visibility is left alone so isolate and hide stay intact.",
+  "@command_edit_match_prop_desc": {
+    "description": "command edit match prop desc"
+  },
+  "command_edit_attedit_desc": "Changes the values on a block reference. Constant tags stay as the definition wrote them.",
+  "@command_edit_attedit_desc": {
+    "description": "command edit attedit desc"
+  },
+  "command_view_zoom_extents_desc": "Fits the whole drawing in the window.",
+  "@command_view_zoom_extents_desc": {
+    "description": "command view zoom extents desc"
+  },
+  "command_view_zoom_window_desc": "Zooms to a rectangle you specify.",
+  "@command_view_zoom_window_desc": {
+    "description": "command view zoom window desc"
+  },
+  "command_view_zoom_in_desc": "Magnifies the view about its centre.",
+  "@command_view_zoom_in_desc": {
+    "description": "command view zoom in desc"
+  },
+  "command_view_zoom_out_desc": "Shrinks the view about its centre.",
+  "@command_view_zoom_out_desc": {
+    "description": "command view zoom out desc"
+  },
+  "command_view_zoom_selected_desc": "Fits the selected objects in the window.",
+  "@command_view_zoom_selected_desc": {
+    "description": "command view zoom selected desc"
+  },
+  "command_view_regen_desc": "Rebuilds the display list, discarding cached curve tessellations.",
+  "@command_view_regen_desc": {
+    "description": "command view regen desc"
+  },
+  "command_view_units_desc": "Sets the drawing insertion units written to $INSUNITS. Coordinates stay in these units; the value is what importers and queries use to convert.",
+  "@command_view_units_desc": {
+    "description": "command view units desc"
+  },
+  "command_workbench_preferences_desc": "Opens the application settings dialog.",
+  "@command_workbench_preferences_desc": {
+    "description": "command workbench preferences desc"
+  },
+  "command_select_all_desc": "Selects every selectable object in the current space.",
+  "@command_select_all_desc": {
+    "description": "command select all desc"
+  },
+  "command_select_none_desc": "Clears the selection.",
+  "@command_select_none_desc": {
+    "description": "command select none desc"
+  },
+  "command_select_invert_desc": "Selects everything that is not currently selected.",
+  "@command_select_invert_desc": {
+    "description": "command select invert desc"
+  },
+  "command_select_similar_desc": "Extends the selection to every object of the same type and layer.",
+  "@command_select_similar_desc": {
+    "description": "command select similar desc"
+  },
+  "command_select_by_layer_desc": "Selects every object on a named layer.",
+  "@command_select_by_layer_desc": {
+    "description": "command select by layer desc"
+  },
+  "command_select_by_color_desc": "Selects every object whose stored colour matches an ACI, #rrggbb, ByLayer or ByBlock. Layer-inherited red is not the same as ACI 1.",
+  "@command_select_by_color_desc": {
+    "description": "command select by color desc"
+  },
+  "command_select_by_linetype_desc": "Selects every object whose stored linetype matches a name, ByLayer or ByBlock. Layer-inherited DASHED is not the same as DASHED.",
+  "@command_select_by_linetype_desc": {
+    "description": "command select by linetype desc"
+  },
+  "command_select_by_lineweight_desc": "Selects every object whose stored lineweight matches a millimetre value, hundredths, ByLayer, ByBlock, Default or hairline. Layer-inherited 0.25 mm is not the same as 25.",
+  "@command_select_by_lineweight_desc": {
+    "description": "command select by lineweight desc"
+  },
+  "command_select_by_type_desc": "Selects every object of one entity kind in the current space. LINE, CIRCLE, INSERT, DIMENSION and the other FanCAD kinds work; LWPOLYLINE and BLOCK are accepted as polyline and insert.",
+  "@command_select_by_type_desc": {
+    "description": "command select by type desc"
+  },
+  "command_select_by_block_desc": "Selects every insert of a named block in the current space. The name is case-insensitive, the same way INSERT and RENAME look it up.",
+  "@command_select_by_block_desc": {
+    "description": "command select by block desc"
+  },
+  "command_view_isolate_objects_desc": "Hides every object in the current space except the selection, so the rest of the drawing is out of the way without being deleted.",
+  "@command_view_isolate_objects_desc": {
+    "description": "command view isolate objects desc"
+  },
+  "command_view_hide_objects_desc": "Hides the selected objects without deleting them.",
+  "@command_view_hide_objects_desc": {
+    "description": "command view hide objects desc"
+  },
+  "command_view_unisolate_objects_desc": "Shows every object that Isolate or Hide had turned off in the current space.",
+  "@command_view_unisolate_objects_desc": {
+    "description": "command view unisolate objects desc"
+  },
+  "command_layer_new_desc": "Creates a layer and makes it current.",
+  "@command_layer_new_desc": {
+    "description": "command layer new desc"
+  },
+  "command_layer_set_current_desc": "Chooses the layer new objects are created on.",
+  "@command_layer_set_current_desc": {
+    "description": "command layer set current desc"
+  },
+  "command_layer_toggle_visible_desc": "Turns a layer on or off.",
+  "@command_layer_toggle_visible_desc": {
+    "description": "command layer toggle visible desc"
+  },
+  "command_layer_isolate_desc": "Turns off every layer except the named one.",
+  "@command_layer_isolate_desc": {
+    "description": "command layer isolate desc"
+  },
+  "command_layer_show_all_desc": "Turns every layer back on.",
+  "@command_layer_show_all_desc": {
+    "description": "command layer show all desc"
+  },
+  "command_layer_toggle_lock_desc": "Locks or unlocks a layer. Objects on a locked layer stay visible but cannot be modified.",
+  "@command_layer_toggle_lock_desc": {
+    "description": "command layer toggle lock desc"
+  },
+  "command_layer_delete_desc": "Deletes a layer and everything on it. The layer named 0 cannot be deleted.",
+  "@command_layer_delete_desc": {
+    "description": "command layer delete desc"
+  },
+  "command_layer_purge_desc": "Deletes layers that no object uses. Layer 0 is kept, and if the current layer is empty it is switched back to 0 before the purge.",
+  "@command_layer_purge_desc": {
+    "description": "command layer purge desc"
+  },
+  "command_query_summary_desc": "Returns a compact statistical summary of the drawing: extents, entity counts by type, and per-layer counts. Use this first to understand a drawing before querying its contents.",
+  "@command_query_summary_desc": {
+    "description": "command query summary desc"
+  },
+  "command_query_list_desc": "Reports the full properties of the selected objects.",
+  "@command_query_list_desc": {
+    "description": "command query list desc"
+  },
+  "command_query_entities_desc": "Finds entities matching optional filters and returns their ids and properties. Use layer, kind and a bounding window to narrow a large drawing to the part you care about.",
+  "@command_query_entities_desc": {
+    "description": "command query entities desc"
+  },
+  "command_query_selection_desc": "Returns the current selection as structured records (id, kind, layer, bounds, short geometry). Use this instead of guessing ids. An empty selection is a successful empty list, not a prompt.",
+  "@command_query_selection_desc": {
+    "description": "command query selection desc"
+  },
+  "command_query_viewport_desc": "Returns the active camera: centre, scale and visible window as [minX, minY, maxX, maxY]. Pass that window to query.entities to list what the user is looking at.",
+  "@command_query_viewport_desc": {
+    "description": "command query viewport desc"
+  },
+  "command_query_id_desc": "Reports the X and Y coordinates of a point. Use this when you need a location, not a distance between two locations.",
+  "@command_query_id_desc": {
+    "description": "command query id desc"
+  },
+  "command_query_distance_desc": "Measures the distance and angle between two points.",
+  "@command_query_distance_desc": {
+    "description": "command query distance desc"
+  },
+  "command_query_angle_desc": "Measures the angle at a vertex between two rays. The first point is the vertex; the next two define the sides.",
+  "@command_query_angle_desc": {
+    "description": "command query angle desc"
+  },
+  "command_query_area_desc": "Reports the area and perimeter of the selected closed objects.",
+  "@command_query_area_desc": {
+    "description": "command query area desc"
+  },
+  "command_query_layers_desc": "Returns every layer with its state and object count.",
+  "@command_query_layers_desc": {
+    "description": "command query layers desc"
+  },
+  "command_layout_list_desc": "Lists model and paper-space layouts and their viewports.",
+  "@command_layout_list_desc": {
+    "description": "command layout list desc"
+  },
+  "command_layout_set_desc": "Switches the active layout (Model or a paper tab).",
+  "@command_layout_set_desc": {
+    "description": "command layout set desc"
+  },
+  "command_layout_new_desc": "Adds a paper-space layout tab and opens it. The sheet defaults to A4 landscape; pass width and height in millimetres to override.",
+  "@command_layout_new_desc": {
+    "description": "command layout new desc"
+  },
+  "command_layout_delete_desc": "Removes a paper-space layout tab and the entities on that sheet. Model cannot be deleted. Omit the name to delete the current tab.",
+  "@command_layout_delete_desc": {
+    "description": "command layout delete desc"
+  },
+  "command_layout_copy_desc": "Duplicates a paper layout: sheet size, viewports, and the entities on that sheet. Model cannot be copied.",
+  "@command_layout_copy_desc": {
+    "description": "command layout copy desc"
+  },
+  "command_layout_rename_desc": "Renames a paper layout tab. The sheet, viewports and paper entities stay put. Model cannot be renamed.",
+  "@command_layout_rename_desc": {
+    "description": "command layout rename desc"
+  },
+  "command_layout_order_desc": "Moves a paper tab in the layout strip. Model stays first. index is the destination among paper tabs (0 = first paper). Or pass before / after another tab name.",
+  "@command_layout_order_desc": {
+    "description": "command layout order desc"
+  },
+  "command_layout_pagesetup_desc": "Changes the paper size of a layout, in millimetres, the plot rotation (0, 90, 180 or 270), scale or fit-to-sheet, an offset, and an optional plot window. Omit the name to edit the current paper tab. Model has no sheet.",
+  "@command_layout_pagesetup_desc": {
+    "description": "command layout pagesetup desc"
+  },
+  "command_layout_mview_desc": "Cuts a window on the current paper layout that looks into model space. The model is framed in the rectangle unless a scale is supplied.",
+  "@command_layout_mview_desc": {
+    "description": "command layout mview desc"
+  },
+  "command_layout_vpscale_desc": "Sets the scale of a paper viewport (model units per paper unit). Pass fit=true to frame the model again. A locked viewport is refused.",
+  "@command_layout_vpscale_desc": {
+    "description": "command layout vpscale desc"
+  },
+  "command_layout_vplock_desc": "Locks or unlocks a paper viewport so VPSCALE cannot change the view. Omit locked to toggle. The window frame can still move.",
+  "@command_layout_vplock_desc": {
+    "description": "command layout vplock desc"
+  },
+  "command_layout_vpon_desc": "Turns a paper viewport on or off. An off window keeps its frame but hides the model and is skipped when plotting. Omit on to toggle.",
+  "@command_layout_vpon_desc": {
+    "description": "command layout vpon desc"
+  },
+  "command_layout_vplayer_desc": "Freezes or thaws layers in one paper viewport. Other windows and model space keep their own visibility. Omit freeze to freeze.",
+  "@command_layout_vplayer_desc": {
+    "description": "command layout vplayer desc"
+  },
+  "command_layout_vpmax_desc": "Opens model space framed to a paper viewport so the model can be edited through that window. VPMIN returns to the sheet.",
+  "@command_layout_vpmax_desc": {
+    "description": "command layout vpmax desc"
+  },
+  "command_layout_vpmin_desc": "Returns to the paper layout left by VPMAX and frames the sheet.",
+  "@command_layout_vpmin_desc": {
+    "description": "command layout vpmin desc"
+  },
+  "command_print_export_svg_desc": "Plots a layout to an SVG file. Omit the layout name to plot the current tab. A .pdf path writes a vector PDF instead. Pass corner1 and corner2 to plot a window; otherwise the layout's stored plot window or the full sheet is used.",
+  "@command_print_export_svg_desc": {
+    "description": "command print export svg desc"
+  },
+  "command_print_export_pdf_desc": "Plots a layout to a vector PDF. Omit the layout name to plot the current tab. Paper size becomes the page MediaBox; viewports are clipped. Pass corner1 and corner2 to plot a window.",
+  "@command_print_export_pdf_desc": {
+    "description": "command print export pdf desc"
+  },
+  "command_xref_attach_desc": "Loads another drawing as an external reference and places it in model space. Reload by attaching the same path again; existing inserts keep their position.",
+  "@command_xref_attach_desc": {
+    "description": "command xref attach desc"
+  },
+  "command_xref_reload_desc": "Re-reads attached external references from their stored paths. Omit the name to reload the selected xref, or the only xref in the drawing.",
+  "@command_xref_reload_desc": {
+    "description": "command xref reload desc"
+  },
+  "command_xref_detach_desc": "Removes an external reference and every insert that shows it. Omit the name to detach the selected xref, or the only xref in the drawing.",
+  "@command_xref_detach_desc": {
+    "description": "command xref detach desc"
+  },
+  "command_xref_bind_desc": "Turns an external reference into a local block so the drawing no longer depends on that file. Inserts stay where they are. Omit the name to bind the selected xref, or the only xref in the drawing.",
+  "@command_xref_bind_desc": {
+    "description": "command xref bind desc"
+  },
+  "command_plugins_list_desc": "Lists installed extensions with their state, version and the commands they contribute.",
+  "@command_plugins_list_desc": {
+    "description": "command plugins list desc"
+  },
+  "command_plugins_reload_desc": "Re-reads an extension from disk and re-evaluates it, picking up both code and manifest changes without restarting.",
+  "@command_plugins_reload_desc": {
+    "description": "command plugins reload desc"
+  },
+  "command_plugins_enable_desc": "Loads an extension so it can contribute commands again.",
+  "@command_plugins_enable_desc": {
+    "description": "command plugins enable desc"
+  },
+  "command_plugins_disable_desc": "Unloads an extension and stops it activating again until enabled.",
+  "@command_plugins_disable_desc": {
+    "description": "command plugins disable desc"
+  },
+  "command_plugins_logs_desc": "Prints what an extension logged, for diagnosing a failure.",
+  "@command_plugins_logs_desc": {
+    "description": "command plugins logs desc"
+  },
+  "command_plugins_scaffold_desc": "Writes a new extension folder with a manifest and a working main.js, then loads it. Returns the paths written.",
+  "@command_plugins_scaffold_desc": {
+    "description": "command plugins scaffold desc"
+  },
+  "command_plugins_write_desc": "Overwrites one file inside an extension folder. Paths are confined to that folder.",
+  "@command_plugins_write_desc": {
+    "description": "command plugins write desc"
+  },
+  "command_plugins_read_desc": "Reads one file from an extension folder.",
+  "@command_plugins_read_desc": {
+    "description": "command plugins read desc"
+  },
+  "command_plugins_typings_desc": "Regenerates fancad.d.ts from the live command registry, so editors and models see the real API surface.",
+  "@command_plugins_typings_desc": {
+    "description": "command plugins typings desc"
+  },
+  "command_plugins_edit_desc": "Opens an extension file in the built-in editor so a person can review or change what the AI authoring loop wrote.",
+  "@command_plugins_edit_desc": {
+    "description": "command plugins edit desc"
+  },
+  "command_plugins_eval_desc": "Runs a JavaScript expression inside an extension scope. For debugging; it can do anything the extension can.",
+  "@command_plugins_eval_desc": {
+    "description": "command plugins eval desc"
+  },
+  "command_step": "{verb}  {step}",
+  "@command_step": {
+    "description": "command step",
+    "placeholders": {
+      "verb": {
+        "type": "String"
+      },
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_specify_first_point": "Specify first point:",
+  "@prompt_specify_first_point": {
+    "description": "prompt specify first point"
+  },
+  "prompt_specify_next_point_esc": "Specify next point (Escape to finish):",
+  "@prompt_specify_next_point_esc": {
+    "description": "prompt specify next point esc"
+  },
+  "prompt_specify_second_point": "Specify second point:",
+  "@prompt_specify_second_point": {
+    "description": "prompt specify second point"
+  },
+  "prompt_specify_second_point_esc": "Specify second point (Escape to finish):",
+  "@prompt_specify_second_point_esc": {
+    "description": "prompt specify second point esc"
+  },
+  "prompt_specify_base_point": "Specify base point:",
+  "@prompt_specify_base_point": {
+    "description": "prompt specify base point"
+  },
+  "prompt_select_objects": "Select objects:",
+  "@prompt_select_objects": {
+    "description": "prompt select objects"
+  },
+  "prompt_specify_center": "Specify center:",
+  "@prompt_specify_center": {
+    "description": "prompt specify center"
+  },
+  "prompt_specify_center_point": "Specify center point:",
+  "@prompt_specify_center_point": {
+    "description": "prompt specify center point"
+  },
+  "prompt_specify_radius": "Specify radius:",
+  "@prompt_specify_radius": {
+    "description": "prompt specify radius"
+  },
+  "prompt_specify_first_corner": "Specify first corner:",
+  "@prompt_specify_first_corner": {
+    "description": "prompt specify first corner"
+  },
+  "prompt_specify_opposite_corner": "Specify opposite corner:",
+  "@prompt_specify_opposite_corner": {
+    "description": "prompt specify opposite corner"
+  },
+  "prompt_specify_insertion_point": "Specify insertion point:",
+  "@prompt_specify_insertion_point": {
+    "description": "prompt specify insertion point"
+  },
+  "prompt_specify_next_insertion_esc": "Specify next insertion point (Escape to finish):",
+  "@prompt_specify_next_insertion_esc": {
+    "description": "prompt specify next insertion esc"
+  },
+  "prompt_specify_height": "Specify height:",
+  "@prompt_specify_height": {
+    "description": "prompt specify height"
+  },
+  "prompt_specify_start_point": "Specify start point:",
+  "@prompt_specify_start_point": {
+    "description": "prompt specify start point"
+  },
+  "prompt_specify_through_point": "Specify through point:",
+  "@prompt_specify_through_point": {
+    "description": "prompt specify through point"
+  },
+  "prompt_specify_end_point": "Specify end point:",
+  "@prompt_specify_end_point": {
+    "description": "prompt specify end point"
+  },
+  "prompt_specify_a_point": "Specify a point:",
+  "@prompt_specify_a_point": {
+    "description": "prompt specify a point"
+  },
+  "prompt_specify_a_location": "Specify a location:",
+  "@prompt_specify_a_location": {
+    "description": "prompt specify a location"
+  },
+  "prompt_specify_point": "Specify point:",
+  "@prompt_specify_point": {
+    "description": "prompt specify point"
+  },
+  "prompt_specify_vertex": "Specify vertex:",
+  "@prompt_specify_vertex": {
+    "description": "prompt specify vertex"
+  },
+  "prompt_specify_dim_line": "Specify dimension line location:",
+  "@prompt_specify_dim_line": {
+    "description": "prompt specify dim line"
+  },
+  "prompt_specify_first_ext_origin": "Specify first extension line origin:",
+  "@prompt_specify_first_ext_origin": {
+    "description": "prompt specify first ext origin"
+  },
+  "prompt_specify_second_ext_origin": "Specify second extension line origin:",
+  "@prompt_specify_second_ext_origin": {
+    "description": "prompt specify second ext origin"
+  },
+  "prompt_specify_next_ext_origin": "Specify next extension line origin:",
+  "@prompt_specify_next_ext_origin": {
+    "description": "prompt specify next ext origin"
+  },
+  "prompt_specify_second_ext_origin_alt": "Specify a second extension line origin:",
+  "@prompt_specify_second_ext_origin_alt": {
+    "description": "prompt specify second ext origin alt"
+  },
+  "prompt_specify_dim_arc": "Specify dimension arc location:",
+  "@prompt_specify_dim_arc": {
+    "description": "prompt specify dim arc"
+  },
+  "prompt_specify_rotation_angle": "Specify rotation angle:",
+  "@prompt_specify_rotation_angle": {
+    "description": "prompt specify rotation angle"
+  },
+  "prompt_specify_new_height": "Specify new height:",
+  "@prompt_specify_new_height": {
+    "description": "prompt specify new height"
+  },
+  "prompt_specify_width_factor": "Specify width factor:",
+  "@prompt_specify_width_factor": {
+    "description": "prompt specify width factor"
+  },
+  "prompt_specify_oblique": "Specify oblique angle:",
+  "@prompt_specify_oblique": {
+    "description": "prompt specify oblique"
+  },
+  "prompt_specify_column_width": "Specify column width:",
+  "@prompt_specify_column_width": {
+    "description": "prompt specify column width"
+  },
+  "prompt_specify_attachment_point": "Specify attachment point:",
+  "@prompt_specify_attachment_point": {
+    "description": "prompt specify attachment point"
+  },
+  "prompt_specify_scale_factor": "Specify scale factor (or pick a distance):",
+  "@prompt_specify_scale_factor": {
+    "description": "prompt specify scale factor"
+  },
+  "prompt_specify_offset_distance": "Specify offset distance:",
+  "@prompt_specify_offset_distance": {
+    "description": "prompt specify offset distance"
+  },
+  "prompt_specify_offset_side": "Specify a point on the side to offset:",
+  "@prompt_specify_offset_side": {
+    "description": "prompt specify offset side"
+  },
+  "prompt_specify_fillet_radius": "Specify fillet radius:",
+  "@prompt_specify_fillet_radius": {
+    "description": "prompt specify fillet radius"
+  },
+  "prompt_specify_inside_diameter": "Specify inside diameter:",
+  "@prompt_specify_inside_diameter": {
+    "description": "prompt specify inside diameter"
+  },
+  "prompt_specify_outside_diameter": "Specify outside diameter:",
+  "@prompt_specify_outside_diameter": {
+    "description": "prompt specify outside diameter"
+  },
+  "prompt_specify_center_of_donut": "Specify center of donut:",
+  "@prompt_specify_center_of_donut": {
+    "description": "prompt specify center of donut"
+  },
+  "prompt_specify_total_length": "Specify total length:",
+  "@prompt_specify_total_length": {
+    "description": "prompt specify total length"
+  },
+  "prompt_specify_segment_length": "Specify segment length:",
+  "@prompt_specify_segment_length": {
+    "description": "prompt specify segment length"
+  },
+  "prompt_specify_stretch_point": "Specify stretch point:",
+  "@prompt_specify_stretch_point": {
+    "description": "prompt specify stretch point"
+  },
+  "prompt_idle_select": "Select objects or specify a command:",
+  "@prompt_idle_select": {
+    "description": "prompt idle select"
+  },
+  "prompt_enter_layer_name": "Enter layer name:",
+  "@prompt_enter_layer_name": {
+    "description": "prompt enter layer name"
+  },
+  "prompt_enter_a_layer_name": "Enter a layer name:",
+  "@prompt_enter_a_layer_name": {
+    "description": "prompt enter a layer name"
+  },
+  "prompt_extension_id": "Extension id:",
+  "@prompt_extension_id": {
+    "description": "prompt extension id"
+  },
+  "prompt_enter_block_name": "Enter block name:",
+  "@prompt_enter_block_name": {
+    "description": "prompt enter block name"
+  },
+  "prompt_enter_text": "Enter the text:",
+  "@prompt_enter_text": {
+    "description": "prompt enter text"
+  },
+  "prompt_select_closed_objects": "Select closed objects:",
+  "@prompt_select_closed_objects": {
+    "description": "prompt select closed objects"
+  },
+  "prompt_select_viewport": "Select viewport:",
+  "@prompt_select_viewport": {
+    "description": "prompt select viewport"
+  },
+  "prompt_selected_viewport": "Selected viewport",
+  "@prompt_selected_viewport": {
+    "description": "prompt selected viewport"
+  },
+  "prompt_enter_colour": "Enter a colour (1-255, #rrggbb or ByLayer):",
+  "@prompt_enter_colour": {
+    "description": "prompt enter colour"
+  },
+  "prompt_javascript": "JavaScript:",
+  "@prompt_javascript": {
+    "description": "prompt javascript"
+  },
+  "prompt_svg_path": "SVG path:",
+  "@prompt_svg_path": {
+    "description": "prompt svg path"
+  },
+  "prompt_pdf_path": "PDF path:",
+  "@prompt_pdf_path": {
+    "description": "prompt pdf path"
+  },
+  "prompt_layout_name": "Layout name:",
+  "@prompt_layout_name": {
+    "description": "prompt layout name"
+  },
+  "prompt_layout_to_copy": "Layout to copy:",
+  "@prompt_layout_to_copy": {
+    "description": "prompt layout to copy"
+  },
+  "prompt_layout_to_delete": "Layout to delete:",
+  "@prompt_layout_to_delete": {
+    "description": "prompt layout to delete"
+  },
+  "prompt_layout_to_move": "Layout to move:",
+  "@prompt_layout_to_move": {
+    "description": "prompt layout to move"
+  },
+  "prompt_layout_to_rename": "Layout to rename:",
+  "@prompt_layout_to_rename": {
+    "description": "prompt layout to rename"
+  },
+  "prompt_drawing_to_attach": "Drawing to attach:",
+  "@prompt_drawing_to_attach": {
+    "description": "prompt drawing to attach"
+  },
+  "prompt_file_to_write": "File to write:",
+  "@prompt_file_to_write": {
+    "description": "prompt file to write"
+  },
+  "prompt_file_to_read": "File to read:",
+  "@prompt_file_to_read": {
+    "description": "prompt file to read"
+  },
+  "prompt_select_objects_to_erase": "Select objects to erase:",
+  "@prompt_select_objects_to_erase": {
+    "description": "prompt select objects to erase"
+  },
+  "prompt_select_objects_to_array": "Select objects to array:",
+  "@prompt_select_objects_to_array": {
+    "description": "prompt select objects to array"
+  },
+  "prompt_select_objects_to_align": "Select objects to align:",
+  "@prompt_select_objects_to_align": {
+    "description": "prompt select objects to align"
+  },
+  "prompt_select_objects_to_rotate": "Select objects to rotate:",
+  "@prompt_select_objects_to_rotate": {
+    "description": "prompt select objects to rotate"
+  },
+  "prompt_select_objects_to_scale": "Select objects to scale:",
+  "@prompt_select_objects_to_scale": {
+    "description": "prompt select objects to scale"
+  },
+  "prompt_select_objects_to_mirror": "Select objects to mirror:",
+  "@prompt_select_objects_to_mirror": {
+    "description": "prompt select objects to mirror"
+  },
+  "prompt_select_objects_to_offset": "Select objects to offset:",
+  "@prompt_select_objects_to_offset": {
+    "description": "prompt select objects to offset"
+  },
+  "prompt_select_objects_to_explode": "Select objects to explode:",
+  "@prompt_select_objects_to_explode": {
+    "description": "prompt select objects to explode"
+  },
+  "prompt_select_objects_to_hide": "Select objects to hide:",
+  "@prompt_select_objects_to_hide": {
+    "description": "prompt select objects to hide"
+  },
+  "prompt_select_objects_keep_visible": "Select objects to keep visible:",
+  "@prompt_select_objects_keep_visible": {
+    "description": "prompt select objects keep visible"
+  },
+  "prompt_select_objects_recolour": "Select objects to recolour:",
+  "@prompt_select_objects_recolour": {
+    "description": "prompt select objects recolour"
+  },
+  "prompt_select_objects_change_layer": "Select objects to move to another layer:",
+  "@prompt_select_objects_change_layer": {
+    "description": "prompt select objects change layer"
+  },
+  "prompt_select_text_objects": "Select text objects:",
+  "@prompt_select_text_objects": {
+    "description": "prompt select text objects"
+  },
+  "prompt_textobject_options": "Specify text, height, colour, justification, rotation, style, column width, width factor or oblique:",
+  "@prompt_textobject_options": {
+    "description": "prompt textobject options"
+  },
+  "prompt_place_n_points": "Place {count} point(s)?",
+  "@prompt_place_n_points": {
+    "description": "prompt place n points",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prompt_specify_first_kind_point": "Specify first {kind} point:",
+  "@prompt_specify_first_kind_point": {
+    "description": "prompt specify first kind point",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_specify_next_kind_point_esc": "Specify next {kind} point (Escape to finish):",
+  "@prompt_specify_next_kind_point_esc": {
+    "description": "prompt specify next kind point esc",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_selected_object": "Selected {entity} on layer {layer}",
+  "@prompt_selected_object": {
+    "description": "prompt selected object",
+    "placeholders": {
+      "entity": {
+        "type": "String"
+      },
+      "layer": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_objects_selected": "{count} objects selected",
+  "@prompt_objects_selected": {
+    "description": "prompt objects selected",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prompt_selection_found": "{message} ({count} found, Enter to accept)",
+  "@prompt_selection_found": {
+    "description": "prompt selection found",
+    "placeholders": {
+      "message": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prompt_enter_annotation_none": "Enter annotation text <none>:",
+  "@prompt_enter_annotation_none": {
+    "description": "prompt enter annotation none"
+  },
+  "prompt_enter_attribute_tag": "Enter attribute tag:",
+  "@prompt_enter_attribute_tag": {
+    "description": "prompt enter attribute tag"
+  },
+  "prompt_enter_block_name_to_change": "Enter block name to change:",
+  "@prompt_enter_block_name_to_change": {
+    "description": "prompt enter block name to change"
+  },
+  "prompt_enter_default_value": "Enter default value:",
+  "@prompt_enter_default_value": {
+    "description": "prompt enter default value"
+  },
+  "prompt_enter_dimension_text": "Enter dimension text (<> = measured):",
+  "@prompt_enter_dimension_text": {
+    "description": "prompt enter dimension text"
+  },
+  "prompt_enter_justification": "Enter justification [Left/Center/Right/TL/TC/TR/ML/MC/MR/BL/BC/BR]:",
+  "@prompt_enter_justification": {
+    "description": "prompt enter justification"
+  },
+  "prompt_enter_layer_names": "Enter layer name(s):",
+  "@prompt_enter_layer_names": {
+    "description": "prompt enter layer names"
+  },
+  "prompt_enter_spline_method": "Enter method [Control/Fit]:",
+  "@prompt_enter_spline_method": {
+    "description": "prompt enter spline method"
+  },
+  "prompt_enter_linetype_name": "Enter name (DASHED, HIDDEN, CENTER, ByLayer):",
+  "@prompt_enter_linetype_name": {
+    "description": "prompt enter linetype name"
+  },
+  "prompt_enter_new_block_name": "Enter new block name:",
+  "@prompt_enter_new_block_name": {
+    "description": "prompt enter new block name"
+  },
+  "prompt_enter_new_text": "Enter new text:",
+  "@prompt_enter_new_text": {
+    "description": "prompt enter new text"
+  },
+  "prompt_enter_columns": "Enter number of columns:",
+  "@prompt_enter_columns": {
+    "description": "prompt enter columns"
+  },
+  "prompt_enter_items": "Enter number of items:",
+  "@prompt_enter_items": {
+    "description": "prompt enter items"
+  },
+  "prompt_enter_rows": "Enter number of rows:",
+  "@prompt_enter_rows": {
+    "description": "prompt enter rows"
+  },
+  "prompt_enter_sides": "Enter number of sides:",
+  "@prompt_enter_sides": {
+    "description": "prompt enter sides"
+  },
+  "prompt_enter_object_type": "Enter object type (LINE, CIRCLE, INSERT, …):",
+  "@prompt_enter_object_type": {
+    "description": "prompt enter object type"
+  },
+  "prompt_enter_attribute_prompt": "Enter prompt:",
+  "@prompt_enter_attribute_prompt": {
+    "description": "prompt enter attribute prompt"
+  },
+  "prompt_enter_fill_angle": "Enter the angle to fill:",
+  "@prompt_enter_fill_angle": {
+    "description": "prompt enter fill angle"
+  },
+  "prompt_enter_column_spacing": "Enter the column spacing:",
+  "@prompt_enter_column_spacing": {
+    "description": "prompt enter column spacing"
+  },
+  "prompt_enter_segments": "Enter the number of segments:",
+  "@prompt_enter_segments": {
+    "description": "prompt enter segments"
+  },
+  "prompt_enter_row_spacing": "Enter the row spacing:",
+  "@prompt_enter_row_spacing": {
+    "description": "prompt enter row spacing"
+  },
+  "prompt_enter_lineweight": "Enter weight (0.25 mm, 25, ByLayer):",
+  "@prompt_enter_lineweight": {
+    "description": "prompt enter lineweight"
+  },
+  "prompt_fillet_vertex_all": "Fillet [Vertex/All]:",
+  "@prompt_fillet_vertex_all": {
+    "description": "prompt fillet vertex all"
+  },
+  "prompt_chamfer_vertex_all": "Chamfer [Vertex/All]:",
+  "@prompt_chamfer_vertex_all": {
+    "description": "prompt chamfer vertex all"
+  },
+  "prompt_select_block_reference": "Select a block reference:",
+  "@prompt_select_block_reference": {
+    "description": "prompt select block reference"
+  },
+  "prompt_select_line_pline_arc": "Select a line, polyline or arc:",
+  "@prompt_select_line_pline_arc": {
+    "description": "prompt select line pline arc"
+  },
+  "prompt_select_linear_aligned_dim": "Select a linear or aligned dimension:",
+  "@prompt_select_linear_aligned_dim": {
+    "description": "prompt select linear aligned dim"
+  },
+  "prompt_select_arc_or_circle": "Select arc or circle:",
+  "@prompt_select_arc_or_circle": {
+    "description": "prompt select arc or circle"
+  },
+  "prompt_select_arc_or_first_line": "Select arc or first line:",
+  "@prompt_select_arc_or_first_line": {
+    "description": "prompt select arc or first line"
+  },
+  "prompt_select_boundary_edges": "Select boundary edges:",
+  "@prompt_select_boundary_edges": {
+    "description": "prompt select boundary edges"
+  },
+  "prompt_select_circles_or_arcs": "Select circles or arcs:",
+  "@prompt_select_circles_or_arcs": {
+    "description": "prompt select circles or arcs"
+  },
+  "prompt_select_closed_boundaries": "Select closed boundaries:",
+  "@prompt_select_closed_boundaries": {
+    "description": "prompt select closed boundaries"
+  },
+  "prompt_select_cutting_edges": "Select cutting edges:",
+  "@prompt_select_cutting_edges": {
+    "description": "prompt select cutting edges"
+  },
+  "prompt_select_destination_objects": "Select destination objects:",
+  "@prompt_select_destination_objects": {
+    "description": "prompt select destination objects"
+  },
+  "prompt_select_dimensions": "Select dimensions:",
+  "@prompt_select_dimensions": {
+    "description": "prompt select dimensions"
+  },
+  "prompt_select_first_line_circle_arc": "Select first line, circle or arc:",
+  "@prompt_select_first_line_circle_arc": {
+    "description": "prompt select first line circle arc"
+  },
+  "prompt_select_first_object": "Select first object:",
+  "@prompt_select_first_object": {
+    "description": "prompt select first object"
+  },
+  "prompt_select_first_tangent": "Select first tangent object:",
+  "@prompt_select_first_tangent": {
+    "description": "prompt select first tangent"
+  },
+  "prompt_select_hatch_objects": "Select hatch objects:",
+  "@prompt_select_hatch_objects": {
+    "description": "prompt select hatch objects"
+  },
+  "prompt_select_lines_or_plines": "Select lines or polylines:",
+  "@prompt_select_lines_or_plines": {
+    "description": "prompt select lines or plines"
+  },
+  "prompt_select_lines_to_convert": "Select lines to convert:",
+  "@prompt_select_lines_to_convert": {
+    "description": "prompt select lines to convert"
+  },
+  "prompt_select_join_objects": "Select lines, arcs or polylines to join:",
+  "@prompt_select_join_objects": {
+    "description": "prompt select join objects"
+  },
+  "prompt_select_object_to_break": "Select object to break:",
+  "@prompt_select_object_to_break": {
+    "description": "prompt select object to break"
+  },
+  "prompt_select_object_to_divide": "Select object to divide:",
+  "@prompt_select_object_to_divide": {
+    "description": "prompt select object to divide"
+  },
+  "prompt_select_object_to_measure": "Select object to measure:",
+  "@prompt_select_object_to_measure": {
+    "description": "prompt select object to measure"
+  },
+  "prompt_select_plines_to_close": "Select polylines to close:",
+  "@prompt_select_plines_to_close": {
+    "description": "prompt select plines to close"
+  },
+  "prompt_select_plines_to_open": "Select polylines to open:",
+  "@prompt_select_plines_to_open": {
+    "description": "prompt select plines to open"
+  },
+  "prompt_select_plines_width": "Select polylines to set width:",
+  "@prompt_select_plines_width": {
+    "description": "prompt select plines width"
+  },
+  "prompt_select_second_line_circle_arc": "Select second line, circle or arc:",
+  "@prompt_select_second_line_circle_arc": {
+    "description": "prompt select second line circle arc"
+  },
+  "prompt_select_second_line": "Select second line:",
+  "@prompt_select_second_line": {
+    "description": "prompt select second line"
+  },
+  "prompt_select_second_tangent": "Select second tangent object:",
+  "@prompt_select_second_tangent": {
+    "description": "prompt select second tangent"
+  },
+  "prompt_select_source_object": "Select source object:",
+  "@prompt_select_source_object": {
+    "description": "prompt select source object"
+  },
+  "prompt_select_text_mtext_dim": "Select text, mtext or a dimension:",
+  "@prompt_select_text_mtext_dim": {
+    "description": "prompt select text mtext dim"
+  },
+  "prompt_specify_nearer_end": "Specify a point nearer the end to change:",
+  "@prompt_specify_nearer_end": {
+    "description": "prompt specify nearer end"
+  },
+  "prompt_specify_first_ray_point": "Specify a point on the first ray:",
+  "@prompt_specify_first_ray_point": {
+    "description": "prompt specify first ray point"
+  },
+  "prompt_specify_second_ray_point": "Specify a point on the second ray:",
+  "@prompt_specify_second_ray_point": {
+    "description": "prompt specify second ray point"
+  },
+  "prompt_specify_second_point_on_arc": "Specify a second point on the arc:",
+  "@prompt_specify_second_point_on_arc": {
+    "description": "prompt specify second point on arc"
+  },
+  "prompt_specify_vertex_to_bevel": "Specify a vertex to bevel:",
+  "@prompt_specify_vertex_to_bevel": {
+    "description": "prompt specify vertex to bevel"
+  },
+  "prompt_specify_vertex_to_round": "Specify a vertex to round:",
+  "@prompt_specify_vertex_to_round": {
+    "description": "prompt specify vertex to round"
+  },
+  "prompt_specify_column_distance": "Specify distance between columns:",
+  "@prompt_specify_column_distance": {
+    "description": "prompt specify column distance"
+  },
+  "prompt_specify_row_distance": "Specify distance between rows:",
+  "@prompt_specify_row_distance": {
+    "description": "prompt specify row distance"
+  },
+  "prompt_specify_other_axis_distance": "Specify distance to other axis:",
+  "@prompt_specify_other_axis_distance": {
+    "description": "prompt specify other axis distance"
+  },
+  "prompt_specify_axis_endpoint": "Specify endpoint of axis:",
+  "@prompt_specify_axis_endpoint": {
+    "description": "prompt specify axis endpoint"
+  },
+  "prompt_specify_first_break": "Specify first break point:",
+  "@prompt_specify_first_break": {
+    "description": "prompt specify first break"
+  },
+  "prompt_specify_first_chamfer": "Specify first chamfer distance:",
+  "@prompt_specify_first_chamfer": {
+    "description": "prompt specify first chamfer"
+  },
+  "prompt_specify_crossing_first_corner": "Specify first corner of crossing window:",
+  "@prompt_specify_crossing_first_corner": {
+    "description": "prompt specify crossing first corner"
+  },
+  "prompt_specify_first_dest": "Specify first destination point:",
+  "@prompt_specify_first_dest": {
+    "description": "prompt specify first dest"
+  },
+  "prompt_specify_first_diameter_end": "Specify first end of diameter:",
+  "@prompt_specify_first_diameter_end": {
+    "description": "prompt specify first diameter end"
+  },
+  "prompt_specify_first_leader_point": "Specify first leader point:",
+  "@prompt_specify_first_leader_point": {
+    "description": "prompt specify first leader point"
+  },
+  "prompt_specify_mirror_first": "Specify first point of mirror line:",
+  "@prompt_specify_mirror_first": {
+    "description": "prompt specify mirror first"
+  },
+  "prompt_specify_first_on_circle": "Specify first point on circle:",
+  "@prompt_specify_first_on_circle": {
+    "description": "prompt specify first on circle"
+  },
+  "prompt_specify_first_source": "Specify first source point:",
+  "@prompt_specify_first_source": {
+    "description": "prompt specify first source"
+  },
+  "prompt_specify_insertion_base": "Specify insertion base point:",
+  "@prompt_specify_insertion_base": {
+    "description": "prompt specify insertion base"
+  },
+  "prompt_hatch_internal_or_select": "Specify internal point or [Select]:",
+  "@prompt_hatch_internal_or_select": {
+    "description": "prompt hatch internal or select"
+  },
+  "prompt_specify_dim_text_location": "Specify new location for dimension text:",
+  "@prompt_specify_dim_text_location": {
+    "description": "prompt specify dim text location"
+  },
+  "prompt_specify_polyline_width": "Specify new width for all segments:",
+  "@prompt_specify_polyline_width": {
+    "description": "prompt specify polyline width"
+  },
+  "prompt_specify_second_break_esc": "Specify second break point (Escape to split):",
+  "@prompt_specify_second_break_esc": {
+    "description": "prompt specify second break esc"
+  },
+  "prompt_specify_second_chamfer": "Specify second chamfer distance:",
+  "@prompt_specify_second_chamfer": {
+    "description": "prompt specify second chamfer"
+  },
+  "prompt_specify_second_dest": "Specify second destination point:",
+  "@prompt_specify_second_dest": {
+    "description": "prompt specify second dest"
+  },
+  "prompt_specify_second_diameter_end": "Specify second end of diameter:",
+  "@prompt_specify_second_diameter_end": {
+    "description": "prompt specify second diameter end"
+  },
+  "prompt_specify_mirror_second": "Specify second point of mirror line:",
+  "@prompt_specify_mirror_second": {
+    "description": "prompt specify mirror second"
+  },
+  "prompt_specify_second_on_circle": "Specify second point on circle:",
+  "@prompt_specify_second_on_circle": {
+    "description": "prompt specify second on circle"
+  },
+  "prompt_specify_second_source_or_enter": "Specify second source point or press Enter:",
+  "@prompt_specify_second_source_or_enter": {
+    "description": "prompt specify second source or enter"
+  },
+  "prompt_specify_third_on_circle": "Specify third point on circle:",
+  "@prompt_specify_third_on_circle": {
+    "description": "prompt specify third on circle"
+  },
+  "prompt_enter_units": "Enter insertion units <{current}>:",
+  "@prompt_enter_units": {
+    "description": "prompt enter units",
+    "placeholders": {
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_enter_text_style_name": "Enter text style name:",
+  "@prompt_enter_text_style_name": {
+    "description": "prompt enter text style name"
+  },
+  "prompt_enter_layer_to_delete": "Enter layer to delete:",
+  "@prompt_enter_layer_to_delete": {
+    "description": "prompt enter layer to delete"
+  },
+  "prompt_enter_layer_to_isolate": "Enter layer to isolate:",
+  "@prompt_enter_layer_to_isolate": {
+    "description": "prompt enter layer to isolate"
+  },
+  "prompt_enter_linetype": "Enter a linetype (DASHED, ByLayer, …):",
+  "@prompt_enter_linetype": {
+    "description": "prompt enter linetype"
+  },
+  "prompt_enter_a_lineweight": "Enter a lineweight (0.25 mm, 25, ByLayer):",
+  "@prompt_enter_a_lineweight": {
+    "description": "prompt enter a lineweight"
+  },
+  "prompt_select_object_to_trim": "Select an object to trim (Escape to finish):",
+  "@prompt_select_object_to_trim": {
+    "description": "prompt select object to trim"
+  },
+  "prompt_select_object_to_extend": "Select an object to extend (Escape to finish):",
+  "@prompt_select_object_to_extend": {
+    "description": "prompt select object to extend"
+  },
+  "prompt_scale_objects_align": "Scale objects based on alignment points?",
+  "@prompt_scale_objects_align": {
+    "description": "prompt scale objects align"
+  },
+  "prompt_sheet_width": "Sheet width (mm):",
+  "@prompt_sheet_width": {
+    "description": "prompt sheet width"
+  },
+  "prompt_sheet_height": "Sheet height (mm):",
+  "@prompt_sheet_height": {
+    "description": "prompt sheet height"
+  },
+  "prompt_viewport_scale": "Viewport scale (model / paper):",
+  "@prompt_viewport_scale": {
+    "description": "prompt viewport scale"
+  },
+  "prompt_new_layout_name": "New layout name:",
+  "@prompt_new_layout_name": {
+    "description": "prompt new layout name"
+  },
+  "prompt_open_recent": "Open recent:",
+  "@prompt_open_recent": {
+    "description": "prompt open recent"
+  },
   "end": "End",
   "@end": {
     "description": "end"

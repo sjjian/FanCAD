@@ -48,7 +48,10 @@ class EditHatchCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'HATCHEDIT  Select hatch objects:',
+      context.commandPrompt(
+        'HATCHEDIT',
+        context.l10n.prompt_select_hatch_objects,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
 

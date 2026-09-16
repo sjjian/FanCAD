@@ -77,8 +77,14 @@ class DrawPolylineCommand extends FanCadCommand {
         );
       final pick = await context.input.pointOrKeyword(
         points.isEmpty
-            ? 'PLINE  Specify start point:'
-            : 'PLINE  Specify next point (Escape to finish):',
+            ? context.commandPrompt(
+                'PLINE',
+                context.l10n.prompt_specify_start_point,
+              )
+            : context.commandPrompt(
+                'PLINE',
+                context.l10n.prompt_specify_next_point_esc,
+              ),
         keywords: keywords,
       );
       if (pick == null) break;

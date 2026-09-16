@@ -31,11 +31,14 @@ class EditCopyCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final ids = await context.resolveSelection('ids', 'COPY  Select objects:');
+    final ids = await context.resolveSelection(
+      'ids',
+      context.commandPrompt('COPY', context.l10n.prompt_select_objects),
+    );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final from = await context.resolvePoint(
       'from',
-      'COPY  Specify base point:',
+      context.commandPrompt('COPY', context.l10n.prompt_specify_base_point),
     );
     installTransformPreview(
       context,
@@ -45,7 +48,7 @@ class EditCopyCommand extends FanCadCommand {
     );
     final first = await context.resolvePoint(
       'to',
-      'COPY  Specify second point:',
+      context.commandPrompt('COPY', context.l10n.prompt_specify_second_point),
       basePoint: from,
     );
     final destinations = <Vec2>[
@@ -61,7 +64,10 @@ class EditCopyCommand extends FanCadCommand {
           (cursor) => Mat3.translation(cursor.x - from.x, cursor.y - from.y),
         );
         final next = await context.input.pointOrNull(
-          'COPY  Specify second point (Escape to finish):',
+          context.commandPrompt(
+            'COPY',
+            context.l10n.prompt_specify_second_point_esc,
+          ),
           basePoint: from,
         );
         if (next == null) break;

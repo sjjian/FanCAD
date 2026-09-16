@@ -37,12 +37,15 @@ class EditScaleCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'SCALE  Select objects to scale:',
+      context.commandPrompt(
+        'SCALE',
+        context.l10n.prompt_select_objects_to_scale,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final base = await context.resolvePoint(
       'base',
-      'SCALE  Specify base point:',
+      context.commandPrompt('SCALE', context.l10n.prompt_specify_base_point),
     );
 
     var factor = context.args.number('factor');
@@ -56,7 +59,10 @@ class EditScaleCommand extends FanCadCommand {
             : Mat3.scalingAbout(scale, scale, base);
       });
       factor = await context.input.number(
-        'SCALE  Specify scale factor (or pick a distance):',
+        context.commandPrompt(
+          'SCALE',
+          context.l10n.prompt_specify_scale_factor,
+        ),
         defaultValue: 1,
       );
       context.input.setPreview(null);

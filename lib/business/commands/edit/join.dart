@@ -27,7 +27,7 @@ class EditJoinCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'JOIN  Select lines, arcs or polylines to join:',
+      context.commandPrompt('JOIN', context.l10n.prompt_select_join_objects),
     );
     final pieces = <CadEntity>[
       for (final id in ids)

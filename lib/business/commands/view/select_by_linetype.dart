@@ -32,7 +32,7 @@ class SelectByLinetypeCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final raw = await context.resolveText(
       'linetype',
-      'Enter a linetype (DASHED, ByLayer, …):',
+      context.l10n.prompt_enter_linetype,
     );
     final name = raw.trim();
     if (name.isEmpty) {

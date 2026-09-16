@@ -54,7 +54,10 @@ class LayoutOrderCommand extends FanCadCommand {
     var requested = context.args.text('name')?.trim() ?? '';
     if (requested.isEmpty) {
       if (context.document.activeLayout.isModelSpace) {
-        requested = await context.resolveText('name', 'Layout to move:');
+        requested = await context.resolveText(
+          'name',
+          context.l10n.prompt_layout_to_move,
+        );
       } else {
         requested = context.document.activeLayoutName;
       }

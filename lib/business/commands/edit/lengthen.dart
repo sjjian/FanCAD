@@ -59,7 +59,10 @@ class EditLengthenCommand extends FanCadCommand {
     } else {
       context.selection.clear();
       final picked = await context.input.selection(
-        'LENGTHEN  Select a line, polyline or arc:',
+        context.commandPrompt(
+          'LENGTHEN',
+          context.l10n.prompt_select_line_pline_arc,
+        ),
         useExistingSelection: false,
         single: true,
       );
@@ -85,7 +88,10 @@ class EditLengthenCommand extends FanCadCommand {
     final pick =
         context.args.point('pick') ??
         await context.input.point(
-          'LENGTHEN  Specify a point nearer the end to change:',
+          context.commandPrompt(
+            'LENGTHEN',
+            context.l10n.prompt_specify_nearer_end,
+          ),
         );
 
     final currentLength = Construct.lengthOf(entity);
@@ -103,7 +109,10 @@ class EditLengthenCommand extends FanCadCommand {
           return _lengthenOverlay(preview);
         });
       total = await context.input.number(
-        'LENGTHEN  Specify total length:',
+        context.commandPrompt(
+          'LENGTHEN',
+          context.l10n.prompt_specify_total_length,
+        ),
         defaultValue: currentLength,
       );
       context.input

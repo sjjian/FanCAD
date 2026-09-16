@@ -32,7 +32,7 @@ class SelectByColorCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final raw = await context.resolveText(
       'color',
-      'Enter a colour (1-255, #rrggbb or ByLayer):',
+      context.l10n.prompt_enter_colour,
     );
     final color = _tryCadColor(raw);
     if (color == null) {

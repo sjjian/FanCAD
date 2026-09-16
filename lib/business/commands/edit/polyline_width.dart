@@ -35,7 +35,7 @@ class EditPolylineWidthCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'PEDIT  Select polylines to set width:',
+      context.commandPrompt('PEDIT', context.l10n.prompt_select_plines_width),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
 
@@ -53,7 +53,10 @@ class EditPolylineWidthCommand extends FanCadCommand {
     final width =
         context.args.number('width') ??
         await context.input.number(
-          'PEDIT  Specify new width for all segments:',
+          context.commandPrompt(
+            'PEDIT',
+            context.l10n.prompt_specify_polyline_width,
+          ),
           defaultValue: targets.first.constantWidth,
         );
     if (width < 0) {

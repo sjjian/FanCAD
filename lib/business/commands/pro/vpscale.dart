@@ -94,7 +94,7 @@ class LayoutVpscaleCommand extends FanCadCommand {
           context.args.number('scale') ??
           await context.resolveNumber(
             'scale',
-            'Viewport scale (model / paper):',
+            context.l10n.prompt_viewport_scale,
             defaultValue: viewport.scale,
           );
     }

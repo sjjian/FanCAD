@@ -114,7 +114,10 @@ Future<List<HatchLoop>?> _hatchLoops(CommandContext context) async {
   }
 
   final answer = await context.input.pointOrKeyword(
-    'HATCH  Specify internal point or [Select]:',
+    context.commandPrompt(
+      'HATCH',
+      context.l10n.prompt_hatch_internal_or_select,
+    ),
     keywords: const ['Select'],
   );
   if (answer == null) return null;
@@ -124,7 +127,12 @@ Future<List<HatchLoop>?> _hatchLoops(CommandContext context) async {
       answer.point!,
     );
   }
-  final ids = await context.input.selection('HATCH  Select closed boundaries:');
+  final ids = await context.input.selection(
+    context.commandPrompt(
+      'HATCH',
+      context.l10n.prompt_select_closed_boundaries,
+    ),
+  );
   if (ids.isEmpty) return null;
   return _loopsFromClosed(context, ids);
 }

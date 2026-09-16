@@ -27,7 +27,7 @@ class QueryAreaCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'AREA  Select closed objects:',
+      context.commandPrompt('AREA', context.l10n.prompt_select_closed_objects),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     var area = 0.0;

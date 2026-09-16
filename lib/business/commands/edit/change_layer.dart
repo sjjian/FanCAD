@@ -32,10 +32,13 @@ class EditChangeLayerCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'Select objects to move to another layer:',
+      context.l10n.prompt_select_objects_change_layer,
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
-    final layer = await context.resolveText('layer', 'Enter layer name:');
+    final layer = await context.resolveText(
+      'layer',
+      context.l10n.prompt_enter_layer_name,
+    );
     if (context.document.layer(layer) == null) {
       return CommandResult.failed('There is no layer named "$layer".');
     }

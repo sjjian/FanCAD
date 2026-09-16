@@ -37,7 +37,10 @@ class LayoutDeleteCommand extends FanCadCommand {
     var requested = context.args.text('name')?.trim() ?? '';
     if (requested.isEmpty) {
       if (context.document.activeLayout.isModelSpace) {
-        requested = await context.resolveText('name', 'Layout to delete:');
+        requested = await context.resolveText(
+          'name',
+          context.l10n.prompt_layout_to_delete,
+        );
       } else {
         requested = context.document.activeLayoutName;
       }

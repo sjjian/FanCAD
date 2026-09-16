@@ -57,7 +57,7 @@ class EditInsertCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final requested = (await context.resolveText(
       'name',
-      'INSERT  Enter block name:',
+      context.commandPrompt('INSERT', context.l10n.prompt_enter_block_name),
     )).trim();
     if (requested.isEmpty) {
       return const CommandResult.failed('INSERT needs a block name.');
@@ -80,7 +80,10 @@ class EditInsertCommand extends FanCadCommand {
     if (points.isEmpty) {
       context.input.setPreview(_insertMark);
       final at = await context.input.pointOrNull(
-        'INSERT  Specify insertion point:',
+        context.commandPrompt(
+          'INSERT',
+          context.l10n.prompt_specify_insertion_point,
+        ),
       );
       context.input.setPreview(null);
       if (at == null) return const CommandResult.cancelled();
@@ -88,7 +91,10 @@ class EditInsertCommand extends FanCadCommand {
       while (context.input.isInteractive) {
         context.input.setPreview(_insertMark);
         final next = await context.input.pointOrNull(
-          'INSERT  Specify next insertion point (Escape to finish):',
+          context.commandPrompt(
+            'INSERT',
+            context.l10n.prompt_specify_next_insertion_esc,
+          ),
         );
         if (next == null) break;
         points.add(next);

@@ -34,14 +34,17 @@ class DrawArcCommand extends FanCadCommand {
     final props = EntityProps(layer: context.document.currentLayer);
     final start = await context.resolvePoint(
       'start',
-      'ARC  Specify start point:',
+      context.commandPrompt('ARC', context.l10n.prompt_specify_start_point),
     );
     context.input
       ..setMarkers([start])
       ..setPreview((cursor) => [OverlayLine(start, cursor)]);
     final via = await context.resolvePoint(
       'via',
-      'ARC  Specify a second point on the arc:',
+      context.commandPrompt(
+        'ARC',
+        context.l10n.prompt_specify_second_point_on_arc,
+      ),
       basePoint: start,
     );
 
@@ -61,7 +64,7 @@ class DrawArcCommand extends FanCadCommand {
       });
     final end = await context.resolvePoint(
       'end',
-      'ARC  Specify end point:',
+      context.commandPrompt('ARC', context.l10n.prompt_specify_end_point),
       basePoint: via,
     );
     context.input

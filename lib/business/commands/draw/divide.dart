@@ -47,7 +47,10 @@ class DrawDivideCommand extends FanCadCommand {
     } else {
       context.selection.clear();
       final picked = await context.input.selection(
-        'DIVIDE  Select object to divide:',
+        context.commandPrompt(
+          'DIVIDE',
+          context.l10n.prompt_select_object_to_divide,
+        ),
         useExistingSelection: false,
         single: true,
       );
@@ -68,7 +71,7 @@ class DrawDivideCommand extends FanCadCommand {
     final segments =
         context.args.integer('segments') ??
         await context.input.integer(
-          'DIVIDE  Enter the number of segments:',
+          context.commandPrompt('DIVIDE', context.l10n.prompt_enter_segments),
           defaultValue: 2,
         );
     if (segments < 2) {
@@ -89,7 +92,10 @@ class DrawDivideCommand extends FanCadCommand {
     }
     if (!await acceptPointPlacement(
       context,
-      'DIVIDE  Place ${points.length} point(s)?',
+      context.commandPrompt(
+        'DIVIDE',
+        context.l10n.prompt_place_n_points(points.length),
+      ),
       points,
     )) {
       return const CommandResult.cancelled();

@@ -1676,6 +1676,1271 @@ class AppLocalizationsEn extends AppLocalizations {
   String get command_plugins_eval => 'Evaluate In Extension';
 
   @override
+  String get command_file_list => 'List Drawings';
+
+  @override
+  String get command_file_activate => 'Activate Drawing';
+
+  @override
+  String get command_draw_attdef => 'Attribute Definition';
+
+  @override
+  String get command_edit_attedit => 'Edit Attributes';
+
+  @override
+  String get command_view_units => 'Units';
+
+  @override
+  String get command_file_new_desc => 'Creates an empty drawing in a new tab.';
+
+  @override
+  String get command_file_open_desc => 'Opens a DWG or DXF file.';
+
+  @override
+  String get command_file_save_desc =>
+      'Saves the drawing this command is targeting, asking for a path when it has never been saved.';
+
+  @override
+  String get command_file_save_as_desc =>
+      'Saves the drawing this command is targeting to a new file.';
+
+  @override
+  String get command_file_close_desc =>
+      'Closes the drawing this command is targeting.';
+
+  @override
+  String get command_file_open_recent_desc => 'Reopens a recently used file.';
+
+  @override
+  String get command_file_audit_desc =>
+      'Writes the drawing to a temp DXF and reports anything a round trip would lose.';
+
+  @override
+  String get command_file_list_desc =>
+      'Lists every open drawing tab: id, title, path, dirty, whether it is active, entity count, and the current layout. Use the id as the fancad tab selector to operate on a drawing without switching the UI.';
+
+  @override
+  String get command_file_activate_desc =>
+      'Brings an open drawing to the front. Pass id from file.list, or a unique path or title.';
+
+  @override
+  String get command_draw_line_desc =>
+      'Draws one or more connected straight line segments. Supply start and end to draw a single segment non-interactively.';
+
+  @override
+  String get command_draw_polyline_desc =>
+      'Draws a connected sequence of segments as one polyline entity. Pass a points array to create it non-interactively.';
+
+  @override
+  String get command_draw_spline_desc =>
+      'Draws a clamped B-spline. Control-point mode pulls the curve toward the clicks and only guarantees the ends. Fit mode interpolates every point. Pass a points array to create it non-interactively.';
+
+  @override
+  String get command_draw_rectangle_desc =>
+      'Draws an axis-aligned rectangle as a closed polyline.';
+
+  @override
+  String get command_draw_circle_desc =>
+      'Draws a circle from a centre point and a radius.';
+
+  @override
+  String get command_draw_circle_2p_desc =>
+      'Draws a circle whose diameter is the segment between two points.';
+
+  @override
+  String get command_draw_circle_3p_desc =>
+      'Draws the unique circle that passes through three specified points.';
+
+  @override
+  String get command_draw_circle_ttr_desc =>
+      'Draws a circle of a given radius tangent to two lines, circles or arcs. The pick on each object chooses the side (and, for a circle, external versus internal tangent).';
+
+  @override
+  String get command_draw_donut_desc =>
+      'Draws a filled ring from an inside and outside diameter. A zero inside diameter is a filled disk. The result is a closed wide polyline, which is how DWG stores a donut.';
+
+  @override
+  String get command_draw_arc_desc =>
+      'Draws a circular arc through three points: start, a point on the arc, and end.';
+
+  @override
+  String get command_draw_polygon_desc =>
+      'Draws a regular polygon inscribed in a circle.';
+
+  @override
+  String get command_draw_ellipse_desc =>
+      'Draws an ellipse from a centre, one axis endpoint, and the distance to the other axis.';
+
+  @override
+  String get command_draw_xline_desc =>
+      'Draws an infinite construction line through a point in a given direction. The second point only sets the angle; both sides extend without end.';
+
+  @override
+  String get command_draw_ray_desc =>
+      'Draws a semi-infinite ray from a start point through a second point. Unlike XLINE, it has a beginning.';
+
+  @override
+  String get command_draw_point_desc => 'Places a point marker.';
+
+  @override
+  String get command_draw_divide_desc =>
+      'Places point markers that split a line, polyline, arc or circle into equal segments. Open objects leave the endpoints unmarked; a circle or closed polyline places a marker at every interval. A bulge is followed as its arc, not the chord.';
+
+  @override
+  String get command_draw_measure_desc =>
+      'Places point markers at a fixed spacing along a line, polyline, arc or circle. Open objects start from the nearer end; a circle starts at the pick. Endpoints are not marked. A bulge is followed as its arc, not the chord.';
+
+  @override
+  String get command_draw_text_desc =>
+      'Places a single line of text. Style defaults to the current TEXTSTYLE. Justify is Left, Center, Right or a corner code such as TL.';
+
+  @override
+  String get command_draw_mtext_desc =>
+      'Places multiline text. Newlines become \\P. Width 0 does not wrap. Justify is TL…BR or attachment 1–9 (1 is top-left).';
+
+  @override
+  String get command_draw_attdef_desc =>
+      'Places an attribute definition. Include it in a BLOCK so INSERT and ATTEDIT can fill the tag — title blocks and schedules.';
+
+  @override
+  String get command_draw_leader_desc =>
+      'Draws a leader from an arrow tip through one or more vertices. Optional annotation text sits on a horizontal landing at the last point, the same way AutoCAD LEADER places a callout.';
+
+  @override
+  String get command_draw_hatch_desc =>
+      'Fills the area around an internal point, or around selected closed boundaries. Four lines that meet still count as a boundary.';
+
+  @override
+  String get command_draw_dim_linear_desc =>
+      'Places a horizontal or vertical dimension. The dimension-line pick chooses the axis: above or below the origins measures width; left or right measures height. A line can stand in for the two origins.';
+
+  @override
+  String get command_draw_dim_aligned_desc =>
+      'Places a dimension parallel to the two origins. The text is the true distance, not the horizontal or vertical component. A line can stand in for the two origins.';
+
+  @override
+  String get command_draw_dim_radius_desc =>
+      'Places a radius dimension on a circle or arc. The second pick is the arrow tip; the text is the radius, prefixed with R.';
+
+  @override
+  String get command_draw_dim_diameter_desc =>
+      'Places a diameter dimension on a circle or arc. The second pick is the arrow tip; the text is the diameter, prefixed with Ø.';
+
+  @override
+  String get command_draw_center_mark_desc =>
+      'Draws a centre mark on selected circles or arcs. A short cross sits on the centre; optional extensions continue past the circumference, the usual shop-drawing DIMCENTER.';
+
+  @override
+  String get command_draw_center_line_desc =>
+      'Draws a centreline between two parallel lines, or through the centres of two circles or arcs. The line spans both objects and extends a little past each end.';
+
+  @override
+  String get command_draw_dim_angular_desc =>
+      'Places an angular dimension. Pick an arc and its centre is the vertex; pick two lines and their intersection is the vertex; the last pick sits on the dimension arc and chooses which sector is labelled. Three points still work when a vertex is supplied.';
+
+  @override
+  String get command_draw_dim_continue_desc =>
+      'Places the next linear or aligned dimension from the previous second origin, on the same dimension line. Chain several next points to walk a row of features.';
+
+  @override
+  String get command_draw_dim_baseline_desc =>
+      'Places the next linear or aligned dimension from the same first origin, on a dimension line stepped outward. Chain several next points to stack overall lengths.';
+
+  @override
+  String get command_annot_dimstyle_desc =>
+      'Creates or edits a dimension style. Regenerated dimensions read text height, arrow size, extension offsets, scale and decimal places from the named style. Omit the name to list styles or to edit the current one.';
+
+  @override
+  String get command_annot_textstyle_desc =>
+      'Creates or edits a text style. New TEXT and MTEXT read the font, fixed height, width factor and oblique from the named style. Omit the name to list styles or to edit the current one.';
+
+  @override
+  String get command_edit_erase_desc => 'Deletes the selected objects.';
+
+  @override
+  String get command_edit_overkill_desc =>
+      'Deletes exact geometric duplicates and folds overlapping or abutting collinear lines into one stroke. The first copy is kept and stretched to the union. Omitted ids means the whole current space, so a leftover selection cannot hide the rest of the duplicates.';
+
+  @override
+  String get command_edit_move_desc =>
+      'Moves the selected objects by a displacement.';
+
+  @override
+  String get command_edit_copy_desc =>
+      'Copies the selected objects to one or more locations. Each second point is another copy from the same base; Escape finishes.';
+
+  @override
+  String get command_edit_copy_clip_desc =>
+      'Copies the selected objects to the clipboard. The lower-left of the selection is the paste base. Paste in this drawing or another tab with PASTECLIP.';
+
+  @override
+  String get command_edit_copy_base_desc =>
+      'Copies the selected objects to the clipboard with a base point you pick, so PASTECLIP can land that point on the insertion.';
+
+  @override
+  String get command_edit_cut_clip_desc =>
+      'Copies the selected objects to the clipboard and deletes them from the drawing. Objects on a locked layer stay; the clipboard still holds a copy.';
+
+  @override
+  String get command_edit_paste_clip_desc =>
+      'Pastes clipboard objects at an insertion point. The stored base point lands on that click.';
+
+  @override
+  String get command_edit_paste_orig_desc =>
+      'Pastes clipboard objects at the coordinates they had in the source drawing, without asking for an insertion point.';
+
+  @override
+  String get command_edit_paste_block_desc =>
+      'Pastes clipboard objects as one anonymous block reference. The stored base point lands on the insertion point you pick.';
+
+  @override
+  String get command_edit_stretch_desc =>
+      'Moves vertices inside a crossing window and leaves the rest anchored. Objects wholly captured by the window move as a body.';
+
+  @override
+  String get command_edit_rotate_desc =>
+      'Rotates the selected objects about a base point. The angle is in degrees, counter-clockwise.';
+
+  @override
+  String get command_edit_scale_desc =>
+      'Scales the selected objects uniformly about a base point.';
+
+  @override
+  String get command_edit_mirror_desc =>
+      'Mirrors the selected objects across a line.';
+
+  @override
+  String get command_edit_align_desc =>
+      'Moves the selection so a source point lands on a destination point. A second pair rotates to match the two directions; an optional scale matches the two lengths.';
+
+  @override
+  String get command_edit_array_desc =>
+      'Creates a rectangular grid of copies of the selected objects.';
+
+  @override
+  String get command_edit_polar_array_desc =>
+      'Creates copies of the selected objects rotated about a centre. A fill of 360° spaces items around the full circle; a smaller fill spaces them from the original through that angle, inclusive.';
+
+  @override
+  String get command_edit_offset_desc =>
+      'Creates parallel copies of lines, arcs, circles and polylines at a fixed distance.';
+
+  @override
+  String get command_edit_trim_desc =>
+      'Shortens a line, polyline or arc back to where it crosses the selected cutting edges. The part containing the pick point is removed. A closed polyline opens; a bulge is cut on the arc, not the chord.';
+
+  @override
+  String get command_edit_extend_desc =>
+      'Lengthens a line, open polyline or arc until it meets the selected boundary edges. A bulge grows along its circle. On a polyline or arc the pick chooses which end moves.';
+
+  @override
+  String get command_edit_fillet_desc =>
+      'Rounds the corner between two lines, or vertices of a polyline, with an arc of a given radius. Pass all=true to fillet every straight corner of a polyline. A radius of zero trims or extends two lines to a sharp corner.';
+
+  @override
+  String get command_edit_chamfer_desc =>
+      'Cuts a straight bevel between two lines, or at vertices of a polyline. Pass all=true to chamfer every straight corner. The two distances are measured from the corner back along each segment; omit the second to use the same length on both.';
+
+  @override
+  String get command_edit_break_desc =>
+      'Splits a line, polyline or arc at a point, or removes the portion between two points. A bulge is split into two smaller arcs. A circle needs two points and keeps the counter-clockwise remnant from the second pick back to the first. Omit the second point to only split (arcs and open chains).';
+
+  @override
+  String get command_edit_lengthen_desc =>
+      'Changes the length of a line, open polyline or arc by moving the end you pick. A bulge grows or shrinks along its arc. Supply a total length, or a signed delta to add to the current length. An arc cannot be closed into a full circle.';
+
+  @override
+  String get command_edit_explode_desc =>
+      'Breaks polylines into their segments, block references into copies of their contents, and dimensions into the lines, arrows and text they draw.';
+
+  @override
+  String get command_edit_block_desc =>
+      'Defines a named block from selected objects and replaces them with one insert at the base point, so the drawing looks the same and the definition can be inserted again.';
+
+  @override
+  String get command_edit_insert_desc =>
+      'Places one or more references to a named block. Scale is uniform; rotation is in degrees. Pass a points array to stamp the same block at several locations.';
+
+  @override
+  String get command_edit_minsert_desc =>
+      'Places a rectangular array of a named block as one insert. The copies stay one object, so moving the insert moves the whole grid.';
+
+  @override
+  String get command_block_purge_desc =>
+      'Deletes named block definitions that no insert references. Nested unused definitions are removed in the same pass, so a block that only existed inside another unused block is cleared too. Xrefs and layout blocks are left alone.';
+
+  @override
+  String get command_block_rename_desc =>
+      'Renames a block definition and every insert that still points at the old name. Layout blocks, anonymous blocks and xrefs cannot be renamed.';
+
+  @override
+  String get command_edit_join_desc =>
+      'Joins selected lines, arcs and open polylines whose endpoints meet into a single polyline. A piece is reversed when that is how it touches the chain; a loop whose ends meet is stored closed.';
+
+  @override
+  String get command_edit_close_desc =>
+      'Closes the selected open polylines by connecting the last vertex back to the first. Already-closed polylines are left alone.';
+
+  @override
+  String get command_edit_open_desc =>
+      'Opens the selected closed polylines by dropping the closing segment. The vertices stay; only the loop is broken.';
+
+  @override
+  String get command_edit_polyline_width_desc =>
+      'Sets the constant width of selected polylines. Zero is a hairline; a donut is the same field, so this is how a wide stroke is edited after it is drawn.';
+
+  @override
+  String get command_edit_hatch_desc =>
+      'Changes the pattern, scale or angle of selected hatches. Omit a field to leave it. Angle is in degrees.';
+
+  @override
+  String get command_edit_to_polyline_desc =>
+      'Turns selected lines into two-vertex polylines so they can be closed, opened or reversed as a chain.';
+
+  @override
+  String get command_edit_reverse_desc =>
+      'Reverses the direction of selected lines and polylines. The drawn shape stays the same; start and end swap, which matters for linetypes and for commands that follow a chain.';
+
+  @override
+  String get command_edit_undo_desc => 'Reverses the most recent change.';
+
+  @override
+  String get command_edit_redo_desc =>
+      'Re-applies the most recently undone change.';
+
+  @override
+  String get command_edit_change_layer_desc =>
+      'Moves the selected objects onto a different layer.';
+
+  @override
+  String get command_edit_change_color_desc =>
+      'Sets the colour of the selected objects. Accepts an AutoCAD Color Index (1-255), a #rrggbb value, or ByLayer.';
+
+  @override
+  String get command_edit_change_linetype_desc =>
+      'Sets the linetype of the selected objects. Stock names (DASHED, HIDDEN, CENTER, PHANTOM, DOT, DASHDOT, DIVIDE, Continuous) are added to the drawing if they are not there yet. ByLayer and ByBlock inherit instead.';
+
+  @override
+  String get command_edit_change_lineweight_desc =>
+      'Sets the lineweight of the selected objects. Accepts a millimetre value (0.25), hundredths (25), ByLayer, ByBlock, Default or hairline.';
+
+  @override
+  String get command_edit_dimension_text_desc =>
+      'Overrides the text of selected dimensions. Empty restores the measured value; <> stands for that value; a single space hides the text.';
+
+  @override
+  String get command_edit_dim_tedit_desc =>
+      'Moves the text of selected dimensions to a new point. On a linear dimension the dimension line follows without flipping width and height; aligned, radial and angular dimensions keep their type.';
+
+  @override
+  String get command_edit_text_content_desc =>
+      'Changes the content of selected text, mtext, dimensions, attributes or leaders. On a dimension, empty restores the measured value and <> stands for that value, same as DIMEDIT.';
+
+  @override
+  String get command_edit_text_object_desc =>
+      'Updates content, height, colour, justification, rotation, style, column width, width factor or oblique of selected text, mtext, attributes or leaders in one undo. Dimension text height is a dimstyle property and is ignored.';
+
+  @override
+  String get command_edit_justify_text_desc =>
+      'Changes the justification of selected text or mtext and moves the insertion point so the letters stay where they are. Align and Fit are not offered; they need a second point.';
+
+  @override
+  String get command_edit_match_prop_desc =>
+      'Copies layer, colour, linetype, lineweight and the other display properties from a source object onto the destination objects. Visibility is left alone so isolate and hide stay intact.';
+
+  @override
+  String get command_edit_attedit_desc =>
+      'Changes the values on a block reference. Constant tags stay as the definition wrote them.';
+
+  @override
+  String get command_view_zoom_extents_desc =>
+      'Fits the whole drawing in the window.';
+
+  @override
+  String get command_view_zoom_window_desc =>
+      'Zooms to a rectangle you specify.';
+
+  @override
+  String get command_view_zoom_in_desc =>
+      'Magnifies the view about its centre.';
+
+  @override
+  String get command_view_zoom_out_desc => 'Shrinks the view about its centre.';
+
+  @override
+  String get command_view_zoom_selected_desc =>
+      'Fits the selected objects in the window.';
+
+  @override
+  String get command_view_regen_desc =>
+      'Rebuilds the display list, discarding cached curve tessellations.';
+
+  @override
+  String get command_view_units_desc =>
+      'Sets the drawing insertion units written to \$INSUNITS. Coordinates stay in these units; the value is what importers and queries use to convert.';
+
+  @override
+  String get command_workbench_preferences_desc =>
+      'Opens the application settings dialog.';
+
+  @override
+  String get command_select_all_desc =>
+      'Selects every selectable object in the current space.';
+
+  @override
+  String get command_select_none_desc => 'Clears the selection.';
+
+  @override
+  String get command_select_invert_desc =>
+      'Selects everything that is not currently selected.';
+
+  @override
+  String get command_select_similar_desc =>
+      'Extends the selection to every object of the same type and layer.';
+
+  @override
+  String get command_select_by_layer_desc =>
+      'Selects every object on a named layer.';
+
+  @override
+  String get command_select_by_color_desc =>
+      'Selects every object whose stored colour matches an ACI, #rrggbb, ByLayer or ByBlock. Layer-inherited red is not the same as ACI 1.';
+
+  @override
+  String get command_select_by_linetype_desc =>
+      'Selects every object whose stored linetype matches a name, ByLayer or ByBlock. Layer-inherited DASHED is not the same as DASHED.';
+
+  @override
+  String get command_select_by_lineweight_desc =>
+      'Selects every object whose stored lineweight matches a millimetre value, hundredths, ByLayer, ByBlock, Default or hairline. Layer-inherited 0.25 mm is not the same as 25.';
+
+  @override
+  String get command_select_by_type_desc =>
+      'Selects every object of one entity kind in the current space. LINE, CIRCLE, INSERT, DIMENSION and the other FanCAD kinds work; LWPOLYLINE and BLOCK are accepted as polyline and insert.';
+
+  @override
+  String get command_select_by_block_desc =>
+      'Selects every insert of a named block in the current space. The name is case-insensitive, the same way INSERT and RENAME look it up.';
+
+  @override
+  String get command_view_isolate_objects_desc =>
+      'Hides every object in the current space except the selection, so the rest of the drawing is out of the way without being deleted.';
+
+  @override
+  String get command_view_hide_objects_desc =>
+      'Hides the selected objects without deleting them.';
+
+  @override
+  String get command_view_unisolate_objects_desc =>
+      'Shows every object that Isolate or Hide had turned off in the current space.';
+
+  @override
+  String get command_layer_new_desc => 'Creates a layer and makes it current.';
+
+  @override
+  String get command_layer_set_current_desc =>
+      'Chooses the layer new objects are created on.';
+
+  @override
+  String get command_layer_toggle_visible_desc => 'Turns a layer on or off.';
+
+  @override
+  String get command_layer_isolate_desc =>
+      'Turns off every layer except the named one.';
+
+  @override
+  String get command_layer_show_all_desc => 'Turns every layer back on.';
+
+  @override
+  String get command_layer_toggle_lock_desc =>
+      'Locks or unlocks a layer. Objects on a locked layer stay visible but cannot be modified.';
+
+  @override
+  String get command_layer_delete_desc =>
+      'Deletes a layer and everything on it. The layer named 0 cannot be deleted.';
+
+  @override
+  String get command_layer_purge_desc =>
+      'Deletes layers that no object uses. Layer 0 is kept, and if the current layer is empty it is switched back to 0 before the purge.';
+
+  @override
+  String get command_query_summary_desc =>
+      'Returns a compact statistical summary of the drawing: extents, entity counts by type, and per-layer counts. Use this first to understand a drawing before querying its contents.';
+
+  @override
+  String get command_query_list_desc =>
+      'Reports the full properties of the selected objects.';
+
+  @override
+  String get command_query_entities_desc =>
+      'Finds entities matching optional filters and returns their ids and properties. Use layer, kind and a bounding window to narrow a large drawing to the part you care about.';
+
+  @override
+  String get command_query_selection_desc =>
+      'Returns the current selection as structured records (id, kind, layer, bounds, short geometry). Use this instead of guessing ids. An empty selection is a successful empty list, not a prompt.';
+
+  @override
+  String get command_query_viewport_desc =>
+      'Returns the active camera: centre, scale and visible window as [minX, minY, maxX, maxY]. Pass that window to query.entities to list what the user is looking at.';
+
+  @override
+  String get command_query_id_desc =>
+      'Reports the X and Y coordinates of a point. Use this when you need a location, not a distance between two locations.';
+
+  @override
+  String get command_query_distance_desc =>
+      'Measures the distance and angle between two points.';
+
+  @override
+  String get command_query_angle_desc =>
+      'Measures the angle at a vertex between two rays. The first point is the vertex; the next two define the sides.';
+
+  @override
+  String get command_query_area_desc =>
+      'Reports the area and perimeter of the selected closed objects.';
+
+  @override
+  String get command_query_layers_desc =>
+      'Returns every layer with its state and object count.';
+
+  @override
+  String get command_layout_list_desc =>
+      'Lists model and paper-space layouts and their viewports.';
+
+  @override
+  String get command_layout_set_desc =>
+      'Switches the active layout (Model or a paper tab).';
+
+  @override
+  String get command_layout_new_desc =>
+      'Adds a paper-space layout tab and opens it. The sheet defaults to A4 landscape; pass width and height in millimetres to override.';
+
+  @override
+  String get command_layout_delete_desc =>
+      'Removes a paper-space layout tab and the entities on that sheet. Model cannot be deleted. Omit the name to delete the current tab.';
+
+  @override
+  String get command_layout_copy_desc =>
+      'Duplicates a paper layout: sheet size, viewports, and the entities on that sheet. Model cannot be copied.';
+
+  @override
+  String get command_layout_rename_desc =>
+      'Renames a paper layout tab. The sheet, viewports and paper entities stay put. Model cannot be renamed.';
+
+  @override
+  String get command_layout_order_desc =>
+      'Moves a paper tab in the layout strip. Model stays first. index is the destination among paper tabs (0 = first paper). Or pass before / after another tab name.';
+
+  @override
+  String get command_layout_pagesetup_desc =>
+      'Changes the paper size of a layout, in millimetres, the plot rotation (0, 90, 180 or 270), scale or fit-to-sheet, an offset, and an optional plot window. Omit the name to edit the current paper tab. Model has no sheet.';
+
+  @override
+  String get command_layout_mview_desc =>
+      'Cuts a window on the current paper layout that looks into model space. The model is framed in the rectangle unless a scale is supplied.';
+
+  @override
+  String get command_layout_vpscale_desc =>
+      'Sets the scale of a paper viewport (model units per paper unit). Pass fit=true to frame the model again. A locked viewport is refused.';
+
+  @override
+  String get command_layout_vplock_desc =>
+      'Locks or unlocks a paper viewport so VPSCALE cannot change the view. Omit locked to toggle. The window frame can still move.';
+
+  @override
+  String get command_layout_vpon_desc =>
+      'Turns a paper viewport on or off. An off window keeps its frame but hides the model and is skipped when plotting. Omit on to toggle.';
+
+  @override
+  String get command_layout_vplayer_desc =>
+      'Freezes or thaws layers in one paper viewport. Other windows and model space keep their own visibility. Omit freeze to freeze.';
+
+  @override
+  String get command_layout_vpmax_desc =>
+      'Opens model space framed to a paper viewport so the model can be edited through that window. VPMIN returns to the sheet.';
+
+  @override
+  String get command_layout_vpmin_desc =>
+      'Returns to the paper layout left by VPMAX and frames the sheet.';
+
+  @override
+  String get command_print_export_svg_desc =>
+      'Plots a layout to an SVG file. Omit the layout name to plot the current tab. A .pdf path writes a vector PDF instead. Pass corner1 and corner2 to plot a window; otherwise the layout\'s stored plot window or the full sheet is used.';
+
+  @override
+  String get command_print_export_pdf_desc =>
+      'Plots a layout to a vector PDF. Omit the layout name to plot the current tab. Paper size becomes the page MediaBox; viewports are clipped. Pass corner1 and corner2 to plot a window.';
+
+  @override
+  String get command_xref_attach_desc =>
+      'Loads another drawing as an external reference and places it in model space. Reload by attaching the same path again; existing inserts keep their position.';
+
+  @override
+  String get command_xref_reload_desc =>
+      'Re-reads attached external references from their stored paths. Omit the name to reload the selected xref, or the only xref in the drawing.';
+
+  @override
+  String get command_xref_detach_desc =>
+      'Removes an external reference and every insert that shows it. Omit the name to detach the selected xref, or the only xref in the drawing.';
+
+  @override
+  String get command_xref_bind_desc =>
+      'Turns an external reference into a local block so the drawing no longer depends on that file. Inserts stay where they are. Omit the name to bind the selected xref, or the only xref in the drawing.';
+
+  @override
+  String get command_plugins_list_desc =>
+      'Lists installed extensions with their state, version and the commands they contribute.';
+
+  @override
+  String get command_plugins_reload_desc =>
+      'Re-reads an extension from disk and re-evaluates it, picking up both code and manifest changes without restarting.';
+
+  @override
+  String get command_plugins_enable_desc =>
+      'Loads an extension so it can contribute commands again.';
+
+  @override
+  String get command_plugins_disable_desc =>
+      'Unloads an extension and stops it activating again until enabled.';
+
+  @override
+  String get command_plugins_logs_desc =>
+      'Prints what an extension logged, for diagnosing a failure.';
+
+  @override
+  String get command_plugins_scaffold_desc =>
+      'Writes a new extension folder with a manifest and a working main.js, then loads it. Returns the paths written.';
+
+  @override
+  String get command_plugins_write_desc =>
+      'Overwrites one file inside an extension folder. Paths are confined to that folder.';
+
+  @override
+  String get command_plugins_read_desc =>
+      'Reads one file from an extension folder.';
+
+  @override
+  String get command_plugins_typings_desc =>
+      'Regenerates fancad.d.ts from the live command registry, so editors and models see the real API surface.';
+
+  @override
+  String get command_plugins_edit_desc =>
+      'Opens an extension file in the built-in editor so a person can review or change what the AI authoring loop wrote.';
+
+  @override
+  String get command_plugins_eval_desc =>
+      'Runs a JavaScript expression inside an extension scope. For debugging; it can do anything the extension can.';
+
+  @override
+  String command_step(String verb, String step) {
+    return '$verb  $step';
+  }
+
+  @override
+  String get prompt_specify_first_point => 'Specify first point:';
+
+  @override
+  String get prompt_specify_next_point_esc =>
+      'Specify next point (Escape to finish):';
+
+  @override
+  String get prompt_specify_second_point => 'Specify second point:';
+
+  @override
+  String get prompt_specify_second_point_esc =>
+      'Specify second point (Escape to finish):';
+
+  @override
+  String get prompt_specify_base_point => 'Specify base point:';
+
+  @override
+  String get prompt_select_objects => 'Select objects:';
+
+  @override
+  String get prompt_specify_center => 'Specify center:';
+
+  @override
+  String get prompt_specify_center_point => 'Specify center point:';
+
+  @override
+  String get prompt_specify_radius => 'Specify radius:';
+
+  @override
+  String get prompt_specify_first_corner => 'Specify first corner:';
+
+  @override
+  String get prompt_specify_opposite_corner => 'Specify opposite corner:';
+
+  @override
+  String get prompt_specify_insertion_point => 'Specify insertion point:';
+
+  @override
+  String get prompt_specify_next_insertion_esc =>
+      'Specify next insertion point (Escape to finish):';
+
+  @override
+  String get prompt_specify_height => 'Specify height:';
+
+  @override
+  String get prompt_specify_start_point => 'Specify start point:';
+
+  @override
+  String get prompt_specify_through_point => 'Specify through point:';
+
+  @override
+  String get prompt_specify_end_point => 'Specify end point:';
+
+  @override
+  String get prompt_specify_a_point => 'Specify a point:';
+
+  @override
+  String get prompt_specify_a_location => 'Specify a location:';
+
+  @override
+  String get prompt_specify_point => 'Specify point:';
+
+  @override
+  String get prompt_specify_vertex => 'Specify vertex:';
+
+  @override
+  String get prompt_specify_dim_line => 'Specify dimension line location:';
+
+  @override
+  String get prompt_specify_first_ext_origin =>
+      'Specify first extension line origin:';
+
+  @override
+  String get prompt_specify_second_ext_origin =>
+      'Specify second extension line origin:';
+
+  @override
+  String get prompt_specify_next_ext_origin =>
+      'Specify next extension line origin:';
+
+  @override
+  String get prompt_specify_second_ext_origin_alt =>
+      'Specify a second extension line origin:';
+
+  @override
+  String get prompt_specify_dim_arc => 'Specify dimension arc location:';
+
+  @override
+  String get prompt_specify_rotation_angle => 'Specify rotation angle:';
+
+  @override
+  String get prompt_specify_new_height => 'Specify new height:';
+
+  @override
+  String get prompt_specify_width_factor => 'Specify width factor:';
+
+  @override
+  String get prompt_specify_oblique => 'Specify oblique angle:';
+
+  @override
+  String get prompt_specify_column_width => 'Specify column width:';
+
+  @override
+  String get prompt_specify_attachment_point => 'Specify attachment point:';
+
+  @override
+  String get prompt_specify_scale_factor =>
+      'Specify scale factor (or pick a distance):';
+
+  @override
+  String get prompt_specify_offset_distance => 'Specify offset distance:';
+
+  @override
+  String get prompt_specify_offset_side =>
+      'Specify a point on the side to offset:';
+
+  @override
+  String get prompt_specify_fillet_radius => 'Specify fillet radius:';
+
+  @override
+  String get prompt_specify_inside_diameter => 'Specify inside diameter:';
+
+  @override
+  String get prompt_specify_outside_diameter => 'Specify outside diameter:';
+
+  @override
+  String get prompt_specify_center_of_donut => 'Specify center of donut:';
+
+  @override
+  String get prompt_specify_total_length => 'Specify total length:';
+
+  @override
+  String get prompt_specify_segment_length => 'Specify segment length:';
+
+  @override
+  String get prompt_specify_stretch_point => 'Specify stretch point:';
+
+  @override
+  String get prompt_idle_select => 'Select objects or specify a command:';
+
+  @override
+  String get prompt_enter_layer_name => 'Enter layer name:';
+
+  @override
+  String get prompt_enter_a_layer_name => 'Enter a layer name:';
+
+  @override
+  String get prompt_extension_id => 'Extension id:';
+
+  @override
+  String get prompt_enter_block_name => 'Enter block name:';
+
+  @override
+  String get prompt_enter_text => 'Enter the text:';
+
+  @override
+  String get prompt_select_closed_objects => 'Select closed objects:';
+
+  @override
+  String get prompt_select_viewport => 'Select viewport:';
+
+  @override
+  String get prompt_selected_viewport => 'Selected viewport';
+
+  @override
+  String get prompt_enter_colour =>
+      'Enter a colour (1-255, #rrggbb or ByLayer):';
+
+  @override
+  String get prompt_javascript => 'JavaScript:';
+
+  @override
+  String get prompt_svg_path => 'SVG path:';
+
+  @override
+  String get prompt_pdf_path => 'PDF path:';
+
+  @override
+  String get prompt_layout_name => 'Layout name:';
+
+  @override
+  String get prompt_layout_to_copy => 'Layout to copy:';
+
+  @override
+  String get prompt_layout_to_delete => 'Layout to delete:';
+
+  @override
+  String get prompt_layout_to_move => 'Layout to move:';
+
+  @override
+  String get prompt_layout_to_rename => 'Layout to rename:';
+
+  @override
+  String get prompt_drawing_to_attach => 'Drawing to attach:';
+
+  @override
+  String get prompt_file_to_write => 'File to write:';
+
+  @override
+  String get prompt_file_to_read => 'File to read:';
+
+  @override
+  String get prompt_select_objects_to_erase => 'Select objects to erase:';
+
+  @override
+  String get prompt_select_objects_to_array => 'Select objects to array:';
+
+  @override
+  String get prompt_select_objects_to_align => 'Select objects to align:';
+
+  @override
+  String get prompt_select_objects_to_rotate => 'Select objects to rotate:';
+
+  @override
+  String get prompt_select_objects_to_scale => 'Select objects to scale:';
+
+  @override
+  String get prompt_select_objects_to_mirror => 'Select objects to mirror:';
+
+  @override
+  String get prompt_select_objects_to_offset => 'Select objects to offset:';
+
+  @override
+  String get prompt_select_objects_to_explode => 'Select objects to explode:';
+
+  @override
+  String get prompt_select_objects_to_hide => 'Select objects to hide:';
+
+  @override
+  String get prompt_select_objects_keep_visible =>
+      'Select objects to keep visible:';
+
+  @override
+  String get prompt_select_objects_recolour => 'Select objects to recolour:';
+
+  @override
+  String get prompt_select_objects_change_layer =>
+      'Select objects to move to another layer:';
+
+  @override
+  String get prompt_select_text_objects => 'Select text objects:';
+
+  @override
+  String get prompt_textobject_options =>
+      'Specify text, height, colour, justification, rotation, style, column width, width factor or oblique:';
+
+  @override
+  String prompt_place_n_points(int count) {
+    return 'Place $count point(s)?';
+  }
+
+  @override
+  String prompt_specify_first_kind_point(String kind) {
+    return 'Specify first $kind point:';
+  }
+
+  @override
+  String prompt_specify_next_kind_point_esc(String kind) {
+    return 'Specify next $kind point (Escape to finish):';
+  }
+
+  @override
+  String prompt_selected_object(String entity, String layer) {
+    return 'Selected $entity on layer $layer';
+  }
+
+  @override
+  String prompt_objects_selected(int count) {
+    return '$count objects selected';
+  }
+
+  @override
+  String prompt_selection_found(String message, int count) {
+    return '$message ($count found, Enter to accept)';
+  }
+
+  @override
+  String get prompt_enter_annotation_none => 'Enter annotation text <none>:';
+
+  @override
+  String get prompt_enter_attribute_tag => 'Enter attribute tag:';
+
+  @override
+  String get prompt_enter_block_name_to_change => 'Enter block name to change:';
+
+  @override
+  String get prompt_enter_default_value => 'Enter default value:';
+
+  @override
+  String get prompt_enter_dimension_text =>
+      'Enter dimension text (<> = measured):';
+
+  @override
+  String get prompt_enter_justification =>
+      'Enter justification [Left/Center/Right/TL/TC/TR/ML/MC/MR/BL/BC/BR]:';
+
+  @override
+  String get prompt_enter_layer_names => 'Enter layer name(s):';
+
+  @override
+  String get prompt_enter_spline_method => 'Enter method [Control/Fit]:';
+
+  @override
+  String get prompt_enter_linetype_name =>
+      'Enter name (DASHED, HIDDEN, CENTER, ByLayer):';
+
+  @override
+  String get prompt_enter_new_block_name => 'Enter new block name:';
+
+  @override
+  String get prompt_enter_new_text => 'Enter new text:';
+
+  @override
+  String get prompt_enter_columns => 'Enter number of columns:';
+
+  @override
+  String get prompt_enter_items => 'Enter number of items:';
+
+  @override
+  String get prompt_enter_rows => 'Enter number of rows:';
+
+  @override
+  String get prompt_enter_sides => 'Enter number of sides:';
+
+  @override
+  String get prompt_enter_object_type =>
+      'Enter object type (LINE, CIRCLE, INSERT, …):';
+
+  @override
+  String get prompt_enter_attribute_prompt => 'Enter prompt:';
+
+  @override
+  String get prompt_enter_fill_angle => 'Enter the angle to fill:';
+
+  @override
+  String get prompt_enter_column_spacing => 'Enter the column spacing:';
+
+  @override
+  String get prompt_enter_segments => 'Enter the number of segments:';
+
+  @override
+  String get prompt_enter_row_spacing => 'Enter the row spacing:';
+
+  @override
+  String get prompt_enter_lineweight => 'Enter weight (0.25 mm, 25, ByLayer):';
+
+  @override
+  String get prompt_fillet_vertex_all => 'Fillet [Vertex/All]:';
+
+  @override
+  String get prompt_chamfer_vertex_all => 'Chamfer [Vertex/All]:';
+
+  @override
+  String get prompt_select_block_reference => 'Select a block reference:';
+
+  @override
+  String get prompt_select_line_pline_arc => 'Select a line, polyline or arc:';
+
+  @override
+  String get prompt_select_linear_aligned_dim =>
+      'Select a linear or aligned dimension:';
+
+  @override
+  String get prompt_select_arc_or_circle => 'Select arc or circle:';
+
+  @override
+  String get prompt_select_arc_or_first_line => 'Select arc or first line:';
+
+  @override
+  String get prompt_select_boundary_edges => 'Select boundary edges:';
+
+  @override
+  String get prompt_select_circles_or_arcs => 'Select circles or arcs:';
+
+  @override
+  String get prompt_select_closed_boundaries => 'Select closed boundaries:';
+
+  @override
+  String get prompt_select_cutting_edges => 'Select cutting edges:';
+
+  @override
+  String get prompt_select_destination_objects => 'Select destination objects:';
+
+  @override
+  String get prompt_select_dimensions => 'Select dimensions:';
+
+  @override
+  String get prompt_select_first_line_circle_arc =>
+      'Select first line, circle or arc:';
+
+  @override
+  String get prompt_select_first_object => 'Select first object:';
+
+  @override
+  String get prompt_select_first_tangent => 'Select first tangent object:';
+
+  @override
+  String get prompt_select_hatch_objects => 'Select hatch objects:';
+
+  @override
+  String get prompt_select_lines_or_plines => 'Select lines or polylines:';
+
+  @override
+  String get prompt_select_lines_to_convert => 'Select lines to convert:';
+
+  @override
+  String get prompt_select_join_objects =>
+      'Select lines, arcs or polylines to join:';
+
+  @override
+  String get prompt_select_object_to_break => 'Select object to break:';
+
+  @override
+  String get prompt_select_object_to_divide => 'Select object to divide:';
+
+  @override
+  String get prompt_select_object_to_measure => 'Select object to measure:';
+
+  @override
+  String get prompt_select_plines_to_close => 'Select polylines to close:';
+
+  @override
+  String get prompt_select_plines_to_open => 'Select polylines to open:';
+
+  @override
+  String get prompt_select_plines_width => 'Select polylines to set width:';
+
+  @override
+  String get prompt_select_second_line_circle_arc =>
+      'Select second line, circle or arc:';
+
+  @override
+  String get prompt_select_second_line => 'Select second line:';
+
+  @override
+  String get prompt_select_second_tangent => 'Select second tangent object:';
+
+  @override
+  String get prompt_select_source_object => 'Select source object:';
+
+  @override
+  String get prompt_select_text_mtext_dim =>
+      'Select text, mtext or a dimension:';
+
+  @override
+  String get prompt_specify_nearer_end =>
+      'Specify a point nearer the end to change:';
+
+  @override
+  String get prompt_specify_first_ray_point =>
+      'Specify a point on the first ray:';
+
+  @override
+  String get prompt_specify_second_ray_point =>
+      'Specify a point on the second ray:';
+
+  @override
+  String get prompt_specify_second_point_on_arc =>
+      'Specify a second point on the arc:';
+
+  @override
+  String get prompt_specify_vertex_to_bevel => 'Specify a vertex to bevel:';
+
+  @override
+  String get prompt_specify_vertex_to_round => 'Specify a vertex to round:';
+
+  @override
+  String get prompt_specify_column_distance =>
+      'Specify distance between columns:';
+
+  @override
+  String get prompt_specify_row_distance => 'Specify distance between rows:';
+
+  @override
+  String get prompt_specify_other_axis_distance =>
+      'Specify distance to other axis:';
+
+  @override
+  String get prompt_specify_axis_endpoint => 'Specify endpoint of axis:';
+
+  @override
+  String get prompt_specify_first_break => 'Specify first break point:';
+
+  @override
+  String get prompt_specify_first_chamfer => 'Specify first chamfer distance:';
+
+  @override
+  String get prompt_specify_crossing_first_corner =>
+      'Specify first corner of crossing window:';
+
+  @override
+  String get prompt_specify_first_dest => 'Specify first destination point:';
+
+  @override
+  String get prompt_specify_first_diameter_end =>
+      'Specify first end of diameter:';
+
+  @override
+  String get prompt_specify_first_leader_point => 'Specify first leader point:';
+
+  @override
+  String get prompt_specify_mirror_first =>
+      'Specify first point of mirror line:';
+
+  @override
+  String get prompt_specify_first_on_circle => 'Specify first point on circle:';
+
+  @override
+  String get prompt_specify_first_source => 'Specify first source point:';
+
+  @override
+  String get prompt_specify_insertion_base => 'Specify insertion base point:';
+
+  @override
+  String get prompt_hatch_internal_or_select =>
+      'Specify internal point or [Select]:';
+
+  @override
+  String get prompt_specify_dim_text_location =>
+      'Specify new location for dimension text:';
+
+  @override
+  String get prompt_specify_polyline_width =>
+      'Specify new width for all segments:';
+
+  @override
+  String get prompt_specify_second_break_esc =>
+      'Specify second break point (Escape to split):';
+
+  @override
+  String get prompt_specify_second_chamfer =>
+      'Specify second chamfer distance:';
+
+  @override
+  String get prompt_specify_second_dest => 'Specify second destination point:';
+
+  @override
+  String get prompt_specify_second_diameter_end =>
+      'Specify second end of diameter:';
+
+  @override
+  String get prompt_specify_mirror_second =>
+      'Specify second point of mirror line:';
+
+  @override
+  String get prompt_specify_second_on_circle =>
+      'Specify second point on circle:';
+
+  @override
+  String get prompt_specify_second_source_or_enter =>
+      'Specify second source point or press Enter:';
+
+  @override
+  String get prompt_specify_third_on_circle => 'Specify third point on circle:';
+
+  @override
+  String prompt_enter_units(String current) {
+    return 'Enter insertion units <$current>:';
+  }
+
+  @override
+  String get prompt_enter_text_style_name => 'Enter text style name:';
+
+  @override
+  String get prompt_enter_layer_to_delete => 'Enter layer to delete:';
+
+  @override
+  String get prompt_enter_layer_to_isolate => 'Enter layer to isolate:';
+
+  @override
+  String get prompt_enter_linetype => 'Enter a linetype (DASHED, ByLayer, …):';
+
+  @override
+  String get prompt_enter_a_lineweight =>
+      'Enter a lineweight (0.25 mm, 25, ByLayer):';
+
+  @override
+  String get prompt_select_object_to_trim =>
+      'Select an object to trim (Escape to finish):';
+
+  @override
+  String get prompt_select_object_to_extend =>
+      'Select an object to extend (Escape to finish):';
+
+  @override
+  String get prompt_scale_objects_align =>
+      'Scale objects based on alignment points?';
+
+  @override
+  String get prompt_sheet_width => 'Sheet width (mm):';
+
+  @override
+  String get prompt_sheet_height => 'Sheet height (mm):';
+
+  @override
+  String get prompt_viewport_scale => 'Viewport scale (model / paper):';
+
+  @override
+  String get prompt_new_layout_name => 'New layout name:';
+
+  @override
+  String get prompt_open_recent => 'Open recent:';
+
+  @override
   String get end => 'End';
 
   @override

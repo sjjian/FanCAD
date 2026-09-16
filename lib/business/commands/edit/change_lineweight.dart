@@ -34,12 +34,12 @@ class EditChangeLineweightCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'LWEIGHT  Select objects:',
+      context.commandPrompt('LWEIGHT', context.l10n.prompt_select_objects),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final raw = await context.resolveText(
       'weight',
-      'LWEIGHT  Enter weight (0.25 mm, 25, ByLayer):',
+      context.commandPrompt('LWEIGHT', context.l10n.prompt_enter_lineweight),
     );
     final weight = LineWeight.tryParse(raw);
     if (weight == null) {

@@ -3200,6 +3200,2112 @@ abstract class AppLocalizations {
   /// **'Evaluate In Extension'**
   String get command_plugins_eval;
 
+  /// command file list
+  ///
+  /// In en, this message translates to:
+  /// **'List Drawings'**
+  String get command_file_list;
+
+  /// command file activate
+  ///
+  /// In en, this message translates to:
+  /// **'Activate Drawing'**
+  String get command_file_activate;
+
+  /// command draw attdef
+  ///
+  /// In en, this message translates to:
+  /// **'Attribute Definition'**
+  String get command_draw_attdef;
+
+  /// command edit attedit
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Attributes'**
+  String get command_edit_attedit;
+
+  /// command view units
+  ///
+  /// In en, this message translates to:
+  /// **'Units'**
+  String get command_view_units;
+
+  /// command file new desc
+  ///
+  /// In en, this message translates to:
+  /// **'Creates an empty drawing in a new tab.'**
+  String get command_file_new_desc;
+
+  /// command file open desc
+  ///
+  /// In en, this message translates to:
+  /// **'Opens a DWG or DXF file.'**
+  String get command_file_open_desc;
+
+  /// command file save desc
+  ///
+  /// In en, this message translates to:
+  /// **'Saves the drawing this command is targeting, asking for a path when it has never been saved.'**
+  String get command_file_save_desc;
+
+  /// command file save as desc
+  ///
+  /// In en, this message translates to:
+  /// **'Saves the drawing this command is targeting to a new file.'**
+  String get command_file_save_as_desc;
+
+  /// command file close desc
+  ///
+  /// In en, this message translates to:
+  /// **'Closes the drawing this command is targeting.'**
+  String get command_file_close_desc;
+
+  /// command file open recent desc
+  ///
+  /// In en, this message translates to:
+  /// **'Reopens a recently used file.'**
+  String get command_file_open_recent_desc;
+
+  /// command file audit desc
+  ///
+  /// In en, this message translates to:
+  /// **'Writes the drawing to a temp DXF and reports anything a round trip would lose.'**
+  String get command_file_audit_desc;
+
+  /// command file list desc
+  ///
+  /// In en, this message translates to:
+  /// **'Lists every open drawing tab: id, title, path, dirty, whether it is active, entity count, and the current layout. Use the id as the fancad tab selector to operate on a drawing without switching the UI.'**
+  String get command_file_list_desc;
+
+  /// command file activate desc
+  ///
+  /// In en, this message translates to:
+  /// **'Brings an open drawing to the front. Pass id from file.list, or a unique path or title.'**
+  String get command_file_activate_desc;
+
+  /// command draw line desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws one or more connected straight line segments. Supply start and end to draw a single segment non-interactively.'**
+  String get command_draw_line_desc;
+
+  /// command draw polyline desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a connected sequence of segments as one polyline entity. Pass a points array to create it non-interactively.'**
+  String get command_draw_polyline_desc;
+
+  /// command draw spline desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a clamped B-spline. Control-point mode pulls the curve toward the clicks and only guarantees the ends. Fit mode interpolates every point. Pass a points array to create it non-interactively.'**
+  String get command_draw_spline_desc;
+
+  /// command draw rectangle desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws an axis-aligned rectangle as a closed polyline.'**
+  String get command_draw_rectangle_desc;
+
+  /// command draw circle desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a circle from a centre point and a radius.'**
+  String get command_draw_circle_desc;
+
+  /// command draw circle 2p desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a circle whose diameter is the segment between two points.'**
+  String get command_draw_circle_2p_desc;
+
+  /// command draw circle 3p desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws the unique circle that passes through three specified points.'**
+  String get command_draw_circle_3p_desc;
+
+  /// command draw circle ttr desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a circle of a given radius tangent to two lines, circles or arcs. The pick on each object chooses the side (and, for a circle, external versus internal tangent).'**
+  String get command_draw_circle_ttr_desc;
+
+  /// command draw donut desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a filled ring from an inside and outside diameter. A zero inside diameter is a filled disk. The result is a closed wide polyline, which is how DWG stores a donut.'**
+  String get command_draw_donut_desc;
+
+  /// command draw arc desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a circular arc through three points: start, a point on the arc, and end.'**
+  String get command_draw_arc_desc;
+
+  /// command draw polygon desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a regular polygon inscribed in a circle.'**
+  String get command_draw_polygon_desc;
+
+  /// command draw ellipse desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws an ellipse from a centre, one axis endpoint, and the distance to the other axis.'**
+  String get command_draw_ellipse_desc;
+
+  /// command draw xline desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws an infinite construction line through a point in a given direction. The second point only sets the angle; both sides extend without end.'**
+  String get command_draw_xline_desc;
+
+  /// command draw ray desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a semi-infinite ray from a start point through a second point. Unlike XLINE, it has a beginning.'**
+  String get command_draw_ray_desc;
+
+  /// command draw point desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places a point marker.'**
+  String get command_draw_point_desc;
+
+  /// command draw divide desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places point markers that split a line, polyline, arc or circle into equal segments. Open objects leave the endpoints unmarked; a circle or closed polyline places a marker at every interval. A bulge is followed as its arc, not the chord.'**
+  String get command_draw_divide_desc;
+
+  /// command draw measure desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places point markers at a fixed spacing along a line, polyline, arc or circle. Open objects start from the nearer end; a circle starts at the pick. Endpoints are not marked. A bulge is followed as its arc, not the chord.'**
+  String get command_draw_measure_desc;
+
+  /// command draw text desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places a single line of text. Style defaults to the current TEXTSTYLE. Justify is Left, Center, Right or a corner code such as TL.'**
+  String get command_draw_text_desc;
+
+  /// command draw mtext desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places multiline text. Newlines become \\P. Width 0 does not wrap. Justify is TL…BR or attachment 1–9 (1 is top-left).'**
+  String get command_draw_mtext_desc;
+
+  /// command draw attdef desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places an attribute definition. Include it in a BLOCK so INSERT and ATTEDIT can fill the tag — title blocks and schedules.'**
+  String get command_draw_attdef_desc;
+
+  /// command draw leader desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a leader from an arrow tip through one or more vertices. Optional annotation text sits on a horizontal landing at the last point, the same way AutoCAD LEADER places a callout.'**
+  String get command_draw_leader_desc;
+
+  /// command draw hatch desc
+  ///
+  /// In en, this message translates to:
+  /// **'Fills the area around an internal point, or around selected closed boundaries. Four lines that meet still count as a boundary.'**
+  String get command_draw_hatch_desc;
+
+  /// command draw dim linear desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places a horizontal or vertical dimension. The dimension-line pick chooses the axis: above or below the origins measures width; left or right measures height. A line can stand in for the two origins.'**
+  String get command_draw_dim_linear_desc;
+
+  /// command draw dim aligned desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places a dimension parallel to the two origins. The text is the true distance, not the horizontal or vertical component. A line can stand in for the two origins.'**
+  String get command_draw_dim_aligned_desc;
+
+  /// command draw dim radius desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places a radius dimension on a circle or arc. The second pick is the arrow tip; the text is the radius, prefixed with R.'**
+  String get command_draw_dim_radius_desc;
+
+  /// command draw dim diameter desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places a diameter dimension on a circle or arc. The second pick is the arrow tip; the text is the diameter, prefixed with Ø.'**
+  String get command_draw_dim_diameter_desc;
+
+  /// command draw center mark desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a centre mark on selected circles or arcs. A short cross sits on the centre; optional extensions continue past the circumference, the usual shop-drawing DIMCENTER.'**
+  String get command_draw_center_mark_desc;
+
+  /// command draw center line desc
+  ///
+  /// In en, this message translates to:
+  /// **'Draws a centreline between two parallel lines, or through the centres of two circles or arcs. The line spans both objects and extends a little past each end.'**
+  String get command_draw_center_line_desc;
+
+  /// command draw dim angular desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places an angular dimension. Pick an arc and its centre is the vertex; pick two lines and their intersection is the vertex; the last pick sits on the dimension arc and chooses which sector is labelled. Three points still work when a vertex is supplied.'**
+  String get command_draw_dim_angular_desc;
+
+  /// command draw dim continue desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places the next linear or aligned dimension from the previous second origin, on the same dimension line. Chain several next points to walk a row of features.'**
+  String get command_draw_dim_continue_desc;
+
+  /// command draw dim baseline desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places the next linear or aligned dimension from the same first origin, on a dimension line stepped outward. Chain several next points to stack overall lengths.'**
+  String get command_draw_dim_baseline_desc;
+
+  /// command annot dimstyle desc
+  ///
+  /// In en, this message translates to:
+  /// **'Creates or edits a dimension style. Regenerated dimensions read text height, arrow size, extension offsets, scale and decimal places from the named style. Omit the name to list styles or to edit the current one.'**
+  String get command_annot_dimstyle_desc;
+
+  /// command annot textstyle desc
+  ///
+  /// In en, this message translates to:
+  /// **'Creates or edits a text style. New TEXT and MTEXT read the font, fixed height, width factor and oblique from the named style. Omit the name to list styles or to edit the current one.'**
+  String get command_annot_textstyle_desc;
+
+  /// command edit erase desc
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes the selected objects.'**
+  String get command_edit_erase_desc;
+
+  /// command edit overkill desc
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes exact geometric duplicates and folds overlapping or abutting collinear lines into one stroke. The first copy is kept and stretched to the union. Omitted ids means the whole current space, so a leftover selection cannot hide the rest of the duplicates.'**
+  String get command_edit_overkill_desc;
+
+  /// command edit move desc
+  ///
+  /// In en, this message translates to:
+  /// **'Moves the selected objects by a displacement.'**
+  String get command_edit_move_desc;
+
+  /// command edit copy desc
+  ///
+  /// In en, this message translates to:
+  /// **'Copies the selected objects to one or more locations. Each second point is another copy from the same base; Escape finishes.'**
+  String get command_edit_copy_desc;
+
+  /// command edit copy clip desc
+  ///
+  /// In en, this message translates to:
+  /// **'Copies the selected objects to the clipboard. The lower-left of the selection is the paste base. Paste in this drawing or another tab with PASTECLIP.'**
+  String get command_edit_copy_clip_desc;
+
+  /// command edit copy base desc
+  ///
+  /// In en, this message translates to:
+  /// **'Copies the selected objects to the clipboard with a base point you pick, so PASTECLIP can land that point on the insertion.'**
+  String get command_edit_copy_base_desc;
+
+  /// command edit cut clip desc
+  ///
+  /// In en, this message translates to:
+  /// **'Copies the selected objects to the clipboard and deletes them from the drawing. Objects on a locked layer stay; the clipboard still holds a copy.'**
+  String get command_edit_cut_clip_desc;
+
+  /// command edit paste clip desc
+  ///
+  /// In en, this message translates to:
+  /// **'Pastes clipboard objects at an insertion point. The stored base point lands on that click.'**
+  String get command_edit_paste_clip_desc;
+
+  /// command edit paste orig desc
+  ///
+  /// In en, this message translates to:
+  /// **'Pastes clipboard objects at the coordinates they had in the source drawing, without asking for an insertion point.'**
+  String get command_edit_paste_orig_desc;
+
+  /// command edit paste block desc
+  ///
+  /// In en, this message translates to:
+  /// **'Pastes clipboard objects as one anonymous block reference. The stored base point lands on the insertion point you pick.'**
+  String get command_edit_paste_block_desc;
+
+  /// command edit stretch desc
+  ///
+  /// In en, this message translates to:
+  /// **'Moves vertices inside a crossing window and leaves the rest anchored. Objects wholly captured by the window move as a body.'**
+  String get command_edit_stretch_desc;
+
+  /// command edit rotate desc
+  ///
+  /// In en, this message translates to:
+  /// **'Rotates the selected objects about a base point. The angle is in degrees, counter-clockwise.'**
+  String get command_edit_rotate_desc;
+
+  /// command edit scale desc
+  ///
+  /// In en, this message translates to:
+  /// **'Scales the selected objects uniformly about a base point.'**
+  String get command_edit_scale_desc;
+
+  /// command edit mirror desc
+  ///
+  /// In en, this message translates to:
+  /// **'Mirrors the selected objects across a line.'**
+  String get command_edit_mirror_desc;
+
+  /// command edit align desc
+  ///
+  /// In en, this message translates to:
+  /// **'Moves the selection so a source point lands on a destination point. A second pair rotates to match the two directions; an optional scale matches the two lengths.'**
+  String get command_edit_align_desc;
+
+  /// command edit array desc
+  ///
+  /// In en, this message translates to:
+  /// **'Creates a rectangular grid of copies of the selected objects.'**
+  String get command_edit_array_desc;
+
+  /// command edit polar array desc
+  ///
+  /// In en, this message translates to:
+  /// **'Creates copies of the selected objects rotated about a centre. A fill of 360° spaces items around the full circle; a smaller fill spaces them from the original through that angle, inclusive.'**
+  String get command_edit_polar_array_desc;
+
+  /// command edit offset desc
+  ///
+  /// In en, this message translates to:
+  /// **'Creates parallel copies of lines, arcs, circles and polylines at a fixed distance.'**
+  String get command_edit_offset_desc;
+
+  /// command edit trim desc
+  ///
+  /// In en, this message translates to:
+  /// **'Shortens a line, polyline or arc back to where it crosses the selected cutting edges. The part containing the pick point is removed. A closed polyline opens; a bulge is cut on the arc, not the chord.'**
+  String get command_edit_trim_desc;
+
+  /// command edit extend desc
+  ///
+  /// In en, this message translates to:
+  /// **'Lengthens a line, open polyline or arc until it meets the selected boundary edges. A bulge grows along its circle. On a polyline or arc the pick chooses which end moves.'**
+  String get command_edit_extend_desc;
+
+  /// command edit fillet desc
+  ///
+  /// In en, this message translates to:
+  /// **'Rounds the corner between two lines, or vertices of a polyline, with an arc of a given radius. Pass all=true to fillet every straight corner of a polyline. A radius of zero trims or extends two lines to a sharp corner.'**
+  String get command_edit_fillet_desc;
+
+  /// command edit chamfer desc
+  ///
+  /// In en, this message translates to:
+  /// **'Cuts a straight bevel between two lines, or at vertices of a polyline. Pass all=true to chamfer every straight corner. The two distances are measured from the corner back along each segment; omit the second to use the same length on both.'**
+  String get command_edit_chamfer_desc;
+
+  /// command edit break desc
+  ///
+  /// In en, this message translates to:
+  /// **'Splits a line, polyline or arc at a point, or removes the portion between two points. A bulge is split into two smaller arcs. A circle needs two points and keeps the counter-clockwise remnant from the second pick back to the first. Omit the second point to only split (arcs and open chains).'**
+  String get command_edit_break_desc;
+
+  /// command edit lengthen desc
+  ///
+  /// In en, this message translates to:
+  /// **'Changes the length of a line, open polyline or arc by moving the end you pick. A bulge grows or shrinks along its arc. Supply a total length, or a signed delta to add to the current length. An arc cannot be closed into a full circle.'**
+  String get command_edit_lengthen_desc;
+
+  /// command edit explode desc
+  ///
+  /// In en, this message translates to:
+  /// **'Breaks polylines into their segments, block references into copies of their contents, and dimensions into the lines, arrows and text they draw.'**
+  String get command_edit_explode_desc;
+
+  /// command edit block desc
+  ///
+  /// In en, this message translates to:
+  /// **'Defines a named block from selected objects and replaces them with one insert at the base point, so the drawing looks the same and the definition can be inserted again.'**
+  String get command_edit_block_desc;
+
+  /// command edit insert desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places one or more references to a named block. Scale is uniform; rotation is in degrees. Pass a points array to stamp the same block at several locations.'**
+  String get command_edit_insert_desc;
+
+  /// command edit minsert desc
+  ///
+  /// In en, this message translates to:
+  /// **'Places a rectangular array of a named block as one insert. The copies stay one object, so moving the insert moves the whole grid.'**
+  String get command_edit_minsert_desc;
+
+  /// command block purge desc
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes named block definitions that no insert references. Nested unused definitions are removed in the same pass, so a block that only existed inside another unused block is cleared too. Xrefs and layout blocks are left alone.'**
+  String get command_block_purge_desc;
+
+  /// command block rename desc
+  ///
+  /// In en, this message translates to:
+  /// **'Renames a block definition and every insert that still points at the old name. Layout blocks, anonymous blocks and xrefs cannot be renamed.'**
+  String get command_block_rename_desc;
+
+  /// command edit join desc
+  ///
+  /// In en, this message translates to:
+  /// **'Joins selected lines, arcs and open polylines whose endpoints meet into a single polyline. A piece is reversed when that is how it touches the chain; a loop whose ends meet is stored closed.'**
+  String get command_edit_join_desc;
+
+  /// command edit close desc
+  ///
+  /// In en, this message translates to:
+  /// **'Closes the selected open polylines by connecting the last vertex back to the first. Already-closed polylines are left alone.'**
+  String get command_edit_close_desc;
+
+  /// command edit open desc
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the selected closed polylines by dropping the closing segment. The vertices stay; only the loop is broken.'**
+  String get command_edit_open_desc;
+
+  /// command edit polyline width desc
+  ///
+  /// In en, this message translates to:
+  /// **'Sets the constant width of selected polylines. Zero is a hairline; a donut is the same field, so this is how a wide stroke is edited after it is drawn.'**
+  String get command_edit_polyline_width_desc;
+
+  /// command edit hatch desc
+  ///
+  /// In en, this message translates to:
+  /// **'Changes the pattern, scale or angle of selected hatches. Omit a field to leave it. Angle is in degrees.'**
+  String get command_edit_hatch_desc;
+
+  /// command edit to polyline desc
+  ///
+  /// In en, this message translates to:
+  /// **'Turns selected lines into two-vertex polylines so they can be closed, opened or reversed as a chain.'**
+  String get command_edit_to_polyline_desc;
+
+  /// command edit reverse desc
+  ///
+  /// In en, this message translates to:
+  /// **'Reverses the direction of selected lines and polylines. The drawn shape stays the same; start and end swap, which matters for linetypes and for commands that follow a chain.'**
+  String get command_edit_reverse_desc;
+
+  /// command edit undo desc
+  ///
+  /// In en, this message translates to:
+  /// **'Reverses the most recent change.'**
+  String get command_edit_undo_desc;
+
+  /// command edit redo desc
+  ///
+  /// In en, this message translates to:
+  /// **'Re-applies the most recently undone change.'**
+  String get command_edit_redo_desc;
+
+  /// command edit change layer desc
+  ///
+  /// In en, this message translates to:
+  /// **'Moves the selected objects onto a different layer.'**
+  String get command_edit_change_layer_desc;
+
+  /// command edit change color desc
+  ///
+  /// In en, this message translates to:
+  /// **'Sets the colour of the selected objects. Accepts an AutoCAD Color Index (1-255), a #rrggbb value, or ByLayer.'**
+  String get command_edit_change_color_desc;
+
+  /// command edit change linetype desc
+  ///
+  /// In en, this message translates to:
+  /// **'Sets the linetype of the selected objects. Stock names (DASHED, HIDDEN, CENTER, PHANTOM, DOT, DASHDOT, DIVIDE, Continuous) are added to the drawing if they are not there yet. ByLayer and ByBlock inherit instead.'**
+  String get command_edit_change_linetype_desc;
+
+  /// command edit change lineweight desc
+  ///
+  /// In en, this message translates to:
+  /// **'Sets the lineweight of the selected objects. Accepts a millimetre value (0.25), hundredths (25), ByLayer, ByBlock, Default or hairline.'**
+  String get command_edit_change_lineweight_desc;
+
+  /// command edit dimension text desc
+  ///
+  /// In en, this message translates to:
+  /// **'Overrides the text of selected dimensions. Empty restores the measured value; <> stands for that value; a single space hides the text.'**
+  String get command_edit_dimension_text_desc;
+
+  /// command edit dim tedit desc
+  ///
+  /// In en, this message translates to:
+  /// **'Moves the text of selected dimensions to a new point. On a linear dimension the dimension line follows without flipping width and height; aligned, radial and angular dimensions keep their type.'**
+  String get command_edit_dim_tedit_desc;
+
+  /// command edit text content desc
+  ///
+  /// In en, this message translates to:
+  /// **'Changes the content of selected text, mtext, dimensions, attributes or leaders. On a dimension, empty restores the measured value and <> stands for that value, same as DIMEDIT.'**
+  String get command_edit_text_content_desc;
+
+  /// command edit text object desc
+  ///
+  /// In en, this message translates to:
+  /// **'Updates content, height, colour, justification, rotation, style, column width, width factor or oblique of selected text, mtext, attributes or leaders in one undo. Dimension text height is a dimstyle property and is ignored.'**
+  String get command_edit_text_object_desc;
+
+  /// command edit justify text desc
+  ///
+  /// In en, this message translates to:
+  /// **'Changes the justification of selected text or mtext and moves the insertion point so the letters stay where they are. Align and Fit are not offered; they need a second point.'**
+  String get command_edit_justify_text_desc;
+
+  /// command edit match prop desc
+  ///
+  /// In en, this message translates to:
+  /// **'Copies layer, colour, linetype, lineweight and the other display properties from a source object onto the destination objects. Visibility is left alone so isolate and hide stay intact.'**
+  String get command_edit_match_prop_desc;
+
+  /// command edit attedit desc
+  ///
+  /// In en, this message translates to:
+  /// **'Changes the values on a block reference. Constant tags stay as the definition wrote them.'**
+  String get command_edit_attedit_desc;
+
+  /// command view zoom extents desc
+  ///
+  /// In en, this message translates to:
+  /// **'Fits the whole drawing in the window.'**
+  String get command_view_zoom_extents_desc;
+
+  /// command view zoom window desc
+  ///
+  /// In en, this message translates to:
+  /// **'Zooms to a rectangle you specify.'**
+  String get command_view_zoom_window_desc;
+
+  /// command view zoom in desc
+  ///
+  /// In en, this message translates to:
+  /// **'Magnifies the view about its centre.'**
+  String get command_view_zoom_in_desc;
+
+  /// command view zoom out desc
+  ///
+  /// In en, this message translates to:
+  /// **'Shrinks the view about its centre.'**
+  String get command_view_zoom_out_desc;
+
+  /// command view zoom selected desc
+  ///
+  /// In en, this message translates to:
+  /// **'Fits the selected objects in the window.'**
+  String get command_view_zoom_selected_desc;
+
+  /// command view regen desc
+  ///
+  /// In en, this message translates to:
+  /// **'Rebuilds the display list, discarding cached curve tessellations.'**
+  String get command_view_regen_desc;
+
+  /// command view units desc
+  ///
+  /// In en, this message translates to:
+  /// **'Sets the drawing insertion units written to \$INSUNITS. Coordinates stay in these units; the value is what importers and queries use to convert.'**
+  String get command_view_units_desc;
+
+  /// command workbench preferences desc
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the application settings dialog.'**
+  String get command_workbench_preferences_desc;
+
+  /// command select all desc
+  ///
+  /// In en, this message translates to:
+  /// **'Selects every selectable object in the current space.'**
+  String get command_select_all_desc;
+
+  /// command select none desc
+  ///
+  /// In en, this message translates to:
+  /// **'Clears the selection.'**
+  String get command_select_none_desc;
+
+  /// command select invert desc
+  ///
+  /// In en, this message translates to:
+  /// **'Selects everything that is not currently selected.'**
+  String get command_select_invert_desc;
+
+  /// command select similar desc
+  ///
+  /// In en, this message translates to:
+  /// **'Extends the selection to every object of the same type and layer.'**
+  String get command_select_similar_desc;
+
+  /// command select by layer desc
+  ///
+  /// In en, this message translates to:
+  /// **'Selects every object on a named layer.'**
+  String get command_select_by_layer_desc;
+
+  /// command select by color desc
+  ///
+  /// In en, this message translates to:
+  /// **'Selects every object whose stored colour matches an ACI, #rrggbb, ByLayer or ByBlock. Layer-inherited red is not the same as ACI 1.'**
+  String get command_select_by_color_desc;
+
+  /// command select by linetype desc
+  ///
+  /// In en, this message translates to:
+  /// **'Selects every object whose stored linetype matches a name, ByLayer or ByBlock. Layer-inherited DASHED is not the same as DASHED.'**
+  String get command_select_by_linetype_desc;
+
+  /// command select by lineweight desc
+  ///
+  /// In en, this message translates to:
+  /// **'Selects every object whose stored lineweight matches a millimetre value, hundredths, ByLayer, ByBlock, Default or hairline. Layer-inherited 0.25 mm is not the same as 25.'**
+  String get command_select_by_lineweight_desc;
+
+  /// command select by type desc
+  ///
+  /// In en, this message translates to:
+  /// **'Selects every object of one entity kind in the current space. LINE, CIRCLE, INSERT, DIMENSION and the other FanCAD kinds work; LWPOLYLINE and BLOCK are accepted as polyline and insert.'**
+  String get command_select_by_type_desc;
+
+  /// command select by block desc
+  ///
+  /// In en, this message translates to:
+  /// **'Selects every insert of a named block in the current space. The name is case-insensitive, the same way INSERT and RENAME look it up.'**
+  String get command_select_by_block_desc;
+
+  /// command view isolate objects desc
+  ///
+  /// In en, this message translates to:
+  /// **'Hides every object in the current space except the selection, so the rest of the drawing is out of the way without being deleted.'**
+  String get command_view_isolate_objects_desc;
+
+  /// command view hide objects desc
+  ///
+  /// In en, this message translates to:
+  /// **'Hides the selected objects without deleting them.'**
+  String get command_view_hide_objects_desc;
+
+  /// command view unisolate objects desc
+  ///
+  /// In en, this message translates to:
+  /// **'Shows every object that Isolate or Hide had turned off in the current space.'**
+  String get command_view_unisolate_objects_desc;
+
+  /// command layer new desc
+  ///
+  /// In en, this message translates to:
+  /// **'Creates a layer and makes it current.'**
+  String get command_layer_new_desc;
+
+  /// command layer set current desc
+  ///
+  /// In en, this message translates to:
+  /// **'Chooses the layer new objects are created on.'**
+  String get command_layer_set_current_desc;
+
+  /// command layer toggle visible desc
+  ///
+  /// In en, this message translates to:
+  /// **'Turns a layer on or off.'**
+  String get command_layer_toggle_visible_desc;
+
+  /// command layer isolate desc
+  ///
+  /// In en, this message translates to:
+  /// **'Turns off every layer except the named one.'**
+  String get command_layer_isolate_desc;
+
+  /// command layer show all desc
+  ///
+  /// In en, this message translates to:
+  /// **'Turns every layer back on.'**
+  String get command_layer_show_all_desc;
+
+  /// command layer toggle lock desc
+  ///
+  /// In en, this message translates to:
+  /// **'Locks or unlocks a layer. Objects on a locked layer stay visible but cannot be modified.'**
+  String get command_layer_toggle_lock_desc;
+
+  /// command layer delete desc
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes a layer and everything on it. The layer named 0 cannot be deleted.'**
+  String get command_layer_delete_desc;
+
+  /// command layer purge desc
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes layers that no object uses. Layer 0 is kept, and if the current layer is empty it is switched back to 0 before the purge.'**
+  String get command_layer_purge_desc;
+
+  /// command query summary desc
+  ///
+  /// In en, this message translates to:
+  /// **'Returns a compact statistical summary of the drawing: extents, entity counts by type, and per-layer counts. Use this first to understand a drawing before querying its contents.'**
+  String get command_query_summary_desc;
+
+  /// command query list desc
+  ///
+  /// In en, this message translates to:
+  /// **'Reports the full properties of the selected objects.'**
+  String get command_query_list_desc;
+
+  /// command query entities desc
+  ///
+  /// In en, this message translates to:
+  /// **'Finds entities matching optional filters and returns their ids and properties. Use layer, kind and a bounding window to narrow a large drawing to the part you care about.'**
+  String get command_query_entities_desc;
+
+  /// command query selection desc
+  ///
+  /// In en, this message translates to:
+  /// **'Returns the current selection as structured records (id, kind, layer, bounds, short geometry). Use this instead of guessing ids. An empty selection is a successful empty list, not a prompt.'**
+  String get command_query_selection_desc;
+
+  /// command query viewport desc
+  ///
+  /// In en, this message translates to:
+  /// **'Returns the active camera: centre, scale and visible window as [minX, minY, maxX, maxY]. Pass that window to query.entities to list what the user is looking at.'**
+  String get command_query_viewport_desc;
+
+  /// command query id desc
+  ///
+  /// In en, this message translates to:
+  /// **'Reports the X and Y coordinates of a point. Use this when you need a location, not a distance between two locations.'**
+  String get command_query_id_desc;
+
+  /// command query distance desc
+  ///
+  /// In en, this message translates to:
+  /// **'Measures the distance and angle between two points.'**
+  String get command_query_distance_desc;
+
+  /// command query angle desc
+  ///
+  /// In en, this message translates to:
+  /// **'Measures the angle at a vertex between two rays. The first point is the vertex; the next two define the sides.'**
+  String get command_query_angle_desc;
+
+  /// command query area desc
+  ///
+  /// In en, this message translates to:
+  /// **'Reports the area and perimeter of the selected closed objects.'**
+  String get command_query_area_desc;
+
+  /// command query layers desc
+  ///
+  /// In en, this message translates to:
+  /// **'Returns every layer with its state and object count.'**
+  String get command_query_layers_desc;
+
+  /// command layout list desc
+  ///
+  /// In en, this message translates to:
+  /// **'Lists model and paper-space layouts and their viewports.'**
+  String get command_layout_list_desc;
+
+  /// command layout set desc
+  ///
+  /// In en, this message translates to:
+  /// **'Switches the active layout (Model or a paper tab).'**
+  String get command_layout_set_desc;
+
+  /// command layout new desc
+  ///
+  /// In en, this message translates to:
+  /// **'Adds a paper-space layout tab and opens it. The sheet defaults to A4 landscape; pass width and height in millimetres to override.'**
+  String get command_layout_new_desc;
+
+  /// command layout delete desc
+  ///
+  /// In en, this message translates to:
+  /// **'Removes a paper-space layout tab and the entities on that sheet. Model cannot be deleted. Omit the name to delete the current tab.'**
+  String get command_layout_delete_desc;
+
+  /// command layout copy desc
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicates a paper layout: sheet size, viewports, and the entities on that sheet. Model cannot be copied.'**
+  String get command_layout_copy_desc;
+
+  /// command layout rename desc
+  ///
+  /// In en, this message translates to:
+  /// **'Renames a paper layout tab. The sheet, viewports and paper entities stay put. Model cannot be renamed.'**
+  String get command_layout_rename_desc;
+
+  /// command layout order desc
+  ///
+  /// In en, this message translates to:
+  /// **'Moves a paper tab in the layout strip. Model stays first. index is the destination among paper tabs (0 = first paper). Or pass before / after another tab name.'**
+  String get command_layout_order_desc;
+
+  /// command layout pagesetup desc
+  ///
+  /// In en, this message translates to:
+  /// **'Changes the paper size of a layout, in millimetres, the plot rotation (0, 90, 180 or 270), scale or fit-to-sheet, an offset, and an optional plot window. Omit the name to edit the current paper tab. Model has no sheet.'**
+  String get command_layout_pagesetup_desc;
+
+  /// command layout mview desc
+  ///
+  /// In en, this message translates to:
+  /// **'Cuts a window on the current paper layout that looks into model space. The model is framed in the rectangle unless a scale is supplied.'**
+  String get command_layout_mview_desc;
+
+  /// command layout vpscale desc
+  ///
+  /// In en, this message translates to:
+  /// **'Sets the scale of a paper viewport (model units per paper unit). Pass fit=true to frame the model again. A locked viewport is refused.'**
+  String get command_layout_vpscale_desc;
+
+  /// command layout vplock desc
+  ///
+  /// In en, this message translates to:
+  /// **'Locks or unlocks a paper viewport so VPSCALE cannot change the view. Omit locked to toggle. The window frame can still move.'**
+  String get command_layout_vplock_desc;
+
+  /// command layout vpon desc
+  ///
+  /// In en, this message translates to:
+  /// **'Turns a paper viewport on or off. An off window keeps its frame but hides the model and is skipped when plotting. Omit on to toggle.'**
+  String get command_layout_vpon_desc;
+
+  /// command layout vplayer desc
+  ///
+  /// In en, this message translates to:
+  /// **'Freezes or thaws layers in one paper viewport. Other windows and model space keep their own visibility. Omit freeze to freeze.'**
+  String get command_layout_vplayer_desc;
+
+  /// command layout vpmax desc
+  ///
+  /// In en, this message translates to:
+  /// **'Opens model space framed to a paper viewport so the model can be edited through that window. VPMIN returns to the sheet.'**
+  String get command_layout_vpmax_desc;
+
+  /// command layout vpmin desc
+  ///
+  /// In en, this message translates to:
+  /// **'Returns to the paper layout left by VPMAX and frames the sheet.'**
+  String get command_layout_vpmin_desc;
+
+  /// command print export svg desc
+  ///
+  /// In en, this message translates to:
+  /// **'Plots a layout to an SVG file. Omit the layout name to plot the current tab. A .pdf path writes a vector PDF instead. Pass corner1 and corner2 to plot a window; otherwise the layout\'s stored plot window or the full sheet is used.'**
+  String get command_print_export_svg_desc;
+
+  /// command print export pdf desc
+  ///
+  /// In en, this message translates to:
+  /// **'Plots a layout to a vector PDF. Omit the layout name to plot the current tab. Paper size becomes the page MediaBox; viewports are clipped. Pass corner1 and corner2 to plot a window.'**
+  String get command_print_export_pdf_desc;
+
+  /// command xref attach desc
+  ///
+  /// In en, this message translates to:
+  /// **'Loads another drawing as an external reference and places it in model space. Reload by attaching the same path again; existing inserts keep their position.'**
+  String get command_xref_attach_desc;
+
+  /// command xref reload desc
+  ///
+  /// In en, this message translates to:
+  /// **'Re-reads attached external references from their stored paths. Omit the name to reload the selected xref, or the only xref in the drawing.'**
+  String get command_xref_reload_desc;
+
+  /// command xref detach desc
+  ///
+  /// In en, this message translates to:
+  /// **'Removes an external reference and every insert that shows it. Omit the name to detach the selected xref, or the only xref in the drawing.'**
+  String get command_xref_detach_desc;
+
+  /// command xref bind desc
+  ///
+  /// In en, this message translates to:
+  /// **'Turns an external reference into a local block so the drawing no longer depends on that file. Inserts stay where they are. Omit the name to bind the selected xref, or the only xref in the drawing.'**
+  String get command_xref_bind_desc;
+
+  /// command plugins list desc
+  ///
+  /// In en, this message translates to:
+  /// **'Lists installed extensions with their state, version and the commands they contribute.'**
+  String get command_plugins_list_desc;
+
+  /// command plugins reload desc
+  ///
+  /// In en, this message translates to:
+  /// **'Re-reads an extension from disk and re-evaluates it, picking up both code and manifest changes without restarting.'**
+  String get command_plugins_reload_desc;
+
+  /// command plugins enable desc
+  ///
+  /// In en, this message translates to:
+  /// **'Loads an extension so it can contribute commands again.'**
+  String get command_plugins_enable_desc;
+
+  /// command plugins disable desc
+  ///
+  /// In en, this message translates to:
+  /// **'Unloads an extension and stops it activating again until enabled.'**
+  String get command_plugins_disable_desc;
+
+  /// command plugins logs desc
+  ///
+  /// In en, this message translates to:
+  /// **'Prints what an extension logged, for diagnosing a failure.'**
+  String get command_plugins_logs_desc;
+
+  /// command plugins scaffold desc
+  ///
+  /// In en, this message translates to:
+  /// **'Writes a new extension folder with a manifest and a working main.js, then loads it. Returns the paths written.'**
+  String get command_plugins_scaffold_desc;
+
+  /// command plugins write desc
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrites one file inside an extension folder. Paths are confined to that folder.'**
+  String get command_plugins_write_desc;
+
+  /// command plugins read desc
+  ///
+  /// In en, this message translates to:
+  /// **'Reads one file from an extension folder.'**
+  String get command_plugins_read_desc;
+
+  /// command plugins typings desc
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerates fancad.d.ts from the live command registry, so editors and models see the real API surface.'**
+  String get command_plugins_typings_desc;
+
+  /// command plugins edit desc
+  ///
+  /// In en, this message translates to:
+  /// **'Opens an extension file in the built-in editor so a person can review or change what the AI authoring loop wrote.'**
+  String get command_plugins_edit_desc;
+
+  /// command plugins eval desc
+  ///
+  /// In en, this message translates to:
+  /// **'Runs a JavaScript expression inside an extension scope. For debugging; it can do anything the extension can.'**
+  String get command_plugins_eval_desc;
+
+  /// command step
+  ///
+  /// In en, this message translates to:
+  /// **'{verb}  {step}'**
+  String command_step(String verb, String step);
+
+  /// prompt specify first point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first point:'**
+  String get prompt_specify_first_point;
+
+  /// prompt specify next point esc
+  ///
+  /// In en, this message translates to:
+  /// **'Specify next point (Escape to finish):'**
+  String get prompt_specify_next_point_esc;
+
+  /// prompt specify second point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify second point:'**
+  String get prompt_specify_second_point;
+
+  /// prompt specify second point esc
+  ///
+  /// In en, this message translates to:
+  /// **'Specify second point (Escape to finish):'**
+  String get prompt_specify_second_point_esc;
+
+  /// prompt specify base point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify base point:'**
+  String get prompt_specify_base_point;
+
+  /// prompt select objects
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects:'**
+  String get prompt_select_objects;
+
+  /// prompt specify center
+  ///
+  /// In en, this message translates to:
+  /// **'Specify center:'**
+  String get prompt_specify_center;
+
+  /// prompt specify center point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify center point:'**
+  String get prompt_specify_center_point;
+
+  /// prompt specify radius
+  ///
+  /// In en, this message translates to:
+  /// **'Specify radius:'**
+  String get prompt_specify_radius;
+
+  /// prompt specify first corner
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first corner:'**
+  String get prompt_specify_first_corner;
+
+  /// prompt specify opposite corner
+  ///
+  /// In en, this message translates to:
+  /// **'Specify opposite corner:'**
+  String get prompt_specify_opposite_corner;
+
+  /// prompt specify insertion point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify insertion point:'**
+  String get prompt_specify_insertion_point;
+
+  /// prompt specify next insertion esc
+  ///
+  /// In en, this message translates to:
+  /// **'Specify next insertion point (Escape to finish):'**
+  String get prompt_specify_next_insertion_esc;
+
+  /// prompt specify height
+  ///
+  /// In en, this message translates to:
+  /// **'Specify height:'**
+  String get prompt_specify_height;
+
+  /// prompt specify start point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify start point:'**
+  String get prompt_specify_start_point;
+
+  /// prompt specify through point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify through point:'**
+  String get prompt_specify_through_point;
+
+  /// prompt specify end point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify end point:'**
+  String get prompt_specify_end_point;
+
+  /// prompt specify a point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify a point:'**
+  String get prompt_specify_a_point;
+
+  /// prompt specify a location
+  ///
+  /// In en, this message translates to:
+  /// **'Specify a location:'**
+  String get prompt_specify_a_location;
+
+  /// prompt specify point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify point:'**
+  String get prompt_specify_point;
+
+  /// prompt specify vertex
+  ///
+  /// In en, this message translates to:
+  /// **'Specify vertex:'**
+  String get prompt_specify_vertex;
+
+  /// prompt specify dim line
+  ///
+  /// In en, this message translates to:
+  /// **'Specify dimension line location:'**
+  String get prompt_specify_dim_line;
+
+  /// prompt specify first ext origin
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first extension line origin:'**
+  String get prompt_specify_first_ext_origin;
+
+  /// prompt specify second ext origin
+  ///
+  /// In en, this message translates to:
+  /// **'Specify second extension line origin:'**
+  String get prompt_specify_second_ext_origin;
+
+  /// prompt specify next ext origin
+  ///
+  /// In en, this message translates to:
+  /// **'Specify next extension line origin:'**
+  String get prompt_specify_next_ext_origin;
+
+  /// prompt specify second ext origin alt
+  ///
+  /// In en, this message translates to:
+  /// **'Specify a second extension line origin:'**
+  String get prompt_specify_second_ext_origin_alt;
+
+  /// prompt specify dim arc
+  ///
+  /// In en, this message translates to:
+  /// **'Specify dimension arc location:'**
+  String get prompt_specify_dim_arc;
+
+  /// prompt specify rotation angle
+  ///
+  /// In en, this message translates to:
+  /// **'Specify rotation angle:'**
+  String get prompt_specify_rotation_angle;
+
+  /// prompt specify new height
+  ///
+  /// In en, this message translates to:
+  /// **'Specify new height:'**
+  String get prompt_specify_new_height;
+
+  /// prompt specify width factor
+  ///
+  /// In en, this message translates to:
+  /// **'Specify width factor:'**
+  String get prompt_specify_width_factor;
+
+  /// prompt specify oblique
+  ///
+  /// In en, this message translates to:
+  /// **'Specify oblique angle:'**
+  String get prompt_specify_oblique;
+
+  /// prompt specify column width
+  ///
+  /// In en, this message translates to:
+  /// **'Specify column width:'**
+  String get prompt_specify_column_width;
+
+  /// prompt specify attachment point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify attachment point:'**
+  String get prompt_specify_attachment_point;
+
+  /// prompt specify scale factor
+  ///
+  /// In en, this message translates to:
+  /// **'Specify scale factor (or pick a distance):'**
+  String get prompt_specify_scale_factor;
+
+  /// prompt specify offset distance
+  ///
+  /// In en, this message translates to:
+  /// **'Specify offset distance:'**
+  String get prompt_specify_offset_distance;
+
+  /// prompt specify offset side
+  ///
+  /// In en, this message translates to:
+  /// **'Specify a point on the side to offset:'**
+  String get prompt_specify_offset_side;
+
+  /// prompt specify fillet radius
+  ///
+  /// In en, this message translates to:
+  /// **'Specify fillet radius:'**
+  String get prompt_specify_fillet_radius;
+
+  /// prompt specify inside diameter
+  ///
+  /// In en, this message translates to:
+  /// **'Specify inside diameter:'**
+  String get prompt_specify_inside_diameter;
+
+  /// prompt specify outside diameter
+  ///
+  /// In en, this message translates to:
+  /// **'Specify outside diameter:'**
+  String get prompt_specify_outside_diameter;
+
+  /// prompt specify center of donut
+  ///
+  /// In en, this message translates to:
+  /// **'Specify center of donut:'**
+  String get prompt_specify_center_of_donut;
+
+  /// prompt specify total length
+  ///
+  /// In en, this message translates to:
+  /// **'Specify total length:'**
+  String get prompt_specify_total_length;
+
+  /// prompt specify segment length
+  ///
+  /// In en, this message translates to:
+  /// **'Specify segment length:'**
+  String get prompt_specify_segment_length;
+
+  /// prompt specify stretch point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify stretch point:'**
+  String get prompt_specify_stretch_point;
+
+  /// prompt idle select
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects or specify a command:'**
+  String get prompt_idle_select;
+
+  /// prompt enter layer name
+  ///
+  /// In en, this message translates to:
+  /// **'Enter layer name:'**
+  String get prompt_enter_layer_name;
+
+  /// prompt enter a layer name
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a layer name:'**
+  String get prompt_enter_a_layer_name;
+
+  /// prompt extension id
+  ///
+  /// In en, this message translates to:
+  /// **'Extension id:'**
+  String get prompt_extension_id;
+
+  /// prompt enter block name
+  ///
+  /// In en, this message translates to:
+  /// **'Enter block name:'**
+  String get prompt_enter_block_name;
+
+  /// prompt enter text
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the text:'**
+  String get prompt_enter_text;
+
+  /// prompt select closed objects
+  ///
+  /// In en, this message translates to:
+  /// **'Select closed objects:'**
+  String get prompt_select_closed_objects;
+
+  /// prompt select viewport
+  ///
+  /// In en, this message translates to:
+  /// **'Select viewport:'**
+  String get prompt_select_viewport;
+
+  /// prompt selected viewport
+  ///
+  /// In en, this message translates to:
+  /// **'Selected viewport'**
+  String get prompt_selected_viewport;
+
+  /// prompt enter colour
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a colour (1-255, #rrggbb or ByLayer):'**
+  String get prompt_enter_colour;
+
+  /// prompt javascript
+  ///
+  /// In en, this message translates to:
+  /// **'JavaScript:'**
+  String get prompt_javascript;
+
+  /// prompt svg path
+  ///
+  /// In en, this message translates to:
+  /// **'SVG path:'**
+  String get prompt_svg_path;
+
+  /// prompt pdf path
+  ///
+  /// In en, this message translates to:
+  /// **'PDF path:'**
+  String get prompt_pdf_path;
+
+  /// prompt layout name
+  ///
+  /// In en, this message translates to:
+  /// **'Layout name:'**
+  String get prompt_layout_name;
+
+  /// prompt layout to copy
+  ///
+  /// In en, this message translates to:
+  /// **'Layout to copy:'**
+  String get prompt_layout_to_copy;
+
+  /// prompt layout to delete
+  ///
+  /// In en, this message translates to:
+  /// **'Layout to delete:'**
+  String get prompt_layout_to_delete;
+
+  /// prompt layout to move
+  ///
+  /// In en, this message translates to:
+  /// **'Layout to move:'**
+  String get prompt_layout_to_move;
+
+  /// prompt layout to rename
+  ///
+  /// In en, this message translates to:
+  /// **'Layout to rename:'**
+  String get prompt_layout_to_rename;
+
+  /// prompt drawing to attach
+  ///
+  /// In en, this message translates to:
+  /// **'Drawing to attach:'**
+  String get prompt_drawing_to_attach;
+
+  /// prompt file to write
+  ///
+  /// In en, this message translates to:
+  /// **'File to write:'**
+  String get prompt_file_to_write;
+
+  /// prompt file to read
+  ///
+  /// In en, this message translates to:
+  /// **'File to read:'**
+  String get prompt_file_to_read;
+
+  /// prompt select objects to erase
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to erase:'**
+  String get prompt_select_objects_to_erase;
+
+  /// prompt select objects to array
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to array:'**
+  String get prompt_select_objects_to_array;
+
+  /// prompt select objects to align
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to align:'**
+  String get prompt_select_objects_to_align;
+
+  /// prompt select objects to rotate
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to rotate:'**
+  String get prompt_select_objects_to_rotate;
+
+  /// prompt select objects to scale
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to scale:'**
+  String get prompt_select_objects_to_scale;
+
+  /// prompt select objects to mirror
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to mirror:'**
+  String get prompt_select_objects_to_mirror;
+
+  /// prompt select objects to offset
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to offset:'**
+  String get prompt_select_objects_to_offset;
+
+  /// prompt select objects to explode
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to explode:'**
+  String get prompt_select_objects_to_explode;
+
+  /// prompt select objects to hide
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to hide:'**
+  String get prompt_select_objects_to_hide;
+
+  /// prompt select objects keep visible
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to keep visible:'**
+  String get prompt_select_objects_keep_visible;
+
+  /// prompt select objects recolour
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to recolour:'**
+  String get prompt_select_objects_recolour;
+
+  /// prompt select objects change layer
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects to move to another layer:'**
+  String get prompt_select_objects_change_layer;
+
+  /// prompt select text objects
+  ///
+  /// In en, this message translates to:
+  /// **'Select text objects:'**
+  String get prompt_select_text_objects;
+
+  /// prompt textobject options
+  ///
+  /// In en, this message translates to:
+  /// **'Specify text, height, colour, justification, rotation, style, column width, width factor or oblique:'**
+  String get prompt_textobject_options;
+
+  /// prompt place n points
+  ///
+  /// In en, this message translates to:
+  /// **'Place {count} point(s)?'**
+  String prompt_place_n_points(int count);
+
+  /// prompt specify first kind point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first {kind} point:'**
+  String prompt_specify_first_kind_point(String kind);
+
+  /// prompt specify next kind point esc
+  ///
+  /// In en, this message translates to:
+  /// **'Specify next {kind} point (Escape to finish):'**
+  String prompt_specify_next_kind_point_esc(String kind);
+
+  /// prompt selected object
+  ///
+  /// In en, this message translates to:
+  /// **'Selected {entity} on layer {layer}'**
+  String prompt_selected_object(String entity, String layer);
+
+  /// prompt objects selected
+  ///
+  /// In en, this message translates to:
+  /// **'{count} objects selected'**
+  String prompt_objects_selected(int count);
+
+  /// prompt selection found
+  ///
+  /// In en, this message translates to:
+  /// **'{message} ({count} found, Enter to accept)'**
+  String prompt_selection_found(String message, int count);
+
+  /// prompt enter annotation none
+  ///
+  /// In en, this message translates to:
+  /// **'Enter annotation text <none>:'**
+  String get prompt_enter_annotation_none;
+
+  /// prompt enter attribute tag
+  ///
+  /// In en, this message translates to:
+  /// **'Enter attribute tag:'**
+  String get prompt_enter_attribute_tag;
+
+  /// prompt enter block name to change
+  ///
+  /// In en, this message translates to:
+  /// **'Enter block name to change:'**
+  String get prompt_enter_block_name_to_change;
+
+  /// prompt enter default value
+  ///
+  /// In en, this message translates to:
+  /// **'Enter default value:'**
+  String get prompt_enter_default_value;
+
+  /// prompt enter dimension text
+  ///
+  /// In en, this message translates to:
+  /// **'Enter dimension text (<> = measured):'**
+  String get prompt_enter_dimension_text;
+
+  /// prompt enter justification
+  ///
+  /// In en, this message translates to:
+  /// **'Enter justification [Left/Center/Right/TL/TC/TR/ML/MC/MR/BL/BC/BR]:'**
+  String get prompt_enter_justification;
+
+  /// prompt enter layer names
+  ///
+  /// In en, this message translates to:
+  /// **'Enter layer name(s):'**
+  String get prompt_enter_layer_names;
+
+  /// prompt enter spline method
+  ///
+  /// In en, this message translates to:
+  /// **'Enter method [Control/Fit]:'**
+  String get prompt_enter_spline_method;
+
+  /// prompt enter linetype name
+  ///
+  /// In en, this message translates to:
+  /// **'Enter name (DASHED, HIDDEN, CENTER, ByLayer):'**
+  String get prompt_enter_linetype_name;
+
+  /// prompt enter new block name
+  ///
+  /// In en, this message translates to:
+  /// **'Enter new block name:'**
+  String get prompt_enter_new_block_name;
+
+  /// prompt enter new text
+  ///
+  /// In en, this message translates to:
+  /// **'Enter new text:'**
+  String get prompt_enter_new_text;
+
+  /// prompt enter columns
+  ///
+  /// In en, this message translates to:
+  /// **'Enter number of columns:'**
+  String get prompt_enter_columns;
+
+  /// prompt enter items
+  ///
+  /// In en, this message translates to:
+  /// **'Enter number of items:'**
+  String get prompt_enter_items;
+
+  /// prompt enter rows
+  ///
+  /// In en, this message translates to:
+  /// **'Enter number of rows:'**
+  String get prompt_enter_rows;
+
+  /// prompt enter sides
+  ///
+  /// In en, this message translates to:
+  /// **'Enter number of sides:'**
+  String get prompt_enter_sides;
+
+  /// prompt enter object type
+  ///
+  /// In en, this message translates to:
+  /// **'Enter object type (LINE, CIRCLE, INSERT, …):'**
+  String get prompt_enter_object_type;
+
+  /// prompt enter attribute prompt
+  ///
+  /// In en, this message translates to:
+  /// **'Enter prompt:'**
+  String get prompt_enter_attribute_prompt;
+
+  /// prompt enter fill angle
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the angle to fill:'**
+  String get prompt_enter_fill_angle;
+
+  /// prompt enter column spacing
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the column spacing:'**
+  String get prompt_enter_column_spacing;
+
+  /// prompt enter segments
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the number of segments:'**
+  String get prompt_enter_segments;
+
+  /// prompt enter row spacing
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the row spacing:'**
+  String get prompt_enter_row_spacing;
+
+  /// prompt enter lineweight
+  ///
+  /// In en, this message translates to:
+  /// **'Enter weight (0.25 mm, 25, ByLayer):'**
+  String get prompt_enter_lineweight;
+
+  /// prompt fillet vertex all
+  ///
+  /// In en, this message translates to:
+  /// **'Fillet [Vertex/All]:'**
+  String get prompt_fillet_vertex_all;
+
+  /// prompt chamfer vertex all
+  ///
+  /// In en, this message translates to:
+  /// **'Chamfer [Vertex/All]:'**
+  String get prompt_chamfer_vertex_all;
+
+  /// prompt select block reference
+  ///
+  /// In en, this message translates to:
+  /// **'Select a block reference:'**
+  String get prompt_select_block_reference;
+
+  /// prompt select line pline arc
+  ///
+  /// In en, this message translates to:
+  /// **'Select a line, polyline or arc:'**
+  String get prompt_select_line_pline_arc;
+
+  /// prompt select linear aligned dim
+  ///
+  /// In en, this message translates to:
+  /// **'Select a linear or aligned dimension:'**
+  String get prompt_select_linear_aligned_dim;
+
+  /// prompt select arc or circle
+  ///
+  /// In en, this message translates to:
+  /// **'Select arc or circle:'**
+  String get prompt_select_arc_or_circle;
+
+  /// prompt select arc or first line
+  ///
+  /// In en, this message translates to:
+  /// **'Select arc or first line:'**
+  String get prompt_select_arc_or_first_line;
+
+  /// prompt select boundary edges
+  ///
+  /// In en, this message translates to:
+  /// **'Select boundary edges:'**
+  String get prompt_select_boundary_edges;
+
+  /// prompt select circles or arcs
+  ///
+  /// In en, this message translates to:
+  /// **'Select circles or arcs:'**
+  String get prompt_select_circles_or_arcs;
+
+  /// prompt select closed boundaries
+  ///
+  /// In en, this message translates to:
+  /// **'Select closed boundaries:'**
+  String get prompt_select_closed_boundaries;
+
+  /// prompt select cutting edges
+  ///
+  /// In en, this message translates to:
+  /// **'Select cutting edges:'**
+  String get prompt_select_cutting_edges;
+
+  /// prompt select destination objects
+  ///
+  /// In en, this message translates to:
+  /// **'Select destination objects:'**
+  String get prompt_select_destination_objects;
+
+  /// prompt select dimensions
+  ///
+  /// In en, this message translates to:
+  /// **'Select dimensions:'**
+  String get prompt_select_dimensions;
+
+  /// prompt select first line circle arc
+  ///
+  /// In en, this message translates to:
+  /// **'Select first line, circle or arc:'**
+  String get prompt_select_first_line_circle_arc;
+
+  /// prompt select first object
+  ///
+  /// In en, this message translates to:
+  /// **'Select first object:'**
+  String get prompt_select_first_object;
+
+  /// prompt select first tangent
+  ///
+  /// In en, this message translates to:
+  /// **'Select first tangent object:'**
+  String get prompt_select_first_tangent;
+
+  /// prompt select hatch objects
+  ///
+  /// In en, this message translates to:
+  /// **'Select hatch objects:'**
+  String get prompt_select_hatch_objects;
+
+  /// prompt select lines or plines
+  ///
+  /// In en, this message translates to:
+  /// **'Select lines or polylines:'**
+  String get prompt_select_lines_or_plines;
+
+  /// prompt select lines to convert
+  ///
+  /// In en, this message translates to:
+  /// **'Select lines to convert:'**
+  String get prompt_select_lines_to_convert;
+
+  /// prompt select join objects
+  ///
+  /// In en, this message translates to:
+  /// **'Select lines, arcs or polylines to join:'**
+  String get prompt_select_join_objects;
+
+  /// prompt select object to break
+  ///
+  /// In en, this message translates to:
+  /// **'Select object to break:'**
+  String get prompt_select_object_to_break;
+
+  /// prompt select object to divide
+  ///
+  /// In en, this message translates to:
+  /// **'Select object to divide:'**
+  String get prompt_select_object_to_divide;
+
+  /// prompt select object to measure
+  ///
+  /// In en, this message translates to:
+  /// **'Select object to measure:'**
+  String get prompt_select_object_to_measure;
+
+  /// prompt select plines to close
+  ///
+  /// In en, this message translates to:
+  /// **'Select polylines to close:'**
+  String get prompt_select_plines_to_close;
+
+  /// prompt select plines to open
+  ///
+  /// In en, this message translates to:
+  /// **'Select polylines to open:'**
+  String get prompt_select_plines_to_open;
+
+  /// prompt select plines width
+  ///
+  /// In en, this message translates to:
+  /// **'Select polylines to set width:'**
+  String get prompt_select_plines_width;
+
+  /// prompt select second line circle arc
+  ///
+  /// In en, this message translates to:
+  /// **'Select second line, circle or arc:'**
+  String get prompt_select_second_line_circle_arc;
+
+  /// prompt select second line
+  ///
+  /// In en, this message translates to:
+  /// **'Select second line:'**
+  String get prompt_select_second_line;
+
+  /// prompt select second tangent
+  ///
+  /// In en, this message translates to:
+  /// **'Select second tangent object:'**
+  String get prompt_select_second_tangent;
+
+  /// prompt select source object
+  ///
+  /// In en, this message translates to:
+  /// **'Select source object:'**
+  String get prompt_select_source_object;
+
+  /// prompt select text mtext dim
+  ///
+  /// In en, this message translates to:
+  /// **'Select text, mtext or a dimension:'**
+  String get prompt_select_text_mtext_dim;
+
+  /// prompt specify nearer end
+  ///
+  /// In en, this message translates to:
+  /// **'Specify a point nearer the end to change:'**
+  String get prompt_specify_nearer_end;
+
+  /// prompt specify first ray point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify a point on the first ray:'**
+  String get prompt_specify_first_ray_point;
+
+  /// prompt specify second ray point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify a point on the second ray:'**
+  String get prompt_specify_second_ray_point;
+
+  /// prompt specify second point on arc
+  ///
+  /// In en, this message translates to:
+  /// **'Specify a second point on the arc:'**
+  String get prompt_specify_second_point_on_arc;
+
+  /// prompt specify vertex to bevel
+  ///
+  /// In en, this message translates to:
+  /// **'Specify a vertex to bevel:'**
+  String get prompt_specify_vertex_to_bevel;
+
+  /// prompt specify vertex to round
+  ///
+  /// In en, this message translates to:
+  /// **'Specify a vertex to round:'**
+  String get prompt_specify_vertex_to_round;
+
+  /// prompt specify column distance
+  ///
+  /// In en, this message translates to:
+  /// **'Specify distance between columns:'**
+  String get prompt_specify_column_distance;
+
+  /// prompt specify row distance
+  ///
+  /// In en, this message translates to:
+  /// **'Specify distance between rows:'**
+  String get prompt_specify_row_distance;
+
+  /// prompt specify other axis distance
+  ///
+  /// In en, this message translates to:
+  /// **'Specify distance to other axis:'**
+  String get prompt_specify_other_axis_distance;
+
+  /// prompt specify axis endpoint
+  ///
+  /// In en, this message translates to:
+  /// **'Specify endpoint of axis:'**
+  String get prompt_specify_axis_endpoint;
+
+  /// prompt specify first break
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first break point:'**
+  String get prompt_specify_first_break;
+
+  /// prompt specify first chamfer
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first chamfer distance:'**
+  String get prompt_specify_first_chamfer;
+
+  /// prompt specify crossing first corner
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first corner of crossing window:'**
+  String get prompt_specify_crossing_first_corner;
+
+  /// prompt specify first dest
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first destination point:'**
+  String get prompt_specify_first_dest;
+
+  /// prompt specify first diameter end
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first end of diameter:'**
+  String get prompt_specify_first_diameter_end;
+
+  /// prompt specify first leader point
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first leader point:'**
+  String get prompt_specify_first_leader_point;
+
+  /// prompt specify mirror first
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first point of mirror line:'**
+  String get prompt_specify_mirror_first;
+
+  /// prompt specify first on circle
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first point on circle:'**
+  String get prompt_specify_first_on_circle;
+
+  /// prompt specify first source
+  ///
+  /// In en, this message translates to:
+  /// **'Specify first source point:'**
+  String get prompt_specify_first_source;
+
+  /// prompt specify insertion base
+  ///
+  /// In en, this message translates to:
+  /// **'Specify insertion base point:'**
+  String get prompt_specify_insertion_base;
+
+  /// prompt hatch internal or select
+  ///
+  /// In en, this message translates to:
+  /// **'Specify internal point or [Select]:'**
+  String get prompt_hatch_internal_or_select;
+
+  /// prompt specify dim text location
+  ///
+  /// In en, this message translates to:
+  /// **'Specify new location for dimension text:'**
+  String get prompt_specify_dim_text_location;
+
+  /// prompt specify polyline width
+  ///
+  /// In en, this message translates to:
+  /// **'Specify new width for all segments:'**
+  String get prompt_specify_polyline_width;
+
+  /// prompt specify second break esc
+  ///
+  /// In en, this message translates to:
+  /// **'Specify second break point (Escape to split):'**
+  String get prompt_specify_second_break_esc;
+
+  /// prompt specify second chamfer
+  ///
+  /// In en, this message translates to:
+  /// **'Specify second chamfer distance:'**
+  String get prompt_specify_second_chamfer;
+
+  /// prompt specify second dest
+  ///
+  /// In en, this message translates to:
+  /// **'Specify second destination point:'**
+  String get prompt_specify_second_dest;
+
+  /// prompt specify second diameter end
+  ///
+  /// In en, this message translates to:
+  /// **'Specify second end of diameter:'**
+  String get prompt_specify_second_diameter_end;
+
+  /// prompt specify mirror second
+  ///
+  /// In en, this message translates to:
+  /// **'Specify second point of mirror line:'**
+  String get prompt_specify_mirror_second;
+
+  /// prompt specify second on circle
+  ///
+  /// In en, this message translates to:
+  /// **'Specify second point on circle:'**
+  String get prompt_specify_second_on_circle;
+
+  /// prompt specify second source or enter
+  ///
+  /// In en, this message translates to:
+  /// **'Specify second source point or press Enter:'**
+  String get prompt_specify_second_source_or_enter;
+
+  /// prompt specify third on circle
+  ///
+  /// In en, this message translates to:
+  /// **'Specify third point on circle:'**
+  String get prompt_specify_third_on_circle;
+
+  /// prompt enter units
+  ///
+  /// In en, this message translates to:
+  /// **'Enter insertion units <{current}>:'**
+  String prompt_enter_units(String current);
+
+  /// prompt enter text style name
+  ///
+  /// In en, this message translates to:
+  /// **'Enter text style name:'**
+  String get prompt_enter_text_style_name;
+
+  /// prompt enter layer to delete
+  ///
+  /// In en, this message translates to:
+  /// **'Enter layer to delete:'**
+  String get prompt_enter_layer_to_delete;
+
+  /// prompt enter layer to isolate
+  ///
+  /// In en, this message translates to:
+  /// **'Enter layer to isolate:'**
+  String get prompt_enter_layer_to_isolate;
+
+  /// prompt enter linetype
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a linetype (DASHED, ByLayer, …):'**
+  String get prompt_enter_linetype;
+
+  /// prompt enter a lineweight
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a lineweight (0.25 mm, 25, ByLayer):'**
+  String get prompt_enter_a_lineweight;
+
+  /// prompt select object to trim
+  ///
+  /// In en, this message translates to:
+  /// **'Select an object to trim (Escape to finish):'**
+  String get prompt_select_object_to_trim;
+
+  /// prompt select object to extend
+  ///
+  /// In en, this message translates to:
+  /// **'Select an object to extend (Escape to finish):'**
+  String get prompt_select_object_to_extend;
+
+  /// prompt scale objects align
+  ///
+  /// In en, this message translates to:
+  /// **'Scale objects based on alignment points?'**
+  String get prompt_scale_objects_align;
+
+  /// prompt sheet width
+  ///
+  /// In en, this message translates to:
+  /// **'Sheet width (mm):'**
+  String get prompt_sheet_width;
+
+  /// prompt sheet height
+  ///
+  /// In en, this message translates to:
+  /// **'Sheet height (mm):'**
+  String get prompt_sheet_height;
+
+  /// prompt viewport scale
+  ///
+  /// In en, this message translates to:
+  /// **'Viewport scale (model / paper):'**
+  String get prompt_viewport_scale;
+
+  /// prompt new layout name
+  ///
+  /// In en, this message translates to:
+  /// **'New layout name:'**
+  String get prompt_new_layout_name;
+
+  /// prompt open recent
+  ///
+  /// In en, this message translates to:
+  /// **'Open recent:'**
+  String get prompt_open_recent;
+
   /// end
   ///
   /// In en, this message translates to:

@@ -84,7 +84,10 @@ Future<(CadEntity, CadEntity)?> _resolveCenterLinePair(
   if (firstId == null) {
     context.selection.clear();
     final picked = await context.input.selection(
-      'CENTERLINE  Select first line, circle or arc:',
+      context.commandPrompt(
+        'CENTERLINE',
+        context.l10n.prompt_select_first_line_circle_arc,
+      ),
       useExistingSelection: false,
       single: true,
     );
@@ -94,7 +97,10 @@ Future<(CadEntity, CadEntity)?> _resolveCenterLinePair(
   if (secondId == null) {
     context.selection.clear();
     final picked = await context.input.selection(
-      'CENTERLINE  Select second line, circle or arc:',
+      context.commandPrompt(
+        'CENTERLINE',
+        context.l10n.prompt_select_second_line_circle_arc,
+      ),
       useExistingSelection: false,
       single: true,
     );

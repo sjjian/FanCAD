@@ -38,7 +38,10 @@ class XrefAttachCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final path = await context.resolveText('path', 'Drawing to attach:');
+    final path = await context.resolveText(
+      'path',
+      context.l10n.prompt_drawing_to_attach,
+    );
     final imported = await DrawingImporter().open(path);
     final at = context.args.point('at') ?? const Vec2.zero();
     late String name;

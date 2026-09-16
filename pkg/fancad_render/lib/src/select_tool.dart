@@ -13,7 +13,38 @@ import 'tool.dart';
 /// user does not think of them as different modes — they click, and the right
 /// thing happens based on what was under the cursor.
 class SelectionTool extends CadTool {
-  SelectionTool();
+  SelectionTool({
+    String? idlePrompt,
+    String? stretchPrompt,
+    String? selectedViewportPrompt,
+    this.describeObject,
+    this.describeCount,
+  }) : idlePromptOf = idlePrompt == null ? null : (() => idlePrompt),
+       stretchPromptOf = stretchPrompt == null ? null : (() => stretchPrompt),
+       selectedViewportPromptOf = selectedViewportPrompt == null
+           ? null
+           : (() => selectedViewportPrompt);
+
+  SelectionTool.localized({
+    required this.idlePromptOf,
+    required this.stretchPromptOf,
+    required this.selectedViewportPromptOf,
+    this.describeObject,
+    this.describeCount,
+  });
+
+  final String Function()? idlePromptOf;
+  final String Function()? stretchPromptOf;
+  final String Function()? selectedViewportPromptOf;
+  final String Function(CadEntity entity)? describeObject;
+  final String Function(int count)? describeCount;
+
+  String get idlePrompt =>
+      idlePromptOf?.call() ?? 'Select objects or specify a command:';
+  String get stretchPrompt =>
+      stretchPromptOf?.call() ?? 'Specify stretch point:';
+  String get selectedViewportPrompt =>
+      selectedViewportPromptOf?.call() ?? 'Selected viewport';
 
   @override
   String get id => 'select';
@@ -38,9 +69,7 @@ class SelectionTool extends CadTool {
   bool get isEditingGrip => _gripEntity != null || _gripLayoutViewport != null;
 
   @override
-  String get promptText => isEditingGrip
-      ? 'Specify stretch point:'
-      : 'Select objects or specify a command:';
+  String get promptText => isEditingGrip ? stretchPrompt : idlePrompt;
 
   // Snapping while merely hovering is noise, but a grip drag is a real edit and
   // needs the same precision as drawing does.
@@ -143,7 +172,7 @@ class SelectionTool extends CadTool {
     );
     if (frame != null) {
       host.selection.selectViewports([frame]);
-      host.prompt('Selected viewport');
+      host.prompt(selectedViewportPrompt);
       return true;
     }
 
@@ -329,7 +358,7 @@ class SelectionTool extends CadTool {
 
   void _describeSelection(ToolHost host) {
     if (host.selection.viewportIndices.isNotEmpty) {
-      host.prompt('Selected viewport');
+      host.prompt(selectedViewportPrompt);
       return;
     }
     final count = host.selection.length;
@@ -338,12 +367,13 @@ class SelectionTool extends CadTool {
       final entity = host.document.entity(host.selection.single!);
       if (entity != null) {
         host.prompt(
-          'Selected ${entity.displayId} on layer ${entity.props.layer}',
+          describeObject?.call(entity) ??
+              'Selected ${entity.displayId} on layer ${entity.props.layer}',
         );
         return;
       }
     }
-    host.prompt('$count objects selected');
+    host.prompt(describeCount?.call(count) ?? '$count objects selected');
   }
 
   Vec2 _toEntityPoint(Vec2 paper) {

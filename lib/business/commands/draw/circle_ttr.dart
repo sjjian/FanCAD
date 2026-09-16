@@ -67,7 +67,10 @@ class DrawCircleTtrCommand extends FanCadCommand {
     } else {
       context.selection.clear();
       final firstPick = await context.input.selection(
-        'CIRCLE  Select first tangent object:',
+        context.commandPrompt(
+          'CIRCLE',
+          context.l10n.prompt_select_first_tangent,
+        ),
         useExistingSelection: false,
         single: true,
       );
@@ -75,7 +78,10 @@ class DrawCircleTtrCommand extends FanCadCommand {
       id1 = firstPick.first;
       firstSide = context.input.lastPick;
       final secondPick = await context.input.selection(
-        'CIRCLE  Select second tangent object:',
+        context.commandPrompt(
+          'CIRCLE',
+          context.l10n.prompt_select_second_tangent,
+        ),
         useExistingSelection: false,
         single: true,
       );
@@ -118,7 +124,7 @@ class DrawCircleTtrCommand extends FanCadCommand {
     final radius =
         context.args.number('radius') ??
         await context.input.distance(
-          'CIRCLE  Specify radius:',
+          context.commandPrompt('CIRCLE', context.l10n.prompt_specify_radius),
           basePoint: pick1,
         );
     context.input

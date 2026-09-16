@@ -85,7 +85,10 @@ class DrawDimContinueCommand extends FanCadCommand {
         ..setMarkers([current.definitionPoints[1]])
         ..setPreview((cursor) => _dimContinueOverlay(current, cursor));
       final origin = await context.input.pointOrNull(
-        'DIMCONTINUE  Specify next extension line origin:',
+        context.commandPrompt(
+          'DIMCONTINUE',
+          context.l10n.prompt_specify_next_ext_origin,
+        ),
       );
       if (origin == null) break;
       final next = Construct.continueDimension(current, origin, props: layer);
@@ -210,7 +213,10 @@ class DrawDimBaselineCommand extends FanCadCommand {
         ..setMarkers([current.definitionPoints[0]])
         ..setPreview((cursor) => _dimBaselineOverlay(current, cursor, spacing));
       final origin = await context.input.pointOrNull(
-        'DIMBASELINE  Specify a second extension line origin:',
+        context.commandPrompt(
+          'DIMBASELINE',
+          context.l10n.prompt_specify_second_ext_origin_alt,
+        ),
       );
       if (origin == null) break;
       final next = Construct.baselineDimension(
@@ -256,7 +262,10 @@ Future<DimensionEntity?> _resolveContinuedDimension(
   if (context.input.isInteractive) {
     context.selection.clear();
     final picked = await context.input.selection(
-      'DIMCONTINUE  Select a linear or aligned dimension:',
+      context.commandPrompt(
+        'DIMCONTINUE',
+        context.l10n.prompt_select_linear_aligned_dim,
+      ),
       useExistingSelection: false,
       single: true,
     );

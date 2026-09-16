@@ -26,7 +26,10 @@ class QueryListCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final ids = await context.resolveSelection('ids', 'LIST  Select objects:');
+    final ids = await context.resolveSelection(
+      'ids',
+      context.commandPrompt('LIST', context.l10n.prompt_select_objects),
+    );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final records = <Map<String, Object?>>[];
     var written = 0;

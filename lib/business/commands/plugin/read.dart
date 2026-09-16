@@ -29,14 +29,20 @@ class PluginsReadCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final id = await context.resolveText('id', 'Extension id:');
+    final id = await context.resolveText(
+      'id',
+      context.l10n.prompt_extension_id,
+    );
     final handle = plugins.host.plugin(id);
     if (handle == null) return CommandResult.failed('$id is not installed');
     final directory = handle.manifest.directory;
     if (directory.isEmpty) {
       return CommandResult.failed('$id has no folder on disk');
     }
-    final relative = await context.resolveText('path', 'File to read:');
+    final relative = await context.resolveText(
+      'path',
+      context.l10n.prompt_file_to_read,
+    );
     final file = resolveInside(directory, relative);
     if (file == null) {
       return CommandResult.failed(

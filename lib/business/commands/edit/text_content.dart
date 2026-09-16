@@ -36,7 +36,10 @@ class EditTextContentCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'DDEDIT  Select text, mtext or a dimension:',
+      context.commandPrompt(
+        'DDEDIT',
+        context.l10n.prompt_select_text_mtext_dim,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final targets = <CadEntity>[
@@ -53,7 +56,7 @@ class EditTextContentCommand extends FanCadCommand {
     final incoming = context.args.has('text')
         ? (context.args.text('text') ?? '')
         : await context.input.text(
-            'DDEDIT  Enter new text:',
+            context.commandPrompt('DDEDIT', context.l10n.prompt_enter_new_text),
             defaultValue: textEditFieldValue(targets.first),
           );
     final text = context.args.has('text')

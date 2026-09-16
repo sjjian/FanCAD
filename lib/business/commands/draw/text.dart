@@ -59,7 +59,7 @@ class DrawTextCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final content = await context.resolveText(
       'content',
-      'TEXT  Enter the text:',
+      context.commandPrompt('TEXT', context.l10n.prompt_enter_text),
     );
     if (content.isEmpty) {
       return const CommandResult.cancelled('No text was entered.');
@@ -80,7 +80,10 @@ class DrawTextCommand extends FanCadCommand {
         (style.height > 0
             ? style.height
             : await context.input.number(
-                'TEXT  Specify height:',
+                context.commandPrompt(
+                  'TEXT',
+                  context.l10n.prompt_specify_height,
+                ),
                 defaultValue: 2.5,
               ));
     if (height <= 0) {
@@ -103,7 +106,10 @@ class DrawTextCommand extends FanCadCommand {
     });
     final at = await context.resolvePoint(
       'at',
-      'TEXT  Specify insertion point:',
+      context.commandPrompt(
+        'TEXT',
+        context.l10n.prompt_specify_insertion_point,
+      ),
     );
     context.input.setPreview(null);
 

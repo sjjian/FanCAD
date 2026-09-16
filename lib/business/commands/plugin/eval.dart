@@ -33,8 +33,14 @@ class PluginsEvalCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final id = await context.resolveText('id', 'Extension id:');
-    final source = await context.resolveText('source', 'JavaScript:');
+    final id = await context.resolveText(
+      'id',
+      context.l10n.prompt_extension_id,
+    );
+    final source = await context.resolveText(
+      'source',
+      context.l10n.prompt_javascript,
+    );
     if (plugins.host.plugin(id) == null) {
       return CommandResult.failed('$id is not installed');
     }

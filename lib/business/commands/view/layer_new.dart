@@ -29,7 +29,10 @@ class LayerNewCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final name = await context.resolveText('name', 'Enter a layer name:');
+    final name = await context.resolveText(
+      'name',
+      context.l10n.prompt_enter_a_layer_name,
+    );
     if (name.trim().isEmpty) {
       return const CommandResult.failed('A layer needs a name.');
     }

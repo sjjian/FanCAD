@@ -51,13 +51,16 @@ class EditAlignCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'ALIGN  Select objects to align:',
+      context.commandPrompt(
+        'ALIGN',
+        context.l10n.prompt_select_objects_to_align,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
 
     final source1 = await context.resolvePoint(
       'source1',
-      'ALIGN  Specify first source point:',
+      context.commandPrompt('ALIGN', context.l10n.prompt_specify_first_source),
     );
     installTransformPreview(
       context,
@@ -67,7 +70,7 @@ class EditAlignCommand extends FanCadCommand {
     );
     final dest1 = await context.resolvePoint(
       'dest1',
-      'ALIGN  Specify first destination point:',
+      context.commandPrompt('ALIGN', context.l10n.prompt_specify_first_dest),
       basePoint: source1,
     );
     context.input.setPreview(null);
@@ -75,7 +78,10 @@ class EditAlignCommand extends FanCadCommand {
     var source2 = context.args.point('source2');
     if (source2 == null && context.input.isInteractive) {
       source2 = await context.input.pointOrNull(
-        'ALIGN  Specify second source point or press Enter:',
+        context.commandPrompt(
+          'ALIGN',
+          context.l10n.prompt_specify_second_source_or_enter,
+        ),
       );
     }
 
@@ -93,7 +99,7 @@ class EditAlignCommand extends FanCadCommand {
       );
       dest2 = await context.resolvePoint(
         'dest2',
-        'ALIGN  Specify second destination point:',
+        context.commandPrompt('ALIGN', context.l10n.prompt_specify_second_dest),
         basePoint: dest1,
       );
       context.input.setPreview(null);
@@ -105,7 +111,7 @@ class EditAlignCommand extends FanCadCommand {
         context.args.boolean('scale') == null &&
         context.input.isInteractive) {
       scale = await context.input.confirm(
-        'Scale objects based on alignment points?',
+        context.l10n.prompt_scale_objects_align,
       );
     }
 

@@ -1654,6 +1654,1159 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_plugins_eval => '在扩展中求值';
 
   @override
+  String get command_file_list => '列出图纸';
+
+  @override
+  String get command_file_activate => '激活图纸';
+
+  @override
+  String get command_draw_attdef => '属性定义';
+
+  @override
+  String get command_edit_attedit => '编辑属性';
+
+  @override
+  String get command_view_units => '单位';
+
+  @override
+  String get command_file_new_desc => '在新标签页中创建空图形。';
+
+  @override
+  String get command_file_open_desc => '打开 DWG 或 DXF 文件。';
+
+  @override
+  String get command_file_save_desc => '保存此命令所针对的图形；从未保存过时会询问路径。';
+
+  @override
+  String get command_file_save_as_desc => '将此命令所针对的图形保存到新文件。';
+
+  @override
+  String get command_file_close_desc => '关闭此命令所针对的图形。';
+
+  @override
+  String get command_file_open_recent_desc => '重新打开最近用过的文件。';
+
+  @override
+  String get command_file_audit_desc => '把图形写到临时 DXF，并报告往返会丢失的内容。';
+
+  @override
+  String get command_file_list_desc =>
+      '列出每个打开的图纸标签页：id、标题、路径、是否已修改、是否为当前、实体数量和当前布局。用 id 作为 fancad 的标签选择器，即可不切换界面操作某张图。';
+
+  @override
+  String get command_file_activate_desc =>
+      '把已打开的图纸带到前台。传入 file.list 的 id，或唯一的路径或标题。';
+
+  @override
+  String get command_draw_line_desc => '绘制一条或多条相连的直线段。提供起点和终点可非交互地画单段。';
+
+  @override
+  String get command_draw_polyline_desc => '将相连的线段画成一条多段线。传入点数组可非交互创建。';
+
+  @override
+  String get command_draw_spline_desc =>
+      '绘制夹紧 B 样条。控制点模式把曲线拉向单击处，只保证两端；拟合模式穿过每一点。传入点数组可非交互创建。';
+
+  @override
+  String get command_draw_rectangle_desc => '将轴对齐矩形画成闭合多段线。';
+
+  @override
+  String get command_draw_circle_desc => '由圆心和半径绘制圆。';
+
+  @override
+  String get command_draw_circle_2p_desc => '以两点连线为直径绘制圆。';
+
+  @override
+  String get command_draw_circle_3p_desc => '绘制过指定三点的唯一圆。';
+
+  @override
+  String get command_draw_circle_ttr_desc =>
+      '绘制给定半径、与两条直线/圆/圆弧相切的圆。在每个对象上的拾取决定侧向（对圆还区分外切与内切）。';
+
+  @override
+  String get command_draw_donut_desc =>
+      '由内径和外径绘制填充圆环。内径为零则是实心圆盘。结果是闭合的宽多段线，与 DWG 中圆环的存法一致。';
+
+  @override
+  String get command_draw_arc_desc => '通过三点绘制圆弧：起点、圆弧上一点、终点。';
+
+  @override
+  String get command_draw_polygon_desc => '绘制内接于圆的正多边形。';
+
+  @override
+  String get command_draw_ellipse_desc => '由中心、一条轴的端点、到另一条轴的距离绘制椭圆。';
+
+  @override
+  String get command_draw_xline_desc => '过一点沿给定方向绘制无限构造线。第二点只定角度；两侧无限延伸。';
+
+  @override
+  String get command_draw_ray_desc => '从起点穿过第二点绘制半无限射线。与构造线不同，它有起点。';
+
+  @override
+  String get command_draw_point_desc => '放置点标记。';
+
+  @override
+  String get command_draw_divide_desc =>
+      '在直线、多段线、圆弧或圆上放置等分点标记。开口对象不标记端点；圆或闭合多段线在每一等分处放置标记。凸度按圆弧走，不按弦。';
+
+  @override
+  String get command_draw_measure_desc =>
+      '沿直线、多段线、圆弧或圆按固定间距放置点标记。开口对象从较近一端开始；圆从拾取点开始。不标记端点。凸度按圆弧走，不按弦。';
+
+  @override
+  String get command_draw_text_desc =>
+      '放置单行文字。样式默认为当前 TEXTSTYLE。对正为 Left、Center、Right 或如 TL 的角点代码。';
+
+  @override
+  String get command_draw_mtext_desc =>
+      '放置多行文字。换行变为 \\P。宽度 0 不换行。对正为 TL…BR 或附着点 1–9（1 为左上）。';
+
+  @override
+  String get command_draw_attdef_desc =>
+      '放置属性定义。把它放进块后，INSERT 和 ATTEDIT 才能填写该标签，用于标题栏和明细表。';
+
+  @override
+  String get command_draw_leader_desc =>
+      '从箭头尖经过一个或多个顶点绘制引线。可选注释文字落在末点的水平着陆线上，与 AutoCAD LEADER 的标注方式相同。';
+
+  @override
+  String get command_draw_hatch_desc => '填充内部点周围的区域，或选定闭合边界围成的区域。四条相接的直线仍算作边界。';
+
+  @override
+  String get command_draw_dim_linear_desc =>
+      '放置水平或垂直标注。尺寸线拾取决定轴向：原点上方或下方测宽度，左侧或右侧测高度。一条直线可代替两个原点。';
+
+  @override
+  String get command_draw_dim_aligned_desc =>
+      '放置与两原点平行的标注。文字是真实距离，不是水平或垂直分量。一条直线可代替两个原点。';
+
+  @override
+  String get command_draw_dim_radius_desc =>
+      '在圆或圆弧上放置半径标注。第二次拾取是箭头尖；文字为半径，前缀 R。';
+
+  @override
+  String get command_draw_dim_diameter_desc =>
+      '在圆或圆弧上放置直径标注。第二次拾取是箭头尖；文字为直径，前缀 Ø。';
+
+  @override
+  String get command_draw_center_mark_desc =>
+      '在选定圆或圆弧上绘制圆心标记。中心处为短十字；可选延长线越过圆周，即常见的 DIMCENTER。';
+
+  @override
+  String get command_draw_center_line_desc =>
+      '在两条平行线之间，或两个圆/圆弧的圆心之间绘制中心线。线段跨越两个对象并略微伸出两端。';
+
+  @override
+  String get command_draw_dim_angular_desc =>
+      '放置角度标注。拾取圆弧则圆心为顶点；拾取两条直线则交点为顶点；最后一拾取落在尺寸弧上并选择标注哪个扇区。提供顶点时三点方式仍可用。';
+
+  @override
+  String get command_draw_dim_continue_desc =>
+      '从上一条的第二原点放置下一条线性或对齐标注，共用同一尺寸线。连续指定下一点可沿一排特征走。';
+
+  @override
+  String get command_draw_dim_baseline_desc =>
+      '从同一第一原点放置下一条线性或对齐标注，尺寸线向外错开。连续指定下一点可叠放总体尺寸。';
+
+  @override
+  String get command_annot_dimstyle_desc =>
+      '创建或编辑标注样式。重新生成的标注从命名样式读取文字高度、箭头大小、尺寸界线偏移、比例和小数位数。省略名称则列出样式，或编辑当前样式。';
+
+  @override
+  String get command_annot_textstyle_desc =>
+      '创建或编辑文字样式。新建 TEXT 和 MTEXT 从命名样式读取字体、固定高度、宽度因子和倾斜角。省略名称则列出样式，或编辑当前样式。';
+
+  @override
+  String get command_edit_erase_desc => '删除选定对象。';
+
+  @override
+  String get command_edit_overkill_desc =>
+      '删除完全重合的几何副本，并把重叠或首尾相接的共线直线收成一笔。保留第一份并拉到并集。省略 ids 表示整个当前空间，以免残留选择集挡住其余重复。';
+
+  @override
+  String get command_edit_move_desc => '按位移移动选定对象。';
+
+  @override
+  String get command_edit_copy_desc => '将选定对象复制到一个或多个位置。每指定一个第二点就再放一份。';
+
+  @override
+  String get command_edit_copy_clip_desc =>
+      '将选定对象复制到剪贴板。选择集左下角为粘贴基点。可用 PASTECLIP 粘到本图或其他标签页。';
+
+  @override
+  String get command_edit_copy_base_desc =>
+      '将选定对象复制到剪贴板，并指定基点，以便 PASTECLIP 把该点落到插入处。';
+
+  @override
+  String get command_edit_cut_clip_desc =>
+      '将选定对象复制到剪贴板并从图形中删除。锁定图层上的对象留下；剪贴板仍持有副本。';
+
+  @override
+  String get command_edit_paste_clip_desc => '在插入点粘贴剪贴板对象。存储的基点落到该单击处。';
+
+  @override
+  String get command_edit_paste_orig_desc => '按源图中的坐标粘贴剪贴板对象，不再询问插入点。';
+
+  @override
+  String get command_edit_paste_block_desc => '将剪贴板对象作为匿名块参照粘贴。存储的基点落到所拾取的插入点。';
+
+  @override
+  String get command_edit_stretch_desc => '移动跨越窗口内的顶点，其余锚定。窗口完全包住的对象整体移动。';
+
+  @override
+  String get command_edit_rotate_desc => '绕基点旋转选定对象。角度以度为单位，逆时针。';
+
+  @override
+  String get command_edit_scale_desc => '绕基点均匀缩放选定对象。';
+
+  @override
+  String get command_edit_mirror_desc => '将选定对象沿一条直线镜像。';
+
+  @override
+  String get command_edit_align_desc =>
+      '移动选择集，使源点落到目标点。第二对点按两个方向旋转对齐；可选缩放匹配两段长度。';
+
+  @override
+  String get command_edit_array_desc => '将选定对象复制成矩形阵列。';
+
+  @override
+  String get command_edit_polar_array_desc =>
+      '绕中心旋转复制选定对象。填充 360° 则沿整圆均分；更小的填充从原对象起包含该角。';
+
+  @override
+  String get command_edit_offset_desc => '按固定距离创建直线、圆弧、圆和多段线的平行副本。';
+
+  @override
+  String get command_edit_trim_desc =>
+      '将直线、多段线或圆弧缩短到与选定剪切边的交点。包含拾取点的部分被去掉。闭合多段线会打开；凸度在圆弧上切，不在弦上切。';
+
+  @override
+  String get command_edit_extend_desc =>
+      '延长直线、开口多段线或圆弧，直到碰到选定边界边。凸度沿其所在圆增长。多段线或圆弧上的拾取决定移动哪一端。';
+
+  @override
+  String get command_edit_fillet_desc =>
+      '用给定半径的圆弧圆角两条直线之间的角，或多段线顶点。传入 all=true 可圆角多段线每个直角。半径为零则修剪或延伸成尖角。';
+
+  @override
+  String get command_edit_chamfer_desc =>
+      '在两条直线之间，或多段线顶点处切出直线倒角。传入 all=true 可倒每个直角。距离为零则修剪或延伸成尖角。';
+
+  @override
+  String get command_edit_break_desc =>
+      '在一点打断直线、多段线或圆弧，或删除两点之间的部分。凸度拆成两段较小圆弧。圆需要两点，保留从第二次拾取逆时针回到第一点的残余。省略第二点则只打断（圆弧和开口链）。';
+
+  @override
+  String get command_edit_lengthen_desc =>
+      '通过移动所拾取的一端，改变直线、开口多段线或圆弧的长度。凸度沿圆弧增减。可指定总长，或带符号增量加到当前长度。圆弧不能闭合成整圆。';
+
+  @override
+  String get command_edit_explode_desc =>
+      '将多段线打成线段，将块参照打成其内容的副本，将标注打成所绘的线、箭头和文字。';
+
+  @override
+  String get command_edit_block_desc =>
+      '用选定对象定义命名块，并在基点用一个插入替换它们，图面看起来不变，之后还能再次插入该定义。';
+
+  @override
+  String get command_edit_insert_desc =>
+      '放置一个或多个命名块参照。缩放为均匀缩放；旋转以度为单位。传入点数组可在多处盖同一块。';
+
+  @override
+  String get command_edit_minsert_desc =>
+      '将命名块的矩形阵列作为一次插入放置。这些副本仍是一个对象，移动插入即移动整组。';
+
+  @override
+  String get command_block_purge_desc =>
+      '删除没有任何插入引用的命名块定义。同一轮也会清掉套在其中的未用定义。外部参照和布局块不动。';
+
+  @override
+  String get command_block_rename_desc =>
+      '重命名块定义，并更新仍指向旧名的所有插入。布局块、匿名块和外部参照不能重命名。';
+
+  @override
+  String get command_edit_join_desc =>
+      '将端点相接的选定直线、圆弧和开口多段线接成一条多段线。相接方向相反时该段会反向；两端相接的环存为闭合。';
+
+  @override
+  String get command_edit_close_desc => '连接末顶点与第一顶点，闭合选定的开口多段线。已经闭合的不动。';
+
+  @override
+  String get command_edit_open_desc => '去掉闭合段，打开选定的闭合多段线。顶点保留，只断开闭环。';
+
+  @override
+  String get command_edit_polyline_width_desc =>
+      '设置选定多段线的恒定宽度。零为细线；圆环用同一字段，因此画完后改宽线也走这里。';
+
+  @override
+  String get command_edit_hatch_desc => '更改选定填充的图案、比例或角度。省略某字段则保持原值。角度以度为单位。';
+
+  @override
+  String get command_edit_to_polyline_desc => '将选定直线变成两顶点多段线，以便作为链闭合、打开或反向。';
+
+  @override
+  String get command_edit_reverse_desc =>
+      '反转选定直线和多段线的方向。形状不变，起终点对调，对线型和沿链行走的命令有意义。';
+
+  @override
+  String get command_edit_undo_desc => '撤销最近一次更改。';
+
+  @override
+  String get command_edit_redo_desc => '重新应用最近撤销的更改。';
+
+  @override
+  String get command_edit_change_layer_desc => '将选定对象移到另一图层。';
+
+  @override
+  String get command_edit_change_color_desc =>
+      '设置选定对象的颜色。接受 AutoCAD 颜色索引（1–255）、#rrggbb 或 ByLayer。';
+
+  @override
+  String get command_edit_change_linetype_desc =>
+      '设置选定对象的线型。库存名（DASHED、HIDDEN、CENTER、PHANTOM、DOT、DASHDOT、DIVIDE、Continuous）以及 ByLayer、ByBlock 均可。';
+
+  @override
+  String get command_edit_change_lineweight_desc =>
+      '设置选定对象的线宽。接受毫米值（0.25）、百分之一毫米（25）、ByLayer、ByBlock、Default 或 hairline。';
+
+  @override
+  String get command_edit_dimension_text_desc =>
+      '覆盖选定标注的文字。空则恢复测量值；<> 代表该值；单个空格隐藏文字。';
+
+  @override
+  String get command_edit_dim_tedit_desc =>
+      '将选定标注的文字移到新位置。线性标注的尺寸线跟随移动且不交换宽高；对齐、径向和角度标注保持类型。';
+
+  @override
+  String get command_edit_text_content_desc =>
+      '更改选定文字、多行文字、标注、属性或引线的内容。对标注，空则恢复测量值。';
+
+  @override
+  String get command_edit_text_object_desc =>
+      '在一次撤销中更新选定文字、多行文字、属性或引线的内容、高度、颜色、对正、旋转、样式、列宽、宽度因子或倾斜。标注文字高度是标注样式属性，会被忽略。';
+
+  @override
+  String get command_edit_justify_text_desc =>
+      '更改选定文字或多行文字的对正，并移动插入点使字形留在原处。不提供 Align 和 Fit，它们需要第二点。';
+
+  @override
+  String get command_edit_match_prop_desc =>
+      '将源对象的图层、颜色、线型、线宽及其他显示特性复制到目标对象。可见性不动，以免破坏隔离和隐藏。';
+
+  @override
+  String get command_edit_attedit_desc => '更改块参照上的属性值。常量标签保持定义中的写法。';
+
+  @override
+  String get command_view_zoom_extents_desc => '使整个图形适应窗口。';
+
+  @override
+  String get command_view_zoom_window_desc => '缩放到指定的矩形。';
+
+  @override
+  String get command_view_zoom_in_desc => '以视图中心放大。';
+
+  @override
+  String get command_view_zoom_out_desc => '以视图中心缩小。';
+
+  @override
+  String get command_view_zoom_selected_desc => '使选定对象适应窗口。';
+
+  @override
+  String get command_view_regen_desc => '重建显示列表，丢弃缓存的曲线细分。';
+
+  @override
+  String get command_view_units_desc =>
+      '设置写入 \$INSUNITS 的图形插入单位。坐标仍用这些单位；该值供导入器和查询做换算。';
+
+  @override
+  String get command_workbench_preferences_desc => '打开应用程序设置对话框。';
+
+  @override
+  String get command_select_all_desc => '选择当前空间中每个可选对象。';
+
+  @override
+  String get command_select_none_desc => '清除选择。';
+
+  @override
+  String get command_select_invert_desc => '选择当前未选中的所有对象。';
+
+  @override
+  String get command_select_similar_desc => '把选择扩展到同一类型和图层的每个对象。';
+
+  @override
+  String get command_select_by_layer_desc => '选择指定图层上的每个对象。';
+
+  @override
+  String get command_select_by_color_desc =>
+      '选择存储颜色匹配 ACI、#rrggbb、ByLayer 或 ByBlock 的每个对象。图层继承的红与 ACI 1 不是一回事。';
+
+  @override
+  String get command_select_by_linetype_desc =>
+      '选择存储线型匹配给定名称、ByLayer 或 ByBlock 的每个对象。';
+
+  @override
+  String get command_select_by_lineweight_desc =>
+      '选择存储线宽匹配毫米值、百分之一毫米、ByLayer、ByBlock、Default 或 hairline 的每个对象。图层继承的 0.25 mm 与 25 不是一回事。';
+
+  @override
+  String get command_select_by_type_desc =>
+      '选择当前空间中某一种实体。LINE、CIRCLE、INSERT、DIMENSION 及其他 FanCAD 类型可用；LWPOLYLINE 和 BLOCK 分别当作多段线和插入。';
+
+  @override
+  String get command_select_by_block_desc =>
+      '选择当前空间中某个命名块的每一次插入。名称不区分大小写，与 INSERT 和 RENAME 的查找方式相同。';
+
+  @override
+  String get command_view_isolate_objects_desc =>
+      '隐藏当前空间中除选择集以外的每个对象，让其余图形让开但并不删除。';
+
+  @override
+  String get command_view_hide_objects_desc => '隐藏选定对象而不删除。';
+
+  @override
+  String get command_view_unisolate_objects_desc => '显示当前空间中被隔离或隐藏关掉的每个对象。';
+
+  @override
+  String get command_layer_new_desc => '创建图层并设为当前。';
+
+  @override
+  String get command_layer_set_current_desc => '选择新建对象所在的图层。';
+
+  @override
+  String get command_layer_toggle_visible_desc => '打开或关闭图层。';
+
+  @override
+  String get command_layer_isolate_desc => '关闭除指定图层外的所有图层。';
+
+  @override
+  String get command_layer_show_all_desc => '重新打开所有图层。';
+
+  @override
+  String get command_layer_toggle_lock_desc => '锁定或解锁图层。锁定图层上的对象仍可见，但不能修改。';
+
+  @override
+  String get command_layer_delete_desc => '删除图层及其上的所有对象。名为 0 的图层不能删除。';
+
+  @override
+  String get command_layer_purge_desc =>
+      '删除没有任何对象使用的图层。图层 0 保留；若当前图层为空，先切回 0 再清理。';
+
+  @override
+  String get command_query_summary_desc =>
+      '返回图形的紧凑统计：范围、按类型的实体计数、以及每层计数。查询内容前先用它了解图纸。';
+
+  @override
+  String get command_query_list_desc => '报告选定对象的完整特性。';
+
+  @override
+  String get command_query_entities_desc =>
+      '按可选过滤器查找实体，返回其 id 和特性。用图层、类型和包围窗口把大图缩到关心的部分。';
+
+  @override
+  String get command_query_selection_desc =>
+      '将当前选择集作为结构化记录返回（id、类型、图层、范围、简要几何）。用它代替猜测 id。空选择是成功的空列表，不是提示。';
+
+  @override
+  String get command_query_viewport_desc =>
+      '返回活动相机：中心、比例和可见窗口 [minX, minY, maxX, maxY]。把该窗口传给 query.entities 可列出用户正在看的内容。';
+
+  @override
+  String get command_query_id_desc => '报告一点的 X、Y 坐标。需要位置而不是两点距离时用此命令。';
+
+  @override
+  String get command_query_distance_desc => '测量两点之间的距离和角度。';
+
+  @override
+  String get command_query_angle_desc => '测量顶点处两条射线的夹角。第一点是顶点；后两点定义两边。';
+
+  @override
+  String get command_query_area_desc => '报告选定闭合对象的面积和周长。';
+
+  @override
+  String get command_query_layers_desc => '返回每个图层及其状态和对象数量。';
+
+  @override
+  String get command_layout_list_desc => '列出模型和图纸空间布局及其视口。';
+
+  @override
+  String get command_layout_set_desc => '切换活动布局（模型或图纸标签）。';
+
+  @override
+  String get command_layout_new_desc =>
+      '添加图纸空间布局标签页并打开。图纸默认为 A4 横向；可传入宽高（毫米）覆盖。';
+
+  @override
+  String get command_layout_delete_desc =>
+      '删除图纸空间布局标签页及该页上的实体。不能删除模型。省略名称则删除当前标签页。';
+
+  @override
+  String get command_layout_copy_desc => '复制图纸空间布局：图纸尺寸、视口以及该页上的实体。不能复制模型。';
+
+  @override
+  String get command_layout_rename_desc => '重命名图纸布局标签。图纸、视口和图纸实体不动。不能重命名模型。';
+
+  @override
+  String get command_layout_order_desc =>
+      '在布局条中移动图纸标签。模型始终第一。index 是在图纸标签中的目标位置（0 为第一张图纸）。也可传入 before / after 另一标签名。';
+
+  @override
+  String get command_layout_pagesetup_desc =>
+      '更改布局的图纸尺寸（毫米）、打印旋转（0、90、180 或 270）、比例或适应图纸、偏移以及可选打印窗口。省略名称则编辑当前图纸标签。模型没有图纸。';
+
+  @override
+  String get command_layout_mview_desc =>
+      '在当前图纸布局上开一个看向模型空间的窗口。除非提供比例，否则模型会框进该矩形。';
+
+  @override
+  String get command_layout_vpscale_desc =>
+      '设置图纸视口的比例（每个图纸单位对应的模型单位）。传入 fit=true 则重新框住模型。锁定的视口会被拒绝。';
+
+  @override
+  String get command_layout_vplock_desc =>
+      '锁定或解锁图纸视口，使 VPSCALE 不能改视图。省略 locked 则切换。窗口边框仍可移动。';
+
+  @override
+  String get command_layout_vpon_desc =>
+      '打开或关闭图纸视口。关闭的窗口保留边框但隐藏模型，打印时跳过。省略 on 则切换。';
+
+  @override
+  String get command_layout_vplayer_desc =>
+      '在一个图纸视口中冻结或解冻图层。其他窗口和模型空间保持各自的可见性。省略 freeze 则冻结。';
+
+  @override
+  String get command_layout_vpmax_desc => '按图纸视口框入模型空间，以便通过该窗口编辑模型。VPMIN 返回图纸。';
+
+  @override
+  String get command_layout_vpmin_desc => '返回 VPMAX 离开的图纸布局并框住该页。';
+
+  @override
+  String get command_print_export_svg_desc =>
+      '将布局打印为 SVG 文件。省略布局名则打印当前标签页。路径为 .pdf 则改为矢量 PDF。传入 corner1 和 corner2 可打印窗口；否则使用布局存储的打印窗口或整张图纸。';
+
+  @override
+  String get command_print_export_pdf_desc =>
+      '将布局打印为矢量 PDF。省略布局名则打印当前标签页。图纸尺寸成为页面 MediaBox；视口被裁剪。传入 corner1 和 corner2 可打印窗口。';
+
+  @override
+  String get command_xref_attach_desc =>
+      '将另一图纸作为外部参照加载并放到模型空间。再次附着同一路径即重新加载；已有插入保持位置。';
+
+  @override
+  String get command_xref_reload_desc =>
+      '从存储路径重新读取已附着的外部参照。省略名称则重载选定的外部参照，或图中唯一的外部参照。';
+
+  @override
+  String get command_xref_detach_desc =>
+      '移除外部参照以及显示它的每次插入。省略名称则拆离选定的外部参照，或图中唯一的外部参照。';
+
+  @override
+  String get command_xref_bind_desc =>
+      '把外部参照变成本地块，图形不再依赖该文件。插入位置不变。省略名称则绑定选定的外部参照，或图中唯一的外部参照。';
+
+  @override
+  String get command_plugins_list_desc => '列出已安装扩展及其状态、版本和所贡献的命令。';
+
+  @override
+  String get command_plugins_reload_desc => '从磁盘重新读取扩展并重新求值，无需重启即可拿到代码和清单的更改。';
+
+  @override
+  String get command_plugins_enable_desc => '加载扩展，使其可以再次贡献命令。';
+
+  @override
+  String get command_plugins_disable_desc => '卸载扩展，在重新启用前不再激活。';
+
+  @override
+  String get command_plugins_logs_desc => '打印扩展记录的日志，用于排查失败。';
+
+  @override
+  String get command_plugins_scaffold_desc =>
+      '写入带清单和可运行 main.js 的新扩展文件夹并加载。返回写入的路径。';
+
+  @override
+  String get command_plugins_write_desc => '覆盖扩展文件夹内的一个文件。路径限制在该文件夹内。';
+
+  @override
+  String get command_plugins_read_desc => '读取扩展文件夹中的一个文件。';
+
+  @override
+  String get command_plugins_typings_desc =>
+      '根据实时命令注册表重新生成 fancad.d.ts，使编辑器和模型看到真实 API。';
+
+  @override
+  String get command_plugins_edit_desc => '在内置编辑器中打开扩展文件，以便查看或修改 AI 编写循环写下的内容。';
+
+  @override
+  String get command_plugins_eval_desc =>
+      '在扩展作用域中运行 JavaScript 表达式。用于调试；扩展能做的它都能做。';
+
+  @override
+  String command_step(String verb, String step) {
+    return '$verb  $step';
+  }
+
+  @override
+  String get prompt_specify_first_point => '指定第一点:';
+
+  @override
+  String get prompt_specify_next_point_esc => '指定下一点（按 Escape 结束）:';
+
+  @override
+  String get prompt_specify_second_point => '指定第二点:';
+
+  @override
+  String get prompt_specify_second_point_esc => '指定第二点（按 Escape 结束）:';
+
+  @override
+  String get prompt_specify_base_point => '指定基点:';
+
+  @override
+  String get prompt_select_objects => '选择对象:';
+
+  @override
+  String get prompt_specify_center => '指定中心:';
+
+  @override
+  String get prompt_specify_center_point => '指定圆心:';
+
+  @override
+  String get prompt_specify_radius => '指定半径:';
+
+  @override
+  String get prompt_specify_first_corner => '指定第一个角点:';
+
+  @override
+  String get prompt_specify_opposite_corner => '指定对角点:';
+
+  @override
+  String get prompt_specify_insertion_point => '指定插入点:';
+
+  @override
+  String get prompt_specify_next_insertion_esc => '指定下一插入点（按 Escape 结束）:';
+
+  @override
+  String get prompt_specify_height => '指定高度:';
+
+  @override
+  String get prompt_specify_start_point => '指定起点:';
+
+  @override
+  String get prompt_specify_through_point => '指定通过点:';
+
+  @override
+  String get prompt_specify_end_point => '指定端点:';
+
+  @override
+  String get prompt_specify_a_point => '指定一点:';
+
+  @override
+  String get prompt_specify_a_location => '指定位置:';
+
+  @override
+  String get prompt_specify_point => '指定点:';
+
+  @override
+  String get prompt_specify_vertex => '指定顶点:';
+
+  @override
+  String get prompt_specify_dim_line => '指定尺寸线位置:';
+
+  @override
+  String get prompt_specify_first_ext_origin => '指定第一条尺寸界线原点:';
+
+  @override
+  String get prompt_specify_second_ext_origin => '指定第二条尺寸界线原点:';
+
+  @override
+  String get prompt_specify_next_ext_origin => '指定下一条尺寸界线原点:';
+
+  @override
+  String get prompt_specify_second_ext_origin_alt => '指定第二条尺寸界线原点:';
+
+  @override
+  String get prompt_specify_dim_arc => '指定尺寸弧位置:';
+
+  @override
+  String get prompt_specify_rotation_angle => '指定旋转角度:';
+
+  @override
+  String get prompt_specify_new_height => '指定新高度:';
+
+  @override
+  String get prompt_specify_width_factor => '指定宽度因子:';
+
+  @override
+  String get prompt_specify_oblique => '指定倾斜角:';
+
+  @override
+  String get prompt_specify_column_width => '指定列宽:';
+
+  @override
+  String get prompt_specify_attachment_point => '指定附着点:';
+
+  @override
+  String get prompt_specify_scale_factor => '指定比例因子（或拾取距离）:';
+
+  @override
+  String get prompt_specify_offset_distance => '指定偏移距离:';
+
+  @override
+  String get prompt_specify_offset_side => '指定要偏移的一侧上的点:';
+
+  @override
+  String get prompt_specify_fillet_radius => '指定圆角半径:';
+
+  @override
+  String get prompt_specify_inside_diameter => '指定内径:';
+
+  @override
+  String get prompt_specify_outside_diameter => '指定外径:';
+
+  @override
+  String get prompt_specify_center_of_donut => '指定圆环中心:';
+
+  @override
+  String get prompt_specify_total_length => '指定总长:';
+
+  @override
+  String get prompt_specify_segment_length => '指定分段长度:';
+
+  @override
+  String get prompt_specify_stretch_point => '指定拉伸点:';
+
+  @override
+  String get prompt_idle_select => '选择对象或指定命令:';
+
+  @override
+  String get prompt_enter_layer_name => '输入图层名:';
+
+  @override
+  String get prompt_enter_a_layer_name => '输入图层名:';
+
+  @override
+  String get prompt_extension_id => '扩展 id:';
+
+  @override
+  String get prompt_enter_block_name => '输入块名:';
+
+  @override
+  String get prompt_enter_text => '输入文字:';
+
+  @override
+  String get prompt_select_closed_objects => '选择闭合对象:';
+
+  @override
+  String get prompt_select_viewport => '选择视口:';
+
+  @override
+  String get prompt_selected_viewport => '已选择视口';
+
+  @override
+  String get prompt_enter_colour => '输入颜色（1-255、#rrggbb 或 ByLayer）:';
+
+  @override
+  String get prompt_javascript => 'JavaScript:';
+
+  @override
+  String get prompt_svg_path => 'SVG 路径:';
+
+  @override
+  String get prompt_pdf_path => 'PDF 路径:';
+
+  @override
+  String get prompt_layout_name => '布局名:';
+
+  @override
+  String get prompt_layout_to_copy => '要复制的布局:';
+
+  @override
+  String get prompt_layout_to_delete => '要删除的布局:';
+
+  @override
+  String get prompt_layout_to_move => '要移动的布局:';
+
+  @override
+  String get prompt_layout_to_rename => '要重命名的布局:';
+
+  @override
+  String get prompt_drawing_to_attach => '要附着的图形:';
+
+  @override
+  String get prompt_file_to_write => '要写入的文件:';
+
+  @override
+  String get prompt_file_to_read => '要读取的文件:';
+
+  @override
+  String get prompt_select_objects_to_erase => '选择要删除的对象:';
+
+  @override
+  String get prompt_select_objects_to_array => '选择要阵列的对象:';
+
+  @override
+  String get prompt_select_objects_to_align => '选择要对齐的对象:';
+
+  @override
+  String get prompt_select_objects_to_rotate => '选择要旋转的对象:';
+
+  @override
+  String get prompt_select_objects_to_scale => '选择要缩放的对象:';
+
+  @override
+  String get prompt_select_objects_to_mirror => '选择要镜像的对象:';
+
+  @override
+  String get prompt_select_objects_to_offset => '选择要偏移的对象:';
+
+  @override
+  String get prompt_select_objects_to_explode => '选择要分解的对象:';
+
+  @override
+  String get prompt_select_objects_to_hide => '选择要隐藏的对象:';
+
+  @override
+  String get prompt_select_objects_keep_visible => '选择要保持可见的对象:';
+
+  @override
+  String get prompt_select_objects_recolour => '选择要重新着色的对象:';
+
+  @override
+  String get prompt_select_objects_change_layer => '选择要移到另一图层的对象:';
+
+  @override
+  String get prompt_select_text_objects => '选择文字对象:';
+
+  @override
+  String get prompt_textobject_options => '指定文字、高度、颜色、对正、旋转、样式、列宽、宽度因子或倾斜:';
+
+  @override
+  String prompt_place_n_points(int count) {
+    return '放置 $count 个点？';
+  }
+
+  @override
+  String prompt_specify_first_kind_point(String kind) {
+    return '指定第一个$kind点:';
+  }
+
+  @override
+  String prompt_specify_next_kind_point_esc(String kind) {
+    return '指定下一个$kind点（按 Escape 结束）:';
+  }
+
+  @override
+  String prompt_selected_object(String entity, String layer) {
+    return '已选择 $entity，图层 $layer';
+  }
+
+  @override
+  String prompt_objects_selected(int count) {
+    return '已选择 $count 个对象';
+  }
+
+  @override
+  String prompt_selection_found(String message, int count) {
+    return '$message（已找到 $count 个，按 Enter 确认）';
+  }
+
+  @override
+  String get prompt_enter_annotation_none => '输入注释文字 <无>:';
+
+  @override
+  String get prompt_enter_attribute_tag => '输入属性标签:';
+
+  @override
+  String get prompt_enter_block_name_to_change => '输入要更改的块名:';
+
+  @override
+  String get prompt_enter_default_value => '输入默认值:';
+
+  @override
+  String get prompt_enter_dimension_text => '输入标注文字（<> = 测量值）:';
+
+  @override
+  String get prompt_enter_justification =>
+      '输入对正 [Left/Center/Right/TL/TC/TR/ML/MC/MR/BL/BC/BR]:';
+
+  @override
+  String get prompt_enter_layer_names => '输入图层名:';
+
+  @override
+  String get prompt_enter_spline_method => '输入方式 [Control/Fit]:';
+
+  @override
+  String get prompt_enter_linetype_name =>
+      '输入名称（DASHED、HIDDEN、CENTER、ByLayer）:';
+
+  @override
+  String get prompt_enter_new_block_name => '输入新块名:';
+
+  @override
+  String get prompt_enter_new_text => '输入新文字:';
+
+  @override
+  String get prompt_enter_columns => '输入列数:';
+
+  @override
+  String get prompt_enter_items => '输入项目数:';
+
+  @override
+  String get prompt_enter_rows => '输入行数:';
+
+  @override
+  String get prompt_enter_sides => '输入边数:';
+
+  @override
+  String get prompt_enter_object_type => '输入对象类型（LINE、CIRCLE、INSERT、…）:';
+
+  @override
+  String get prompt_enter_attribute_prompt => '输入提示:';
+
+  @override
+  String get prompt_enter_fill_angle => '输入填充角度:';
+
+  @override
+  String get prompt_enter_column_spacing => '输入列间距:';
+
+  @override
+  String get prompt_enter_segments => '输入分段数:';
+
+  @override
+  String get prompt_enter_row_spacing => '输入行间距:';
+
+  @override
+  String get prompt_enter_lineweight => '输入线宽（0.25 mm、25、ByLayer）:';
+
+  @override
+  String get prompt_fillet_vertex_all => '圆角 [Vertex/All]:';
+
+  @override
+  String get prompt_chamfer_vertex_all => '倒角 [Vertex/All]:';
+
+  @override
+  String get prompt_select_block_reference => '选择块参照:';
+
+  @override
+  String get prompt_select_line_pline_arc => '选择直线、多段线或圆弧:';
+
+  @override
+  String get prompt_select_linear_aligned_dim => '选择线性或对齐标注:';
+
+  @override
+  String get prompt_select_arc_or_circle => '选择圆弧或圆:';
+
+  @override
+  String get prompt_select_arc_or_first_line => '选择圆弧或第一条直线:';
+
+  @override
+  String get prompt_select_boundary_edges => '选择边界边:';
+
+  @override
+  String get prompt_select_circles_or_arcs => '选择圆或圆弧:';
+
+  @override
+  String get prompt_select_closed_boundaries => '选择闭合边界:';
+
+  @override
+  String get prompt_select_cutting_edges => '选择剪切边:';
+
+  @override
+  String get prompt_select_destination_objects => '选择目标对象:';
+
+  @override
+  String get prompt_select_dimensions => '选择标注:';
+
+  @override
+  String get prompt_select_first_line_circle_arc => '选择第一条直线、圆或圆弧:';
+
+  @override
+  String get prompt_select_first_object => '选择第一个对象:';
+
+  @override
+  String get prompt_select_first_tangent => '选择第一个相切对象:';
+
+  @override
+  String get prompt_select_hatch_objects => '选择填充对象:';
+
+  @override
+  String get prompt_select_lines_or_plines => '选择直线或多段线:';
+
+  @override
+  String get prompt_select_lines_to_convert => '选择要转换的直线:';
+
+  @override
+  String get prompt_select_join_objects => '选择要合并的直线、圆弧或多段线:';
+
+  @override
+  String get prompt_select_object_to_break => '选择要打断的对象:';
+
+  @override
+  String get prompt_select_object_to_divide => '选择要等分的对象:';
+
+  @override
+  String get prompt_select_object_to_measure => '选择要定距等分的对象:';
+
+  @override
+  String get prompt_select_plines_to_close => '选择要闭合的多段线:';
+
+  @override
+  String get prompt_select_plines_to_open => '选择要打开的多段线:';
+
+  @override
+  String get prompt_select_plines_width => '选择要设置宽度的多段线:';
+
+  @override
+  String get prompt_select_second_line_circle_arc => '选择第二条直线、圆或圆弧:';
+
+  @override
+  String get prompt_select_second_line => '选择第二条直线:';
+
+  @override
+  String get prompt_select_second_tangent => '选择第二个相切对象:';
+
+  @override
+  String get prompt_select_source_object => '选择源对象:';
+
+  @override
+  String get prompt_select_text_mtext_dim => '选择文字、多行文字或标注:';
+
+  @override
+  String get prompt_specify_nearer_end => '指定更靠近要更改一端的点:';
+
+  @override
+  String get prompt_specify_first_ray_point => '指定第一条射线上的点:';
+
+  @override
+  String get prompt_specify_second_ray_point => '指定第二条射线上的点:';
+
+  @override
+  String get prompt_specify_second_point_on_arc => '指定圆弧上的第二点:';
+
+  @override
+  String get prompt_specify_vertex_to_bevel => '指定要倒角的顶点:';
+
+  @override
+  String get prompt_specify_vertex_to_round => '指定要圆角的顶点:';
+
+  @override
+  String get prompt_specify_column_distance => '指定列间距:';
+
+  @override
+  String get prompt_specify_row_distance => '指定行间距:';
+
+  @override
+  String get prompt_specify_other_axis_distance => '指定到另一轴的距离:';
+
+  @override
+  String get prompt_specify_axis_endpoint => '指定轴端点:';
+
+  @override
+  String get prompt_specify_first_break => '指定第一个打断点:';
+
+  @override
+  String get prompt_specify_first_chamfer => '指定第一个倒角距离:';
+
+  @override
+  String get prompt_specify_crossing_first_corner => '指定跨越窗口的第一个角点:';
+
+  @override
+  String get prompt_specify_first_dest => '指定第一个目标点:';
+
+  @override
+  String get prompt_specify_first_diameter_end => '指定直径的第一端:';
+
+  @override
+  String get prompt_specify_first_leader_point => '指定引线第一点:';
+
+  @override
+  String get prompt_specify_mirror_first => '指定镜像线第一点:';
+
+  @override
+  String get prompt_specify_first_on_circle => '指定圆上第一点:';
+
+  @override
+  String get prompt_specify_first_source => '指定第一个源点:';
+
+  @override
+  String get prompt_specify_insertion_base => '指定插入基点:';
+
+  @override
+  String get prompt_hatch_internal_or_select => '指定内部点或 [Select]:';
+
+  @override
+  String get prompt_specify_dim_text_location => '指定标注文字的新位置:';
+
+  @override
+  String get prompt_specify_polyline_width => '指定所有线段的新宽度:';
+
+  @override
+  String get prompt_specify_second_break_esc => '指定第二个打断点（按 Escape 仅拆分）:';
+
+  @override
+  String get prompt_specify_second_chamfer => '指定第二个倒角距离:';
+
+  @override
+  String get prompt_specify_second_dest => '指定第二个目标点:';
+
+  @override
+  String get prompt_specify_second_diameter_end => '指定直径的第二端:';
+
+  @override
+  String get prompt_specify_mirror_second => '指定镜像线第二点:';
+
+  @override
+  String get prompt_specify_second_on_circle => '指定圆上第二点:';
+
+  @override
+  String get prompt_specify_second_source_or_enter => '指定第二个源点或按 Enter:';
+
+  @override
+  String get prompt_specify_third_on_circle => '指定圆上第三点:';
+
+  @override
+  String prompt_enter_units(String current) {
+    return '输入插入单位 <$current>:';
+  }
+
+  @override
+  String get prompt_enter_text_style_name => '输入文字样式名:';
+
+  @override
+  String get prompt_enter_layer_to_delete => '输入要删除的图层:';
+
+  @override
+  String get prompt_enter_layer_to_isolate => '输入要隔离的图层:';
+
+  @override
+  String get prompt_enter_linetype => '输入线型（DASHED、ByLayer、…）:';
+
+  @override
+  String get prompt_enter_a_lineweight => '输入线宽（0.25 mm、25、ByLayer）:';
+
+  @override
+  String get prompt_select_object_to_trim => '选择要修剪的对象（按 Escape 结束）:';
+
+  @override
+  String get prompt_select_object_to_extend => '选择要延伸的对象（按 Escape 结束）:';
+
+  @override
+  String get prompt_scale_objects_align => '根据对齐点缩放对象？';
+
+  @override
+  String get prompt_sheet_width => '图纸宽度 (mm):';
+
+  @override
+  String get prompt_sheet_height => '图纸高度 (mm):';
+
+  @override
+  String get prompt_viewport_scale => '视口比例（模型 / 图纸）:';
+
+  @override
+  String get prompt_new_layout_name => '新布局名称:';
+
+  @override
+  String get prompt_open_recent => '打开最近的文件:';
+
+  @override
   String get end => '终点';
 
   @override

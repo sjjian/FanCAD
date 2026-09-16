@@ -28,7 +28,7 @@ class SelectByBlockCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final requested = (await context.resolveText(
       'name',
-      'SELECT  Enter block name:',
+      context.commandPrompt('SELECT', context.l10n.prompt_enter_block_name),
     )).trim();
     if (requested.isEmpty) {
       return const CommandResult.failed('SELECT needs a block name.');

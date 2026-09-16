@@ -89,7 +89,10 @@ class LayoutPagesetupCommand extends FanCadCommand {
     var requested = context.args.text('name')?.trim() ?? '';
     if (requested.isEmpty) {
       if (context.document.activeLayout.isModelSpace) {
-        requested = await context.resolveText('name', 'Layout name:');
+        requested = await context.resolveText(
+          'name',
+          context.l10n.prompt_layout_name,
+        );
       } else {
         requested = context.document.activeLayoutName;
       }
@@ -104,12 +107,12 @@ class LayoutPagesetupCommand extends FanCadCommand {
 
     final width = await context.resolveNumber(
       'width',
-      'Sheet width (mm):',
+      context.l10n.prompt_sheet_width,
       defaultValue: layout.paperWidth,
     );
     final height = await context.resolveNumber(
       'height',
-      'Sheet height (mm):',
+      context.l10n.prompt_sheet_height,
       defaultValue: layout.paperHeight,
     );
     if (width <= 0 || height <= 0) {

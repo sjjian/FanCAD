@@ -17,6 +17,7 @@ class DocumentTab extends ChangeNotifier {
     SnapEngine? snapEngine,
     this.filePath,
     this.diagnostics = const [],
+    SelectionTool? selectionTool,
   }) : viewport = ViewportController() {
     tools = ToolController(
       session: session,
@@ -28,7 +29,7 @@ class DocumentTab extends ChangeNotifier {
         _prompt = message;
         notifyListeners();
       },
-    )..defaultTool = SelectionTool();
+    )..defaultTool = selectionTool ?? SelectionTool();
 
     _changeSubscription = session.changes.listen(_onDocumentChange);
     _selectionSubscription = session.selection.changes.listen((_) {

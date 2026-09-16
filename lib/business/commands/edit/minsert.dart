@@ -72,7 +72,7 @@ class EditMinsertCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final requested = (await context.resolveText(
       'name',
-      'MINSERT  Enter block name:',
+      context.commandPrompt('MINSERT', context.l10n.prompt_enter_block_name),
     )).trim();
     if (requested.isEmpty) {
       return const CommandResult.failed('MINSERT needs a block name.');
@@ -86,12 +86,12 @@ class EditMinsertCommand extends FanCadCommand {
     final columns = await _resolveCount(
       context,
       'columns',
-      'MINSERT  Enter number of columns:',
+      context.commandPrompt('MINSERT', context.l10n.prompt_enter_columns),
     );
     final rows = await _resolveCount(
       context,
       'rows',
-      'MINSERT  Enter number of rows:',
+      context.commandPrompt('MINSERT', context.l10n.prompt_enter_rows),
     );
     if (columns < 1 || rows < 1) {
       return const CommandResult.failed(
@@ -107,13 +107,19 @@ class EditMinsertCommand extends FanCadCommand {
         ? 0.0
         : await context.resolveNumber(
             'columnSpacing',
-            'MINSERT  Specify distance between columns:',
+            context.commandPrompt(
+              'MINSERT',
+              context.l10n.prompt_specify_column_distance,
+            ),
           );
     final rowSpacing = rows == 1
         ? 0.0
         : await context.resolveNumber(
             'rowSpacing',
-            'MINSERT  Specify distance between rows:',
+            context.commandPrompt(
+              'MINSERT',
+              context.l10n.prompt_specify_row_distance,
+            ),
           );
     if (columns > 1 && columnSpacing.abs() < 1e-12) {
       return const CommandResult.failed(
@@ -132,7 +138,10 @@ class EditMinsertCommand extends FanCadCommand {
     final rotation = (context.args.number('rotation') ?? 0) * math.pi / 180;
     final at = await context.resolvePoint(
       'at',
-      'MINSERT  Specify insertion point:',
+      context.commandPrompt(
+        'MINSERT',
+        context.l10n.prompt_specify_insertion_point,
+      ),
     );
     final attributes = await attributeValues(context, block.name);
     final committed = context.edit('MInsert', (transaction) {

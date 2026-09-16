@@ -67,7 +67,10 @@ class DrawSplineCommand extends FanCadCommand {
     final method =
         context.args.text('method') ??
         await context.input.keyword(
-          'SPLINE  Enter method [Control/Fit]:',
+          context.commandPrompt(
+            'SPLINE',
+            context.l10n.prompt_enter_spline_method,
+          ),
           const ['Control', 'Fit'],
           defaultOption: 'Control',
         );
@@ -85,8 +88,14 @@ class DrawSplineCommand extends FanCadCommand {
         );
       final pick = await context.input.pointOrKeyword(
         points.isEmpty
-            ? 'SPLINE  Specify first $kind point:'
-            : 'SPLINE  Specify next $kind point (Escape to finish):',
+            ? context.commandPrompt(
+                'SPLINE',
+                context.l10n.prompt_specify_first_kind_point(kind),
+              )
+            : context.commandPrompt(
+                'SPLINE',
+                context.l10n.prompt_specify_next_kind_point_esc(kind),
+              ),
         keywords: keywords,
       );
       if (pick == null) break;

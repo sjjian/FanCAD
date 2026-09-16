@@ -46,7 +46,10 @@ class DrawCenterMarkCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'DIMCENTER  Select circles or arcs:',
+      context.commandPrompt(
+        'DIMCENTER',
+        context.l10n.prompt_select_circles_or_arcs,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final size = context.args.number('size') ?? 2.5;

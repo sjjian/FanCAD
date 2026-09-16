@@ -45,12 +45,20 @@ class DrawDonutCommand extends FanCadCommand {
     final inside =
         context.args.number('inside') ??
         await context.input.number(
-          'DONUT  Specify inside diameter:',
+          context.commandPrompt(
+            'DONUT',
+            context.l10n.prompt_specify_inside_diameter,
+          ),
           defaultValue: 0,
         );
     final outside =
         context.args.number('outside') ??
-        await context.input.number('DONUT  Specify outside diameter:');
+        await context.input.number(
+          context.commandPrompt(
+            'DONUT',
+            context.l10n.prompt_specify_outside_diameter,
+          ),
+        );
     if (inside < 0 || outside < 0) {
       return const CommandResult.failed('Diameters cannot be negative.');
     }
@@ -87,7 +95,10 @@ class DrawDonutCommand extends FanCadCommand {
           ];
         });
         final next = await context.input.pointOrNull(
-          'DONUT  Specify center of donut:',
+          context.commandPrompt(
+            'DONUT',
+            context.l10n.prompt_specify_center_of_donut,
+          ),
         );
         if (next == null) break;
         await place(next);

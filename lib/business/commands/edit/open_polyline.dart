@@ -26,7 +26,7 @@ class EditOpenCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'PEDIT  Select polylines to open:',
+      context.commandPrompt('PEDIT', context.l10n.prompt_select_plines_to_open),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
 

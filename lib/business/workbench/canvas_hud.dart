@@ -236,6 +236,7 @@ class _CommandSuggestRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final l10n = context.l10n;
     return MouseRegion(
       onEnter: (_) => onHover(),
       child: ShellRow(
@@ -262,7 +263,10 @@ class _CommandSuggestRow extends StatelessWidget {
                     const SizedBox(width: FanCadTokens.space2),
                     Expanded(
                       child: Text(
-                        descriptor.description,
+                        l10n.commandDescription(
+                          descriptor.id,
+                          descriptor.description,
+                        ),
                         style: tokens.labelStyle.copyWith(fontSize: 10.5),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

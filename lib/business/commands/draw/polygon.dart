@@ -40,7 +40,7 @@ class DrawPolygonCommand extends FanCadCommand {
     final sides =
         context.args.integer('sides') ??
         await context.input.integer(
-          'POLYGON  Enter number of sides:',
+          context.commandPrompt('POLYGON', context.l10n.prompt_enter_sides),
           defaultValue: 6,
         );
     if (sides < 3) {
@@ -48,7 +48,7 @@ class DrawPolygonCommand extends FanCadCommand {
     }
     final center = await context.resolvePoint(
       'center',
-      'POLYGON  Specify center:',
+      context.commandPrompt('POLYGON', context.l10n.prompt_specify_center),
     );
     context.input
       ..setMarkers([center])
@@ -70,7 +70,7 @@ class DrawPolygonCommand extends FanCadCommand {
     final radius =
         context.args.number('radius') ??
         await context.input.distance(
-          'POLYGON  Specify radius:',
+          context.commandPrompt('POLYGON', context.l10n.prompt_specify_radius),
           basePoint: center,
         );
     context.input

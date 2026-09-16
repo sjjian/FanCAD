@@ -5,6 +5,7 @@ import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/widgets.dart';
 
 import 'app_localizations.dart';
+import 'locale.dart';
 export 'app_localizations.dart';
 export 'locale.dart';
 
@@ -14,6 +15,9 @@ extension FanCadL10nContext on BuildContext {
   AppLocalizations get l10n =>
       AppLocalizations.of(this) ?? lookupAppLocalizations(const Locale('en'));
 }
+
+AppLocalizations l10nForLanguage(String locale) =>
+    lookupAppLocalizations(Locale(FanCadLanguage.parse(locale)));
 
 extension FanCadL10nLookups on AppLocalizations {
   String commandTitle(String id, String fallback) {
@@ -176,6 +180,181 @@ extension FanCadL10nLookups on AppLocalizations {
       'plugins.typings' => command_plugins_typings,
       'plugins.edit' => command_plugins_edit,
       'plugins.eval' => command_plugins_eval,
+      'file.list' => command_file_list,
+      'file.activate' => command_file_activate,
+      'draw.attdef' => command_draw_attdef,
+      'edit.attedit' => command_edit_attedit,
+      'view.units' => command_view_units,
+      _ => fallback,
+    };
+  }
+
+  /// Palette / HUD blurb. Unknown leftover ids keep the registry English.
+  String commandDescription(String id, String fallback) {
+    return switch (id) {
+      'file.new' => command_file_new_desc,
+      'file.open' => command_file_open_desc,
+      'file.save' => command_file_save_desc,
+      'file.saveAs' => command_file_save_as_desc,
+      'file.close' => command_file_close_desc,
+      'file.openRecent' => command_file_open_recent_desc,
+      'file.audit' => command_file_audit_desc,
+      'file.list' => command_file_list_desc,
+      'file.activate' => command_file_activate_desc,
+      'draw.line' => command_draw_line_desc,
+      'draw.polyline' => command_draw_polyline_desc,
+      'draw.spline' => command_draw_spline_desc,
+      'draw.rectangle' => command_draw_rectangle_desc,
+      'draw.circle' => command_draw_circle_desc,
+      'draw.circle2p' => command_draw_circle_2p_desc,
+      'draw.circle3p' => command_draw_circle_3p_desc,
+      'draw.circleTtr' => command_draw_circle_ttr_desc,
+      'draw.donut' => command_draw_donut_desc,
+      'draw.arc' => command_draw_arc_desc,
+      'draw.polygon' => command_draw_polygon_desc,
+      'draw.ellipse' => command_draw_ellipse_desc,
+      'draw.xline' => command_draw_xline_desc,
+      'draw.ray' => command_draw_ray_desc,
+      'draw.point' => command_draw_point_desc,
+      'draw.divide' => command_draw_divide_desc,
+      'draw.measure' => command_draw_measure_desc,
+      'draw.text' => command_draw_text_desc,
+      'draw.mtext' => command_draw_mtext_desc,
+      'draw.attdef' => command_draw_attdef_desc,
+      'draw.leader' => command_draw_leader_desc,
+      'draw.hatch' => command_draw_hatch_desc,
+      'draw.dimLinear' => command_draw_dim_linear_desc,
+      'draw.dimAligned' => command_draw_dim_aligned_desc,
+      'draw.dimRadius' => command_draw_dim_radius_desc,
+      'draw.dimDiameter' => command_draw_dim_diameter_desc,
+      'draw.centerMark' => command_draw_center_mark_desc,
+      'draw.centerLine' => command_draw_center_line_desc,
+      'draw.dimAngular' => command_draw_dim_angular_desc,
+      'draw.dimContinue' => command_draw_dim_continue_desc,
+      'draw.dimBaseline' => command_draw_dim_baseline_desc,
+      'annot.dimstyle' => command_annot_dimstyle_desc,
+      'annot.textstyle' => command_annot_textstyle_desc,
+      'edit.erase' => command_edit_erase_desc,
+      'edit.overkill' => command_edit_overkill_desc,
+      'edit.move' => command_edit_move_desc,
+      'edit.copy' => command_edit_copy_desc,
+      'edit.copyClip' => command_edit_copy_clip_desc,
+      'edit.copyBase' => command_edit_copy_base_desc,
+      'edit.cutClip' => command_edit_cut_clip_desc,
+      'edit.pasteClip' => command_edit_paste_clip_desc,
+      'edit.pasteOrig' => command_edit_paste_orig_desc,
+      'edit.pasteBlock' => command_edit_paste_block_desc,
+      'edit.stretch' => command_edit_stretch_desc,
+      'edit.rotate' => command_edit_rotate_desc,
+      'edit.scale' => command_edit_scale_desc,
+      'edit.mirror' => command_edit_mirror_desc,
+      'edit.align' => command_edit_align_desc,
+      'edit.array' => command_edit_array_desc,
+      'edit.polarArray' => command_edit_polar_array_desc,
+      'edit.offset' => command_edit_offset_desc,
+      'edit.trim' => command_edit_trim_desc,
+      'edit.extend' => command_edit_extend_desc,
+      'edit.fillet' => command_edit_fillet_desc,
+      'edit.chamfer' => command_edit_chamfer_desc,
+      'edit.break' => command_edit_break_desc,
+      'edit.lengthen' => command_edit_lengthen_desc,
+      'edit.explode' => command_edit_explode_desc,
+      'edit.block' => command_edit_block_desc,
+      'edit.insert' => command_edit_insert_desc,
+      'edit.minsert' => command_edit_minsert_desc,
+      'block.purge' => command_block_purge_desc,
+      'block.rename' => command_block_rename_desc,
+      'edit.join' => command_edit_join_desc,
+      'edit.close' => command_edit_close_desc,
+      'edit.open' => command_edit_open_desc,
+      'edit.polylineWidth' => command_edit_polyline_width_desc,
+      'edit.hatch' => command_edit_hatch_desc,
+      'edit.toPolyline' => command_edit_to_polyline_desc,
+      'edit.reverse' => command_edit_reverse_desc,
+      'edit.undo' => command_edit_undo_desc,
+      'edit.redo' => command_edit_redo_desc,
+      'edit.changeLayer' => command_edit_change_layer_desc,
+      'edit.changeColor' => command_edit_change_color_desc,
+      'edit.changeLinetype' => command_edit_change_linetype_desc,
+      'edit.changeLineweight' => command_edit_change_lineweight_desc,
+      'edit.dimensionText' => command_edit_dimension_text_desc,
+      'edit.dimTedit' => command_edit_dim_tedit_desc,
+      'edit.textContent' => command_edit_text_content_desc,
+      'edit.textObject' => command_edit_text_object_desc,
+      'edit.justifyText' => command_edit_justify_text_desc,
+      'edit.matchProp' => command_edit_match_prop_desc,
+      'edit.attedit' => command_edit_attedit_desc,
+      'view.zoomExtents' => command_view_zoom_extents_desc,
+      'view.zoomWindow' => command_view_zoom_window_desc,
+      'view.zoomIn' => command_view_zoom_in_desc,
+      'view.zoomOut' => command_view_zoom_out_desc,
+      'view.zoomSelected' => command_view_zoom_selected_desc,
+      'view.regen' => command_view_regen_desc,
+      'view.units' => command_view_units_desc,
+      'workbench.preferences' => command_workbench_preferences_desc,
+      'select.all' => command_select_all_desc,
+      'select.none' => command_select_none_desc,
+      'select.invert' => command_select_invert_desc,
+      'select.similar' => command_select_similar_desc,
+      'select.byLayer' => command_select_by_layer_desc,
+      'select.byColor' => command_select_by_color_desc,
+      'select.byLinetype' => command_select_by_linetype_desc,
+      'select.byLineweight' => command_select_by_lineweight_desc,
+      'select.byType' => command_select_by_type_desc,
+      'select.byBlock' => command_select_by_block_desc,
+      'view.isolateObjects' => command_view_isolate_objects_desc,
+      'view.hideObjects' => command_view_hide_objects_desc,
+      'view.unisolateObjects' => command_view_unisolate_objects_desc,
+      'layer.new' => command_layer_new_desc,
+      'layer.setCurrent' => command_layer_set_current_desc,
+      'layer.toggleVisible' => command_layer_toggle_visible_desc,
+      'layer.isolate' => command_layer_isolate_desc,
+      'layer.showAll' => command_layer_show_all_desc,
+      'layer.toggleLock' => command_layer_toggle_lock_desc,
+      'layer.delete' => command_layer_delete_desc,
+      'layer.purge' => command_layer_purge_desc,
+      'query.summary' => command_query_summary_desc,
+      'query.list' => command_query_list_desc,
+      'query.entities' => command_query_entities_desc,
+      'query.selection' => command_query_selection_desc,
+      'query.viewport' => command_query_viewport_desc,
+      'query.id' => command_query_id_desc,
+      'query.distance' => command_query_distance_desc,
+      'query.angle' => command_query_angle_desc,
+      'query.area' => command_query_area_desc,
+      'query.layers' => command_query_layers_desc,
+      'layout.list' => command_layout_list_desc,
+      'layout.set' => command_layout_set_desc,
+      'layout.new' => command_layout_new_desc,
+      'layout.delete' => command_layout_delete_desc,
+      'layout.copy' => command_layout_copy_desc,
+      'layout.rename' => command_layout_rename_desc,
+      'layout.order' => command_layout_order_desc,
+      'layout.pagesetup' => command_layout_pagesetup_desc,
+      'layout.mview' => command_layout_mview_desc,
+      'layout.vpscale' => command_layout_vpscale_desc,
+      'layout.vplock' => command_layout_vplock_desc,
+      'layout.vpon' => command_layout_vpon_desc,
+      'layout.vplayer' => command_layout_vplayer_desc,
+      'layout.vpmax' => command_layout_vpmax_desc,
+      'layout.vpmin' => command_layout_vpmin_desc,
+      'print.exportSvg' => command_print_export_svg_desc,
+      'print.exportPdf' => command_print_export_pdf_desc,
+      'xref.attach' => command_xref_attach_desc,
+      'xref.reload' => command_xref_reload_desc,
+      'xref.detach' => command_xref_detach_desc,
+      'xref.bind' => command_xref_bind_desc,
+      'plugins.list' => command_plugins_list_desc,
+      'plugins.reload' => command_plugins_reload_desc,
+      'plugins.enable' => command_plugins_enable_desc,
+      'plugins.disable' => command_plugins_disable_desc,
+      'plugins.logs' => command_plugins_logs_desc,
+      'plugins.scaffold' => command_plugins_scaffold_desc,
+      'plugins.write' => command_plugins_write_desc,
+      'plugins.read' => command_plugins_read_desc,
+      'plugins.typings' => command_plugins_typings_desc,
+      'plugins.edit' => command_plugins_edit_desc,
+      'plugins.eval' => command_plugins_eval_desc,
       _ => fallback,
     };
   }
@@ -223,6 +402,17 @@ extension FanCadL10nLookups on AppLocalizations {
       count == 1 ? import_warning_title_one : import_warning_title_many(count);
 }
 
+/// Interactive command copy. [CommandServices.locale] chooses the language;
+/// headless tests with [CommandServices.none] stay English.
+extension FanCadCommandCopy on CommandContext {
+  AppLocalizations get l10n =>
+      lookupAppLocalizations(Locale(FanCadLanguage.parse(services.locale)));
+
+  /// CAD command-line step: `LINE  Specify first point:`.
+  String commandPrompt(String verb, String step) =>
+      l10n.command_step(verb, step);
+}
+
 /// Registry search plus leftover Chinese titles the English index cannot see.
 List<CommandDescriptor> searchCommandsLocalized(
   CommandRegistry registry,
@@ -240,8 +430,13 @@ List<CommandDescriptor> searchCommandsLocalized(
     final title = l10n
         .commandTitle(descriptor.id, descriptor.title)
         .toLowerCase();
+    final description = l10n
+        .commandDescription(descriptor.id, descriptor.description)
+        .toLowerCase();
     final category = l10n.commandCategory(descriptor.category).toLowerCase();
-    if (title.contains(needle) || category.contains(needle)) {
+    if (title.contains(needle) ||
+        description.contains(needle) ||
+        category.contains(needle)) {
       extra.add(descriptor);
     }
   }

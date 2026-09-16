@@ -26,7 +26,10 @@ class DrawPointCommand extends FanCadCommand {
   @override
   Future<CommandResult> run(CommandContext context) async {
     context.input.setPreview((cursor) => [OverlayPoint(cursor)]);
-    final at = await context.resolvePoint('at', 'POINT  Specify a location:');
+    final at = await context.resolvePoint(
+      'at',
+      context.commandPrompt('POINT', context.l10n.prompt_specify_a_location),
+    );
     context.input.setPreview(null);
     return commitDraw(context, 'Point', [
       PointEntity(

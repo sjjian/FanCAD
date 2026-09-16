@@ -24,7 +24,10 @@ class LayerIsolateCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final name = await context.resolveText('name', 'Enter layer to isolate:');
+    final name = await context.resolveText(
+      'name',
+      context.l10n.prompt_enter_layer_to_isolate,
+    );
     if (context.document.layer(name) == null) {
       return CommandResult.failed('There is no layer named "$name".');
     }

@@ -31,12 +31,12 @@ class EditChangeColorCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'Select objects to recolour:',
+      context.l10n.prompt_select_objects_recolour,
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final raw = await context.resolveText(
       'color',
-      'Enter a colour (1-255, #rrggbb or ByLayer):',
+      context.l10n.prompt_enter_colour,
     );
     final color = cadColorFromJson(raw);
     final committed = context.edit('Change Colour', (transaction) {

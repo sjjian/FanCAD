@@ -73,8 +73,14 @@ class DrawLeaderCommand extends FanCadCommand {
           );
         final pick = await context.input.pointOrKeyword(
           points.isEmpty
-              ? 'LEADER  Specify first leader point:'
-              : 'LEADER  Specify next point (Escape to finish):',
+              ? context.commandPrompt(
+                  'LEADER',
+                  context.l10n.prompt_specify_first_leader_point,
+                )
+              : context.commandPrompt(
+                  'LEADER',
+                  context.l10n.prompt_specify_next_point_esc,
+                ),
           keywords: keywords,
         );
         if (pick == null) break;
@@ -102,7 +108,10 @@ class DrawLeaderCommand extends FanCadCommand {
         context.args.text('text') ??
         (context.input.isInteractive
             ? await context.input.text(
-                'LEADER  Enter annotation text <none>:',
+                context.commandPrompt(
+                  'LEADER',
+                  context.l10n.prompt_enter_annotation_none,
+                ),
                 defaultValue: '',
               )
             : '');

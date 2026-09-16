@@ -358,7 +358,10 @@ class _PaletteRow extends StatelessWidget {
                   ),
                   if (descriptor.description.isNotEmpty)
                     Text(
-                      descriptor.description,
+                      l10n.commandDescription(
+                        descriptor.id,
+                        descriptor.description,
+                      ),
                       style: tokens.labelStyle.copyWith(fontSize: 10.5),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

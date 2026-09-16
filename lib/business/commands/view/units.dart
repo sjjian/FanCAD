@@ -35,7 +35,10 @@ class ViewUnitsCommand extends FanCadCommand {
     final current = context.document.insUnits;
     final raw = await context.resolveText(
       'units',
-      'UNITS  Enter insertion units <${current.label}>:',
+      context.commandPrompt(
+        'UNITS',
+        context.l10n.prompt_enter_units(current.label),
+      ),
       defaultValue: current.label,
     );
     final parsed = InsUnits.parse(raw);

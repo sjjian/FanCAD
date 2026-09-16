@@ -43,14 +43,20 @@ class EditStretchCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final first = await context.resolvePoint(
       'corner1',
-      'STRETCH  Specify first corner of crossing window:',
+      context.commandPrompt(
+        'STRETCH',
+        context.l10n.prompt_specify_crossing_first_corner,
+      ),
     );
     context.input.setPreview(
       (cursor) => [OverlayRect(first, cursor, crossing: true)],
     );
     final second = await context.resolvePoint(
       'corner2',
-      'STRETCH  Specify opposite corner:',
+      context.commandPrompt(
+        'STRETCH',
+        context.l10n.prompt_specify_opposite_corner,
+      ),
       basePoint: first,
     );
     context.input.setPreview(null);
@@ -71,7 +77,7 @@ class EditStretchCommand extends FanCadCommand {
 
     final from = await context.resolvePoint(
       'from',
-      'STRETCH  Specify base point:',
+      context.commandPrompt('STRETCH', context.l10n.prompt_specify_base_point),
     );
     context.input.setPreview((cursor) {
       final delta = cursor - from;
@@ -97,7 +103,10 @@ class EditStretchCommand extends FanCadCommand {
     });
     final to = await context.resolvePoint(
       'to',
-      'STRETCH  Specify second point:',
+      context.commandPrompt(
+        'STRETCH',
+        context.l10n.prompt_specify_second_point,
+      ),
       basePoint: from,
     );
     context.input.setPreview(null);

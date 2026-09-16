@@ -27,7 +27,10 @@ class EditReverseCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'REVERSE  Select lines or polylines:',
+      context.commandPrompt(
+        'REVERSE',
+        context.l10n.prompt_select_lines_or_plines,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
 

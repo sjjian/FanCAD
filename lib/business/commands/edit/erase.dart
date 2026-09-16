@@ -30,7 +30,10 @@ class EditEraseCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'ERASE  Select objects to erase:',
+      context.commandPrompt(
+        'ERASE',
+        context.l10n.prompt_select_objects_to_erase,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final committed = context.edit('Erase', (transaction) {

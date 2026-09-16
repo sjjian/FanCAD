@@ -49,20 +49,23 @@ class EditArrayCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'ARRAY  Select objects to array:',
+      context.commandPrompt(
+        'ARRAY',
+        context.l10n.prompt_select_objects_to_array,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
 
     final columns =
         context.args.integer('columns') ??
         await context.input.integer(
-          'ARRAY  Enter number of columns:',
+          context.commandPrompt('ARRAY', context.l10n.prompt_enter_columns),
           defaultValue: 3,
         );
     final rows =
         context.args.integer('rows') ??
         await context.input.integer(
-          'ARRAY  Enter number of rows:',
+          context.commandPrompt('ARRAY', context.l10n.prompt_enter_rows),
           defaultValue: 3,
         );
     if (columns < 1 || rows < 1) {
@@ -72,10 +75,17 @@ class EditArrayCommand extends FanCadCommand {
     }
     final columnSpacing =
         context.args.number('columnSpacing') ??
-        await context.input.number('ARRAY  Enter the column spacing:');
+        await context.input.number(
+          context.commandPrompt(
+            'ARRAY',
+            context.l10n.prompt_enter_column_spacing,
+          ),
+        );
     final rowSpacing =
         context.args.number('rowSpacing') ??
-        await context.input.number('ARRAY  Enter the row spacing:');
+        await context.input.number(
+          context.commandPrompt('ARRAY', context.l10n.prompt_enter_row_spacing),
+        );
 
     final total = columns * rows - 1;
     if (total <= 0) {

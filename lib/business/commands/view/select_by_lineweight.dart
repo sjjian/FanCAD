@@ -33,7 +33,7 @@ class SelectByLineweightCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final raw = await context.resolveText(
       'weight',
-      'Enter a lineweight (0.25 mm, 25, ByLayer):',
+      context.l10n.prompt_enter_a_lineweight,
     );
     final weight = LineWeight.tryParse(raw);
     if (weight == null) {

@@ -660,11 +660,13 @@ class SelectionPromptTool extends PromptTool<List<int>> {
     required super.message,
     this.single = false,
     this.filter,
+    this.formatPicked,
   });
 
   /// Completes on the first pick rather than waiting for Enter.
   final bool single;
   final bool Function(CadEntity entity)? filter;
+  final String Function(String message, int count)? formatPicked;
 
   final List<int> _picked = [];
   int? _hovered;
@@ -683,7 +685,8 @@ class SelectionPromptTool extends PromptTool<List<int>> {
   @override
   String get promptText => _picked.isEmpty
       ? message
-      : '$message (${_picked.length} found, Enter to accept)';
+      : (formatPicked?.call(message, _picked.length) ??
+            '$message (${_picked.length} found, Enter to accept)');
 
   @override
   void onMove(ToolHost host, Vec2 point, SnapResult snap) {

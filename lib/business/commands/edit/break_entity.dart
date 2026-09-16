@@ -48,7 +48,10 @@ class EditBreakCommand extends FanCadCommand {
     } else {
       context.selection.clear();
       final picked = await context.input.selection(
-        'BREAK  Select object to break:',
+        context.commandPrompt(
+          'BREAK',
+          context.l10n.prompt_select_object_to_break,
+        ),
         useExistingSelection: false,
         single: true,
       );
@@ -68,7 +71,7 @@ class EditBreakCommand extends FanCadCommand {
 
     final first = await context.resolvePoint(
       'first',
-      'BREAK  Specify first break point:',
+      context.commandPrompt('BREAK', context.l10n.prompt_specify_first_break),
     );
     context.input
       ..setMarkers([first])
@@ -77,7 +80,10 @@ class EditBreakCommand extends FanCadCommand {
         context.args.point('second') ??
         (context.input.isInteractive
             ? await context.input.pointOrNull(
-                'BREAK  Specify second break point (Escape to split):',
+                context.commandPrompt(
+                  'BREAK',
+                  context.l10n.prompt_specify_second_break_esc,
+                ),
               )
             : null);
     context.input

@@ -1,5 +1,7 @@
 import 'package:fancad_core/fancad_core.dart';
 
+export '../l10n/l10n.dart';
+
 /// Declares keyboard chords for a built-in command.
 ///
 /// Only implement this when the command has a default keybinding. Commands

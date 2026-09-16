@@ -29,11 +29,14 @@ class EditBlockCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final ids = await context.resolveSelection('ids', 'BLOCK  Select objects:');
+    final ids = await context.resolveSelection(
+      'ids',
+      context.commandPrompt('BLOCK', context.l10n.prompt_select_objects),
+    );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final name = (await context.resolveText(
       'name',
-      'BLOCK  Enter block name:',
+      context.commandPrompt('BLOCK', context.l10n.prompt_enter_block_name),
     )).trim();
     if (name.isEmpty) {
       return const CommandResult.failed('A block needs a name.');
@@ -51,7 +54,10 @@ class EditBlockCommand extends FanCadCommand {
     }
     final base = await context.resolvePoint(
       'base',
-      'BLOCK  Specify insertion base point:',
+      context.commandPrompt(
+        'BLOCK',
+        context.l10n.prompt_specify_insertion_base,
+      ),
     );
     final space = context.document.currentBlockName;
     final members = <CadEntity>[];

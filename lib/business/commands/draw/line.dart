@@ -51,8 +51,14 @@ class DrawLineCommand extends FanCadCommand {
         );
       final pick = await context.input.pointOrKeyword(
         points.isEmpty
-            ? 'LINE  Specify first point:'
-            : 'LINE  Specify next point (Escape to finish):',
+            ? context.commandPrompt(
+                'LINE',
+                context.l10n.prompt_specify_first_point,
+              )
+            : context.commandPrompt(
+                'LINE',
+                context.l10n.prompt_specify_next_point_esc,
+              ),
         keywords: keywords,
       );
       if (pick == null) break;

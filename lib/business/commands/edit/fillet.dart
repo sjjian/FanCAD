@@ -69,7 +69,10 @@ class EditFilletCommand extends FanCadCommand {
     final radius =
         context.args.number('radius') ??
         await context.input.number(
-          'FILLET  Specify fillet radius:',
+          context.commandPrompt(
+            'FILLET',
+            context.l10n.prompt_specify_fillet_radius,
+          ),
           defaultValue: 0,
         );
     if (radius < 0) {
@@ -89,7 +92,10 @@ class EditFilletCommand extends FanCadCommand {
     } else {
       context.selection.clear();
       final firstPick = await context.input.selection(
-        'FILLET  Select first object:',
+        context.commandPrompt(
+          'FILLET',
+          context.l10n.prompt_select_first_object,
+        ),
         useExistingSelection: false,
         single: true,
       );
@@ -100,7 +106,7 @@ class EditFilletCommand extends FanCadCommand {
         return _filletPolyline(context, firstEntity, radius);
       }
       final secondPick = await context.input.selection(
-        'FILLET  Select second line:',
+        context.commandPrompt('FILLET', context.l10n.prompt_select_second_line),
         useExistingSelection: false,
         single: true,
       );
@@ -183,10 +189,14 @@ Future<CommandResult> _filletPolyline(
       (context.args.point('pick1') == null &&
           context.args.point('pick') == null &&
           context.input.isInteractive &&
-          await context.input.keyword('FILLET  Fillet [Vertex/All]:', const [
-                'Vertex',
-                'All',
-              ], defaultOption: 'Vertex') ==
+          await context.input.keyword(
+                context.commandPrompt(
+                  'FILLET',
+                  context.l10n.prompt_fillet_vertex_all,
+                ),
+                const ['Vertex', 'All'],
+                defaultOption: 'Vertex',
+              ) ==
               'All');
   final PolylineEntity? result;
   if (filletAll) {
@@ -195,7 +205,12 @@ Future<CommandResult> _filletPolyline(
     final pick =
         context.args.point('pick1') ??
         context.args.point('pick') ??
-        await context.input.point('FILLET  Specify a vertex to round:');
+        await context.input.point(
+          context.commandPrompt(
+            'FILLET',
+            context.l10n.prompt_specify_vertex_to_round,
+          ),
+        );
     result = Construct.filletPolylineVertex(polyline, pick, radius);
   }
   if (result == null) {

@@ -70,7 +70,10 @@ class DrawMtextCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final raw = await context.resolveText('content', 'MTEXT  Enter the text:');
+    final raw = await context.resolveText(
+      'content',
+      context.commandPrompt('MTEXT', context.l10n.prompt_enter_text),
+    );
     if (raw.isEmpty) {
       return const CommandResult.cancelled('No text was entered.');
     }
@@ -88,7 +91,10 @@ class DrawMtextCommand extends FanCadCommand {
         (style.height > 0
             ? style.height
             : await context.input.number(
-                'MTEXT  Specify height:',
+                context.commandPrompt(
+                  'MTEXT',
+                  context.l10n.prompt_specify_height,
+                ),
                 defaultValue: 2.5,
               ));
     if (height <= 0) {
@@ -121,7 +127,10 @@ class DrawMtextCommand extends FanCadCommand {
     });
     final at = await context.resolvePoint(
       'at',
-      'MTEXT  Specify attachment point:',
+      context.commandPrompt(
+        'MTEXT',
+        context.l10n.prompt_specify_attachment_point,
+      ),
     );
     context.input.setPreview(null);
 

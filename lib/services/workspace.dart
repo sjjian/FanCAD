@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:path/path.dart' as p;
 
+import '../business/l10n/l10n.dart';
 import '../business/workbench/command_line_model.dart';
 import '../business/workbench/interactive_input.dart';
 import '../storage/drawing_settings.dart';
@@ -71,6 +72,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
     required this.importer,
     required this.drawing,
     CommandLineController? commandLine,
+    this.localeOf,
   }) : commandLine = commandLine ?? CommandLineController() {
     snapEngine = SnapEngine(
       enabled: drawing.snapEnabled,
@@ -88,6 +90,16 @@ class Workspace extends ChangeNotifier implements CommandServices {
   final DrawingImporter importer;
   final DrawingSettings drawing;
   final CommandLineController commandLine;
+
+  /// Current UI language. The shell supplies this so command prompts follow
+  /// the setting without rebuilding the workspace.
+  final String Function()? localeOf;
+
+  @override
+  String get locale {
+    final value = localeOf?.call()?.trim() ?? '';
+    return value.isEmpty ? 'en' : value;
+  }
 
   List<String> get recentFiles => drawing.recentFiles;
 
@@ -164,7 +176,13 @@ class Workspace extends ChangeNotifier implements CommandServices {
       document: document ?? CadDocument(),
       title: title,
     );
-    return _adopt(DocumentTab(session: session, snapEngine: snapEngine));
+    return _adopt(
+      DocumentTab(
+        session: session,
+        snapEngine: snapEngine,
+        selectionTool: _selectionTool(),
+      ),
+    );
   }
 
   /// Opens [path], reporting failures as notices rather than exceptions.
@@ -205,6 +223,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
           snapEngine: snapEngine,
           filePath: stored,
           diagnostics: result.diagnostics,
+          selectionTool: _selectionTool(),
         ),
       );
       tab.viewport.zoomToExtents(result.document);
@@ -518,6 +537,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
                   document: CadDocument(),
                 ),
                 snapEngine: snapEngine,
+                selectionTool: _selectionTool(),
               )
             : newDocument(title: 'Drawing1'));
     _runningCommand = descriptor.id;
@@ -535,6 +555,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
             commandLine: commandLine,
             args: CommandArgs(args),
             params: each.params,
+            locale: locale,
           );
           return CommandContext(
             session: tab.session,
@@ -761,6 +782,21 @@ class Workspace extends ChangeNotifier implements CommandServices {
     snapEngine.tracking = snapEngine.tracking.copyWith(polarIncrement: radians);
     drawing.setPolarIncrement(radians);
     notifyListeners();
+  }
+
+  SelectionTool _selectionTool() {
+    return SelectionTool.localized(
+      idlePromptOf: () => l10nForLanguage(locale).prompt_idle_select,
+      stretchPromptOf: () =>
+          l10nForLanguage(locale).prompt_specify_stretch_point,
+      selectedViewportPromptOf: () =>
+          l10nForLanguage(locale).prompt_selected_viewport,
+      describeObject: (entity) => l10nForLanguage(
+        locale,
+      ).prompt_selected_object(entity.displayId, entity.props.layer),
+      describeCount: (count) =>
+          l10nForLanguage(locale).prompt_objects_selected(count),
+    );
   }
 
   // -------------------------------------------------------------------------

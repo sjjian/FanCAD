@@ -28,7 +28,10 @@ class DrawCircle2pCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final first = await context.resolvePoint(
       'first',
-      'CIRCLE  Specify first end of diameter:',
+      context.commandPrompt(
+        'CIRCLE',
+        context.l10n.prompt_specify_first_diameter_end,
+      ),
     );
     context.input
       ..setMarkers([first])
@@ -43,7 +46,10 @@ class DrawCircle2pCommand extends FanCadCommand {
       );
     final second = await context.resolvePoint(
       'second',
-      'CIRCLE  Specify second end of diameter:',
+      context.commandPrompt(
+        'CIRCLE',
+        context.l10n.prompt_specify_second_diameter_end,
+      ),
       basePoint: first,
     );
     context.input

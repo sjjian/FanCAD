@@ -71,6 +71,65 @@ void main() {
     );
   });
 
+  test(
+    'a leftover command description and step prompt follow the UI language',
+    () {
+      final zh = lookupAppLocalizations(const Locale('zh'));
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(
+        zh.commandDescription(
+          'draw.line',
+          'Draws one or more connected straight line segments.',
+        ),
+        contains('直线'),
+      );
+      expect(
+        en.commandDescription(
+          'draw.line',
+          'Draws one or more connected straight line segments.',
+        ),
+        contains('straight line'),
+      );
+      expect(
+        zh.commandDescription('plugin.unknown', 'My plugin does a thing.'),
+        'My plugin does a thing.',
+      );
+      expect(
+        zh.command_step('LINE', zh.prompt_specify_first_point),
+        'LINE  指定第一点:',
+      );
+      expect(
+        en.command_step('LINE', en.prompt_specify_first_point),
+        'LINE  Specify first point:',
+      );
+      expect(zh.prompt_idle_select, contains('选择'));
+      expect(zh.prompt_select_object_to_trim, contains('修剪'));
+      expect(zh.prompt_select_object_to_extend, contains('延伸'));
+    },
+  );
+
+  test('every built-in command title and description has a locale string', () {
+    final zh = lookupAppLocalizations(const Locale('zh'));
+    for (final descriptor in [
+      ...DrawCommands.all(),
+      ...EditCommands.all(),
+      ...ViewCommands.all(),
+      ...QueryCommands.all(),
+      ...ProCommands.all(),
+    ]) {
+      expect(
+        zh.commandTitle(descriptor.id, 'FALLBACK'),
+        isNot('FALLBACK'),
+        reason: '${descriptor.id} needs a command title key',
+      );
+      expect(
+        zh.commandDescription(descriptor.id, 'FALLBACK'),
+        isNot('FALLBACK'),
+        reason: '${descriptor.id} needs a command_*_desc key',
+      );
+    }
+  });
+
   test('a leftover command category keeps the registry name', () {
     final l10n = lookupAppLocalizations(const Locale('zh'));
     expect(l10n.commandCategory('Draw'), '绘图');

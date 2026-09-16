@@ -53,7 +53,10 @@ class DrawMeasureCommand extends FanCadCommand {
     } else {
       context.selection.clear();
       final picked = await context.input.selection(
-        'MEASURE  Select object to measure:',
+        context.commandPrompt(
+          'MEASURE',
+          context.l10n.prompt_select_object_to_measure,
+        ),
         useExistingSelection: false,
         single: true,
       );
@@ -100,7 +103,10 @@ class DrawMeasureCommand extends FanCadCommand {
     final spacing =
         context.args.number('spacing') ??
         await context.input.distance(
-          'MEASURE  Specify segment length:',
+          context.commandPrompt(
+            'MEASURE',
+            context.l10n.prompt_specify_segment_length,
+          ),
           basePoint: pick,
         );
     context.input

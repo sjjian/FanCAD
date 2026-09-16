@@ -34,14 +34,17 @@ class QueryAngleCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final vertex = await context.resolvePoint(
       'vertex',
-      'ANGLE  Specify vertex:',
+      context.commandPrompt('ANGLE', context.l10n.prompt_specify_vertex),
     );
     context.input
       ..setMarkers([vertex])
       ..setPreview((cursor) => [OverlayLine(vertex, cursor)]);
     final first = await context.resolvePoint(
       'first',
-      'ANGLE  Specify a point on the first ray:',
+      context.commandPrompt(
+        'ANGLE',
+        context.l10n.prompt_specify_first_ray_point,
+      ),
       basePoint: vertex,
     );
     context.input
@@ -70,7 +73,10 @@ class QueryAngleCommand extends FanCadCommand {
       });
     final second = await context.resolvePoint(
       'second',
-      'ANGLE  Specify a point on the second ray:',
+      context.commandPrompt(
+        'ANGLE',
+        context.l10n.prompt_specify_second_ray_point,
+      ),
       basePoint: vertex,
     );
     context.input

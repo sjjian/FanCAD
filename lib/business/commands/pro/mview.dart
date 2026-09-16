@@ -43,12 +43,15 @@ class LayoutMviewCommand extends FanCadCommand {
 
     final first = await context.resolvePoint(
       'corner1',
-      'MVIEW  Specify first corner:',
+      context.commandPrompt('MVIEW', context.l10n.prompt_specify_first_corner),
     );
     context.input.setPreview((cursor) => [OverlayRect(first, cursor)]);
     final second = await context.resolvePoint(
       'corner2',
-      'MVIEW  Specify opposite corner:',
+      context.commandPrompt(
+        'MVIEW',
+        context.l10n.prompt_specify_opposite_corner,
+      ),
       basePoint: first,
     );
     context.input.setPreview(null);

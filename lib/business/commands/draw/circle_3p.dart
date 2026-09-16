@@ -30,14 +30,20 @@ class DrawCircle3pCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final first = await context.resolvePoint(
       'first',
-      'CIRCLE  Specify first point on circle:',
+      context.commandPrompt(
+        'CIRCLE',
+        context.l10n.prompt_specify_first_on_circle,
+      ),
     );
     context.input
       ..setMarkers([first])
       ..setPreview((cursor) => [OverlayLine(first, cursor)]);
     final second = await context.resolvePoint(
       'second',
-      'CIRCLE  Specify second point on circle:',
+      context.commandPrompt(
+        'CIRCLE',
+        context.l10n.prompt_specify_second_on_circle,
+      ),
       basePoint: first,
     );
 
@@ -53,7 +59,10 @@ class DrawCircle3pCommand extends FanCadCommand {
       });
     final third = await context.resolvePoint(
       'third',
-      'CIRCLE  Specify third point on circle:',
+      context.commandPrompt(
+        'CIRCLE',
+        context.l10n.prompt_specify_third_on_circle,
+      ),
       basePoint: second,
     );
     context.input

@@ -29,7 +29,10 @@ class EditExplodeCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'EXPLODE  Select objects to explode:',
+      context.commandPrompt(
+        'EXPLODE',
+        context.l10n.prompt_select_objects_to_explode,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
 

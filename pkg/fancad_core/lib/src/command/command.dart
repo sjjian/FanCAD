@@ -263,6 +263,10 @@ abstract class CommandServices {
   /// caller may proceed. Non-interactive hosts return their default policy.
   Future<bool> requestApproval(String title, String details);
 
+  /// UI language (`en` / `zh`). Interactive prompts look up copy from this.
+  /// Headless tests keep English.
+  String get locale => 'en';
+
   static const CommandServices none = _NullServices();
 }
 
@@ -292,6 +296,9 @@ class _NullServices implements CommandServices {
 
   @override
   ShxFontTable get shxFonts => const ShxFontTable();
+
+  @override
+  String get locale => 'en';
 
   @override
   Future<bool> requestApproval(String title, String details) async => false;

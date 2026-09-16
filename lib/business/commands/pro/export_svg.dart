@@ -53,7 +53,10 @@ class PrintExportSvgCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final path = await context.resolveText('path', 'SVG path:');
+    final path = await context.resolveText(
+      'path',
+      context.l10n.prompt_svg_path,
+    );
     final layout = plotLayout(context);
     if (layout == null) {
       return CommandResult.failed(

@@ -26,7 +26,10 @@ class EditToPolylineCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'PEDIT  Select lines to convert:',
+      context.commandPrompt(
+        'PEDIT',
+        context.l10n.prompt_select_lines_to_convert,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
 

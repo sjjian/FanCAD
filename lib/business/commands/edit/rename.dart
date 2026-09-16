@@ -39,7 +39,10 @@ class BlockRenameCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final requested = (await context.resolveText(
       'name',
-      'RENAME  Enter block name to change:',
+      context.commandPrompt(
+        'RENAME',
+        context.l10n.prompt_enter_block_name_to_change,
+      ),
     )).trim();
     if (requested.isEmpty) {
       return const CommandResult.failed('RENAME needs the current block name.');
@@ -55,7 +58,7 @@ class BlockRenameCommand extends FanCadCommand {
     }
     final newName = (await context.resolveText(
       'newName',
-      'RENAME  Enter new block name:',
+      context.commandPrompt('RENAME', context.l10n.prompt_enter_new_block_name),
     )).trim();
     if (newName.isEmpty) {
       return const CommandResult.failed('The new block name is empty.');

@@ -54,7 +54,8 @@ class EditTextObjectCommand extends FanCadCommand {
     ParamSpec(
       name: 'rotation',
       type: ParamType.angle,
-      description: 'Rotation in degrees, counter-clockwise, about the insertion',
+      description:
+          'Rotation in degrees, counter-clockwise, about the insertion',
       required: false,
     ),
     ParamSpec(
@@ -95,7 +96,7 @@ class EditTextObjectCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'Select text objects:',
+      context.l10n.prompt_select_text_objects,
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final targets = <CadEntity>[
@@ -140,7 +141,7 @@ class EditTextObjectCommand extends FanCadCommand {
     final height = hasHeight
         ? await context.resolveNumber(
             'height',
-            'Specify new height:',
+            context.l10n.prompt_specify_new_height,
             defaultValue: textHeightOf(first) ?? 2.5,
           )
         : null;
@@ -150,31 +151,35 @@ class EditTextObjectCommand extends FanCadCommand {
     final color = hasColor
         ? cadColorFromJson(context.args.text('color'))
         : null;
-    var justify = hasJustify ? (context.args.text('justify') ?? '').trim() : null;
+    var justify = hasJustify
+        ? (context.args.text('justify') ?? '').trim()
+        : null;
     if (hasJustify && (justify == null || justify.isEmpty)) {
       justify = (await context.resolveText(
         'justify',
-        'Enter justification [Left/Center/Right/TL/TC/TR/ML/MC/MR/BL/BC/BR]:',
+        context.l10n.prompt_enter_justification,
         defaultValue: textJustifyKeyOf(first) ?? 'left',
       )).trim();
     }
     final rotationDegrees = hasRotation
         ? await context.resolveNumber(
             'rotation',
-            'Specify rotation angle:',
-            defaultValue:
-                (textRotationOf(first) ?? 0) * 180 / math.pi,
+            context.l10n.prompt_specify_rotation_angle,
+            defaultValue: (textRotationOf(first) ?? 0) * 180 / math.pi,
           )
         : null;
     if (hasRotation && rotationDegrees == null) {
-      return const CommandResult.failed('Rotation must be a number of degrees.');
+      return const CommandResult.failed(
+        'Rotation must be a number of degrees.',
+      );
     }
     var styleName = hasStyle ? (context.args.text('style') ?? '').trim() : null;
     if (hasStyle && (styleName == null || styleName.isEmpty)) {
       styleName = (await context.resolveText(
         'style',
-        'Enter text style name:',
-        defaultValue: textStyleNameOf(first) ?? context.document.currentTextStyle,
+        context.l10n.prompt_enter_text_style_name,
+        defaultValue:
+            textStyleNameOf(first) ?? context.document.currentTextStyle,
       )).trim();
     }
     TextStyleDef? styleDef;
@@ -184,13 +189,15 @@ class EditTextObjectCommand extends FanCadCommand {
       }
       styleDef = context.document.namedTextStyle(styleName);
       if (styleDef == null) {
-        return CommandResult.failed('There is no text style named "$styleName".');
+        return CommandResult.failed(
+          'There is no text style named "$styleName".',
+        );
       }
     }
     final width = hasWidth
         ? await context.resolveNumber(
             'width',
-            'Specify column width:',
+            context.l10n.prompt_specify_column_width,
             defaultValue: textColumnWidthOf(first) ?? 0,
           )
         : null;
@@ -200,7 +207,7 @@ class EditTextObjectCommand extends FanCadCommand {
     final widthFactor = hasWidthFactor
         ? await context.resolveNumber(
             'widthFactor',
-            'Specify width factor:',
+            context.l10n.prompt_specify_width_factor,
             defaultValue: textWidthFactorOf(first) ?? 1,
           )
         : null;
@@ -210,14 +217,12 @@ class EditTextObjectCommand extends FanCadCommand {
     final obliqueDegrees = hasOblique
         ? await context.resolveNumber(
             'oblique',
-            'Specify oblique angle:',
+            context.l10n.prompt_specify_oblique,
             defaultValue: (textObliqueOf(first) ?? 0) * 180 / math.pi,
           )
         : null;
     if (hasOblique && obliqueDegrees == null) {
-      return const CommandResult.failed(
-        'Oblique must be a number of degrees.',
-      );
+      return const CommandResult.failed('Oblique must be a number of degrees.');
     }
     if (hasJustify &&
         (justify == null ||
@@ -235,9 +240,7 @@ class EditTextObjectCommand extends FanCadCommand {
         'a corner code such as TL.',
       );
     }
-    if (text != null &&
-        targets.any(textEditRequiresContent) &&
-        text.isEmpty) {
+    if (text != null && targets.any(textEditRequiresContent) && text.isEmpty) {
       return const CommandResult.failed('Text cannot be empty.');
     }
 

@@ -37,14 +37,17 @@ class DrawEllipseCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final center = await context.resolvePoint(
       'center',
-      'ELLIPSE  Specify center:',
+      context.commandPrompt('ELLIPSE', context.l10n.prompt_specify_center),
     );
     context.input
       ..setMarkers([center])
       ..setPreview((cursor) => [OverlayLine(center, cursor)]);
     final axisEnd = await context.resolvePoint(
       'axisEnd',
-      'ELLIPSE  Specify endpoint of axis:',
+      context.commandPrompt(
+        'ELLIPSE',
+        context.l10n.prompt_specify_axis_endpoint,
+      ),
       basePoint: center,
     );
 
@@ -62,7 +65,10 @@ class DrawEllipseCommand extends FanCadCommand {
     final otherRadius =
         context.args.number('otherRadius') ??
         await context.input.distance(
-          'ELLIPSE  Specify distance to other axis:',
+          context.commandPrompt(
+            'ELLIPSE',
+            context.l10n.prompt_specify_other_axis_distance,
+          ),
           basePoint: center,
         );
     context.input

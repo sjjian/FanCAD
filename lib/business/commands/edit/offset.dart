@@ -41,13 +41,21 @@ class EditOffsetCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final distance =
         context.args.number('distance') ??
-        await context.input.number('OFFSET  Specify offset distance:');
+        await context.input.number(
+          context.commandPrompt(
+            'OFFSET',
+            context.l10n.prompt_specify_offset_distance,
+          ),
+        );
     if (distance <= 0) {
       return const CommandResult.failed('The distance must be positive.');
     }
     final ids = await context.resolveSelection(
       'ids',
-      'OFFSET  Select objects to offset:',
+      context.commandPrompt(
+        'OFFSET',
+        context.l10n.prompt_select_objects_to_offset,
+      ),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
 
@@ -70,7 +78,7 @@ class EditOffsetCommand extends FanCadCommand {
     });
     final side = await context.resolvePoint(
       'side',
-      'OFFSET  Specify a point on the side to offset:',
+      context.commandPrompt('OFFSET', context.l10n.prompt_specify_offset_side),
     );
     context.input.setPreview(null);
 

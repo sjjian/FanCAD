@@ -34,7 +34,7 @@ class DrawXlineCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final origin = await context.resolvePoint(
       'origin',
-      'XLINE  Specify a point:',
+      context.commandPrompt('XLINE', context.l10n.prompt_specify_a_point),
     );
     context.input
       ..setMarkers([origin])
@@ -43,7 +43,7 @@ class DrawXlineCommand extends FanCadCommand {
       );
     final through = await context.resolvePoint(
       'through',
-      'XLINE  Specify through point:',
+      context.commandPrompt('XLINE', context.l10n.prompt_specify_through_point),
       basePoint: origin,
     );
     context.input

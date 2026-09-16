@@ -30,7 +30,7 @@ class EditDimTeditCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final ids = await context.resolveSelection(
       'ids',
-      'DIMTEDIT  Select dimensions:',
+      context.commandPrompt('DIMTEDIT', context.l10n.prompt_select_dimensions),
     );
     if (ids.isEmpty) return const CommandResult.cancelled();
     final targets = <DimensionEntity>[
@@ -45,7 +45,10 @@ class EditDimTeditCommand extends FanCadCommand {
     );
     final at = await context.resolvePoint(
       'at',
-      'DIMTEDIT  Specify new location for dimension text:',
+      context.commandPrompt(
+        'DIMTEDIT',
+        context.l10n.prompt_specify_dim_text_location,
+      ),
       basePoint: targets.first.textPosition,
     );
     context.input.setPreview(null);

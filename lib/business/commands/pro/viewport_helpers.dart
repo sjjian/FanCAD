@@ -1,5 +1,7 @@
 import 'package:fancad_core/fancad_core.dart';
 
+import '../../l10n/l10n.dart';
+
 LayerDef? layerNamed(CadDocument document, String name) {
   final needle = name.toLowerCase();
   for (final layer in document.layers.values) {
@@ -27,7 +29,10 @@ Future<int?> resolveViewportIndex(CommandContext context, Layout layout) async {
     if (index >= 0 && index < layout.viewports.length) return index;
   }
   if (layout.viewports.length == 1) return 0;
-  final point = await context.resolvePoint('point', 'Select viewport:');
+  final point = await context.resolvePoint(
+    'point',
+    context.l10n.prompt_select_viewport,
+  );
   for (var i = layout.viewports.length - 1; i >= 0; i--) {
     if (layout.viewports[i].paperBounds.containsPoint(point.x, point.y)) {
       return i;

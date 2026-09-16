@@ -51,30 +51,36 @@ class DrawAttdefCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final tag = (await context.resolveText(
       'tag',
-      'ATTDEF  Enter attribute tag:',
+      context.commandPrompt('ATTDEF', context.l10n.prompt_enter_attribute_tag),
     )).trim();
     if (tag.isEmpty) {
       return const CommandResult.failed('An attribute needs a tag.');
     }
     final prompt = (await context.resolveText(
       'prompt',
-      'ATTDEF  Enter prompt:',
+      context.commandPrompt(
+        'ATTDEF',
+        context.l10n.prompt_enter_attribute_prompt,
+      ),
       defaultValue: tag,
     )).trim();
     final value = await context.resolveText(
       'value',
-      'ATTDEF  Enter default value:',
+      context.commandPrompt('ATTDEF', context.l10n.prompt_enter_default_value),
       defaultValue: '',
     );
     final height =
         context.args.number('height') ??
         await context.input.number(
-          'ATTDEF  Specify height:',
+          context.commandPrompt('ATTDEF', context.l10n.prompt_specify_height),
           defaultValue: 2.5,
         );
     final at = await context.resolvePoint(
       'at',
-      'ATTDEF  Specify insertion point:',
+      context.commandPrompt(
+        'ATTDEF',
+        context.l10n.prompt_specify_insertion_point,
+      ),
     );
     return commitDraw(context, 'Attdef', [
       AttdefEntity(

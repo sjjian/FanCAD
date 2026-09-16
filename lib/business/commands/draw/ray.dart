@@ -30,14 +30,14 @@ class DrawRayCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final origin = await context.resolvePoint(
       'origin',
-      'RAY  Specify start point:',
+      context.commandPrompt('RAY', context.l10n.prompt_specify_start_point),
     );
     context.input
       ..setMarkers([origin])
       ..setPreview((cursor) => [OverlayLine(origin, cursor, dashed: false)]);
     final through = await context.resolvePoint(
       'through',
-      'RAY  Specify through point:',
+      context.commandPrompt('RAY', context.l10n.prompt_specify_through_point),
       basePoint: origin,
     );
     context.input

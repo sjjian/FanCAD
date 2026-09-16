@@ -2293,6 +2293,1459 @@
   "@command_plugins_eval": {
     "description": "command plugins eval"
   },
+  "command_file_list": "列出图纸",
+  "@command_file_list": {
+    "description": "command file list"
+  },
+  "command_file_activate": "激活图纸",
+  "@command_file_activate": {
+    "description": "command file activate"
+  },
+  "command_draw_attdef": "属性定义",
+  "@command_draw_attdef": {
+    "description": "command draw attdef"
+  },
+  "command_edit_attedit": "编辑属性",
+  "@command_edit_attedit": {
+    "description": "command edit attedit"
+  },
+  "command_view_units": "单位",
+  "@command_view_units": {
+    "description": "command view units"
+  },
+  "command_file_new_desc": "在新标签页中创建空图形。",
+  "@command_file_new_desc": {
+    "description": "command file new desc"
+  },
+  "command_file_open_desc": "打开 DWG 或 DXF 文件。",
+  "@command_file_open_desc": {
+    "description": "command file open desc"
+  },
+  "command_file_save_desc": "保存此命令所针对的图形；从未保存过时会询问路径。",
+  "@command_file_save_desc": {
+    "description": "command file save desc"
+  },
+  "command_file_save_as_desc": "将此命令所针对的图形保存到新文件。",
+  "@command_file_save_as_desc": {
+    "description": "command file save as desc"
+  },
+  "command_file_close_desc": "关闭此命令所针对的图形。",
+  "@command_file_close_desc": {
+    "description": "command file close desc"
+  },
+  "command_file_open_recent_desc": "重新打开最近用过的文件。",
+  "@command_file_open_recent_desc": {
+    "description": "command file open recent desc"
+  },
+  "command_file_audit_desc": "把图形写到临时 DXF，并报告往返会丢失的内容。",
+  "@command_file_audit_desc": {
+    "description": "command file audit desc"
+  },
+  "command_file_list_desc": "列出每个打开的图纸标签页：id、标题、路径、是否已修改、是否为当前、实体数量和当前布局。用 id 作为 fancad 的标签选择器，即可不切换界面操作某张图。",
+  "@command_file_list_desc": {
+    "description": "command file list desc"
+  },
+  "command_file_activate_desc": "把已打开的图纸带到前台。传入 file.list 的 id，或唯一的路径或标题。",
+  "@command_file_activate_desc": {
+    "description": "command file activate desc"
+  },
+  "command_draw_line_desc": "绘制一条或多条相连的直线段。提供起点和终点可非交互地画单段。",
+  "@command_draw_line_desc": {
+    "description": "command draw line desc"
+  },
+  "command_draw_polyline_desc": "将相连的线段画成一条多段线。传入点数组可非交互创建。",
+  "@command_draw_polyline_desc": {
+    "description": "command draw polyline desc"
+  },
+  "command_draw_spline_desc": "绘制夹紧 B 样条。控制点模式把曲线拉向单击处，只保证两端；拟合模式穿过每一点。传入点数组可非交互创建。",
+  "@command_draw_spline_desc": {
+    "description": "command draw spline desc"
+  },
+  "command_draw_rectangle_desc": "将轴对齐矩形画成闭合多段线。",
+  "@command_draw_rectangle_desc": {
+    "description": "command draw rectangle desc"
+  },
+  "command_draw_circle_desc": "由圆心和半径绘制圆。",
+  "@command_draw_circle_desc": {
+    "description": "command draw circle desc"
+  },
+  "command_draw_circle_2p_desc": "以两点连线为直径绘制圆。",
+  "@command_draw_circle_2p_desc": {
+    "description": "command draw circle 2p desc"
+  },
+  "command_draw_circle_3p_desc": "绘制过指定三点的唯一圆。",
+  "@command_draw_circle_3p_desc": {
+    "description": "command draw circle 3p desc"
+  },
+  "command_draw_circle_ttr_desc": "绘制给定半径、与两条直线/圆/圆弧相切的圆。在每个对象上的拾取决定侧向（对圆还区分外切与内切）。",
+  "@command_draw_circle_ttr_desc": {
+    "description": "command draw circle ttr desc"
+  },
+  "command_draw_donut_desc": "由内径和外径绘制填充圆环。内径为零则是实心圆盘。结果是闭合的宽多段线，与 DWG 中圆环的存法一致。",
+  "@command_draw_donut_desc": {
+    "description": "command draw donut desc"
+  },
+  "command_draw_arc_desc": "通过三点绘制圆弧：起点、圆弧上一点、终点。",
+  "@command_draw_arc_desc": {
+    "description": "command draw arc desc"
+  },
+  "command_draw_polygon_desc": "绘制内接于圆的正多边形。",
+  "@command_draw_polygon_desc": {
+    "description": "command draw polygon desc"
+  },
+  "command_draw_ellipse_desc": "由中心、一条轴的端点、到另一条轴的距离绘制椭圆。",
+  "@command_draw_ellipse_desc": {
+    "description": "command draw ellipse desc"
+  },
+  "command_draw_xline_desc": "过一点沿给定方向绘制无限构造线。第二点只定角度；两侧无限延伸。",
+  "@command_draw_xline_desc": {
+    "description": "command draw xline desc"
+  },
+  "command_draw_ray_desc": "从起点穿过第二点绘制半无限射线。与构造线不同，它有起点。",
+  "@command_draw_ray_desc": {
+    "description": "command draw ray desc"
+  },
+  "command_draw_point_desc": "放置点标记。",
+  "@command_draw_point_desc": {
+    "description": "command draw point desc"
+  },
+  "command_draw_divide_desc": "在直线、多段线、圆弧或圆上放置等分点标记。开口对象不标记端点；圆或闭合多段线在每一等分处放置标记。凸度按圆弧走，不按弦。",
+  "@command_draw_divide_desc": {
+    "description": "command draw divide desc"
+  },
+  "command_draw_measure_desc": "沿直线、多段线、圆弧或圆按固定间距放置点标记。开口对象从较近一端开始；圆从拾取点开始。不标记端点。凸度按圆弧走，不按弦。",
+  "@command_draw_measure_desc": {
+    "description": "command draw measure desc"
+  },
+  "command_draw_text_desc": "放置单行文字。样式默认为当前 TEXTSTYLE。对正为 Left、Center、Right 或如 TL 的角点代码。",
+  "@command_draw_text_desc": {
+    "description": "command draw text desc"
+  },
+  "command_draw_mtext_desc": "放置多行文字。换行变为 \\P。宽度 0 不换行。对正为 TL…BR 或附着点 1–9（1 为左上）。",
+  "@command_draw_mtext_desc": {
+    "description": "command draw mtext desc"
+  },
+  "command_draw_attdef_desc": "放置属性定义。把它放进块后，INSERT 和 ATTEDIT 才能填写该标签，用于标题栏和明细表。",
+  "@command_draw_attdef_desc": {
+    "description": "command draw attdef desc"
+  },
+  "command_draw_leader_desc": "从箭头尖经过一个或多个顶点绘制引线。可选注释文字落在末点的水平着陆线上，与 AutoCAD LEADER 的标注方式相同。",
+  "@command_draw_leader_desc": {
+    "description": "command draw leader desc"
+  },
+  "command_draw_hatch_desc": "填充内部点周围的区域，或选定闭合边界围成的区域。四条相接的直线仍算作边界。",
+  "@command_draw_hatch_desc": {
+    "description": "command draw hatch desc"
+  },
+  "command_draw_dim_linear_desc": "放置水平或垂直标注。尺寸线拾取决定轴向：原点上方或下方测宽度，左侧或右侧测高度。一条直线可代替两个原点。",
+  "@command_draw_dim_linear_desc": {
+    "description": "command draw dim linear desc"
+  },
+  "command_draw_dim_aligned_desc": "放置与两原点平行的标注。文字是真实距离，不是水平或垂直分量。一条直线可代替两个原点。",
+  "@command_draw_dim_aligned_desc": {
+    "description": "command draw dim aligned desc"
+  },
+  "command_draw_dim_radius_desc": "在圆或圆弧上放置半径标注。第二次拾取是箭头尖；文字为半径，前缀 R。",
+  "@command_draw_dim_radius_desc": {
+    "description": "command draw dim radius desc"
+  },
+  "command_draw_dim_diameter_desc": "在圆或圆弧上放置直径标注。第二次拾取是箭头尖；文字为直径，前缀 Ø。",
+  "@command_draw_dim_diameter_desc": {
+    "description": "command draw dim diameter desc"
+  },
+  "command_draw_center_mark_desc": "在选定圆或圆弧上绘制圆心标记。中心处为短十字；可选延长线越过圆周，即常见的 DIMCENTER。",
+  "@command_draw_center_mark_desc": {
+    "description": "command draw center mark desc"
+  },
+  "command_draw_center_line_desc": "在两条平行线之间，或两个圆/圆弧的圆心之间绘制中心线。线段跨越两个对象并略微伸出两端。",
+  "@command_draw_center_line_desc": {
+    "description": "command draw center line desc"
+  },
+  "command_draw_dim_angular_desc": "放置角度标注。拾取圆弧则圆心为顶点；拾取两条直线则交点为顶点；最后一拾取落在尺寸弧上并选择标注哪个扇区。提供顶点时三点方式仍可用。",
+  "@command_draw_dim_angular_desc": {
+    "description": "command draw dim angular desc"
+  },
+  "command_draw_dim_continue_desc": "从上一条的第二原点放置下一条线性或对齐标注，共用同一尺寸线。连续指定下一点可沿一排特征走。",
+  "@command_draw_dim_continue_desc": {
+    "description": "command draw dim continue desc"
+  },
+  "command_draw_dim_baseline_desc": "从同一第一原点放置下一条线性或对齐标注，尺寸线向外错开。连续指定下一点可叠放总体尺寸。",
+  "@command_draw_dim_baseline_desc": {
+    "description": "command draw dim baseline desc"
+  },
+  "command_annot_dimstyle_desc": "创建或编辑标注样式。重新生成的标注从命名样式读取文字高度、箭头大小、尺寸界线偏移、比例和小数位数。省略名称则列出样式，或编辑当前样式。",
+  "@command_annot_dimstyle_desc": {
+    "description": "command annot dimstyle desc"
+  },
+  "command_annot_textstyle_desc": "创建或编辑文字样式。新建 TEXT 和 MTEXT 从命名样式读取字体、固定高度、宽度因子和倾斜角。省略名称则列出样式，或编辑当前样式。",
+  "@command_annot_textstyle_desc": {
+    "description": "command annot textstyle desc"
+  },
+  "command_edit_erase_desc": "删除选定对象。",
+  "@command_edit_erase_desc": {
+    "description": "command edit erase desc"
+  },
+  "command_edit_overkill_desc": "删除完全重合的几何副本，并把重叠或首尾相接的共线直线收成一笔。保留第一份并拉到并集。省略 ids 表示整个当前空间，以免残留选择集挡住其余重复。",
+  "@command_edit_overkill_desc": {
+    "description": "command edit overkill desc"
+  },
+  "command_edit_move_desc": "按位移移动选定对象。",
+  "@command_edit_move_desc": {
+    "description": "command edit move desc"
+  },
+  "command_edit_copy_desc": "将选定对象复制到一个或多个位置。每指定一个第二点就再放一份。",
+  "@command_edit_copy_desc": {
+    "description": "command edit copy desc"
+  },
+  "command_edit_copy_clip_desc": "将选定对象复制到剪贴板。选择集左下角为粘贴基点。可用 PASTECLIP 粘到本图或其他标签页。",
+  "@command_edit_copy_clip_desc": {
+    "description": "command edit copy clip desc"
+  },
+  "command_edit_copy_base_desc": "将选定对象复制到剪贴板，并指定基点，以便 PASTECLIP 把该点落到插入处。",
+  "@command_edit_copy_base_desc": {
+    "description": "command edit copy base desc"
+  },
+  "command_edit_cut_clip_desc": "将选定对象复制到剪贴板并从图形中删除。锁定图层上的对象留下；剪贴板仍持有副本。",
+  "@command_edit_cut_clip_desc": {
+    "description": "command edit cut clip desc"
+  },
+  "command_edit_paste_clip_desc": "在插入点粘贴剪贴板对象。存储的基点落到该单击处。",
+  "@command_edit_paste_clip_desc": {
+    "description": "command edit paste clip desc"
+  },
+  "command_edit_paste_orig_desc": "按源图中的坐标粘贴剪贴板对象，不再询问插入点。",
+  "@command_edit_paste_orig_desc": {
+    "description": "command edit paste orig desc"
+  },
+  "command_edit_paste_block_desc": "将剪贴板对象作为匿名块参照粘贴。存储的基点落到所拾取的插入点。",
+  "@command_edit_paste_block_desc": {
+    "description": "command edit paste block desc"
+  },
+  "command_edit_stretch_desc": "移动跨越窗口内的顶点，其余锚定。窗口完全包住的对象整体移动。",
+  "@command_edit_stretch_desc": {
+    "description": "command edit stretch desc"
+  },
+  "command_edit_rotate_desc": "绕基点旋转选定对象。角度以度为单位，逆时针。",
+  "@command_edit_rotate_desc": {
+    "description": "command edit rotate desc"
+  },
+  "command_edit_scale_desc": "绕基点均匀缩放选定对象。",
+  "@command_edit_scale_desc": {
+    "description": "command edit scale desc"
+  },
+  "command_edit_mirror_desc": "将选定对象沿一条直线镜像。",
+  "@command_edit_mirror_desc": {
+    "description": "command edit mirror desc"
+  },
+  "command_edit_align_desc": "移动选择集，使源点落到目标点。第二对点按两个方向旋转对齐；可选缩放匹配两段长度。",
+  "@command_edit_align_desc": {
+    "description": "command edit align desc"
+  },
+  "command_edit_array_desc": "将选定对象复制成矩形阵列。",
+  "@command_edit_array_desc": {
+    "description": "command edit array desc"
+  },
+  "command_edit_polar_array_desc": "绕中心旋转复制选定对象。填充 360° 则沿整圆均分；更小的填充从原对象起包含该角。",
+  "@command_edit_polar_array_desc": {
+    "description": "command edit polar array desc"
+  },
+  "command_edit_offset_desc": "按固定距离创建直线、圆弧、圆和多段线的平行副本。",
+  "@command_edit_offset_desc": {
+    "description": "command edit offset desc"
+  },
+  "command_edit_trim_desc": "将直线、多段线或圆弧缩短到与选定剪切边的交点。包含拾取点的部分被去掉。闭合多段线会打开；凸度在圆弧上切，不在弦上切。",
+  "@command_edit_trim_desc": {
+    "description": "command edit trim desc"
+  },
+  "command_edit_extend_desc": "延长直线、开口多段线或圆弧，直到碰到选定边界边。凸度沿其所在圆增长。多段线或圆弧上的拾取决定移动哪一端。",
+  "@command_edit_extend_desc": {
+    "description": "command edit extend desc"
+  },
+  "command_edit_fillet_desc": "用给定半径的圆弧圆角两条直线之间的角，或多段线顶点。传入 all=true 可圆角多段线每个直角。半径为零则修剪或延伸成尖角。",
+  "@command_edit_fillet_desc": {
+    "description": "command edit fillet desc"
+  },
+  "command_edit_chamfer_desc": "在两条直线之间，或多段线顶点处切出直线倒角。传入 all=true 可倒每个直角。距离为零则修剪或延伸成尖角。",
+  "@command_edit_chamfer_desc": {
+    "description": "command edit chamfer desc"
+  },
+  "command_edit_break_desc": "在一点打断直线、多段线或圆弧，或删除两点之间的部分。凸度拆成两段较小圆弧。圆需要两点，保留从第二次拾取逆时针回到第一点的残余。省略第二点则只打断（圆弧和开口链）。",
+  "@command_edit_break_desc": {
+    "description": "command edit break desc"
+  },
+  "command_edit_lengthen_desc": "通过移动所拾取的一端，改变直线、开口多段线或圆弧的长度。凸度沿圆弧增减。可指定总长，或带符号增量加到当前长度。圆弧不能闭合成整圆。",
+  "@command_edit_lengthen_desc": {
+    "description": "command edit lengthen desc"
+  },
+  "command_edit_explode_desc": "将多段线打成线段，将块参照打成其内容的副本，将标注打成所绘的线、箭头和文字。",
+  "@command_edit_explode_desc": {
+    "description": "command edit explode desc"
+  },
+  "command_edit_block_desc": "用选定对象定义命名块，并在基点用一个插入替换它们，图面看起来不变，之后还能再次插入该定义。",
+  "@command_edit_block_desc": {
+    "description": "command edit block desc"
+  },
+  "command_edit_insert_desc": "放置一个或多个命名块参照。缩放为均匀缩放；旋转以度为单位。传入点数组可在多处盖同一块。",
+  "@command_edit_insert_desc": {
+    "description": "command edit insert desc"
+  },
+  "command_edit_minsert_desc": "将命名块的矩形阵列作为一次插入放置。这些副本仍是一个对象，移动插入即移动整组。",
+  "@command_edit_minsert_desc": {
+    "description": "command edit minsert desc"
+  },
+  "command_block_purge_desc": "删除没有任何插入引用的命名块定义。同一轮也会清掉套在其中的未用定义。外部参照和布局块不动。",
+  "@command_block_purge_desc": {
+    "description": "command block purge desc"
+  },
+  "command_block_rename_desc": "重命名块定义，并更新仍指向旧名的所有插入。布局块、匿名块和外部参照不能重命名。",
+  "@command_block_rename_desc": {
+    "description": "command block rename desc"
+  },
+  "command_edit_join_desc": "将端点相接的选定直线、圆弧和开口多段线接成一条多段线。相接方向相反时该段会反向；两端相接的环存为闭合。",
+  "@command_edit_join_desc": {
+    "description": "command edit join desc"
+  },
+  "command_edit_close_desc": "连接末顶点与第一顶点，闭合选定的开口多段线。已经闭合的不动。",
+  "@command_edit_close_desc": {
+    "description": "command edit close desc"
+  },
+  "command_edit_open_desc": "去掉闭合段，打开选定的闭合多段线。顶点保留，只断开闭环。",
+  "@command_edit_open_desc": {
+    "description": "command edit open desc"
+  },
+  "command_edit_polyline_width_desc": "设置选定多段线的恒定宽度。零为细线；圆环用同一字段，因此画完后改宽线也走这里。",
+  "@command_edit_polyline_width_desc": {
+    "description": "command edit polyline width desc"
+  },
+  "command_edit_hatch_desc": "更改选定填充的图案、比例或角度。省略某字段则保持原值。角度以度为单位。",
+  "@command_edit_hatch_desc": {
+    "description": "command edit hatch desc"
+  },
+  "command_edit_to_polyline_desc": "将选定直线变成两顶点多段线，以便作为链闭合、打开或反向。",
+  "@command_edit_to_polyline_desc": {
+    "description": "command edit to polyline desc"
+  },
+  "command_edit_reverse_desc": "反转选定直线和多段线的方向。形状不变，起终点对调，对线型和沿链行走的命令有意义。",
+  "@command_edit_reverse_desc": {
+    "description": "command edit reverse desc"
+  },
+  "command_edit_undo_desc": "撤销最近一次更改。",
+  "@command_edit_undo_desc": {
+    "description": "command edit undo desc"
+  },
+  "command_edit_redo_desc": "重新应用最近撤销的更改。",
+  "@command_edit_redo_desc": {
+    "description": "command edit redo desc"
+  },
+  "command_edit_change_layer_desc": "将选定对象移到另一图层。",
+  "@command_edit_change_layer_desc": {
+    "description": "command edit change layer desc"
+  },
+  "command_edit_change_color_desc": "设置选定对象的颜色。接受 AutoCAD 颜色索引（1–255）、#rrggbb 或 ByLayer。",
+  "@command_edit_change_color_desc": {
+    "description": "command edit change color desc"
+  },
+  "command_edit_change_linetype_desc": "设置选定对象的线型。库存名（DASHED、HIDDEN、CENTER、PHANTOM、DOT、DASHDOT、DIVIDE、Continuous）以及 ByLayer、ByBlock 均可。",
+  "@command_edit_change_linetype_desc": {
+    "description": "command edit change linetype desc"
+  },
+  "command_edit_change_lineweight_desc": "设置选定对象的线宽。接受毫米值（0.25）、百分之一毫米（25）、ByLayer、ByBlock、Default 或 hairline。",
+  "@command_edit_change_lineweight_desc": {
+    "description": "command edit change lineweight desc"
+  },
+  "command_edit_dimension_text_desc": "覆盖选定标注的文字。空则恢复测量值；<> 代表该值；单个空格隐藏文字。",
+  "@command_edit_dimension_text_desc": {
+    "description": "command edit dimension text desc"
+  },
+  "command_edit_dim_tedit_desc": "将选定标注的文字移到新位置。线性标注的尺寸线跟随移动且不交换宽高；对齐、径向和角度标注保持类型。",
+  "@command_edit_dim_tedit_desc": {
+    "description": "command edit dim tedit desc"
+  },
+  "command_edit_text_content_desc": "更改选定文字、多行文字、标注、属性或引线的内容。对标注，空则恢复测量值。",
+  "@command_edit_text_content_desc": {
+    "description": "command edit text content desc"
+  },
+  "command_edit_text_object_desc": "在一次撤销中更新选定文字、多行文字、属性或引线的内容、高度、颜色、对正、旋转、样式、列宽、宽度因子或倾斜。标注文字高度是标注样式属性，会被忽略。",
+  "@command_edit_text_object_desc": {
+    "description": "command edit text object desc"
+  },
+  "command_edit_justify_text_desc": "更改选定文字或多行文字的对正，并移动插入点使字形留在原处。不提供 Align 和 Fit，它们需要第二点。",
+  "@command_edit_justify_text_desc": {
+    "description": "command edit justify text desc"
+  },
+  "command_edit_match_prop_desc": "将源对象的图层、颜色、线型、线宽及其他显示特性复制到目标对象。可见性不动，以免破坏隔离和隐藏。",
+  "@command_edit_match_prop_desc": {
+    "description": "command edit match prop desc"
+  },
+  "command_edit_attedit_desc": "更改块参照上的属性值。常量标签保持定义中的写法。",
+  "@command_edit_attedit_desc": {
+    "description": "command edit attedit desc"
+  },
+  "command_view_zoom_extents_desc": "使整个图形适应窗口。",
+  "@command_view_zoom_extents_desc": {
+    "description": "command view zoom extents desc"
+  },
+  "command_view_zoom_window_desc": "缩放到指定的矩形。",
+  "@command_view_zoom_window_desc": {
+    "description": "command view zoom window desc"
+  },
+  "command_view_zoom_in_desc": "以视图中心放大。",
+  "@command_view_zoom_in_desc": {
+    "description": "command view zoom in desc"
+  },
+  "command_view_zoom_out_desc": "以视图中心缩小。",
+  "@command_view_zoom_out_desc": {
+    "description": "command view zoom out desc"
+  },
+  "command_view_zoom_selected_desc": "使选定对象适应窗口。",
+  "@command_view_zoom_selected_desc": {
+    "description": "command view zoom selected desc"
+  },
+  "command_view_regen_desc": "重建显示列表，丢弃缓存的曲线细分。",
+  "@command_view_regen_desc": {
+    "description": "command view regen desc"
+  },
+  "command_view_units_desc": "设置写入 $INSUNITS 的图形插入单位。坐标仍用这些单位；该值供导入器和查询做换算。",
+  "@command_view_units_desc": {
+    "description": "command view units desc"
+  },
+  "command_workbench_preferences_desc": "打开应用程序设置对话框。",
+  "@command_workbench_preferences_desc": {
+    "description": "command workbench preferences desc"
+  },
+  "command_select_all_desc": "选择当前空间中每个可选对象。",
+  "@command_select_all_desc": {
+    "description": "command select all desc"
+  },
+  "command_select_none_desc": "清除选择。",
+  "@command_select_none_desc": {
+    "description": "command select none desc"
+  },
+  "command_select_invert_desc": "选择当前未选中的所有对象。",
+  "@command_select_invert_desc": {
+    "description": "command select invert desc"
+  },
+  "command_select_similar_desc": "把选择扩展到同一类型和图层的每个对象。",
+  "@command_select_similar_desc": {
+    "description": "command select similar desc"
+  },
+  "command_select_by_layer_desc": "选择指定图层上的每个对象。",
+  "@command_select_by_layer_desc": {
+    "description": "command select by layer desc"
+  },
+  "command_select_by_color_desc": "选择存储颜色匹配 ACI、#rrggbb、ByLayer 或 ByBlock 的每个对象。图层继承的红与 ACI 1 不是一回事。",
+  "@command_select_by_color_desc": {
+    "description": "command select by color desc"
+  },
+  "command_select_by_linetype_desc": "选择存储线型匹配给定名称、ByLayer 或 ByBlock 的每个对象。",
+  "@command_select_by_linetype_desc": {
+    "description": "command select by linetype desc"
+  },
+  "command_select_by_lineweight_desc": "选择存储线宽匹配毫米值、百分之一毫米、ByLayer、ByBlock、Default 或 hairline 的每个对象。图层继承的 0.25 mm 与 25 不是一回事。",
+  "@command_select_by_lineweight_desc": {
+    "description": "command select by lineweight desc"
+  },
+  "command_select_by_type_desc": "选择当前空间中某一种实体。LINE、CIRCLE、INSERT、DIMENSION 及其他 FanCAD 类型可用；LWPOLYLINE 和 BLOCK 分别当作多段线和插入。",
+  "@command_select_by_type_desc": {
+    "description": "command select by type desc"
+  },
+  "command_select_by_block_desc": "选择当前空间中某个命名块的每一次插入。名称不区分大小写，与 INSERT 和 RENAME 的查找方式相同。",
+  "@command_select_by_block_desc": {
+    "description": "command select by block desc"
+  },
+  "command_view_isolate_objects_desc": "隐藏当前空间中除选择集以外的每个对象，让其余图形让开但并不删除。",
+  "@command_view_isolate_objects_desc": {
+    "description": "command view isolate objects desc"
+  },
+  "command_view_hide_objects_desc": "隐藏选定对象而不删除。",
+  "@command_view_hide_objects_desc": {
+    "description": "command view hide objects desc"
+  },
+  "command_view_unisolate_objects_desc": "显示当前空间中被隔离或隐藏关掉的每个对象。",
+  "@command_view_unisolate_objects_desc": {
+    "description": "command view unisolate objects desc"
+  },
+  "command_layer_new_desc": "创建图层并设为当前。",
+  "@command_layer_new_desc": {
+    "description": "command layer new desc"
+  },
+  "command_layer_set_current_desc": "选择新建对象所在的图层。",
+  "@command_layer_set_current_desc": {
+    "description": "command layer set current desc"
+  },
+  "command_layer_toggle_visible_desc": "打开或关闭图层。",
+  "@command_layer_toggle_visible_desc": {
+    "description": "command layer toggle visible desc"
+  },
+  "command_layer_isolate_desc": "关闭除指定图层外的所有图层。",
+  "@command_layer_isolate_desc": {
+    "description": "command layer isolate desc"
+  },
+  "command_layer_show_all_desc": "重新打开所有图层。",
+  "@command_layer_show_all_desc": {
+    "description": "command layer show all desc"
+  },
+  "command_layer_toggle_lock_desc": "锁定或解锁图层。锁定图层上的对象仍可见，但不能修改。",
+  "@command_layer_toggle_lock_desc": {
+    "description": "command layer toggle lock desc"
+  },
+  "command_layer_delete_desc": "删除图层及其上的所有对象。名为 0 的图层不能删除。",
+  "@command_layer_delete_desc": {
+    "description": "command layer delete desc"
+  },
+  "command_layer_purge_desc": "删除没有任何对象使用的图层。图层 0 保留；若当前图层为空，先切回 0 再清理。",
+  "@command_layer_purge_desc": {
+    "description": "command layer purge desc"
+  },
+  "command_query_summary_desc": "返回图形的紧凑统计：范围、按类型的实体计数、以及每层计数。查询内容前先用它了解图纸。",
+  "@command_query_summary_desc": {
+    "description": "command query summary desc"
+  },
+  "command_query_list_desc": "报告选定对象的完整特性。",
+  "@command_query_list_desc": {
+    "description": "command query list desc"
+  },
+  "command_query_entities_desc": "按可选过滤器查找实体，返回其 id 和特性。用图层、类型和包围窗口把大图缩到关心的部分。",
+  "@command_query_entities_desc": {
+    "description": "command query entities desc"
+  },
+  "command_query_selection_desc": "将当前选择集作为结构化记录返回（id、类型、图层、范围、简要几何）。用它代替猜测 id。空选择是成功的空列表，不是提示。",
+  "@command_query_selection_desc": {
+    "description": "command query selection desc"
+  },
+  "command_query_viewport_desc": "返回活动相机：中心、比例和可见窗口 [minX, minY, maxX, maxY]。把该窗口传给 query.entities 可列出用户正在看的内容。",
+  "@command_query_viewport_desc": {
+    "description": "command query viewport desc"
+  },
+  "command_query_id_desc": "报告一点的 X、Y 坐标。需要位置而不是两点距离时用此命令。",
+  "@command_query_id_desc": {
+    "description": "command query id desc"
+  },
+  "command_query_distance_desc": "测量两点之间的距离和角度。",
+  "@command_query_distance_desc": {
+    "description": "command query distance desc"
+  },
+  "command_query_angle_desc": "测量顶点处两条射线的夹角。第一点是顶点；后两点定义两边。",
+  "@command_query_angle_desc": {
+    "description": "command query angle desc"
+  },
+  "command_query_area_desc": "报告选定闭合对象的面积和周长。",
+  "@command_query_area_desc": {
+    "description": "command query area desc"
+  },
+  "command_query_layers_desc": "返回每个图层及其状态和对象数量。",
+  "@command_query_layers_desc": {
+    "description": "command query layers desc"
+  },
+  "command_layout_list_desc": "列出模型和图纸空间布局及其视口。",
+  "@command_layout_list_desc": {
+    "description": "command layout list desc"
+  },
+  "command_layout_set_desc": "切换活动布局（模型或图纸标签）。",
+  "@command_layout_set_desc": {
+    "description": "command layout set desc"
+  },
+  "command_layout_new_desc": "添加图纸空间布局标签页并打开。图纸默认为 A4 横向；可传入宽高（毫米）覆盖。",
+  "@command_layout_new_desc": {
+    "description": "command layout new desc"
+  },
+  "command_layout_delete_desc": "删除图纸空间布局标签页及该页上的实体。不能删除模型。省略名称则删除当前标签页。",
+  "@command_layout_delete_desc": {
+    "description": "command layout delete desc"
+  },
+  "command_layout_copy_desc": "复制图纸空间布局：图纸尺寸、视口以及该页上的实体。不能复制模型。",
+  "@command_layout_copy_desc": {
+    "description": "command layout copy desc"
+  },
+  "command_layout_rename_desc": "重命名图纸布局标签。图纸、视口和图纸实体不动。不能重命名模型。",
+  "@command_layout_rename_desc": {
+    "description": "command layout rename desc"
+  },
+  "command_layout_order_desc": "在布局条中移动图纸标签。模型始终第一。index 是在图纸标签中的目标位置（0 为第一张图纸）。也可传入 before / after 另一标签名。",
+  "@command_layout_order_desc": {
+    "description": "command layout order desc"
+  },
+  "command_layout_pagesetup_desc": "更改布局的图纸尺寸（毫米）、打印旋转（0、90、180 或 270）、比例或适应图纸、偏移以及可选打印窗口。省略名称则编辑当前图纸标签。模型没有图纸。",
+  "@command_layout_pagesetup_desc": {
+    "description": "command layout pagesetup desc"
+  },
+  "command_layout_mview_desc": "在当前图纸布局上开一个看向模型空间的窗口。除非提供比例，否则模型会框进该矩形。",
+  "@command_layout_mview_desc": {
+    "description": "command layout mview desc"
+  },
+  "command_layout_vpscale_desc": "设置图纸视口的比例（每个图纸单位对应的模型单位）。传入 fit=true 则重新框住模型。锁定的视口会被拒绝。",
+  "@command_layout_vpscale_desc": {
+    "description": "command layout vpscale desc"
+  },
+  "command_layout_vplock_desc": "锁定或解锁图纸视口，使 VPSCALE 不能改视图。省略 locked 则切换。窗口边框仍可移动。",
+  "@command_layout_vplock_desc": {
+    "description": "command layout vplock desc"
+  },
+  "command_layout_vpon_desc": "打开或关闭图纸视口。关闭的窗口保留边框但隐藏模型，打印时跳过。省略 on 则切换。",
+  "@command_layout_vpon_desc": {
+    "description": "command layout vpon desc"
+  },
+  "command_layout_vplayer_desc": "在一个图纸视口中冻结或解冻图层。其他窗口和模型空间保持各自的可见性。省略 freeze 则冻结。",
+  "@command_layout_vplayer_desc": {
+    "description": "command layout vplayer desc"
+  },
+  "command_layout_vpmax_desc": "按图纸视口框入模型空间，以便通过该窗口编辑模型。VPMIN 返回图纸。",
+  "@command_layout_vpmax_desc": {
+    "description": "command layout vpmax desc"
+  },
+  "command_layout_vpmin_desc": "返回 VPMAX 离开的图纸布局并框住该页。",
+  "@command_layout_vpmin_desc": {
+    "description": "command layout vpmin desc"
+  },
+  "command_print_export_svg_desc": "将布局打印为 SVG 文件。省略布局名则打印当前标签页。路径为 .pdf 则改为矢量 PDF。传入 corner1 和 corner2 可打印窗口；否则使用布局存储的打印窗口或整张图纸。",
+  "@command_print_export_svg_desc": {
+    "description": "command print export svg desc"
+  },
+  "command_print_export_pdf_desc": "将布局打印为矢量 PDF。省略布局名则打印当前标签页。图纸尺寸成为页面 MediaBox；视口被裁剪。传入 corner1 和 corner2 可打印窗口。",
+  "@command_print_export_pdf_desc": {
+    "description": "command print export pdf desc"
+  },
+  "command_xref_attach_desc": "将另一图纸作为外部参照加载并放到模型空间。再次附着同一路径即重新加载；已有插入保持位置。",
+  "@command_xref_attach_desc": {
+    "description": "command xref attach desc"
+  },
+  "command_xref_reload_desc": "从存储路径重新读取已附着的外部参照。省略名称则重载选定的外部参照，或图中唯一的外部参照。",
+  "@command_xref_reload_desc": {
+    "description": "command xref reload desc"
+  },
+  "command_xref_detach_desc": "移除外部参照以及显示它的每次插入。省略名称则拆离选定的外部参照，或图中唯一的外部参照。",
+  "@command_xref_detach_desc": {
+    "description": "command xref detach desc"
+  },
+  "command_xref_bind_desc": "把外部参照变成本地块，图形不再依赖该文件。插入位置不变。省略名称则绑定选定的外部参照，或图中唯一的外部参照。",
+  "@command_xref_bind_desc": {
+    "description": "command xref bind desc"
+  },
+  "command_plugins_list_desc": "列出已安装扩展及其状态、版本和所贡献的命令。",
+  "@command_plugins_list_desc": {
+    "description": "command plugins list desc"
+  },
+  "command_plugins_reload_desc": "从磁盘重新读取扩展并重新求值，无需重启即可拿到代码和清单的更改。",
+  "@command_plugins_reload_desc": {
+    "description": "command plugins reload desc"
+  },
+  "command_plugins_enable_desc": "加载扩展，使其可以再次贡献命令。",
+  "@command_plugins_enable_desc": {
+    "description": "command plugins enable desc"
+  },
+  "command_plugins_disable_desc": "卸载扩展，在重新启用前不再激活。",
+  "@command_plugins_disable_desc": {
+    "description": "command plugins disable desc"
+  },
+  "command_plugins_logs_desc": "打印扩展记录的日志，用于排查失败。",
+  "@command_plugins_logs_desc": {
+    "description": "command plugins logs desc"
+  },
+  "command_plugins_scaffold_desc": "写入带清单和可运行 main.js 的新扩展文件夹并加载。返回写入的路径。",
+  "@command_plugins_scaffold_desc": {
+    "description": "command plugins scaffold desc"
+  },
+  "command_plugins_write_desc": "覆盖扩展文件夹内的一个文件。路径限制在该文件夹内。",
+  "@command_plugins_write_desc": {
+    "description": "command plugins write desc"
+  },
+  "command_plugins_read_desc": "读取扩展文件夹中的一个文件。",
+  "@command_plugins_read_desc": {
+    "description": "command plugins read desc"
+  },
+  "command_plugins_typings_desc": "根据实时命令注册表重新生成 fancad.d.ts，使编辑器和模型看到真实 API。",
+  "@command_plugins_typings_desc": {
+    "description": "command plugins typings desc"
+  },
+  "command_plugins_edit_desc": "在内置编辑器中打开扩展文件，以便查看或修改 AI 编写循环写下的内容。",
+  "@command_plugins_edit_desc": {
+    "description": "command plugins edit desc"
+  },
+  "command_plugins_eval_desc": "在扩展作用域中运行 JavaScript 表达式。用于调试；扩展能做的它都能做。",
+  "@command_plugins_eval_desc": {
+    "description": "command plugins eval desc"
+  },
+  "command_step": "{verb}  {step}",
+  "@command_step": {
+    "description": "command step",
+    "placeholders": {
+      "verb": {
+        "type": "String"
+      },
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_specify_first_point": "指定第一点:",
+  "@prompt_specify_first_point": {
+    "description": "prompt specify first point"
+  },
+  "prompt_specify_next_point_esc": "指定下一点（按 Escape 结束）:",
+  "@prompt_specify_next_point_esc": {
+    "description": "prompt specify next point esc"
+  },
+  "prompt_specify_second_point": "指定第二点:",
+  "@prompt_specify_second_point": {
+    "description": "prompt specify second point"
+  },
+  "prompt_specify_second_point_esc": "指定第二点（按 Escape 结束）:",
+  "@prompt_specify_second_point_esc": {
+    "description": "prompt specify second point esc"
+  },
+  "prompt_specify_base_point": "指定基点:",
+  "@prompt_specify_base_point": {
+    "description": "prompt specify base point"
+  },
+  "prompt_select_objects": "选择对象:",
+  "@prompt_select_objects": {
+    "description": "prompt select objects"
+  },
+  "prompt_specify_center": "指定中心:",
+  "@prompt_specify_center": {
+    "description": "prompt specify center"
+  },
+  "prompt_specify_center_point": "指定圆心:",
+  "@prompt_specify_center_point": {
+    "description": "prompt specify center point"
+  },
+  "prompt_specify_radius": "指定半径:",
+  "@prompt_specify_radius": {
+    "description": "prompt specify radius"
+  },
+  "prompt_specify_first_corner": "指定第一个角点:",
+  "@prompt_specify_first_corner": {
+    "description": "prompt specify first corner"
+  },
+  "prompt_specify_opposite_corner": "指定对角点:",
+  "@prompt_specify_opposite_corner": {
+    "description": "prompt specify opposite corner"
+  },
+  "prompt_specify_insertion_point": "指定插入点:",
+  "@prompt_specify_insertion_point": {
+    "description": "prompt specify insertion point"
+  },
+  "prompt_specify_next_insertion_esc": "指定下一插入点（按 Escape 结束）:",
+  "@prompt_specify_next_insertion_esc": {
+    "description": "prompt specify next insertion esc"
+  },
+  "prompt_specify_height": "指定高度:",
+  "@prompt_specify_height": {
+    "description": "prompt specify height"
+  },
+  "prompt_specify_start_point": "指定起点:",
+  "@prompt_specify_start_point": {
+    "description": "prompt specify start point"
+  },
+  "prompt_specify_through_point": "指定通过点:",
+  "@prompt_specify_through_point": {
+    "description": "prompt specify through point"
+  },
+  "prompt_specify_end_point": "指定端点:",
+  "@prompt_specify_end_point": {
+    "description": "prompt specify end point"
+  },
+  "prompt_specify_a_point": "指定一点:",
+  "@prompt_specify_a_point": {
+    "description": "prompt specify a point"
+  },
+  "prompt_specify_a_location": "指定位置:",
+  "@prompt_specify_a_location": {
+    "description": "prompt specify a location"
+  },
+  "prompt_specify_point": "指定点:",
+  "@prompt_specify_point": {
+    "description": "prompt specify point"
+  },
+  "prompt_specify_vertex": "指定顶点:",
+  "@prompt_specify_vertex": {
+    "description": "prompt specify vertex"
+  },
+  "prompt_specify_dim_line": "指定尺寸线位置:",
+  "@prompt_specify_dim_line": {
+    "description": "prompt specify dim line"
+  },
+  "prompt_specify_first_ext_origin": "指定第一条尺寸界线原点:",
+  "@prompt_specify_first_ext_origin": {
+    "description": "prompt specify first ext origin"
+  },
+  "prompt_specify_second_ext_origin": "指定第二条尺寸界线原点:",
+  "@prompt_specify_second_ext_origin": {
+    "description": "prompt specify second ext origin"
+  },
+  "prompt_specify_next_ext_origin": "指定下一条尺寸界线原点:",
+  "@prompt_specify_next_ext_origin": {
+    "description": "prompt specify next ext origin"
+  },
+  "prompt_specify_second_ext_origin_alt": "指定第二条尺寸界线原点:",
+  "@prompt_specify_second_ext_origin_alt": {
+    "description": "prompt specify second ext origin alt"
+  },
+  "prompt_specify_dim_arc": "指定尺寸弧位置:",
+  "@prompt_specify_dim_arc": {
+    "description": "prompt specify dim arc"
+  },
+  "prompt_specify_rotation_angle": "指定旋转角度:",
+  "@prompt_specify_rotation_angle": {
+    "description": "prompt specify rotation angle"
+  },
+  "prompt_specify_new_height": "指定新高度:",
+  "@prompt_specify_new_height": {
+    "description": "prompt specify new height"
+  },
+  "prompt_specify_width_factor": "指定宽度因子:",
+  "@prompt_specify_width_factor": {
+    "description": "prompt specify width factor"
+  },
+  "prompt_specify_oblique": "指定倾斜角:",
+  "@prompt_specify_oblique": {
+    "description": "prompt specify oblique"
+  },
+  "prompt_specify_column_width": "指定列宽:",
+  "@prompt_specify_column_width": {
+    "description": "prompt specify column width"
+  },
+  "prompt_specify_attachment_point": "指定附着点:",
+  "@prompt_specify_attachment_point": {
+    "description": "prompt specify attachment point"
+  },
+  "prompt_specify_scale_factor": "指定比例因子（或拾取距离）:",
+  "@prompt_specify_scale_factor": {
+    "description": "prompt specify scale factor"
+  },
+  "prompt_specify_offset_distance": "指定偏移距离:",
+  "@prompt_specify_offset_distance": {
+    "description": "prompt specify offset distance"
+  },
+  "prompt_specify_offset_side": "指定要偏移的一侧上的点:",
+  "@prompt_specify_offset_side": {
+    "description": "prompt specify offset side"
+  },
+  "prompt_specify_fillet_radius": "指定圆角半径:",
+  "@prompt_specify_fillet_radius": {
+    "description": "prompt specify fillet radius"
+  },
+  "prompt_specify_inside_diameter": "指定内径:",
+  "@prompt_specify_inside_diameter": {
+    "description": "prompt specify inside diameter"
+  },
+  "prompt_specify_outside_diameter": "指定外径:",
+  "@prompt_specify_outside_diameter": {
+    "description": "prompt specify outside diameter"
+  },
+  "prompt_specify_center_of_donut": "指定圆环中心:",
+  "@prompt_specify_center_of_donut": {
+    "description": "prompt specify center of donut"
+  },
+  "prompt_specify_total_length": "指定总长:",
+  "@prompt_specify_total_length": {
+    "description": "prompt specify total length"
+  },
+  "prompt_specify_segment_length": "指定分段长度:",
+  "@prompt_specify_segment_length": {
+    "description": "prompt specify segment length"
+  },
+  "prompt_specify_stretch_point": "指定拉伸点:",
+  "@prompt_specify_stretch_point": {
+    "description": "prompt specify stretch point"
+  },
+  "prompt_idle_select": "选择对象或指定命令:",
+  "@prompt_idle_select": {
+    "description": "prompt idle select"
+  },
+  "prompt_enter_layer_name": "输入图层名:",
+  "@prompt_enter_layer_name": {
+    "description": "prompt enter layer name"
+  },
+  "prompt_enter_a_layer_name": "输入图层名:",
+  "@prompt_enter_a_layer_name": {
+    "description": "prompt enter a layer name"
+  },
+  "prompt_extension_id": "扩展 id:",
+  "@prompt_extension_id": {
+    "description": "prompt extension id"
+  },
+  "prompt_enter_block_name": "输入块名:",
+  "@prompt_enter_block_name": {
+    "description": "prompt enter block name"
+  },
+  "prompt_enter_text": "输入文字:",
+  "@prompt_enter_text": {
+    "description": "prompt enter text"
+  },
+  "prompt_select_closed_objects": "选择闭合对象:",
+  "@prompt_select_closed_objects": {
+    "description": "prompt select closed objects"
+  },
+  "prompt_select_viewport": "选择视口:",
+  "@prompt_select_viewport": {
+    "description": "prompt select viewport"
+  },
+  "prompt_selected_viewport": "已选择视口",
+  "@prompt_selected_viewport": {
+    "description": "prompt selected viewport"
+  },
+  "prompt_enter_colour": "输入颜色（1-255、#rrggbb 或 ByLayer）:",
+  "@prompt_enter_colour": {
+    "description": "prompt enter colour"
+  },
+  "prompt_javascript": "JavaScript:",
+  "@prompt_javascript": {
+    "description": "prompt javascript"
+  },
+  "prompt_svg_path": "SVG 路径:",
+  "@prompt_svg_path": {
+    "description": "prompt svg path"
+  },
+  "prompt_pdf_path": "PDF 路径:",
+  "@prompt_pdf_path": {
+    "description": "prompt pdf path"
+  },
+  "prompt_layout_name": "布局名:",
+  "@prompt_layout_name": {
+    "description": "prompt layout name"
+  },
+  "prompt_layout_to_copy": "要复制的布局:",
+  "@prompt_layout_to_copy": {
+    "description": "prompt layout to copy"
+  },
+  "prompt_layout_to_delete": "要删除的布局:",
+  "@prompt_layout_to_delete": {
+    "description": "prompt layout to delete"
+  },
+  "prompt_layout_to_move": "要移动的布局:",
+  "@prompt_layout_to_move": {
+    "description": "prompt layout to move"
+  },
+  "prompt_layout_to_rename": "要重命名的布局:",
+  "@prompt_layout_to_rename": {
+    "description": "prompt layout to rename"
+  },
+  "prompt_drawing_to_attach": "要附着的图形:",
+  "@prompt_drawing_to_attach": {
+    "description": "prompt drawing to attach"
+  },
+  "prompt_file_to_write": "要写入的文件:",
+  "@prompt_file_to_write": {
+    "description": "prompt file to write"
+  },
+  "prompt_file_to_read": "要读取的文件:",
+  "@prompt_file_to_read": {
+    "description": "prompt file to read"
+  },
+  "prompt_select_objects_to_erase": "选择要删除的对象:",
+  "@prompt_select_objects_to_erase": {
+    "description": "prompt select objects to erase"
+  },
+  "prompt_select_objects_to_array": "选择要阵列的对象:",
+  "@prompt_select_objects_to_array": {
+    "description": "prompt select objects to array"
+  },
+  "prompt_select_objects_to_align": "选择要对齐的对象:",
+  "@prompt_select_objects_to_align": {
+    "description": "prompt select objects to align"
+  },
+  "prompt_select_objects_to_rotate": "选择要旋转的对象:",
+  "@prompt_select_objects_to_rotate": {
+    "description": "prompt select objects to rotate"
+  },
+  "prompt_select_objects_to_scale": "选择要缩放的对象:",
+  "@prompt_select_objects_to_scale": {
+    "description": "prompt select objects to scale"
+  },
+  "prompt_select_objects_to_mirror": "选择要镜像的对象:",
+  "@prompt_select_objects_to_mirror": {
+    "description": "prompt select objects to mirror"
+  },
+  "prompt_select_objects_to_offset": "选择要偏移的对象:",
+  "@prompt_select_objects_to_offset": {
+    "description": "prompt select objects to offset"
+  },
+  "prompt_select_objects_to_explode": "选择要分解的对象:",
+  "@prompt_select_objects_to_explode": {
+    "description": "prompt select objects to explode"
+  },
+  "prompt_select_objects_to_hide": "选择要隐藏的对象:",
+  "@prompt_select_objects_to_hide": {
+    "description": "prompt select objects to hide"
+  },
+  "prompt_select_objects_keep_visible": "选择要保持可见的对象:",
+  "@prompt_select_objects_keep_visible": {
+    "description": "prompt select objects keep visible"
+  },
+  "prompt_select_objects_recolour": "选择要重新着色的对象:",
+  "@prompt_select_objects_recolour": {
+    "description": "prompt select objects recolour"
+  },
+  "prompt_select_objects_change_layer": "选择要移到另一图层的对象:",
+  "@prompt_select_objects_change_layer": {
+    "description": "prompt select objects change layer"
+  },
+  "prompt_select_text_objects": "选择文字对象:",
+  "@prompt_select_text_objects": {
+    "description": "prompt select text objects"
+  },
+  "prompt_textobject_options": "指定文字、高度、颜色、对正、旋转、样式、列宽、宽度因子或倾斜:",
+  "@prompt_textobject_options": {
+    "description": "prompt textobject options"
+  },
+  "prompt_place_n_points": "放置 {count} 个点？",
+  "@prompt_place_n_points": {
+    "description": "prompt place n points",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prompt_specify_first_kind_point": "指定第一个{kind}点:",
+  "@prompt_specify_first_kind_point": {
+    "description": "prompt specify first kind point",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_specify_next_kind_point_esc": "指定下一个{kind}点（按 Escape 结束）:",
+  "@prompt_specify_next_kind_point_esc": {
+    "description": "prompt specify next kind point esc",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_selected_object": "已选择 {entity}，图层 {layer}",
+  "@prompt_selected_object": {
+    "description": "prompt selected object",
+    "placeholders": {
+      "entity": {
+        "type": "String"
+      },
+      "layer": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_objects_selected": "已选择 {count} 个对象",
+  "@prompt_objects_selected": {
+    "description": "prompt objects selected",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prompt_selection_found": "{message}（已找到 {count} 个，按 Enter 确认）",
+  "@prompt_selection_found": {
+    "description": "prompt selection found",
+    "placeholders": {
+      "message": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prompt_enter_annotation_none": "输入注释文字 <无>:",
+  "@prompt_enter_annotation_none": {
+    "description": "prompt enter annotation none"
+  },
+  "prompt_enter_attribute_tag": "输入属性标签:",
+  "@prompt_enter_attribute_tag": {
+    "description": "prompt enter attribute tag"
+  },
+  "prompt_enter_block_name_to_change": "输入要更改的块名:",
+  "@prompt_enter_block_name_to_change": {
+    "description": "prompt enter block name to change"
+  },
+  "prompt_enter_default_value": "输入默认值:",
+  "@prompt_enter_default_value": {
+    "description": "prompt enter default value"
+  },
+  "prompt_enter_dimension_text": "输入标注文字（<> = 测量值）:",
+  "@prompt_enter_dimension_text": {
+    "description": "prompt enter dimension text"
+  },
+  "prompt_enter_justification": "输入对正 [Left/Center/Right/TL/TC/TR/ML/MC/MR/BL/BC/BR]:",
+  "@prompt_enter_justification": {
+    "description": "prompt enter justification"
+  },
+  "prompt_enter_layer_names": "输入图层名:",
+  "@prompt_enter_layer_names": {
+    "description": "prompt enter layer names"
+  },
+  "prompt_enter_spline_method": "输入方式 [Control/Fit]:",
+  "@prompt_enter_spline_method": {
+    "description": "prompt enter spline method"
+  },
+  "prompt_enter_linetype_name": "输入名称（DASHED、HIDDEN、CENTER、ByLayer）:",
+  "@prompt_enter_linetype_name": {
+    "description": "prompt enter linetype name"
+  },
+  "prompt_enter_new_block_name": "输入新块名:",
+  "@prompt_enter_new_block_name": {
+    "description": "prompt enter new block name"
+  },
+  "prompt_enter_new_text": "输入新文字:",
+  "@prompt_enter_new_text": {
+    "description": "prompt enter new text"
+  },
+  "prompt_enter_columns": "输入列数:",
+  "@prompt_enter_columns": {
+    "description": "prompt enter columns"
+  },
+  "prompt_enter_items": "输入项目数:",
+  "@prompt_enter_items": {
+    "description": "prompt enter items"
+  },
+  "prompt_enter_rows": "输入行数:",
+  "@prompt_enter_rows": {
+    "description": "prompt enter rows"
+  },
+  "prompt_enter_sides": "输入边数:",
+  "@prompt_enter_sides": {
+    "description": "prompt enter sides"
+  },
+  "prompt_enter_object_type": "输入对象类型（LINE、CIRCLE、INSERT、…）:",
+  "@prompt_enter_object_type": {
+    "description": "prompt enter object type"
+  },
+  "prompt_enter_attribute_prompt": "输入提示:",
+  "@prompt_enter_attribute_prompt": {
+    "description": "prompt enter attribute prompt"
+  },
+  "prompt_enter_fill_angle": "输入填充角度:",
+  "@prompt_enter_fill_angle": {
+    "description": "prompt enter fill angle"
+  },
+  "prompt_enter_column_spacing": "输入列间距:",
+  "@prompt_enter_column_spacing": {
+    "description": "prompt enter column spacing"
+  },
+  "prompt_enter_segments": "输入分段数:",
+  "@prompt_enter_segments": {
+    "description": "prompt enter segments"
+  },
+  "prompt_enter_row_spacing": "输入行间距:",
+  "@prompt_enter_row_spacing": {
+    "description": "prompt enter row spacing"
+  },
+  "prompt_enter_lineweight": "输入线宽（0.25 mm、25、ByLayer）:",
+  "@prompt_enter_lineweight": {
+    "description": "prompt enter lineweight"
+  },
+  "prompt_fillet_vertex_all": "圆角 [Vertex/All]:",
+  "@prompt_fillet_vertex_all": {
+    "description": "prompt fillet vertex all"
+  },
+  "prompt_chamfer_vertex_all": "倒角 [Vertex/All]:",
+  "@prompt_chamfer_vertex_all": {
+    "description": "prompt chamfer vertex all"
+  },
+  "prompt_select_block_reference": "选择块参照:",
+  "@prompt_select_block_reference": {
+    "description": "prompt select block reference"
+  },
+  "prompt_select_line_pline_arc": "选择直线、多段线或圆弧:",
+  "@prompt_select_line_pline_arc": {
+    "description": "prompt select line pline arc"
+  },
+  "prompt_select_linear_aligned_dim": "选择线性或对齐标注:",
+  "@prompt_select_linear_aligned_dim": {
+    "description": "prompt select linear aligned dim"
+  },
+  "prompt_select_arc_or_circle": "选择圆弧或圆:",
+  "@prompt_select_arc_or_circle": {
+    "description": "prompt select arc or circle"
+  },
+  "prompt_select_arc_or_first_line": "选择圆弧或第一条直线:",
+  "@prompt_select_arc_or_first_line": {
+    "description": "prompt select arc or first line"
+  },
+  "prompt_select_boundary_edges": "选择边界边:",
+  "@prompt_select_boundary_edges": {
+    "description": "prompt select boundary edges"
+  },
+  "prompt_select_circles_or_arcs": "选择圆或圆弧:",
+  "@prompt_select_circles_or_arcs": {
+    "description": "prompt select circles or arcs"
+  },
+  "prompt_select_closed_boundaries": "选择闭合边界:",
+  "@prompt_select_closed_boundaries": {
+    "description": "prompt select closed boundaries"
+  },
+  "prompt_select_cutting_edges": "选择剪切边:",
+  "@prompt_select_cutting_edges": {
+    "description": "prompt select cutting edges"
+  },
+  "prompt_select_destination_objects": "选择目标对象:",
+  "@prompt_select_destination_objects": {
+    "description": "prompt select destination objects"
+  },
+  "prompt_select_dimensions": "选择标注:",
+  "@prompt_select_dimensions": {
+    "description": "prompt select dimensions"
+  },
+  "prompt_select_first_line_circle_arc": "选择第一条直线、圆或圆弧:",
+  "@prompt_select_first_line_circle_arc": {
+    "description": "prompt select first line circle arc"
+  },
+  "prompt_select_first_object": "选择第一个对象:",
+  "@prompt_select_first_object": {
+    "description": "prompt select first object"
+  },
+  "prompt_select_first_tangent": "选择第一个相切对象:",
+  "@prompt_select_first_tangent": {
+    "description": "prompt select first tangent"
+  },
+  "prompt_select_hatch_objects": "选择填充对象:",
+  "@prompt_select_hatch_objects": {
+    "description": "prompt select hatch objects"
+  },
+  "prompt_select_lines_or_plines": "选择直线或多段线:",
+  "@prompt_select_lines_or_plines": {
+    "description": "prompt select lines or plines"
+  },
+  "prompt_select_lines_to_convert": "选择要转换的直线:",
+  "@prompt_select_lines_to_convert": {
+    "description": "prompt select lines to convert"
+  },
+  "prompt_select_join_objects": "选择要合并的直线、圆弧或多段线:",
+  "@prompt_select_join_objects": {
+    "description": "prompt select join objects"
+  },
+  "prompt_select_object_to_break": "选择要打断的对象:",
+  "@prompt_select_object_to_break": {
+    "description": "prompt select object to break"
+  },
+  "prompt_select_object_to_divide": "选择要等分的对象:",
+  "@prompt_select_object_to_divide": {
+    "description": "prompt select object to divide"
+  },
+  "prompt_select_object_to_measure": "选择要定距等分的对象:",
+  "@prompt_select_object_to_measure": {
+    "description": "prompt select object to measure"
+  },
+  "prompt_select_plines_to_close": "选择要闭合的多段线:",
+  "@prompt_select_plines_to_close": {
+    "description": "prompt select plines to close"
+  },
+  "prompt_select_plines_to_open": "选择要打开的多段线:",
+  "@prompt_select_plines_to_open": {
+    "description": "prompt select plines to open"
+  },
+  "prompt_select_plines_width": "选择要设置宽度的多段线:",
+  "@prompt_select_plines_width": {
+    "description": "prompt select plines width"
+  },
+  "prompt_select_second_line_circle_arc": "选择第二条直线、圆或圆弧:",
+  "@prompt_select_second_line_circle_arc": {
+    "description": "prompt select second line circle arc"
+  },
+  "prompt_select_second_line": "选择第二条直线:",
+  "@prompt_select_second_line": {
+    "description": "prompt select second line"
+  },
+  "prompt_select_second_tangent": "选择第二个相切对象:",
+  "@prompt_select_second_tangent": {
+    "description": "prompt select second tangent"
+  },
+  "prompt_select_source_object": "选择源对象:",
+  "@prompt_select_source_object": {
+    "description": "prompt select source object"
+  },
+  "prompt_select_text_mtext_dim": "选择文字、多行文字或标注:",
+  "@prompt_select_text_mtext_dim": {
+    "description": "prompt select text mtext dim"
+  },
+  "prompt_specify_nearer_end": "指定更靠近要更改一端的点:",
+  "@prompt_specify_nearer_end": {
+    "description": "prompt specify nearer end"
+  },
+  "prompt_specify_first_ray_point": "指定第一条射线上的点:",
+  "@prompt_specify_first_ray_point": {
+    "description": "prompt specify first ray point"
+  },
+  "prompt_specify_second_ray_point": "指定第二条射线上的点:",
+  "@prompt_specify_second_ray_point": {
+    "description": "prompt specify second ray point"
+  },
+  "prompt_specify_second_point_on_arc": "指定圆弧上的第二点:",
+  "@prompt_specify_second_point_on_arc": {
+    "description": "prompt specify second point on arc"
+  },
+  "prompt_specify_vertex_to_bevel": "指定要倒角的顶点:",
+  "@prompt_specify_vertex_to_bevel": {
+    "description": "prompt specify vertex to bevel"
+  },
+  "prompt_specify_vertex_to_round": "指定要圆角的顶点:",
+  "@prompt_specify_vertex_to_round": {
+    "description": "prompt specify vertex to round"
+  },
+  "prompt_specify_column_distance": "指定列间距:",
+  "@prompt_specify_column_distance": {
+    "description": "prompt specify column distance"
+  },
+  "prompt_specify_row_distance": "指定行间距:",
+  "@prompt_specify_row_distance": {
+    "description": "prompt specify row distance"
+  },
+  "prompt_specify_other_axis_distance": "指定到另一轴的距离:",
+  "@prompt_specify_other_axis_distance": {
+    "description": "prompt specify other axis distance"
+  },
+  "prompt_specify_axis_endpoint": "指定轴端点:",
+  "@prompt_specify_axis_endpoint": {
+    "description": "prompt specify axis endpoint"
+  },
+  "prompt_specify_first_break": "指定第一个打断点:",
+  "@prompt_specify_first_break": {
+    "description": "prompt specify first break"
+  },
+  "prompt_specify_first_chamfer": "指定第一个倒角距离:",
+  "@prompt_specify_first_chamfer": {
+    "description": "prompt specify first chamfer"
+  },
+  "prompt_specify_crossing_first_corner": "指定跨越窗口的第一个角点:",
+  "@prompt_specify_crossing_first_corner": {
+    "description": "prompt specify crossing first corner"
+  },
+  "prompt_specify_first_dest": "指定第一个目标点:",
+  "@prompt_specify_first_dest": {
+    "description": "prompt specify first dest"
+  },
+  "prompt_specify_first_diameter_end": "指定直径的第一端:",
+  "@prompt_specify_first_diameter_end": {
+    "description": "prompt specify first diameter end"
+  },
+  "prompt_specify_first_leader_point": "指定引线第一点:",
+  "@prompt_specify_first_leader_point": {
+    "description": "prompt specify first leader point"
+  },
+  "prompt_specify_mirror_first": "指定镜像线第一点:",
+  "@prompt_specify_mirror_first": {
+    "description": "prompt specify mirror first"
+  },
+  "prompt_specify_first_on_circle": "指定圆上第一点:",
+  "@prompt_specify_first_on_circle": {
+    "description": "prompt specify first on circle"
+  },
+  "prompt_specify_first_source": "指定第一个源点:",
+  "@prompt_specify_first_source": {
+    "description": "prompt specify first source"
+  },
+  "prompt_specify_insertion_base": "指定插入基点:",
+  "@prompt_specify_insertion_base": {
+    "description": "prompt specify insertion base"
+  },
+  "prompt_hatch_internal_or_select": "指定内部点或 [Select]:",
+  "@prompt_hatch_internal_or_select": {
+    "description": "prompt hatch internal or select"
+  },
+  "prompt_specify_dim_text_location": "指定标注文字的新位置:",
+  "@prompt_specify_dim_text_location": {
+    "description": "prompt specify dim text location"
+  },
+  "prompt_specify_polyline_width": "指定所有线段的新宽度:",
+  "@prompt_specify_polyline_width": {
+    "description": "prompt specify polyline width"
+  },
+  "prompt_specify_second_break_esc": "指定第二个打断点（按 Escape 仅拆分）:",
+  "@prompt_specify_second_break_esc": {
+    "description": "prompt specify second break esc"
+  },
+  "prompt_specify_second_chamfer": "指定第二个倒角距离:",
+  "@prompt_specify_second_chamfer": {
+    "description": "prompt specify second chamfer"
+  },
+  "prompt_specify_second_dest": "指定第二个目标点:",
+  "@prompt_specify_second_dest": {
+    "description": "prompt specify second dest"
+  },
+  "prompt_specify_second_diameter_end": "指定直径的第二端:",
+  "@prompt_specify_second_diameter_end": {
+    "description": "prompt specify second diameter end"
+  },
+  "prompt_specify_mirror_second": "指定镜像线第二点:",
+  "@prompt_specify_mirror_second": {
+    "description": "prompt specify mirror second"
+  },
+  "prompt_specify_second_on_circle": "指定圆上第二点:",
+  "@prompt_specify_second_on_circle": {
+    "description": "prompt specify second on circle"
+  },
+  "prompt_specify_second_source_or_enter": "指定第二个源点或按 Enter:",
+  "@prompt_specify_second_source_or_enter": {
+    "description": "prompt specify second source or enter"
+  },
+  "prompt_specify_third_on_circle": "指定圆上第三点:",
+  "@prompt_specify_third_on_circle": {
+    "description": "prompt specify third on circle"
+  },
+  "prompt_enter_units": "输入插入单位 <{current}>:",
+  "@prompt_enter_units": {
+    "description": "prompt enter units",
+    "placeholders": {
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_enter_text_style_name": "输入文字样式名:",
+  "@prompt_enter_text_style_name": {
+    "description": "prompt enter text style name"
+  },
+  "prompt_enter_layer_to_delete": "输入要删除的图层:",
+  "@prompt_enter_layer_to_delete": {
+    "description": "prompt enter layer to delete"
+  },
+  "prompt_enter_layer_to_isolate": "输入要隔离的图层:",
+  "@prompt_enter_layer_to_isolate": {
+    "description": "prompt enter layer to isolate"
+  },
+  "prompt_enter_linetype": "输入线型（DASHED、ByLayer、…）:",
+  "@prompt_enter_linetype": {
+    "description": "prompt enter linetype"
+  },
+  "prompt_enter_a_lineweight": "输入线宽（0.25 mm、25、ByLayer）:",
+  "@prompt_enter_a_lineweight": {
+    "description": "prompt enter a lineweight"
+  },
+  "prompt_select_object_to_trim": "选择要修剪的对象（按 Escape 结束）:",
+  "@prompt_select_object_to_trim": {
+    "description": "prompt select object to trim"
+  },
+  "prompt_select_object_to_extend": "选择要延伸的对象（按 Escape 结束）:",
+  "@prompt_select_object_to_extend": {
+    "description": "prompt select object to extend"
+  },
+  "prompt_scale_objects_align": "根据对齐点缩放对象？",
+  "@prompt_scale_objects_align": {
+    "description": "prompt scale objects align"
+  },
+  "prompt_sheet_width": "图纸宽度 (mm):",
+  "@prompt_sheet_width": {
+    "description": "prompt sheet width"
+  },
+  "prompt_sheet_height": "图纸高度 (mm):",
+  "@prompt_sheet_height": {
+    "description": "prompt sheet height"
+  },
+  "prompt_viewport_scale": "视口比例（模型 / 图纸）:",
+  "@prompt_viewport_scale": {
+    "description": "prompt viewport scale"
+  },
+  "prompt_new_layout_name": "新布局名称:",
+  "@prompt_new_layout_name": {
+    "description": "prompt new layout name"
+  },
+  "prompt_open_recent": "打开最近的文件:",
+  "@prompt_open_recent": {
+    "description": "prompt open recent"
+  },
   "end": "终点",
   "@end": {
     "description": "end"

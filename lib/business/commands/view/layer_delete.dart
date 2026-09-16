@@ -28,7 +28,10 @@ class LayerDeleteCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final name = await context.resolveText('name', 'Enter layer to delete:');
+    final name = await context.resolveText(
+      'name',
+      context.l10n.prompt_enter_layer_to_delete,
+    );
     if (name == '0') {
       return const CommandResult.failed('Layer 0 cannot be deleted.');
     }
