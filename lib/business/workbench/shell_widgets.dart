@@ -63,40 +63,66 @@ class EmptyWorkspace extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Image.asset(
-                  'assets/icons/logo.png',
-                  width: 40,
-                  height: 40,
-                  filterQuality: FilterQuality.medium,
-                  errorBuilder: (_, _, _) =>
-                      const SizedBox(width: 40, height: 40),
-                ),
-                const SizedBox(height: FanCadTokens.space3),
-                Text(
-                  'FanCAD',
-                  style: tokens.dialogTitleStyle.copyWith(fontSize: 16),
-                ),
-                const SizedBox(height: FanCadTokens.space1),
-                Text(
-                  context.l10n.empty_tagline,
-                  style: tokens.labelStyle.copyWith(fontSize: 13),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/icons/logo.png',
+                      width: 40,
+                      height: 40,
+                      filterQuality: FilterQuality.medium,
+                      errorBuilder: (_, _, _) =>
+                          const SizedBox(width: 40, height: 40),
+                    ),
+                    const SizedBox(width: FanCadTokens.space3),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'FanCAD',
+                            style: tokens.dialogTitleStyle.copyWith(
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: FanCadTokens.space1),
+                          Text(
+                            context.l10n.empty_tagline,
+                            style: tokens.labelStyle.copyWith(fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: FanCadTokens.space5),
-                _PrimaryAction(
-                  label: context.l10n.new_drawing,
-                  shortcut: formatKeybinding('ctrl+n'),
-                  onPressed: onNew,
-                ),
-                const SizedBox(height: FanCadTokens.space2),
-                _Action(
-                  label: context.l10n.open_drawing_file,
-                  shortcut: formatKeybinding('ctrl+o'),
-                  onPressed: onOpen,
-                ),
-                _Action(
-                  label: context.l10n.show_all_commands,
-                  shortcut: formatKeybinding('ctrl+shift+p'),
-                  onPressed: onShowCommands,
+                Row(
+                  children: [
+                    _StartAction(
+                      key: const Key('empty-workspace-new'),
+                      icon: Icons.insert_drive_file_outlined,
+                      tooltip:
+                          '${context.l10n.new_drawing}  ${formatKeybinding('ctrl+n')}',
+                      emphasized: true,
+                      onPressed: onNew,
+                    ),
+                    const SizedBox(width: FanCadTokens.space3),
+                    _StartAction(
+                      key: const Key('empty-workspace-open'),
+                      icon: Icons.folder_open_outlined,
+                      tooltip:
+                          '${context.l10n.open_drawing_file}  ${formatKeybinding('ctrl+o')}',
+                      onPressed: onOpen,
+                    ),
+                    const SizedBox(width: FanCadTokens.space3),
+                    _StartAction(
+                      key: const Key('empty-workspace-commands'),
+                      icon: Icons.search,
+                      tooltip:
+                          '${context.l10n.show_all_commands}  ${formatKeybinding('ctrl+shift+p')}',
+                      onPressed: onShowCommands,
+                    ),
+                  ],
                 ),
                 if (recentFiles.isNotEmpty) ...[
                   const SizedBox(height: FanCadTokens.space5),
@@ -117,60 +143,74 @@ class EmptyWorkspace extends StatelessWidget {
   }
 }
 
-class _PrimaryAction extends StatelessWidget {
-  const _PrimaryAction({
-    required this.label,
-    required this.shortcut,
+class _StartAction extends StatefulWidget {
+  const _StartAction({
+    super.key,
+    required this.icon,
+    required this.tooltip,
     required this.onPressed,
+    this.emphasized = false,
   });
 
-  final String label;
-  final String shortcut;
+  final IconData icon;
+  final String tooltip;
   final VoidCallback onPressed;
+  final bool emphasized;
 
   @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return FilledButton(
-      onPressed: onPressed,
-      child: Row(
-        children: [
-          Text(label),
-          const Spacer(),
-          Text(
-            shortcut,
-            style: tokens.labelStyle.copyWith(color: tokens.accentText),
-          ),
-        ],
-      ),
-    );
-  }
+  State<_StartAction> createState() => _StartActionState();
 }
 
-class _Action extends StatelessWidget {
-  const _Action({
-    required this.label,
-    required this.shortcut,
-    required this.onPressed,
-  });
-
-  final String label;
-  final String shortcut;
-  final VoidCallback onPressed;
+class _StartActionState extends State<_StartAction> {
+  var _hovered = false;
+  var _focused = false;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return ShellRow(
-      onTap: onPressed,
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
-      child: Row(
-        children: [
-          Text(label, style: tokens.bodyStyle),
-          const Spacer(),
-          Text(shortcut, style: tokens.labelStyle),
-        ],
+    final fill = widget.emphasized
+        ? tokens.accent
+        : _hovered
+        ? tokens.hover
+        : Colors.transparent;
+    final iconColor = widget.emphasized ? tokens.accentText : tokens.textMuted;
+    final borderColor = widget.emphasized ? tokens.accent : tokens.border;
+    return Tooltip(
+      message: widget.tooltip,
+      waitDuration: const Duration(milliseconds: 500),
+      child: FocusableActionDetector(
+        mouseCursor: SystemMouseCursors.click,
+        onShowHoverHighlight: (show) => setState(() => _hovered = show),
+        onShowFocusHighlight: (show) => setState(() => _focused = show),
+        actions: <Type, Action<Intent>>{
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) {
+              widget.onPressed();
+              return null;
+            },
+          ),
+        },
+        child: GestureDetector(
+          onTap: widget.onPressed,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: fill,
+              borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
+              border: Border.all(
+                color: _focused ? tokens.focusRing : borderColor,
+                width: _focused ? 2 : 1,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              widget.icon,
+              size: FanCadTokens.iconLarge,
+              color: iconColor,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -200,7 +240,7 @@ class _Recent extends StatelessWidget {
         onTap: onPressed,
         onSecondaryTap: missing ? null : () => _revealOnDisk(path),
         height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
+        padding: EdgeInsets.zero,
         child: Row(
           children: [
             Icon(

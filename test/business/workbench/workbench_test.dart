@@ -18,7 +18,10 @@ void main() {
     await pumpWorkbench(tester);
 
     expect(find.text('FanCAD'), findsWidgets);
-    expect(find.text('New drawing'), findsOneWidget);
+    expect(find.byKey(const Key('empty-workspace-new')), findsOneWidget);
+    expect(find.byKey(const Key('empty-workspace-open')), findsOneWidget);
+    expect(find.byKey(const Key('empty-workspace-commands')), findsOneWidget);
+    expect(find.text('New drawing'), findsNothing);
     expect(find.text('Layers'), findsOneWidget);
     expect(find.text('Layouts'), findsNothing);
     // Sidebar show/hide lives on the activity bar; a title-bar hamburger
@@ -31,6 +34,18 @@ void main() {
     expect(find.byKey(const Key('activity-preferences')), findsOneWidget);
     expect(find.byKey(const Key('activity-plugins')), findsNothing);
     expect(find.byKey(const Key('activity-editor')), findsNothing);
+  });
+
+  testWidgets('a cold start lands on the start screen, not Drawing1', (
+    tester,
+  ) async {
+    final container = await pumpFanCadApp(tester);
+
+    expect(find.byKey(const Key('empty-workspace-new')), findsOneWidget);
+    expect(find.text('New drawing'), findsNothing);
+    expect(find.text('Drawing1'), findsNothing);
+    expect(find.text('This drawing is empty'), findsNothing);
+    expect(container.read(workspaceProvider).tabs, isEmpty);
   });
 
   testWidgets('switching to Simplified Chinese localizes chrome', (
@@ -48,7 +63,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('设置'), findsWidgets);
-    expect(find.text('新建图纸'), findsOneWidget);
+    expect(find.byKey(const Key('empty-workspace-new')), findsOneWidget);
     expect(find.text('LAYERS'), findsNothing);
     await tester.tap(find.byKey(const Key('activity-layers')));
     await tester.pump();

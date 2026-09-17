@@ -1,6 +1,8 @@
+import 'package:desktop_open_files/desktop_open_files.dart';
 import 'package:fancad/fancad.dart';
 import 'package:fancad_io/fancad_io.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -71,6 +73,33 @@ Future<ProviderContainer> pumpWorkbench(
     ),
   );
   await tester.pump();
+  return container;
+}
+
+/// Pumps [FanCadApp] the way a cold start does: no argv files, no untitled tab.
+Future<ProviderContainer> pumpFanCadApp(
+  WidgetTester tester, {
+  SettingsStore? settings,
+  Size size = const Size(1600, 1000),
+}) async {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  addTearDown(debugResetSettingsDialog);
+
+  final opens = DesktopOpenFiles(
+    channel: const MethodChannel('desktop_open_files_test'),
+  );
+  addTearDown(opens.dispose);
+
+  final container = workbenchContainer(settings: settings);
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: FanCadApp(openFiles: opens),
+    ),
+  );
+  await tester.pumpAndSettle();
   return container;
 }
 

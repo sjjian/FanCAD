@@ -37,8 +37,9 @@ class _FanCadAppState extends ConsumerState<FanCadApp> {
     });
   }
 
+  /// Opens argv / Finder files. With none, [Workbench] keeps the start screen
+  /// rather than inventing an untitled tab.
   Future<void> _openLaunchFiles() async {
-    final workspace = ref.read(workspaceProvider);
     final queued = await _openFiles.pending();
     _incomingOpens = _openFiles.incoming.listen((paths) {
       unawaited(_openPaths(paths));
@@ -46,11 +47,6 @@ class _FanCadAppState extends ConsumerState<FanCadApp> {
     await _openPaths(
       DesktopOpenFiles.merge([...widget.initialFiles, ...queued]),
     );
-    if (workspace.tabs.isEmpty) {
-      // Land on a usable drawing rather than on an empty shell, but only when
-      // nothing was requested on the command line or by the OS.
-      workspace.newDocument(title: 'Drawing1');
-    }
   }
 
   Future<void> _openPaths(List<String> paths) async {
