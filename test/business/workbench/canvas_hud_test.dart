@@ -82,10 +82,14 @@ void main() {
     expect(card.left, greaterThan(hud.left + 8));
     expect(card.right, lessThan(hud.right - 8));
     expect(canvasHudRadius, FanCadTokens.radiusLarge);
+    final save = tester.getRect(find.byKey(const Key('canvas-tool-save')));
     final undo = tester.getRect(find.byKey(const Key('canvas-tool-undo')));
     final snap = tester.getRect(find.byKey(const Key('canvas-mode-snap')));
     final ortho = tester.getRect(find.byKey(const Key('canvas-mode-ortho')));
-    expect(undo.left - card.left, greaterThanOrEqualTo(canvasHudPadding.left));
+    expect(save.left - card.left, greaterThanOrEqualTo(canvasHudPadding.left));
+    expect(save.size, const Size(24, 24));
+    expect(undo.size, const Size(24, 24));
+    expect(undo.left - save.right, greaterThanOrEqualTo(FanCadTokens.space1));
     expect(
       card.right - snap.right,
       greaterThanOrEqualTo(canvasHudPadding.right),
@@ -93,8 +97,16 @@ void main() {
     expect(ortho.left - snap.right, greaterThanOrEqualTo(FanCadTokens.space1));
     expect(canvasHudPadding.top, 0);
     expect(canvasHudPadding.bottom, 0);
+    expect(find.byKey(const Key('canvas-tool-save')), findsOneWidget);
     expect(find.byKey(const Key('canvas-tool-draw.line')), findsOneWidget);
     expect(find.byKey(const Key('canvas-mode-snap')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-action-card')),
+        matching: find.byKey(const Key('canvas-tool-save')),
+      ),
+      findsOneWidget,
+    );
     expect(
       find.descendant(
         of: find.byKey(const Key('canvas-action-card')),
@@ -145,6 +157,34 @@ void main() {
       find.descendant(
         of: find.byKey(const Key('title-bar')),
         matching: find.byKey(const Key('canvas-tool-draw.line')),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('title-bar')),
+        matching: find.byKey(const Key('canvas-tool-save')),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('title-bar')),
+        matching: find.byIcon(Icons.insert_drive_file_outlined),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('title-bar')),
+        matching: find.byIcon(Icons.folder_open_outlined),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('title-bar')),
+        matching: find.byIcon(Icons.expand_more),
       ),
       findsNothing,
     );

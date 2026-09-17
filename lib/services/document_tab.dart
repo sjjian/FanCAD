@@ -18,6 +18,7 @@ class DocumentTab extends ChangeNotifier {
     this.filePath,
     this.diagnostics = const [],
     SelectionTool? selectionTool,
+    this.isStartPage = false,
   }) : viewport = ViewportController() {
     tools = ToolController(
       session: session,
@@ -52,6 +53,12 @@ class DocumentTab extends ChangeNotifier {
   /// Import warnings, kept so the user can review them after the fact.
   final List<String> diagnostics;
 
+  /// A tab that shows the start screen instead of a drawing.
+  ///
+  /// The tab strip plus control opens one of these so New / Open can be
+  /// chosen without inventing a leftover Drawing1.
+  bool isStartPage;
+
   final List<String> _history = [];
   String _prompt = '';
 
@@ -74,6 +81,14 @@ class DocumentTab extends ChangeNotifier {
 
   String get title => session.title;
   bool get isDirty => session.isDirty;
+
+  /// Turns a start tab into an empty drawing, keeping this tab's place.
+  void promoteToDrawing({String? title}) {
+    if (!isStartPage) return;
+    isStartPage = false;
+    if (title != null) session.title = title;
+    notifyListeners();
+  }
 
   /// The transient prompt for the command line.
   String get prompt => _prompt;

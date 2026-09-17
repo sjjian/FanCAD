@@ -142,7 +142,14 @@ class Workspace extends ChangeNotifier implements CommandServices {
       ? _tabs[_activeIndex]
       : null;
 
-  bool get hasDocument => active != null;
+  /// The active tab when it is a real drawing, not the start screen.
+  DocumentTab? get activeDrawing {
+    final tab = active;
+    if (tab == null || tab.isStartPage) return null;
+    return tab;
+  }
+
+  bool get hasDocument => activeDrawing != null;
 
   List<Notice> get notices => List.unmodifiable(_notices);
 
@@ -171,17 +178,48 @@ class Workspace extends ChangeNotifier implements CommandServices {
   // -------------------------------------------------------------------------
 
   /// Creates an empty drawing and makes it active.
+  ///
+  /// A start tab already on screen is reused so plus-then-New does not leave
+  /// an extra blank tab behind.
   DocumentTab newDocument({String? title, CadDocument? document}) {
+    final current = active;
+    if (current != null && current.isStartPage && document == null) {
+      current.promoteToDrawing(title: title);
+      notifyListeners();
+      return current;
+    }
     final session = DocumentSession(
       id: '${_nextSessionId++}',
       document: document ?? CadDocument(),
       title: title,
     );
-    return _adopt(
+    final tab = _adopt(
       DocumentTab(
         session: session,
         snapEngine: snapEngine,
         selectionTool: _selectionTool(),
+      ),
+    );
+    _discardIdleStartPages();
+    return tab;
+  }
+
+  /// Opens the start screen in a tab, or brings an existing one forward.
+  DocumentTab openStartTab() {
+    for (var i = 0; i < _tabs.length; i++) {
+      if (!_tabs[i].isStartPage) continue;
+      activate(i);
+      return _tabs[i];
+    }
+    return _adopt(
+      DocumentTab(
+        session: DocumentSession(
+          id: '${_nextSessionId++}',
+          document: CadDocument(),
+        ),
+        snapEngine: snapEngine,
+        selectionTool: _selectionTool(),
+        isStartPage: true,
       ),
     );
   }
@@ -201,6 +239,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
     for (var i = 0; i < _tabs.length; i++) {
       if (_sameDrawingFile(_tabs[i].filePath, target)) {
         activate(i);
+        _discardIdleStartPages();
         return _tabs[i];
       }
     }
@@ -243,6 +282,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
           level: HistoryLevel.warning,
         );
       }
+      _discardIdleStartPages();
       return tab;
     } on ImportException catch (error) {
       notify(error.message, isError: true);
@@ -261,7 +301,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   /// says so. Losing work is not an acceptable failure mode; a clearly named
   /// sidecar file is.
   Future<String?> saveActive([String? path]) async {
-    final tab = active;
+    final tab = activeDrawing;
     if (tab == null) {
       notify('There is no drawing to save.', isError: true);
       return null;
@@ -333,17 +373,20 @@ class Workspace extends ChangeNotifier implements CommandServices {
   /// are not a match — use the id from [listOpenDrawings].
   DocumentTab? findDrawing(String? selector) {
     final key = selector?.trim() ?? '';
-    if (key.isEmpty) return active;
+    if (key.isEmpty) return activeDrawing;
 
     for (final tab in _tabs) {
+      if (tab.isStartPage) continue;
       if (tab.session.id == key) return tab;
     }
     for (final tab in _tabs) {
+      if (tab.isStartPage) continue;
       if (_sameDrawingFile(tab.filePath, key)) return tab;
     }
     DocumentTab? titled;
     var matches = 0;
     for (final tab in _tabs) {
+      if (tab.isStartPage) continue;
       if (tab.title != key) continue;
       titled = tab;
       matches += 1;
@@ -375,18 +418,19 @@ class Workspace extends ChangeNotifier implements CommandServices {
   }
 
   List<Map<String, Object?>> listOpenDrawings() {
-    final current = active;
+    final current = activeDrawing;
     return [
       for (final tab in _tabs)
-        {
-          'id': tab.session.id,
-          'title': tab.title,
-          'path': tab.filePath,
-          'dirty': tab.isDirty,
-          'active': identical(tab, current),
-          'entityCount': tab.document.entityCount,
-          'activeLayout': tab.document.activeLayoutName,
-        },
+        if (!tab.isStartPage)
+          {
+            'id': tab.session.id,
+            'title': tab.title,
+            'path': tab.filePath,
+            'dirty': tab.isDirty,
+            'active': identical(tab, current),
+            'entityCount': tab.document.entityCount,
+            'activeLayout': tab.document.activeLayoutName,
+          },
     ];
   }
 
@@ -472,6 +516,15 @@ class Workspace extends ChangeNotifier implements CommandServices {
     return true;
   }
 
+  void _discardIdleStartPages() {
+    final keep = activeDrawing;
+    for (var i = _tabs.length - 1; i >= 0; i--) {
+      if (!_tabs[i].isStartPage) continue;
+      if (identical(_tabs[i], keep)) continue;
+      closeTab(i, force: true);
+    }
+  }
+
   /// Closes every drawing except [keep], using the same Save / Don't save /
   /// Cancel path a single tab close uses.
   Future<bool> closeOtherTabs(DocumentTab keep) async {
@@ -527,26 +580,29 @@ class Workspace extends ChangeNotifier implements CommandServices {
       commandLine.cancelPending('Superseded by $idOrAlias');
       active?.tools.cancel();
     }
-    if (active == null) {
+    if (activeDrawing == null) {
       final message = _missingDocumentMessage(descriptor.id);
-      if (message != null) {
+      if (message != null &&
+          !(descriptor.id == 'file.close' && active != null)) {
         commandLine.writeError(message);
         return CommandResult.failed(message);
       }
     }
     // Host commands that must not invent a leftover blank tab: file pickers
     // that the user can cancel, and settings, which has no document at all.
+    // A start tab is reused for New, and promoted when a drawing command runs.
     final tab =
-        active ??
+        activeDrawing ??
         (_isHostCommand(descriptor.id)
-            ? DocumentTab(
-                session: DocumentSession(
-                  id: 'transient',
-                  document: CadDocument(),
-                ),
-                snapEngine: snapEngine,
-                selectionTool: _selectionTool(),
-              )
+            ? (active ??
+                  DocumentTab(
+                    session: DocumentSession(
+                      id: 'transient',
+                      document: CadDocument(),
+                    ),
+                    snapEngine: snapEngine,
+                    selectionTool: _selectionTool(),
+                  ))
             : newDocument(title: 'Drawing1'));
     _runningCommand = descriptor.id;
     notifyListeners();
@@ -655,7 +711,15 @@ class Workspace extends ChangeNotifier implements CommandServices {
       }
       session = found.session;
     }
-    final target = session ?? active?.session;
+    if (session == null &&
+        active?.isStartPage == true &&
+        !_isHostCommand(descriptor.id)) {
+      newDocument();
+    }
+    final target =
+        session ??
+        activeDrawing?.session ??
+        (_isHostCommand(descriptor.id) ? active?.session : null);
     if (target == null) {
       if (descriptor.id == 'file.list' || descriptor.id == 'file.activate') {
         return commands.run(

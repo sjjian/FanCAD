@@ -53,6 +53,23 @@ void main() {
     expect(ws.activeIndex, -1);
   });
 
+  test('the tab plus control opens a start page instead of Drawing1', () {
+    final ws = workspace();
+    ws.newDocument(title: 'A');
+    final start = ws.openStartTab();
+    expect(start.isStartPage, isTrue);
+    expect(ws.hasDocument, isFalse);
+    expect(ws.tabs, hasLength(2));
+    expect(ws.openStartTab(), same(start));
+    expect(ws.tabs, hasLength(2));
+
+    final drawing = ws.newDocument();
+    expect(drawing, same(start));
+    expect(start.isStartPage, isFalse);
+    expect(ws.hasDocument, isTrue);
+    expect(ws.tabs, hasLength(2));
+  });
+
   test('selecting an object reveals the properties panel', () async {
     final ws = workspace();
     final tab = ws.newDocument();

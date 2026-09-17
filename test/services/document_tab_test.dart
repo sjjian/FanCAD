@@ -35,6 +35,17 @@ void main() {
     expect(ticks, 3);
   });
 
+  test('a start tab can be promoted into a drawing in place', () {
+    final tab = DocumentTab(
+      session: DocumentSession(id: '2', document: CadDocument()),
+      isStartPage: true,
+    );
+    addTearDown(tab.dispose);
+    tab.promoteToDrawing();
+    expect(tab.isStartPage, isFalse);
+    expect(tab.title, 'Drawing2');
+  });
+
   test('a document edit and invalidateAll share the geometry drop hook', () {
     final tab = newTab();
     addTearDown(tab.dispose);

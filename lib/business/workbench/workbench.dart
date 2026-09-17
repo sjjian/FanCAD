@@ -66,8 +66,13 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         return;
       }
       if (isPreferencesPanel(panelId)) {
-        revealSettingsTab(settingsTabFromPanelId(panelId));
-        ref.read(sidebarProvider.notifier).reveal('preferences');
+        if (!mounted) return;
+        unawaited(
+          showSettingsDialog(
+            context,
+            initialTab: settingsTabFromPanelId(panelId),
+          ),
+        );
         return;
       }
       ref.read(sidebarProvider.notifier).reveal(panelId);
@@ -306,7 +311,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
           child: Column(
             children: [
               TitleBar(
-                workspace: workspace,
                 assistantOpen: assistant.isOpen,
                 onTogglePalette: () =>
                     ref.read(paletteOpenProvider.notifier).toggle(),
@@ -328,6 +332,9 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                               onSelect: ref
                                   .read(sidebarProvider.notifier)
                                   .select,
+                              onOpenSettings: () {
+                                unawaited(showSettingsDialog(context));
+                              },
                             ),
                             if (sidebar.isOpen)
                               SizedBox(
@@ -434,7 +441,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
 
   Widget _canvasArea(Workspace workspace) {
     final tab = workspace.active;
-    final body = tab == null
+    final showStart = tab == null || tab.isStartPage;
+    final body = showStart
         ? EmptyWorkspace(
             recentFiles: workspace.recentFiles,
             onOpenRecent: (path) =>
@@ -463,7 +471,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         ),
       ],
     );
-    if (tab == null) return stack;
+    if (showStart) return stack;
     return CanvasHud(
       workspace: workspace,
       commandFocus: _commandFocus,
@@ -491,7 +499,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       workspace: workspace,
       host: ref.watch(pluginHostProvider),
     ),
-    'preferences' => const SettingsPanel(),
     _ => const SizedBox.shrink(),
   };
 
@@ -549,10 +556,15 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
 
 /// The vertical strip of view switchers on the left.
 class _ActivityBar extends StatelessWidget {
-  const _ActivityBar({required this.activeViewId, required this.onSelect});
+  const _ActivityBar({
+    required this.activeViewId,
+    required this.onSelect,
+    required this.onOpenSettings,
+  });
 
   final String activeViewId;
   final ValueChanged<String> onSelect;
+  final VoidCallback onOpenSettings;
 
   static const List<({String id, IconData icon, IconData activeIcon})>
   _views = [
@@ -615,17 +627,12 @@ class _ActivityBar extends StatelessWidget {
           const Spacer(),
           ShellIconButton(
             key: const Key('activity-preferences'),
-            icon: activeViewId == 'preferences'
-                ? Icons.settings
-                : Icons.settings_outlined,
-            tooltip: activeViewId == 'preferences'
-                ? '${l10n.hide_view(l10n.settings)}\n${l10n.settings_tooltip}'
-                : '${l10n.settings}\n${l10n.settings_tooltip}  ${formatKeybinding('ctrl+,')}',
+            icon: Icons.settings_outlined,
+            tooltip:
+                '${l10n.settings}\n${l10n.settings_tooltip}  ${formatKeybinding('ctrl+,')}',
             size: FanCadTokens.activityBarWidth - FanCadTokens.space3,
             iconSize: 22,
-            isActive: activeViewId == 'preferences',
-            showActiveBar: true,
-            onPressed: () => onSelect('preferences'),
+            onPressed: onOpenSettings,
           ),
           const SizedBox(height: FanCadTokens.space1),
           ShellIconButton(

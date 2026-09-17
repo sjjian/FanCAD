@@ -116,6 +116,14 @@
   "@new_drawing": {
     "description": "new drawing"
   },
+  "new_tab": "新建标签页",
+  "@new_tab": {
+    "description": "tab strip plus control"
+  },
+  "start_tab": "开始",
+  "@start_tab": {
+    "description": "start screen tab title"
+  },
   "open": "打开",
   "@open": {
     "description": "open"
@@ -580,6 +588,10 @@
   "empty_tagline": "AI 原生、插件化的二维 CAD",
   "@empty_tagline": {
     "description": "empty tagline"
+  },
+  "empty_github": "GitHub 上的 FanCAD",
+  "@empty_github": {
+    "description": "start screen GitHub link"
   },
   "open_drawing_file": "打开 DWG、DXF 或 FCB 文件",
   "@open_drawing_file": {

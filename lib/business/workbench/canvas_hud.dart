@@ -344,6 +344,20 @@ canvasQuickTools = [
   (commandId: 'edit.move', icon: Icons.open_with, alias: 'M', fallback: 'Move'),
 ];
 
+String _saveTooltip(
+  AppLocalizations l10n,
+  DocumentTab? tab,
+  CommandRegistry commands,
+) {
+  final chord = shortcutLabelForCommand(commands, 'file.save') ?? '';
+  if (tab == null || tab.isStartPage) {
+    return '${l10n.save}  $chord';
+  }
+  if (tab.isDirty) return '${l10n.save_unsaved_changes}  $chord';
+  if (tab.filePath == null) return '${l10n.save_this_drawing}  $chord';
+  return l10n.saved_write_again(chord);
+}
+
 String _undoTooltip(
   AppLocalizations l10n,
   DocumentTab? tab,
@@ -390,29 +404,44 @@ class _ActionBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ShellIconButton(
+                  key: const Key('canvas-tool-save'),
+                  icon: tab?.isDirty == true ? Icons.save : Icons.save_outlined,
+                  tooltip: _saveTooltip(l10n, tab, workspace.commands),
+                  size: 24,
+                  enabled: tab != null && !tab.isStartPage,
+                  onPressed: () => workspace.run('file.save'),
+                ),
+                const SizedBox(width: FanCadTokens.space1),
+                ShellIconButton(
                   key: const Key('canvas-tool-undo'),
                   icon: Icons.undo,
                   tooltip: _undoTooltip(l10n, tab, workspace.commands),
+                  size: 24,
                   enabled: tab?.history.canUndo ?? false,
                   onPressed: () => workspace.run('edit.undo'),
                 ),
+                const SizedBox(width: FanCadTokens.space1),
                 ShellIconButton(
                   key: const Key('canvas-tool-redo'),
                   icon: Icons.redo,
                   tooltip: _redoTooltip(l10n, tab, workspace.commands),
+                  size: 24,
                   enabled: tab?.history.canRedo ?? false,
                   onPressed: () => workspace.run('edit.redo'),
                 ),
-                for (final tool in canvasQuickTools)
+                for (final tool in canvasQuickTools) ...[
+                  const SizedBox(width: FanCadTokens.space1),
                   ShellIconButton(
                     key: Key('canvas-tool-${tool.commandId}'),
                     icon: tool.icon,
                     tooltip:
                         '${l10n.commandTitle(tool.commandId, tool.fallback)}  ${tool.alias}',
+                    size: 24,
                     enabled: tab != null,
                     isActive: workspace.runningCommand == tool.commandId,
                     onPressed: () => workspace.run(tool.commandId),
                   ),
+                ],
               ],
             ),
           ),

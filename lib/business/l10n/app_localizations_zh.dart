@@ -96,6 +96,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get new_drawing => '新建图纸';
 
   @override
+  String get new_tab => '新建标签页';
+
+  @override
+  String get start_tab => '开始';
+
+  @override
   String get open => '打开';
 
   @override
@@ -405,6 +411,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get empty_tagline => 'AI 原生、插件化的二维 CAD';
+
+  @override
+  String get empty_github => 'GitHub 上的 FanCAD';
 
   @override
   String get open_drawing_file => '打开 DWG、DXF 或 FCB 文件';

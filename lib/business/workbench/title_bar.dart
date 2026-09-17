@@ -14,21 +14,20 @@ import 'shell_widgets.dart';
 
 /// The custom title bar.
 ///
-/// Replaces the OS chrome so file actions, window buttons and the assistant
-/// toggle share one 32-pixel row. Drawing tools live on the canvas.
+/// Replaces the OS chrome so search, window buttons and the assistant
+/// toggle share one 32-pixel row. New and open live on the start page;
+/// save and drawing tools live on the canvas.
 ///
 /// macOS keeps the native traffic lights on a hidden title bar, so the first
 /// icon is inset and the Windows-style buttons stay off that platform.
 class TitleBar extends StatelessWidget {
   const TitleBar({
     super.key,
-    required this.workspace,
     required this.onTogglePalette,
     required this.onToggleAssistant,
     this.assistantOpen = false,
   });
 
-  final Workspace workspace;
   final VoidCallback onTogglePalette;
   final VoidCallback onToggleAssistant;
   final bool assistantOpen;
@@ -36,7 +35,7 @@ class TitleBar extends StatelessWidget {
   /// Space before the first title-bar control.
   ///
   /// The native traffic lights sit over the Flutter view; without this inset
-  /// the first file icon is drawn under the red button.
+  /// the drag area starts under the red button.
   @visibleForTesting
   static double leadingInset({required bool usesNativeTrafficLights}) =>
       usesNativeTrafficLights
@@ -60,7 +59,6 @@ class TitleBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final l10n = context.l10n;
-    final tab = workspace.active;
     final nativeLights = Platform.isMacOS;
 
     return Container(
@@ -73,34 +71,6 @@ class TitleBar extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(width: leadingInset(usesNativeTrafficLights: nativeLights)),
-          ShellIconButton(
-            icon: Icons.insert_drive_file_outlined,
-            tooltip:
-                '${l10n.new_drawing}  ${shortcutLabelForCommand(workspace.commands, 'file.new')}',
-            onPressed: () => workspace.run('file.new'),
-          ),
-          ShellIconButton(
-            icon: Icons.folder_open_outlined,
-            tooltip:
-                '${l10n.open}  ${shortcutLabelForCommand(workspace.commands, 'file.open')}',
-            onPressed: () => workspace.run('file.open'),
-          ),
-          ShellIconButton(
-            icon: tab?.isDirty == true ? Icons.save : Icons.save_outlined,
-            tooltip: tab == null
-                ? '${l10n.save}  ${shortcutLabelForCommand(workspace.commands, 'file.save')}'
-                : tab.isDirty
-                ? '${l10n.save_unsaved_changes}  ${shortcutLabelForCommand(workspace.commands, 'file.save')}'
-                : tab.filePath == null
-                ? '${l10n.save_this_drawing}  ${shortcutLabelForCommand(workspace.commands, 'file.save')}'
-                : l10n.saved_write_again(
-                    shortcutLabelForCommand(workspace.commands, 'file.save') ??
-                        '',
-                  ),
-            enabled: tab != null,
-            onPressed: () => workspace.run('file.save'),
-          ),
-          _FileMenu(workspace: workspace),
           const Expanded(child: _DragArea(child: SizedBox.expand())),
           ShellIconButton(
             icon: Icons.search,
@@ -128,180 +98,6 @@ class TitleBar extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-/// Overflow for Save As, recent files and Close — the actions that do not
-/// earn a permanent toolbar icon.
-class _FileMenu extends StatelessWidget {
-  const _FileMenu({required this.workspace});
-
-  final Workspace workspace;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final l10n = context.l10n;
-    final tab = workspace.active;
-    final recent = workspace.recentFiles;
-    return ShellMenuButton<String>(
-      tooltip: l10n.more_file_actions,
-      placement: ShellMenuPlacement.down,
-      onSelected: (value) {
-        if (value.startsWith('recent:')) {
-          workspace.run(
-            'file.open',
-            args: {'path': value.substring('recent:'.length)},
-          );
-          return;
-        }
-        if (value == 'clearRecent') {
-          workspace.clearRecentFiles();
-          return;
-        }
-        if (value == 'pruneRecent') {
-          final removed = workspace.pruneMissingRecentFiles();
-          workspace.notify(
-            removed == 0
-                ? l10n.recent_all_on_disk
-                : removed == 1
-                ? l10n.recent_removed_one
-                : l10n.recent_removed_many(removed),
-          );
-          return;
-        }
-        workspace.run(value);
-      },
-      itemBuilder: (context) => [
-        shellMenuItem(
-          context,
-          value: 'file.new',
-          label: l10n.new_drawing,
-          shortcut: shortcutLabelForCommand(workspace.commands, 'file.new'),
-        ),
-        shellMenuItem(
-          context,
-          value: 'file.open',
-          label: l10n.open_ellipsis,
-          shortcut: shortcutLabelForCommand(workspace.commands, 'file.open'),
-        ),
-        if (recent.isNotEmpty) ...[
-          const PopupMenuDivider(),
-          shellMenuSection<String>(context, l10n.recent),
-          for (final path in recent.take(8)) _recentItem(context, tokens, path),
-          if (recent.any((path) => !File(path).existsSync()))
-            shellMenuItem(
-              context,
-              value: 'pruneRecent',
-              label: l10n.remove_missing,
-            ),
-          shellMenuItem(
-            context,
-            value: 'clearRecent',
-            label: l10n.clear_recent,
-          ),
-        ],
-        const PopupMenuDivider(),
-        shellMenuItem(
-          context,
-          value: 'file.save',
-          label: l10n.save,
-          shortcut: shortcutLabelForCommand(workspace.commands, 'file.save'),
-          enabled: tab != null,
-        ),
-        shellMenuItem(
-          context,
-          value: 'file.saveAs',
-          label: l10n.save_as,
-          shortcut: shortcutLabelForCommand(workspace.commands, 'file.saveAs'),
-          enabled: tab != null,
-        ),
-        shellMenuItem(
-          context,
-          value: 'file.close',
-          label: l10n.close_drawing,
-          shortcut: shortcutLabelForCommand(workspace.commands, 'file.close'),
-          enabled: tab != null,
-        ),
-      ],
-      child: SizedBox(
-        width: 22,
-        height: 28,
-        child: Icon(
-          Icons.expand_more,
-          size: FanCadTokens.iconMedium,
-          color: tokens.textMuted,
-        ),
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _recentItem(
-    BuildContext context,
-    FanCadTokens tokens,
-    String path,
-  ) {
-    final l10n = context.l10n;
-    final exists = File(path).existsSync();
-    return PopupMenuItem<String>(
-      value: 'recent:$path',
-      height: 32,
-      child: Row(
-        children: [
-          Expanded(
-            child: Tooltip(
-              message: exists ? path : l10n.missing_path(path),
-              child: Text(
-                _fileName(path),
-                style: tokens.bodyStyle.copyWith(
-                  color: exists ? tokens.text : tokens.textFaint,
-                  decoration: exists ? null : TextDecoration.lineThrough,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          if (exists)
-            Tooltip(
-              message: l10n.revealInFolder(),
-              child: InkWell(
-                onTap: () {
-                  Navigator.of(context).pop();
-                  unawaited(_revealOnDisk(path, l10n));
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                    Icons.folder_open_outlined,
-                    size: FanCadTokens.iconSmall,
-                    color: tokens.textMuted,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _revealOnDisk(String path, AppLocalizations l10n) async {
-    try {
-      if (Platform.isMacOS) {
-        await Process.start('open', ['-R', path]);
-      } else if (Platform.isWindows) {
-        await Process.start('explorer', ['/select,', path]);
-      } else {
-        await Process.start('xdg-open', [File(path).parent.path]);
-      }
-    } catch (error) {
-      workspace.notify(l10n.could_not_reveal(path, '$error'), isError: true);
-    }
-  }
-
-  static String _fileName(String path) {
-    final separator = path.contains(r'\') ? r'\' : '/';
-    final parts = path.split(separator);
-    return parts.isEmpty ? path : parts.last;
   }
 }
 
@@ -345,9 +141,8 @@ class DocumentTabStrip extends StatelessWidget {
           ShellIconButton(
             key: const Key('document-new-tab'),
             icon: Icons.add,
-            tooltip:
-                '${context.l10n.new_drawing}  ${shortcutLabelForCommand(workspace.commands, 'file.new')}',
-            onPressed: () => workspace.run('file.new'),
+            tooltip: context.l10n.new_tab,
+            onPressed: workspace.openStartTab,
           ),
           if (tabs.length > 1) _OpenDrawingsMenu(workspace: workspace),
           const SizedBox(width: FanCadTokens.space1),
@@ -377,7 +172,7 @@ class _OpenDrawingsMenu extends StatelessWidget {
           shellMenuItem<int>(
             context,
             value: i,
-            label: tabs[i].title,
+            label: tabs[i].isStartPage ? context.l10n.start_tab : tabs[i].title,
             checked: i == workspace.activeIndex ? true : null,
             leading: i == workspace.activeIndex
                 ? null
@@ -471,7 +266,7 @@ class _TabState extends State<_Tab> {
                 : tab.filePath ?? context.l10n.unsaved_drawing,
             waitDuration: const Duration(milliseconds: 500),
             child: Text(
-              tab.title,
+              tab.isStartPage ? context.l10n.start_tab : tab.title,
               style: tokens.bodyStyle.copyWith(
                 color: widget.isActive ? tokens.text : tokens.textMuted,
               ),

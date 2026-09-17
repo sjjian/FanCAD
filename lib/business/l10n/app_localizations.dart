@@ -272,6 +272,18 @@ abstract class AppLocalizations {
   /// **'New drawing'**
   String get new_drawing;
 
+  /// tab strip plus control
+  ///
+  /// In en, this message translates to:
+  /// **'New tab'**
+  String get new_tab;
+
+  /// start screen tab title
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get start_tab;
+
   /// open
   ///
   /// In en, this message translates to:
@@ -817,6 +829,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'An AI-native, plugin-everything 2D CAD'**
   String get empty_tagline;
+
+  /// start screen GitHub link
+  ///
+  /// In en, this message translates to:
+  /// **'FanCAD on GitHub'**
+  String get empty_github;
 
   /// open drawing file
   ///

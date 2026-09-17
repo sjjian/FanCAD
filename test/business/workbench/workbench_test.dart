@@ -21,6 +21,7 @@ void main() {
     expect(find.byKey(const Key('empty-workspace-new')), findsOneWidget);
     expect(find.byKey(const Key('empty-workspace-open')), findsOneWidget);
     expect(find.byKey(const Key('empty-workspace-commands')), findsOneWidget);
+    expect(find.byKey(const Key('empty-workspace-github')), findsOneWidget);
     expect(find.text('New drawing'), findsNothing);
     expect(find.text('Layers'), findsOneWidget);
     expect(find.text('Layouts'), findsNothing);
@@ -42,11 +43,36 @@ void main() {
     final container = await pumpFanCadApp(tester);
 
     expect(find.byKey(const Key('empty-workspace-new')), findsOneWidget);
+    expect(find.byKey(const Key('empty-workspace-github')), findsOneWidget);
     expect(find.text('New drawing'), findsNothing);
     expect(find.text('Drawing1'), findsNothing);
     expect(find.text('This drawing is empty'), findsNothing);
     expect(container.read(workspaceProvider).tabs, isEmpty);
   });
+
+  testWidgets(
+    'the tab plus control opens the start screen, not a new drawing',
+    (tester) async {
+      final container = await pumpWorkbench(tester, document: true);
+      expect(find.text('Drawing1'), findsOneWidget);
+      expect(find.byKey(const Key('empty-workspace-new')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('document-new-tab')));
+      await tester.pump();
+      expect(find.text('Start'), findsOneWidget);
+      expect(find.byKey(const Key('empty-workspace-new')), findsOneWidget);
+      expect(find.text('Drawing1'), findsOneWidget);
+      expect(container.read(workspaceProvider).tabs, hasLength(2));
+      expect(container.read(workspaceProvider).active!.isStartPage, isTrue);
+
+      await tester.tap(find.byKey(const Key('empty-workspace-new')));
+      await tester.pump();
+      expect(find.byKey(const Key('empty-workspace-new')), findsNothing);
+      expect(container.read(workspaceProvider).tabs, hasLength(2));
+      expect(container.read(workspaceProvider).active!.isStartPage, isFalse);
+      expect(container.read(workspaceProvider).hasDocument, isTrue);
+    },
+  );
 
   testWidgets('switching to Simplified Chinese localizes chrome', (
     tester,
@@ -56,17 +82,18 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pump();
     await tester.pump();
-    expect(find.byKey(const Key('settings-panel')), findsOneWidget);
+    expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
 
+    await tester.tap(find.byKey(const Key('settings-language')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('settings-language-zh')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
 
     expect(find.text('设置'), findsWidgets);
     expect(find.byKey(const Key('empty-workspace-new')), findsOneWidget);
     expect(find.text('LAYERS'), findsNothing);
-    await tester.tap(find.byKey(const Key('activity-layers')));
-    await tester.pump();
+    await tester.tap(find.byKey(const Key('settings-close')));
+    await tester.pumpAndSettle();
     expect(find.text('图层'), findsOneWidget);
   });
 
@@ -76,7 +103,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pump();
     await tester.pump();
-    expect(find.byKey(const Key('settings-panel')), findsOneWidget);
+    expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('settings-tab-assistant')));
     await tester.pump();
@@ -104,7 +131,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.byKey(const Key('settings-panel')), findsOneWidget);
+    expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
     expect(find.text('API key'), findsOneWidget);
   });
 

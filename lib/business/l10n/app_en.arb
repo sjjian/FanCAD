@@ -116,6 +116,14 @@
   "@new_drawing": {
     "description": "new drawing"
   },
+  "new_tab": "New tab",
+  "@new_tab": {
+    "description": "tab strip plus control"
+  },
+  "start_tab": "Start",
+  "@start_tab": {
+    "description": "start screen tab title"
+  },
   "open": "Open",
   "@open": {
     "description": "open"
@@ -580,6 +588,10 @@
   "empty_tagline": "An AI-native, plugin-everything 2D CAD",
   "@empty_tagline": {
     "description": "empty tagline"
+  },
+  "empty_github": "FanCAD on GitHub",
+  "@empty_github": {
+    "description": "start screen GitHub link"
   },
   "open_drawing_file": "Open a DWG, DXF or FCB file",
   "@open_drawing_file": {

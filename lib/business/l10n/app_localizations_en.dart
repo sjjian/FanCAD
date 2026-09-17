@@ -100,6 +100,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get new_drawing => 'New drawing';
 
   @override
+  String get new_tab => 'New tab';
+
+  @override
+  String get start_tab => 'Start';
+
+  @override
   String get open => 'Open';
 
   @override
@@ -411,6 +417,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get empty_tagline => 'An AI-native, plugin-everything 2D CAD';
+
+  @override
+  String get empty_github => 'FanCAD on GitHub';
 
   @override
   String get open_drawing_file => 'Open a DWG, DXF or FCB file';
