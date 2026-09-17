@@ -78,17 +78,12 @@ void main() {
     );
     await tester.pump();
 
+    expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
+    expect(find.byType(ShellCanvasWindow), findsOneWidget);
+    expect(find.byKey(const Key('settings-card')), findsOneWidget);
     expect(find.byKey(const Key('settings-tab-general')), findsOneWidget);
     expect(find.byKey(const Key('settings-tab-assistant')), findsOneWidget);
     expect(find.byKey(const Key('settings-tab-mcp')), findsOneWidget);
-    expect(
-      tester.widget(find.byKey(const Key('settings-tab-general'))),
-      isA<ShellTab>(),
-    );
-    expect(
-      tester.widget(find.byKey(const Key('settings-tab-assistant'))),
-      isA<ShellTab>(),
-    );
 
     final field = tester.widget<SettingsTextField>(
       find.byKey(const Key('settings-model-field')),
@@ -100,13 +95,10 @@ void main() {
     expect(find.text('o4-mini'), findsNothing);
 
     expect(find.byKey(const Key('settings-add-profile')), findsOneWidget);
+    expect(find.byKey(const Key('settings-profile-default')), findsOneWidget);
     await tester.tap(find.byKey(const Key('settings-add-profile')));
     await tester.pump();
     expect(find.byKey(const Key('settings-profile-default')), findsOneWidget);
-    expect(
-      tester.widget(find.byKey(const Key('settings-profile-default'))),
-      isA<ShellBadge>(),
-    );
     expect(find.byKey(const Key('settings-remove-profile')), findsOneWidget);
     expect(
       find.byWidgetPredicate((widget) {

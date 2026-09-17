@@ -224,7 +224,6 @@ class Sidebar extends _$Sidebar {
     'commands',
     'plugins',
     'editor',
-    'preferences',
   };
 
   @override

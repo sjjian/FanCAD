@@ -17,15 +17,6 @@ const _settingsRouteName = 'fancad.settings';
 
 ValueNotifier<SettingsTab>? _openSettingsTab;
 
-final ValueNotifier<SettingsTab> _sidebarSettingsTab = ValueNotifier(
-  SettingsTab.general,
-);
-
-/// Selects a settings page before the sidebar reveals the preferences view.
-void revealSettingsTab(SettingsTab tab) {
-  _sidebarSettingsTab.value = tab;
-}
-
 /// Whether the settings dialog is already on screen.
 @visibleForTesting
 bool get settingsDialogIsOpen => _openSettingsTab != null;
@@ -64,6 +55,7 @@ Future<void> showSettingsDialog(
   _openSettingsTab = tab;
   return showDialog<void>(
     context: context,
+    useSafeArea: false,
     barrierColor: Colors.black.withValues(alpha: 0.4),
     routeSettings: const RouteSettings(name: _settingsRouteName),
     builder: (context) => SettingsDialog(tab: tab),
@@ -73,23 +65,6 @@ Future<void> showSettingsDialog(
     }
     tab.dispose();
   });
-}
-
-/// Settings in the left sidebar, same pages as the leftover dialog.
-class SettingsPanel extends StatelessWidget {
-  const SettingsPanel({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _sidebarSettingsTab,
-      builder: (context, _) => _SettingsBody(
-        key: const Key('settings-panel'),
-        tab: _sidebarSettingsTab,
-        header: PanelHeader(title: context.l10n.settings),
-      ),
-    );
-  }
 }
 
 /// The application-wide settings surface.
@@ -104,48 +79,38 @@ class SettingsDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final l10n = context.l10n;
-    return ListenableBuilder(
-      listenable: tab,
-      builder: (context, _) {
-        return Dialog(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bounds = Size(constraints.maxWidth, constraints.maxHeight);
+        if (!bounds.isFinite || bounds.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        const size = Size(680, 560);
+        void close() {
+          final navigator = Navigator.maybeOf(context);
+          if (navigator != null && navigator.canPop()) navigator.pop();
+        }
+
+        return SizedBox.expand(
           key: const Key('settings-dialog'),
-          backgroundColor: tokens.surfaceOverlay,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
-            side: BorderSide(color: tokens.borderStrong),
-          ),
-          child: SizedBox(
-            width: 560,
-            height: tab.value == SettingsTab.general ? 360 : 520,
-            child: _SettingsBody(
-              tab: tab,
-              header: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  FanCadTokens.space4,
-                  FanCadTokens.space3,
-                  FanCadTokens.space2,
-                  FanCadTokens.space2,
+          child: Stack(
+            children: [
+              ShellCanvasWindow(
+                name: 'settings',
+                title: l10n.settings,
+                origin: Offset(
+                  (bounds.width - size.width) / 2,
+                  (bounds.height - size.height) / 2,
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l10n.settings,
-                        style: tokens.dialogTitleStyle,
-                      ),
-                    ),
-                    ShellIconButton(
-                      icon: Icons.close,
-                      tooltip: l10n.close,
-                      iconSize: FanCadTokens.iconSmall,
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
+                bounds: bounds,
+                initialSize: size,
+                minSize: const Size(520, 400),
+                onClose: close,
+                onBarrierTap: close,
+                child: _SettingsBody(tab: tab),
               ),
-            ),
+            ],
           ),
         );
       },
@@ -154,10 +119,9 @@ class SettingsDialog extends StatelessWidget {
 }
 
 class _SettingsBody extends ConsumerStatefulWidget {
-  const _SettingsBody({super.key, required this.tab, required this.header});
+  const _SettingsBody({required this.tab});
 
   final ValueListenable<SettingsTab> tab;
-  final Widget header;
 
   @override
   ConsumerState<_SettingsBody> createState() => _SettingsBodyState();
@@ -263,37 +227,43 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
     // Watch so a language or theme write rebuilds this surface in place.
     ref.watch(languageProvider);
     ref.watch(themeBrightnessProvider);
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        widget.header,
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
-          child: Wrap(
-            spacing: FanCadTokens.space3,
-            children: [
-              _SettingsTabButton(
-                tabKey: const Key('settings-tab-general'),
-                label: l10n.settings_tab_general,
-                selected: tab == SettingsTab.general,
-                onTap: () => _setTab(SettingsTab.general),
-              ),
-              _SettingsTabButton(
-                tabKey: const Key('settings-tab-assistant'),
-                label: l10n.settings_tab_assistant,
-                selected: tab == SettingsTab.assistant,
-                onTap: () => _setTab(SettingsTab.assistant),
-              ),
-              _SettingsTabButton(
-                tabKey: const Key('settings-tab-mcp'),
-                label: l10n.settings_tab_mcp,
-                selected: tab == SettingsTab.mcp,
-                onTap: () => _setTab(SettingsTab.mcp),
-              ),
-            ],
+        SizedBox(
+          width: 120,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              FanCadTokens.space2,
+              FanCadTokens.space1,
+              FanCadTokens.space2,
+              FanCadTokens.space3,
+            ),
+            child: Column(
+              children: [
+                _SettingsNavItem(
+                  tabKey: const Key('settings-tab-general'),
+                  label: l10n.settings_tab_general,
+                  selected: tab == SettingsTab.general,
+                  onTap: () => _setTab(SettingsTab.general),
+                ),
+                _SettingsNavItem(
+                  tabKey: const Key('settings-tab-assistant'),
+                  label: l10n.settings_tab_assistant,
+                  selected: tab == SettingsTab.assistant,
+                  onTap: () => _setTab(SettingsTab.assistant),
+                ),
+                _SettingsNavItem(
+                  tabKey: const Key('settings-tab-mcp'),
+                  label: l10n.settings_tab_mcp,
+                  selected: tab == SettingsTab.mcp,
+                  onTap: () => _setTab(SettingsTab.mcp),
+                ),
+              ],
+            ),
           ),
         ),
-        const ShellHairline(),
+        const ShellHairline(axis: Axis.vertical, strong: false),
         Expanded(
           child: IndexedStack(
             index: switch (tab) {
@@ -326,8 +296,8 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
   }
 }
 
-class _SettingsTabButton extends StatelessWidget {
-  const _SettingsTabButton({
+class _SettingsNavItem extends StatefulWidget {
+  const _SettingsNavItem({
     required this.tabKey,
     required this.label,
     required this.selected,
@@ -340,18 +310,65 @@ class _SettingsTabButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_SettingsNavItem> createState() => _SettingsNavItemState();
+}
+
+class _SettingsNavItemState extends State<_SettingsNavItem> {
+  var _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return ShellTab(
-      key: tabKey,
-      style: ShellTabStyle.underline,
-      selected: selected,
-      onTap: onTap,
-      child: Text(
-        label,
-        style: tokens.bodyStyle.copyWith(
-          color: selected ? tokens.accent : tokens.textMuted,
-          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+    final selected = widget.selected;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: FanCadTokens.space1),
+      child: FocusableActionDetector(
+        mouseCursor: SystemMouseCursors.click,
+        onShowHoverHighlight: (show) => setState(() => _hovered = show),
+        actions: <Type, Action<Intent>>{
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) {
+              widget.onTap();
+              return null;
+            },
+          ),
+        },
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            key: widget.tabKey,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            height: 32,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space2,
+            ),
+            decoration: BoxDecoration(
+              color: selected
+                  ? tokens.pressed
+                  : _hovered
+                  ? tokens.hover
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: tokens.pressed,
+                        blurRadius: 8,
+                        offset: const Offset(0, 1),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Text(
+              widget.label,
+              style: tokens.bodyStyle.copyWith(
+                color: selected ? tokens.text : tokens.textMuted,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -373,61 +390,48 @@ class _GeneralPage extends ConsumerWidget {
           children: [
             SettingsLabeledRow(
               label: l10n.language,
-              child: Wrap(
-                spacing: FanCadTokens.space2,
-                runSpacing: FanCadTokens.space2,
-                children: [
-                  SettingsRadioOption(
-                    key: const Key('settings-language-en'),
+              child: SettingsDropdown<String>(
+                key: const Key('settings-language'),
+                value: language,
+                onChanged: (value) =>
+                    ref.read(languageProvider.notifier).setLanguage(value),
+                options: const [
+                  SettingsDropdownOption(
+                    key: Key('settings-language-en'),
+                    value: FanCadLanguage.english,
                     label: 'English',
-                    selected: language == FanCadLanguage.english,
-                    onTap: () => ref
-                        .read(languageProvider.notifier)
-                        .setLanguage(FanCadLanguage.english),
                   ),
-                  SettingsRadioOption(
-                    key: const Key('settings-language-zh'),
+                  SettingsDropdownOption(
+                    key: Key('settings-language-zh'),
+                    value: FanCadLanguage.chinese,
                     label: '简体中文',
-                    selected: language == FanCadLanguage.chinese,
-                    onTap: () => ref
-                        .read(languageProvider.notifier)
-                        .setLanguage(FanCadLanguage.chinese),
                   ),
                 ],
               ),
             ),
             SettingsLabeledRow(
               label: l10n.theme,
-              child: Wrap(
-                spacing: FanCadTokens.space2,
-                runSpacing: FanCadTokens.space2,
-                children: [
-                  SettingsRadioOption(
+              child: SettingsDropdown<String>(
+                key: const Key('settings-theme'),
+                value: themePref,
+                onChanged: (value) => ref
+                    .read(themeBrightnessProvider.notifier)
+                    .setPreference(value),
+                options: [
+                  SettingsDropdownOption(
                     key: const Key('settings-theme-dark'),
+                    value: 'dark',
                     label: l10n.theme_dark,
-                    width: 108,
-                    selected: themePref == 'dark',
-                    onTap: () => ref
-                        .read(themeBrightnessProvider.notifier)
-                        .setPreference('dark'),
                   ),
-                  SettingsRadioOption(
+                  SettingsDropdownOption(
                     key: const Key('settings-theme-light'),
+                    value: 'light',
                     label: l10n.theme_light,
-                    width: 108,
-                    selected: themePref == 'light',
-                    onTap: () => ref
-                        .read(themeBrightnessProvider.notifier)
-                        .setPreference('light'),
                   ),
-                  SettingsRadioOption(
+                  SettingsDropdownOption(
                     key: const Key('settings-theme-system'),
+                    value: 'system',
                     label: l10n.theme_system,
-                    width: 108,
-                    selected: themePref == 'system',
-                    onTap: () => ref
-                        .read(themeBrightnessProvider.notifier)
-                        .setPreference('system'),
                   ),
                 ],
               ),
@@ -601,35 +605,38 @@ class _AssistantPage extends ConsumerWidget {
             SettingsSection(
               title: l10n.assistant_profiles,
               children: [
-                Wrap(
-                  spacing: FanCadTokens.space2,
-                  runSpacing: FanCadTokens.space2,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    for (final profile in ai.profiles)
-                      ShellBadge(
-                        key: Key('settings-profile-${profile.id}'),
-                        text: profile.displayName,
-                        selected: profile.id == ai.activeProfile.id,
-                        onTap: () => onSelectProfile(profile.id),
-                      ),
-                    ShellIconButton(
-                      key: const Key('settings-add-profile'),
-                      icon: Icons.add,
-                      tooltip: l10n.add_assistant_profile,
-                      iconSize: FanCadTokens.iconSmall,
-                      onPressed: onAddProfile,
-                    ),
-                    if (ai.profiles.length > 1)
-                      ShellIconButton(
-                        key: const Key('settings-remove-profile'),
-                        icon: Icons.delete_outline,
-                        tooltip: l10n.remove_assistant_profile,
-                        iconSize: FanCadTokens.iconSmall,
-                        destructive: true,
-                        onPressed: onRemoveProfile,
-                      ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    const gap = FanCadTokens.space2;
+                    final width = (constraints.maxWidth - gap) / 2;
+                    return Wrap(
+                      spacing: gap,
+                      runSpacing: gap,
+                      children: [
+                        for (final profile in ai.profiles)
+                          SizedBox(
+                            width: width,
+                            child: _ProfileCard(
+                              key: Key('settings-profile-${profile.id}'),
+                              title: profile.displayName,
+                              model: profile.model,
+                              hasKey: profile.apiKey.trim().isNotEmpty,
+                              selected: profile.id == ai.activeProfile.id,
+                              onTap: () => onSelectProfile(profile.id),
+                              onRemove:
+                                  profile.id == ai.activeProfile.id &&
+                                      ai.profiles.length > 1
+                                  ? onRemoveProfile
+                                  : null,
+                            ),
+                          ),
+                        SizedBox(
+                          width: width,
+                          child: _AddProfileCard(onTap: onAddProfile),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 SettingsLabeledRow(
                   label: l10n.assistant_profile_name,
@@ -643,7 +650,7 @@ class _AssistantPage extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: FanCadTokens.space4),
+            const SizedBox(height: SettingsSection.itemGap),
             SettingsSection(
               title: l10n.settings_connection,
               children: [
@@ -698,6 +705,219 @@ class _AssistantPage extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _ProfileCard extends StatefulWidget {
+  const _ProfileCard({
+    super.key,
+    required this.title,
+    required this.model,
+    required this.hasKey,
+    required this.selected,
+    required this.onTap,
+    this.onRemove,
+  });
+
+  final String title;
+  final String model;
+  final bool hasKey;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback? onRemove;
+
+  @override
+  State<_ProfileCard> createState() => _ProfileCardState();
+}
+
+class _ProfileCardState extends State<_ProfileCard> {
+  var _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    return FocusableActionDetector(
+      mouseCursor: SystemMouseCursors.click,
+      onShowHoverHighlight: (show) => setState(() => _hovered = show),
+      actions: <Type, Action<Intent>>{
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            widget.onTap();
+            return null;
+          },
+        ),
+      },
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          height: 76,
+          padding: const EdgeInsets.fromLTRB(
+            FanCadTokens.space3,
+            FanCadTokens.space2,
+            FanCadTokens.space1,
+            FanCadTokens.space2,
+          ),
+          decoration: BoxDecoration(
+            color: widget.selected
+                ? tokens.selection
+                : _hovered
+                ? tokens.hover
+                : tokens.surfaceRaised,
+            borderRadius: BorderRadius.circular(FanCadTokens.radius),
+            border: Border.all(
+              color: widget.selected ? tokens.accent : tokens.border,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tokens.bodyStyle.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: FanCadTokens.space1),
+                    Text(
+                      widget.model,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tokens.monoStyle.copyWith(
+                        fontSize: 11,
+                        color: tokens.textMuted,
+                      ),
+                    ),
+                    const Spacer(),
+                    ShellDot(
+                      color: widget.hasKey ? tokens.success : tokens.textFaint,
+                    ),
+                  ],
+                ),
+              ),
+              if (widget.onRemove != null)
+                ShellIconButton(
+                  key: const Key('settings-remove-profile'),
+                  icon: Icons.delete_outline,
+                  tooltip: l10n.remove_assistant_profile,
+                  iconSize: FanCadTokens.iconSmall,
+                  destructive: true,
+                  onPressed: widget.onRemove,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DashedRRectPainter extends CustomPainter {
+  const _DashedRRectPainter({required this.color, required this.radius});
+
+  final Color color;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)),
+      );
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      const dash = 4.0;
+      const gap = 3.0;
+      while (distance < metric.length) {
+        final next = (distance + dash).clamp(0.0, metric.length);
+        canvas.drawPath(metric.extractPath(distance, next), paint);
+        distance += dash + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRRectPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.radius != radius;
+}
+
+class _AddProfileCard extends StatefulWidget {
+  const _AddProfileCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_AddProfileCard> createState() => _AddProfileCardState();
+}
+
+class _AddProfileCardState extends State<_AddProfileCard> {
+  var _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    return FocusableActionDetector(
+      mouseCursor: SystemMouseCursors.click,
+      onShowHoverHighlight: (show) => setState(() => _hovered = show),
+      actions: <Type, Action<Intent>>{
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            widget.onTap();
+            return null;
+          },
+        ),
+      },
+      child: GestureDetector(
+        key: const Key('settings-add-profile'),
+        onTap: widget.onTap,
+        child: CustomPaint(
+          painter: _DashedRRectPainter(
+            color: tokens.border,
+            radius: FanCadTokens.radius,
+          ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            height: 76,
+            decoration: BoxDecoration(
+              color: _hovered ? tokens.hover : Colors.transparent,
+              borderRadius: BorderRadius.circular(FanCadTokens.radius),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.add,
+                  size: FanCadTokens.iconLarge,
+                  color: tokens.textMuted,
+                ),
+                const SizedBox(height: FanCadTokens.space1),
+                Text(
+                  l10n.add_assistant_profile,
+                  style: tokens.labelStyle,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

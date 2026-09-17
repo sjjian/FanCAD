@@ -116,8 +116,15 @@ void main() {
     expect(sidebar.state.isOpen, isTrue);
 
     sidebar.reveal('preferences');
-    expect(sidebar.state.viewId, 'preferences');
+    expect(sidebar.state.viewId, 'layers');
     expect(sidebar.state.isOpen, isTrue);
+
+    expect(
+      containerOf(
+        SettingsStore.inMemory({SettingsKeys.sidebarView: 'preferences'}),
+      ).read(sidebarProvider).viewId,
+      'layers',
+    );
   });
 
   test('the assistant pane opens on the right and keeps its own width', () {
