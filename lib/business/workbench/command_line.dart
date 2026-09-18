@@ -255,7 +255,6 @@ class _CommandLinePaneState extends State<CommandLinePane> {
     final awaiting = _model.isAwaitingInput;
     return Container(
       height: FanCadTokens.commandLineHeight,
-      padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space2),
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
@@ -287,97 +286,113 @@ class _CommandLinePaneState extends State<CommandLinePane> {
             onClear: _model.clear,
           ),
           const SizedBox(width: FanCadTokens.space1),
-          if (prompt.isNotEmpty)
-            Flexible(
-              child: Padding(
-                padding: const EdgeInsets.only(right: FanCadTokens.space2),
-                child: Tooltip(
-                  message: prompt,
-                  waitDuration: const Duration(milliseconds: 500),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: Text(
-                      prompt,
-                      style: tokens.monoStyle.copyWith(
-                        color: awaiting ? tokens.accent : tokens.textMuted,
+          Expanded(
+            child: Row(
+              children: [
+                if (prompt.isNotEmpty)
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        right: FanCadTokens.space2,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      child: Tooltip(
+                        message: prompt,
+                        waitDuration: const Duration(milliseconds: 500),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: Text(
+                            prompt,
+                            style: tokens.monoStyle.copyWith(
+                              color: awaiting
+                                  ? tokens.accent
+                                  : tokens.textMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: CallbackShortcuts(
+                    bindings: {
+                      const SingleActivator(LogicalKeyboardKey.escape): () {
+                        widget.workspace.cancelActive();
+                        _input.clear();
+                        _syncSuggest();
+                      },
+                    },
+                    child: Focus(
+                      canRequestFocus: false,
+                      skipTraversal: true,
+                      onKeyEvent: _onKey,
+                      child: ShellTextField(
+                        controller: _input,
+                        focusNode: widget.focusNode,
+                        hintText: awaiting
+                            ? context.l10n.hint_click_or_type
+                            : prompt.isEmpty
+                            ? context.l10n.hint_type_command
+                            : null,
+                        onChanged: (_) => _syncSuggest(),
+                        onSubmitted: (raw) {
+                          if (widget.suggest?.isOpen == true) {
+                            _acceptSuggest();
+                            return;
+                          }
+                          // Enter on an open popup already cleared the field
+                          // in [_onKey]; the text-input action still delivers
+                          // the old string and must not parse it as a second
+                          // command.
+                          if (raw.isNotEmpty && _input.text.isEmpty) return;
+                          _submit(raw);
+                        },
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          Expanded(
-            child: CallbackShortcuts(
-              bindings: {
-                const SingleActivator(LogicalKeyboardKey.escape): () {
-                  widget.workspace.cancelActive();
-                  _input.clear();
-                  _syncSuggest();
-                },
-              },
-              child: Focus(
-                canRequestFocus: false,
-                skipTraversal: true,
-                onKeyEvent: _onKey,
-                child: ShellTextField(
-                  controller: _input,
-                  focusNode: widget.focusNode,
-                  hintText: awaiting
-                      ? context.l10n.hint_click_or_type
-                      : prompt.isEmpty
-                      ? context.l10n.hint_type_command
-                      : null,
-                  onChanged: (_) => _syncSuggest(),
-                  onSubmitted: (raw) {
-                    if (widget.suggest?.isOpen == true) {
-                      _acceptSuggest();
-                      return;
-                    }
-                    // Enter on an open popup already cleared the field in
-                    // [_onKey]; the text-input action still delivers the old
-                    // string and must not parse it as a second command.
-                    if (raw.isNotEmpty && _input.text.isEmpty) return;
-                    _submit(raw);
-                  },
-                ),
-              ),
+              ],
             ),
           ),
           if (keywords.isNotEmpty || awaiting || widget.workspace.isBusy)
             Flexible(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final keyword in keywords.take(6))
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          left: FanCadTokens.space1,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final keyword in keywords.take(6))
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: FanCadTokens.space1,
+                          ),
+                          child: PromptKeywordChip(
+                            label: keyword,
+                            onPressed: () => _submit(keyword),
+                          ),
                         ),
-                        child: PromptKeywordChip(
-                          label: keyword,
-                          onPressed: () => _submit(keyword),
+                      if (awaiting || widget.workspace.isBusy)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: FanCadTokens.space1,
+                          ),
+                          child: PromptKeywordChip(
+                            key: const Key('command-prompt-cancel'),
+                            label: context.l10n.cancel,
+                            muted: true,
+                            onPressed: () {
+                              widget.workspace.cancelActive();
+                              _input.clear();
+                              _syncSuggest();
+                            },
+                          ),
                         ),
-                      ),
-                    if (awaiting || widget.workspace.isBusy)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          left: FanCadTokens.space1,
-                        ),
-                        child: PromptKeywordChip(
-                          label: context.l10n.cancel,
-                          muted: true,
-                          onPressed: () {
-                            widget.workspace.cancelActive();
-                            _input.clear();
-                            _syncSuggest();
-                          },
-                        ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

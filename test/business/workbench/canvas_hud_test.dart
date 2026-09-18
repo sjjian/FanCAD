@@ -87,6 +87,7 @@ void main() {
     final snap = tester.getRect(find.byKey(const Key('canvas-mode-snap')));
     final ortho = tester.getRect(find.byKey(const Key('canvas-mode-ortho')));
     expect(save.left - card.left, greaterThanOrEqualTo(canvasHudPadding.left));
+    expect(save.left - card.left, lessThanOrEqualTo(canvasHudPadding.left + 2));
     expect(save.size, const Size(24, 24));
     expect(undo.size, const Size(24, 24));
     expect(undo.left - save.right, greaterThanOrEqualTo(FanCadTokens.space1));
@@ -233,6 +234,13 @@ void main() {
     expect(zoomReadout.right, closeTo(hud.right - FanCadTokens.space3, 1));
     expect(cursorReadout.bottom, closeTo(hud.bottom - FanCadTokens.space1, 1));
     expect(zoomReadout.bottom, closeTo(hud.bottom - FanCadTokens.space1, 1));
+    expect(cursorReadout.height, FanCadTokens.statusBarHeight);
+    expect(hud.bottom - card.bottom, closeTo(canvasHudDockBottom, 1));
+    expect(cursorReadout.top - card.bottom, closeTo(FanCadTokens.space1, 1));
+    expect(
+      cursorReadout.top - card.bottom,
+      closeTo(hud.bottom - cursorReadout.bottom, 1),
+    );
     expect(cursorReadout.right, lessThan(card.left));
     expect(selectionReadout.left, greaterThan(card.right));
     expect(zoomReadout.left, greaterThan(card.right));
@@ -327,6 +335,29 @@ void main() {
           .strong,
       isFalse,
     );
+  });
+
+  testWidgets('command actions sit on the same right edge as the action bar', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceProvider);
+    unawaited(
+      workspace.commandLine.request(
+        PendingEntry(
+          message: 'Specify first point:',
+          completer: Completer<Object?>(),
+          accept: (raw) => raw,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final cancel = tester.getRect(
+      find.byKey(const Key('command-prompt-cancel')),
+    );
+    final grid = tester.getRect(find.byKey(const Key('canvas-mode-grid')));
+    expect(cancel.right, closeTo(grid.right, 1));
   });
 
   testWidgets(
