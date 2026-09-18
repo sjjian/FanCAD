@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/assistant_profile.dart';
 import '../../services/ai_controller.dart';
 import '../../services/ops_host.dart';
 import '../../services/providers.dart';
@@ -11,7 +12,7 @@ import '../theme/tokens.dart';
 import 'shell_widgets.dart';
 
 /// Pages inside the settings dialog.
-enum SettingsTab { general, assistant, mcp }
+enum SettingsTab { general, assistant, models, mcp }
 
 const _settingsRouteName = 'fancad.settings';
 
@@ -29,6 +30,7 @@ void debugResetSettingsDialog() {
 SettingsTab settingsTabFromPanelId(String panelId) {
   return switch (panelId) {
     'preferences:assistant' => SettingsTab.assistant,
+    'preferences:models' => SettingsTab.models,
     'preferences:mcp' => SettingsTab.mcp,
     _ => SettingsTab.general,
   };
@@ -86,7 +88,7 @@ class SettingsDialog extends StatelessWidget {
         if (!bounds.isFinite || bounds.isEmpty) {
           return const SizedBox.shrink();
         }
-        const size = Size(680, 560);
+        const size = Size(800, 640);
         void close() {
           final navigator = Navigator.maybeOf(context);
           if (navigator != null && navigator.canPop()) navigator.pop();
@@ -207,8 +209,8 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
     setState(() {});
   }
 
-  void _removeProfile() {
-    _ai.removeProfile(_ai.activeProfile.id);
+  void _removeProfile(String id) {
+    _ai.removeProfile(id);
     _syncAssistantFields();
     setState(() {});
   }
@@ -254,6 +256,12 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
                   onTap: () => _setTab(SettingsTab.assistant),
                 ),
                 _SettingsNavItem(
+                  tabKey: const Key('settings-tab-models'),
+                  label: l10n.settings_tab_models,
+                  selected: tab == SettingsTab.models,
+                  onTap: () => _setTab(SettingsTab.models),
+                ),
+                _SettingsNavItem(
                   tabKey: const Key('settings-tab-mcp'),
                   label: l10n.settings_tab_mcp,
                   selected: tab == SettingsTab.mcp,
@@ -269,11 +277,13 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
             index: switch (tab) {
               SettingsTab.general => 0,
               SettingsTab.assistant => 1,
-              SettingsTab.mcp => 2,
+              SettingsTab.models => 2,
+              SettingsTab.mcp => 3,
             },
             children: [
               _GeneralPage(),
-              _AssistantPage(
+              _AssistantPage(onSelectProfile: _selectProfile),
+              _ModelsPage(
                 label: _label,
                 model: _model,
                 endpoint: _endpoint,
@@ -568,7 +578,60 @@ class _CopyableMcpUrlState extends State<_CopyableMcpUrl> {
 }
 
 class _AssistantPage extends ConsumerWidget {
-  const _AssistantPage({
+  const _AssistantPage({required this.onSelectProfile});
+
+  final ValueChanged<String> onSelectProfile;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final ai = ref.watch(aiControllerProvider);
+    return ListenableBuilder(
+      listenable: ai,
+      builder: (context, _) {
+        final approveHint = ai.autoApprove
+            ? l10n.edits_without_asking
+            : l10n.ask_before_edits;
+        return ListView(
+          padding: const EdgeInsets.all(FanCadTokens.space4),
+          children: [
+            SettingsSection(
+              title: l10n.settings_tab_assistant,
+              children: [
+                SettingsToggle(
+                  label: l10n.auto_approve,
+                  value: ai.autoApprove,
+                  onChanged: ai.setAutoApprove,
+                  description: approveHint,
+                  tooltip: approveHint,
+                ),
+                SettingsLabeledRow(
+                  label: l10n.settings_current_model,
+                  child: SettingsDropdown<String>(
+                    key: const Key('settings-current-model'),
+                    value: ai.activeProfile.id,
+                    onChanged: onSelectProfile,
+                    options: [
+                      for (final profile in ai.profiles)
+                        SettingsDropdownOption(
+                          key: Key('settings-current-model-${profile.id}'),
+                          value: profile.id,
+                          label: profile.displayName,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ModelsPage extends ConsumerStatefulWidget {
+  const _ModelsPage({
     required this.label,
     required this.model,
     required this.endpoint,
@@ -586,120 +649,107 @@ class _AssistantPage extends ConsumerWidget {
   final VoidCallback onCommit;
   final ValueChanged<String> onSelectProfile;
   final VoidCallback onAddProfile;
-  final VoidCallback onRemoveProfile;
+  final ValueChanged<String> onRemoveProfile;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = context.tokens;
-    final l10n = context.l10n;
+  ConsumerState<_ModelsPage> createState() => _ModelsPageState();
+}
+
+class _ModelsPageState extends ConsumerState<_ModelsPage> {
+  String? _editingId;
+  String? _testingId;
+
+  void _selectProfile(String id) {
+    if (_editingId != null && _editingId != id) _editingId = null;
+    widget.onSelectProfile(id);
+    setState(() {});
+  }
+
+  void _toggleEdit(String id) {
+    if (_editingId == id) {
+      widget.onCommit();
+      setState(() => _editingId = null);
+      return;
+    }
+    widget.onSelectProfile(id);
+    setState(() => _editingId = id);
+  }
+
+  void _addProfile() {
+    widget.onAddProfile();
+    setState(() {
+      _editingId = ref.read(aiControllerProvider).activeProfile.id;
+    });
+  }
+
+  void _removeProfile(String id) {
+    final wasEditing = _editingId == id;
+    widget.onRemoveProfile(id);
+    setState(() {
+      if (wasEditing) _editingId = null;
+    });
+  }
+
+  Future<void> _testProfile(String id) async {
+    if (_testingId != null) return;
+    if (_editingId == id) widget.onCommit();
+    final ai = ref.read(aiControllerProvider);
+    AssistantProfile? profile;
+    for (final item in ai.profiles) {
+      if (item.id == id) {
+        profile = item;
+        break;
+      }
+    }
+    if (profile == null) return;
+    setState(() => _testingId = id);
+    try {
+      await ai.testProfile(profile);
+    } finally {
+      if (mounted) setState(() => _testingId = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ai = ref.watch(aiControllerProvider);
     return ListenableBuilder(
       listenable: ai,
       builder: (context, _) {
-        final approveHint = ai.autoApprove
-            ? l10n.edits_without_asking
-            : l10n.ask_before_edits;
+        final canDelete = ai.profiles.length > 1;
         return ListView(
           padding: const EdgeInsets.all(FanCadTokens.space4),
           children: [
             SettingsSection(
-              title: l10n.assistant_profiles,
+              title: context.l10n.assistant_profiles,
+              trailing: ShellIconButton(
+                key: const Key('settings-add-profile'),
+                icon: Icons.add,
+                tooltip: context.l10n.add_assistant_profile,
+                iconSize: FanCadTokens.iconSmall,
+                onPressed: _addProfile,
+              ),
               children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    const gap = FanCadTokens.space2;
-                    final width = (constraints.maxWidth - gap) / 2;
-                    return Wrap(
-                      spacing: gap,
-                      runSpacing: gap,
-                      children: [
-                        for (final profile in ai.profiles)
-                          SizedBox(
-                            width: width,
-                            child: _ProfileCard(
-                              key: Key('settings-profile-${profile.id}'),
-                              title: profile.displayName,
-                              model: profile.model,
-                              hasKey: profile.apiKey.trim().isNotEmpty,
-                              selected: profile.id == ai.activeProfile.id,
-                              onTap: () => onSelectProfile(profile.id),
-                              onRemove:
-                                  profile.id == ai.activeProfile.id &&
-                                      ai.profiles.length > 1
-                                  ? onRemoveProfile
-                                  : null,
-                            ),
-                          ),
-                        SizedBox(
-                          width: width,
-                          child: _AddProfileCard(onTap: onAddProfile),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                SettingsLabeledRow(
-                  label: l10n.assistant_profile_name,
-                  child: SettingsTextField(
-                    key: const Key('settings-profile-label'),
-                    controller: label,
-                    hintText: ai.activeProfile.displayName,
-                    onChanged: ai.setProfileLabel,
-                    onSubmitted: (_) => onCommit(),
+                for (final profile in ai.profiles)
+                  _ModelProfileCard(
+                    profile: profile,
+                    ai: ai,
+                    selected: profile.id == ai.activeProfile.id,
+                    expanded: profile.id == _editingId,
+                    testing: profile.id == _testingId,
+                    canDelete: canDelete,
+                    label: widget.label,
+                    model: widget.model,
+                    endpoint: widget.endpoint,
+                    apiKey: widget.apiKey,
+                    onSelect: () => _selectProfile(profile.id),
+                    onEdit: () => _toggleEdit(profile.id),
+                    onTest: _testingId == null
+                        ? () => _testProfile(profile.id)
+                        : null,
+                    onRemove: () => _removeProfile(profile.id),
+                    onCommit: widget.onCommit,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: SettingsSection.itemGap),
-            SettingsSection(
-              title: l10n.settings_connection,
-              children: [
-                SettingsLabeledRow(
-                  label: l10n.model,
-                  child: SettingsTextField(
-                    key: const Key('settings-model-field'),
-                    controller: model,
-                    hintText: l10n.model_id,
-                    style: tokens.monoStyle,
-                    onChanged: (value) {
-                      final next = value.trim();
-                      if (next.isNotEmpty) ai.setModel(next);
-                    },
-                    onSubmitted: (_) => onCommit(),
-                  ),
-                ),
-                SettingsLabeledRow(
-                  label: l10n.endpoint,
-                  child: SettingsTextField(
-                    controller: endpoint,
-                    hintText: 'https://api.deepseek.com/v1',
-                    style: tokens.monoStyle,
-                    onChanged: (value) {
-                      final next = value.trim();
-                      if (next.isNotEmpty) ai.setBaseUrl(next);
-                    },
-                    onSubmitted: (_) => onCommit(),
-                  ),
-                ),
-                SettingsLabeledRow(
-                  label: l10n.settings_api_key,
-                  child: SettingsTextField(
-                    key: const Key('settings-api-key'),
-                    controller: apiKey,
-                    hintText: 'sk-…',
-                    obscureText: true,
-                    style: tokens.monoStyle,
-                    onChanged: ai.setApiKey,
-                    onSubmitted: (_) => onCommit(),
-                  ),
-                ),
-                SettingsToggle(
-                  label: l10n.auto_approve,
-                  value: ai.autoApprove,
-                  onChanged: ai.setAutoApprove,
-                  description: approveHint,
-                  tooltip: approveHint,
-                ),
               ],
             ),
           ],
@@ -709,215 +759,190 @@ class _AssistantPage extends ConsumerWidget {
   }
 }
 
-class _ProfileCard extends StatefulWidget {
-  const _ProfileCard({
-    super.key,
-    required this.title,
-    required this.model,
-    required this.hasKey,
+class _ModelProfileCard extends StatelessWidget {
+  const _ModelProfileCard({
+    required this.profile,
+    required this.ai,
     required this.selected,
-    required this.onTap,
-    this.onRemove,
+    required this.expanded,
+    required this.testing,
+    required this.canDelete,
+    required this.label,
+    required this.model,
+    required this.endpoint,
+    required this.apiKey,
+    required this.onSelect,
+    required this.onEdit,
+    required this.onTest,
+    required this.onRemove,
+    required this.onCommit,
   });
 
-  final String title;
-  final String model;
-  final bool hasKey;
+  final AssistantProfile profile;
+  final AiController ai;
   final bool selected;
-  final VoidCallback onTap;
-  final VoidCallback? onRemove;
-
-  @override
-  State<_ProfileCard> createState() => _ProfileCardState();
-}
-
-class _ProfileCardState extends State<_ProfileCard> {
-  var _hovered = false;
+  final bool expanded;
+  final bool testing;
+  final bool canDelete;
+  final TextEditingController label;
+  final TextEditingController model;
+  final TextEditingController endpoint;
+  final TextEditingController apiKey;
+  final VoidCallback onSelect;
+  final VoidCallback onEdit;
+  final VoidCallback? onTest;
+  final VoidCallback onRemove;
+  final VoidCallback onCommit;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final l10n = context.l10n;
-    return FocusableActionDetector(
-      mouseCursor: SystemMouseCursors.click,
-      onShowHoverHighlight: (show) => setState(() => _hovered = show),
-      actions: <Type, Action<Intent>>{
-        ActivateIntent: CallbackAction<ActivateIntent>(
-          onInvoke: (_) {
-            widget.onTap();
-            return null;
-          },
+    return GestureDetector(
+      onTap: onSelect,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        key: Key('settings-profile-${profile.id}'),
+        decoration: BoxDecoration(
+          color: tokens.surfaceRaised,
+          borderRadius: BorderRadius.circular(FanCadTokens.radius),
+          border: Border.all(
+            color: selected ? tokens.accent : tokens.borderStrong,
+          ),
         ),
-      },
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOut,
-          height: 76,
-          padding: const EdgeInsets.fromLTRB(
-            FanCadTokens.space3,
-            FanCadTokens.space2,
-            FanCadTokens.space1,
-            FanCadTokens.space2,
-          ),
-          decoration: BoxDecoration(
-            color: widget.selected
-                ? tokens.selection
-                : _hovered
-                ? tokens.hover
-                : tokens.surfaceRaised,
-            borderRadius: BorderRadius.circular(FanCadTokens.radius),
-            border: Border.all(
-              color: widget.selected ? tokens.accent : tokens.border,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                FanCadTokens.space3,
+                FanCadTokens.space2,
+                FanCadTokens.space1,
+                FanCadTokens.space2,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          profile.displayName,
+                          style: tokens.bodyStyle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          _profileDescription(profile),
+                          style: tokens.labelStyle.copyWith(
+                            color: tokens.textMuted,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  ShellIconButton(
+                    key: Key('settings-profile-edit-${profile.id}'),
+                    icon: Icons.edit_outlined,
+                    iconSize: FanCadTokens.iconSmall,
+                    isActive: expanded,
+                    onPressed: onEdit,
+                  ),
+                  ShellIconButton(
+                    key: Key('settings-profile-test-${profile.id}'),
+                    icon: Icons.wifi_tethering,
+                    tooltip: l10n.settings_test_model,
+                    iconSize: FanCadTokens.iconSmall,
+                    enabled: !testing,
+                    onPressed: onTest,
+                  ),
+                  ShellIconButton(
+                    key: Key('settings-profile-remove-${profile.id}'),
+                    icon: Icons.delete_outline,
+                    tooltip: l10n.remove_assistant_profile,
+                    iconSize: FanCadTokens.iconSmall,
+                    destructive: true,
+                    enabled: canDelete,
+                    onPressed: canDelete ? onRemove : null,
+                  ),
+                ],
+              ),
             ),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
+            if (expanded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  FanCadTokens.space3,
+                  0,
+                  FanCadTokens.space3,
+                  FanCadTokens.space3,
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tokens.bodyStyle.copyWith(
-                        fontWeight: FontWeight.w600,
+                    SettingsLabeledRow(
+                      label: l10n.assistant_profile_name,
+                      child: SettingsTextField(
+                        key: const Key('settings-profile-label'),
+                        controller: label,
+                        onChanged: ai.setProfileLabel,
+                        onSubmitted: (_) => onCommit(),
                       ),
                     ),
-                    const SizedBox(height: FanCadTokens.space1),
-                    Text(
-                      widget.model,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tokens.monoStyle.copyWith(
-                        fontSize: 11,
-                        color: tokens.textMuted,
+                    const SizedBox(height: SettingsSection.itemGap),
+                    SettingsLabeledRow(
+                      label: l10n.model,
+                      child: SettingsTextField(
+                        key: const Key('settings-model-field'),
+                        controller: model,
+                        hintText: l10n.model_id,
+                        style: tokens.monoStyle,
+                        onChanged: (value) {
+                          final next = value.trim();
+                          if (next.isNotEmpty) ai.setModel(next);
+                        },
+                        onSubmitted: (_) => onCommit(),
                       ),
                     ),
-                    const Spacer(),
-                    ShellDot(
-                      color: widget.hasKey ? tokens.success : tokens.textFaint,
+                    const SizedBox(height: SettingsSection.itemGap),
+                    SettingsLabeledRow(
+                      label: l10n.endpoint,
+                      child: SettingsTextField(
+                        controller: endpoint,
+                        hintText: 'https://api.deepseek.com/v1',
+                        style: tokens.monoStyle,
+                        onChanged: (value) {
+                          final next = value.trim();
+                          if (next.isNotEmpty) ai.setBaseUrl(next);
+                        },
+                        onSubmitted: (_) => onCommit(),
+                      ),
+                    ),
+                    const SizedBox(height: SettingsSection.itemGap),
+                    SettingsLabeledRow(
+                      label: l10n.settings_api_key,
+                      child: SettingsTextField(
+                        key: const Key('settings-api-key'),
+                        controller: apiKey,
+                        hintText: 'sk-…',
+                        obscureText: true,
+                        style: tokens.monoStyle,
+                        onChanged: ai.setApiKey,
+                        onSubmitted: (_) => onCommit(),
+                      ),
                     ),
                   ],
                 ),
               ),
-              if (widget.onRemove != null)
-                ShellIconButton(
-                  key: const Key('settings-remove-profile'),
-                  icon: Icons.delete_outline,
-                  tooltip: l10n.remove_assistant_profile,
-                  iconSize: FanCadTokens.iconSmall,
-                  destructive: true,
-                  onPressed: widget.onRemove,
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _DashedRRectPainter extends CustomPainter {
-  const _DashedRRectPainter({required this.color, required this.radius});
-
-  final Color color;
-  final double radius;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)),
-      );
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    for (final metric in path.computeMetrics()) {
-      var distance = 0.0;
-      const dash = 4.0;
-      const gap = 3.0;
-      while (distance < metric.length) {
-        final next = (distance + dash).clamp(0.0, metric.length);
-        canvas.drawPath(metric.extractPath(distance, next), paint);
-        distance += dash + gap;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedRRectPainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.radius != radius;
-}
-
-class _AddProfileCard extends StatefulWidget {
-  const _AddProfileCard({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  State<_AddProfileCard> createState() => _AddProfileCardState();
-}
-
-class _AddProfileCardState extends State<_AddProfileCard> {
-  var _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final l10n = context.l10n;
-    return FocusableActionDetector(
-      mouseCursor: SystemMouseCursors.click,
-      onShowHoverHighlight: (show) => setState(() => _hovered = show),
-      actions: <Type, Action<Intent>>{
-        ActivateIntent: CallbackAction<ActivateIntent>(
-          onInvoke: (_) {
-            widget.onTap();
-            return null;
-          },
-        ),
-      },
-      child: GestureDetector(
-        key: const Key('settings-add-profile'),
-        onTap: widget.onTap,
-        child: CustomPaint(
-          painter: _DashedRRectPainter(
-            color: tokens.border,
-            radius: FanCadTokens.radius,
-          ),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            height: 76,
-            decoration: BoxDecoration(
-              color: _hovered ? tokens.hover : Colors.transparent,
-              borderRadius: BorderRadius.circular(FanCadTokens.radius),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.add,
-                  size: FanCadTokens.iconLarge,
-                  color: tokens.textMuted,
-                ),
-                const SizedBox(height: FanCadTokens.space1),
-                Text(
-                  l10n.add_assistant_profile,
-                  style: tokens.labelStyle,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+String _profileDescription(AssistantProfile profile) {
+  final host = Uri.tryParse(profile.baseUrl)?.host;
+  final endpoint = (host != null && host.isNotEmpty) ? host : profile.baseUrl;
+  return '${profile.model} · $endpoint';
 }

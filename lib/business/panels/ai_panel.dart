@@ -128,7 +128,7 @@ class _AiPanelState extends State<AiPanel> {
                     _syncDraft();
                   },
                   onOpenSettings: () =>
-                      controller.workspace.revealPanel('preferences:assistant'),
+                      controller.workspace.revealPanel('preferences:models'),
                 )
               : LayoutBuilder(
                   builder: (context, constraints) {
@@ -211,7 +211,7 @@ class _AiPanelState extends State<AiPanel> {
           onStop: controller.stop,
           onSelectProfile: controller.selectProfile,
           onOpenSettings: () =>
-              controller.workspace.revealPanel('preferences:assistant'),
+              controller.workspace.revealPanel('preferences:models'),
         ),
       ],
     );

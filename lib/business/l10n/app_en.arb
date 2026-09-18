@@ -44,6 +44,10 @@
   "@settings_tab_assistant": {
     "description": "settings assistant tab"
   },
+  "settings_tab_models": "Models",
+  "@settings_tab_models": {
+    "description": "settings models tab"
+  },
   "settings_tab_mcp": "MCP",
   "@settings_tab_mcp": {
     "description": "settings MCP tab"
@@ -95,6 +99,10 @@
   "settings_mcp_allowlist_hint": "Optional, comma-separated IPs",
   "@settings_mcp_allowlist_hint": {
     "description": "settings MCP allowlist hint"
+  },
+  "settings_current_model": "Current model",
+  "@settings_current_model": {
+    "description": "settings current model readout"
   },
   "settings_connection": "Connection",
   "@settings_connection": {
@@ -1338,17 +1346,21 @@
   "@click_to_change_model": {
     "description": "click to change model"
   },
-  "assistant_profiles": "Configurations",
+  "assistant_profiles": "Models",
   "@assistant_profiles": {
     "description": "assistant profiles"
   },
-  "add_assistant_profile": "Add configuration",
+  "add_assistant_profile": "Add model",
   "@add_assistant_profile": {
     "description": "add assistant profile"
   },
-  "remove_assistant_profile": "Remove configuration",
+  "remove_assistant_profile": "Remove model",
   "@remove_assistant_profile": {
     "description": "remove assistant profile"
+  },
+  "settings_test_model": "Test connection",
+  "@settings_test_model": {
+    "description": "test the model endpoint"
   },
   "assistant_profile_name": "Display name",
   "@assistant_profile_name": {

@@ -104,6 +104,30 @@ class OpenAiCompatibleProvider extends LlmProvider {
     yield* _readJson(raw);
   }
 
+  /// A read-only check that the endpoint accepts this key.
+  ///
+  /// `GET {baseUrl}/models` with Bearer auth. Settings uses this so a leftover
+  /// card can be probed without sending a chat turn.
+  Future<void> probe() async {
+    final uri = Uri.parse(
+      baseUrl.endsWith('/') ? '${baseUrl}models' : '$baseUrl/models',
+    );
+    http.Response response;
+    try {
+      response = await _client.get(
+        uri,
+        headers: {'authorization': 'Bearer $apiKey'},
+      );
+    } catch (error) {
+      throw LlmException('Could not reach the model: $error');
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw LlmException(
+        'The model returned HTTP ${response.statusCode}: ${_brief(response.body)}',
+      );
+    }
+  }
+
   Stream<LlmEvent> _readSse(http.StreamedResponse response) async* {
     final pending = <_StreamingToolCall>[];
     var finish = 'stop';

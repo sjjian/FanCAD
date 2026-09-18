@@ -14,12 +14,17 @@ class SettingsSection extends StatelessWidget {
     super.key,
     required this.title,
     required this.children,
+    this.trailing,
   });
 
   /// Space after the section rule and between each stacked control.
   static const double itemGap = FanCadTokens.space4;
 
+  /// Title row; matches [ShellIconButton] so a trailing action cannot shift the rule.
+  static const double titleHeight = 28;
+
   final String title;
+  final Widget? trailing;
   final List<Widget> children;
 
   @override
@@ -28,11 +33,21 @@ class SettingsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          title,
-          style: tokens.bodyStyle.copyWith(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+        SizedBox(
+          height: titleHeight,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: tokens.bodyStyle.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              ?trailing,
+            ],
           ),
         ),
         const SizedBox(height: FanCadTokens.space2),
@@ -125,6 +140,7 @@ class SettingsDropdown<T> extends StatelessWidget {
     current ??= options.isEmpty ? null : options.first;
     return ShellMenuButton<T>(
       placement: ShellMenuPlacement.down,
+      matchTriggerWidth: true,
       onSelected: onChanged,
       itemBuilder: (context) => [
         for (final option in options)
@@ -134,9 +150,13 @@ class SettingsDropdown<T> extends StatelessWidget {
             value: option.value,
             label: option.label,
             checked: option.value == value,
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space2,
+            ),
           ),
       ],
       child: Container(
+        width: double.infinity,
         height: 32,
         padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space2),
         alignment: Alignment.centerLeft,

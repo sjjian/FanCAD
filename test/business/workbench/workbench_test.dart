@@ -105,7 +105,9 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('settings-tab-assistant')));
+    await tester.tap(find.byKey(const Key('settings-tab-models')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('settings-profile-edit-default')));
     await tester.pump();
     await tester.enterText(
       find.byKey(const Key('settings-model-field')),
@@ -119,7 +121,7 @@ void main() {
     );
   });
 
-  testWidgets('assistant open settings lands on the assistant page', (
+  testWidgets('assistant open settings lands on the models page', (
     tester,
   ) async {
     await pumpWorkbench(tester);
@@ -132,7 +134,9 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
-    expect(find.text('API key'), findsOneWidget);
+    expect(find.byKey(const Key('settings-tab-models')), findsOneWidget);
+    expect(find.byKey(const Key('settings-add-profile')), findsOneWidget);
+    expect(find.byKey(const Key('settings-profile-default')), findsOneWidget);
   });
 
   testWidgets('the assistant opens on the right without replacing Layers', (

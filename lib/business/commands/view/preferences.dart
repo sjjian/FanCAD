@@ -33,7 +33,7 @@ class WorkbenchPreferencesCommand extends FanCadCommand
     ParamSpec(
       name: 'tab',
       type: ParamType.text,
-      description: 'Settings page: general, assistant or mcp',
+      description: 'Settings page: general, assistant, models or mcp',
       required: false,
     ),
   ];
@@ -43,6 +43,7 @@ class WorkbenchPreferencesCommand extends FanCadCommand
     final tab = context.args.text('tab') ?? '';
     context.services.revealPanel(switch (tab) {
       'assistant' => 'preferences:assistant',
+      'models' => 'preferences:models',
       'mcp' => 'preferences:mcp',
       _ => 'preferences',
     });

@@ -164,6 +164,12 @@ abstract class AppLocalizations {
   /// **'Assistant'**
   String get settings_tab_assistant;
 
+  /// settings models tab
+  ///
+  /// In en, this message translates to:
+  /// **'Models'**
+  String get settings_tab_models;
+
   /// settings MCP tab
   ///
   /// In en, this message translates to:
@@ -241,6 +247,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Optional, comma-separated IPs'**
   String get settings_mcp_allowlist_hint;
+
+  /// settings current model readout
+  ///
+  /// In en, this message translates to:
+  /// **'Current model'**
+  String get settings_current_model;
 
   /// settings assistant connection section
   ///
@@ -1805,20 +1817,26 @@ abstract class AppLocalizations {
   /// assistant profiles
   ///
   /// In en, this message translates to:
-  /// **'Configurations'**
+  /// **'Models'**
   String get assistant_profiles;
 
   /// add assistant profile
   ///
   /// In en, this message translates to:
-  /// **'Add configuration'**
+  /// **'Add model'**
   String get add_assistant_profile;
 
   /// remove assistant profile
   ///
   /// In en, this message translates to:
-  /// **'Remove configuration'**
+  /// **'Remove model'**
   String get remove_assistant_profile;
+
+  /// test the model endpoint
+  ///
+  /// In en, this message translates to:
+  /// **'Test connection'**
+  String get settings_test_model;
 
   /// assistant profile name
   ///

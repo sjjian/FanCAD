@@ -97,11 +97,15 @@ Rect _shellMenuTriggerRect(RelativeRect position, Size overlay) {
 }
 
 /// A [showMenu] that always uses the shell overlay surface.
+///
+/// [width] pins both edges to a trigger, as settings dropdowns do against
+/// their field. Omit it for chrome menus that size to the labels.
 Future<T?> showShellMenu<T>({
   required BuildContext context,
   required RelativeRect position,
   required List<PopupMenuEntry<T>> items,
   ShellMenuPlacement placement = ShellMenuPlacement.auto,
+  double? width,
 }) {
   final tokens = context.tokens;
   final overlay = Overlay.maybeOf(context)?.context.findRenderObject();
@@ -122,7 +126,9 @@ Future<T?> showShellMenu<T>({
     shape: shellOverlayShape(tokens),
     elevation: 3,
     shadowColor: tokens.shadow,
-    constraints: const BoxConstraints(minWidth: shellMenuMinWidth),
+    constraints: width == null
+        ? const BoxConstraints(minWidth: shellMenuMinWidth)
+        : BoxConstraints(minWidth: width, maxWidth: width),
     items: items,
   );
 }
@@ -141,29 +147,27 @@ PopupMenuItem<T> shellMenuItem<T>(
   Widget? leading,
   bool? checked,
   bool enabled = true,
+  EdgeInsets? padding,
 }) {
   final tokens = context.tokens;
-  final mark =
+  final leadingMark =
       leading ??
-      (checked == true
-          ? Icon(
-              Icons.check,
-              size: FanCadTokens.iconSmall,
-              color: tokens.accent,
-            )
-          : icon != null
+      (icon != null
           ? Icon(icon, size: FanCadTokens.iconSmall, color: tokens.textMuted)
           : null);
-  final showMark = mark != null || checked != null || icon != null;
+  final checkMark = checked == true
+      ? Icon(Icons.check, size: FanCadTokens.iconSmall, color: tokens.accent)
+      : null;
   return PopupMenuItem<T>(
     key: key,
     value: value,
     enabled: enabled,
     height: shellMenuItemHeight,
+    padding: padding,
     child: Row(
       children: [
-        if (showMark) ...[
-          SizedBox(width: 18, child: mark),
+        if (leadingMark != null) ...[
+          SizedBox(width: 18, child: leadingMark),
           const SizedBox(width: FanCadTokens.space2),
         ],
         Expanded(
@@ -178,6 +182,10 @@ PopupMenuItem<T> shellMenuItem<T>(
         if (shortcut != null) ...[
           const SizedBox(width: FanCadTokens.space4),
           Text(shortcut, style: tokens.labelStyle),
+        ],
+        if (checked != null) ...[
+          const SizedBox(width: FanCadTokens.space2),
+          SizedBox(width: 18, child: checkMark),
         ],
       ],
     ),
@@ -203,6 +211,7 @@ class ShellMenuButton<T> extends StatelessWidget {
     this.tooltip,
     this.enabled = true,
     this.placement = ShellMenuPlacement.auto,
+    this.matchTriggerWidth = false,
   });
 
   final PopupMenuItemBuilder<T> itemBuilder;
@@ -211,6 +220,9 @@ class ShellMenuButton<T> extends StatelessWidget {
   final String? tooltip;
   final bool enabled;
   final ShellMenuPlacement placement;
+
+  /// Open menu is as wide as [child], left and right edges matching.
+  final bool matchTriggerWidth;
 
   Future<void> _open(BuildContext context) async {
     final box = context.findRenderObject();
@@ -225,6 +237,7 @@ class ShellMenuButton<T> extends StatelessWidget {
       ),
       items: itemBuilder(context),
       placement: placement,
+      width: matchTriggerWidth ? box.size.width : null,
     );
     if (chosen == null) return;
     onSelected?.call(chosen);

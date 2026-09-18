@@ -211,4 +211,12 @@ void main() {
       expect(ai.pendingApproval, isNull);
     },
   );
+
+  test('testProfile without a key notifies an error', () async {
+    final ai = controller();
+    await ai.testProfile(ai.activeProfile);
+    expect(ai.workspace.notices, isNotEmpty);
+    expect(ai.workspace.notices.last.isError, isTrue);
+    expect(ai.workspace.notices.last.message, contains('No API key'));
+  });
 }

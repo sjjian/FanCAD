@@ -44,6 +44,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_tab_assistant => 'Assistant';
 
   @override
+  String get settings_tab_models => 'Models';
+
+  @override
   String get settings_tab_mcp => 'MCP';
 
   @override
@@ -83,6 +86,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings_mcp_allowlist_hint => 'Optional, comma-separated IPs';
+
+  @override
+  String get settings_current_model => 'Current model';
 
   @override
   String get settings_connection => 'Connection';
@@ -954,13 +960,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get click_to_change_model => 'Click to change the model or endpoint';
 
   @override
-  String get assistant_profiles => 'Configurations';
+  String get assistant_profiles => 'Models';
 
   @override
-  String get add_assistant_profile => 'Add configuration';
+  String get add_assistant_profile => 'Add model';
 
   @override
-  String get remove_assistant_profile => 'Remove configuration';
+  String get remove_assistant_profile => 'Remove model';
+
+  @override
+  String get settings_test_model => 'Test connection';
 
   @override
   String get assistant_profile_name => 'Display name';

@@ -15,8 +15,10 @@ void main() {
         en.context_used('12.4k', '128k'),
         isNot(contains('prompt_tokens')),
       );
-      expect(en.assistant_profiles, 'Configurations');
-      expect(zh.add_assistant_profile, '添加配置');
+      expect(en.assistant_profiles, 'Models');
+      expect(zh.add_assistant_profile, '添加模型');
+      expect(en.settings_tab_models, 'Models');
+      expect(zh.settings_current_model, '当前模型');
       expect(en.new_chat, 'New chat');
       expect(zh.new_chat, '新会话');
       expect(zh.chat_history, '会话');

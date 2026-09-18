@@ -44,6 +44,10 @@
   "@settings_tab_assistant": {
     "description": "settings assistant tab"
   },
+  "settings_tab_models": "模型",
+  "@settings_tab_models": {
+    "description": "settings models tab"
+  },
   "settings_tab_mcp": "MCP",
   "@settings_tab_mcp": {
     "description": "settings MCP tab"
@@ -95,6 +99,10 @@
   "settings_mcp_allowlist_hint": "可选，逗号分隔",
   "@settings_mcp_allowlist_hint": {
     "description": "settings MCP allowlist hint"
+  },
+  "settings_current_model": "当前模型",
+  "@settings_current_model": {
+    "description": "settings current model readout"
   },
   "settings_connection": "连接",
   "@settings_connection": {
@@ -1338,17 +1346,21 @@
   "@click_to_change_model": {
     "description": "click to change model"
   },
-  "assistant_profiles": "配置",
+  "assistant_profiles": "模型",
   "@assistant_profiles": {
     "description": "assistant profiles"
   },
-  "add_assistant_profile": "添加配置",
+  "add_assistant_profile": "添加模型",
   "@add_assistant_profile": {
     "description": "add assistant profile"
   },
-  "remove_assistant_profile": "删除配置",
+  "remove_assistant_profile": "删除模型",
   "@remove_assistant_profile": {
     "description": "remove assistant profile"
+  },
+  "settings_test_model": "测试连接",
+  "@settings_test_model": {
+    "description": "test the model endpoint"
   },
   "assistant_profile_name": "显示名",
   "@assistant_profile_name": {

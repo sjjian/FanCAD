@@ -434,6 +434,36 @@ void main() {
       );
     },
   );
+
+  test('probe GETs /models with the Bearer key', () async {
+    final client = _FakeClient(http.Response('{"data":[]}', 200));
+    final provider = OpenAiCompatibleProvider(
+      apiKey: 'test-key',
+      baseUrl: 'https://api.example.com/v1/',
+      client: client,
+    );
+
+    await provider.probe();
+    expect(client.lastUri.toString(), 'https://api.example.com/v1/models');
+    expect(client.lastHeaders['authorization'], 'Bearer test-key');
+  });
+
+  test('probe turns an HTTP failure into LlmException', () async {
+    final failed = OpenAiCompatibleProvider(
+      apiKey: 'test-key',
+      client: _FakeClient(http.Response('nope', 401)),
+    );
+    await expectLater(
+      failed.probe(),
+      throwsA(
+        isA<LlmException>().having(
+          (error) => error.message,
+          'message',
+          contains('HTTP 401'),
+        ),
+      ),
+    );
+  });
 }
 
 LlmRequest _userRequest() =>

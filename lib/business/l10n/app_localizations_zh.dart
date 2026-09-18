@@ -42,6 +42,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings_tab_assistant => '助手';
 
   @override
+  String get settings_tab_models => '模型';
+
+  @override
   String get settings_tab_mcp => 'MCP';
 
   @override
@@ -79,6 +82,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settings_mcp_allowlist_hint => '可选，逗号分隔';
+
+  @override
+  String get settings_current_model => '当前模型';
 
   @override
   String get settings_connection => '连接';
@@ -937,13 +943,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get click_to_change_model => '点击更改模型或端点';
 
   @override
-  String get assistant_profiles => '配置';
+  String get assistant_profiles => '模型';
 
   @override
-  String get add_assistant_profile => '添加配置';
+  String get add_assistant_profile => '添加模型';
 
   @override
-  String get remove_assistant_profile => '删除配置';
+  String get remove_assistant_profile => '删除模型';
+
+  @override
+  String get settings_test_model => '测试连接';
 
   @override
   String get assistant_profile_name => '显示名';

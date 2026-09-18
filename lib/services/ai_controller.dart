@@ -136,6 +136,31 @@ class AiController extends ChangeNotifier {
     _persist(all, activeId: nextId);
   }
 
+  /// Hits `{baseUrl}/models` with this card's key. Notifies success or failure.
+  Future<void> testProfile(AssistantProfile profile) async {
+    final provider = OpenAiCompatibleProvider.fromEnvironment(
+      baseUrl: profile.baseUrl,
+      model: profile.model,
+      apiKey: profile.apiKey,
+      apiKeyEnvVar: apiKeyRef,
+      environment: Platform.environment,
+    );
+    if (provider == null) {
+      workspace.notify(
+        'No API key. Paste one in Settings, '
+        'or point the endpoint at a local server.',
+        isError: true,
+      );
+      return;
+    }
+    try {
+      await provider.probe();
+      workspace.notify('${profile.displayName} is reachable.');
+    } on LlmException catch (error) {
+      workspace.notify(error.message, isError: true);
+    }
+  }
+
   bool get autoApprove => assistant.autoApprove;
 
   void clear() {

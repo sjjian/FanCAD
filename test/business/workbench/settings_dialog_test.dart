@@ -24,6 +24,12 @@ void main() {
         tab: SettingsTab.assistant,
       ),
       (
+        name: 'preferences:models',
+        panel: 'preferences:models',
+        isPanel: true,
+        tab: SettingsTab.models,
+      ),
+      (
         name: 'preferences:general',
         panel: 'preferences:general',
         isPanel: true,
@@ -57,7 +63,7 @@ void main() {
     final settings = SettingsStore.inMemory({
       SettingsKeys.aiModel: 'deepseek-chat',
     });
-    final tab = ValueNotifier(SettingsTab.assistant);
+    final tab = ValueNotifier(SettingsTab.models);
     addTearDown(tab.dispose);
 
     await tester.pumpWidget(
@@ -83,28 +89,28 @@ void main() {
     expect(find.byKey(const Key('settings-card')), findsOneWidget);
     expect(find.byKey(const Key('settings-tab-general')), findsOneWidget);
     expect(find.byKey(const Key('settings-tab-assistant')), findsOneWidget);
+    expect(find.byKey(const Key('settings-tab-models')), findsOneWidget);
     expect(find.byKey(const Key('settings-tab-mcp')), findsOneWidget);
 
+    expect(find.byKey(const Key('settings-model-field')), findsNothing);
+    expect(find.byKey(const Key('settings-add-profile')), findsOneWidget);
+    expect(find.byKey(const Key('settings-profile-default')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('settings-profile-edit-default')));
+    await tester.pump();
     final field = tester.widget<SettingsTextField>(
       find.byKey(const Key('settings-model-field')),
     );
     expect(field.controller.text, 'deepseek-chat');
-    expect(find.byKey(const Key('settings-model-gpt-4o')), findsNothing);
-    expect(find.byKey(const Key('settings-model-gpt-4o-mini')), findsNothing);
-    expect(find.text('gpt-4o-mini'), findsNothing);
-    expect(find.text('o4-mini'), findsNothing);
 
-    expect(find.byKey(const Key('settings-add-profile')), findsOneWidget);
-    expect(find.byKey(const Key('settings-profile-default')), findsOneWidget);
     await tester.tap(find.byKey(const Key('settings-add-profile')));
     await tester.pump();
     expect(find.byKey(const Key('settings-profile-default')), findsOneWidget);
-    expect(find.byKey(const Key('settings-remove-profile')), findsOneWidget);
     expect(
       find.byWidgetPredicate((widget) {
         final key = widget.key;
         return key is ValueKey<String> &&
-            RegExp(r'^settings-profile-(?!label$)').hasMatch(key.value);
+            key.value.startsWith('settings-profile-edit-');
       }),
       findsNWidgets(2),
     );
@@ -204,5 +210,178 @@ void main() {
     await tester.pump();
     expect(copied, contains('"url": "http://127.0.0.1:19001/mcp"'));
     expect(copied, contains('Authorization'));
+  });
+
+  testWidgets('a settings dropdown menu shares both edges with its field', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final settings = SettingsStore.inMemory();
+    final tab = ValueNotifier(SettingsTab.general);
+    addTearDown(tab.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWithValue(settings),
+          importerProvider.overrideWithValue(
+            DrawingImporter(backend: MemoryDrawingBackend()),
+          ),
+        ],
+        child: MaterialApp(
+          theme: FanCadTheme.dark(),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsDialog(tab: tab),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final field = tester.getRect(find.byKey(const Key('settings-language')));
+    expect(field.width, greaterThan(shellMenuMinWidth));
+    await tester.tap(find.byKey(const Key('settings-language')));
+    await tester.pumpAndSettle();
+    final menu = tester.getRect(
+      find.ancestor(
+        of: find.byKey(const Key('settings-language-en')),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is Material && widget.elevation == 3,
+        ),
+      ),
+    );
+    expect(menu.left, closeTo(field.left, 0.5));
+    expect(menu.right, closeTo(field.right, 0.5));
+
+    final fieldLabel = tester.getTopLeft(
+      find.descendant(
+        of: find.byKey(const Key('settings-language')),
+        matching: find.text('English'),
+      ),
+    );
+    final enLabel = tester.getTopLeft(
+      find.descendant(
+        of: find.byKey(const Key('settings-language-en')),
+        matching: find.text('English'),
+      ),
+    );
+    expect(enLabel.dx, closeTo(fieldLabel.dx, 1.5));
+    expect(
+      tester.getTopLeft(find.byIcon(Icons.check)).dx,
+      greaterThan(enLabel.dx),
+    );
+  });
+
+  testWidgets('the models add button does not shift the section rule', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final settings = SettingsStore.inMemory();
+    final tab = ValueNotifier(SettingsTab.general);
+    addTearDown(tab.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWithValue(settings),
+          importerProvider.overrideWithValue(
+            DrawingImporter(backend: MemoryDrawingBackend()),
+          ),
+        ],
+        child: MaterialApp(
+          theme: FanCadTheme.dark(),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsDialog(tab: tab),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    Rect sectionRule() {
+      return tester.getRect(
+        find.descendant(
+          of: find.byType(SettingsSection),
+          matching: find.byType(ShellHairline),
+        ),
+      );
+    }
+
+    final general = sectionRule();
+    await tester.tap(find.byKey(const Key('settings-tab-models')));
+    await tester.pump();
+    expect(sectionRule().top, general.top);
+  });
+
+  testWidgets('the assistant page picks a model from a dropdown', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final settings = SettingsStore.inMemory({
+      SettingsKeys.aiProfiles: [
+        {
+          'id': 'default',
+          'label': 'aaa',
+          'model': 'deepseek-chat',
+          'baseUrl': 'https://api.deepseek.com/v1',
+        },
+        {
+          'id': 'other',
+          'label': 'bbb',
+          'model': 'gpt-4o-mini',
+          'baseUrl': 'https://api.openai.com/v1',
+        },
+      ],
+      SettingsKeys.aiActiveProfile: 'default',
+    });
+    final tab = ValueNotifier(SettingsTab.assistant);
+    addTearDown(tab.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWithValue(settings),
+          importerProvider.overrideWithValue(
+            DrawingImporter(backend: MemoryDrawingBackend()),
+          ),
+        ],
+        child: MaterialApp(
+          theme: FanCadTheme.dark(),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsDialog(tab: tab),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('settings-model-field')), findsNothing);
+    expect(find.byKey(const Key('settings-api-key')), findsNothing);
+    expect(find.byKey(const Key('settings-add-profile')), findsNothing);
+    expect(find.byKey(const Key('settings-current-model')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('settings-current-model')));
+    await tester.pumpAndSettle();
+    expect(tab.value, SettingsTab.assistant);
+    expect(
+      find.byKey(const Key('settings-current-model-other')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('settings-current-model-other')));
+    await tester.pumpAndSettle();
+    expect(tab.value, SettingsTab.assistant);
+    expect(settings.getString(SettingsKeys.aiActiveProfile), 'other');
+    expect(find.byKey(const Key('settings-model-field')), findsNothing);
+    expect(find.byKey(const Key('settings-add-profile')), findsNothing);
   });
 }
