@@ -1470,6 +1470,10 @@
   "@ask_assistant": {
     "description": "ask assistant"
   },
+  "ask_assistant_unavailable": "模型不可用，请先在设置中配置",
+  "@ask_assistant_unavailable": {
+    "description": "composer hint when no model is configured"
+  },
   "stop": "停止",
   "@stop": {
     "description": "stop"

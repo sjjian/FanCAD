@@ -121,7 +121,7 @@ void main() {
     );
   });
 
-  testWidgets('assistant open settings lands on the models page', (
+  testWidgets('assistant open settings lands on the assistant page', (
     tester,
   ) async {
     await pumpWorkbench(tester);
@@ -134,7 +134,23 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
-    expect(find.byKey(const Key('settings-tab-models')), findsOneWidget);
+    expect(find.byKey(const Key('settings-current-model')), findsOneWidget);
+    expect(find.byKey(const Key('settings-add-profile')), findsNothing);
+  });
+
+  testWidgets('empty-state open settings lands on the models page', (
+    tester,
+  ) async {
+    await pumpWorkbench(tester);
+
+    await tester.tap(find.byIcon(Icons.auto_awesome_outlined));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('Open settings'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('settings-dialog')), findsOneWidget);
     expect(find.byKey(const Key('settings-add-profile')), findsOneWidget);
     expect(find.byKey(const Key('settings-profile-default')), findsOneWidget);
   });

@@ -10,6 +10,12 @@ void main() {
       final zh = lookupAppLocalizations(const Locale('zh'));
       expect(en.ask_follow_up, 'Add a follow-up');
       expect(zh.ask_follow_up, '继续提问');
+      expect(
+        en.ask_assistant_unavailable,
+        'Model unavailable. Configure it in Settings.',
+      );
+      expect(zh.ask_assistant_unavailable, '模型不可用，请先在设置中配置');
+      expect(en.ask_assistant_unavailable, isNot(en.ask_assistant));
       expect(en.context_used('12.4k', '128k'), '12.4k / 128k');
       expect(
         en.context_used('12.4k', '128k'),

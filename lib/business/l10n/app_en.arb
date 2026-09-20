@@ -1485,6 +1485,10 @@
   "@ask_assistant": {
     "description": "ask assistant"
   },
+  "ask_assistant_unavailable": "Model unavailable. Configure it in Settings.",
+  "@ask_assistant_unavailable": {
+    "description": "composer hint when no model is configured"
+  },
   "stop": "Stop",
   "@stop": {
     "description": "stop"

@@ -22,11 +22,7 @@ AiController panelAi({SettingsStore? settings}) {
   return created;
 }
 
-Future<void> pumpAiPanel(
-  WidgetTester tester,
-  AiController ai, {
-  Widget? home,
-}) {
+Future<void> pumpAiPanel(WidgetTester tester, AiController ai, {Widget? home}) {
   return tester.pumpWidget(
     MaterialApp(
       theme: FanCadTheme.dark(),
@@ -70,6 +66,8 @@ void main() {
       ),
     );
     final padding = list.padding!.resolve(TextDirection.ltr);
+    expect(padding.left, assistantPaneInset);
+    expect(padding.right, assistantPaneInset);
     expect(padding.bottom, greaterThan(FanCadTokens.space2));
     expect(
       padding.bottom,
@@ -77,7 +75,7 @@ void main() {
     );
   });
 
-  testWidgets('composer leftover shows the profile and a send key', (
+  testWidgets('composer leftover shows a send key, not a model picker', (
     tester,
   ) async {
     final ai = panelAi(
@@ -89,59 +87,65 @@ void main() {
     );
     await pumpAiPanel(tester, ai);
 
-    expect(find.byKey(const Key('assistant-composer-model')), findsOneWidget);
-    expect(find.text('deepseek-chat'), findsWidgets);
+    expect(find.byKey(const Key('assistant-composer-model')), findsNothing);
     expect(find.byKey(const Key('assistant-composer-send')), findsOneWidget);
     expect(find.byKey(const Key('assistant-open-settings')), findsOneWidget);
+    final panel = tester.getRect(find.byType(AiPanel));
+    final card = tester.getRect(
+      find.byKey(const Key('assistant-composer-card')),
+    );
+    final settings = tester.getRect(
+      find.byKey(const Key('assistant-open-settings')),
+    );
+    final send = tester.getRect(
+      find.byKey(const Key('assistant-composer-send')),
+    );
+    expect(card.left - panel.left, closeTo(assistantPaneInset, 1));
+    expect(panel.right - card.right, closeTo(assistantPaneInset, 1));
+    expect(panel.bottom - card.bottom, closeTo(assistantPaneInset, 1));
+    expect(
+      settings.left - card.left,
+      greaterThanOrEqualTo(canvasHudPadding.left),
+    );
+    expect(
+      settings.left - card.left,
+      lessThanOrEqualTo(canvasHudPadding.left + 2),
+    );
+    expect(
+      card.right - send.right,
+      greaterThanOrEqualTo(canvasHudPadding.right),
+    );
+    expect(
+      card.right - send.right,
+      lessThanOrEqualTo(canvasHudPadding.right + 2),
+    );
     expect(find.text('ASSISTANT'), findsNothing);
     expect(find.byKey(const Key('assistant-composer-stop')), findsNothing);
     expect(find.byKey(const Key('assistant-composer-context')), findsOneWidget);
     expect(tester.widget<TextField>(find.byType(TextField)).minLines, 2);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).decoration!.hintText,
+      'Ask the assistant  Enter to send',
+    );
   });
 
-  testWidgets('picking a leftover profile swaps the live connection', (
+  testWidgets('an unconfigured composer says the model is unavailable', (
     tester,
   ) async {
-    final ai = panelAi(
-      settings: SettingsStore.inMemory({
-        SettingsKeys.aiModel: 'deepseek-chat',
-        SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
-        SettingsKeys.aiApiKey: 'sk-one',
-      }),
-    );
-    ai.addProfile();
-    ai.setModel('gpt-4o-mini');
-    ai.setBaseUrl('https://api.openai.com/v1');
-    ai.setApiKey('sk-two');
+    final ai = panelAi();
     await pumpAiPanel(tester, ai);
 
-    await tester.tap(find.byKey(const Key('assistant-composer-model')));
-    await tester.pumpAndSettle();
-    final trigger = tester.getRect(
-      find.byKey(const Key('assistant-composer-model')),
-    );
-    final activeItem = tester.getRect(
-      find.byKey(Key('assistant-profile-${ai.activeProfile.id}')),
-    );
-    expect(activeItem.bottom, lessThanOrEqualTo(trigger.top));
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.enabled, isFalse);
     expect(
-      find.descendant(
-        of: find.byKey(Key('assistant-profile-${ai.activeProfile.id}')),
-        matching: find.byIcon(Icons.check),
-      ),
-      findsOneWidget,
+      field.decoration!.hintText,
+      'Model unavailable. Configure it in Settings.',
     );
-    await tester.tap(
-      find.byKey(Key('assistant-profile-${ai.profiles.first.id}')),
-    );
-    await tester.pumpAndSettle();
-
-    expect(ai.model, 'deepseek-chat');
-    expect(ai.baseUrl, 'https://api.deepseek.com/v1');
-    expect(ai.apiKey, 'sk-one');
+    expect(field.decoration!.hintText, isNot(contains('Enter to send')));
+    _expectEmptyGuideCentered(tester);
   });
 
-  testWidgets('a leftover busy turn shows stop and keeps the profile pinned', (
+  testWidgets('configured empty prompts sit in the middle of the pane', (
     tester,
   ) async {
     final ai = panelAi(
@@ -151,22 +155,29 @@ void main() {
         SettingsKeys.aiApiKey: 'sk-one',
       }),
     );
-    ai.addProfile();
+    await pumpAiPanel(tester, ai);
+
+    expect(find.text('Try'), findsOneWidget);
+    expect(find.text('Draw a 100 mm square at the origin'), findsOneWidget);
+    _expectEmptyGuideCentered(tester);
+  });
+
+  testWidgets('a leftover busy turn shows stop instead of send', (
+    tester,
+  ) async {
+    final ai = panelAi(
+      settings: SettingsStore.inMemory({
+        SettingsKeys.aiModel: 'deepseek-chat',
+        SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
+        SettingsKeys.aiApiKey: 'sk-one',
+      }),
+    );
     ai.debugSetBusy(true);
     await pumpAiPanel(tester, ai);
 
     expect(find.byKey(const Key('assistant-composer-stop')), findsOneWidget);
     expect(find.byKey(const Key('assistant-composer-send')), findsNothing);
     expect(find.text('Add a follow-up'), findsOneWidget);
-
-    final pinned = ai.activeProfile.id;
-    await tester.tap(find.byKey(const Key('assistant-composer-model')));
-    await tester.pump();
-    expect(
-      find.byKey(Key('assistant-profile-${ai.profiles.first.id}')),
-      findsNothing,
-    );
-    expect(ai.activeProfile.id, pinned);
   });
 
   testWidgets('a leftover usage ring tooltip is compact, not raw JSON', (
@@ -319,6 +330,17 @@ void main() {
     expect(find.text('画个小乌龟'), findsWidgets);
     expect(find.text('draw a square'), findsNothing);
   });
+}
+
+void _expectEmptyGuideCentered(WidgetTester tester) {
+  final panel = tester.getRect(find.byType(AiPanel));
+  final tabs = tester.getRect(find.byKey(const Key('assistant-session-tabs')));
+  final composer = tester.getRect(
+    find.byKey(const Key('assistant-composer-card')),
+  );
+  final guide = tester.getRect(find.byKey(const Key('assistant-empty-guide')));
+  expect(guide.center.dx, closeTo(panel.center.dx, 8));
+  expect(guide.center.dy, closeTo((tabs.bottom + composer.top) / 2, 12));
 }
 
 PendingChangeSet _leftoverPending() => const PendingChangeSet(

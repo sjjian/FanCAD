@@ -1988,6 +1988,12 @@ abstract class AppLocalizations {
   /// **'Ask the assistant  Enter to send'**
   String get ask_assistant;
 
+  /// composer hint when no model is configured
+  ///
+  /// In en, this message translates to:
+  /// **'Model unavailable. Configure it in Settings.'**
+  String get ask_assistant_unavailable;
+
   /// stop
   ///
   /// In en, this message translates to:

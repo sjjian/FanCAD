@@ -17,6 +17,10 @@ import 'assistant_receipt.dart';
 /// cards and in-thread approval cards, with the composer at the bottom.
 /// Edits ask in the chat, not behind a window-wide dialog.
 
+/// Inset from the assistant pane chrome so the thread and composer breathe.
+@visibleForTesting
+const assistantPaneInset = FanCadTokens.space5;
+
 /// Empty space under the last leftover so the thread does not sit on the composer.
 double assistantTranscriptTail(double viewportHeight) {
   if (viewportHeight <= 0) return FanCadTokens.space5;
@@ -135,9 +139,9 @@ class _AiPanelState extends State<AiPanel> {
                     return ListView.builder(
                       controller: _scroll,
                       padding: EdgeInsets.fromLTRB(
-                        FanCadTokens.space3,
-                        FanCadTokens.space3,
-                        FanCadTokens.space3,
+                        assistantPaneInset,
+                        FanCadTokens.space4,
+                        assistantPaneInset,
                         assistantTranscriptTail(constraints.maxHeight),
                       ),
                       itemCount:
@@ -201,17 +205,18 @@ class _AiPanelState extends State<AiPanel> {
           enabled: controller.isConfigured,
           canSend: canSend,
           busy: busy,
-          hint: busy ? context.l10n.ask_follow_up : context.l10n.ask_assistant,
+          hint: !controller.isConfigured
+              ? context.l10n.ask_assistant_unavailable
+              : busy
+              ? context.l10n.ask_follow_up
+              : context.l10n.ask_assistant,
           tokens: tokens,
-          profile: controller.activeProfile,
-          profiles: controller.profiles,
           usage: controller.lastUsage,
           onChanged: controller.setDraft,
           onSend: _send,
           onStop: controller.stop,
-          onSelectProfile: controller.selectProfile,
           onOpenSettings: () =>
-              controller.workspace.revealPanel('preferences:models'),
+              controller.workspace.revealPanel('preferences:assistant'),
         ),
       ],
     );
@@ -361,49 +366,76 @@ class _EmptyAssistant extends StatelessWidget {
       l10n.prompt_square,
       l10n.prompt_list_selection,
     ];
-    return ListView(
-      padding: const EdgeInsets.all(FanCadTokens.space4),
-      children: [
-        Text(
-          configured
-              ? l10n.assistant_empty_configured
-              : l10n.assistant_empty_unconfigured,
-          style: tokens.bodyStyle.copyWith(height: 1.45),
-        ),
-        if (!configured) ...[
-          const SizedBox(height: FanCadTokens.space4),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton(
-              onPressed: onOpenSettings,
-              child: Text(l10n.open_settings),
-            ),
-          ),
-        ],
-        if (configured) ...[
-          const SizedBox(height: FanCadTokens.space4),
-          Text(l10n.try_section, style: tokens.sectionTitleStyle),
-          const SizedBox(height: FanCadTokens.space2),
-          for (final prompt in prompts)
-            Padding(
-              padding: const EdgeInsets.only(bottom: FanCadTokens.space2),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: tokens.surfaceRaised,
-                  borderRadius: BorderRadius.circular(FanCadTokens.radius),
-                ),
-                child: ShellRow(
-                  onTap: () => onUsePrompt(prompt),
-                  height: 36,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: FanCadTokens.space3,
-                  ),
-                  child: Text(prompt, style: tokens.bodyStyle),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final minHeight = (constraints.maxHeight - assistantPaneInset * 2)
+            .clamp(0.0, double.infinity);
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(assistantPaneInset),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: minHeight),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: Column(
+                  key: const Key('assistant-empty-guide'),
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      configured
+                          ? l10n.assistant_empty_configured
+                          : l10n.assistant_empty_unconfigured,
+                      style: tokens.bodyStyle.copyWith(height: 1.45),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (!configured) ...[
+                      const SizedBox(height: FanCadTokens.space4),
+                      Center(
+                        child: FilledButton(
+                          onPressed: onOpenSettings,
+                          child: Text(l10n.open_settings),
+                        ),
+                      ),
+                    ],
+                    if (configured) ...[
+                      const SizedBox(height: FanCadTokens.space4),
+                      Text(
+                        l10n.try_section,
+                        style: tokens.sectionTitleStyle,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: FanCadTokens.space2),
+                      for (final prompt in prompts)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: FanCadTokens.space2,
+                          ),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: tokens.surfaceRaised,
+                              borderRadius: BorderRadius.circular(
+                                FanCadTokens.radius,
+                              ),
+                            ),
+                            child: ShellRow(
+                              onTap: () => onUsePrompt(prompt),
+                              height: 36,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: FanCadTokens.space3,
+                              ),
+                              child: Text(prompt, style: tokens.bodyStyle),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ],
                 ),
               ),
             ),
-        ],
-      ],
+          ),
+        );
+      },
     );
   }
 }
@@ -857,13 +889,10 @@ class _Composer extends StatelessWidget {
     required this.busy,
     required this.hint,
     required this.tokens,
-    required this.profile,
-    required this.profiles,
     required this.usage,
     required this.onChanged,
     required this.onSend,
     required this.onStop,
-    required this.onSelectProfile,
     required this.onOpenSettings,
   });
 
@@ -873,13 +902,10 @@ class _Composer extends StatelessWidget {
   final bool busy;
   final String hint;
   final FanCadTokens tokens;
-  final AssistantProfile profile;
-  final List<AssistantProfile> profiles;
   final LlmUsage? usage;
   final ValueChanged<String> onChanged;
   final VoidCallback onSend;
   final VoidCallback onStop;
-  final ValueChanged<String> onSelectProfile;
   final VoidCallback onOpenSettings;
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
@@ -898,16 +924,17 @@ class _Composer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        FanCadTokens.space3,
+        assistantPaneInset,
         FanCadTokens.space2,
-        FanCadTokens.space3,
-        FanCadTokens.space3,
+        assistantPaneInset,
+        assistantPaneInset,
       ),
       child: Container(
+        key: const Key('assistant-composer-card'),
         padding: const EdgeInsets.fromLTRB(
+          FanCadTokens.space2,
           FanCadTokens.space3,
-          FanCadTokens.space3,
-          FanCadTokens.space3,
+          FanCadTokens.space2,
           FanCadTokens.space2,
         ),
         decoration: BoxDecoration(
@@ -945,16 +972,10 @@ class _Composer extends StatelessWidget {
             const SizedBox(height: FanCadTokens.space2),
             Row(
               children: [
-                _ProfilePicker(
-                  profile: profile,
-                  profiles: profiles,
-                  enabled: enabled && !busy,
-                  onSelect: onSelectProfile,
-                ),
                 ShellIconButton(
                   key: const Key('assistant-open-settings'),
                   icon: Icons.settings_outlined,
-                  tooltip: context.l10n.click_to_change_model,
+                  tooltip: context.l10n.open_settings,
                   iconSize: FanCadTokens.iconSmall,
                   onPressed: onOpenSettings,
                 ),
@@ -968,66 +989,6 @@ class _Composer extends StatelessWidget {
                   onStop: onStop,
                 ),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfilePicker extends StatelessWidget {
-  const _ProfilePicker({
-    required this.profile,
-    required this.profiles,
-    required this.enabled,
-    required this.onSelect,
-  });
-
-  final AssistantProfile profile;
-  final List<AssistantProfile> profiles;
-  final bool enabled;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return ShellMenuButton<String>(
-      key: const Key('assistant-composer-model'),
-      tooltip: context.l10n.click_to_change_model,
-      enabled: enabled,
-      placement: ShellMenuPlacement.up,
-      onSelected: onSelect,
-      itemBuilder: (context) => [
-        for (final item in profiles)
-          shellMenuItem(
-            context,
-            key: Key('assistant-profile-${item.id}'),
-            value: item.id,
-            label: item.displayName,
-            checked: item.id == profile.id,
-          ),
-      ],
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: FanCadTokens.space1),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 160),
-              child: Text(
-                profile.displayName,
-                style: tokens.monoStyle.copyWith(
-                  fontSize: 11,
-                  color: enabled ? tokens.textMuted : tokens.textFaint,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Icon(
-              Icons.expand_more,
-              size: FanCadTokens.iconSmall,
-              color: enabled ? tokens.textMuted : tokens.textFaint,
             ),
           ],
         ),

@@ -1039,6 +1039,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ask_assistant => '询问助手  Enter 发送';
 
   @override
+  String get ask_assistant_unavailable => '模型不可用，请先在设置中配置';
+
+  @override
   String get stop => '停止';
 
   @override

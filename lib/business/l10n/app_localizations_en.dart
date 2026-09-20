@@ -1057,6 +1057,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ask_assistant => 'Ask the assistant  Enter to send';
 
   @override
+  String get ask_assistant_unavailable =>
+      'Model unavailable. Configure it in Settings.';
+
+  @override
   String get stop => 'Stop';
 
   @override
