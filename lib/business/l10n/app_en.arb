@@ -1454,9 +1454,18 @@
   "@working": {
     "description": "working"
   },
-  "thinking": "Thinking",
+  "thinking": "Thought",
   "@thinking": {
-    "description": "thinking"
+    "description": "collapsed chain-of-thought header"
+  },
+  "thinking_for": "Thought {seconds}s",
+  "@thinking_for": {
+    "description": "collapsed chain-of-thought header with elapsed seconds",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
   },
   "allow_one_change": "Allow {title}?",
   "@allow_one_change": {

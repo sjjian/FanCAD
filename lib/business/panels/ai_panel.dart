@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,14 +21,69 @@ import 'assistant_receipt.dart';
 /// cards and in-thread approval cards, with the composer at the bottom.
 /// Edits ask in the chat, not behind a window-wide dialog.
 
-/// Inset from the assistant pane chrome so the thread and composer breathe.
+/// Inset from the assistant pane chrome so the thread markdown can breathe.
 @visibleForTesting
 const assistantPaneInset = FanCadTokens.space5;
 
-/// Empty space under the last leftover so the thread does not sit on the composer.
+/// Tighter inset for user leftovers and the composer so those bars sit
+/// wider than the thread, Cursor-style.
+@visibleForTesting
+const assistantPromptInset = FanCadTokens.space3;
+
+/// Fill for user leftovers and the composer. One step above the pane so the
+/// bars read as chrome, not as more of the thread.
+@visibleForTesting
+Color assistantPromptFill(FanCadTokens tokens) {
+  return tokens.isDark ? tokens.surfaceOverlay : tokens.surfaceRaised;
+}
+
+@visibleForTesting
+const assistantTranscriptKey = Key('assistant-transcript');
+
+@visibleForTesting
+const assistantUserBlockKey = Key('assistant-user-block');
+
+@visibleForTesting
+const assistantTranscriptTailKey = Key('assistant-transcript-tail');
+
+/// Empty space under the last leftover so the latest user prompt can sit at
+/// the top of the thread, Cursor-style, instead of against the composer.
 double assistantTranscriptTail(double viewportHeight) {
   if (viewportHeight <= 0) return FanCadTokens.space5;
-  return (viewportHeight * 0.4).clamp(96.0, 320.0);
+  return viewportHeight;
+}
+
+class _AssistantTurn {
+  const _AssistantTurn({this.user, required this.body});
+
+  final ChatMessage? user;
+  final List<AssistantLogEntry> body;
+}
+
+List<_AssistantTurn> _assistantTurns(List<AssistantLogEntry> entries) {
+  final turns = <_AssistantTurn>[];
+  ChatMessage? user;
+  var body = <AssistantLogEntry>[];
+
+  void flush() {
+    if (user == null && body.isEmpty) return;
+    turns.add(
+      _AssistantTurn(user: user, body: List<AssistantLogEntry>.of(body)),
+    );
+    user = null;
+    body = <AssistantLogEntry>[];
+  }
+
+  for (final entry in entries) {
+    if (entry is AssistantLogMessage && entry.message.role == ChatRole.user) {
+      flush();
+      user = entry.message;
+      continue;
+    }
+    body.add(entry);
+  }
+  flush();
+  return turns;
 }
 
 class AiPanel extends StatefulWidget {
@@ -40,6 +97,8 @@ class AiPanel extends StatefulWidget {
 
 class _AiPanelState extends State<AiPanel> {
   final ScrollController _scroll = ScrollController();
+  final GlobalKey _lastUserKey = GlobalKey();
+  ChatMessage? _pinnedUser;
   late final _MentionTextController _input;
 
   @override
@@ -47,6 +106,10 @@ class _AiPanelState extends State<AiPanel> {
     super.initState();
     _input = _MentionTextController(text: widget.controller.draft);
     widget.controller.addListener(_onChange);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _pinLastUserToTop();
+    });
   }
 
   @override
@@ -55,6 +118,7 @@ class _AiPanelState extends State<AiPanel> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_onChange);
       widget.controller.addListener(_onChange);
+      _pinnedUser = null;
       _syncDraft();
     }
   }
@@ -72,12 +136,26 @@ class _AiPanelState extends State<AiPanel> {
     _syncDraft();
     setState(() {});
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scroll.hasClients) return;
-      final position = _scroll.position;
-      if (position.maxScrollExtent - position.pixels < 80) {
-        _scroll.jumpTo(position.maxScrollExtent);
-      }
+      if (!mounted) return;
+      _pinLastUserToTop();
     });
+  }
+
+  ChatMessage? _lastUserMessage() {
+    ChatMessage? last;
+    for (final message in widget.controller.messages) {
+      if (message.role == ChatRole.user) last = message;
+    }
+    return last;
+  }
+
+  void _pinLastUserToTop() {
+    final last = _lastUserMessage();
+    if (last == null || identical(last, _pinnedUser)) return;
+    final ctx = _lastUserKey.currentContext;
+    if (ctx == null || !_scroll.hasClients) return;
+    Scrollable.ensureVisible(ctx, alignment: 0);
+    _pinnedUser = last;
   }
 
   void _syncDraft() {
@@ -105,6 +183,87 @@ class _AiPanelState extends State<AiPanel> {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text?.trim().isNotEmpty == true) return;
     widget.controller.pinClipboard();
+  }
+
+  Widget _threadPad(Widget child) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: assistantPaneInset),
+      child: child,
+    );
+  }
+
+  Widget _userHeader(ChatMessage message, {required bool isLast}) {
+    final tokens = context.tokens;
+    final controller = widget.controller;
+    Widget header = ColoredBox(
+      color: tokens.surface,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          assistantPromptInset,
+          FanCadTokens.space4,
+          assistantPromptInset,
+          FanCadTokens.space3,
+        ),
+        child: _UserBlock(
+          key: isLast ? assistantUserBlockKey : null,
+          text: message.text,
+          onCopy: () => _copy(message.text),
+          onFlashPin: controller.flashPin,
+          onHoverPin: controller.hoverPin,
+          resolvePin: controller.resolvePin,
+        ),
+      ),
+    );
+    if (isLast) {
+      header = KeyedSubtree(key: _lastUserKey, child: header);
+    }
+    return header;
+  }
+
+  Widget _entryTile(
+    AssistantLogEntry entry, {
+    required bool live,
+    required bool showWorking,
+    required bool showCaret,
+  }) {
+    final controller = widget.controller;
+    return switch (entry) {
+      AssistantLogMessage(:final message) when message.role == ChatRole.user =>
+        const SizedBox.shrink(),
+      AssistantLogMessage(:final message)
+          when message.role == ChatRole.reasoning =>
+        _ThinkingBlock(
+          text: message.text,
+          live: live && showWorking == false,
+          onCopy: () => _copy(message.text),
+          onEntityId: controller.flashEntities,
+          onHoverEntityId: controller.hoverEntities,
+          onPin: controller.flashPin,
+          onHoverPin: controller.hoverPin,
+          resolvePin: controller.resolvePin,
+        ),
+      AssistantLogMessage(:final message)
+          when message.role == ChatRole.assistant =>
+        _AssistantBlock(
+          text: message.text,
+          live: live && showCaret,
+          onCopy: () => _copy(message.text),
+          onEntityId: controller.flashEntities,
+          onHoverEntityId: controller.hoverEntities,
+          onPin: controller.flashPin,
+          onHoverPin: controller.hoverPin,
+          resolvePin: controller.resolvePin,
+        ),
+      AssistantLogReceipt(:final receipt) => _ToolCard(
+        receipt: receipt,
+        onCopy: () => _copy(receipt.raw),
+        onFlash: () =>
+            controller.flashEntities(assistantReceiptEntityIds(receipt)),
+        onPin: () =>
+            controller.pinReceiptIds(assistantReceiptEntityIds(receipt)),
+      ),
+      AssistantLogMessage() => const SizedBox.shrink(),
+    };
   }
 
   @override
@@ -152,89 +311,74 @@ class _AiPanelState extends State<AiPanel> {
                 )
               : LayoutBuilder(
                   builder: (context, constraints) {
-                    return ListView.builder(
+                    final turns = _assistantTurns(entries);
+                    final extras = <Widget>[
+                      if (showWorking)
+                        _WorkingLine(label: context.l10n.working),
+                      if (pending != null)
+                        _ApprovalCard(
+                          pending: pending,
+                          onAccept: controller.acceptPending,
+                          onReject: controller.rejectPending,
+                          onFlash: () =>
+                              controller.flashEntities(pending.highlightIds),
+                          onPin: () =>
+                              controller.pinReceiptIds(pending.highlightIds),
+                        ),
+                    ];
+                    return CustomScrollView(
+                      key: assistantTranscriptKey,
                       controller: _scroll,
-                      padding: EdgeInsets.fromLTRB(
-                        assistantPaneInset,
-                        FanCadTokens.space4,
-                        assistantPaneInset,
-                        assistantTranscriptTail(constraints.maxHeight),
-                      ),
-                      itemCount:
-                          entries.length +
-                          (showWorking ? 1 : 0) +
-                          (pending != null ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index < entries.length) {
-                          final entry = entries[index];
-                          final live = busy && index == entries.length - 1;
-                          return switch (entry) {
-                            AssistantLogMessage(:final message)
-                                when message.role == ChatRole.user =>
-                              _UserBlock(
-                                text: message.text,
-                                onCopy: () => _copy(message.text),
-                                onFlashPin: controller.flashPin,
-                                onHoverPin: controller.hoverPin,
-                                resolvePin: controller.resolvePin,
+                      slivers: [
+                        for (var i = 0; i < turns.length; i++)
+                          SliverMainAxisGroup(
+                            slivers: [
+                              if (turns[i].user != null)
+                                PinnedHeaderSliver(
+                                  child: _userHeader(
+                                    turns[i].user!,
+                                    isLast: i == turns.length - 1,
+                                  ),
+                                ),
+                              SliverList.list(
+                                children: [
+                                  for (final entry in turns[i].body)
+                                    _threadPad(
+                                      _entryTile(
+                                        entry,
+                                        live:
+                                            busy &&
+                                            i == turns.length - 1 &&
+                                            identical(
+                                              entry,
+                                              turns[i].body.last,
+                                            ),
+                                        showWorking: showWorking,
+                                        showCaret: showCaret,
+                                      ),
+                                    ),
+                                  if (i == turns.length - 1)
+                                    for (final extra in extras)
+                                      _threadPad(extra),
+                                ],
                               ),
-                            AssistantLogMessage(:final message)
-                                when message.role == ChatRole.reasoning =>
-                              _ThinkingBlock(
-                                text: message.text,
-                                live: live && showWorking == false,
-                                onCopy: () => _copy(message.text),
-                              ),
-                            AssistantLogMessage(:final message)
-                                when message.role == ChatRole.assistant =>
-                              _AssistantBlock(
-                                text: message.text,
-                                live: live && showCaret,
-                                onCopy: () => _copy(message.text),
-                                onEntityId: controller.flashEntities,
-                                onHoverEntityId: controller.hoverEntities,
-                                onPin: controller.flashPin,
-                                onHoverPin: controller.hoverPin,
-                                resolvePin: controller.resolvePin,
-                              ),
-                            AssistantLogReceipt(:final receipt) => _ToolCard(
-                              receipt: receipt,
-                              onCopy: () => _copy(receipt.raw),
-                              onFlash: () => controller.flashEntities(
-                                assistantReceiptEntityIds(receipt),
-                              ),
-                              onPin: () => controller.pinReceiptIds(
-                                assistantReceiptEntityIds(receipt),
-                              ),
+                            ],
+                          ),
+                        if (turns.isEmpty)
+                          SliverList.list(
+                            children: [
+                              for (final extra in extras) _threadPad(extra),
+                            ],
+                          ),
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            key: assistantTranscriptTailKey,
+                            height: assistantTranscriptTail(
+                              constraints.maxHeight,
                             ),
-                            AssistantLogMessage() => const SizedBox.shrink(),
-                          };
-                        }
-                        var extra = index - entries.length;
-                        if (showWorking) {
-                          if (extra == 0) {
-                            return _WorkingLine(label: context.l10n.working);
-                          }
-                          extra -= 1;
-                        }
-                        if (pending != null) {
-                          if (extra == 0) {
-                            return _ApprovalCard(
-                              pending: pending,
-                              onAccept: controller.acceptPending,
-                              onReject: controller.rejectPending,
-                              onFlash: () => controller.flashEntities(
-                                pending.highlightIds,
-                              ),
-                              onPin: () => controller.pinReceiptIds(
-                                pending.highlightIds,
-                              ),
-                            );
-                          }
-                          extra -= 1;
-                        }
-                        return const SizedBox.shrink();
-                      },
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -506,8 +650,9 @@ class _EmptyAssistant extends StatelessWidget {
   }
 }
 
-class _UserBlock extends StatelessWidget {
+class _UserBlock extends StatefulWidget {
   const _UserBlock({
+    super.key,
     required this.text,
     required this.onCopy,
     this.onFlashPin,
@@ -522,36 +667,42 @@ class _UserBlock extends StatelessWidget {
   final ComposerPin Function(ComposerPin pin)? resolvePin;
 
   @override
+  State<_UserBlock> createState() => _UserBlockState();
+}
+
+class _UserBlockState extends State<_UserBlock> {
+  bool _open = false;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: FanCadTokens.space4),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Tooltip(
-          message: context.l10n.click_to_copy,
-          waitDuration: const Duration(milliseconds: 600),
-          child: GestureDetector(
-            onSecondaryTap: onCopy,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: FanCadTokens.space3,
-                  vertical: FanCadTokens.space2,
-                ),
-                decoration: BoxDecoration(
-                  color: tokens.selection,
-                  borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
-                ),
-                child: PinAwareText(
-                  text: text,
-                  style: tokens.bodyStyle.copyWith(height: 1.45),
-                  onFlash: onFlashPin,
-                  onHover: onHoverPin,
-                  resolve: resolvePin,
-                ),
-              ),
+    return Tooltip(
+      message: context.l10n.click_to_copy,
+      waitDuration: const Duration(milliseconds: 600),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => setState(() => _open = !_open),
+          onSecondaryTap: widget.onCopy,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space3,
+              vertical: FanCadTokens.space3,
+            ),
+            decoration: BoxDecoration(
+              color: assistantPromptFill(tokens),
+              borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+              border: Border.all(color: tokens.borderStrong),
+            ),
+            child: PinAwareText(
+              text: widget.text,
+              maxLines: _open ? null : 2,
+              overflow: _open ? null : TextOverflow.ellipsis,
+              style: tokens.bodyStyle.copyWith(height: 1.45),
+              onFlash: widget.onFlashPin,
+              onHover: widget.onHoverPin,
+              resolve: widget.resolvePin,
             ),
           ),
         ),
@@ -565,11 +716,21 @@ class _ThinkingBlock extends StatefulWidget {
     required this.text,
     required this.onCopy,
     this.live = false,
+    this.onEntityId,
+    this.onHoverEntityId,
+    this.onPin,
+    this.onHoverPin,
+    this.resolvePin,
   });
 
   final String text;
   final VoidCallback onCopy;
   final bool live;
+  final ValueChanged<List<int>>? onEntityId;
+  final ValueChanged<List<int>>? onHoverEntityId;
+  final ValueChanged<ComposerPin>? onPin;
+  final ValueChanged<ComposerPin?>? onHoverPin;
+  final ComposerPin Function(ComposerPin pin)? resolvePin;
 
   @override
   State<_ThinkingBlock> createState() => _ThinkingBlockState();
@@ -577,82 +738,99 @@ class _ThinkingBlock extends StatefulWidget {
 
 class _ThinkingBlockState extends State<_ThinkingBlock> {
   late bool _open;
+  final Stopwatch _elapsed = Stopwatch();
+  Timer? _tick;
 
   @override
   void initState() {
     super.initState();
     _open = false;
+    if (widget.live) _armClock();
+  }
+
+  @override
+  void didUpdateWidget(_ThinkingBlock oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.live && !widget.live) {
+      _elapsed.stop();
+      _tick?.cancel();
+      _tick = null;
+    } else if (!oldWidget.live && widget.live) {
+      _armClock();
+    }
+  }
+
+  void _armClock() {
+    _elapsed.start();
+    _tick?.cancel();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  String _title(AppLocalizations l10n) {
+    final seconds = _elapsed.elapsed.inSeconds;
+    if (seconds <= 0) return l10n.thinking;
+    return l10n.thinking_for(seconds);
   }
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return Padding(
-      key: const Key('assistant-thinking-card'),
-      padding: const EdgeInsets.only(bottom: FanCadTokens.space2),
-      child: Material(
-        color: tokens.surfaceRaised,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FanCadTokens.radius),
-          side: BorderSide(color: tokens.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            InkWell(
+      padding: const EdgeInsets.only(bottom: FanCadTokens.space3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              key: const Key('assistant-thinking-card'),
               onTap: () => setState(() => _open = !_open),
               onSecondaryTap: widget.onCopy,
-              borderRadius: BorderRadius.circular(FanCadTokens.radius),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: FanCadTokens.space3,
-                  vertical: FanCadTokens.space2,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.psychology_outlined,
-                      size: FanCadTokens.iconSmall,
-                      color: tokens.textMuted,
-                    ),
-                    const SizedBox(width: FanCadTokens.space2),
-                    Expanded(
-                      child: Text(
-                        context.l10n.thinking,
-                        style: tokens.bodyStyle.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: tokens.textMuted,
-                        ),
-                      ),
-                    ),
-                    if (widget.live) const _StreamingCaret(),
-                    Icon(
-                      _open ? Icons.expand_less : Icons.expand_more,
-                      size: FanCadTokens.iconSmall,
-                      color: tokens.textFaint,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (_open)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  FanCadTokens.space3,
-                  0,
-                  FanCadTokens.space3,
-                  FanCadTokens.space3,
-                ),
-                child: SelectableText(
-                  widget.text,
-                  style: tokens.bodyStyle.copyWith(
-                    height: 1.45,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _title(context.l10n),
+                    style: tokens.bodyStyle.copyWith(color: tokens.textMuted),
+                  ),
+                  Icon(
+                    _open ? Icons.expand_less : Icons.expand_more,
+                    size: FanCadTokens.iconSmall,
                     color: tokens.textMuted,
                   ),
-                ),
+                  if (widget.live) ...[
+                    const SizedBox(width: FanCadTokens.space2),
+                    const _StreamingCaret(),
+                  ],
+                ],
               ),
+            ),
+          ),
+          if (_open) ...[
+            const SizedBox(height: FanCadTokens.space2),
+            AssistantMarkdown(
+              text: widget.text,
+              onEntityId: widget.onEntityId == null
+                  ? null
+                  : (id) => widget.onEntityId!([id]),
+              onHoverEntityId: widget.onHoverEntityId == null
+                  ? null
+                  : (id) =>
+                        widget.onHoverEntityId!(id == null ? const [] : [id]),
+              onPin: widget.onPin,
+              onHoverPin: widget.onHoverPin,
+              resolvePin: widget.resolvePin,
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1703,10 +1881,10 @@ class _ComposerState extends State<_Composer> {
     });
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        assistantPaneInset,
+        assistantPromptInset,
         FanCadTokens.space2,
-        assistantPaneInset,
-        assistantPaneInset,
+        assistantPromptInset,
+        assistantPromptInset,
       ),
       child: OverlayPortal.overlayChildLayoutBuilder(
         controller: _askOverlay,
@@ -1775,7 +1953,7 @@ class _ComposerState extends State<_Composer> {
               FanCadTokens.space2,
             ),
             decoration: BoxDecoration(
-              color: tokens.surfaceRaised,
+              color: assistantPromptFill(tokens),
               borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
               border: Border.all(color: tokens.borderStrong),
             ),

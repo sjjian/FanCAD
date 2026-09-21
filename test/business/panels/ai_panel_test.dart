@@ -52,29 +52,23 @@ void main() {
     await pumpAiPanel(tester, ai);
 
     expect(find.byKey(const Key('assistant-thinking-card')), findsOneWidget);
-    expect(find.text('Thinking'), findsOneWidget);
+    expect(find.text('Thought'), findsOneWidget);
     expect(find.text('plan the tail'), findsNothing);
+    expect(find.byType(AssistantMarkdown), findsOneWidget);
     expect(find.textContaining('Drew it.'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('assistant-thinking-card')));
     await tester.pump();
-    expect(find.text('plan the tail'), findsOneWidget);
+    expect(find.textContaining('plan the tail'), findsOneWidget);
+    expect(find.byType(AssistantMarkdown), findsNWidgets(2));
     expect(find.text('Working…'), findsNothing);
 
-    final list = tester.widget<ListView>(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is ListView && widget.scrollDirection == Axis.vertical,
-      ),
+    final transcript = tester.getSize(find.byKey(assistantTranscriptKey));
+    final tail = tester.widget<SizedBox>(
+      find.byKey(assistantTranscriptTailKey),
     );
-    final padding = list.padding!.resolve(TextDirection.ltr);
-    expect(padding.left, assistantPaneInset);
-    expect(padding.right, assistantPaneInset);
-    expect(padding.bottom, greaterThan(FanCadTokens.space2));
-    expect(
-      padding.bottom,
-      assistantTranscriptTail(tester.getSize(find.byWidget(list)).height),
-    );
+    expect(tail.height, greaterThan(FanCadTokens.space2));
+    expect(tail.height, assistantTranscriptTail(transcript.height));
   });
 
   testWidgets('composer leftover shows a send key, not a model picker', (
@@ -102,9 +96,9 @@ void main() {
     final send = tester.getRect(
       find.byKey(const Key('assistant-composer-send')),
     );
-    expect(card.left - panel.left, closeTo(assistantPaneInset, 1));
-    expect(panel.right - card.right, closeTo(assistantPaneInset, 1));
-    expect(panel.bottom - card.bottom, closeTo(assistantPaneInset, 1));
+    expect(card.left - panel.left, closeTo(assistantPromptInset, 1));
+    expect(panel.right - card.right, closeTo(assistantPromptInset, 1));
+    expect(panel.bottom - card.bottom, closeTo(assistantPromptInset, 1));
     expect(
       settings.left - card.left,
       greaterThanOrEqualTo(canvasHudPadding.left),
@@ -231,7 +225,7 @@ void main() {
       expect(find.text('画个小乌龟'), findsWidgets);
       expect(
         find.descendant(
-          of: find.byType(ListView),
+          of: find.byKey(assistantTranscriptKey),
           matching: find.byKey(const Key('assistant-approval-card')),
         ),
         findsOneWidget,
@@ -616,6 +610,123 @@ void main() {
       findsNothing,
     );
     expect(find.textContaining('offset'), findsWidgets);
+  });
+
+  testWidgets('a user leftover spans the composer width', (tester) async {
+    final ai = panelAi();
+    ai.conversation.addUser('hi');
+    await pumpAiPanel(tester, ai);
+    await tester.pump();
+
+    final panel = tester.getRect(find.byType(AiPanel));
+    final user = tester.getRect(find.byKey(assistantUserBlockKey));
+    final composer = tester.getRect(
+      find.byKey(const Key('assistant-composer-card')),
+    );
+    expect(user.left, closeTo(composer.left, 1));
+    expect(user.right, closeTo(composer.right, 1));
+    expect(user.left - panel.left, closeTo(assistantPromptInset, 1));
+    expect(assistantPromptInset, lessThan(assistantPaneInset));
+
+    final fill = assistantPromptFill(FanCadTokens.dark);
+    expect(fill, isNot(FanCadTokens.dark.surface));
+    expect(
+      ((tester.widget<Container>(
+                find.byKey(const Key('assistant-composer-card')),
+              )).decoration
+              as BoxDecoration)
+          .color,
+      fill,
+    );
+    final bubble =
+        tester
+                .widget<Container>(
+                  find.descendant(
+                    of: find.byKey(assistantUserBlockKey),
+                    matching: find.byWidgetPredicate(
+                      (widget) =>
+                          widget is Container &&
+                          widget.decoration is BoxDecoration,
+                    ),
+                  ),
+                )
+                .decoration
+            as BoxDecoration;
+    expect(bubble.color, fill);
+    expect(bubble.border, isNotNull);
+    expect(user.height, greaterThan(36));
+  });
+
+  testWidgets('a long user leftover stays two lines until tapped', (
+    tester,
+  ) async {
+    final ai = panelAi();
+    ai.conversation.addUser('第一行\n第二行\n第三行\n第四行');
+    await pumpAiPanel(tester, ai);
+    await tester.pump();
+
+    final collapsed = tester.getSize(find.byKey(assistantUserBlockKey)).height;
+    expect(collapsed, lessThan(80));
+
+    await tester.tap(find.byKey(assistantUserBlockKey));
+    await tester.pump();
+    expect(
+      tester.getSize(find.byKey(assistantUserBlockKey)).height,
+      greaterThan(collapsed + 8),
+    );
+  });
+
+  testWidgets('the last user leftover pins to the top of the thread', (
+    tester,
+  ) async {
+    final ai = panelAi();
+    ai.conversation.addUser('再看看');
+    ai.conversation.addAssistant('${'此前的回复。' * 24}\n' * 8);
+    ai.conversation.addUser('分析下为啥失败了');
+    ai.conversation.addAssistant('${'后面的回复。' * 24}\n' * 8);
+
+    await pumpAiPanel(
+      tester,
+      ai,
+      home: Scaffold(
+        body: SizedBox(width: 360, height: 420, child: AiPanel(controller: ai)),
+      ),
+    );
+    await tester.pump();
+
+    final thread = tester.getRect(find.byKey(assistantTranscriptKey));
+    final last = tester.getRect(find.byKey(assistantUserBlockKey));
+    expect(find.text('分析下为啥失败了'), findsOneWidget);
+    expect(last.left, closeTo(thread.left + assistantPromptInset, 1));
+    expect(last.right, closeTo(thread.right - assistantPromptInset, 1));
+    expect(last.top, closeTo(thread.top + FanCadTokens.space4, 2));
+
+    await tester.drag(
+      find.byKey(assistantTranscriptKey),
+      const Offset(0, -180),
+    );
+    await tester.pump();
+    expect(
+      tester.getRect(find.byKey(assistantUserBlockKey)).top,
+      closeTo(thread.top + FanCadTokens.space4, 2),
+    );
+
+    final scroll = tester
+        .widget<CustomScrollView>(find.byKey(assistantTranscriptKey))
+        .controller!;
+    scroll.jumpTo(0);
+    await tester.pump();
+    final first = find.descendant(
+      of: find.byKey(assistantTranscriptKey),
+      matching: find.text('再看看'),
+    );
+    expect(first, findsOneWidget);
+    expect(
+      tester
+          .getRect(find.ancestor(of: first, matching: find.byType(Tooltip)))
+          .top,
+      closeTo(thread.top + FanCadTokens.space4, 2),
+    );
   });
 
   testWidgets('closing a leftover tab keeps the other thread', (tester) async {

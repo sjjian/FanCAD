@@ -45,8 +45,10 @@ void main() {
   test('leftover thinking copy is a card title, not working text', () {
     final en = lookupAppLocalizations(const Locale('en'));
     final zh = lookupAppLocalizations(const Locale('zh'));
-    expect(en.thinking, 'Thinking');
+    expect(en.thinking, 'Thought');
     expect(zh.thinking, '思考');
+    expect(en.thinking_for(5), 'Thought 5s');
+    expect(zh.thinking_for(5), '思考 5s');
     expect(en.thinking, isNot(en.working));
     expect(zh.thinking, isNot(zh.working));
   });

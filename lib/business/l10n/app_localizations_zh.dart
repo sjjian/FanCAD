@@ -1024,6 +1024,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get thinking => '思考';
 
   @override
+  String thinking_for(int seconds) {
+    return '思考 ${seconds}s';
+  }
+
+  @override
   String allow_one_change(String title) {
     return '允许$title？';
   }

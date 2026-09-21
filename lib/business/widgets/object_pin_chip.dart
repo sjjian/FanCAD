@@ -111,6 +111,8 @@ class PinAwareText extends StatelessWidget {
     super.key,
     required this.text,
     this.style,
+    this.maxLines,
+    this.overflow,
     this.onFlash,
     this.onHover,
     this.resolve,
@@ -118,6 +120,8 @@ class PinAwareText extends StatelessWidget {
 
   final String text;
   final TextStyle? style;
+  final int? maxLines;
+  final TextOverflow? overflow;
   final ValueChanged<ComposerPin>? onFlash;
   final ValueChanged<ComposerPin?>? onHover;
   final ComposerPin Function(ComposerPin pin)? resolve;
@@ -125,7 +129,7 @@ class PinAwareText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!composerPinTextHasTags(text)) {
-      return Text(text, style: style);
+      return Text(text, style: style, maxLines: maxLines, overflow: overflow);
     }
     final spans = splitComposerPinSpans(text);
     return Text.rich(
@@ -148,6 +152,8 @@ class PinAwareText extends StatelessWidget {
               TextSpan(text: span.text),
         ],
       ),
+      maxLines: maxLines,
+      overflow: overflow,
     );
   }
 }

@@ -1964,11 +1964,17 @@ abstract class AppLocalizations {
   /// **'Working…'**
   String get working;
 
-  /// thinking
+  /// collapsed chain-of-thought header
   ///
   /// In en, this message translates to:
-  /// **'Thinking'**
+  /// **'Thought'**
   String get thinking;
+
+  /// collapsed chain-of-thought header with elapsed seconds
+  ///
+  /// In en, this message translates to:
+  /// **'Thought {seconds}s'**
+  String thinking_for(int seconds);
 
   /// allow one change
   ///

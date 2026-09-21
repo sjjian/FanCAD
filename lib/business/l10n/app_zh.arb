@@ -1456,7 +1456,16 @@
   },
   "thinking": "思考",
   "@thinking": {
-    "description": "thinking"
+    "description": "collapsed chain-of-thought header"
+  },
+  "thinking_for": "思考 {seconds}s",
+  "@thinking_for": {
+    "description": "collapsed chain-of-thought header with elapsed seconds",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
   },
   "allow_one_change": "允许{title}？",
   "@allow_one_change": {

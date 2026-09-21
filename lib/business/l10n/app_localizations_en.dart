@@ -1040,7 +1040,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get working => 'Working…';
 
   @override
-  String get thinking => 'Thinking';
+  String get thinking => 'Thought';
+
+  @override
+  String thinking_for(int seconds) {
+    return 'Thought ${seconds}s';
+  }
 
   @override
   String allow_one_change(String title) {
