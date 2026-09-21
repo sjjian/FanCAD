@@ -10,6 +10,8 @@ import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../support/workspace.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -428,6 +430,281 @@ void main() {
       final result = await running;
       expect(result.isCancelled, isTrue);
       expect(tab.document.entityCount, 0);
+    },
+  );
+
+  test('headless erase without ids cannot eat the leftover pick', () async {
+    final app = Headless();
+    final id = await app.drawLine(0, 0, 10, 0);
+    app.workspace.active!.selection.replace([id]);
+    final result = await app.workspace.runHeadless('edit.erase');
+    expect(result.isOk, isFalse);
+    expect(app.document.entity(id), isNotNull);
+  });
+
+  test('an AI write is refused while a person is in a command', () async {
+    final app = Headless();
+    final running = app.workspace.run('draw.line');
+    await Future<void>.delayed(Duration.zero);
+    expect(app.workspace.runningCommand, 'draw.line');
+
+    final blocked = await app.workspace.runHeadless(
+      'draw.circle',
+      args: {
+        'center': [0, 0],
+        'radius': 1,
+      },
+      source: ChangeSource.ai,
+    );
+    expect(blocked.isFailed, isTrue);
+    expect(blocked.message, contains('draw.line is running'));
+
+    final query = await app.workspace.runHeadless(
+      'query.summary',
+      source: ChangeSource.ai,
+    );
+    expect(query.isOk, isTrue);
+
+    app.workspace.cancelActive();
+    await running;
+  });
+
+  test('an AI erase without ids still leaves the leftover pick', () async {
+    final app = Headless();
+    final id = await app.drawLine(0, 0, 10, 0);
+    app.workspace.active!.selection.replace([id]);
+    final result = await app.workspace.runHeadless(
+      'edit.erase',
+      source: ChangeSource.ai,
+    );
+    expect(result.isOk, isFalse);
+    expect(app.document.entity(id), isNotNull);
+  });
+
+  test('the assistant being busy refuses a new interactive verb', () async {
+    final app = Headless();
+    app.workspace.setAssistantBusy(true);
+    final blocked = await app.workspace.run('draw.circle');
+    expect(blocked.isFailed, isTrue);
+    expect(blocked.message, contains('assistant is working'));
+  });
+
+  test('the assistant being busy drops an in-flight grip stretch', () {
+    final app = Headless();
+    final tab = app.workspace.active!;
+    tab.viewport.viewport = const CadViewport(
+      center: Vec2(5, 0),
+      scale: 1,
+      size: Size(800, 600),
+    );
+    final id = tab.document
+        .addEntity(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+        )
+        .id;
+    final tools = tab.tools;
+    PointerDownEvent down(Offset local) => PointerDownEvent(
+      pointer: 1,
+      position: local,
+      buttons: kPrimaryMouseButton,
+    );
+
+    tools.onPointerDown(const Vec2(5, 0), down(Offset.zero));
+    tools.onPointerDown(const Vec2(0, 0), down(Offset.zero));
+    expect((tools.activeTool as SelectionTool).isEditingGrip, isTrue);
+    tools.onPointerMove(
+      const Vec2(0, 4),
+      const PointerMoveEvent(pointer: 1, position: Offset(0, 20)),
+    );
+    expect(tools.hasCancellableGesture, isTrue);
+
+    app.workspace.setAssistantBusy(true);
+    expect((tools.activeTool as SelectionTool).isEditingGrip, isFalse);
+    final line = tab.document.entity(id)! as LineEntity;
+    expect(line.start, const Vec2.zero());
+    expect(line.end, const Vec2(10, 0));
+  });
+
+  test('session.supply feeds a point into a live command', () async {
+    final app = Headless();
+    final running = app.workspace.run('draw.circle');
+    await Future<void>.delayed(Duration.zero);
+    expect(app.workspace.commandLine.pending, isNotNull);
+
+    final center = app.workspace.supplyInteractive({
+      'point': [0, 0],
+    });
+    expect(center['status'], 'ok');
+    await Future<void>.delayed(Duration.zero);
+
+    final radius = app.workspace.supplyInteractive({'number': 5});
+    expect(radius['status'], 'ok');
+    final result = await running;
+    expect(result.isOk, isTrue);
+    expect(app.document.entityCount, 1);
+  });
+
+  test('an AI circle missing the centre hands off to the crosshair', () async {
+    final app = Headless();
+    final future = app.workspace.runHeadless(
+      'draw.circle',
+      args: {'radius': 4},
+      source: ChangeSource.ai,
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(app.workspace.runningCommand, 'draw.circle');
+
+    final supplied = app.workspace.supplyInteractive({
+      'point': [2, 3],
+    });
+    expect(supplied['status'], 'ok');
+    final result = await future;
+    expect(result.isOk, isTrue);
+    expect(app.document.entityCount, 1);
+  });
+
+  test('flashHighlights show up on the pending overlay list', () {
+    final ws = workspace();
+    ws.flashHighlights(const [3, 5]);
+    expect(ws.pendingHighlightIds, [3, 5]);
+    ws.setPendingHighlights(const [9]);
+    expect(ws.pendingHighlightIds, [9, 3, 5]);
+  });
+
+  test('hover highlights join the pending overlay list and clear on exit', () {
+    final ws = workspace();
+    ws.setHoverHighlights(const [3]);
+    expect(ws.pendingHighlightIds, [3]);
+    ws.setPendingHighlights(const [9]);
+    expect(ws.pendingHighlightIds, [9, 3]);
+    ws.setHoverHighlights(const []);
+    expect(ws.pendingHighlightIds, [9]);
+  });
+
+  test('an AI polyline without points hands off to the crosshair', () async {
+    final app = Headless();
+    final future = app.workspace.runHeadless(
+      'draw.polyline',
+      source: ChangeSource.ai,
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(app.workspace.runningCommand, 'draw.polyline');
+
+    expect(
+      app.workspace.supplyInteractive({
+        'point': [0, 0],
+      })['status'],
+      'ok',
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(
+      app.workspace.supplyInteractive({
+        'point': [10, 0],
+      })['status'],
+      'ok',
+    );
+    await Future<void>.delayed(Duration.zero);
+    app.workspace.commandLine.submit('');
+    final result = await future;
+    expect(result.isOk, isTrue);
+    expect(app.document.entityCount, 1);
+  });
+
+  test(
+    'COPYCLIP then PASTECLIP in another tab ghosts and places on click',
+    () async {
+      final app = Headless();
+      final source = app.workspace.active!;
+      source.viewport.viewport = const CadViewport(
+        center: Vec2(5, 0),
+        scale: 1,
+        size: Size(800, 600),
+      );
+      final id = await app.drawLine(0, 0, 10, 0);
+      source.selection.replace([id]);
+
+      final copied = await app.workspace.run('edit.copyClip');
+      expect(copied.isOk, isTrue, reason: copied.message);
+      expect(app.workspace.clipboard.isEmpty, isFalse);
+
+      final dest = app.workspace.newDocument();
+      dest.viewport.viewport = const CadViewport(
+        center: Vec2(5, 0),
+        scale: 1,
+        size: Size(800, 600),
+      );
+      app.workspace.setSnapEnabled(false);
+      app.workspace.setOrtho(false);
+      app.workspace.setPolar(false);
+      app.workspace.setShowGrid(false);
+
+      final pasting = app.workspace.run('edit.pasteClip');
+      await Future<void>.delayed(Duration.zero);
+      expect(app.workspace.runningCommand, 'edit.pasteClip');
+      expect(dest.tools.activeTool, isA<PointPromptTool>());
+
+      dest.tools.onPointerMove(
+        const Vec2(4, 5),
+        const PointerMoveEvent(pointer: 1, position: Offset(4, 5)),
+      );
+      expect(dest.tools.buildOverlay().shapes, isNotEmpty);
+
+      dest.tools.onPointerDown(
+        const Vec2(4, 5),
+        const PointerDownEvent(pointer: 1, buttons: kPrimaryMouseButton),
+      );
+      final pasted = await pasting;
+      expect(pasted.isOk, isTrue, reason: pasted.message);
+      final line = dest.document.entities.whereType<LineEntity>().single;
+      expect(line.start, const Vec2(4, 5));
+      expect(line.end, const Vec2(14, 5));
+    },
+  );
+
+  test(
+    'PASTECLIP preview follows the dest cursor even with polar on',
+    () async {
+      final app = Headless();
+      final source = app.workspace.active!;
+      source.viewport.viewport = const CadViewport(
+        center: Vec2(1000, 2000),
+        scale: 1,
+        size: Size(800, 600),
+      );
+      final id = await app.drawLine(1000, 2000, 1010, 2000);
+      source.selection.replace([id]);
+      final copied = await app.workspace.run('edit.copyClip');
+      expect(copied.isOk, isTrue, reason: copied.message);
+
+      final dest = app.workspace.newDocument();
+      dest.viewport.viewport = const CadViewport(
+        center: Vec2(5, 0),
+        scale: 1,
+        size: Size(800, 600),
+      );
+      app.workspace.setSnapEnabled(false);
+      app.workspace.setOrtho(false);
+      app.workspace.setPolar(true);
+      app.workspace.setShowGrid(false);
+
+      final pasting = app.workspace.run('edit.pasteClip');
+      await Future<void>.delayed(Duration.zero);
+      dest.tools.onPointerMove(
+        const Vec2(4, 5),
+        const PointerMoveEvent(pointer: 1, position: Offset(4, 5)),
+      );
+      expect(dest.tools.cursor, const Vec2(4, 5));
+      expect(dest.tools.snap?.origin, SnapOrigin.free);
+
+      dest.tools.onPointerDown(
+        const Vec2(4, 5),
+        const PointerDownEvent(pointer: 1, buttons: kPrimaryMouseButton),
+      );
+      final pasted = await pasting;
+      expect(pasted.isOk, isTrue, reason: pasted.message);
+      final line = dest.document.entities.whereType<LineEntity>().single;
+      expect(line.start, const Vec2(4, 5));
+      expect(line.end, const Vec2(14, 5));
     },
   );
 }

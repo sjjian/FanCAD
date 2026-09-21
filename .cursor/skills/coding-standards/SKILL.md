@@ -21,11 +21,13 @@ description: 基于当前仓库现状约束实现阶段的编码规范，覆盖 
 - `services` 不建 Widget。
 - `storage` 只做读写、键名和 view，不做命令编排。
 - CAD 动词仍是 `CommandDescriptor`，放在 `lib/business/commands/`，由 `Workspace.run` / `runHeadless` 调用。不要把 `draw.line` / `edit.erase` 改成 `*Services`。
+- CAD 平台能力进 `fancad` CLI/MCP（`CommandDescriptor` 或 host operation，经 `OperationCatalog` 的 help/run）。没有 in-app AI chat 仍成立的能力走这条。AI chat 能力（必须有对话、composer、transcript 卡片）在 `fancad_ai` 注册独立 `LlmTool`，禁止放进 `OperationCatalog`，MCP `tools/list` 也不暴露。
 - DWG 导入只按文件字段解释（`entmode`、`ownerhandle`、`entities[]`、几何、`DIMENSION.block`）。文件里已经写清的对象不要用距离、层名黑名单或「孤立」去改归属或丢掉。
 
 ## 不要
 
 - 不要把 FanCAD 命令、助手文案、演示图沉进 `pkg/`。
+- 不要把 AI chat 原语（ask、对话卡片）注册成 `fancad` path / host operation。
 - 不要把别的模块的写法硬搬到当前目录。
 - 不要在页面层直接做持久化或打开文档。
 - 不要手改 generated 的 l10n、`*.freezed.dart`、`*.g.dart` 文件，除非任务明确要求。
@@ -36,4 +38,5 @@ description: 基于当前仓库现状约束实现阶段的编码规范，覆盖 
 
 - 是否保持了当前目录既有职责边界。
 - 是否把产品编排写进了 `pkg/`。
+- 是否把 chat 能力塞进了 CLI/MCP。
 - 是否误改 generated 文件。

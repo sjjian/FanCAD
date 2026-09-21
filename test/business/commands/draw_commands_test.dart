@@ -1437,6 +1437,9 @@ class _ScriptedInput implements CommandInput {
   bool get isInteractive => true;
 
   @override
+  bool get canHandOff => false;
+
+  @override
   bool get isCancelled => false;
 
   @override

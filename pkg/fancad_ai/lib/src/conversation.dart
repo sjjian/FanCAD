@@ -94,7 +94,9 @@ class Conversation {
     if (delta.isEmpty) return;
     if (visible.isNotEmpty && visible.last.role == ChatRole.assistant) {
       final last = visible.removeLast();
-      visible.add(ChatMessage(role: ChatRole.assistant, text: last.text + delta));
+      visible.add(
+        ChatMessage(role: ChatRole.assistant, text: last.text + delta),
+      );
       return;
     }
     visible.add(ChatMessage(role: ChatRole.assistant, text: delta));
@@ -156,11 +158,7 @@ class Conversation {
     String? toolName,
   }) {
     llmMessages.add(
-      LlmMessage.tool(
-        toolCallId: call.id,
-        content: content,
-        name: call.name,
-      ),
+      LlmMessage.tool(toolCallId: call.id, content: content, name: call.name),
     );
     visible.add(
       ChatMessage(
@@ -175,6 +173,13 @@ class Conversation {
   void clear() {
     llmMessages.clear();
     visible.clear();
+  }
+
+  /// Replaces the model transcript after compression. [visible] is unchanged.
+  void compactLlm(List<LlmMessage> next) {
+    llmMessages
+      ..clear()
+      ..addAll(next);
   }
 
   Map<String, Object?> toJson() => _$ConversationToJson(this);

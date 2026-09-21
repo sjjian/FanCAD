@@ -1,5 +1,4 @@
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_ops/fancad_ops.dart';
 
 import 'skills/skill.dart';
 
@@ -10,6 +9,9 @@ import 'skills/skill.dart';
 /// see the viewport will query the whole file instead of the window on screen.
 class SessionSnapshot {
   const SessionSnapshot({
+    this.drawingId,
+    this.drawingTitle,
+    this.drawingPath,
     this.selectionCount = 0,
     this.selection = const [],
     this.viewport,
@@ -18,11 +20,22 @@ class SessionSnapshot {
     this.ortho = false,
     this.polar = false,
     this.showGrid = true,
+    this.runningCommand,
+    this.prompt,
+    this.collectedPointCount = 0,
+    this.lastCreatedIds = const [],
+    this.lastModifiedIds = const [],
   });
 
   /// How many selected objects may be listed in the prompt.
   static const int maxListed = 32;
 
+  /// How many last-created / last-modified ids may be listed.
+  static const int maxResultIds = 32;
+
+  final String? drawingId;
+  final String? drawingTitle;
+  final String? drawingPath;
   final int selectionCount;
   final List<SelectedObjectHint> selection;
   final ViewportHint? viewport;
@@ -32,11 +45,34 @@ class SessionSnapshot {
   final bool polar;
   final bool showGrid;
 
+  /// The interactive verb the human is in, if any. Read-only: do not fill
+  /// its remaining prompts from here.
+  final String? runningCommand;
+
+  /// The live command-line prompt, when a command is waiting.
+  final String? prompt;
+
+  /// Points already collected by the interactive command.
+  final int collectedPointCount;
+
+  final List<int> lastCreatedIds;
+  final List<int> lastModifiedIds;
+
   /// Empty pick is written as `none` so the model cannot treat it as "use
   /// whatever was selected last time".
   String describe() {
     final buffer = StringBuffer();
     buffer.writeln('Session:');
+    final drawingId = this.drawingId?.trim() ?? '';
+    if (drawingId.isEmpty) {
+      buffer.writeln('- drawing: none');
+    } else {
+      final title = drawingTitle?.trim() ?? '';
+      final named = title.isEmpty ? drawingId : title;
+      buffer.writeln('- drawing: $named tab=$drawingId');
+      final path = drawingPath?.trim() ?? '';
+      if (path.isNotEmpty) buffer.writeln('- path: $path');
+    }
     if (selectionCount == 0) {
       buffer.writeln('- selection: none');
     } else {
@@ -57,13 +93,39 @@ class SessionSnapshot {
       buffer.writeln('- viewport: ${view.describe()}');
     }
     final modes = snapModes.isEmpty ? 'none' : snapModes.join(', ');
-    buffer.writeln(
-      '- snap: ${snapEnabled ? 'on' : 'off'} ($modes)',
-    );
+    buffer.writeln('- snap: ${snapEnabled ? 'on' : 'off'} ($modes)');
     buffer.writeln('- ortho: ${ortho ? 'on' : 'off'}');
     buffer.writeln('- polar: ${polar ? 'on' : 'off'}');
     buffer.writeln('- grid: ${showGrid ? 'on' : 'off'}');
+    final running = runningCommand?.trim() ?? '';
+    if (running.isEmpty) {
+      buffer.writeln('- running command: none');
+    } else {
+      buffer.writeln('- running command: $running (do not supply its points)');
+      final promptText = prompt?.trim() ?? '';
+      if (promptText.isNotEmpty) {
+        buffer.writeln('- prompt: $promptText');
+      }
+      if (collectedPointCount > 0) {
+        buffer.writeln('- collected points: $collectedPointCount');
+      }
+    }
+    _writeIds(buffer, 'last created', lastCreatedIds);
+    _writeIds(buffer, 'last modified', lastModifiedIds);
     return buffer.toString().trimRight();
+  }
+
+  static void _writeIds(StringBuffer buffer, String label, List<int> ids) {
+    if (ids.isEmpty) {
+      buffer.writeln('- $label: none');
+      return;
+    }
+    final listed = ids.take(maxResultIds).join(', ');
+    buffer.writeln(
+      ids.length > maxResultIds
+          ? '- $label: ${ids.length} ids (first $maxResultIds: $listed)'
+          : '- $label: $listed',
+    );
   }
 }
 
@@ -128,41 +190,31 @@ class DocumentContextBuilder {
   final int maxLayers;
   final int maxKinds;
 
-  /// A short system preamble: what the assistant is, what it can do, and a
-  /// snapshot of the active drawing.
+  /// Role and a snapshot of the active drawing. Tool schemas are registered
+  /// on the agent and sent as [LlmRequest.tools], not copied here.
   String systemPrompt({
     required CadDocument document,
-    required Iterable<CommandDescriptor> tools,
     String? pluginTypings,
     SessionSnapshot? session,
     Iterable<SkillSummary> skills = const [],
   }) {
-    final buffer = StringBuffer();
-    buffer.writeln(_role);
-    buffer.writeln();
-    buffer.writeln(summarize(document));
-    buffer.writeln();
-    buffer.writeln((session ?? const SessionSnapshot()).describe());
     final skillList = skills.toList();
-    if (skillList.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln(
-        'Available skills (call fancad with action=run path=skill.read):',
-      );
-      for (final skill in skillList) {
-        buffer.writeln('- ${skill.name}: ${skill.description}');
-      }
-    }
-    buffer.writeln();
-    buffer.writeln(_toolAdvice);
-    if (pluginTypings != null && pluginTypings.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln(
-        'When writing or repairing a plugin, the `fancad` API is:',
-      );
-      buffer.writeln(pluginTypings);
-    }
-    return buffer.toString();
+    final typings = pluginTypings?.trim() ?? '';
+    return _fillTemplate(_systemPromptTemplate, {
+      'drawing': summarize(document).trimRight(),
+      'session': (session ?? const SessionSnapshot()).describe(),
+      'skills': skillList.isEmpty
+          ? ''
+          : _fillTemplate(_skillsTemplate, {
+              'skill_list': [
+                for (final skill in skillList)
+                  '- ${skill.name}: ${skill.description}',
+              ].join('\n'),
+            }),
+      'plugin_typings': typings.isEmpty
+          ? ''
+          : _fillTemplate(_pluginTypingsTemplate, {'plugin_typings': typings}),
+    });
   }
 
   /// A compact statistical summary. Cheap enough to rebuild every turn.
@@ -202,9 +254,7 @@ class DocumentContextBuilder {
         '- by layer: ${layers.take(maxLayers).map((e) => '${e.key}×${e.value}').join(', ')}',
       );
     }
-    final blocks = [
-      for (final block in document.insertableBlocks) block.name,
-    ];
+    final blocks = [for (final block in document.insertableBlocks) block.name];
     if (blocks.isNotEmpty) {
       buffer.writeln('- blocks: ${blocks.take(20).join(', ')}');
     }
@@ -231,23 +281,33 @@ class DocumentContextBuilder {
       'byLayer': byLayer,
     };
   }
-
-  static const String _role =
-      'You are FanCAD\'s drafting assistant. You act only through the fancad '
-      'tool, which is a CLI over the same commands a person can run from the '
-      'command line plus host operations such as skill.read. Prefer the session '
-      'snapshot, query.summary and query.entities over guessing what is in the '
-      'drawing. Never invent entity ids. An empty selection is none — do not '
-      'treat it as a hidden target. One user message is one unit of work: '
-      'batch related edits so they undo together.';
-
-  static const String _toolAdvice =
-      'You have one tool: fancad. Call action=help with no path to list '
-      'groups, then help with a group (draw, edit, query), then help with a '
-      'command id before run. When a listed skill matches the request, run '
-      'skill.read first and follow it. For the current pick run query.selection; '
-      'for the camera run query.viewport; then query.entities with a layer, '
-      'kind or window filter. To change the drawing, run the matching draw.* '
-      'or edit.* path and pass ids explicitly. Example: $fancadCallExample. '
-      'path is a sibling of action, never inside args.';
 }
+
+/// Fills `{{name}}` slots. Prompt copy lives in the template, not in callers.
+String _fillTemplate(String template, Map<String, String> values) {
+  var out = template;
+  for (final entry in values.entries) {
+    out = out.replaceAll('{{${entry.key}}}', entry.value);
+  }
+  return out.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+}
+
+const _systemPromptTemplate = r'''
+You are FanCAD's drafting assistant. Prefer the session snapshot, query.summary and query.entities over guessing what is in the drawing. Never invent entity ids. An empty selection is none — do not treat it as a hidden target. Pass ids explicitly on every edit; the current pick is context, not a silent target. If a running command is listed, do not start a conflicting edit and do not reuse its points. One user message is one unit of work: batch related edits so they undo together. When a reply or ask option refers to objects or a drawing, write `@objects[tab=<id> ids=1,2,3]` or `@drawing[tab=<id>]` — do not list ids in prose.
+
+{{drawing}}
+
+{{session}}
+{{skills}}
+{{plugin_typings}}
+''';
+
+const _skillsTemplate = r'''
+Available skills:
+{{skill_list}}
+''';
+
+const _pluginTypingsTemplate = r'''
+When writing or repairing a plugin, the `fancad` API is:
+{{plugin_typings}}
+''';

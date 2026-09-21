@@ -41,6 +41,10 @@ class ArgsCommandInput implements CommandInput {
   @override
   bool get isInteractive => false;
 
+  /// An unanswered prompt is an error, not a canvas pick.
+  @override
+  bool get canHandOff => false;
+
   @override
   bool get isCancelled => _cancelled;
 
@@ -107,7 +111,10 @@ class ArgsCommandInput implements CommandInput {
         final matched = matchKeyword(raw, keywords);
         if (matched != null) return PointOrKeyword.keyword(matched);
       }
-      return null;
+      // A declared point param with no value is a missing required prompt,
+      // not "the caller is done". Extra vertices have no ParamSpec and fall
+      // through to the null below.
+      _missing(message);
     }
     final choice = _take({ParamType.choice, ParamType.text});
     if (choice != null) {

@@ -459,6 +459,11 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
             workspace: workspace,
             tab: tab,
             commandLineFocus: _commandFocus,
+            onAddSelectionToChat: () {
+              ref.read(aiControllerProvider).pinSelection();
+              workspace.revealPanel('ai');
+            },
+            onStopAssistant: () => ref.read(aiControllerProvider).stop(),
           );
     final sidebar = ref.watch(sidebarProvider);
     final stack = Stack(
@@ -539,6 +544,10 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         LogicalKeyboardKey.keyB,
         ref.read(sidebarProvider.notifier).toggle,
       ),
+      ...chord(LogicalKeyboardKey.keyU, () {
+        ref.read(aiControllerProvider).pinSelection();
+        workspace.revealPanel('ai');
+      }, shift: true),
       const SingleActivator(LogicalKeyboardKey.f2): _commandFocus.requestFocus,
       const SingleActivator(LogicalKeyboardKey.f3): () =>
           workspace.setSnapEnabled(!workspace.snapEngine.enabled),

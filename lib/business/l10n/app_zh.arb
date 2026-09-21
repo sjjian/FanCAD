@@ -940,6 +940,10 @@
   "@unlock": {
     "description": "unlock"
   },
+  "assistant_canvas_locked": "助手正在操作，图纸暂不可编辑。",
+  "@assistant_canvas_locked": {
+    "description": "banner above the canvas while the assistant owns the drawing"
+  },
   "empty_drawing_title": "此图纸为空",
   "@empty_drawing_title": {
     "description": "empty drawing title"
@@ -1465,6 +1469,34 @@
   "affects_n_objects": "影响 {count} 个对象。",
   "@affects_n_objects": {
     "description": "affects n objects"
+  },
+  "ask_other": "其它…",
+  "@ask_other": {
+    "description": "custom answer on an assistant question card"
+  },
+  "ask_questions": "提问",
+  "@ask_questions": {
+    "description": "header on the in-thread assistant question popup"
+  },
+  "ask_skip": "跳过",
+  "@ask_skip": {
+    "description": "dismiss an in-thread assistant question without answering"
+  },
+  "pin_selection": "将选择加入对话",
+  "@pin_selection": {
+    "description": "add the current CAD selection to the next assistant message"
+  },
+  "mention_drawing": "提及图纸",
+  "@mention_drawing": {
+    "description": "toolbar @ and drawing-tab picker"
+  },
+  "no_open_drawings": "没有已打开的图纸",
+  "@no_open_drawings": {
+    "description": "empty @ drawing-tab picker"
+  },
+  "pin_into_chat": "加入对话",
+  "@pin_into_chat": {
+    "description": "canvas context menu and receipt: put objects on the next message"
   },
   "ask_assistant": "询问助手  Enter 发送",
   "@ask_assistant": {

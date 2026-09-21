@@ -150,6 +150,13 @@ abstract class CommandInput {
   /// instead of hanging.
   bool get isInteractive;
 
+  /// True when a missing prompt may be redirected to the crosshair.
+  ///
+  /// Scripted and plugin callers stay false so an unanswered vertex is an
+  /// error. An AI [FallbackCommandInput] reports true without becoming
+  /// [isInteractive] until the person actually takes over.
+  bool get canHandOff => false;
+
   /// Set when the run was cancelled; long loops should poll it.
   bool get isCancelled;
 
@@ -363,8 +370,9 @@ class CommandContext {
     return input.text(prompt, defaultValue: defaultValue);
   }
 
-  /// Resolves an entity set: explicit ids, then the current selection, then a
-  /// pick prompt.
+  /// Resolves an entity set: explicit ids, then (interactively) the current
+  /// selection, then a pick prompt. Headless callers must pass ids — a leftover
+  /// pick is not a silent target.
   Future<List<int>> resolveSelection(
     String name,
     String prompt, {
@@ -372,8 +380,14 @@ class CommandContext {
   }) async {
     final provided = args.ids(name);
     if (provided != null && provided.isNotEmpty) return provided;
-    if (selection.isNotEmpty) return selection.ids.toList();
-    return input.selection(prompt, single: single);
+    if (input.isInteractive && selection.isNotEmpty) {
+      return selection.ids.toList();
+    }
+    return input.selection(
+      prompt,
+      useExistingSelection: input.isInteractive,
+      single: single,
+    );
   }
 }
 

@@ -58,7 +58,7 @@ class DrawSplineCommand extends FanCadCommand {
       }
       return commitDraw(context, 'Spline', [spline]);
     }
-    if (!context.input.isInteractive) {
+    if (!context.input.isInteractive && !context.input.canHandOff) {
       return const CommandResult.failed(
         'Spline needs points as [[x, y], [x, y], ...] with at least two vertices.',
       );

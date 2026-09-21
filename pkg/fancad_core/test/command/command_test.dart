@@ -462,6 +462,20 @@ void main() {
       expect(await input.pointOrKeyword('done'), isNull);
     });
 
+    test('a declared point param with no value is a cancelled prompt', () async {
+      final input = ArgsCommandInput(
+        args: CommandArgs({
+          'start': [0, 0],
+        }),
+        params: const [ParamSpec.point('start'), ParamSpec.point('end')],
+      );
+      expect((await input.pointOrKeyword('start'))!.point, const Vec2.zero());
+      await expectLater(
+        input.pointOrKeyword('end'),
+        throwsA(isA<CommandCancelled>()),
+      );
+    });
+
     test('matchKeyword requires a unique prefix', () {
       expect(ArgsCommandInput.matchKeyword('ce', ['center', 'end']), 'center');
       expect(ArgsCommandInput.matchKeyword('e', ['end', 'edge']), isNull);
@@ -487,13 +501,13 @@ void main() {
       expect(await context.resolveNumber('n', 'n'), 3);
       expect(await context.resolveText('name', 't'), 'X');
       expect(await context.resolveSelection('ids', 's'), [9]);
-      expect(
-        await CommandContext(
+      await expectLater(
+        CommandContext(
           session: session,
           args: CommandArgs.empty(),
           input: ArgsCommandInput(args: CommandArgs.empty(), params: const []),
         ).resolveSelection('ids', 's'),
-        [7],
+        throwsA(isA<CommandCancelled>()),
       );
     });
   });

@@ -1,6 +1,8 @@
 import 'package:fancad/fancad.dart';
+import 'package:fancad/services/composer_pin.dart';
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -113,11 +115,7 @@ void main() {
     );
     expect(
       card.right - send.right,
-      greaterThanOrEqualTo(canvasHudPadding.right),
-    );
-    expect(
-      card.right - send.right,
-      lessThanOrEqualTo(canvasHudPadding.right + 2),
+      closeTo(canvasHudPadding.right + FanCadTokens.space1, 2),
     );
     expect(find.text('ASSISTANT'), findsNothing);
     expect(find.byKey(const Key('assistant-composer-stop')), findsNothing);
@@ -307,6 +305,317 @@ void main() {
     await tester.pump();
     expect(find.text('画个小乌龟'), findsWidgets);
     expect(ai.messages.single.text, '画个小乌龟');
+  });
+
+  testWidgets('a configured composer shows pin controls', (tester) async {
+    final ai = panelAi(
+      settings: SettingsStore.inMemory({
+        SettingsKeys.aiModel: 'deepseek-chat',
+        SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
+        SettingsKeys.aiApiKey: 'sk-one',
+      }),
+    );
+    await pumpAiPanel(tester, ai);
+
+    expect(find.byKey(const Key('assistant-pin-selection')), findsOneWidget);
+    expect(find.byIcon(Icons.tag), findsOneWidget);
+    expect(find.byKey(const Key('assistant-mention-drawing')), findsOneWidget);
+    final pin = tester.widget<ShellIconButton>(
+      find.byKey(const Key('assistant-pin-selection')),
+    );
+    expect(pin.size, 24);
+    expect(pin.iconSize, FanCadTokens.iconMedium);
+    expect(
+      tester.getSize(find.byKey(const Key('assistant-composer-send'))),
+      const Size(24, 24),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('assistant-composer-context'))),
+      const Size(24, 24),
+    );
+  });
+
+  testWidgets('pinning the selection inserts an inline mention in the field', (
+    tester,
+  ) async {
+    final ai = panelAi(
+      settings: SettingsStore.inMemory({
+        SettingsKeys.aiModel: 'deepseek-chat',
+        SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
+        SettingsKeys.aiApiKey: 'sk-one',
+      }),
+    );
+    final tab = ai.workspace.newDocument();
+    tab.session.edit('LINE', (transaction) {
+      transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+    });
+    final id = tab.document.entities.single.id;
+    tab.selection.replace([id]);
+    ai.pinSelection();
+    await pumpAiPanel(tester, ai);
+    await tester.pump();
+
+    expect(find.byKey(const Key('assistant-pin-0')), findsOneWidget);
+    expect(find.text('1 objects'), findsOneWidget);
+    expect(find.text('1 line'), findsNothing);
+    final chip = tester.getRect(find.byKey(const Key('assistant-pin-0')));
+    final field = tester.getRect(find.byType(TextField));
+    expect(field.overlaps(chip), isTrue);
+    expect(find.byKey(const Key('assistant-pin-remove-0')), findsNothing);
+    expect(
+      tester
+          .widget<MouseRegion>(
+            find
+                .ancestor(
+                  of: find.byKey(const Key('assistant-pin-0')),
+                  matching: find.byType(MouseRegion),
+                )
+                .first,
+          )
+          .cursor,
+      SystemMouseCursors.click,
+    );
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(
+      tester.getCenter(find.byKey(const Key('assistant-pin-0'))),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('assistant-pin-remove-0')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('assistant-pin-remove-0')));
+    await tester.pump();
+    expect(ai.pins, isEmpty);
+    expect(find.byKey(const Key('assistant-pin-0')), findsNothing);
+  });
+
+  testWidgets(
+    'typing @ lists open drawings and pinning one keeps an inline chip',
+    (tester) async {
+      final ai = panelAi(
+        settings: SettingsStore.inMemory({
+          SettingsKeys.aiModel: 'deepseek-chat',
+          SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
+          SettingsKeys.aiApiKey: 'sk-one',
+        }),
+      );
+      ai.workspace.newDocument(title: 'Alpha');
+      final beta = ai.workspace.newDocument(title: 'Beta');
+      await pumpAiPanel(tester, ai);
+
+      final cardBefore = tester.getRect(
+        find.byKey(const Key('assistant-composer-card')),
+      );
+      await tester.enterText(find.byType(TextField), '@');
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const Key('assistant-mention-list')), findsOneWidget);
+      expect(find.text('Alpha'), findsOneWidget);
+      expect(find.text('Beta'), findsOneWidget);
+      final list = tester.getRect(
+        find.byKey(const Key('assistant-mention-list')),
+      );
+      final card = tester.getRect(
+        find.byKey(const Key('assistant-composer-card')),
+      );
+      expect(card.top, closeTo(cardBefore.top, 0.5));
+      expect(list.bottom, lessThanOrEqualTo(card.top));
+      expect(list.left, closeTo(card.left, 0.5));
+      expect(list.right, closeTo(card.right, 0.5));
+
+      await tester.enterText(find.byType(TextField), '@Be');
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Alpha'), findsNothing);
+      expect(find.text('Beta'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(Key('assistant-mention-row-${beta.session.id}')),
+      );
+      await tester.pump();
+      expect(find.byKey(const Key('assistant-mention-list')), findsNothing);
+      expect(ai.pins, hasLength(1));
+      expect(ai.pins.single.kind, ComposerPinKind.drawing);
+      expect(ai.pins.single.tabId, beta.session.id);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        composerMentionToken,
+      );
+      expect(find.byKey(const Key('assistant-pin-0')), findsOneWidget);
+      expect(find.text('Beta'), findsOneWidget);
+    },
+  );
+
+  testWidgets('a session.ask popup waits for continue', (tester) async {
+    final ai = panelAi(
+      settings: SettingsStore.inMemory({
+        SettingsKeys.aiModel: 'deepseek-chat',
+        SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
+        SettingsKeys.aiApiKey: 'sk-one',
+      }),
+    );
+    const question = SessionQuestion(
+      question: 'Fillet or chamfer?',
+      options: [
+        SessionAskOption(id: 'fillet', label: 'Fillet 10'),
+        SessionAskOption(id: 'chamfer', label: 'Chamfer'),
+      ],
+    );
+    final future = ai.debugAskQuestion(question);
+    await pumpAiPanel(tester, ai);
+    await tester.pump();
+
+    expect(find.byKey(const Key('assistant-ask-card')), findsOneWidget);
+    expect(find.text('Questions'), findsOneWidget);
+    expect(find.text('Fillet 10'), findsOneWidget);
+    expect(find.text('Chamfer'), findsOneWidget);
+    expect(find.byKey(const Key('assistant-ask-custom')), findsOneWidget);
+    expect(find.text('Other…'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('assistant-ask-fillet')));
+    await tester.pump();
+    expect(find.byKey(const Key('assistant-ask-card')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('assistant-ask-submit')));
+    await tester.pump();
+    expect(await future, {
+      'status': 'ok',
+      'id': 'fillet',
+      'label': 'Fillet 10',
+    });
+    expect(find.byKey(const Key('assistant-ask-card')), findsNothing);
+  });
+
+  testWidgets('a multiple ask waits until continue', (tester) async {
+    final ai = panelAi(
+      settings: SettingsStore.inMemory({
+        SettingsKeys.aiModel: 'deepseek-chat',
+        SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
+        SettingsKeys.aiApiKey: 'sk-one',
+      }),
+    );
+    const question = SessionQuestion(
+      question: 'Which of these?',
+      multiple: true,
+      options: [
+        SessionAskOption(id: 'fillet', label: 'Fillet 10'),
+        SessionAskOption(id: 'chamfer', label: 'Chamfer'),
+      ],
+    );
+    final future = ai.debugAskQuestion(question);
+    await pumpAiPanel(tester, ai);
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('assistant-ask-fillet')));
+    await tester.pump();
+    expect(find.byKey(const Key('assistant-ask-card')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('assistant-ask-chamfer')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('assistant-ask-submit')));
+    await tester.pump();
+    expect(await future, {
+      'status': 'ok',
+      'multiple': true,
+      'id': 'fillet',
+      'label': 'Fillet 10',
+      'ids': ['fillet', 'chamfer'],
+      'labels': ['Fillet 10', 'Chamfer'],
+    });
+  });
+
+  testWidgets('an ask option tag becomes a pin chip', (tester) async {
+    final ai = panelAi(
+      settings: SettingsStore.inMemory({
+        SettingsKeys.aiModel: 'deepseek-chat',
+        SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
+        SettingsKeys.aiApiKey: 'sk-one',
+      }),
+    );
+    const question = SessionQuestion(
+      question: 'Which batch?',
+      options: [
+        SessionAskOption(id: 'these', label: 'These @objects[tab=7 ids=1,2,3]'),
+        SessionAskOption(id: 'other', label: 'Something else'),
+      ],
+    );
+    ai.debugAskQuestion(question);
+    await pumpAiPanel(tester, ai);
+    await tester.pump();
+
+    expect(find.byKey(const Key('assistant-pin-chip')), findsOneWidget);
+    expect(find.textContaining('@objects'), findsNothing);
+    expect(find.textContaining('3 objects'), findsOneWidget);
+  });
+
+  testWidgets('hovering an ask option highlights only that batch', (
+    tester,
+  ) async {
+    final ai = panelAi(
+      settings: SettingsStore.inMemory({
+        SettingsKeys.aiModel: 'deepseek-chat',
+        SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
+        SettingsKeys.aiApiKey: 'sk-one',
+      }),
+    );
+    final tab = ai.workspace.newDocument();
+    final question = SessionQuestion(
+      question: 'Which turtle?',
+      options: [
+        SessionAskOption(
+          id: 'left',
+          label: 'Left @objects[tab=${tab.session.id} ids=1,2]',
+        ),
+        SessionAskOption(
+          id: 'right',
+          label: 'Right @objects[tab=${tab.session.id} ids=9]',
+        ),
+      ],
+      ids: const [1, 2, 9],
+    );
+    ai.debugAskQuestion(question);
+    await pumpAiPanel(tester, ai);
+    await tester.pump();
+    expect(ai.workspace.pendingHighlightIds, isEmpty);
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(
+      tester.getCenter(find.byKey(const Key('assistant-ask-left'))),
+    );
+    await tester.pump();
+    expect(ai.workspace.pendingHighlightIds, [1, 2]);
+
+    await gesture.moveTo(
+      tester.getCenter(find.byKey(const Key('assistant-ask-right'))),
+    );
+    await tester.pump();
+    expect(ai.workspace.pendingHighlightIds, [9]);
+  });
+
+  testWidgets('a user bubble keeps chips instead of raw tags', (tester) async {
+    final ai = panelAi(
+      settings: SettingsStore.inMemory({
+        SettingsKeys.aiModel: 'deepseek-chat',
+        SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
+        SettingsKeys.aiApiKey: 'sk-one',
+      }),
+    );
+    ai.conversation.addUser('offset @objects[tab=7 ids=1,2,3]');
+    await pumpAiPanel(tester, ai);
+
+    expect(find.byKey(const Key('assistant-pin-chip')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(PinAwareText),
+        matching: find.textContaining('@objects'),
+      ),
+      findsNothing,
+    );
+    expect(find.textContaining('offset'), findsWidgets);
   });
 
   testWidgets('closing a leftover tab keeps the other thread', (tester) async {

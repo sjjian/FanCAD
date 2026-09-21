@@ -53,7 +53,7 @@ class DrawPolylineCommand extends FanCadCommand {
         ),
       ]);
     }
-    if (!context.input.isInteractive) {
+    if (!context.input.isInteractive && !context.input.canHandOff) {
       return const CommandResult.failed(
         'Polyline needs points as [[x, y], [x, y], ...] with at least two vertices.',
       );

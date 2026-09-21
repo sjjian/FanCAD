@@ -1262,6 +1262,12 @@ abstract class AppLocalizations {
   /// **'Unlock'**
   String get unlock;
 
+  /// banner above the canvas while the assistant owns the drawing
+  ///
+  /// In en, this message translates to:
+  /// **'The assistant is working. The drawing cannot be edited.'**
+  String get assistant_canvas_locked;
+
   /// empty drawing title
   ///
   /// In en, this message translates to:
@@ -1981,6 +1987,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Affects {count} object(s).'**
   String affects_n_objects(int count);
+
+  /// custom answer on an assistant question card
+  ///
+  /// In en, this message translates to:
+  /// **'Other…'**
+  String get ask_other;
+
+  /// header on the in-thread assistant question popup
+  ///
+  /// In en, this message translates to:
+  /// **'Questions'**
+  String get ask_questions;
+
+  /// dismiss an in-thread assistant question without answering
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get ask_skip;
+
+  /// add the current CAD selection to the next assistant message
+  ///
+  /// In en, this message translates to:
+  /// **'Add selection to chat'**
+  String get pin_selection;
+
+  /// toolbar @ and drawing-tab picker
+  ///
+  /// In en, this message translates to:
+  /// **'Mention a drawing'**
+  String get mention_drawing;
+
+  /// empty @ drawing-tab picker
+  ///
+  /// In en, this message translates to:
+  /// **'No open drawings'**
+  String get no_open_drawings;
+
+  /// canvas context menu and receipt: put objects on the next message
+  ///
+  /// In en, this message translates to:
+  /// **'Add to chat'**
+  String get pin_into_chat;
 
   /// ask assistant
   ///

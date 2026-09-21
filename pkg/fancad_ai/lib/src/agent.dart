@@ -7,8 +7,10 @@ import 'package:fancad_ops/fancad_ops.dart';
 import 'approval.dart';
 import 'authoring.dart';
 import 'context.dart';
+import 'context_compact.dart';
 import 'conversation.dart';
 import 'provider.dart';
+import 'session_ask.dart';
 import 'skills/host_tools.dart';
 import 'skills/skill.dart';
 import 'tools.dart';
@@ -44,9 +46,9 @@ class AgentTurn {
 
 /// The agent loop: complete, run tools, complete again.
 ///
-/// The command registry is the tool list. Edits go through the same handlers
-/// a person uses, so a tool call that draws a line is the LINE command, and
-/// one undo step reverts the whole turn rather than one call inside it.
+/// CAD platform ops go through the fancad CLI (same handlers a person uses).
+/// Chat primitives such as ask are sibling LLM tools, not catalog paths.
+/// One undo step reverts the whole turn rather than one call inside it.
 class AgentLoop {
   AgentLoop({
     required this.provider,
@@ -62,9 +64,13 @@ class AgentLoop {
     this.maxRounds = 16,
     this.history,
     this.session,
+    this.sessionOf,
+    this.askQuestion,
+    this.supplyToSession,
     this.skills,
     this.hostTools = const [],
     this.authoring = const NoActivationRepair(),
+    this.contextWindowTokens = LlmUsage.contextWindowTokens,
   });
 
   final LlmProvider provider;
@@ -79,9 +85,13 @@ class AgentLoop {
   final void Function(LlmUsage usage)? onUsage;
   final int maxRounds;
   final SessionSnapshot? session;
+  final SessionSnapshot Function()? sessionOf;
+  final QuestionAsker? askQuestion;
+  final SessionSupplier? supplyToSession;
   final SkillRegistry? skills;
   final List<HostTool> hostTools;
   final ActivationRepair authoring;
+  final int contextWindowTokens;
 
   /// When set, every edit this turn produced is collapsed into one undo entry.
   final UndoStack? history;
@@ -90,9 +100,17 @@ class AgentLoop {
   final DocumentContextBuilder contextBuilder = const DocumentContextBuilder();
 
   bool _cancelled = false;
+  int? _lastPromptTokens;
 
   /// Asks the loop to stop after the in-flight model reply or tool call.
   void cancel() => _cancelled = true;
+
+  /// Tools for this turn. Descriptions go out on [LlmRequest.tools], not the
+  /// system prompt. CAD platform is fancad; chat primitives are siblings.
+  List<LlmTool> get advertisedTools => [
+    fancadLlmTool,
+    if (askQuestion != null) askLlmTool,
+  ];
 
   /// Runs one user message to completion.
   Future<AgentTurn> run(String userMessage) async {
@@ -107,17 +125,7 @@ class AgentLoop {
     final convo = conversation ?? Conversation();
     convo.addUser(userMessage);
 
-    final tools = [fancadLlmTool];
-    final system = LlmMessage.system(
-      contextBuilder.systemPrompt(
-        document: document,
-        tools: registry.aiTools(),
-        pluginTypings: typings,
-        session: session,
-        skills: skills?.listSummaries() ?? const [],
-      ),
-    );
-
+    final tools = advertisedTools;
     final collectedCalls = <LlmToolCall>[];
     final undoBefore = history?.depth ?? 0;
     String? error;
@@ -126,14 +134,36 @@ class AgentLoop {
       if (_cancelled) {
         return _stopped(convo, collectedCalls, undoBefore);
       }
+      final system = LlmMessage.system(
+        contextBuilder.systemPrompt(
+          document: document,
+          pluginTypings: typings,
+          session: sessionOf?.call() ?? session,
+          skills: skills?.listSummaries() ?? const [],
+        ),
+      );
+      await _compactTranscript(convo, system);
       final messages = [system, ...convo.llmMessages];
       final request = LlmRequest(messages: messages, tools: tools);
       LlmCompletion completion;
       try {
         completion = await _complete(request, convo);
       } on LlmException catch (caught) {
-        error = caught.message;
-        break;
+        if (!isContextOverflowMessage(caught.message)) {
+          error = caught.message;
+          break;
+        }
+        await _compactTranscript(convo, system, force: true);
+        final retried = LlmRequest(
+          messages: [system, ...convo.llmMessages],
+          tools: tools,
+        );
+        try {
+          completion = await _complete(retried, convo);
+        } on LlmException catch (retry) {
+          error = retry.message;
+          break;
+        }
       }
       if (_cancelled) {
         return _stopped(convo, collectedCalls, undoBefore);
@@ -254,6 +284,7 @@ class AgentLoop {
           finish = finishReason;
           if (seen != null) {
             usage = seen;
+            _lastPromptTokens = seen.promptTokens;
             onUsage?.call(seen);
           }
         case LlmError(:final message):
@@ -272,6 +303,7 @@ class AgentLoop {
         finish = fallback.finishReason;
         if (fallback.usage != null) {
           usage = fallback.usage;
+          _lastPromptTokens = fallback.usage!.promptTokens;
           onUsage?.call(fallback.usage!);
         }
       } catch (_) {
@@ -298,6 +330,10 @@ class AgentLoop {
       if (call.name.isEmpty) return true;
       if (call.arguments.length == 1 && call.arguments.containsKey('raw')) {
         return true;
+      }
+      if (call.name == askToolId) {
+        final question = '${call.arguments['question'] ?? ''}'.trim();
+        return question.isEmpty || call.arguments['options'] == null;
       }
       if (call.name != fancadToolName) continue;
       final request = OpsRequest.tryParse(call.arguments);
@@ -327,10 +363,15 @@ class AgentLoop {
   }
 
   List<HostTool> _hostTools() {
-    if (hostTools.isNotEmpty) return hostTools;
-    final registry = skills;
-    if (registry == null) return const [];
-    return bundledHostTools(registry);
+    final tools = <HostTool>[
+      if (hostTools.isNotEmpty)
+        ...hostTools
+      else if (skills != null)
+        ...bundledHostTools(skills!),
+    ];
+    final supplier = supplyToSession;
+    if (supplier != null) tools.add(sessionSupplyTool(supplier));
+    return tools;
   }
 
   Operation? _hostOperation(String path) {
@@ -351,8 +392,15 @@ class AgentLoop {
     final dispatcher = OpsDispatcher(_opsCatalog());
     for (final call in calls) {
       if (_cancelled) return;
+      if (call.name == askToolId) {
+        await _runAsk(call, convo);
+        continue;
+      }
       if (call.name != fancadToolName) {
-        final message = 'Unknown tool: ${call.name}. Use $fancadToolName.';
+        final allowed = askQuestion != null
+            ? '$fancadToolName or $askToolId'
+            : fancadToolName;
+        final message = 'Unknown tool: ${call.name}. Use $allowed.';
         convo.addToolResult(
           call: call,
           content: jsonEncode({
@@ -366,6 +414,39 @@ class AgentLoop {
       }
       await _runFancad(call, convo, dispatcher);
     }
+  }
+
+  Future<void> _runAsk(LlmToolCall call, Conversation convo) async {
+    final asker = askQuestion;
+    Map<String, Object?> payload;
+    if (asker == null) {
+      payload = {
+        'status': 'failed',
+        'error': 'ask is not available in this session.',
+        'message': 'ask is not available in this session.',
+      };
+    } else {
+      final question = parseSessionQuestion(call.arguments);
+      if (question == null) {
+        payload = {
+          'status': 'failed',
+          'error':
+              'ask needs a question and 2–6 options '
+              '({id, label} or strings).',
+          'message':
+              'ask needs a question and 2–6 options '
+              '({id, label} or strings).',
+        };
+      } else {
+        payload = await asker(question);
+      }
+    }
+    convo.addToolResult(
+      call: call,
+      content: jsonEncode(payload),
+      isError: payload['status'] == 'failed',
+      toolName: askToolId,
+    );
   }
 
   Future<void> _runFancad(
@@ -420,6 +501,51 @@ class AgentLoop {
       isError: payload['status'] == 'failed',
       toolName: request.displayName,
     );
+  }
+
+  Future<void> _compactTranscript(
+    Conversation convo,
+    LlmMessage system, {
+    bool force = false,
+  }) async {
+    final next = await compactLlmMessages(
+      messages: convo.llmMessages,
+      system: system,
+      lastPromptTokens: _lastPromptTokens,
+      window: contextWindowTokens,
+      force: force,
+      summarize: _summarizePrior,
+    );
+    if (next.length == convo.llmMessages.length) {
+      var same = true;
+      for (var i = 0; i < next.length; i++) {
+        if (!identical(next[i], convo.llmMessages[i]) &&
+            next[i].content != convo.llmMessages[i].content) {
+          same = false;
+          break;
+        }
+      }
+      if (same) return;
+    }
+    convo.compactLlm(next);
+  }
+
+  Future<String?> _summarizePrior(String source) async {
+    try {
+      final result = await provider.completeOnce(
+        LlmRequest(
+          messages: [
+            const LlmMessage.system(compactSummarySystemPrompt),
+            LlmMessage.user(source),
+          ],
+          stream: false,
+        ),
+      );
+      final text = result.text.trim();
+      return text.isEmpty ? null : text;
+    } catch (_) {
+      return null;
+    }
   }
 
   void _coalesce(int undoBefore) {

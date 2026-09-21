@@ -5,8 +5,10 @@ import 'package:flutter/services.dart';
 import '../../models/assistant_chat.dart';
 import '../../models/assistant_profile.dart';
 import '../../services/ai_controller.dart';
+import '../../services/composer_pin.dart';
 import '../l10n/l10n.dart';
 import '../theme/tokens.dart';
+import '../widgets/object_pin_chip.dart';
 import '../workbench/shell_widgets.dart';
 import 'assistant_markdown.dart';
 import 'assistant_receipt.dart';
@@ -38,12 +40,12 @@ class AiPanel extends StatefulWidget {
 
 class _AiPanelState extends State<AiPanel> {
   final ScrollController _scroll = ScrollController();
-  late final TextEditingController _input;
+  late final _MentionTextController _input;
 
   @override
   void initState() {
     super.initState();
-    _input = TextEditingController(text: widget.controller.draft);
+    _input = _MentionTextController(text: widget.controller.draft);
     widget.controller.addListener(_onChange);
   }
 
@@ -99,6 +101,12 @@ class _AiPanelState extends State<AiPanel> {
     widget.controller.send(text);
   }
 
+  Future<void> _onPaste() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data?.text?.trim().isNotEmpty == true) return;
+    widget.controller.pinClipboard();
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -107,12 +115,19 @@ class _AiPanelState extends State<AiPanel> {
     final entries = groupAssistantLog(messages);
     final busy = controller.isBusy;
     final pending = controller.pendingApproval;
+    final question = controller.pendingQuestion;
     final showWorking =
         pending == null &&
+        question == null &&
         assistantPanelShowsWorking(busy: busy, messages: messages);
     final showCaret = assistantPanelShowsCaret(busy: busy, messages: messages);
     final canSend =
-        !busy && controller.isConfigured && controller.draft.trim().isNotEmpty;
+        !busy &&
+        controller.isConfigured &&
+        (controller.draft.trim().isNotEmpty || controller.pins.isNotEmpty);
+    _input.pins = controller.pins;
+    _input.onFlashPin = controller.flashPin;
+    _input.onHoverPin = controller.hoverPin;
     return Column(
       children: [
         _ChatTabStrip(
@@ -124,7 +139,8 @@ class _AiPanelState extends State<AiPanel> {
           onNew: controller.newSession,
         ),
         Expanded(
-          child: messages.isEmpty && !busy && pending == null
+          child:
+              messages.isEmpty && !busy && pending == null && question == null
               ? _EmptyAssistant(
                   configured: controller.isConfigured,
                   onUsePrompt: (prompt) {
@@ -158,6 +174,9 @@ class _AiPanelState extends State<AiPanel> {
                               _UserBlock(
                                 text: message.text,
                                 onCopy: () => _copy(message.text),
+                                onFlashPin: controller.flashPin,
+                                onHoverPin: controller.hoverPin,
+                                resolvePin: controller.resolvePin,
                               ),
                             AssistantLogMessage(:final message)
                                 when message.role == ChatRole.reasoning =>
@@ -172,22 +191,49 @@ class _AiPanelState extends State<AiPanel> {
                                 text: message.text,
                                 live: live && showCaret,
                                 onCopy: () => _copy(message.text),
+                                onEntityId: controller.flashEntities,
+                                onHoverEntityId: controller.hoverEntities,
+                                onPin: controller.flashPin,
+                                onHoverPin: controller.hoverPin,
+                                resolvePin: controller.resolvePin,
                               ),
                             AssistantLogReceipt(:final receipt) => _ToolCard(
                               receipt: receipt,
                               onCopy: () => _copy(receipt.raw),
+                              onFlash: () => controller.flashEntities(
+                                assistantReceiptEntityIds(receipt),
+                              ),
+                              onPin: () => controller.pinReceiptIds(
+                                assistantReceiptEntityIds(receipt),
+                              ),
                             ),
                             AssistantLogMessage() => const SizedBox.shrink(),
                           };
                         }
-                        if (showWorking && index == entries.length) {
-                          return _WorkingLine(label: context.l10n.working);
+                        var extra = index - entries.length;
+                        if (showWorking) {
+                          if (extra == 0) {
+                            return _WorkingLine(label: context.l10n.working);
+                          }
+                          extra -= 1;
                         }
-                        return _ApprovalCard(
-                          pending: pending!,
-                          onAccept: controller.acceptPending,
-                          onReject: controller.rejectPending,
-                        );
+                        if (pending != null) {
+                          if (extra == 0) {
+                            return _ApprovalCard(
+                              pending: pending,
+                              onAccept: controller.acceptPending,
+                              onReject: controller.rejectPending,
+                              onFlash: () => controller.flashEntities(
+                                pending.highlightIds,
+                              ),
+                              onPin: () => controller.pinReceiptIds(
+                                pending.highlightIds,
+                              ),
+                            );
+                          }
+                          extra -= 1;
+                        }
+                        return const SizedBox.shrink();
                       },
                     );
                   },
@@ -212,9 +258,29 @@ class _AiPanelState extends State<AiPanel> {
               : context.l10n.ask_assistant,
           tokens: tokens,
           usage: controller.lastUsage,
+          pins: controller.pins,
+          drawings: controller.workspace.listOpenDrawings(),
+          ask: question == null
+              ? null
+              : _AskCard(
+                  question: question,
+                  onSubmit: controller.submitQuestion,
+                  onCancel: controller.cancelQuestion,
+                  onFlashPin: controller.flashPin,
+                  onHoverPin: controller.hoverPin,
+                  onHoverPins: controller.hoverPins,
+                  resolvePin: controller.resolvePin,
+                ),
           onChanged: controller.setDraft,
           onSend: _send,
           onStop: controller.stop,
+          onPaste: _onPaste,
+          onPinSelection: controller.pinSelection,
+          onPinDrawing: (id) {
+            final tab = controller.workspace.findDrawing(id);
+            if (tab != null) controller.pinDrawing(tab);
+          },
+          onRemovePin: controller.removePin,
           onOpenSettings: () =>
               controller.workspace.revealPanel('preferences:assistant'),
         ),
@@ -441,10 +507,19 @@ class _EmptyAssistant extends StatelessWidget {
 }
 
 class _UserBlock extends StatelessWidget {
-  const _UserBlock({required this.text, required this.onCopy});
+  const _UserBlock({
+    required this.text,
+    required this.onCopy,
+    this.onFlashPin,
+    this.onHoverPin,
+    this.resolvePin,
+  });
 
   final String text;
   final VoidCallback onCopy;
+  final ValueChanged<ComposerPin>? onFlashPin;
+  final ValueChanged<ComposerPin?>? onHoverPin;
+  final ComposerPin Function(ComposerPin pin)? resolvePin;
 
   @override
   Widget build(BuildContext context) {
@@ -469,9 +544,12 @@ class _UserBlock extends StatelessWidget {
                   color: tokens.selection,
                   borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
                 ),
-                child: Text(
-                  text,
+                child: PinAwareText(
+                  text: text,
                   style: tokens.bodyStyle.copyWith(height: 1.45),
+                  onFlash: onFlashPin,
+                  onHover: onHoverPin,
+                  resolve: resolvePin,
                 ),
               ),
             ),
@@ -584,11 +662,21 @@ class _AssistantBlock extends StatelessWidget {
   const _AssistantBlock({
     required this.text,
     required this.onCopy,
+    this.onEntityId,
+    this.onHoverEntityId,
+    this.onPin,
+    this.onHoverPin,
+    this.resolvePin,
     this.live = false,
   });
 
   final String text;
   final VoidCallback onCopy;
+  final ValueChanged<List<int>>? onEntityId;
+  final ValueChanged<List<int>>? onHoverEntityId;
+  final ValueChanged<ComposerPin>? onPin;
+  final ValueChanged<ComposerPin?>? onHoverPin;
+  final ComposerPin Function(ComposerPin pin)? resolvePin;
   final bool live;
 
   @override
@@ -600,7 +688,19 @@ class _AssistantBlock extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (text.isNotEmpty) AssistantMarkdown(text: text),
+            if (text.isNotEmpty)
+              AssistantMarkdown(
+                text: text,
+                onEntityId: onEntityId == null
+                    ? null
+                    : (id) => onEntityId!([id]),
+                onHoverEntityId: onHoverEntityId == null
+                    ? null
+                    : (id) => onHoverEntityId!(id == null ? const [] : [id]),
+                onPin: onPin,
+                onHoverPin: onHoverPin,
+                resolvePin: resolvePin,
+              ),
             if (live) const _StreamingCaret(),
           ],
         ),
@@ -674,10 +774,17 @@ class _StreamingCaretState extends State<_StreamingCaret>
 }
 
 class _ToolCard extends StatefulWidget {
-  const _ToolCard({required this.receipt, required this.onCopy});
+  const _ToolCard({
+    required this.receipt,
+    required this.onCopy,
+    required this.onFlash,
+    required this.onPin,
+  });
 
   final AssistantReceipt receipt;
   final VoidCallback onCopy;
+  final VoidCallback onFlash;
+  final VoidCallback onPin;
 
   @override
   State<_ToolCard> createState() => _ToolCardState();
@@ -710,7 +817,10 @@ class _ToolCardState extends State<_ToolCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             InkWell(
-              onTap: () => setState(() => _open = !_open),
+              onTap: () {
+                widget.onFlash();
+                setState(() => _open = !_open);
+              },
               onSecondaryTap: widget.onCopy,
               borderRadius: BorderRadius.circular(FanCadTokens.radius),
               child: Padding(
@@ -747,6 +857,13 @@ class _ToolCardState extends State<_ToolCard> {
                       ),
                     ] else
                       const Spacer(),
+                    ShellIconButton(
+                      key: const Key('assistant-receipt-pin'),
+                      icon: Icons.add_comment_outlined,
+                      tooltip: context.l10n.pin_into_chat,
+                      iconSize: FanCadTokens.iconSmall,
+                      onPressed: widget.onPin,
+                    ),
                     Icon(
                       _open ? Icons.expand_less : Icons.expand_more,
                       size: FanCadTokens.iconSmall,
@@ -785,11 +902,15 @@ class _ApprovalCard extends StatelessWidget {
     required this.pending,
     required this.onAccept,
     required this.onReject,
+    required this.onFlash,
+    required this.onPin,
   });
 
   final PendingChangeSet pending;
   final VoidCallback onAccept;
   final VoidCallback onReject;
+  final VoidCallback onFlash;
+  final VoidCallback onPin;
 
   @override
   Widget build(BuildContext context) {
@@ -811,67 +932,362 @@ class _ApprovalCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(FanCadTokens.radius),
           side: BorderSide(color: tokens.accent.withValues(alpha: 0.55)),
         ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            FanCadTokens.space3,
-            FanCadTokens.space2,
-            FanCadTokens.space3,
-            FanCadTokens.space2,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: tokens.accent,
-                      shape: BoxShape.circle,
+        child: GestureDetector(
+          onTap: onFlash,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              FanCadTokens.space3,
+              FanCadTokens.space2,
+              FanCadTokens.space3,
+              FanCadTokens.space2,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: tokens.accent,
+                        shape: BoxShape.circle,
+                      ),
                     ),
+                    const SizedBox(width: FanCadTokens.space2),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: tokens.bodyStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    ShellIconButton(
+                      key: const Key('assistant-approval-pin'),
+                      icon: Icons.add_comment_outlined,
+                      tooltip: l10n.pin_into_chat,
+                      iconSize: FanCadTokens.iconSmall,
+                      onPressed: onPin,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: FanCadTokens.space2),
+                for (final line in pending.groupedTitles)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text(line, style: tokens.labelStyle),
                   ),
-                  const SizedBox(width: FanCadTokens.space2),
-                  Expanded(
+                if (pending.highlightIds.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      title,
-                      style: tokens.bodyStyle.copyWith(
-                        fontWeight: FontWeight.w600,
+                      l10n.affects_n_objects(pending.highlightIds.length),
+                      style: tokens.labelStyle.copyWith(
+                        color: tokens.textMuted,
                       ),
                     ),
                   ),
+                const SizedBox(height: FanCadTokens.space2),
+                Row(
+                  children: [
+                    const Spacer(),
+                    TextButton(
+                      key: const Key('assistant-approval-cancel'),
+                      onPressed: onReject,
+                      child: Text(l10n.cancel, style: tokens.bodyStyle),
+                    ),
+                    const SizedBox(width: FanCadTokens.space1),
+                    FilledButton(
+                      key: const Key('assistant-approval-continue'),
+                      onPressed: onAccept,
+                      child: Text(l10n.continue_action),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AskCard extends StatefulWidget {
+  const _AskCard({
+    required this.question,
+    required this.onSubmit,
+    required this.onCancel,
+    this.onFlashPin,
+    this.onHoverPin,
+    this.onHoverPins,
+    this.resolvePin,
+  });
+
+  final SessionQuestion question;
+  final void Function(List<SessionAskOption> selected, String custom) onSubmit;
+  final VoidCallback onCancel;
+  final ValueChanged<ComposerPin>? onFlashPin;
+  final ValueChanged<ComposerPin?>? onHoverPin;
+  final ValueChanged<List<ComposerPin>>? onHoverPins;
+  final ComposerPin Function(ComposerPin pin)? resolvePin;
+
+  @override
+  State<_AskCard> createState() => _AskCardState();
+}
+
+class _AskCardState extends State<_AskCard> {
+  final TextEditingController _custom = TextEditingController();
+  final FocusNode _customFocus = FocusNode();
+  final Set<String> _picked = {};
+
+  bool get _multiple => widget.question.multiple;
+
+  String get _customLetter => askOptionLetter(widget.question.options.length);
+
+  @override
+  void initState() {
+    super.initState();
+    _customFocus.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _customFocus.dispose();
+    _custom.dispose();
+    super.dispose();
+  }
+
+  void _toggle(SessionAskOption option) {
+    setState(() {
+      if (_multiple) {
+        if (!_picked.add(option.id)) _picked.remove(option.id);
+        return;
+      }
+      _picked
+        ..clear()
+        ..add(option.id);
+      _custom.clear();
+    });
+  }
+
+  void _focusCustom() {
+    setState(() {
+      if (!_multiple) _picked.clear();
+    });
+    _customFocus.requestFocus();
+  }
+
+  void _submit() {
+    if (!_canSubmit) return;
+    final selected = [
+      for (final option in widget.question.options)
+        if (_picked.contains(option.id)) option,
+    ];
+    widget.onSubmit(selected, _custom.text);
+  }
+
+  bool get _canSubmit {
+    if (_custom.text.trim().isNotEmpty) return true;
+    return _picked.isNotEmpty;
+  }
+
+  bool get _customSelected =>
+      _customFocus.hasFocus || _custom.text.trim().isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    final question = widget.question;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): widget.onCancel,
+        const SingleActivator(LogicalKeyboardKey.enter): _submit,
+      },
+      child: Focus(
+        autofocus: true,
+        child: Material(
+          key: const Key('assistant-ask-card'),
+          color: tokens.surfaceOverlay,
+          elevation: 3,
+          shadowColor: tokens.shadow,
+          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+              border: Border.all(color: tokens.borderStrong),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                FanCadTokens.space3,
+                FanCadTokens.space3,
+                FanCadTokens.space3,
+                FanCadTokens.space2,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.chat_bubble_outline,
+                        size: FanCadTokens.iconSmall,
+                        color: tokens.textMuted,
+                      ),
+                      const SizedBox(width: FanCadTokens.space2),
+                      Text(
+                        l10n.ask_questions,
+                        style: tokens.bodyStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: FanCadTokens.space3),
+                  PinAwareText(
+                    text: '1. ${question.question}',
+                    style: tokens.bodyStyle.copyWith(
+                      height: 1.45,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    onFlash: widget.onFlashPin,
+                    onHover: widget.onHoverPin,
+                    resolve: widget.resolvePin,
+                  ),
+                  const SizedBox(height: FanCadTokens.space3),
+                  for (var i = 0; i < question.options.length; i++)
+                    _AskOptionRow(
+                      option: question.options[i],
+                      letter: askOptionLetter(i),
+                      selected: _picked.contains(question.options[i].id),
+                      onTap: () => _toggle(question.options[i]),
+                      onFlashPin: widget.onFlashPin,
+                      onHoverPins: widget.onHoverPins,
+                      resolvePin: widget.resolvePin,
+                    ),
+                  if (question.allowCustom)
+                    _AskCustomRow(
+                      letter: _customLetter,
+                      selected: _customSelected,
+                      controller: _custom,
+                      focusNode: _customFocus,
+                      hint: l10n.ask_other,
+                      onTap: _focusCustom,
+                      onChanged: (_) => setState(() {
+                        if (!_multiple && _custom.text.trim().isNotEmpty) {
+                          _picked.clear();
+                        }
+                      }),
+                      onSubmitted: (_) => _submit(),
+                    ),
+                  const SizedBox(height: FanCadTokens.space2),
+                  Row(
+                    children: [
+                      const Spacer(),
+                      TextButton(
+                        key: const Key('assistant-ask-cancel'),
+                        onPressed: widget.onCancel,
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: l10n.ask_skip,
+                                style: tokens.bodyStyle,
+                              ),
+                              TextSpan(
+                                text: ' Esc',
+                                style: tokens.labelStyle.copyWith(
+                                  color: tokens.textFaint,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: FanCadTokens.space1),
+                      FilledButton(
+                        key: const Key('assistant-ask-submit'),
+                        onPressed: _canSubmit ? _submit : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _canSubmit
+                              ? tokens.warning
+                              : tokens.border,
+                          foregroundColor: tokens.canvas,
+                          disabledForegroundColor: tokens.textFaint,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: FanCadTokens.space3,
+                            vertical: FanCadTokens.space1,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(l10n.continue_action),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: FanCadTokens.space2),
-              for (final line in pending.groupedTitles)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Text(line, style: tokens.labelStyle),
-                ),
-              if (pending.highlightIds.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    l10n.affects_n_objects(pending.highlightIds.length),
-                    style: tokens.labelStyle.copyWith(color: tokens.textMuted),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AskOptionRow extends StatelessWidget {
+  const _AskOptionRow({
+    required this.option,
+    required this.letter,
+    required this.selected,
+    required this.onTap,
+    this.onFlashPin,
+    this.onHoverPins,
+    this.resolvePin,
+  });
+
+  final SessionAskOption option;
+  final String letter;
+  final bool selected;
+  final VoidCallback onTap;
+  final ValueChanged<ComposerPin>? onFlashPin;
+  final ValueChanged<List<ComposerPin>>? onHoverPins;
+  final ComposerPin Function(ComposerPin pin)? resolvePin;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => onHoverPins?.call(parseComposerPins(option.label)),
+      onExit: (_) => onHoverPins?.call(const []),
+      child: InkWell(
+        key: Key('assistant-ask-${option.id}'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: FanCadTokens.space1),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _AskLetter(letter: letter, selected: selected),
+              const SizedBox(width: FanCadTokens.space2),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: PinAwareText(
+                    text: option.label,
+                    style: tokens.bodyStyle.copyWith(height: 1.4),
+                    onFlash: onFlashPin,
+                    resolve: resolvePin,
                   ),
                 ),
-              const SizedBox(height: FanCadTokens.space2),
-              Row(
-                children: [
-                  const Spacer(),
-                  TextButton(
-                    key: const Key('assistant-approval-cancel'),
-                    onPressed: onReject,
-                    child: Text(l10n.cancel, style: tokens.bodyStyle),
-                  ),
-                  const SizedBox(width: FanCadTokens.space1),
-                  FilledButton(
-                    key: const Key('assistant-approval-continue'),
-                    onPressed: onAccept,
-                    child: Text(l10n.continue_action),
-                  ),
-                ],
               ),
             ],
           ),
@@ -881,7 +1297,106 @@ class _ApprovalCard extends StatelessWidget {
   }
 }
 
-class _Composer extends StatelessWidget {
+class _AskCustomRow extends StatelessWidget {
+  const _AskCustomRow({
+    required this.letter,
+    required this.selected,
+    required this.controller,
+    required this.focusNode,
+    required this.hint,
+    required this.onTap,
+    required this.onChanged,
+    required this.onSubmitted,
+  });
+
+  final String letter;
+  final bool selected;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String hint;
+  final VoidCallback onTap;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: FanCadTokens.space1),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _AskLetter(letter: letter, selected: selected),
+            const SizedBox(width: FanCadTokens.space2),
+            Expanded(
+              child: TextField(
+                key: const Key('assistant-ask-custom'),
+                controller: controller,
+                focusNode: focusNode,
+                style: tokens.bodyStyle.copyWith(height: 1.4),
+                cursorColor: tokens.accent,
+                cursorWidth: 1.5,
+                decoration: InputDecoration(
+                  isDense: true,
+                  filled: false,
+                  hintText: hint,
+                  hintStyle: tokens.bodyStyle.copyWith(
+                    color: tokens.textFaint,
+                    height: 1.4,
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: const EdgeInsets.only(top: 1),
+                ),
+                onTap: onTap,
+                onChanged: onChanged,
+                onSubmitted: onSubmitted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AskLetter extends StatelessWidget {
+  const _AskLetter({required this.letter, required this.selected});
+
+  final String letter;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      width: 18,
+      height: 18,
+      alignment: Alignment.center,
+      margin: const EdgeInsets.only(top: 1),
+      decoration: BoxDecoration(
+        color: selected ? tokens.warning : Colors.transparent,
+        borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
+        border: Border.all(color: selected ? tokens.warning : tokens.border),
+      ),
+      child: Text(
+        letter,
+        style: tokens.labelStyle.copyWith(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          height: 1,
+          color: selected ? tokens.canvas : tokens.textMuted,
+        ),
+      ),
+    );
+  }
+}
+
+class _Composer extends StatefulWidget {
   const _Composer({
     required this.controller,
     required this.enabled,
@@ -890,10 +1405,17 @@ class _Composer extends StatelessWidget {
     required this.hint,
     required this.tokens,
     required this.usage,
+    required this.pins,
+    required this.drawings,
     required this.onChanged,
     required this.onSend,
     required this.onStop,
+    required this.onPaste,
+    required this.onPinSelection,
+    required this.onPinDrawing,
+    required this.onRemovePin,
     required this.onOpenSettings,
+    this.ask,
   });
 
   final TextEditingController controller;
@@ -903,25 +1425,282 @@ class _Composer extends StatelessWidget {
   final String hint;
   final FanCadTokens tokens;
   final LlmUsage? usage;
+  final List<ComposerPin> pins;
+  final List<Map<String, Object?>> drawings;
+  final Widget? ask;
   final ValueChanged<String> onChanged;
   final VoidCallback onSend;
   final VoidCallback onStop;
+  final VoidCallback onPaste;
+  final VoidCallback onPinSelection;
+  final ValueChanged<String> onPinDrawing;
+  final ValueChanged<int> onRemovePin;
   final VoidCallback onOpenSettings;
+
+  @override
+  State<_Composer> createState() => _ComposerState();
+}
+
+class _ComposerState extends State<_Composer> {
+  bool _escaped = false;
+  bool _open = false;
+  int _highlighted = 0;
+  String _query = '';
+  String _lastText = '';
+  final OverlayPortalController _mentionOverlay = OverlayPortalController();
+  final OverlayPortalController _askOverlay = OverlayPortalController();
+
+  @override
+  void initState() {
+    super.initState();
+    _lastText = widget.controller.text;
+    widget.controller.addListener(_onText);
+    _bindRemoveMention(widget.controller);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fillMissingMentionTokens();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _Composer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onText);
+      _bindRemoveMention(oldWidget.controller, bind: false);
+      widget.controller.addListener(_onText);
+      _bindRemoveMention(widget.controller);
+      _lastText = widget.controller.text;
+    }
+    if (oldWidget.pins.length != widget.pins.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _fillMissingMentionTokens();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onText);
+    _bindRemoveMention(widget.controller, bind: false);
+    super.dispose();
+  }
+
+  void _bindRemoveMention(
+    TextEditingController controller, {
+    bool bind = true,
+  }) {
+    if (controller is! _MentionTextController) return;
+    controller.onRemoveMention = bind ? _removeMention : null;
+  }
+
+  void _removeMention(int index) {
+    final controller = widget.controller;
+    final indexes = composerMentionTokenIndexes(controller.text);
+    if (index < 0 || index >= indexes.length) return;
+    final at = indexes[index];
+    final next = controller.text.replaceRange(at, at + 1, '');
+    controller.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: at),
+    );
+    _onComposerChanged(next);
+  }
+
+  void _onText() {
+    final mention = composerAtMentionAt(
+      widget.controller.text,
+      widget.controller.selection.baseOffset,
+    );
+    if (mention == null) {
+      if (_escaped || _open) {
+        setState(() {
+          _escaped = false;
+          _open = false;
+          _query = '';
+          _highlighted = 0;
+        });
+      }
+      return;
+    }
+    if (_escaped) return;
+    if (_open && mention.query == _query) return;
+    setState(() {
+      _open = true;
+      if (mention.query != _query) _highlighted = 0;
+      _query = mention.query;
+    });
+  }
+
+  ComposerAtMention? get _mention {
+    if (!_open || _escaped) return null;
+    return composerAtMentionAt(
+      widget.controller.text,
+      widget.controller.selection.baseOffset,
+    );
+  }
+
+  List<Map<String, Object?>> get _matches {
+    final mention = _mention;
+    if (mention == null) return const [];
+    return filterDrawingMentions(widget.drawings, mention.query);
+  }
+
+  bool get _pickerOpen => _mention != null && widget.ask == null;
+
+  void _insertAt() {
+    if (!widget.enabled) return;
+    final controller = widget.controller;
+    final text = controller.text;
+    final selection = controller.selection;
+    final start = selection.start.clamp(0, text.length);
+    final end = selection.end.clamp(0, text.length);
+    final from = start < end ? start : end;
+    final to = start < end ? end : start;
+    final mention = composerAtMentionAt(text, to);
+    if (mention != null) {
+      setState(() {
+        _escaped = false;
+        _open = true;
+        _query = mention.query;
+        _highlighted = 0;
+      });
+      return;
+    }
+    final prefix = from > 0 && text[from - 1].trim().isNotEmpty ? ' @' : '@';
+    final next = text.replaceRange(from, to, prefix);
+    final cursor = from + prefix.length;
+    controller.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: cursor),
+    );
+    widget.onChanged(next);
+    _lastText = next;
+  }
+
+  void _onComposerChanged(String value) {
+    widget.onChanged(value);
+    final removed = deletedMentionIndexes(_lastText, value);
+    _lastText = value;
+    for (final index in removed.reversed) {
+      widget.onRemovePin(index);
+    }
+  }
+
+  void _fillMissingMentionTokens() {
+    final missing =
+        widget.pins.length - composerMentionTokenCount(widget.controller.text);
+    if (missing <= 0) return;
+    final text = widget.controller.text;
+    final cursor = widget.controller.selection.baseOffset.clamp(0, text.length);
+    final inserted = composerMentionToken * missing;
+    final next = text.replaceRange(cursor, cursor, inserted);
+    widget.controller.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: cursor + inserted.length),
+    );
+    _lastText = next;
+    widget.onChanged(next);
+  }
+
+  void _pick(Map<String, Object?> drawing) {
+    final id = '${drawing['id'] ?? ''}';
+    if (id.isEmpty) return;
+    final controller = widget.controller;
+    final mention = composerAtMentionAt(
+      controller.text,
+      controller.selection.baseOffset,
+    );
+    if (mention != null) {
+      final next = controller.text.replaceRange(
+        mention.start,
+        mention.end,
+        composerMentionToken,
+      );
+      controller.value = TextEditingValue(
+        text: next,
+        selection: TextSelection.collapsed(offset: mention.start + 1),
+      );
+      _lastText = next;
+      widget.onChanged(next);
+    }
+    _escaped = false;
+    _open = false;
+    _query = '';
+    _highlighted = 0;
+    _mentionOverlay.hide();
+    widget.onPinDrawing(id);
+  }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final paste =
+        event.logicalKey == LogicalKeyboardKey.keyV &&
+        (HardwareKeyboard.instance.isMetaPressed ||
+            HardwareKeyboard.instance.isControlPressed);
+    if (paste) {
+      widget.onPaste();
+      return KeyEventResult.ignored;
+    }
+    if (_pickerOpen) {
+      final matches = _matches;
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        setState(() => _escaped = true);
+        _mentionOverlay.hide();
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        if (matches.isEmpty) return KeyEventResult.handled;
+        setState(() => _highlighted = (_highlighted + 1) % matches.length);
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+        if (matches.isEmpty) return KeyEventResult.handled;
+        setState(
+          () => _highlighted =
+              (_highlighted - 1 + matches.length) % matches.length,
+        );
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.enter &&
+          !HardwareKeyboard.instance.isShiftPressed) {
+        if (matches.isNotEmpty) {
+          final index = _highlighted.clamp(0, matches.length - 1);
+          _pick(matches[index]);
+        }
+        return KeyEventResult.handled;
+      }
+    }
     if (event.logicalKey != LogicalKeyboardKey.enter) {
       return KeyEventResult.ignored;
     }
     if (HardwareKeyboard.instance.isShiftPressed) {
       return KeyEventResult.ignored;
     }
-    if (canSend) onSend();
+    if (widget.canSend) widget.onSend();
     return KeyEventResult.handled;
   }
 
   @override
   Widget build(BuildContext context) {
+    final tokens = widget.tokens;
+    final matches = _matches;
+    final pickerOpen = _pickerOpen;
+    final highlighted = matches.isEmpty
+        ? 0
+        : _highlighted.clamp(0, matches.length - 1);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.ask != null) {
+        _askOverlay.show();
+      } else {
+        _askOverlay.hide();
+      }
+      if (pickerOpen) {
+        _mentionOverlay.show();
+      } else {
+        _mentionOverlay.hide();
+      }
+    });
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         assistantPaneInset,
@@ -929,71 +1708,328 @@ class _Composer extends StatelessWidget {
         assistantPaneInset,
         assistantPaneInset,
       ),
-      child: Container(
-        key: const Key('assistant-composer-card'),
-        padding: const EdgeInsets.fromLTRB(
-          FanCadTokens.space2,
-          FanCadTokens.space3,
-          FanCadTokens.space2,
-          FanCadTokens.space2,
-        ),
-        decoration: BoxDecoration(
-          color: tokens.surfaceRaised,
-          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
-          border: Border.all(color: tokens.borderStrong),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Focus(
-              onKeyEvent: _onKey,
-              child: TextField(
-                controller: controller,
-                enabled: enabled,
-                minLines: 2,
-                maxLines: 5,
-                style: tokens.bodyStyle.copyWith(height: 1.45),
-                cursorColor: tokens.accent,
-                cursorWidth: 1.5,
-                decoration: InputDecoration(
-                  isDense: true,
-                  filled: false,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                  hintText: hint,
-                  hintStyle: tokens.bodyStyle.copyWith(color: tokens.textFaint),
+      child: OverlayPortal.overlayChildLayoutBuilder(
+        controller: _askOverlay,
+        overlayChildBuilder: (context, info) {
+          final ask = widget.ask;
+          if (ask == null) return const SizedBox.shrink();
+          final cardRect = MatrixUtils.transformRect(
+            info.childPaintTransform,
+            Offset.zero & info.childSize,
+          );
+          return Stack(
+            children: [
+              Positioned(
+                left: cardRect.left,
+                width: cardRect.width,
+                bottom:
+                    info.overlaySize.height -
+                    cardRect.top +
+                    FanCadTokens.space2,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: (info.overlaySize.height * 0.5).clamp(
+                      160.0,
+                      420.0,
+                    ),
+                  ),
+                  child: SingleChildScrollView(child: ask),
                 ),
-                onChanged: onChanged,
               ),
-            ),
-            const SizedBox(height: FanCadTokens.space2),
-            Row(
+            ],
+          );
+        },
+        child: OverlayPortal.overlayChildLayoutBuilder(
+          controller: _mentionOverlay,
+          overlayChildBuilder: (context, info) {
+            final cardRect = MatrixUtils.transformRect(
+              info.childPaintTransform,
+              Offset.zero & info.childSize,
+            );
+            return Stack(
               children: [
-                ShellIconButton(
-                  key: const Key('assistant-open-settings'),
-                  icon: Icons.settings_outlined,
-                  tooltip: context.l10n.open_settings,
-                  iconSize: FanCadTokens.iconSmall,
-                  onPressed: onOpenSettings,
+                Positioned(
+                  left: cardRect.left,
+                  width: cardRect.width,
+                  bottom:
+                      info.overlaySize.height -
+                      cardRect.top +
+                      FanCadTokens.space2,
+                  child: _DrawingMentionPopup(
+                    matches: matches,
+                    highlighted: highlighted,
+                    onHighlight: (index) =>
+                        setState(() => _highlighted = index),
+                    onPick: _pick,
+                  ),
                 ),
-                const Spacer(),
-                AssistantContextMeter(usage: usage),
-                const SizedBox(width: FanCadTokens.space2),
-                _SendStopButton(
-                  busy: busy,
-                  canSend: canSend,
-                  onSend: onSend,
-                  onStop: onStop,
+              ],
+            );
+          },
+          child: Container(
+            key: const Key('assistant-composer-card'),
+            padding: const EdgeInsets.fromLTRB(
+              FanCadTokens.space2,
+              FanCadTokens.space3,
+              FanCadTokens.space2,
+              FanCadTokens.space2,
+            ),
+            decoration: BoxDecoration(
+              color: tokens.surfaceRaised,
+              borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+              border: Border.all(color: tokens.borderStrong),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Focus(
+                  onKeyEvent: _onKey,
+                  child: TextField(
+                    controller: widget.controller,
+                    enabled: widget.enabled,
+                    minLines: 2,
+                    maxLines: 5,
+                    style: tokens.bodyStyle.copyWith(height: 1.45),
+                    cursorColor: tokens.accent,
+                    cursorWidth: 1.5,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: false,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      hintText: widget.hint,
+                      hintStyle: tokens.bodyStyle.copyWith(
+                        color: tokens.textFaint,
+                      ),
+                    ),
+                    onChanged: _onComposerChanged,
+                  ),
+                ),
+                const SizedBox(height: FanCadTokens.space2),
+                Row(
+                  children: [
+                    ShellIconButton(
+                      key: const Key('assistant-open-settings'),
+                      icon: Icons.settings_outlined,
+                      tooltip: context.l10n.open_settings,
+                      size: 24,
+                      onPressed: widget.onOpenSettings,
+                    ),
+                    const SizedBox(width: FanCadTokens.space1),
+                    ShellIconButton(
+                      key: const Key('assistant-mention-drawing'),
+                      icon: Icons.alternate_email,
+                      tooltip: context.l10n.mention_drawing,
+                      size: 24,
+                      onPressed: widget.enabled ? _insertAt : null,
+                    ),
+                    const SizedBox(width: FanCadTokens.space1),
+                    ShellIconButton(
+                      key: const Key('assistant-pin-selection'),
+                      icon: Icons.tag,
+                      tooltip:
+                          '${context.l10n.pin_selection}  ${shellShortcut('U', shift: true)}',
+                      size: 24,
+                      onPressed: widget.enabled ? widget.onPinSelection : null,
+                    ),
+                    const Spacer(),
+                    AssistantContextMeter(usage: widget.usage),
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: FanCadTokens.space2,
+                        right: FanCadTokens.space1,
+                      ),
+                      child: _SendStopButton(
+                        busy: widget.busy,
+                        canSend: widget.canSend,
+                        onSend: widget.onSend,
+                        onStop: widget.onStop,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DrawingMentionPopup extends StatelessWidget {
+  const _DrawingMentionPopup({
+    required this.matches,
+    required this.highlighted,
+    required this.onHighlight,
+    required this.onPick,
+  });
+
+  final List<Map<String, Object?>> matches;
+  final int highlighted;
+  final ValueChanged<int> onHighlight;
+  final ValueChanged<Map<String, Object?>> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    return Material(
+      color: tokens.surfaceOverlay,
+      elevation: 3,
+      shadowColor: tokens.shadow,
+      borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+      child: Container(
+        key: const Key('assistant-mention-list'),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+          border: Border.all(color: tokens.borderStrong),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (matches.isEmpty)
+              ShellRow(
+                key: const Key('assistant-mention-empty'),
+                height: FanCadTokens.rowHeight,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: FanCadTokens.space3,
+                ),
+                child: Text(
+                  l10n.no_open_drawings,
+                  style: tokens.bodyStyle.copyWith(
+                    fontSize: 12,
+                    color: tokens.textMuted,
+                  ),
+                ),
+              )
+            else
+              for (var i = 0; i < matches.length; i++)
+                _DrawingMentionRow(
+                  drawing: matches[i],
+                  isHighlighted: i == highlighted,
+                  onHover: () => onHighlight(i),
+                  onTap: () => onPick(matches[i]),
+                ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _DrawingMentionRow extends StatelessWidget {
+  const _DrawingMentionRow({
+    required this.drawing,
+    required this.isHighlighted,
+    required this.onHover,
+    required this.onTap,
+  });
+
+  final Map<String, Object?> drawing;
+  final bool isHighlighted;
+  final VoidCallback onHover;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final id = '${drawing['id'] ?? ''}';
+    final title = '${drawing['title'] ?? id}';
+    final path = '${drawing['path'] ?? ''}'.trim();
+    return MouseRegion(
+      onEnter: (_) => onHover(),
+      child: ShellRow(
+        key: Key('assistant-mention-row-$id'),
+        isSelected: isHighlighted,
+        onTap: onTap,
+        height: FanCadTokens.rowHeight,
+        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: tokens.bodyStyle.copyWith(fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (path.isNotEmpty) ...[
+              const SizedBox(width: FanCadTokens.space3),
+              Expanded(
+                child: Text(
+                  path,
+                  style: tokens.labelStyle.copyWith(fontSize: 10.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MentionTextController extends TextEditingController {
+  _MentionTextController({super.text});
+
+  List<ComposerPin> pins = const [];
+  ValueChanged<ComposerPin>? onFlashPin;
+  ValueChanged<ComposerPin?>? onHoverPin;
+  ValueChanged<int>? onRemoveMention;
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    final text = this.text;
+    if (!text.contains(composerMentionToken)) {
+      return super.buildTextSpan(
+        context: context,
+        style: style,
+        withComposing: withComposing,
+      );
+    }
+    final children = <InlineSpan>[];
+    var pinIndex = 0;
+    var start = 0;
+    for (var i = 0; i < text.length; i++) {
+      if (text.codeUnitAt(i) != 0xFFFC) continue;
+      if (i > start) {
+        children.add(TextSpan(text: text.substring(start, i), style: style));
+      }
+      final pin = pinIndex < pins.length ? pins[pinIndex] : null;
+      final index = pinIndex;
+      pinIndex++;
+      children.add(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: ObjectPinChip(
+            key: ValueKey<int>(index),
+            index: index,
+            pin: pin,
+            removable: true,
+            onFlash: pin == null ? null : () => onFlashPin?.call(pin),
+            onHover: (hovered) => onHoverPin?.call(hovered ? pin : null),
+            onRemove: () => onRemoveMention?.call(index),
+          ),
+        ),
+      );
+      start = i + 1;
+    }
+    if (start < text.length) {
+      children.add(TextSpan(text: text.substring(start), style: style));
+    }
+    return TextSpan(style: style, children: children);
   }
 }
 
@@ -1018,18 +2054,18 @@ class _SendStopButton extends StatelessWidget {
       message: busy ? context.l10n.stop : context.l10n.send_enter,
       child: Material(
         key: Key(busy ? 'assistant-composer-stop' : 'assistant-composer-send'),
-        color: enabled ? tokens.text : tokens.surfaceOverlay,
+        color: enabled ? tokens.text : tokens.border,
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: busy ? onStop : (canSend ? onSend : null),
           child: SizedBox(
-            width: 26,
-            height: 26,
+            width: 24,
+            height: 24,
             child: Icon(
               busy ? Icons.stop : Icons.arrow_upward,
-              size: 14,
-              color: enabled ? tokens.surface : tokens.textFaint,
+              size: FanCadTokens.iconMedium,
+              color: enabled ? tokens.surface : tokens.text,
             ),
           ),
         ),
@@ -1059,15 +2095,21 @@ class AssistantContextMeter extends StatelessWidget {
           );
     return Tooltip(
       message: tooltip,
-      child: SizedBox(
-        key: const Key('assistant-composer-context'),
-        width: 18,
-        height: 18,
-        child: CustomPaint(
-          painter: _ContextRingPainter(
-            fraction: fraction,
-            track: tokens.borderStrong,
-            fill: tokens.accent,
+      child: Transform.translate(
+        offset: const Offset(0, 1),
+        child: SizedBox(
+          key: const Key('assistant-composer-context'),
+          width: 24,
+          height: 24,
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: CustomPaint(
+              painter: _ContextRingPainter(
+                fraction: fraction,
+                track: tokens.borderStrong,
+                fill: tokens.accent,
+              ),
+            ),
           ),
         ),
       ),

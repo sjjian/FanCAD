@@ -51,8 +51,14 @@ class InteractiveCommandInput implements CommandInput {
   @override
   void setMarkers(List<Vec2> points) => _markers = points;
 
+  /// Vertices collected so far, for the session snapshot.
+  int get collectedPointCount => _markers.length;
+
   @override
   bool get isInteractive => true;
+
+  @override
+  bool get canHandOff => false;
 
   @override
   bool get isCancelled => _cancelled;
@@ -545,4 +551,173 @@ class _Outcome<T> {
   final Object? error;
 
   bool get hasError => error != null;
+}
+
+/// Answers from [args] first, then hands the leftover prompt to a person.
+///
+/// This is how an assistant turn that omitted a point becomes a canvas pick
+/// instead of a cancelled tool call.
+class FallbackCommandInput implements CommandInput {
+  FallbackCommandInput({required this.primary, required this.fallbackOf});
+
+  final ArgsCommandInput primary;
+  final CommandInput Function() fallbackOf;
+
+  CommandInput? _fallback;
+  var _answeredPointFromArgs = false;
+
+  CommandInput get _next => _fallback ??= fallbackOf();
+
+  Future<T> _orFallback<T>(Future<T> Function(CommandInput input) run) async {
+    final live = _fallback;
+    if (live != null) return run(live);
+    try {
+      return await run(primary);
+    } on CommandCancelled {
+      return run(_next);
+    }
+  }
+
+  @override
+  bool get isInteractive => _fallback?.isInteractive ?? false;
+
+  @override
+  bool get canHandOff => true;
+
+  @override
+  bool get isCancelled =>
+      primary.isCancelled || (_fallback?.isCancelled ?? false);
+
+  @override
+  Vec2? get lastPick => _fallback?.lastPick ?? primary.lastPick;
+
+  void cancel() {
+    primary.cancel();
+    final live = _fallback;
+    if (live is InteractiveCommandInput) live.cancel();
+  }
+
+  @override
+  Future<Vec2> point(String message, {Vec2? basePoint}) =>
+      _orFallback((input) => input.point(message, basePoint: basePoint));
+
+  @override
+  Future<Vec2?> pointOrNull(String message, {Vec2? basePoint}) =>
+      primary.pointOrNull(message, basePoint: basePoint);
+
+  @override
+  Future<PointOrKeyword?> pointOrKeyword(
+    String message, {
+    Vec2? basePoint,
+    List<String> keywords = const [],
+  }) async {
+    if (_fallback != null) {
+      return _fallback!.pointOrKeyword(
+        message,
+        basePoint: basePoint,
+        keywords: keywords,
+      );
+    }
+    try {
+      final result = await primary.pointOrKeyword(
+        message,
+        basePoint: basePoint,
+        keywords: keywords,
+      );
+      if (result != null) {
+        _answeredPointFromArgs = true;
+        return result;
+      }
+    } on CommandCancelled {
+      return _next.pointOrKeyword(
+        message,
+        basePoint: basePoint,
+        keywords: keywords,
+      );
+    }
+    // LINE extra vertices after start/end from args: null means done.
+    // PLINE with no points array: null means take over the crosshair.
+    if (_answeredPointFromArgs) return null;
+    return _next.pointOrKeyword(
+      message,
+      basePoint: basePoint,
+      keywords: keywords,
+    );
+  }
+
+  @override
+  Future<double> distance(String message, {Vec2? basePoint}) =>
+      _orFallback((input) => input.distance(message, basePoint: basePoint));
+
+  @override
+  Future<double> angle(String message, {Vec2? basePoint}) =>
+      _orFallback((input) => input.angle(message, basePoint: basePoint));
+
+  @override
+  Future<double> number(String message, {double? defaultValue}) =>
+      _orFallback((input) => input.number(message, defaultValue: defaultValue));
+
+  @override
+  Future<int> integer(String message, {int? defaultValue}) => _orFallback(
+    (input) => input.integer(message, defaultValue: defaultValue),
+  );
+
+  @override
+  Future<String> text(String message, {String? defaultValue}) =>
+      _orFallback((input) => input.text(message, defaultValue: defaultValue));
+
+  @override
+  Future<String> keyword(
+    String message,
+    List<String> options, {
+    String? defaultOption,
+  }) => _orFallback(
+    (input) => input.keyword(message, options, defaultOption: defaultOption),
+  );
+
+  @override
+  Future<bool> confirm(String message, {bool defaultValue = false}) =>
+      primary.confirm(message, defaultValue: defaultValue);
+
+  @override
+  Future<List<int>> selection(
+    String message, {
+    bool useExistingSelection = true,
+    bool single = false,
+  }) =>
+      // Object identity stays on pins / explicit ids. A missing selection
+      // must fail, not become a canvas pick of everything in view.
+      primary.selection(
+        message,
+        useExistingSelection: useExistingSelection,
+        single: single,
+      );
+
+  @override
+  Future<Bounds2> window(String message) =>
+      _orFallback((input) => input.window(message));
+
+  @override
+  void write(String message) {
+    primary.write(message);
+    _fallback?.write(message);
+  }
+
+  @override
+  void status(String message) {
+    primary.status(message);
+    _fallback?.status(message);
+  }
+
+  @override
+  void setPreview(PreviewBuilder? builder) {
+    primary.setPreview(builder);
+    _fallback?.setPreview(builder);
+  }
+
+  @override
+  void setMarkers(List<Vec2> points) {
+    primary.setMarkers(points);
+    _fallback?.setMarkers(points);
+  }
 }

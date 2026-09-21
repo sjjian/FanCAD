@@ -940,6 +940,10 @@
   "@unlock": {
     "description": "unlock"
   },
+  "assistant_canvas_locked": "The assistant is working. The drawing cannot be edited.",
+  "@assistant_canvas_locked": {
+    "description": "banner above the canvas while the assistant owns the drawing"
+  },
   "empty_drawing_title": "This drawing is empty",
   "@empty_drawing_title": {
     "description": "empty drawing title"
@@ -1480,6 +1484,34 @@
         "type": "int"
       }
     }
+  },
+  "ask_other": "Other…",
+  "@ask_other": {
+    "description": "custom answer on an assistant question card"
+  },
+  "ask_questions": "Questions",
+  "@ask_questions": {
+    "description": "header on the in-thread assistant question popup"
+  },
+  "ask_skip": "Skip",
+  "@ask_skip": {
+    "description": "dismiss an in-thread assistant question without answering"
+  },
+  "pin_selection": "Add selection to chat",
+  "@pin_selection": {
+    "description": "add the current CAD selection to the next assistant message"
+  },
+  "mention_drawing": "Mention a drawing",
+  "@mention_drawing": {
+    "description": "toolbar @ and drawing-tab picker"
+  },
+  "no_open_drawings": "No open drawings",
+  "@no_open_drawings": {
+    "description": "empty @ drawing-tab picker"
+  },
+  "pin_into_chat": "Add to chat",
+  "@pin_into_chat": {
+    "description": "canvas context menu and receipt: put objects on the next message"
   },
   "ask_assistant": "Ask the assistant  Enter to send",
   "@ask_assistant": {

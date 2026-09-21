@@ -152,6 +152,90 @@ void main() {
     expect(clicks, 1);
   });
 
+  testWidgets(
+    'a prompt click is delivered even when it looks like a double-click',
+    (tester) async {
+      final handler = _PromptingHandler();
+      var doubleClicks = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SizedBox(
+            width: 800,
+            height: 600,
+            child: CadCanvas(
+              document: CadDocument(),
+              controller: controller,
+              inputHandler: handler,
+              onDoubleClick: (_) => doubleClicks++,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      final location = tester.getCenter(find.byType(CadCanvas));
+      final pointer = TestPointer(1, PointerDeviceKind.mouse);
+      await tester.sendEventToBinding(pointer.hover(location));
+      await tester.sendEventToBinding(pointer.down(location));
+      await tester.sendEventToBinding(pointer.up());
+      await tester.sendEventToBinding(pointer.down(location));
+      await tester.sendEventToBinding(pointer.up());
+      await tester.pump();
+      expect(doubleClicks, 0);
+      expect(handler.downs, 2);
+    },
+  );
+
+  testWidgets('starting a prompt replays the last hover, not the view centre', (
+    tester,
+  ) async {
+    final handler = _ReplayHandler();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 800,
+          height: 600,
+          child: CadCanvas(
+            document: CadDocument(),
+            controller: controller,
+            inputHandler: handler,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final location = tester.getCenter(find.byType(CadCanvas));
+    final hoverAt = location + const Offset(80, -40);
+    final pointer = TestPointer(1, PointerDeviceKind.mouse);
+    await tester.sendEventToBinding(pointer.hover(hoverAt));
+    await tester.pump();
+    expect(handler.moves, isNotEmpty);
+    final expected = handler.moves.last;
+    handler.moves.clear();
+    handler.prompting = true;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 800,
+          height: 600,
+          child: CadCanvas(
+            document: CadDocument(),
+            controller: controller,
+            inputHandler: handler,
+            overlay: const OverlayModel(cursor: Vec2.zero()),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(handler.moves, isNotEmpty);
+    expect(handler.moves.last.x, closeTo(expected.x, 1e-6));
+    expect(handler.moves.last.y, closeTo(expected.y, 1e-6));
+    expect(
+      handler.moves.last.x,
+      isNot(closeTo(controller.viewport.center.x, 1)),
+    );
+  });
+
   testWidgets('a right-click without a drag opens the context menu', (
     tester,
   ) async {
@@ -297,43 +381,42 @@ void main() {
     },
   );
 
-  testWidgets(
-    'toggling the leftover grid rebuilds without a resize',
-    (tester) async {
-      final document = CadDocument();
-      Widget canvas({required bool showGrid}) => MaterialApp(
-        home: SizedBox(
-          width: 800,
-          height: 600,
-          child: CadCanvas(
-            document: document,
-            controller: controller,
-            showGrid: showGrid,
-          ),
+  testWidgets('toggling the leftover grid rebuilds without a resize', (
+    tester,
+  ) async {
+    final document = CadDocument();
+    Widget canvas({required bool showGrid}) => MaterialApp(
+      home: SizedBox(
+        width: 800,
+        height: 600,
+        child: CadCanvas(
+          document: document,
+          controller: controller,
+          showGrid: showGrid,
         ),
-      );
+      ),
+    );
 
-      CustomPainter drawingPainter() => tester
-          .widgetList<CustomPaint>(
-            find.descendant(
-              of: find.byType(CadCanvas),
-              matching: find.byType(CustomPaint),
-            ),
-          )
-          .firstWhere((paint) => paint.painter != null)
-          .painter!;
+    CustomPainter drawingPainter() => tester
+        .widgetList<CustomPaint>(
+          find.descendant(
+            of: find.byType(CadCanvas),
+            matching: find.byType(CustomPaint),
+          ),
+        )
+        .firstWhere((paint) => paint.painter != null)
+        .painter!;
 
-      await tester.pumpWidget(canvas(showGrid: true));
-      await tester.pump();
-      expect(controller.viewport.size, const Size(800, 600));
-      final before = drawingPainter();
+    await tester.pumpWidget(canvas(showGrid: true));
+    await tester.pump();
+    expect(controller.viewport.size, const Size(800, 600));
+    final before = drawingPainter();
 
-      await tester.pumpWidget(canvas(showGrid: false));
-      await tester.pump();
-      expect(controller.viewport.size, const Size(800, 600));
-      expect(drawingPainter().shouldRepaint(before), isTrue);
-    },
-  );
+    await tester.pumpWidget(canvas(showGrid: false));
+    await tester.pump();
+    expect(controller.viewport.size, const Size(800, 600));
+    expect(drawingPainter().shouldRepaint(before), isTrue);
+  });
 
   testWidgets(
     'a leftover document version rebuilds the scene without a resize',
@@ -362,9 +445,7 @@ void main() {
       final session = DocumentSession(id: 't', document: document);
       addTearDown(session.dispose);
       session.edit('LINE', (txn) {
-        txn.add(
-          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(40, 0)),
-        );
+        txn.add(const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(40, 0)));
       });
 
       await tester.pumpWidget(canvas());
@@ -375,62 +456,57 @@ void main() {
     },
   );
 
-  testWidgets(
-    'a leftover overlay follows the document without a resize',
-    (tester) async {
-      final document = CadDocument();
-      final session = DocumentSession(id: 't', document: document);
-      addTearDown(session.dispose);
-      session.edit('LINE', (txn) {
-        txn.add(
-          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(40, 0)),
-        );
-      });
-      const overlay = OverlayModel(selectedIds: [0]);
+  testWidgets('a leftover overlay follows the document without a resize', (
+    tester,
+  ) async {
+    final document = CadDocument();
+    final session = DocumentSession(id: 't', document: document);
+    addTearDown(session.dispose);
+    session.edit('LINE', (txn) {
+      txn.add(const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(40, 0)));
+    });
+    const overlay = OverlayModel(selectedIds: [0]);
 
-      Widget canvas() => MaterialApp(
-        home: SizedBox(
-          width: 800,
-          height: 600,
-          child: CadCanvas(
-            document: document,
-            controller: controller,
-            overlay: overlay,
-          ),
+    Widget canvas() => MaterialApp(
+      home: SizedBox(
+        width: 800,
+        height: 600,
+        child: CadCanvas(
+          document: document,
+          controller: controller,
+          overlay: overlay,
         ),
-      );
+      ),
+    );
 
-      CustomPainter overlayPainter() {
-        final paints = tester
-            .widgetList<CustomPaint>(
-              find.descendant(
-                of: find.byType(CadCanvas),
-                matching: find.byType(CustomPaint),
-              ),
-            )
-            .where((paint) => paint.painter != null)
-            .toList();
-        expect(paints, hasLength(2));
-        return paints.last.painter!;
-      }
+    CustomPainter overlayPainter() {
+      final paints = tester
+          .widgetList<CustomPaint>(
+            find.descendant(
+              of: find.byType(CadCanvas),
+              matching: find.byType(CustomPaint),
+            ),
+          )
+          .where((paint) => paint.painter != null)
+          .toList();
+      expect(paints, hasLength(2));
+      return paints.last.painter!;
+    }
 
-      await tester.pumpWidget(canvas());
-      await tester.pump();
-      expect(controller.viewport.size, const Size(800, 600));
-      final before = overlayPainter();
+    await tester.pumpWidget(canvas());
+    await tester.pump();
+    expect(controller.viewport.size, const Size(800, 600));
+    final before = overlayPainter();
 
-      session.edit('LINE', (txn) {
-        txn.add(
-          const LineEntity(id: 1, start: Vec2(0, 10), end: Vec2(40, 10)),
-        );
-      });
+    session.edit('LINE', (txn) {
+      txn.add(const LineEntity(id: 1, start: Vec2(0, 10), end: Vec2(40, 10)));
+    });
 
-      await tester.pumpWidget(canvas());
-      await tester.pump();
-      expect(controller.viewport.size, const Size(800, 600));
-      expect(overlayPainter().shouldRepaint(before), isTrue);
-    },
-  );
+    await tester.pumpWidget(canvas());
+    await tester.pump();
+    expect(controller.viewport.size, const Size(800, 600));
+    expect(overlayPainter().shouldRepaint(before), isTrue);
+  });
 
   testWidgets(
     'a leftover palette change rebuilds the drawing without a resize',
@@ -461,7 +537,10 @@ void main() {
           .painter!;
 
       await tester.pumpWidget(
-        canvas(background: AciPalette.dark.background, palette: AciPalette.dark),
+        canvas(
+          background: AciPalette.dark.background,
+          palette: AciPalette.dark,
+        ),
       );
       await tester.pump();
       expect(controller.viewport.size, const Size(800, 600));
@@ -501,100 +580,98 @@ void main() {
       expect(scenes, isNotEmpty);
       final builtBefore = scenes.length;
 
-      tester.state<CadCanvasState>(find.byType(CadCanvas)).applyDocumentChange(
-        const DocumentChange(tablesChanged: true),
-      );
+      tester
+          .state<CadCanvasState>(find.byType(CadCanvas))
+          .applyDocumentChange(const DocumentChange(tablesChanged: true));
       await tester.pump();
       expect(controller.viewport.size, const Size(800, 600));
       expect(scenes.length, greaterThan(builtBefore));
     },
   );
 
-  testWidgets(
-    'a version bump without applyDocumentChange drops tessellation',
-    (tester) async {
-      final cache = TessellationCache();
-      final document = CadDocument();
-      for (var i = 0; i < 12; i++) {
-        document.addEntity(
-          CircleEntity(id: 0, center: Vec2(i * 20.0, 0), radius: 8),
-        );
-      }
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SizedBox(
-            width: 800,
-            height: 600,
-            child: CadCanvas(
-              document: document,
-              controller: controller,
-              tessellation: cache,
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(cache.misses, greaterThan(0));
-      cache.resetStatistics();
-
+  testWidgets('a version bump without applyDocumentChange drops tessellation', (
+    tester,
+  ) async {
+    final cache = TessellationCache();
+    final document = CadDocument();
+    for (var i = 0; i < 12; i++) {
       document.addEntity(
-        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+        CircleEntity(id: 0, center: Vec2(i * 20.0, 0), radius: 8),
       );
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SizedBox(
-            width: 800,
-            height: 600,
-            child: CadCanvas(
-              document: document,
-              controller: controller,
-              tessellation: cache,
-            ),
+    }
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 800,
+          height: 600,
+          child: CadCanvas(
+            document: document,
+            controller: controller,
+            tessellation: cache,
           ),
         ),
-      );
-      await tester.pump();
-      expect(cache.hits, 0);
-      expect(cache.misses, greaterThan(0));
-    },
-  );
+      ),
+    );
+    await tester.pump();
+    expect(cache.misses, greaterThan(0));
+    cache.resetStatistics();
 
-  testWidgets(
-    'applyDocumentChange keeps unrelated tessellation',
-    (tester) async {
-      final cache = TessellationCache();
-      final document = CadDocument();
-      for (var i = 0; i < 12; i++) {
-        document.addEntity(
-          CircleEntity(id: 0, center: Vec2(i * 20.0, 0), radius: 8),
-        );
-      }
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SizedBox(
-            width: 800,
-            height: 600,
-            child: CadCanvas(
-              document: document,
-              controller: controller,
-              tessellation: cache,
-            ),
+    document.addEntity(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 800,
+          height: 600,
+          child: CadCanvas(
+            document: document,
+            controller: controller,
+            tessellation: cache,
           ),
         ),
-      );
-      await tester.pump();
-      cache.resetStatistics();
+      ),
+    );
+    await tester.pump();
+    expect(cache.hits, 0);
+    expect(cache.misses, greaterThan(0));
+  });
 
-      final added = document.addEntity(
-        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+  testWidgets('applyDocumentChange keeps unrelated tessellation', (
+    tester,
+  ) async {
+    final cache = TessellationCache();
+    final document = CadDocument();
+    for (var i = 0; i < 12; i++) {
+      document.addEntity(
+        CircleEntity(id: 0, center: Vec2(i * 20.0, 0), radius: 8),
       );
-      tester.state<CadCanvasState>(find.byType(CadCanvas)).applyDocumentChange(
-        DocumentChange(added: [added.id]),
-      );
-      await tester.pump();
-      expect(cache.hits, greaterThan(0));
-    },
-  );
+    }
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 800,
+          height: 600,
+          child: CadCanvas(
+            document: document,
+            controller: controller,
+            tessellation: cache,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    cache.resetStatistics();
+
+    final added = document.addEntity(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+    );
+    tester
+        .state<CadCanvasState>(find.byType(CadCanvas))
+        .applyDocumentChange(DocumentChange(added: [added.id]));
+    await tester.pump();
+    expect(cache.hits, greaterThan(0));
+  });
 
   testWidgets('the drawing is clipped so a stroke cannot cover the chrome', (
     tester,
@@ -608,4 +685,31 @@ void main() {
       findsOneWidget,
     );
   });
+}
+
+class _PromptingHandler extends CanvasInputHandler {
+  int downs = 0;
+
+  @override
+  bool get isPrompting => true;
+
+  @override
+  bool onPointerDown(Vec2 world, PointerDownEvent event) {
+    downs++;
+    return true;
+  }
+}
+
+class _ReplayHandler extends CanvasInputHandler {
+  bool prompting = false;
+  final moves = <Vec2>[];
+
+  @override
+  bool get isPrompting => prompting;
+
+  @override
+  bool onPointerMove(Vec2 world, PointerEvent event) {
+    moves.add(world);
+    return true;
+  }
 }

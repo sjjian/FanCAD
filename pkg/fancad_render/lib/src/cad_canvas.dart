@@ -27,6 +27,11 @@ abstract class CanvasInputHandler {
   bool onPointerMove(Vec2 world, PointerEvent event) => false;
   bool onPointerUp(Vec2 world, PointerUpEvent event) => false;
   void onPointerExit() {}
+
+  /// A command is waiting on this handler for a click. Double-click must
+  /// still deliver [onPointerDown], otherwise PASTECLIP / LINE lose the
+  /// placement click that followed a focus click.
+  bool get isPrompting => false;
 }
 
 /// The drawing viewport.
@@ -122,6 +127,8 @@ class CadCanvasState extends State<CadCanvas> {
   DateTime? _lastPrimaryUpAt;
   Offset? _lastPrimaryUpPos;
   bool _primaryDown = false;
+  Offset? _lastLocal;
+  bool _prompting = false;
 
   static const _doubleClickWindow = Duration(milliseconds: 400);
   static const _doubleClickSlop = 6.0;
@@ -199,6 +206,7 @@ class CadCanvasState extends State<CadCanvas> {
       _cache.invalidate();
       _paintEpoch++;
     }
+    _replayPromptHover();
   }
 
   @override
@@ -253,6 +261,27 @@ class CadCanvasState extends State<CadCanvas> {
 
   Vec2 _toWorld(Offset local) => widget.controller.viewport.toWorld(local);
 
+  void _rememberLocal(Offset local) => _lastLocal = local;
+
+  /// Tab switch / Ctrl+V does not synthesize a hover. Replay the last pointer
+  /// so PASTECLIP's preview sits on the cursor, not the view centre.
+  void _replayPromptHover() {
+    final prompting = widget.inputHandler?.isPrompting == true;
+    final started = prompting && !_prompting;
+    _prompting = prompting;
+    if (!started) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.inputHandler?.isPrompting != true) return;
+      final local = _lastLocal;
+      final handler = widget.inputHandler;
+      if (local == null || handler == null) return;
+      handler.onPointerMove(
+        _toWorld(local),
+        PointerHoverEvent(position: local),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final version = widget.document.version;
@@ -298,7 +327,10 @@ class CadCanvasState extends State<CadCanvas> {
               cursor: _panDragging || _trackpadPointer != null
                   ? SystemMouseCursors.grabbing
                   : SystemMouseCursors.precise,
-              onExit: (_) => widget.inputHandler?.onPointerExit(),
+              onExit: (_) {
+                _lastLocal = null;
+                widget.inputHandler?.onPointerExit();
+              },
               child: ColoredBox(
                 color: widget.background,
                 child: Stack(
@@ -359,7 +391,9 @@ class CadCanvasState extends State<CadCanvas> {
       _panIsSecondary = event.buttons & kSecondaryMouseButton != 0;
       return;
     }
-    if (event.buttons & kPrimaryMouseButton != 0 && _isDoubleClick(event)) {
+    if (event.buttons & kPrimaryMouseButton != 0 &&
+        _isDoubleClick(event) &&
+        widget.inputHandler?.isPrompting != true) {
       _lastPrimaryUpAt = null;
       _lastPrimaryUpPos = null;
       _primaryDown = false;
@@ -367,6 +401,7 @@ class CadCanvasState extends State<CadCanvas> {
       return;
     }
     _primaryDown = event.buttons & kPrimaryMouseButton != 0;
+    _rememberLocal(event.localPosition);
     widget.inputHandler?.onPointerDown(_toWorld(event.localPosition), event);
   }
 
@@ -381,10 +416,12 @@ class CadCanvasState extends State<CadCanvas> {
       _lastPanPosition = event.localPosition;
       return;
     }
+    _rememberLocal(event.localPosition);
     widget.inputHandler?.onPointerMove(_toWorld(event.localPosition), event);
   }
 
   void _handlePointerHover(PointerHoverEvent event) {
+    _rememberLocal(event.localPosition);
     widget.inputHandler?.onPointerMove(_toWorld(event.localPosition), event);
   }
 
@@ -401,6 +438,7 @@ class CadCanvasState extends State<CadCanvas> {
       _lastPrimaryUpPos = event.localPosition;
       _primaryDown = false;
     }
+    _rememberLocal(event.localPosition);
     widget.inputHandler?.onPointerUp(_toWorld(event.localPosition), event);
   }
 

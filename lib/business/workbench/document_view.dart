@@ -27,6 +27,8 @@ class DocumentView extends StatefulWidget {
     required this.workspace,
     required this.tab,
     required this.commandLineFocus,
+    this.onAddSelectionToChat,
+    this.onStopAssistant,
   });
 
   final Workspace workspace;
@@ -34,6 +36,12 @@ class DocumentView extends StatefulWidget {
 
   /// Typing over the canvas lands here unless the dynamic-input HUD is up.
   final FocusNode commandLineFocus;
+
+  /// Puts the current selection on the next assistant message.
+  final VoidCallback? onAddSelectionToChat;
+
+  /// Stops the in-flight assistant turn from the canvas banner.
+  final VoidCallback? onStopAssistant;
 
   @override
   State<DocumentView> createState() => _DocumentViewState();
@@ -296,6 +304,14 @@ class _DocumentViewState extends State<DocumentView> {
               value: 'view.zoomSelected',
               label: l10n.zoom_to_selection,
             ),
+            if (widget.onAddSelectionToChat != null)
+              shellMenuItem(
+                context,
+                key: const Key('canvas-add-to-chat'),
+                value: '__add_to_chat__',
+                label: l10n.pin_into_chat,
+                shortcut: shellShortcut('U', shift: true),
+              ),
             const PopupMenuDivider(),
             shellMenuItem(
               context,
@@ -417,6 +433,10 @@ class _DocumentViewState extends State<DocumentView> {
           widget.workspace.revealPanel('properties');
           return;
         }
+        if (id == '__add_to_chat__') {
+          widget.onAddSelectionToChat?.call();
+          return;
+        }
         widget.workspace.run(id);
       });
     });
@@ -425,8 +445,11 @@ class _DocumentViewState extends State<DocumentView> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: widget.tab,
-      builder: (context, _) => _buildView(context),
+      listenable: widget.workspace,
+      builder: (context, _) => ListenableBuilder(
+        listenable: widget.tab,
+        builder: (context, _) => _buildView(context),
+      ),
     );
   }
 
@@ -436,11 +459,12 @@ class _DocumentViewState extends State<DocumentView> {
     final overlay = tab.tools.buildOverlay();
     final pending = widget.workspace.pendingHighlightIds;
     final editingEntity = _editingOriginal;
-    final effectiveOverlay = pending.isEmpty
-        ? overlay
-        : overlay.copyWith(
-            highlightedIds: [...overlay.highlightedIds, ...pending],
-          );
+    var effectiveOverlay = overlay;
+    if (pending.isNotEmpty) {
+      effectiveOverlay = effectiveOverlay.copyWith(
+        highlightedIds: [...effectiveOverlay.highlightedIds, ...pending],
+      );
+    }
     var hiddenCount = 0;
     for (final entity in tab.document.activeEntities) {
       if (!entity.props.visible) hiddenCount += 1;
@@ -461,6 +485,7 @@ class _DocumentViewState extends State<DocumentView> {
           widget.workspace.cancelActive();
           return KeyEventResult.handled;
         }
+        if (widget.workspace.assistantBusy) return KeyEventResult.ignored;
         if (tab.tools.showDynamicInput &&
             DynamicInputHud.isTypeInCharacter(event.character)) {
           final hud = _dynHudKey.currentState;
@@ -479,120 +504,230 @@ class _DocumentViewState extends State<DocumentView> {
           if (tab.tools.showDynamicInput) return;
           widget.commandLineFocus.requestFocus();
         },
-        child: Column(
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
           children: [
-            if (hiddenCount > 0)
-              ShellBanner(
-                tone: ShellTone.warning,
-                icon: Icons.visibility_off_outlined,
-                message: hiddenCount == 1
-                    ? context.l10n.one_object_hidden
-                    : context.l10n.many_objects_hidden(hiddenCount),
-                action: context.l10n.show_all,
-                onAction: () => widget.workspace.run('view.unisolateObjects'),
-              )
-            else if (hiddenLayers > 0)
-              ShellBanner(
-                tone: ShellTone.warning,
-                icon: Icons.layers_outlined,
-                message: hiddenLayers == 1
-                    ? context.l10n.one_layer_off
-                    : context.l10n.many_layers_off(hiddenLayers),
-                action: context.l10n.show_all_layers,
-                onAction: () => widget.workspace.run('layer.showAll'),
-              )
-            else if (currentLayer != null && currentLayer.locked)
-              ShellBanner(
-                tone: ShellTone.warning,
-                icon: Icons.lock_outline,
-                message: context.l10n.current_layer_locked(currentLayer.name),
-                action: context.l10n.unlock,
-                onAction: () => widget.workspace.run(
-                  'layer.toggleLock',
-                  args: {'name': currentLayer.name},
-                ),
-              ),
-            Expanded(
-              child: Stack(
-                clipBehavior: Clip.hardEdge,
-                children: [
-                  CadCanvas(
-                    key: _canvasKey,
-                    document: tab.document,
-                    controller: tab.viewport,
-                    inputHandler: tab.tools,
-                    overlay: effectiveOverlay,
-                    background: tokens.canvas,
-                    palette: tokens.isDark ? AciPalette.dark : AciPalette.light,
-                    showGrid: tab.showGrid,
-                    onSceneBuilt: tab.noteScene,
-                    onContextMenu: _openContextMenu,
-                    onDoubleClick: _onDoubleClick,
-                    onlyLayers: tab.isolatedLayers,
-                    tessellation: tab.tessellation,
-                    shxFonts: widget.workspace.shxFonts,
-                  ),
-                  Positioned.fill(
-                    child: ListenableBuilder(
-                      listenable: Listenable.merge([
-                        widget.workspace,
-                        widget.workspace.commandLine,
-                        tab.tools,
-                        tab.viewport,
-                      ]),
-                      builder: (context, _) {
-                        final prompt = widget.workspace.commandLine.promptText;
-                        final toolPrompt =
-                            tab.tools.activeTool?.promptText ?? '';
-                        return Stack(
-                          children: [
-                            if (!tab.tools.showDynamicInput)
-                              _CanvasPromptHud(
-                                workspace: widget.workspace,
-                                onKeyword: (keyword) {
-                                  final remaining = widget.workspace.commandLine
-                                      .submit(keyword);
-                                  if (remaining != null) {
-                                    widget.workspace.submitCommandLine(
-                                      remaining,
-                                    );
-                                  }
-                                },
-                                onCancel: widget.workspace.cancelActive,
-                              ),
-                            if (tab.tools.showDynamicInput)
-                              DynamicInputHud(
-                                key: _dynHudKey,
-                                tools: tab.tools,
-                                viewport: tab.viewport.viewport,
-                                prompt: prompt.isNotEmpty ? prompt : toolPrompt,
-                                distanceFocus: _dynDistanceFocus,
-                                angleFocus: _dynAngleFocus,
-                              ),
-                            if (editingEntity != null)
-                              TextEditOverlay(
-                                entity: editingEntity,
-                                document: tab.document,
-                                viewport: tab.viewport.viewport,
-                                styleNames: [...tab.document.textStyles.keys],
-                                anchor: _editingAnchor,
-                                onCommit: _commitTextEdit,
-                                onPreview: _previewTextEdit,
-                                onCancel: _cancelTextEdit,
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  if (tab.document.entityCount == 0 &&
-                      !widget.workspace.isBusy &&
-                      !widget.workspace.commandLine.isAwaitingInput)
-                    const _EmptyDrawingHint(),
-                ],
+            CadCanvas(
+              key: _canvasKey,
+              document: tab.document,
+              controller: tab.viewport,
+              inputHandler: widget.workspace.assistantBusy ? null : tab.tools,
+              overlay: effectiveOverlay,
+              background: tokens.canvas,
+              palette: tokens.isDark ? AciPalette.dark : AciPalette.light,
+              showGrid: tab.showGrid,
+              onSceneBuilt: tab.noteScene,
+              onContextMenu: widget.workspace.assistantBusy
+                  ? null
+                  : _openContextMenu,
+              onDoubleClick: widget.workspace.assistantBusy
+                  ? null
+                  : _onDoubleClick,
+              onlyLayers: tab.isolatedLayers,
+              tessellation: tab.tessellation,
+              shxFonts: widget.workspace.shxFonts,
+            ),
+            Positioned.fill(
+              child: ListenableBuilder(
+                listenable: Listenable.merge([
+                  widget.workspace,
+                  widget.workspace.commandLine,
+                  tab.tools,
+                  tab.viewport,
+                ]),
+                builder: (context, _) {
+                  final prompt = widget.workspace.commandLine.promptText;
+                  final toolPrompt = tab.tools.activeTool?.promptText ?? '';
+                  return Stack(
+                    children: [
+                      if (!tab.tools.showDynamicInput)
+                        _CanvasPromptHud(
+                          workspace: widget.workspace,
+                          onKeyword: (keyword) {
+                            final remaining = widget.workspace.commandLine
+                                .submit(keyword);
+                            if (remaining != null) {
+                              widget.workspace.submitCommandLine(remaining);
+                            }
+                          },
+                          onCancel: widget.workspace.cancelActive,
+                        ),
+                      if (tab.tools.showDynamicInput)
+                        DynamicInputHud(
+                          key: _dynHudKey,
+                          tools: tab.tools,
+                          viewport: tab.viewport.viewport,
+                          prompt: prompt.isNotEmpty ? prompt : toolPrompt,
+                          distanceFocus: _dynDistanceFocus,
+                          angleFocus: _dynAngleFocus,
+                        ),
+                      if (editingEntity != null)
+                        TextEditOverlay(
+                          entity: editingEntity,
+                          document: tab.document,
+                          viewport: tab.viewport.viewport,
+                          styleNames: [...tab.document.textStyles.keys],
+                          anchor: _editingAnchor,
+                          onCommit: _commitTextEdit,
+                          onPreview: _previewTextEdit,
+                          onCancel: _cancelTextEdit,
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
+            if (tab.document.entityCount == 0 &&
+                !widget.workspace.isBusy &&
+                !widget.workspace.assistantBusy &&
+                !widget.workspace.commandLine.isAwaitingInput)
+              const _EmptyDrawingHint(),
+            ?_canvasNotice(
+              hiddenCount: hiddenCount,
+              hiddenLayers: hiddenLayers,
+              currentLayer: currentLayer,
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// One floating strip: assistant first, then hidden objects, off layers,
+  /// then a locked current layer. Overlay so it does not shift the viewport.
+  Widget? _canvasNotice({
+    required int hiddenCount,
+    required int hiddenLayers,
+    required LayerDef? currentLayer,
+  }) {
+    final l10n = context.l10n;
+    if (widget.workspace.assistantBusy) {
+      return _CanvasNoticeBanner(
+        key: const Key('canvas-assistant-busy'),
+        icon: Icons.auto_awesome_outlined,
+        message: l10n.assistant_canvas_locked,
+        action: widget.onStopAssistant == null ? null : l10n.stop,
+        onAction: widget.onStopAssistant,
+      );
+    }
+    if (hiddenCount > 0) {
+      return _CanvasNoticeBanner(
+        key: const Key('canvas-objects-hidden'),
+        icon: Icons.visibility_off_outlined,
+        message: hiddenCount == 1
+            ? l10n.one_object_hidden
+            : l10n.many_objects_hidden(hiddenCount),
+        action: l10n.show_all,
+        onAction: () => widget.workspace.run('view.unisolateObjects'),
+      );
+    }
+    if (hiddenLayers > 0) {
+      return _CanvasNoticeBanner(
+        key: const Key('canvas-layers-off'),
+        icon: Icons.layers_outlined,
+        message: hiddenLayers == 1
+            ? l10n.one_layer_off
+            : l10n.many_layers_off(hiddenLayers),
+        action: l10n.show_all_layers,
+        onAction: () => widget.workspace.run('layer.showAll'),
+      );
+    }
+    if (currentLayer != null && currentLayer.locked) {
+      return _CanvasNoticeBanner(
+        key: const Key('canvas-layer-locked'),
+        icon: Icons.lock_outline,
+        message: l10n.current_layer_locked(currentLayer.name),
+        action: l10n.unlock,
+        onAction: () => widget.workspace.run(
+          'layer.toggleLock',
+          args: {'name': currentLayer.name},
+        ),
+      );
+    }
+    return null;
+  }
+}
+
+/// Floats over the canvas so showing it does not shift the viewport.
+class _CanvasNoticeBanner extends StatelessWidget {
+  const _CanvasNoticeBanner({
+    super.key,
+    required this.icon,
+    required this.message,
+    this.action,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final String message;
+  final String? action;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return _CanvasTopCard(
+      borderColor: tokens.warning.withValues(alpha: 0.5),
+      child: Row(
+        children: [
+          Icon(icon, size: FanCadTokens.iconMedium, color: tokens.warning),
+          const SizedBox(width: FanCadTokens.space2),
+          Expanded(
+            child: Text(
+              message,
+              style: tokens.bodyStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (action case final label? when onAction != null)
+            Padding(
+              padding: const EdgeInsets.only(left: FanCadTokens.space1),
+              child: PromptKeywordChip(
+                label: label,
+                muted: true,
+                onPressed: onAction!,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shared chrome for the floating strip at the top of the drawing.
+class _CanvasTopCard extends StatelessWidget {
+  const _CanvasTopCard({required this.borderColor, required this.child});
+
+  final Color borderColor;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsets.only(top: FanCadTokens.space3),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Material(
+            color: tokens.surfaceOverlay,
+            elevation: 8,
+            shadowColor: Colors.black.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(FanCadTokens.radius),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: FanCadTokens.space3,
+                vertical: FanCadTokens.space2,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(FanCadTokens.radius),
+                border: Border.all(color: borderColor),
+              ),
+              child: child,
+            ),
+          ),
         ),
       ),
     );
@@ -627,73 +762,51 @@ class _CanvasPromptHud extends StatelessWidget {
         ? null
         : workspace.commands.find(running)?.title;
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Padding(
-        padding: const EdgeInsets.only(top: FanCadTokens.space3),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: Material(
-            color: tokens.surfaceOverlay,
-            elevation: 8,
-            shadowColor: Colors.black.withValues(alpha: 0.35),
-            borderRadius: BorderRadius.circular(FanCadTokens.radius),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: FanCadTokens.space3,
-                vertical: FanCadTokens.space2,
-              ),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(FanCadTokens.radius),
-                border: Border.all(color: tokens.borderStrong),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.edit_outlined,
-                    size: FanCadTokens.iconMedium,
-                    color: tokens.accent,
-                  ),
-                  const SizedBox(width: FanCadTokens.space2),
-                  if (title != null) ...[
-                    Text(
-                      title,
-                      style: tokens.labelStyle.copyWith(
-                        color: tokens.accent,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: FanCadTokens.space2),
-                  ],
-                  Expanded(
-                    child: Text(
-                      prompt,
-                      style: tokens.bodyStyle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  for (final keyword in keywords)
-                    Padding(
-                      padding: const EdgeInsets.only(left: FanCadTokens.space1),
-                      child: PromptKeywordChip(
-                        label: keyword,
-                        onPressed: () => onKeyword(keyword),
-                      ),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: FanCadTokens.space1),
-                    child: PromptKeywordChip(
-                      label: context.l10n.cancel,
-                      muted: true,
-                      onPressed: onCancel,
-                    ),
-                  ),
-                ],
+    return _CanvasTopCard(
+      borderColor: tokens.borderStrong,
+      child: Row(
+        children: [
+          Icon(
+            Icons.edit_outlined,
+            size: FanCadTokens.iconMedium,
+            color: tokens.accent,
+          ),
+          const SizedBox(width: FanCadTokens.space2),
+          if (title != null) ...[
+            Text(
+              title,
+              style: tokens.labelStyle.copyWith(
+                color: tokens.accent,
+                fontWeight: FontWeight.w600,
               ),
             ),
+            const SizedBox(width: FanCadTokens.space2),
+          ],
+          Expanded(
+            child: Text(
+              prompt,
+              style: tokens.bodyStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-        ),
+          for (final keyword in keywords)
+            Padding(
+              padding: const EdgeInsets.only(left: FanCadTokens.space1),
+              child: PromptKeywordChip(
+                label: keyword,
+                onPressed: () => onKeyword(keyword),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(left: FanCadTokens.space1),
+            child: PromptKeywordChip(
+              label: context.l10n.cancel,
+              muted: true,
+              onPressed: onCancel,
+            ),
+          ),
+        ],
       ),
     );
   }

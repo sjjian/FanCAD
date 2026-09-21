@@ -1,6 +1,7 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -202,6 +203,128 @@ void main() {
     expect(find.text('Layers'), findsNothing);
   });
 
+  testWidgets('a right-click on a selection adds it to the assistant', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final tab = container.read(workspaceProvider).active!;
+    final line = tab.document.addEntity(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+    );
+    tab.session.selection.replace([line.id]);
+    await tester.pump();
+
+    final canvas = tester.getRect(find.byType(CadCanvas));
+    final location = Offset(canvas.left + 160, canvas.top + 72);
+    final pointer = TestPointer(
+      1,
+      PointerDeviceKind.mouse,
+      null,
+      kSecondaryMouseButton,
+    );
+    await tester.sendEventToBinding(pointer.hover(location));
+    await tester.sendEventToBinding(pointer.down(location));
+    await tester.sendEventToBinding(pointer.up());
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final addToChat = find.byKey(const Key('canvas-add-to-chat'));
+    expect(addToChat, findsOneWidget);
+    await tester.tap(addToChat);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(container.read(aiControllerProvider).pins, isNotEmpty);
+    expect(find.byKey(const Key('assistant-session-tabs')), findsOneWidget);
+    expect(find.byKey(const Key('assistant-pin-0')), findsOneWidget);
+  });
+
+  testWidgets('an assistant turn banners the canvas as read-only', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    expect(find.byKey(const Key('canvas-assistant-busy')), findsNothing);
+    final canvasBefore = tester.getRect(find.byType(CadCanvas));
+
+    container.read(workspaceProvider).setAssistantBusy(true);
+    await tester.pump();
+
+    expect(tester.getRect(find.byType(CadCanvas)), canvasBefore);
+    expect(find.byKey(const Key('canvas-assistant-busy')), findsOneWidget);
+    expect(
+      find.text('The assistant is working. The drawing cannot be edited.'),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-assistant-busy')),
+        matching: find.text('Stop'),
+      ),
+      findsOneWidget,
+    );
+
+    container.read(workspaceProvider).setAssistantBusy(false);
+    await tester.pump();
+    expect(find.byKey(const Key('canvas-assistant-busy')), findsNothing);
+  });
+
+  testWidgets('a hidden layer uses the same floating canvas notice', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    expect(find.byKey(const Key('canvas-layers-off')), findsNothing);
+    final canvasBefore = tester.getRect(find.byType(CadCanvas));
+
+    container.read(workspaceProvider).active!.session.edit('Hide', (tx) {
+      tx.putLayer(const LayerDef(name: '0', visible: false));
+    });
+    await tester.pump();
+
+    expect(tester.getRect(find.byType(CadCanvas)), canvasBefore);
+    expect(find.byKey(const Key('canvas-layers-off')), findsOneWidget);
+    expect(find.text('1 layer is off'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-layers-off')),
+        matching: find.text('Show all layers'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(ShellBanner), findsNothing);
+  });
+
+  testWidgets('an assistant turn ignores a grip drag on the canvas', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final tab = container.read(workspaceProvider).active!;
+    final line = tab.document.addEntity(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+    );
+    tab.session.selection.replace([line.id]);
+    container.read(workspaceProvider).setAssistantBusy(true);
+    await tester.pump();
+
+    final canvas = tester.getRect(find.byType(CadCanvas));
+    final origin = Offset(
+      canvas.left + tab.viewport.viewport.toScreen(Vec2.zero()).dx,
+      canvas.top + tab.viewport.viewport.toScreen(Vec2.zero()).dy,
+    );
+    final pointer = TestPointer(1, PointerDeviceKind.mouse);
+    await tester.sendEventToBinding(pointer.hover(origin));
+    await tester.sendEventToBinding(pointer.down(origin));
+    await tester.sendEventToBinding(
+      pointer.move(origin + const Offset(40, 30)),
+    );
+    await tester.sendEventToBinding(pointer.up());
+    await tester.pump();
+
+    final after = tab.document.entity(line.id)! as LineEntity;
+    expect(after.start, const Vec2.zero());
+    expect(after.end, const Vec2(10, 0));
+  });
+
   testWidgets('layout chips sit in the left sidebar, not under the canvas', (
     tester,
   ) async {
@@ -334,6 +457,130 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pump();
       expect(workspace.active!.selection.ids, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'ctrl+c then ctrl+v in another drawing starts paste with a preview',
+    (tester) async {
+      late Workspace workspace;
+      await pumpWorkbench(
+        tester,
+        prepare: (container) {
+          workspace = container.read(workspaceProvider)..newDocument();
+          workspace.setSnapEnabled(false);
+          workspace.setOrtho(false);
+          workspace.setPolar(false);
+          workspace.setShowGrid(false);
+          workspace.active!.session.edit('LINE', (transaction) {
+            transaction.add(
+              const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+            );
+          });
+          workspace.active!.selection.replace([
+            workspace.active!.document.entities.single.id,
+          ]);
+        },
+      );
+
+      await tester.tap(find.byType(CadCanvas));
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+      await tester.pump();
+      expect(
+        workspace.clipboard.isEmpty,
+        isFalse,
+        reason: workspace.commandLine.lines.map((e) => e.text).join(' | '),
+      );
+
+      workspace.newDocument();
+      await tester.pump();
+      await tester.tap(find.byType(CadCanvas));
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+      await tester.pump();
+      expect(workspace.runningCommand, 'edit.pasteClip');
+      expect(workspace.active!.tools.activeTool, isA<PointPromptTool>());
+
+      final dest = workspace.active!;
+      expect(dest.document.entityCount, 0);
+      expect(
+        dest.tools.buildOverlay().shapes,
+        isNotEmpty,
+        reason: 'paste preview should appear at the last cursor',
+      );
+
+      await tester.tap(find.byType(CadCanvas));
+      await tester.pump();
+      expect(dest.document.entityCount, greaterThan(0));
+    },
+  );
+
+  testWidgets(
+    'canvas paste still starts when the assistant composer has focus',
+    (tester) async {
+      late Workspace workspace;
+      await pumpWorkbench(
+        tester,
+        prepare: (container) {
+          workspace = container.read(workspaceProvider)..newDocument();
+          workspace.setSnapEnabled(false);
+          workspace.setShowGrid(false);
+          workspace.active!.session.edit('LINE', (transaction) {
+            transaction.add(
+              const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+            );
+          });
+          workspace.active!.selection.replace([
+            workspace.active!.document.entities.single.id,
+          ]);
+        },
+      );
+
+      await tester.tap(find.byType(CadCanvas));
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+      await tester.pump();
+      expect(workspace.clipboard.isEmpty, isFalse);
+
+      workspace.revealPanel('ai');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('assistant-composer-card')),
+          matching: find.byType(TextField),
+        ),
+      );
+      await tester.pump();
+
+      workspace.newDocument();
+      await tester.pump();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('assistant-composer-card')),
+          matching: find.byType(TextField),
+        ),
+      );
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+      await tester.pump();
+      expect(
+        workspace.runningCommand,
+        'edit.pasteClip',
+        reason: workspace.commandLine.lines.map((e) => e.text).join(' | '),
+      );
     },
   );
 

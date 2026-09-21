@@ -1,6 +1,5 @@
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_ops/fancad_ops.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -10,9 +9,7 @@ void main() {
       transaction.add(
         LineEntity(id: 0, start: const Vec2.zero(), end: const Vec2(10, 0)),
       );
-      transaction.add(
-        CircleEntity(id: 0, center: const Vec2(5, 5), radius: 2),
-      );
+      transaction.add(CircleEntity(id: 0, center: const Vec2(5, 5), radius: 2));
     });
 
     final text = const DocumentContextBuilder().summarize(document);
@@ -27,14 +24,15 @@ void main() {
   test('the system prompt tells the model to query instead of guessing', () {
     final prompt = const DocumentContextBuilder().systemPrompt(
       document: CadDocument(),
-      tools: const [],
     );
     expect(prompt, contains('query.summary'));
     expect(prompt, contains('query.entities'));
     expect(prompt, contains('selection: none'));
-    expect(prompt, contains('skill.read'));
-    expect(prompt, contains(fancadCallExample));
-    expect(prompt, contains('never inside args'));
+    expect(prompt, isNot(contains('Available tools:')));
+    expect(prompt, isNot(contains('session.ask')));
+    expect(prompt, isNot(contains('{{')));
+    expect(prompt, contains('@objects[tab=<id> ids=1,2,3]'));
+    expect(prompt, contains('@drawing[tab=<id>]'));
   });
 
   test('summaryJson leaves extents null on a blank drawing', () {
@@ -75,7 +73,6 @@ void main() {
 
     final prompt = builder.systemPrompt(
       document: document,
-      tools: const [],
       pluginTypings: 'declare const fancad: unknown;',
     );
     expect(prompt, contains('declare const fancad: unknown;'));
@@ -85,11 +82,11 @@ void main() {
   test('an empty leftover selection is written as none, not omitted', () {
     const snapshot = SessionSnapshot();
     expect(snapshot.describe(), contains('selection: none'));
+    expect(snapshot.describe(), contains('drawing: none'));
     expect(snapshot.describe(), isNot(contains('#')));
 
     final prompt = const DocumentContextBuilder().systemPrompt(
       document: CadDocument(),
-      tools: const [],
       session: const SessionSnapshot(
         selectionCount: 2,
         selection: [
@@ -111,12 +108,13 @@ void main() {
     expect(prompt, contains('#5 circle'));
     expect(prompt, contains('snap: off (endpoint)'));
     expect(prompt, contains('ortho: on'));
+    expect(prompt, contains('running command: none'));
+    expect(prompt, contains('last created: none'));
   });
 
   test('a leftover skill index lists names without dumping the body', () {
     final prompt = const DocumentContextBuilder().systemPrompt(
       document: CadDocument(),
-      tools: const [],
       skills: const [
         SkillSummary(
           name: 'inspect-drawing',
@@ -125,7 +123,7 @@ void main() {
       ],
     );
     expect(prompt, contains('inspect-drawing: Inspect the open drawing.'));
-    expect(prompt, contains('skill.read'));
+    expect(prompt, contains('Available skills:'));
     expect(prompt, isNot(contains('Never dump the whole drawing')));
   });
 }

@@ -664,6 +664,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unlock => 'Unlock';
 
   @override
+  String get assistant_canvas_locked =>
+      'The assistant is working. The drawing cannot be edited.';
+
+  @override
   String get empty_drawing_title => 'This drawing is empty';
 
   @override
@@ -1052,6 +1056,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String affects_n_objects(int count) {
     return 'Affects $count object(s).';
   }
+
+  @override
+  String get ask_other => 'Other…';
+
+  @override
+  String get ask_questions => 'Questions';
+
+  @override
+  String get ask_skip => 'Skip';
+
+  @override
+  String get pin_selection => 'Add selection to chat';
+
+  @override
+  String get mention_drawing => 'Mention a drawing';
+
+  @override
+  String get no_open_drawings => 'No open drawings';
+
+  @override
+  String get pin_into_chat => 'Add to chat';
 
   @override
   String get ask_assistant => 'Ask the assistant  Enter to send';

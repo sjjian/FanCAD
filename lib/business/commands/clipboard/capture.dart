@@ -72,6 +72,10 @@ Future<CommandResult> pasteClipboard(
     insertion = clip.basePoint;
   } else {
     _installPastePreview(context, clip);
+    // clip.basePoint is a placement handle in the source drawing, not a
+    // rubber-band origin here. Passing it as basePoint turns polar/ortho
+    // tracking on from that far-away point, so the preview and the click
+    // jump away from the cursor.
     insertion = await context.resolvePoint(
       'to',
       asBlock
@@ -83,7 +87,6 @@ Future<CommandResult> pasteClipboard(
               'PASTECLIP',
               context.l10n.prompt_specify_insertion_point,
             ),
-      basePoint: clip.basePoint,
     );
     context.input.setPreview(null);
   }

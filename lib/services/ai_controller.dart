@@ -11,6 +11,8 @@ import '../business/ai/skills/bundled.dart';
 import '../models/assistant_chat.dart';
 import '../models/assistant_profile.dart';
 import '../storage/assistant_settings.dart';
+import 'composer_pin.dart';
+import 'document_tab.dart';
 import 'session_snapshot.dart';
 import 'workspace.dart';
 
@@ -38,6 +40,9 @@ class AiController extends ChangeNotifier {
   AgentLoop? _active;
   PendingChangeSet? _pending;
   Completer<bool>? _pendingDecision;
+  SessionQuestion? _pendingQuestion;
+  Completer<Map<String, Object?>>? _askDecision;
+  final List<ComposerPin> _pins = [];
 
   bool get isBusy => _busy;
   String? get error => _error;
@@ -45,6 +50,8 @@ class AiController extends ChangeNotifier {
   Conversation get conversation => _chat.conversation;
   List<ChatMessage> get messages => conversation.visible;
   PendingChangeSet? get pendingApproval => _pending;
+  SessionQuestion? get pendingQuestion => _pendingQuestion;
+  List<ComposerPin> get pins => List.unmodifiable(_pins);
   LlmUsage? get lastUsage => _chat.usage;
   List<AssistantChat> get chats => List.unmodifiable(_chats);
   AssistantChat get activeChat => _chat;
@@ -228,6 +235,7 @@ class AiController extends ChangeNotifier {
   /// Stops the in-flight turn after the current model reply or tool call.
   void stop() {
     _settlePending(false);
+    _settleAsk(const {'status': 'cancelled'});
     if (_active == null) return;
     _stopping = true;
     _active!.cancel();
@@ -240,6 +248,195 @@ class AiController extends ChangeNotifier {
   /// reach this — that was the black-mask decline.
   void rejectPending() => _settlePending(false);
 
+  void answerQuestion(SessionAskOption option) {
+    submitQuestion([option], '');
+  }
+
+  void answerQuestionCustom(String text) {
+    submitQuestion(const [], text);
+  }
+
+  void submitQuestion(List<SessionAskOption> selected, String custom) {
+    final result = encodeAskAnswer(selected: selected, custom: custom);
+    if (result == null) return;
+    _settleAsk(result);
+  }
+
+  void cancelQuestion() => _settleAsk(const {'status': 'cancelled'});
+
+  void flashEntities(List<int> ids, {String? tabId}) {
+    if (ids.isEmpty) return;
+    if (tabId != null && tabId.isNotEmpty) {
+      final error = workspace.activateDrawing(tabId);
+      if (error != null) return;
+    }
+    workspace.flashHighlights(ids);
+  }
+
+  void hoverEntities(List<int> ids, {String? tabId}) {
+    if (tabId != null &&
+        tabId.isNotEmpty &&
+        workspace.activeDrawing?.session.id != tabId) {
+      workspace.setHoverHighlights(const []);
+      return;
+    }
+    workspace.setHoverHighlights(ids);
+  }
+
+  void flashPin(ComposerPin pin) {
+    if (pin.kind == ComposerPinKind.drawing) {
+      workspace.activateDrawing(pin.tabId);
+      return;
+    }
+    flashEntities(pin.ids, tabId: pin.tabId);
+  }
+
+  void hoverPin(ComposerPin? pin) {
+    hoverPins(pin == null ? const [] : [pin]);
+  }
+
+  void hoverPins(List<ComposerPin> pins) {
+    final entityPins = [
+      for (final pin in pins)
+        if (pin.kind == ComposerPinKind.entity && pin.ids.isNotEmpty) pin,
+    ];
+    if (entityPins.isEmpty) {
+      hoverEntities(const []);
+      return;
+    }
+    hoverEntities([
+      for (final pin in entityPins) ...pin.ids,
+    ], tabId: entityPins.first.tabId);
+  }
+
+  ComposerPin resolvePin(ComposerPin pin) {
+    if (pin.kind != ComposerPinKind.drawing) return pin;
+    if (pin.tabTitle.trim().isNotEmpty) return pin;
+    final tab = workspace.findDrawing(pin.tabId);
+    if (tab == null) return pin;
+    return ComposerPin.drawing(
+      tabId: pin.tabId,
+      tabTitle: tab.title,
+      path: tab.filePath,
+    );
+  }
+
+  void pinSelection() {
+    final tab = workspace.activeDrawing;
+    if (tab == null) return;
+    _pinEntities(tab.selection.ids.toList(), tab: tab);
+  }
+
+  void pinClipboard() {
+    final tab = workspace.activeDrawing;
+    final clip = workspace.clipboard.clip;
+    if (tab == null || clip == null || clip.isEmpty) return;
+    final ids = entityIdsStillInDocument(
+      tab.document,
+      clip.entities.map((entity) => entity.id),
+    );
+    if (ids.isEmpty) {
+      workspace.notify(
+        'Those objects are no longer in the drawing. Select them and Pin.',
+        isError: true,
+      );
+      return;
+    }
+    _pinEntities(ids, tab: tab);
+  }
+
+  void pinReceiptIds(List<int> ids) {
+    final tab = workspace.activeDrawing;
+    if (tab == null) return;
+    _pinEntities(ids, tab: tab);
+  }
+
+  void pinDrawing(DocumentTab tab) {
+    if (tab.isStartPage) return;
+    final tabId = tab.session.id;
+    _pins.add(
+      ComposerPin.drawing(
+        tabId: tabId,
+        tabTitle: tab.title,
+        path: tab.filePath,
+      ),
+    );
+    notifyListeners();
+  }
+
+  void removePin(int index) {
+    if (index < 0 || index >= _pins.length) return;
+    _pins.removeAt(index);
+    notifyListeners();
+  }
+
+  void _pinEntities(List<int> ids, {required DocumentTab tab}) {
+    final document = tab.document;
+    final live = entityIdsStillInDocument(document, ids);
+    if (live.isEmpty) return;
+    var total = live.length;
+    for (final pin in _pins) {
+      if (pin.kind == ComposerPinKind.entity) {
+        total += pin.ids.length;
+      }
+    }
+    if (total > composerPinIdCap) {
+      workspace.notify(
+        'Too many objects to pin. Shrink the selection.',
+        isError: true,
+      );
+      return;
+    }
+    final kinds = <String, int>{};
+    for (final id in live) {
+      final entity = document.entity(id);
+      if (entity == null) continue;
+      kinds.update(entity.kind.name, (n) => n + 1, ifAbsent: () => 1);
+    }
+    _pins.add(
+      ComposerPin.entities(
+        live,
+        tabId: tab.session.id,
+        tabTitle: tab.title,
+        path: tab.filePath,
+        label: kinds.entries.map((e) => '${e.value} ${e.key}').join(', '),
+      ),
+    );
+    notifyListeners();
+  }
+
+  List<ComposerPin> _livePins(List<ComposerPin> pins) {
+    final live = <ComposerPin>[];
+    for (final pin in pins) {
+      if (pin.kind == ComposerPinKind.drawing) {
+        final tab = workspace.findDrawing(pin.tabId);
+        if (tab == null) continue;
+        live.add(
+          ComposerPin.drawing(
+            tabId: tab.session.id,
+            tabTitle: tab.title,
+            path: tab.filePath,
+          ),
+        );
+        continue;
+      }
+      final tab = workspace.findDrawing(pin.tabId);
+      if (tab == null) continue;
+      final ids = entityIdsStillInDocument(tab.document, pin.ids);
+      if (ids.isEmpty) continue;
+      live.add(
+        ComposerPin.entities(
+          ids,
+          tabId: tab.session.id,
+          tabTitle: tab.title,
+          path: tab.filePath,
+          label: pin.label,
+        ),
+      );
+    }
+    return live;
+  }
+
   void clearError() {
     if (_error == null) return;
     _error = null;
@@ -248,8 +445,8 @@ class AiController extends ChangeNotifier {
 
   /// Sends the draft, or [text] when supplied, and runs the agent loop.
   Future<void> send([String? text]) async {
-    final message = (text ?? draft).trim();
-    if (message.isEmpty || _busy) return;
+    final typed = (text ?? draft).trim();
+    if ((_pins.isEmpty && typed.isEmpty) || _busy) return;
     final provider = _provider();
     if (provider == null) {
       _error =
@@ -258,12 +455,31 @@ class AiController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    final session = workspace.active?.session;
+    final pinned = _livePins([..._pins]);
+    if (pinned.isEmpty && typed.isEmpty) {
+      if (_pins.isNotEmpty) {
+        _pins.clear();
+        notifyListeners();
+      }
+      return;
+    }
+    final tabIds = {
+      for (final pin in pinned)
+        if (pin.tabId.isNotEmpty) pin.tabId,
+    };
+    DocumentTab? target = workspace.activeDrawing;
+    if (tabIds.length == 1) {
+      target = workspace.findDrawing(tabIds.single) ?? target;
+    }
+    final session = target?.session ?? workspace.active?.session;
     if (session == null) {
       _error = 'Open a drawing first.';
       notifyListeners();
       return;
     }
+
+    _pins.clear();
+    final message = flattenComposerPins(pinned, typed);
 
     _patchChat((chat) {
       final titled = chat.title.trim().isEmpty
@@ -273,6 +489,7 @@ class AiController extends ChangeNotifier {
     });
     _busy = true;
     _error = null;
+    workspace.setAssistantBusy(true);
     notifyListeners();
 
     final typings = host == null
@@ -296,11 +513,13 @@ class AiController extends ChangeNotifier {
       conversation: conversation,
       history: session.history,
       typings: typings,
-      session: collectSessionSnapshot(workspace),
+      sessionOf: () => collectSessionSnapshot(workspace, drawing: target),
       skills: bundledSkillRegistry(),
       authoring: const PluginAuthoring(),
       policy: ApprovalPolicy(autoApproveEdits: autoApprove),
       askApproval: _askApproval,
+      askQuestion: _askQuestion,
+      supplyToSession: (args) async => workspace.supplyInteractive(args),
       onDelta: (_) => notifyListeners(),
       onUsage: (usage) {
         _patchChat((chat) => chat.copyWith(usage: usage));
@@ -322,7 +541,9 @@ class AiController extends ChangeNotifier {
       if (identical(_active, agent)) _active = null;
       _busy = false;
       _stopping = false;
+      workspace.setAssistantBusy(false);
       _settlePending(false);
+      _settleAsk(const {'status': 'cancelled'});
       _persistChats();
       _notify();
     }
@@ -335,6 +556,13 @@ class AiController extends ChangeNotifier {
   @visibleForTesting
   Future<bool> debugAskApproval(PendingChangeSet pending) =>
       _askApproval(pending);
+
+  @visibleForTesting
+  Future<Map<String, Object?>> debugAskQuestion(SessionQuestion question) =>
+      _askQuestion(question);
+
+  @visibleForTesting
+  List<ComposerPin> debugLivePins() => _livePins([..._pins]);
 
   Future<bool> _askApproval(PendingChangeSet pending) async {
     _settlePending(false);
@@ -355,10 +583,34 @@ class AiController extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, Object?>> _askQuestion(SessionQuestion question) async {
+    _settleAsk(const {'status': 'cancelled'});
+    _pendingQuestion = question;
+    final decision = Completer<Map<String, Object?>>();
+    _askDecision = decision;
+    _notify();
+    try {
+      return await decision.future;
+    } finally {
+      if (identical(_pendingQuestion, question)) {
+        _pendingQuestion = null;
+        _askDecision = null;
+        hoverEntities(const []);
+        _notify();
+      }
+    }
+  }
+
   void _settlePending(bool approved) {
     final decision = _pendingDecision;
     if (decision == null || decision.isCompleted) return;
     decision.complete(approved);
+  }
+
+  void _settleAsk(Map<String, Object?> result) {
+    final decision = _askDecision;
+    if (decision == null || decision.isCompleted) return;
+    decision.complete(result);
   }
 
   void _notify() {
@@ -369,6 +621,7 @@ class AiController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _settlePending(false);
+    _settleAsk(const {'status': 'cancelled'});
     _active?.cancel();
     super.dispose();
   }

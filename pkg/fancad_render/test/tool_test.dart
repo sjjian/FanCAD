@@ -9,17 +9,16 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const view = CadViewport(
-    center: Vec2(5, 0),
-    scale: 1,
-    size: Size(800, 600),
-  );
+  const view = CadViewport(center: Vec2(5, 0), scale: 1, size: Size(800, 600));
 
   PointerDownEvent down(Offset local, {int buttons = kPrimaryMouseButton}) =>
       PointerDownEvent(pointer: 1, position: local, buttons: buttons);
 
-  PointerMoveEvent move(Offset local) =>
-      PointerMoveEvent(pointer: 1, position: local, buttons: kPrimaryMouseButton);
+  PointerMoveEvent move(Offset local) => PointerMoveEvent(
+    pointer: 1,
+    position: local,
+    buttons: kPrimaryMouseButton,
+  );
 
   PointerUpEvent up(Offset local) =>
       PointerUpEvent(pointer: 1, position: local);
@@ -81,31 +80,35 @@ void main() {
     expect(session.selection.ids, hasLength(1));
   });
 
-  test('a point prompt returns to select and the middle button is ignored', () async {
-    final session = DocumentSession(id: 't', document: CadDocument());
-    final controller = controllerFor(session);
-    final prompt = PointPromptTool(message: 'From point:');
-    controller.push(prompt);
-    expect(controller.isPrompting, isTrue);
-    expect(controller.activeTool, prompt);
+  test(
+    'a point prompt returns to select and the middle button is ignored',
+    () async {
+      final session = DocumentSession(id: 't', document: CadDocument());
+      final controller = controllerFor(session);
+      final prompt = PointPromptTool(message: 'From point:');
+      controller.push(prompt);
+      expect(controller.isPrompting, isTrue);
+      expect(controller.activeTool, prompt);
+      expect(prompt.hover, isNull);
 
-    expect(
-      controller.onPointerDown(
-        const Vec2(3, 1),
-        down(Offset.zero, buttons: kMiddleMouseButton),
-      ),
-      isFalse,
-    );
-    expect(prompt.isComplete, isFalse);
+      expect(
+        controller.onPointerDown(
+          const Vec2(3, 1),
+          down(Offset.zero, buttons: kMiddleMouseButton),
+        ),
+        isFalse,
+      );
+      expect(prompt.isComplete, isFalse);
 
-    expect(
-      controller.onPointerDown(const Vec2(3, 1), down(Offset.zero)),
-      isTrue,
-    );
-    expect(await prompt.result, const Vec2(3, 1));
-    expect(controller.isPrompting, isFalse);
-    expect(controller.activeTool, isA<SelectionTool>());
-  });
+      expect(
+        controller.onPointerDown(const Vec2(3, 1), down(Offset.zero)),
+        isTrue,
+      );
+      expect(await prompt.result, const Vec2(3, 1));
+      expect(controller.isPrompting, isFalse);
+      expect(controller.activeTool, isA<SelectionTool>());
+    },
+  );
 
   test('the overlay ray is omitted unless the cursor is on an axis', () {
     const view = CadViewport(
@@ -155,19 +158,13 @@ void main() {
       final controller = controllerFor(session);
       // LINE's next prompt is pushed while the first-point button is still
       // down. The leftover drag must not count as a cancellable gesture.
-      controller.onPointerDown(
-        const Vec2(20, 20),
-        down(const Offset(20, 20)),
-      );
+      controller.onPointerDown(const Vec2(20, 20), down(const Offset(20, 20)));
       final prompt = PointPromptTool(
         message: 'Specify next point:',
         anchor: Vec2.zero(),
       );
       controller.push(prompt);
-      controller.onPointerMove(
-        const Vec2(40, 20),
-        move(const Offset(40, 20)),
-      );
+      controller.onPointerMove(const Vec2(40, 20), move(const Offset(40, 20)));
       expect(controller.hasCancellableGesture, isFalse);
 
       expect(controller.handleKey(LogicalKeyboardKey.escape), isTrue);
@@ -188,10 +185,7 @@ void main() {
       controller.onPointerUp(const Vec2(0, 0), up(Offset.zero));
       expect(controller.hasCancellableGesture, isTrue);
 
-      controller.onPointerMove(
-        const Vec2(8, 4),
-        move(const Offset(8, 4)),
-      );
+      controller.onPointerMove(const Vec2(8, 4), move(const Offset(8, 4)));
       expect(prompt.buildPreview(controller), isNotEmpty);
 
       expect(controller.handleKey(LogicalKeyboardKey.escape), isTrue);
@@ -220,14 +214,8 @@ void main() {
       contains(session.document.entities.single.id),
     );
 
-    controller.onPointerDown(
-      const Vec2(20, 20),
-      down(const Offset(20, 20)),
-    );
-    controller.onPointerMove(
-      const Vec2(40, 40),
-      move(const Offset(40, 40)),
-    );
+    controller.onPointerDown(const Vec2(20, 20), down(const Offset(20, 20)));
+    controller.onPointerMove(const Vec2(40, 40), move(const Offset(40, 40)));
     expect(controller.hasCancellableGesture, isTrue);
     expect(prompt.buildPreview(controller), isNotEmpty);
 

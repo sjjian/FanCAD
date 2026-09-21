@@ -1,10 +1,17 @@
 import 'package:fancad_ai/fancad_ai.dart';
 
+import 'document_tab.dart';
 import 'workspace.dart';
 
-/// Collects the live tab into a [SessionSnapshot] for one assistant turn.
-SessionSnapshot collectSessionSnapshot(Workspace workspace) {
-  final tab = workspace.active;
+/// Collects [drawing], or the front tab, into a [SessionSnapshot].
+///
+/// The assistant may be bound to a pinned drawing that is not on screen.
+/// Do not bring that tab forward just to describe it.
+SessionSnapshot collectSessionSnapshot(
+  Workspace workspace, {
+  DocumentTab? drawing,
+}) {
+  final tab = drawing ?? workspace.active;
   final document = tab?.document;
   final ids = tab?.selection.ids.toList() ?? const <int>[];
   final listed = <SelectedObjectHint>[];
@@ -38,7 +45,11 @@ SessionSnapshot collectSessionSnapshot(Workspace workspace) {
 
   final snap = workspace.snapEngine;
   final modes = [for (final mode in snap.modes) mode.name]..sort();
+  final prompt = workspace.commandLine.pending?.message;
   return SessionSnapshot(
+    drawingId: tab?.session.id,
+    drawingTitle: tab?.title,
+    drawingPath: tab?.filePath,
     selectionCount: ids.length,
     selection: listed,
     viewport: viewport,
@@ -47,5 +58,14 @@ SessionSnapshot collectSessionSnapshot(Workspace workspace) {
     ortho: snap.tracking.ortho,
     polar: snap.tracking.polar,
     showGrid: tab?.showGrid ?? true,
+    runningCommand: workspace.runningCommand,
+    prompt: prompt,
+    collectedPointCount: workspace.collectedPointCount,
+    lastCreatedIds: [
+      ...workspace.lastCreatedIds.take(SessionSnapshot.maxResultIds),
+    ],
+    lastModifiedIds: [
+      ...workspace.lastModifiedIds.take(SessionSnapshot.maxResultIds),
+    ],
   );
 }

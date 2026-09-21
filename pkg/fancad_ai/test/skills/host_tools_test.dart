@@ -36,4 +36,57 @@ void main() {
     expect(catalog.find('skill.read'), isNotNull);
     expect(catalog.find('query.selection'), isNotNull);
   });
+
+  test('ask refuses fewer than two options', () {
+    expect(
+      parseSessionQuestion({
+        'question': 'Radius?',
+        'options': ['5'],
+      }),
+      isNull,
+    );
+
+    final ok = parseSessionQuestion({
+      'question': 'Radius?',
+      'options': ['5', '10'],
+    });
+    expect(ok, isNotNull);
+    expect(ok!.options, hasLength(2));
+    expect(ok.multiple, isFalse);
+    expect(ok.allowCustom, isTrue);
+
+    final multi = parseSessionQuestion({
+      'question': 'Which?',
+      'options': ['A', 'B', 'C'],
+      'multiple': true,
+    });
+    expect(multi?.multiple, isTrue);
+  });
+
+  test('encodeAskAnswer packs one or many picks', () {
+    expect(
+      encodeAskAnswer(
+        selected: const [SessionAskOption(id: 'a', label: 'A')],
+      ),
+      {'status': 'ok', 'id': 'a', 'label': 'A'},
+    );
+    expect(
+      encodeAskAnswer(
+        selected: const [
+          SessionAskOption(id: 'a', label: 'A'),
+          SessionAskOption(id: 'b', label: 'B'),
+        ],
+        custom: 'also this',
+      ),
+      {
+        'status': 'ok',
+        'multiple': true,
+        'id': 'a',
+        'label': 'A',
+        'ids': ['a', 'b', 'custom'],
+        'labels': ['A', 'B', 'also this'],
+      },
+    );
+    expect(encodeAskAnswer(selected: const []), isNull);
+  });
 }

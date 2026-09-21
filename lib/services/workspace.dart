@@ -128,8 +128,26 @@ class Workspace extends ChangeNotifier implements CommandServices {
   /// Set while a command is running, so the UI can refuse to start another.
   String? _runningCommand;
 
+  /// The interactive input of the in-flight [run], when there is one.
+  InteractiveCommandInput? _activeInput;
+
   /// Entities an approval dialog is asking about, drawn as highlights.
   List<int> _pendingHighlights = const [];
+
+  /// A short-lived flash, merged into [pendingHighlightIds].
+  List<int> _flashHighlights = const [];
+  Timer? _flashTimer;
+
+  /// Hovered chip / `#id` in the assistant pane. Cleared on pointer exit.
+  List<int> _hoverHighlights = const [];
+
+  /// Last geometry the human or the assistant created or changed.
+  List<int> _lastCreatedIds = const [];
+  List<int> _lastModifiedIds = const [];
+
+  /// True while an assistant turn is in flight. Blocks new interactive verbs
+  /// and drops in-flight canvas edits so the drawing stays read-only.
+  bool _assistantBusy = false;
 
   /// The extension file `plugins.edit` asked the Re-Editor to open.
   ({String id, String relative})? _pluginEditorTarget;
@@ -161,9 +179,20 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   String? get runningCommand => _runningCommand;
   bool get isBusy => _runningCommand != null;
+  bool get assistantBusy => _assistantBusy;
+
+  List<int> get lastCreatedIds => _lastCreatedIds;
+  List<int> get lastModifiedIds => _lastModifiedIds;
+
+  /// Points collected by the in-flight interactive command.
+  int get collectedPointCount => _activeInput?.collectedPointCount ?? 0;
 
   /// Entities the canvas should highlight while an approval is pending.
-  List<int> get pendingHighlightIds => _pendingHighlights;
+  List<int> get pendingHighlightIds => [
+    ..._pendingHighlights,
+    ..._flashHighlights,
+    ..._hoverHighlights,
+  ];
 
   ({String id, String relative})? get pluginEditorTarget => _pluginEditorTarget;
   int get pluginEditorRequest => _pluginEditorRequest;
@@ -171,6 +200,86 @@ class Workspace extends ChangeNotifier implements CommandServices {
   void setPendingHighlights(List<int> ids) {
     _pendingHighlights = List.unmodifiable(ids);
     notifyListeners();
+  }
+
+  /// Pulses [ids] on the canvas, then clears them so they do not stick.
+  void flashHighlights(List<int> ids) {
+    _flashTimer?.cancel();
+    _flashHighlights = List.unmodifiable(ids);
+    notifyListeners();
+    if (ids.isEmpty) return;
+    _flashTimer = Timer(const Duration(milliseconds: 700), () {
+      _flashHighlights = const [];
+      notifyListeners();
+    });
+  }
+
+  /// Holds [ids] while the pointer is over a chip or `#id` in chat.
+  void setHoverHighlights(List<int> ids) {
+    if (_sameIds(_hoverHighlights, ids)) return;
+    _hoverHighlights = List.unmodifiable(ids);
+    notifyListeners();
+  }
+
+  static bool _sameIds(List<int> a, List<int> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  void setAssistantBusy(bool value) {
+    if (_assistantBusy == value) return;
+    _assistantBusy = value;
+    if (value) {
+      for (final tab in _tabs) {
+        tab.tools.cancelGesture();
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Feeds a value into the command line prompt the human is sitting in.
+  Map<String, Object?> supplyInteractive(Map<String, Object?> args) {
+    final pending = commandLine.pending;
+    if (pending == null) {
+      return {
+        'status': 'failed',
+        'message': 'No command is waiting for input.',
+      };
+    }
+    final point = CommandArgs.parsePoint(args['point']);
+    if (point != null) {
+      commandLine.supplyFromPointer(point);
+      return {
+        'status': 'ok',
+        'supplied': 'point',
+        'point': [point.x, point.y],
+      };
+    }
+    final keyword = '${args['keyword'] ?? ''}'.trim();
+    if (keyword.isNotEmpty) {
+      commandLine.supplyFromPointer(keyword);
+      return {'status': 'ok', 'supplied': 'keyword', 'keyword': keyword};
+    }
+    final number = args['number'];
+    if (number is num) {
+      commandLine.supplyFromPointer(number.toDouble());
+      return {'status': 'ok', 'supplied': 'number', 'number': number};
+    }
+    final ids = CommandArgs(args).ids('ids');
+    if (ids != null && ids.isNotEmpty) {
+      commandLine.supplyFromPointer(ids);
+      return {'status': 'ok', 'supplied': 'ids', 'ids': ids};
+    }
+    return {
+      'status': 'failed',
+      'message':
+          'session.supply needs a point, number, keyword or ids matching '
+          'the current prompt.',
+    };
   }
 
   // -------------------------------------------------------------------------
@@ -574,6 +683,12 @@ class Workspace extends ChangeNotifier implements CommandServices {
       commandLine.writeError('Unknown command: $idOrAlias');
       return CommandResult.failed('Unknown command: $idOrAlias');
     }
+    if (_assistantBusy && !_isHostCommand(descriptor.id)) {
+      final message =
+          'The assistant is working. Stop it before starting a command.';
+      commandLine.writeError(message);
+      return CommandResult.failed(message);
+    }
     if (_runningCommand != null) {
       // Starting a new command cancels the old one, which is the behaviour
       // every CAD user already has in their fingers.
@@ -621,6 +736,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
             params: each.params,
             locale: locale,
           );
+          _activeInput = input;
           return CommandContext(
             session: tab.session,
             args: CommandArgs(args),
@@ -632,8 +748,10 @@ class Workspace extends ChangeNotifier implements CommandServices {
         },
       );
       _report(descriptor, result);
+      _rememberResult(result);
       return result;
     } finally {
+      if (identical(_activeInput, input)) _activeInput = null;
       input?.cancel();
       _runningCommand = null;
       notifyListeners();
@@ -691,7 +809,10 @@ class Workspace extends ChangeNotifier implements CommandServices {
   ///
   /// This is the path plugins and AI tool calls take: identical command
   /// implementations, but every prompt is answered from [args] and an
-  /// unanswerable prompt is an error instead of a hang.
+  /// unanswerable prompt is an error instead of a hang. Headless runs never
+  /// fall back to the current selection. An AI write while a person is in a
+  /// command is refused; a missing point on an AI run hands off to the
+  /// crosshair instead of cancelling.
   Future<CommandResult> runHeadless(
     String idOrAlias, {
     Map<String, Object?> args = const {},
@@ -703,6 +824,14 @@ class Workspace extends ChangeNotifier implements CommandServices {
     final descriptor = commands.find(idOrAlias);
     if (descriptor == null) {
       return CommandResult.failed('Unknown command: $idOrAlias');
+    }
+    if (source == ChangeSource.ai &&
+        _runningCommand != null &&
+        descriptor.risk != CommandRisk.readOnly) {
+      return CommandResult.failed(
+        '$_runningCommand is running. Stop it or wait before changing '
+        'the drawing.',
+      );
     }
     if (tab != null && tab.trim().isNotEmpty) {
       final found = findDrawing(tab);
@@ -722,7 +851,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
         (_isHostCommand(descriptor.id) ? active?.session : null);
     if (target == null) {
       if (descriptor.id == 'file.list' || descriptor.id == 'file.activate') {
-        return commands.run(
+        final result = await commands.run(
           descriptor.id,
           args: args,
           source: source,
@@ -737,7 +866,6 @@ class Workspace extends ChangeNotifier implements CommandServices {
               input: ArgsCommandInput(
                 args: CommandArgs(args),
                 params: each.params,
-                selection: transient.selection,
                 log: log ?? commandLine.write,
               ),
               services: this,
@@ -746,27 +874,97 @@ class Workspace extends ChangeNotifier implements CommandServices {
             );
           },
         );
+        _rememberResult(result);
+        return result;
       }
       return CommandResult.failed('No drawing is open');
     }
-    return commands.run(
-      descriptor.id,
-      args: args,
-      source: source,
-      contextBuilder: (each) => CommandContext(
-        session: target,
-        args: CommandArgs(args),
-        input: ArgsCommandInput(
-          args: CommandArgs(args),
-          params: each.params,
-          selection: target.selection,
-          log: log ?? commandLine.write,
-        ),
-        services: this,
+    InteractiveCommandInput? handed;
+    try {
+      final result = await commands.run(
+        descriptor.id,
+        args: args,
         source: source,
-        commandId: each.id,
-      ),
-    );
+        contextBuilder: (each) {
+          final argsInput = ArgsCommandInput(
+            args: CommandArgs(args),
+            params: each.params,
+            log: log ?? commandLine.write,
+          );
+          final CommandInput input;
+          if (source == ChangeSource.ai) {
+            input = FallbackCommandInput(
+              primary: argsInput,
+              fallbackOf: () {
+                final host = _tabForSession(target);
+                handed = InteractiveCommandInput(
+                  tools: host.tools,
+                  commandLine: commandLine,
+                  args: CommandArgs(args),
+                  params: each.params,
+                  locale: locale,
+                );
+                _runningCommand = each.id;
+                _activeInput = handed;
+                notifyListeners();
+                return handed!;
+              },
+            );
+          } else {
+            input = argsInput;
+          }
+          return CommandContext(
+            session: target,
+            args: CommandArgs(args),
+            input: input,
+            services: this,
+            source: source,
+            commandId: each.id,
+          );
+        },
+      );
+      _rememberResult(result);
+      return result;
+    } finally {
+      handed?.cancel();
+      if (identical(_activeInput, handed)) _activeInput = null;
+      if (handed != null && _runningCommand == descriptor.id) {
+        _runningCommand = null;
+        notifyListeners();
+      }
+    }
+  }
+
+  DocumentTab _tabForSession(DocumentSession session) {
+    for (final tab in _tabs) {
+      if (identical(tab.session, session)) return tab;
+    }
+    return activeDrawing ?? active!;
+  }
+
+  void _rememberResult(CommandResult result) {
+    final change = result.transaction?.change;
+    var created = change?.added ?? const <int>[];
+    var modified = change?.modified ?? const <int>[];
+    if (created.isEmpty) {
+      created = _idsFromData(result.data);
+    }
+    if (created.isEmpty && modified.isEmpty) return;
+    if (created.isNotEmpty) {
+      _lastCreatedIds = List.unmodifiable(created);
+    }
+    if (modified.isNotEmpty) {
+      _lastModifiedIds = List.unmodifiable(modified);
+    }
+  }
+
+  static List<int> _idsFromData(Map<String, Object?>? data) {
+    final raw = data?['ids'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is int) item else if (item is num) item.toInt(),
+    ];
   }
 
   /// Executes a line typed at the command line.
@@ -992,6 +1190,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   @override
   void dispose() {
+    _flashTimer?.cancel();
     _disposed = true;
     for (final tab in _tabs) {
       tab.removeListener(notifyListeners);

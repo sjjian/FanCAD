@@ -166,3 +166,42 @@ List<AssistantLogEntry> groupAssistantLog(List<ChatMessage> messages) {
   }
   return entries;
 }
+
+/// Entity ids a leftover receipt can flash or pin.
+List<int> assistantReceiptEntityIds(AssistantReceipt receipt) {
+  Object? decoded;
+  try {
+    decoded = jsonDecode(receipt.raw);
+  } catch (_) {
+    return const [];
+  }
+  if (decoded is! Map) return const [];
+  final ids = <int>{};
+  final change = decoded['change'];
+  if (change is Map) {
+    _collectReceiptIds(change['added'], ids);
+    _collectReceiptIds(change['modified'], ids);
+    _collectReceiptIds(change['removed'], ids);
+  }
+  final data = decoded['data'];
+  if (data is Map) {
+    _collectReceiptIds(data['ids'], ids);
+  }
+  _collectReceiptIds(decoded['ids'], ids);
+  return ids.toList();
+}
+
+void _collectReceiptIds(Object? value, Set<int> into) {
+  if (value is int) {
+    into.add(value);
+  } else if (value is num) {
+    into.add(value.toInt());
+  } else if (value is String) {
+    final parsed = int.tryParse(value);
+    if (parsed != null) into.add(parsed);
+  } else if (value is List) {
+    for (final item in value) {
+      _collectReceiptIds(item, into);
+    }
+  }
+}

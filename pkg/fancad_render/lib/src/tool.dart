@@ -206,6 +206,7 @@ class ToolController extends ChangeNotifier
 
   /// True while a prompt tool owns the pointer, which is how the shell knows a
   /// command is mid-flight.
+  @override
   bool get isPrompting => _tool != null && _tool != _defaultTool;
 
   /// Whether the cursor HUD should be shown for the current tool and cursor.

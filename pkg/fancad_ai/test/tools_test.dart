@@ -33,6 +33,7 @@ void main() {
     expect(tools.single.parameters['required'], ['action']);
     expect(tools.single.description, contains(fancadCallExample));
     expect(tools.single.description, contains('never inside args'));
+    expect(tools.single.description, contains('skill.read'));
   });
 
   test('a dotted path resolves back to the original command', () {
@@ -49,7 +50,10 @@ void main() {
       const CommandToolCatalog().commandFor(registry, 'query.summary')?.id,
       'query.summary',
     );
-    expect(const CommandToolCatalog().commandFor(registry, 'query_summary'), isNull);
+    expect(
+      const CommandToolCatalog().commandFor(registry, 'query_summary'),
+      isNull,
+    );
   });
 
   test('highlight ids are collected from the usual argument names', () {

@@ -34,6 +34,11 @@ void main() {
       expect(zh.view_layouts_hint, isNot(zh.view_layers_hint));
       expect(en.layouts, 'Layouts');
       expect(zh.layouts, '布局');
+      expect(
+        en.assistant_canvas_locked,
+        'The assistant is working. The drawing cannot be edited.',
+      );
+      expect(zh.assistant_canvas_locked, '助手正在操作，图纸暂不可编辑。');
     },
   );
 

@@ -1,4 +1,5 @@
 import 'package:fancad/fancad.dart';
+import 'package:fancad/services/composer_pin.dart';
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -212,11 +213,152 @@ void main() {
     },
   );
 
+  test('an ask card does not highlight every referenced object', () async {
+    final ai = controller();
+    const question = SessionQuestion(
+      question: 'Which turtle?',
+      options: [
+        SessionAskOption(id: 'left', label: 'Left'),
+        SessionAskOption(id: 'right', label: 'Right'),
+      ],
+      ids: [1, 2, 3, 4],
+    );
+    final future = ai.debugAskQuestion(question);
+    expect(ai.pendingQuestion, isNotNull);
+    expect(ai.workspace.pendingHighlightIds, isEmpty);
+    ai.cancelQuestion();
+    expect(await future, {'status': 'cancelled'});
+  });
+
   test('testProfile without a key notifies an error', () async {
     final ai = controller();
     await ai.testProfile(ai.activeProfile);
     expect(ai.workspace.notices, isNotEmpty);
     expect(ai.workspace.notices.last.isError, isTrue);
     expect(ai.workspace.notices.last.message, contains('No API key'));
+  });
+
+  test('pinning the leftover pick records ids for the next send', () {
+    final ai = controller();
+    final tab = ai.workspace.newDocument();
+    tab.session.edit('LINE', (transaction) {
+      transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+    });
+    final id = tab.document.entities.single.id;
+    tab.selection.replace([id]);
+    ai.pinSelection();
+    expect(ai.pins, hasLength(1));
+    expect(ai.pins.single.ids, [id]);
+    expect(ai.pins.single.tabId, tab.session.id);
+    final flattened = flattenComposerPins(ai.pins, 'offset these');
+    expect(flattened, contains('#$id'));
+    expect(flattened, contains('tab: ${tab.session.id}'));
+    expect(flattened, contains(tab.session.id));
+  });
+
+  test('a second selection on the same drawing is its own pin', () {
+    final ai = controller();
+    final tab = ai.workspace.newDocument();
+    tab.session.edit('LINE', (transaction) {
+      transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+      transaction.add(
+        const LineEntity(id: 1, start: Vec2(0, 2), end: Vec2(4, 2)),
+      );
+    });
+    final first = tab.document.entities.first.id;
+    final second = tab.document.entities.last.id;
+    tab.selection.replace([first]);
+    ai.pinSelection();
+    tab.selection.replace([second]);
+    ai.pinSelection();
+    expect(ai.pins, hasLength(2));
+    expect(ai.pins.first.ids, [first]);
+    expect(ai.pins.last.ids, [second]);
+    expect(ai.pins.map((pin) => pin.tabId).toSet(), {tab.session.id});
+  });
+
+  test('pins from two drawings keep their own tab ids', () {
+    final ai = controller();
+    final first = ai.workspace.newDocument(title: 'Alpha');
+    first.session.edit('LINE', (transaction) {
+      transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+    });
+    final firstId = first.document.entities.single.id;
+    first.selection.replace([firstId]);
+    ai.pinSelection();
+
+    final second = ai.workspace.newDocument(title: 'Beta');
+    second.session.edit('LINE', (transaction) {
+      transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(8, 0)),
+      );
+    });
+    final secondId = second.document.entities.single.id;
+    second.selection.replace([secondId]);
+    ai.pinSelection();
+
+    expect(ai.pins, hasLength(2));
+    expect(ai.pins.map((pin) => pin.tabId).toSet(), {
+      first.session.id,
+      second.session.id,
+    });
+    ai.hoverEntities(ai.pins.first.ids, tabId: ai.pins.first.tabId);
+    expect(ai.workspace.pendingHighlightIds, isEmpty);
+    final flattened = flattenComposerPins(ai.pins, 'move them');
+    expect(flattened, contains('tab: ${first.session.id}'));
+    expect(flattened, contains('tab: ${second.session.id}'));
+    expect(flattened, contains('Alpha'));
+    expect(flattened, contains('Beta'));
+  });
+
+  test('a standalone @ token is the mention query', () {
+    expect(composerAtMentionAt('@', 1)?.query, '');
+    expect(composerAtMentionAt('see @Al', 7)?.query, 'Al');
+    expect(composerAtMentionAt('email@x', 7), isNull);
+    expect(composerAtMentionAt('@Sheet', 0), isNull);
+  });
+
+  test('pinning a drawing tab records tab= without dumping entities', () {
+    final ai = controller();
+    final tab = ai.workspace.newDocument(title: 'Sheet');
+    tab.session.edit('LINE', (transaction) {
+      transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+    });
+    ai.pinDrawing(tab);
+    expect(ai.pins, hasLength(1));
+    expect(ai.pins.single.kind, ComposerPinKind.drawing);
+    expect(ai.pins.single.ids, isEmpty);
+    expect(ai.pins.single.tabId, tab.session.id);
+    final flattened = flattenComposerPins(ai.pins, 'how many lines');
+    expect(flattened, contains('tab: ${tab.session.id}'));
+    expect(flattened, contains('Sheet'));
+    expect(flattened, isNot(contains('ids:')));
+    expect(flattened.toLowerCase(), contains('do not dump'));
+
+    final inline = flattenComposerPins(
+      ai.pins,
+      'how many lines in $composerMentionToken',
+    );
+    expect(inline, 'how many lines in @drawing[tab=${tab.session.id}]');
+    expect(inline, isNot(contains('Pinned:')));
+    expect(inline, isNot(contains('Sheet')));
+  });
+
+  test('closing a drawing drops its live pin', () {
+    final ai = controller();
+    final tab = ai.workspace.newDocument(title: 'Gone');
+    ai.pinDrawing(tab);
+    expect(ai.debugLivePins(), hasLength(1));
+    expect(ai.workspace.closeSession(tab.session, force: true), isTrue);
+    expect(ai.debugLivePins(), isEmpty);
+    expect(ai.pins, hasLength(1));
   });
 }

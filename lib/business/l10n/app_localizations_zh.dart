@@ -653,6 +653,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unlock => '解锁';
 
   @override
+  String get assistant_canvas_locked => '助手正在操作，图纸暂不可编辑。';
+
+  @override
   String get empty_drawing_title => '此图纸为空';
 
   @override
@@ -1034,6 +1037,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String affects_n_objects(int count) {
     return '影响 $count 个对象。';
   }
+
+  @override
+  String get ask_other => '其它…';
+
+  @override
+  String get ask_questions => '提问';
+
+  @override
+  String get ask_skip => '跳过';
+
+  @override
+  String get pin_selection => '将选择加入对话';
+
+  @override
+  String get mention_drawing => '提及图纸';
+
+  @override
+  String get no_open_drawings => '没有已打开的图纸';
+
+  @override
+  String get pin_into_chat => '加入对话';
 
   @override
   String get ask_assistant => '询问助手  Enter 发送';
