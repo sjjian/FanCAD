@@ -1,19 +1,20 @@
 import 'dart:async';
 
 import 'package:fancad_ai/fancad_ai.dart';
+import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../l10n/l10n.dart';
-import '../../models/assistant_chat.dart';
-import '../../models/assistant_profile.dart';
-import '../../services/ai_controller.dart';
-import '../../services/composer_pin.dart';
+import '../../models/assistant.dart';
+import '../../services/assistant.dart';
+import '../../services/workspace.dart';
 import '../theme/tokens.dart';
 import '../widgets/object_pin_chip.dart';
 import '../workbench/shell_widgets.dart';
 import 'assistant_markdown.dart';
-import 'assistant_receipt.dart';
 
 /// The assistant chat pane.
 ///
@@ -57,25 +58,25 @@ class _AssistantTurn {
   const _AssistantTurn({this.user, required this.body});
 
   final ChatMessage? user;
-  final List<AssistantLogEntry> body;
+  final List<AssistantLogEntryModel> body;
 }
 
-List<_AssistantTurn> _assistantTurns(List<AssistantLogEntry> entries) {
+List<_AssistantTurn> _assistantTurns(List<AssistantLogEntryModel> entries) {
   final turns = <_AssistantTurn>[];
   ChatMessage? user;
-  var body = <AssistantLogEntry>[];
+  var body = <AssistantLogEntryModel>[];
 
   void flush() {
     if (user == null && body.isEmpty) return;
     turns.add(
-      _AssistantTurn(user: user, body: List<AssistantLogEntry>.of(body)),
+      _AssistantTurn(user: user, body: List<AssistantLogEntryModel>.of(body)),
     );
     user = null;
-    body = <AssistantLogEntry>[];
+    body = <AssistantLogEntryModel>[];
   }
 
   for (final entry in entries) {
-    if (entry is AssistantLogMessage && entry.message.role == ChatRole.user) {
+    if (entry is AssistantLogMessageModel && entry.message.role == ChatRole.user) {
       flush();
       user = entry.message;
       continue;
@@ -86,16 +87,16 @@ List<_AssistantTurn> _assistantTurns(List<AssistantLogEntry> entries) {
   return turns;
 }
 
-class AiPanel extends StatefulWidget {
+class AiPanel extends ConsumerStatefulWidget {
   const AiPanel({super.key, required this.controller});
 
   final AiController controller;
 
   @override
-  State<AiPanel> createState() => _AiPanelState();
+  ConsumerState<AiPanel> createState() => _AiPanelState();
 }
 
-class _AiPanelState extends State<AiPanel> {
+class _AiPanelState extends ConsumerState<AiPanel> {
   final ScrollController _scroll = ScrollController();
   final GlobalKey _lastUserKey = GlobalKey();
   ChatMessage? _pinnedUser;
@@ -105,7 +106,6 @@ class _AiPanelState extends State<AiPanel> {
   void initState() {
     super.initState();
     _input = _MentionTextController(text: widget.controller.draft);
-    widget.controller.addListener(_onChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _pinLastUserToTop();
@@ -116,8 +116,6 @@ class _AiPanelState extends State<AiPanel> {
   void didUpdateWidget(AiPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.removeListener(_onChange);
-      widget.controller.addListener(_onChange);
       _pinnedUser = null;
       _syncDraft();
     }
@@ -125,20 +123,9 @@ class _AiPanelState extends State<AiPanel> {
 
   @override
   void dispose() {
-    widget.controller.removeListener(_onChange);
     _input.dispose();
     _scroll.dispose();
     super.dispose();
-  }
-
-  void _onChange() {
-    if (!mounted) return;
-    _syncDraft();
-    setState(() {});
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _pinLastUserToTop();
-    });
   }
 
   ChatMessage? _lastUserMessage() {
@@ -221,16 +208,16 @@ class _AiPanelState extends State<AiPanel> {
   }
 
   Widget _entryTile(
-    AssistantLogEntry entry, {
+    AssistantLogEntryModel entry, {
     required bool live,
     required bool showWorking,
     required bool showCaret,
   }) {
     final controller = widget.controller;
     return switch (entry) {
-      AssistantLogMessage(:final message) when message.role == ChatRole.user =>
+      AssistantLogMessageModel(:final message) when message.role == ChatRole.user =>
         const SizedBox.shrink(),
-      AssistantLogMessage(:final message)
+      AssistantLogMessageModel(:final message)
           when message.role == ChatRole.reasoning =>
         _ThinkingBlock(
           text: message.text,
@@ -242,7 +229,7 @@ class _AiPanelState extends State<AiPanel> {
           onHoverPin: controller.hoverPin,
           resolvePin: controller.resolvePin,
         ),
-      AssistantLogMessage(:final message)
+      AssistantLogMessageModel(:final message)
           when message.role == ChatRole.assistant =>
         _AssistantBlock(
           text: message.text,
@@ -254,7 +241,7 @@ class _AiPanelState extends State<AiPanel> {
           onHoverPin: controller.hoverPin,
           resolvePin: controller.resolvePin,
         ),
-      AssistantLogReceipt(:final receipt) => _ToolCard(
+      AssistantLogReceiptModel(:final receipt) => _ToolCard(
         receipt: receipt,
         onCopy: () => _copy(receipt.raw),
         onFlash: () =>
@@ -262,12 +249,31 @@ class _AiPanelState extends State<AiPanel> {
         onPin: () =>
             controller.pinReceiptIds(assistantReceiptEntityIds(receipt)),
       ),
-      AssistantLogMessage() => const SizedBox.shrink(),
+      AssistantLogMessageModel() => const SizedBox.shrink(),
     };
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(
+      assistantNotifierProvider.select(
+        (s) => (
+          s.activeChatId,
+          s.transcriptEpoch,
+          s.busy,
+          s.approval,
+          s.question,
+          s.pins,
+          s.error,
+          s.activeChat.draft,
+        ),
+      ),
+    );
+    _syncDraft();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _pinLastUserToTop();
+    });
     final tokens = context.tokens;
     final controller = widget.controller;
     final messages = controller.messages;
@@ -403,7 +409,7 @@ class _AiPanelState extends State<AiPanel> {
           tokens: tokens,
           usage: controller.lastUsage,
           pins: controller.pins,
-          drawings: controller.workspace.listOpenDrawings(),
+          workspace: controller.workspace,
           ask: question == null
               ? null
               : _AskCard(
@@ -443,7 +449,7 @@ class _ChatTabStrip extends StatelessWidget {
     required this.onNew,
   });
 
-  final List<AssistantChat> chats;
+  final List<AssistantChatModel> chats;
   final String activeChatId;
   final String emptyTitle;
   final ValueChanged<String> onSelect;
@@ -502,7 +508,7 @@ class _ChatSessionTab extends StatefulWidget {
     required this.onClose,
   });
 
-  final AssistantChat chat;
+  final AssistantChatModel chat;
   final String title;
   final bool isActive;
   final VoidCallback onTap;
@@ -662,9 +668,9 @@ class _UserBlock extends StatefulWidget {
 
   final String text;
   final VoidCallback onCopy;
-  final ValueChanged<ComposerPin>? onFlashPin;
-  final ValueChanged<ComposerPin?>? onHoverPin;
-  final ComposerPin Function(ComposerPin pin)? resolvePin;
+  final ValueChanged<ComposerPinModel>? onFlashPin;
+  final ValueChanged<ComposerPinModel?>? onHoverPin;
+  final ComposerPinModel Function(ComposerPinModel pin)? resolvePin;
 
   @override
   State<_UserBlock> createState() => _UserBlockState();
@@ -728,9 +734,9 @@ class _ThinkingBlock extends StatefulWidget {
   final bool live;
   final ValueChanged<List<int>>? onEntityId;
   final ValueChanged<List<int>>? onHoverEntityId;
-  final ValueChanged<ComposerPin>? onPin;
-  final ValueChanged<ComposerPin?>? onHoverPin;
-  final ComposerPin Function(ComposerPin pin)? resolvePin;
+  final ValueChanged<ComposerPinModel>? onPin;
+  final ValueChanged<ComposerPinModel?>? onHoverPin;
+  final ComposerPinModel Function(ComposerPinModel pin)? resolvePin;
 
   @override
   State<_ThinkingBlock> createState() => _ThinkingBlockState();
@@ -852,9 +858,9 @@ class _AssistantBlock extends StatelessWidget {
   final VoidCallback onCopy;
   final ValueChanged<List<int>>? onEntityId;
   final ValueChanged<List<int>>? onHoverEntityId;
-  final ValueChanged<ComposerPin>? onPin;
-  final ValueChanged<ComposerPin?>? onHoverPin;
-  final ComposerPin Function(ComposerPin pin)? resolvePin;
+  final ValueChanged<ComposerPinModel>? onPin;
+  final ValueChanged<ComposerPinModel?>? onHoverPin;
+  final ComposerPinModel Function(ComposerPinModel pin)? resolvePin;
   final bool live;
 
   @override
@@ -959,7 +965,7 @@ class _ToolCard extends StatefulWidget {
     required this.onPin,
   });
 
-  final AssistantReceipt receipt;
+  final AssistantReceiptModel receipt;
   final VoidCallback onCopy;
   final VoidCallback onFlash;
   final VoidCallback onPin;
@@ -1206,10 +1212,10 @@ class _AskCard extends StatefulWidget {
   final SessionQuestion question;
   final void Function(List<SessionAskOption> selected, String custom) onSubmit;
   final VoidCallback onCancel;
-  final ValueChanged<ComposerPin>? onFlashPin;
-  final ValueChanged<ComposerPin?>? onHoverPin;
-  final ValueChanged<List<ComposerPin>>? onHoverPins;
-  final ComposerPin Function(ComposerPin pin)? resolvePin;
+  final ValueChanged<ComposerPinModel>? onFlashPin;
+  final ValueChanged<ComposerPinModel?>? onHoverPin;
+  final ValueChanged<List<ComposerPinModel>>? onHoverPins;
+  final ComposerPinModel Function(ComposerPinModel pin)? resolvePin;
 
   @override
   State<_AskCard> createState() => _AskCardState();
@@ -1434,9 +1440,9 @@ class _AskOptionRow extends StatelessWidget {
   final String letter;
   final bool selected;
   final VoidCallback onTap;
-  final ValueChanged<ComposerPin>? onFlashPin;
-  final ValueChanged<List<ComposerPin>>? onHoverPins;
-  final ComposerPin Function(ComposerPin pin)? resolvePin;
+  final ValueChanged<ComposerPinModel>? onFlashPin;
+  final ValueChanged<List<ComposerPinModel>>? onHoverPins;
+  final ComposerPinModel Function(ComposerPinModel pin)? resolvePin;
 
   @override
   Widget build(BuildContext context) {
@@ -1584,7 +1590,7 @@ class _Composer extends StatefulWidget {
     required this.tokens,
     required this.usage,
     required this.pins,
-    required this.drawings,
+    required this.workspace,
     required this.onChanged,
     required this.onSend,
     required this.onStop,
@@ -1603,8 +1609,8 @@ class _Composer extends StatefulWidget {
   final String hint;
   final FanCadTokens tokens;
   final LlmUsage? usage;
-  final List<ComposerPin> pins;
-  final List<Map<String, Object?>> drawings;
+  final List<ComposerPinModel> pins;
+  final Workspace workspace;
   final Widget? ask;
   final ValueChanged<String> onChanged;
   final VoidCallback onSend;
@@ -1709,7 +1715,7 @@ class _ComposerState extends State<_Composer> {
     });
   }
 
-  ComposerAtMention? get _mention {
+  ComposerAtMentionModel? get _mention {
     if (!_open || _escaped) return null;
     return composerAtMentionAt(
       widget.controller.text,
@@ -1717,10 +1723,13 @@ class _ComposerState extends State<_Composer> {
     );
   }
 
-  List<Map<String, Object?>> get _matches {
+  List<DocumentSession> get _matches {
     final mention = _mention;
     if (mention == null) return const [];
-    return filterDrawingMentions(widget.drawings, mention.query);
+    return filterDrawingMentions([
+      for (final id in widget.workspace.sessionIds)
+        ?widget.workspace.session(id),
+    ], mention.query);
   }
 
   bool get _pickerOpen => _mention != null && widget.ask == null;
@@ -1780,8 +1789,8 @@ class _ComposerState extends State<_Composer> {
     widget.onChanged(next);
   }
 
-  void _pick(Map<String, Object?> drawing) {
-    final id = '${drawing['id'] ?? ''}';
+  void _pick(DocumentSession session) {
+    final id = session.id;
     if (id.isEmpty) return;
     final controller = widget.controller;
     final mention = composerAtMentionAt(
@@ -2046,10 +2055,10 @@ class _DrawingMentionPopup extends StatelessWidget {
     required this.onPick,
   });
 
-  final List<Map<String, Object?>> matches;
+  final List<DocumentSession> matches;
   final int highlighted;
   final ValueChanged<int> onHighlight;
-  final ValueChanged<Map<String, Object?>> onPick;
+  final ValueChanged<DocumentSession> onPick;
 
   @override
   Widget build(BuildContext context) {
@@ -2108,7 +2117,7 @@ class _DrawingMentionRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final Map<String, Object?> drawing;
+  final DocumentSession drawing;
   final bool isHighlighted;
   final VoidCallback onHover;
   final VoidCallback onTap;
@@ -2116,9 +2125,9 @@ class _DrawingMentionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final id = '${drawing['id'] ?? ''}';
-    final title = '${drawing['title'] ?? id}';
-    final path = '${drawing['path'] ?? ''}'.trim();
+    final id = drawing.id;
+    final title = drawing.title.isEmpty ? id : drawing.title;
+    final path = (drawing.filePath ?? '').trim();
     return MouseRegion(
       onEnter: (_) => onHover(),
       child: ShellRow(
@@ -2158,9 +2167,9 @@ class _DrawingMentionRow extends StatelessWidget {
 class _MentionTextController extends TextEditingController {
   _MentionTextController({super.text});
 
-  List<ComposerPin> pins = const [];
-  ValueChanged<ComposerPin>? onFlashPin;
-  ValueChanged<ComposerPin?>? onHoverPin;
+  List<ComposerPinModel> pins = const [];
+  ValueChanged<ComposerPinModel>? onFlashPin;
+  ValueChanged<ComposerPinModel?>? onHoverPin;
   ValueChanged<int>? onRemoveMention;
 
   @override

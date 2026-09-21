@@ -48,7 +48,7 @@ void main() {
     expect(find.text('New drawing'), findsNothing);
     expect(find.text('Drawing1'), findsNothing);
     expect(find.text('This drawing is empty'), findsNothing);
-    expect(container.read(workspaceProvider).tabs, isEmpty);
+    expect(container.read(workspaceNotifierProvider.notifier).tabs, isEmpty);
   });
 
   testWidgets(
@@ -63,15 +63,15 @@ void main() {
       expect(find.text('Start'), findsOneWidget);
       expect(find.byKey(const Key('empty-workspace-new')), findsOneWidget);
       expect(find.text('Drawing1'), findsOneWidget);
-      expect(container.read(workspaceProvider).tabs, hasLength(2));
-      expect(container.read(workspaceProvider).active!.isStartPage, isTrue);
+      expect(container.read(workspaceNotifierProvider.notifier).tabs, hasLength(2));
+      expect(container.read(workspaceNotifierProvider.notifier).active!.isStartPage, isTrue);
 
       await tester.tap(find.byKey(const Key('empty-workspace-new')));
       await tester.pump();
       expect(find.byKey(const Key('empty-workspace-new')), findsNothing);
-      expect(container.read(workspaceProvider).tabs, hasLength(2));
-      expect(container.read(workspaceProvider).active!.isStartPage, isFalse);
-      expect(container.read(workspaceProvider).hasDocument, isTrue);
+      expect(container.read(workspaceNotifierProvider.notifier).tabs, hasLength(2));
+      expect(container.read(workspaceNotifierProvider.notifier).active!.isStartPage, isFalse);
+      expect(container.read(workspaceNotifierProvider.notifier).hasDocument, isTrue);
     },
   );
 
@@ -175,7 +175,7 @@ void main() {
   ) async {
     final container = await pumpWorkbench(tester);
 
-    container.read(workspaceProvider).revealPanel('ai');
+    container.read(workspaceNotifierProvider.notifier).revealPanel('ai');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
@@ -188,17 +188,17 @@ void main() {
     tester,
   ) async {
     final container = await pumpWorkbench(tester, document: true);
-    expect(container.read(sidebarProvider).viewId, 'layers');
+    expect(container.read(shellNotifierProvider).sidebar.viewId, 'layers');
     expect(find.text('Layers'), findsOneWidget);
 
-    final tab = container.read(workspaceProvider).active!;
+    final tab = container.read(workspaceNotifierProvider.notifier).active!;
     final line = tab.document.addEntity(
       const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
     );
     tab.session.selection.replace([line.id]);
     await tester.pump();
 
-    expect(container.read(sidebarProvider).viewId, 'properties');
+    expect(container.read(shellNotifierProvider).sidebar.viewId, 'properties');
     expect(find.text('Properties'), findsOneWidget);
     expect(find.text('Layers'), findsNothing);
   });
@@ -207,7 +207,7 @@ void main() {
     tester,
   ) async {
     final container = await pumpWorkbench(tester, document: true);
-    final tab = container.read(workspaceProvider).active!;
+    final tab = container.read(workspaceNotifierProvider.notifier).active!;
     final line = tab.document.addEntity(
       const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
     );
@@ -235,7 +235,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(container.read(aiControllerProvider).pins, isNotEmpty);
+    expect(container.read(assistantNotifierProvider).pins, isNotEmpty);
     expect(find.byKey(const Key('assistant-session-tabs')), findsOneWidget);
     expect(find.byKey(const Key('assistant-pin-0')), findsOneWidget);
   });
@@ -247,7 +247,7 @@ void main() {
     expect(find.byKey(const Key('canvas-assistant-busy')), findsNothing);
     final canvasBefore = tester.getRect(find.byType(CadCanvas));
 
-    container.read(workspaceProvider).setAssistantBusy(true);
+    container.read(workspaceNotifierProvider.notifier).setAssistantBusy(true);
     await tester.pump();
 
     expect(tester.getRect(find.byType(CadCanvas)), canvasBefore);
@@ -264,7 +264,7 @@ void main() {
       findsOneWidget,
     );
 
-    container.read(workspaceProvider).setAssistantBusy(false);
+    container.read(workspaceNotifierProvider.notifier).setAssistantBusy(false);
     await tester.pump();
     expect(find.byKey(const Key('canvas-assistant-busy')), findsNothing);
   });
@@ -276,7 +276,7 @@ void main() {
     expect(find.byKey(const Key('canvas-layers-off')), findsNothing);
     final canvasBefore = tester.getRect(find.byType(CadCanvas));
 
-    container.read(workspaceProvider).active!.session.edit('Hide', (tx) {
+    container.read(workspaceNotifierProvider.notifier).active!.session.edit('Hide', (tx) {
       tx.putLayer(const LayerDef(name: '0', visible: false));
     });
     await tester.pump();
@@ -298,12 +298,12 @@ void main() {
     tester,
   ) async {
     final container = await pumpWorkbench(tester, document: true);
-    final tab = container.read(workspaceProvider).active!;
+    final tab = container.read(workspaceNotifierProvider.notifier).active!;
     final line = tab.document.addEntity(
       const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
     );
     tab.session.selection.replace([line.id]);
-    container.read(workspaceProvider).setAssistantBusy(true);
+    container.read(workspaceNotifierProvider.notifier).setAssistantBusy(true);
     await tester.pump();
 
     final canvas = tester.getRect(find.byType(CadCanvas));
@@ -366,7 +366,7 @@ void main() {
   ) async {
     final container = await pumpWorkbench(tester);
 
-    container.read(paletteOpenProvider.notifier).setOpen(true);
+    container.read(shellNotifierProvider.notifier).setPaletteOpen(true);
     await tester.pumpAndSettle();
 
     expect(find.text('Search commands, aliases or categories'), findsOneWidget);
@@ -386,7 +386,7 @@ void main() {
 
   test('a headless command run reaches the document', () async {
     final container = workbenchContainer();
-    final workspace = container.read(workspaceProvider);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
     workspace.newDocument();
 
     final result = await workspace.runHeadless(
@@ -410,7 +410,7 @@ void main() {
     await pumpWorkbench(
       tester,
       prepare: (container) {
-        workspace = container.read(workspaceProvider)..newDocument();
+        workspace = container.read(workspaceNotifierProvider.notifier)..newDocument();
         workspace.active!.session.edit('LINE', (transaction) {
           transaction.add(
             const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
@@ -438,7 +438,7 @@ void main() {
       await pumpWorkbench(
         tester,
         prepare: (container) {
-          workspace = container.read(workspaceProvider)..newDocument();
+          workspace = container.read(workspaceNotifierProvider.notifier)..newDocument();
           workspace.active!.session.edit('LINE', (transaction) {
             transaction.add(
               const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
@@ -467,7 +467,7 @@ void main() {
       await pumpWorkbench(
         tester,
         prepare: (container) {
-          workspace = container.read(workspaceProvider)..newDocument();
+          workspace = container.read(workspaceNotifierProvider.notifier)..newDocument();
           workspace.setSnapEnabled(false);
           workspace.setOrtho(false);
           workspace.setPolar(false);
@@ -529,7 +529,7 @@ void main() {
       await pumpWorkbench(
         tester,
         prepare: (container) {
-          workspace = container.read(workspaceProvider)..newDocument();
+          workspace = container.read(workspaceNotifierProvider.notifier)..newDocument();
           workspace.setSnapEnabled(false);
           workspace.setShowGrid(false);
           workspace.active!.session.edit('LINE', (transaction) {
@@ -585,7 +585,7 @@ void main() {
   );
 
   test('every registered command has a description for the model', () {
-    final registry = workbenchContainer().read(workspaceProvider).commands;
+    final registry = workbenchContainer().read(workspaceNotifierProvider.notifier).commands;
 
     // A command with no description is a tool the model cannot use correctly,
     // so this is enforced rather than left to reviewers.
@@ -599,7 +599,7 @@ void main() {
   });
 
   test('command aliases are unique across the registry', () {
-    final registry = workbenchContainer().read(workspaceProvider).commands;
+    final registry = workbenchContainer().read(workspaceNotifierProvider.notifier).commands;
 
     final seen = <String, String>{};
     for (final descriptor in registry.all) {

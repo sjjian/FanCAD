@@ -9,7 +9,7 @@ import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'screen/app.dart';
-import 'services/plugin_bootstrap.dart';
+import 'services/plugin.dart';
 import 'services/providers.dart';
 import 'storage/settings.dart';
 

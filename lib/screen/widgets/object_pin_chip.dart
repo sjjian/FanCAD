@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
-import '../../services/composer_pin.dart';
+import '../../models/assistant.dart';
 import '../theme/tokens.dart';
 
 /// Shared object/drawing pin chip: composer can delete, transcript only flashes.
@@ -16,7 +16,7 @@ class ObjectPinChip extends StatefulWidget {
     this.onRemove,
   });
 
-  final ComposerPin? pin;
+  final ComposerPinModel? pin;
   final int index;
   final bool removable;
   final VoidCallback? onFlash;
@@ -122,9 +122,9 @@ class PinAwareText extends StatelessWidget {
   final TextStyle? style;
   final int? maxLines;
   final TextOverflow? overflow;
-  final ValueChanged<ComposerPin>? onFlash;
-  final ValueChanged<ComposerPin?>? onHover;
-  final ComposerPin Function(ComposerPin pin)? resolve;
+  final ValueChanged<ComposerPinModel>? onFlash;
+  final ValueChanged<ComposerPinModel?>? onHover;
+  final ComposerPinModel Function(ComposerPinModel pin)? resolve;
 
   @override
   Widget build(BuildContext context) {
@@ -137,19 +137,22 @@ class PinAwareText extends StatelessWidget {
         style: style,
         children: [
           for (final span in spans)
-            if (span.pin != null)
-              WidgetSpan(
+            switch (span) {
+              ComposerPinChipModel(:final pin) => WidgetSpan(
                 alignment: PlaceholderAlignment.middle,
                 child: ObjectPinChip(
-                  pin: resolve?.call(span.pin!) ?? span.pin,
-                  onFlash: onFlash == null ? null : () => onFlash!(span.pin!),
+                  pin: resolve?.call(pin) ?? pin,
+                  onFlash: onFlash == null ? null : () => onFlash!(pin),
                   onHover: onHover == null
                       ? null
-                      : (hovered) => onHover!(hovered ? span.pin : null),
+                      : (hovered) => onHover!(hovered ? pin : null),
                 ),
-              )
-            else if ((span.text ?? '').isNotEmpty)
-              TextSpan(text: span.text),
+              ),
+              ComposerPinTextModel(:final text) when text.isNotEmpty => TextSpan(
+                text: text,
+              ),
+              ComposerPinTextModel() => const TextSpan(),
+            },
         ],
       ),
       maxLines: maxLines,

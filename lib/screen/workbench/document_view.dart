@@ -4,11 +4,12 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../commands/edit/helpers.dart';
 import '../../commands/keybindings.dart';
 import '../../l10n/l10n.dart';
-import '../../services/document_tab.dart';
+import '../../services/command_line.dart';
 import '../../services/workspace.dart';
 import '../theme/tokens.dart';
 import 'dynamic_input_hud.dart';
@@ -21,7 +22,7 @@ import 'text_edit_overlay.dart';
 /// interaction, so all this does is connect them and route typing. A point
 /// prompt with a base point sends keys to the cursor HUD; everything else
 /// lands on the command line.
-class DocumentView extends StatefulWidget {
+class DocumentView extends ConsumerStatefulWidget {
   const DocumentView({
     super.key,
     required this.workspace,
@@ -44,10 +45,10 @@ class DocumentView extends StatefulWidget {
   final VoidCallback? onStopAssistant;
 
   @override
-  State<DocumentView> createState() => _DocumentViewState();
+  ConsumerState<DocumentView> createState() => _DocumentViewState();
 }
 
-class _DocumentViewState extends State<DocumentView> {
+class _DocumentViewState extends ConsumerState<DocumentView> {
   final GlobalKey<CadCanvasState> _canvasKey = GlobalKey<CadCanvasState>();
   final GlobalKey<DynamicInputHudState> _dynHudKey =
       GlobalKey<DynamicInputHudState>();
@@ -444,20 +445,31 @@ class _DocumentViewState extends State<DocumentView> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: widget.workspace,
-      builder: (context, _) => ListenableBuilder(
-        listenable: widget.tab,
-        builder: (context, _) => _buildView(context),
+    final pending = ref.watch(
+      workspaceNotifierProvider.select((s) => s.highlightIds),
+    );
+    final assistantBusy = ref.watch(
+      workspaceNotifierProvider.select((s) => s.assistantBusy),
+    );
+    ref.watch(
+      commandLineNotifierProvider.select(
+        (s) => (s.prompt, s.status, s.lines.length),
       ),
+    );
+    return ListenableBuilder(
+      listenable: widget.tab,
+      builder: (context, _) => _buildView(context, pending, assistantBusy),
     );
   }
 
-  Widget _buildView(BuildContext context) {
+  Widget _buildView(
+    BuildContext context,
+    List<int> pending,
+    bool assistantBusy,
+  ) {
     final tokens = context.tokens;
     final tab = widget.tab;
     final overlay = tab.tools.buildOverlay();
-    final pending = widget.workspace.pendingHighlightIds;
     final editingEntity = _editingOriginal;
     var effectiveOverlay = overlay;
     if (pending.isNotEmpty) {
@@ -485,7 +497,7 @@ class _DocumentViewState extends State<DocumentView> {
           widget.workspace.cancelActive();
           return KeyEventResult.handled;
         }
-        if (widget.workspace.assistantBusy) return KeyEventResult.ignored;
+        if (assistantBusy) return KeyEventResult.ignored;
         if (tab.tools.showDynamicInput &&
             DynamicInputHud.isTypeInCharacter(event.character)) {
           final hud = _dynHudKey.currentState;
@@ -511,18 +523,14 @@ class _DocumentViewState extends State<DocumentView> {
               key: _canvasKey,
               document: tab.document,
               controller: tab.viewport,
-              inputHandler: widget.workspace.assistantBusy ? null : tab.tools,
+              inputHandler: assistantBusy ? null : tab.tools,
               overlay: effectiveOverlay,
               background: tokens.canvas,
               palette: tokens.isDark ? AciPalette.dark : AciPalette.light,
               showGrid: tab.showGrid,
               onSceneBuilt: tab.noteScene,
-              onContextMenu: widget.workspace.assistantBusy
-                  ? null
-                  : _openContextMenu,
-              onDoubleClick: widget.workspace.assistantBusy
-                  ? null
-                  : _onDoubleClick,
+              onContextMenu: assistantBusy ? null : _openContextMenu,
+              onDoubleClick: assistantBusy ? null : _onDoubleClick,
               onlyLayers: tab.isolatedLayers,
               tessellation: tab.tessellation,
               shxFonts: widget.workspace.shxFonts,
@@ -530,8 +538,6 @@ class _DocumentViewState extends State<DocumentView> {
             Positioned.fill(
               child: ListenableBuilder(
                 listenable: Listenable.merge([
-                  widget.workspace,
-                  widget.workspace.commandLine,
                   tab.tools,
                   tab.viewport,
                 ]),
@@ -578,11 +584,11 @@ class _DocumentViewState extends State<DocumentView> {
               ),
             ),
             if (tab.document.entityCount == 0 &&
-                !widget.workspace.isBusy &&
-                !widget.workspace.assistantBusy &&
+                !assistantBusy &&
                 !widget.workspace.commandLine.isAwaitingInput)
               const _EmptyDrawingHint(),
             ?_canvasNotice(
+              assistantBusy: assistantBusy,
               hiddenCount: hiddenCount,
               hiddenLayers: hiddenLayers,
               currentLayer: currentLayer,
@@ -596,12 +602,13 @@ class _DocumentViewState extends State<DocumentView> {
   /// One floating strip: assistant first, then hidden objects, off layers,
   /// then a locked current layer. Overlay so it does not shift the viewport.
   Widget? _canvasNotice({
+    required bool assistantBusy,
     required int hiddenCount,
     required int hiddenLayers,
     required LayerDef? currentLayer,
   }) {
     final l10n = context.l10n;
-    if (widget.workspace.assistantBusy) {
+    if (assistantBusy) {
       return _CanvasNoticeBanner(
         key: const Key('canvas-assistant-busy'),
         icon: Icons.auto_awesome_outlined,

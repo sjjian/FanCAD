@@ -1,9 +1,10 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Headless [Workspace] with built-in commands and an in-memory importer.
+/// Headless [WorkspaceNotifier] with built-in commands and an in-memory importer.
 ///
 /// This is the same entry point a plugin or an AI tool call takes, so tests
 /// that go through [run] are the closest thing to a contract for "can the
@@ -12,33 +13,27 @@ import 'package:flutter_test/flutter_test.dart';
 class Headless {
   Headless({
     SettingsStore? settings,
-    FileCommands Function(Workspace workspace)? files,
+    FileCommands Function(WorkspaceNotifier workspace)? files,
     bool document = true,
   }) : settings = settings ?? SettingsStore.inMemory() {
-    workspace = Workspace(
-      commands: CommandRegistry(),
-      importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      drawing: DrawingSettings(this.settings),
+    container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWithValue(this.settings),
+        importerProvider.overrideWithValue(
+          DrawingImporter(backend: MemoryDrawingBackend()),
+        ),
+        if (files != null)
+          workspaceFileCommandsOverrideProvider.overrideWithValue(files),
+      ],
     );
-    registerBuiltinCommands(
-      workspace.commands,
-      fileCommands:
-          files?.call(workspace) ??
-          FileCommands(
-            openFile: (_) async => false,
-            newDocument: workspace.newDocument,
-            closeActive: (session, {bool force = false}) => true,
-            saveActive: (session, path) async => path,
-            recentFiles: () => const [],
-          ),
-      clipboard: workspace.clipboard,
-    );
+    addTearDown(container.dispose);
+    workspace = container.read(workspaceNotifierProvider.notifier);
     if (document) workspace.newDocument();
-    addTearDown(workspace.dispose);
   }
 
   final SettingsStore settings;
-  late final Workspace workspace;
+  late final ProviderContainer container;
+  late final WorkspaceNotifier workspace;
 
   CadDocument get document => workspace.active!.document;
 

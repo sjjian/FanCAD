@@ -1,5 +1,6 @@
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../services/workspace.dart';
@@ -11,13 +12,14 @@ import '../workbench/shell_widgets.dart';
 /// The document already stores layouts and `layout.set` already switches the
 /// active block. Without this panel a paper tab is invisible: the user has a
 /// sheet and viewports, but no way to open them from the shell.
-class LayoutsPanel extends StatelessWidget {
+class LayoutsPanel extends ConsumerWidget {
   const LayoutsPanel({super.key, required this.workspace});
 
   final Workspace workspace;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(workspaceNotifierProvider.select((s) => s.active?.id));
     final tab = workspace.active;
     if (tab == null) {
       return Column(
@@ -34,6 +36,13 @@ class LayoutsPanel extends StatelessWidget {
       );
     }
 
+    return ListenableBuilder(
+      listenable: tab,
+      builder: (context, _) => _layoutsBody(context, tab),
+    );
+  }
+
+  Widget _layoutsBody(BuildContext context, DocumentTab tab) {
     final layouts = [...tab.document.layouts]..sort(_compareLayouts);
     final active = tab.document.activeLayoutName;
     final maximized = tab.session.maximizedLayoutName;

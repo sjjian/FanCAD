@@ -159,7 +159,10 @@ void main() {
               workspace.closeSession(session, force: force),
           saveActive: (session, path) => workspace.saveSession(session, path),
           recentFiles: () => const [],
-          listDrawings: workspace.listOpenDrawings,
+          listSessions: () => [
+            for (final id in workspace.sessionIds) ?workspace.session(id),
+          ],
+          activeSessionId: () => workspace.activeSession?.id,
           activateDrawing: workspace.activateDrawing,
         ),
       );
@@ -291,7 +294,7 @@ void main() {
       final workspace = app.workspace;
       final alpha = workspace.newDocument(title: 'Alpha');
       workspace.newDocument(title: 'Beta');
-      final host = FanCadOpsHost(workspace: workspace, lockPaths: const []);
+      final host = app.container.read(mcpNotifierProvider.notifier);
       final dispatcher = OpsDispatcher(host.catalog());
 
       final unknown = await dispatcher.dispatch(

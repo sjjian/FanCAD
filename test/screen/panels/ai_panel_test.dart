@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:fancad/fancad.dart';
-import 'package:fancad/services/composer_pin.dart';
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/workspace.dart';
+
+final _aiContainers = Expando<ProviderContainer>();
 
 AiController panelAi({SettingsStore? settings}) {
   final store =
@@ -16,25 +20,25 @@ AiController panelAi({SettingsStore? settings}) {
         SettingsKeys.aiApiKey: '',
       });
   final app = Headless(settings: store, document: false);
-  final created = AiController(
-    workspace: app.workspace,
-    assistant: AssistantSettings(store),
-  );
-  addTearDown(created.dispose);
+  final created = app.container.read(assistantNotifierProvider.notifier);
+  _aiContainers[created] = app.container;
   return created;
 }
 
 Future<void> pumpAiPanel(WidgetTester tester, AiController ai, {Widget? home}) {
   return tester.pumpWidget(
-    MaterialApp(
-      theme: FanCadTheme.dark(),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home:
-          home ??
-          Scaffold(
-            body: SizedBox(width: 360, child: AiPanel(controller: ai)),
-          ),
+    UncontrolledProviderScope(
+      container: _aiContainers[ai]!,
+      child: MaterialApp(
+        theme: FanCadTheme.dark(),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home:
+            home ??
+            Scaffold(
+              body: SizedBox(width: 360, child: AiPanel(controller: ai)),
+            ),
+      ),
     ),
   );
 }
@@ -534,7 +538,7 @@ void main() {
         SessionAskOption(id: 'other', label: 'Something else'),
       ],
     );
-    ai.debugAskQuestion(question);
+    unawaited(ai.debugAskQuestion(question));
     await pumpAiPanel(tester, ai);
     await tester.pump();
 
@@ -568,7 +572,7 @@ void main() {
       ],
       ids: const [1, 2, 9],
     );
-    ai.debugAskQuestion(question);
+    unawaited(ai.debugAskQuestion(question));
     await pumpAiPanel(tester, ai);
     await tester.pump();
     expect(ai.workspace.pendingHighlightIds, isEmpty);
@@ -631,9 +635,11 @@ void main() {
     final fill = assistantPromptFill(FanCadTokens.dark);
     expect(fill, isNot(FanCadTokens.dark.surface));
     expect(
-      ((tester.widget<Container>(
-                find.byKey(const Key('assistant-composer-card')),
-              )).decoration
+      (tester
+                  .widget<Container>(
+                    find.byKey(const Key('assistant-composer-card')),
+                  )
+                  .decoration
               as BoxDecoration)
           .color,
       fill,

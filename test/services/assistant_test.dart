@@ -1,5 +1,4 @@
 import 'package:fancad/fancad.dart';
-import 'package:fancad/services/composer_pin.dart';
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,25 +11,23 @@ Future<CommandResult> _noop(CommandContext context) async =>
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  Workspace workspace({SettingsStore? settings}) =>
-      Headless(settings: settings, document: false).workspace;
-
   AiController controller({SettingsStore? settings}) {
     final store = settings ?? SettingsStore.inMemory();
     store.set(SettingsKeys.aiApiKeyRef, 'FANCAD_TEST_MISSING_KEY');
     store.set(SettingsKeys.aiApiKey, '');
-    final created = AiController(
-      workspace: workspace(settings: store),
-      assistant: AssistantSettings(store),
+    return Headless(settings: store, document: false).container.read(
+      assistantNotifierProvider.notifier,
     );
-    addTearDown(created.dispose);
-    return created;
   }
 
   test('model, endpoint and auto-approve persist in settings', () {
-    final ai = controller();
+    final store = SettingsStore.inMemory();
+    store.set(SettingsKeys.aiApiKeyRef, 'FANCAD_TEST_MISSING_KEY');
+    store.set(SettingsKeys.aiApiKey, '');
+    final app = Headless(settings: store, document: false);
+    final ai = app.container.read(assistantNotifierProvider.notifier);
     var ticks = 0;
-    ai.addListener(() => ticks++);
+    app.container.listen(assistantNotifierProvider, (_, _) => ticks++);
 
     ai.setDraft('draw a line');
     ai.setModel('deepseek-chat');
@@ -43,8 +40,8 @@ void main() {
     expect(ai.baseUrl, 'http://127.0.0.1:9/v1');
     expect(ai.autoApprove, isTrue);
     expect(ai.apiKey, 'sk-test');
-    expect(ai.assistant.activeProfile.model, 'deepseek-chat');
-    expect(ai.assistant.activeProfile.apiKey, 'sk-test');
+    expect(ai.activeProfile.model, 'deepseek-chat');
+    expect(ai.activeProfile.apiKey, 'sk-test');
     expect(ticks, 5);
   });
 
@@ -65,7 +62,7 @@ void main() {
     expect(ai.model, 'deepseek-chat');
     expect(ai.baseUrl, 'https://api.deepseek.com/v1');
     expect(ai.apiKey, 'sk-one');
-    expect(ai.assistant.activeProfile.model, 'deepseek-chat');
+    expect(ai.activeProfile.model, 'deepseek-chat');
 
     ai.debugSetBusy(true);
     ai.selectProfile(ai.profiles.last.id);
@@ -91,7 +88,7 @@ void main() {
     );
     ai.selectSession(leftover.id);
     expect(ai.messages.single.text, 'draw a turtle');
-    expect(ai.assistant.activeChatId(ai.chats), leftover.id);
+    expect(ai.activeChat.id, leftover.id);
   });
 
   test('a leftover stored chat is the active thread', () {
@@ -165,6 +162,7 @@ void main() {
 
   test('leftover pending args stay out of the in-panel approval', () async {
     final ai = controller();
+    ai.workspace.newDocument();
     const pending = PendingChangeSet(
       calls: [
         LlmToolCall(

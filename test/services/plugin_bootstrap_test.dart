@@ -52,10 +52,10 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    final bootstrap = container.read(pluginBootstrapProvider);
-    await bootstrap.start();
-    expect(bootstrap.isStarted, isFalse);
-    expect(container.read(pluginHostProvider), isNull);
+    final plugins = container.read(pluginNotifierProvider.notifier);
+    await plugins.start();
+    expect(plugins.isStarted, isFalse);
+    expect(plugins.host, isNull);
   });
 
   test(
@@ -83,18 +83,18 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final bootstrap = container.read(pluginBootstrapProvider);
-      final host = container.read(pluginHostProvider)!;
-      await bootstrap.start();
-      expect(bootstrap.isStarted, isTrue);
+      final plugins = container.read(pluginNotifierProvider.notifier);
+      final host = plugins.host!;
+      await plugins.start();
+      expect(plugins.isStarted, isTrue);
       expect(host.plugin('shipped.tools')!.state, PluginState.active);
       expect(host.plugin('user.tools')!.state, PluginState.installed);
 
       await writePlugin(bundled.path, 'late.tools', startup: true);
-      await bootstrap.start();
+      await plugins.start();
       expect(host.plugin('late.tools'), isNull);
 
-      final workspace = container.read(workspaceProvider);
+      final workspace = container.read(workspaceNotifierProvider.notifier);
       workspace.newDocument();
       expect(
         events.where((event) => event.id == 'document.opened'),

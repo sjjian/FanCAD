@@ -4,10 +4,11 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../commands/keybindings.dart';
 import '../../l10n/l10n.dart';
-import '../../services/document_tab.dart';
+import '../../services/command_line.dart';
 import '../../services/workspace.dart';
 import '../theme/tokens.dart';
 import 'command_line.dart';
@@ -18,7 +19,7 @@ import 'shell_widgets.dart';
 /// Operations sit on the top row, the command line on the bottom. Layout names
 /// and the command log live in the left sidebar. Cursor, selection, layer and
 /// zoom sit in the canvas corners. The window still keeps a thin [StatusBar].
-class CanvasHud extends StatelessWidget {
+class CanvasHud extends ConsumerWidget {
   const CanvasHud({
     super.key,
     required this.workspace,
@@ -35,12 +36,27 @@ class CanvasHud extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(
+      workspaceNotifierProvider.select(
+        (s) => (
+          s.runningCommand,
+          s.snapEnabled,
+          s.ortho,
+          s.polar,
+          s.snapModes,
+          s.activeSessionId,
+        ),
+      ),
+    );
+    ref.watch(
+      commandLineNotifierProvider.select(
+        (s) => (s.lines, s.prompt, s.status, s.offeredInput),
+      ),
+    );
     final tab = workspace.active;
-    return Stack(
-      key: const Key('canvas-hud'),
+    Widget chrome() => Stack(
       children: [
-        child,
         Positioned(
           left: FanCadTokens.space3,
           right: FanCadTokens.space3,
@@ -48,7 +64,9 @@ class CanvasHud extends StatelessWidget {
           child: Align(
             alignment: Alignment.bottomCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: canvasHudMaxWidth),
+              constraints: const BoxConstraints(
+                maxWidth: canvasHudMaxWidth,
+              ),
               child: _HudDock(
                 workspace: workspace,
                 commandFocus: commandFocus,
@@ -64,10 +82,10 @@ class CanvasHud extends StatelessWidget {
           child: _CoordinateReadout(
             key: const Key('canvas-readout-cursor'),
             workspace: workspace,
-            cursor: tab?.tools.cursor,
+            cursor: workspace.active?.tools.cursor,
           ),
         ),
-        if (tab != null)
+        if (workspace.active != null)
           Positioned(
             right: FanCadTokens.space3,
             bottom: FanCadTokens.space1,
@@ -77,7 +95,7 @@ class CanvasHud extends StatelessWidget {
                 _SelectionReadout(
                   key: const Key('canvas-readout-selection'),
                   workspace: workspace,
-                  tab: tab,
+                  tab: workspace.active!,
                 ),
                 _CurrentLayerIndicator(
                   key: const Key('canvas-readout-layer'),
@@ -86,11 +104,21 @@ class CanvasHud extends StatelessWidget {
                 _ZoomReadout(
                   key: const Key('canvas-readout-zoom'),
                   workspace: workspace,
-                  tab: tab,
+                  tab: workspace.active!,
                 ),
               ],
             ),
           ),
+      ],
+    );
+    return Stack(
+      key: const Key('canvas-hud'),
+      children: [
+        child,
+        if (tab == null)
+          chrome()
+        else
+          ListenableBuilder(listenable: tab, builder: (context, _) => chrome()),
       ],
     );
   }

@@ -1,19 +1,46 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  DocumentTab newTab() => DocumentTab(
-    session: DocumentSession(id: 't', document: CadDocument()),
-    diagnostics: const ['layer 0 renamed'],
-  );
+  DocumentTab newTab({String id = 't', String? title}) {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final tab = container.read(documentTabNotifierProvider(id).notifier);
+    tab.attach(
+      session: DocumentSession(
+        id: id,
+        document: CadDocument(),
+        title: title,
+      ),
+    );
+    return tab;
+  }
+
+  void bind(
+    DocumentTab tab, {
+    bool isStartPage = false,
+    List<String> diagnostics = const [],
+  }) {
+    var record = WorkspaceSessionModel(
+      id: tab.session.id,
+      isStartPage: isStartPage,
+      diagnostics: diagnostics,
+    );
+    tab.bindStore(
+      read: () => record,
+      write: (update) {
+        record = update(record);
+      },
+    );
+  }
 
   test('prompt and grid skip notify when the value did not change', () {
     final tab = newTab();
-    addTearDown(tab.dispose);
     var ticks = 0;
     tab.addListener(() => ticks++);
 
@@ -36,11 +63,8 @@ void main() {
   });
 
   test('a start tab can be promoted into a drawing in place', () {
-    final tab = DocumentTab(
-      session: DocumentSession(id: '2', document: CadDocument()),
-      isStartPage: true,
-    );
-    addTearDown(tab.dispose);
+    final tab = newTab(id: '2');
+    bind(tab, isStartPage: true);
     tab.promoteToDrawing();
     expect(tab.isStartPage, isFalse);
     expect(tab.title, 'Drawing2');
@@ -48,7 +72,6 @@ void main() {
 
   test('a document edit and invalidateAll share the geometry drop hook', () {
     final tab = newTab();
-    addTearDown(tab.dispose);
     final dropped = <DocumentChange>[];
     tab.onGeometryInvalidated = dropped.add;
 
@@ -68,7 +91,7 @@ void main() {
 
   test('markSaved clears dirty and a selection change wakes the tab', () {
     final tab = newTab();
-    addTearDown(tab.dispose);
+    bind(tab, diagnostics: const ['layer 0 renamed']);
     expect(tab.diagnostics, ['layer 0 renamed']);
     expect(tab.title, 'Drawingt');
 
@@ -98,14 +121,7 @@ void main() {
   });
 
   test('markSaved replaces an untitled Drawing1 label with the file name', () {
-    final tab = DocumentTab(
-      session: DocumentSession(
-        id: '1',
-        document: CadDocument(),
-        title: 'Drawing1',
-      ),
-    );
-    addTearDown(tab.dispose);
+    final tab = newTab(id: '1', title: 'Drawing1');
     tab.markSaved('/tmp/plan.dxf');
     expect(tab.title, 'plan.dxf');
   });

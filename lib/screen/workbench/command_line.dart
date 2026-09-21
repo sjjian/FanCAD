@@ -1,9 +1,11 @@
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
-import '../../services/command_line_model.dart';
+import '../../models/workspace.dart';
+import '../../services/command_line.dart';
 import '../../services/workspace.dart';
 import '../theme/tokens.dart';
 import 'dynamic_input_hud.dart';
@@ -80,7 +82,7 @@ class CommandSuggestController extends ChangeNotifier {
 /// The input keeps focus so typing a verb always works without clicking first,
 /// and Escape always cancels whatever is running. The log lives in the left
 /// sidebar, not stacked above this row.
-class CommandLinePane extends StatefulWidget {
+class CommandLinePane extends ConsumerStatefulWidget {
   const CommandLinePane({
     super.key,
     required this.workspace,
@@ -102,10 +104,10 @@ class CommandLinePane extends StatefulWidget {
   final CommandSuggestController? suggest;
 
   @override
-  State<CommandLinePane> createState() => _CommandLinePaneState();
+  ConsumerState<CommandLinePane> createState() => _CommandLinePaneState();
 }
 
-class _CommandLinePaneState extends State<CommandLinePane> {
+class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
   final TextEditingController _input = TextEditingController();
 
   CommandLineController get _model => widget.workspace.commandLine;
@@ -113,7 +115,6 @@ class _CommandLinePaneState extends State<CommandLinePane> {
   @override
   void initState() {
     super.initState();
-    _model.addListener(_onModelChanged);
     // The canvas focuses this node, not the wrapping Focus widget, so Escape
     // has to be handled on the node that actually owns focus.
     widget.focusNode.onKeyEvent = _onKey;
@@ -137,7 +138,6 @@ class _CommandLinePaneState extends State<CommandLinePane> {
   void dispose() {
     widget.focusNode.onKeyEvent = null;
     widget.suggest?.bindAccept(null);
-    _model.removeListener(_onModelChanged);
     _input.dispose();
     super.dispose();
   }
@@ -246,6 +246,18 @@ class _CommandLinePaneState extends State<CommandLinePane> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(
+      commandLineNotifierProvider.select((s) => s.offeredInput),
+      (previous, next) {
+        if (next == null) return;
+        _onModelChanged();
+      },
+    );
+    ref.watch(
+      commandLineNotifierProvider.select(
+        (s) => (s.lines, s.prompt, s.status),
+      ),
+    );
     return _buildInput(context.tokens);
   }
 
@@ -411,7 +423,7 @@ class _HistoryLine extends StatefulWidget {
     required this.onReuse,
   });
 
-  final HistoryLine line;
+  final HistoryLineModel line;
   final FanCadTokens tokens;
   final VoidCallback onReuse;
 
@@ -537,29 +549,22 @@ class _HistoryOverflow extends StatelessWidget {
 ///
 /// The canvas dock only types; this panel is where a leftover LINE or an
 /// import warning can be reread and clicked back into the input.
-class CommandLogPanel extends StatefulWidget {
+class CommandLogPanel extends ConsumerStatefulWidget {
   const CommandLogPanel({super.key, required this.workspace});
 
   final Workspace workspace;
 
   @override
-  State<CommandLogPanel> createState() => _CommandLogPanelState();
+  ConsumerState<CommandLogPanel> createState() => _CommandLogPanelState();
 }
 
-class _CommandLogPanelState extends State<CommandLogPanel> {
+class _CommandLogPanelState extends ConsumerState<CommandLogPanel> {
   final ScrollController _scroll = ScrollController();
 
   CommandLineController get _model => widget.workspace.commandLine;
 
   @override
-  void initState() {
-    super.initState();
-    _model.addListener(_onModelChanged);
-  }
-
-  @override
   void dispose() {
-    _model.removeListener(_onModelChanged);
     _scroll.dispose();
     super.dispose();
   }
@@ -584,6 +589,11 @@ class _CommandLogPanelState extends State<CommandLogPanel> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(
+      commandLineNotifierProvider.select((s) => s.lines.length),
+      (_, _) => _onModelChanged(),
+    );
+    ref.watch(commandLineNotifierProvider.select((s) => s.lines));
     final tokens = context.tokens;
     final lines = _model.lines;
     return Column(

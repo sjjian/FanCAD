@@ -4,10 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
-import '../../models/assistant_profile.dart';
-import '../../services/ai_controller.dart';
-import '../../services/ops_host.dart';
-import '../../services/providers.dart';
+import '../../models/assistant.dart';
+import '../../models/mcp.dart';
+import '../../models/shell.dart';
+import '../../services/assistant.dart';
+import '../../services/mcp.dart';
+import '../../services/shell.dart';
 import '../theme/tokens.dart';
 import 'shell_widgets.dart';
 
@@ -137,18 +139,18 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
   late final TextEditingController _mcpPort;
   late final TextEditingController _mcpAllowlist;
   late final AiController _ai;
-  late final McpConfig _mcp;
+  late final McpNotifier _mcp;
 
   @override
   void initState() {
     super.initState();
-    _ai = ref.read(aiControllerProvider);
-    _mcp = ref.read(mcpConfigProvider.notifier);
+    _ai = ref.read(assistantNotifierProvider.notifier);
+    _mcp = ref.read(mcpNotifierProvider.notifier);
     _label = TextEditingController(text: _ai.activeProfile.label);
     _model = TextEditingController(text: _ai.model);
     _endpoint = TextEditingController(text: _ai.baseUrl);
     _apiKey = TextEditingController(text: _ai.apiKey);
-    final bind = ref.read(mcpConfigProvider);
+    final bind = ref.read(mcpNotifierProvider).bind;
     _mcpPort = TextEditingController(text: '${bind.port}');
     _mcpAllowlist = TextEditingController(text: bind.allowlist.join(', '));
     widget.tab.addListener(_onTab);
@@ -227,8 +229,7 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
     final l10n = context.l10n;
     final tab = widget.tab.value;
     // Watch so a language or theme write rebuilds this surface in place.
-    ref.watch(languageProvider);
-    ref.watch(themeBrightnessProvider);
+    ref.watch(shellNotifierProvider.select((s) => (s.theme, s.language)));
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -389,9 +390,11 @@ class _GeneralPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final language = ref.watch(languageProvider);
-    ref.watch(themeBrightnessProvider);
-    final themePref = ref.read(themeBrightnessProvider.notifier).preference;
+    final shell = ref.watch(
+      shellNotifierProvider.select((s) => (theme: s.theme, language: s.language)),
+    );
+    final language = shell.language;
+    final themePref = shell.theme;
     return ListView(
       padding: const EdgeInsets.all(FanCadTokens.space4),
       children: [
@@ -404,7 +407,7 @@ class _GeneralPage extends ConsumerWidget {
                 key: const Key('settings-language'),
                 value: language,
                 onChanged: (value) =>
-                    ref.read(languageProvider.notifier).setLanguage(value),
+                    ref.read(shellNotifierProvider.notifier).setLanguage(value),
                 options: const [
                   SettingsDropdownOption(
                     key: Key('settings-language-en'),
@@ -421,26 +424,26 @@ class _GeneralPage extends ConsumerWidget {
             ),
             SettingsLabeledRow(
               label: l10n.theme,
-              child: SettingsDropdown<String>(
+              child: SettingsDropdown<ThemePreference>(
                 key: const Key('settings-theme'),
                 value: themePref,
                 onChanged: (value) => ref
-                    .read(themeBrightnessProvider.notifier)
+                    .read(shellNotifierProvider.notifier)
                     .setPreference(value),
                 options: [
                   SettingsDropdownOption(
                     key: const Key('settings-theme-dark'),
-                    value: 'dark',
+                    value: ThemePreference.dark,
                     label: l10n.theme_dark,
                   ),
                   SettingsDropdownOption(
                     key: const Key('settings-theme-light'),
-                    value: 'light',
+                    value: ThemePreference.light,
                     label: l10n.theme_light,
                   ),
                   SettingsDropdownOption(
                     key: const Key('settings-theme-system'),
-                    value: 'system',
+                    value: ThemePreference.system,
                     label: l10n.theme_system,
                   ),
                 ],
@@ -468,8 +471,11 @@ class _McpPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
     final l10n = context.l10n;
-    final bind = ref.watch(mcpConfigProvider);
-    final endpoint = ref.watch(mcpEndpointProvider);
+    final mcp = ref.watch(
+      mcpNotifierProvider.select((s) => (bind: s.bind, endpoint: s.endpoint)),
+    );
+    final bind = mcp.bind;
+    final endpoint = mcp.endpoint;
     final localHint = bind.local
         ? l10n.settings_mcp_local_on
         : l10n.settings_mcp_local_off;
@@ -483,7 +489,7 @@ class _McpPage extends ConsumerWidget {
               key: const Key('settings-mcp-enabled'),
               label: l10n.settings_mcp_enable,
               value: bind.enabled,
-              onChanged: ref.read(mcpConfigProvider.notifier).setEnabled,
+              onChanged: ref.read(mcpNotifierProvider.notifier).setEnabled,
               description: bind.enabled
                   ? l10n.settings_mcp_on
                   : l10n.settings_mcp_off,
@@ -495,7 +501,7 @@ class _McpPage extends ConsumerWidget {
               key: const Key('settings-mcp-local'),
               label: l10n.settings_mcp_local,
               value: bind.local,
-              onChanged: ref.read(mcpConfigProvider.notifier).setLocal,
+              onChanged: ref.read(mcpNotifierProvider.notifier).setLocal,
               description: localHint,
               tooltip: localHint,
             ),
@@ -530,7 +536,7 @@ class _McpPage extends ConsumerWidget {
 class _CopyableMcpUrl extends StatefulWidget {
   const _CopyableMcpUrl({required this.endpoint});
 
-  final McpClientEndpoint endpoint;
+  final McpClientEndpointModel endpoint;
 
   @override
   State<_CopyableMcpUrl> createState() => _CopyableMcpUrlState();
@@ -585,47 +591,47 @@ class _AssistantPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final ai = ref.watch(aiControllerProvider);
-    return ListenableBuilder(
-      listenable: ai,
-      builder: (context, _) {
-        final approveHint = ai.autoApprove
-            ? l10n.edits_without_asking
-            : l10n.ask_before_edits;
-        return ListView(
-          padding: const EdgeInsets.all(FanCadTokens.space4),
+    ref.watch(
+      assistantNotifierProvider.select(
+        (s) => (s.autoApprove, s.activeProfileId, s.profiles),
+      ),
+    );
+    final ai = ref.read(assistantNotifierProvider.notifier);
+    final approveHint = ai.autoApprove
+        ? l10n.edits_without_asking
+        : l10n.ask_before_edits;
+    return ListView(
+      padding: const EdgeInsets.all(FanCadTokens.space4),
+      children: [
+        SettingsSection(
+          title: l10n.settings_tab_assistant,
           children: [
-            SettingsSection(
-              title: l10n.settings_tab_assistant,
-              children: [
-                SettingsToggle(
-                  label: l10n.auto_approve,
-                  value: ai.autoApprove,
-                  onChanged: ai.setAutoApprove,
-                  description: approveHint,
-                  tooltip: approveHint,
-                ),
-                SettingsLabeledRow(
-                  label: l10n.settings_current_model,
-                  child: SettingsDropdown<String>(
-                    key: const Key('settings-current-model'),
-                    value: ai.activeProfile.id,
-                    onChanged: onSelectProfile,
-                    options: [
-                      for (final profile in ai.profiles)
-                        SettingsDropdownOption(
-                          key: Key('settings-current-model-${profile.id}'),
-                          value: profile.id,
-                          label: profile.displayName,
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+            SettingsToggle(
+              label: l10n.auto_approve,
+              value: ai.autoApprove,
+              onChanged: ai.setAutoApprove,
+              description: approveHint,
+              tooltip: approveHint,
+            ),
+            SettingsLabeledRow(
+              label: l10n.settings_current_model,
+              child: SettingsDropdown<String>(
+                key: const Key('settings-current-model'),
+                value: ai.activeProfile.id,
+                onChanged: onSelectProfile,
+                options: [
+                  for (final profile in ai.profiles)
+                    SettingsDropdownOption(
+                      key: Key('settings-current-model-${profile.id}'),
+                      value: profile.id,
+                      label: profile.displayName,
+                    ),
+                ],
+              ),
             ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 }
@@ -678,7 +684,7 @@ class _ModelsPageState extends ConsumerState<_ModelsPage> {
   void _addProfile() {
     widget.onAddProfile();
     setState(() {
-      _editingId = ref.read(aiControllerProvider).activeProfile.id;
+      _editingId = ref.read(assistantNotifierProvider.notifier).activeProfile.id;
     });
   }
 
@@ -693,8 +699,8 @@ class _ModelsPageState extends ConsumerState<_ModelsPage> {
   Future<void> _testProfile(String id) async {
     if (_testingId != null) return;
     if (_editingId == id) widget.onCommit();
-    final ai = ref.read(aiControllerProvider);
-    AssistantProfile? profile;
+    final ai = ref.read(assistantNotifierProvider.notifier);
+    AssistantProfileModel? profile;
     for (final item in ai.profiles) {
       if (item.id == id) {
         profile = item;
@@ -712,49 +718,47 @@ class _ModelsPageState extends ConsumerState<_ModelsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final ai = ref.watch(aiControllerProvider);
-    return ListenableBuilder(
-      listenable: ai,
-      builder: (context, _) {
-        final canDelete = ai.profiles.length > 1;
-        return ListView(
-          padding: const EdgeInsets.all(FanCadTokens.space4),
+    ref.watch(
+      assistantNotifierProvider.select((s) => (s.profiles, s.activeProfileId)),
+    );
+    final ai = ref.read(assistantNotifierProvider.notifier);
+    final canDelete = ai.profiles.length > 1;
+    return ListView(
+      padding: const EdgeInsets.all(FanCadTokens.space4),
+      children: [
+        SettingsSection(
+          title: context.l10n.assistant_profiles,
+          trailing: ShellIconButton(
+            key: const Key('settings-add-profile'),
+            icon: Icons.add,
+            tooltip: context.l10n.add_assistant_profile,
+            iconSize: FanCadTokens.iconSmall,
+            onPressed: _addProfile,
+          ),
           children: [
-            SettingsSection(
-              title: context.l10n.assistant_profiles,
-              trailing: ShellIconButton(
-                key: const Key('settings-add-profile'),
-                icon: Icons.add,
-                tooltip: context.l10n.add_assistant_profile,
-                iconSize: FanCadTokens.iconSmall,
-                onPressed: _addProfile,
+            for (final profile in ai.profiles)
+              _ModelProfileCard(
+                profile: profile,
+                ai: ai,
+                selected: profile.id == ai.activeProfile.id,
+                expanded: profile.id == _editingId,
+                testing: profile.id == _testingId,
+                canDelete: canDelete,
+                label: widget.label,
+                model: widget.model,
+                endpoint: widget.endpoint,
+                apiKey: widget.apiKey,
+                onSelect: () => _selectProfile(profile.id),
+                onEdit: () => _toggleEdit(profile.id),
+                onTest: _testingId == null
+                    ? () => _testProfile(profile.id)
+                    : null,
+                onRemove: () => _removeProfile(profile.id),
+                onCommit: widget.onCommit,
               ),
-              children: [
-                for (final profile in ai.profiles)
-                  _ModelProfileCard(
-                    profile: profile,
-                    ai: ai,
-                    selected: profile.id == ai.activeProfile.id,
-                    expanded: profile.id == _editingId,
-                    testing: profile.id == _testingId,
-                    canDelete: canDelete,
-                    label: widget.label,
-                    model: widget.model,
-                    endpoint: widget.endpoint,
-                    apiKey: widget.apiKey,
-                    onSelect: () => _selectProfile(profile.id),
-                    onEdit: () => _toggleEdit(profile.id),
-                    onTest: _testingId == null
-                        ? () => _testProfile(profile.id)
-                        : null,
-                    onRemove: () => _removeProfile(profile.id),
-                    onCommit: widget.onCommit,
-                  ),
-              ],
-            ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 }
@@ -778,7 +782,7 @@ class _ModelProfileCard extends StatelessWidget {
     required this.onCommit,
   });
 
-  final AssistantProfile profile;
+  final AssistantProfileModel profile;
   final AiController ai;
   final bool selected;
   final bool expanded;
@@ -941,7 +945,7 @@ class _ModelProfileCard extends StatelessWidget {
   }
 }
 
-String _profileDescription(AssistantProfile profile) {
+String _profileDescription(AssistantProfileModel profile) {
   final host = Uri.tryParse(profile.baseUrl)?.host;
   final endpoint = (host != null && host.isNotEmpty) ? host : profile.baseUrl;
   return '${profile.model} · $endpoint';

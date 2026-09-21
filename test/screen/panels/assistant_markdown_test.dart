@@ -58,8 +58,8 @@ void main() {
   testWidgets('an objects tag renders a chip that reports ids and tab', (
     tester,
   ) async {
-    final hovered = <ComposerPin?>[];
-    final tapped = <ComposerPin>[];
+    final hovered = <ComposerPinModel?>[];
+    final tapped = <ComposerPinModel>[];
     await tester.pumpWidget(
       MaterialApp(
         theme: FanCadTheme.dark(),

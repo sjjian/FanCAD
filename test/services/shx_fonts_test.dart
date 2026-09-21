@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:fancad/services/shx_fonts.dart';
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad/services/workspace.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;

@@ -8,8 +8,10 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../commands/keybindings.dart';
 import '../../l10n/l10n.dart';
-import '../../services/plugin_bootstrap.dart';
-import '../../services/providers.dart';
+import '../../models/workspace.dart';
+import '../../services/assistant.dart';
+import '../../services/plugin.dart';
+import '../../services/shell.dart';
 import '../../services/workspace.dart';
 import '../panels/ai_panel.dart';
 import '../panels/extensions_panel.dart';
@@ -46,9 +48,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   static const _escapeChannel = MethodChannel('fancad/escape');
 
   StreamSubscription<String>? _panelReveals;
-  StreamSubscription<ApprovalRequest>? _approvals;
+  StreamSubscription<PendingApproval>? _approvals;
   StreamSubscription<CommandRegistry>? _commandChanges;
-  StreamSubscription<void>? _contributionChanges;
   bool _listeningForWindowClose = false;
   bool _closingWindow = false;
 
@@ -59,10 +60,10 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     _escapeChannel.setMethodCallHandler(_onNativeEscape);
     // Subscribed in initState rather than in build so a rebuild does not
     // register a second listener and pop two dialogs for one request.
-    final workspace = ref.read(workspaceProvider);
+    final workspace = ref.read(workspaceNotifierProvider.notifier);
     _panelReveals = workspace.panelReveals.listen((panelId) {
       if (panelId == 'ai') {
-        ref.read(assistantPaneProvider.notifier).setOpen(true);
+        ref.read(shellNotifierProvider.notifier).setAssistantOpen(true);
         return;
       }
       if (isPreferencesPanel(panelId)) {
@@ -75,7 +76,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         );
         return;
       }
-      ref.read(sidebarProvider.notifier).reveal(panelId);
+      ref.read(shellNotifierProvider.notifier).reveal(panelId);
     });
     _approvals = workspace.approvals.listen(_showApproval);
     _commandChanges = workspace.commands.changes.listen((_) {
@@ -100,21 +101,12 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     _panelReveals?.cancel();
     _approvals?.cancel();
     _commandChanges?.cancel();
-    _contributionChanges?.cancel();
     _commandFocus.dispose();
     super.dispose();
   }
 
   Future<void> _startPlugins() async {
-    await ref.read(pluginBootstrapProvider).start();
-    if (!mounted) return;
-    _contributionChanges = ref
-        .read(pluginHostProvider)
-        ?.contributions
-        .changes
-        .listen((_) {
-          if (mounted) setState(() {});
-        });
+    await ref.read(pluginNotifierProvider.notifier).start();
   }
 
   /// Text fields on macOS swallow Escape before Focus.onKeyEvent. This runs
@@ -122,14 +114,14 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   bool _onHardwareEscape(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
     if (event.logicalKey != LogicalKeyboardKey.escape) return false;
-    if (ref.read(paletteOpenProvider)) return false;
-    ref.read(workspaceProvider).cancelActive();
+    if (ref.read(shellNotifierProvider).paletteOpen) return false;
+    ref.read(workspaceNotifierProvider.notifier).cancelActive();
     return true;
   }
 
   Future<void> _onNativeEscape(MethodCall call) async {
     if (call.method != 'escape') return;
-    ref.read(workspaceProvider).cancelActive();
+    ref.read(workspaceNotifierProvider.notifier).cancelActive();
   }
 
   Future<void> _bindWindowClose() async {
@@ -154,7 +146,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     if (_closingWindow) return;
     _closingWindow = true;
     try {
-      final workspace = ref.read(workspaceProvider);
+      final workspace = ref.read(workspaceNotifierProvider.notifier);
       while (workspace.tabs.isNotEmpty) {
         if (!mounted) return;
         final dirtyIndex = workspace.tabs.indexWhere((tab) => tab.isDirty);
@@ -174,9 +166,9 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     }
   }
 
-  Future<void> _showApproval(ApprovalRequest request) async {
-    final workspace = ref.read(workspaceProvider);
-    workspace.setPendingHighlights(request.highlightIds);
+  Future<void> _showApproval(PendingApproval pending) async {
+    final request = pending.request;
+    final workspace = ref.read(workspaceNotifierProvider.notifier);
     final tokens = context.tokens;
     final title = request.title.toLowerCase();
     final unsaved = title.contains('unsaved') || title.contains('discard');
@@ -259,35 +251,40 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         ),
       ),
     );
-    workspace.setPendingHighlights(const []);
     if (approved == 'save') {
       final result = await workspace.run('file.save');
       if (result.isOk) {
-        request.approve();
+        pending.approve();
       } else {
-        request.reject();
+        pending.reject();
       }
     } else if (approved == 'continue' || approved == 'discard') {
-      request.approve();
+      pending.approve();
     } else {
-      request.reject();
+      pending.reject();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final workspace = ref.watch(workspaceProvider);
-    return ListenableBuilder(
-      listenable: workspace,
-      builder: (context, _) => _buildShell(context, workspace),
+    final workspace = ref.read(workspaceNotifierProvider.notifier);
+    ref.watch(
+      workspaceNotifierProvider.select((s) => (s.tabStrip, s.recentFiles)),
     );
+    ref.watch(pluginNotifierProvider.select((s) => s.epoch));
+    return _buildShell(context, workspace);
   }
 
   Widget _buildShell(BuildContext context, Workspace workspace) {
     final tokens = context.tokens;
-    final sidebar = ref.watch(sidebarProvider);
-    final assistant = ref.watch(assistantPaneProvider);
-    final paletteOpen = ref.watch(paletteOpenProvider);
+    final shell = ref.watch(
+      shellNotifierProvider.select(
+        (s) => (sidebar: s.sidebar, assistant: s.assistant, paletteOpen: s.paletteOpen),
+      ),
+    );
+    final sidebar = shell.sidebar;
+    final assistant = shell.assistant;
+    final paletteOpen = shell.paletteOpen;
 
     return CallbackShortcuts(
       bindings: _shortcuts(workspace),
@@ -313,10 +310,10 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
               TitleBar(
                 assistantOpen: assistant.isOpen,
                 onTogglePalette: () =>
-                    ref.read(paletteOpenProvider.notifier).toggle(),
+                    ref.read(shellNotifierProvider.notifier).togglePalette(),
                 onToggleAssistant: ref
-                    .read(assistantPaneProvider.notifier)
-                    .toggle,
+                    .read(shellNotifierProvider.notifier)
+                    .toggleAssistant,
               ),
               Expanded(
                 child: LayoutBuilder(
@@ -330,7 +327,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                                   ? sidebar.viewId
                                   : '',
                               onSelect: ref
-                                  .read(sidebarProvider.notifier)
+                                  .read(shellNotifierProvider.notifier)
                                   .select,
                               onOpenSettings: () {
                                 unawaited(showSettingsDialog(context));
@@ -361,7 +358,9 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                                 child: ColoredBox(
                                   color: tokens.surface,
                                   child: AiPanel(
-                                    controller: ref.watch(aiControllerProvider),
+                                    controller: ref.read(
+                                      assistantNotifierProvider.notifier,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -382,13 +381,13 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                                 key: const Key('sidebar-splitter'),
                                 axis: Axis.vertical,
                                 onDrag: (delta) => ref
-                                    .read(sidebarProvider.notifier)
+                                    .read(shellNotifierProvider.notifier)
                                     .resize(sidebar.width + delta),
                                 onDragEnd: ref
-                                    .read(sidebarProvider.notifier)
+                                    .read(shellNotifierProvider.notifier)
                                     .commitWidth,
                                 onDoubleTap: ref
-                                    .read(sidebarProvider.notifier)
+                                    .read(shellNotifierProvider.notifier)
                                     .resetWidth,
                               ),
                             ),
@@ -408,14 +407,14 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                                 key: const Key('assistant-splitter'),
                                 axis: Axis.vertical,
                                 onDrag: (delta) => ref
-                                    .read(assistantPaneProvider.notifier)
-                                    .resize(assistant.width - delta),
+                                    .read(shellNotifierProvider.notifier)
+                                    .resizeAssistant(assistant.width - delta),
                                 onDragEnd: ref
-                                    .read(assistantPaneProvider.notifier)
-                                    .commitWidth,
+                                    .read(shellNotifierProvider.notifier)
+                                    .commitAssistantWidth,
                                 onDoubleTap: ref
-                                    .read(assistantPaneProvider.notifier)
-                                    .resetWidth,
+                                    .read(shellNotifierProvider.notifier)
+                                    .resetAssistantWidth,
                               ),
                             ),
                           ),
@@ -423,8 +422,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                           CommandPalette(
                             workspace: workspace,
                             onDismiss: () => ref
-                                .read(paletteOpenProvider.notifier)
-                                .setOpen(false),
+                                .read(shellNotifierProvider.notifier)
+                                .setPaletteOpen(false),
                           ),
                       ],
                     );
@@ -450,7 +449,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
             onOpen: () => workspace.run('file.open'),
             onNew: () => workspace.run('file.new'),
             onShowCommands: () =>
-                ref.read(paletteOpenProvider.notifier).setOpen(true),
+                ref.read(shellNotifierProvider.notifier).setPaletteOpen(true),
           )
         : DocumentView(
             // Keyed by tab so switching tabs gets a fresh canvas state rather
@@ -460,12 +459,15 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
             tab: tab,
             commandLineFocus: _commandFocus,
             onAddSelectionToChat: () {
-              ref.read(aiControllerProvider).pinSelection();
+              ref.read(assistantNotifierProvider.notifier).pinSelection();
               workspace.revealPanel('ai');
             },
-            onStopAssistant: () => ref.read(aiControllerProvider).stop(),
+            onStopAssistant: () =>
+                ref.read(assistantNotifierProvider.notifier).stop(),
           );
-    final sidebar = ref.watch(sidebarProvider);
+    final sidebar = ref.watch(
+      shellNotifierProvider.select((s) => s.sidebar),
+    );
     final stack = Stack(
       children: [
         body,
@@ -493,23 +495,16 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     'history' => CommandLogPanel(workspace: workspace),
     'commands' => _CommandListPanel(
       workspace: workspace,
-      onOpenPalette: () => ref.read(paletteOpenProvider.notifier).setOpen(true),
+      onOpenPalette: () => ref.read(shellNotifierProvider.notifier).setPaletteOpen(true),
     ),
-    'plugins' => ExtensionsPanel(
-      workspace: workspace,
-      host: ref.watch(pluginHostProvider),
-      folder: ref.watch(pluginsDirectoryProvider),
-    ),
-    'editor' => PluginEditorPanel(
-      workspace: workspace,
-      host: ref.watch(pluginHostProvider),
-    ),
+    'plugins' => ExtensionsPanel(workspace: workspace),
+    'editor' => PluginEditorPanel(workspace: workspace),
     _ => const SizedBox.shrink(),
   };
 
   Map<ShortcutActivator, VoidCallback> _shortcuts(Workspace workspace) {
     final pluginKeys = [
-      if (ref.read(pluginHostProvider) case final host?)
+      if (ref.read(pluginNotifierProvider.notifier).host case final host?)
         for (final binding in host.contributions.keybindings)
           (binding.key, binding.commandId),
     ];
@@ -537,15 +532,15 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     return {
       ...chord(
         LogicalKeyboardKey.keyP,
-        () => ref.read(paletteOpenProvider.notifier).toggle(),
+        () => ref.read(shellNotifierProvider.notifier).togglePalette(),
         shift: true,
       ),
       ...chord(
         LogicalKeyboardKey.keyB,
-        ref.read(sidebarProvider.notifier).toggle,
+        ref.read(shellNotifierProvider.notifier).toggle,
       ),
       ...chord(LogicalKeyboardKey.keyU, () {
-        ref.read(aiControllerProvider).pinSelection();
+        ref.read(assistantNotifierProvider.notifier).pinSelection();
         workspace.revealPanel('ai');
       }, shift: true),
       const SingleActivator(LogicalKeyboardKey.f2): _commandFocus.requestFocus,
@@ -861,14 +856,18 @@ class _CommandListPanelState extends State<_CommandListPanel> {
 }
 
 /// Transient notifications, stacked in the canvas corner.
-class _Notices extends StatelessWidget {
+class _Notices extends ConsumerWidget {
   const _Notices({required this.workspace});
 
   final Workspace workspace;
 
   @override
-  Widget build(BuildContext context) {
-    final notices = workspace.notices.reversed.take(3).toList();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notices = ref
+        .watch(workspaceNotifierProvider.select((s) => s.notices))
+        .reversed
+        .take(3)
+        .toList();
     if (notices.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -898,7 +897,7 @@ class _NoticeToast extends StatefulWidget {
   });
 
   final Workspace workspace;
-  final Notice notice;
+  final NoticeModel notice;
 
   @override
   State<_NoticeToast> createState() => _NoticeToastState();

@@ -26,11 +26,24 @@ class FileListCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final drawings =
-        files.listDrawings?.call() ?? const <Map<String, Object?>>[];
+    final sessions = files.listSessions?.call() ?? const <DocumentSession>[];
+    final activeId = files.activeSessionId?.call();
     return CommandResult.ok(
-      message: '${drawings.length} open drawing(s).',
-      data: {'drawings': drawings},
+      message: '${sessions.length} open drawing(s).',
+      data: {
+        'drawings': [
+          for (final session in sessions)
+            {
+              'id': session.id,
+              'title': session.title,
+              'path': session.filePath,
+              'dirty': session.isDirty,
+              'active': session.id == activeId,
+              'entityCount': session.document.entityCount,
+              'activeLayout': session.document.activeLayoutName,
+            },
+        ],
+      },
     );
   }
 }

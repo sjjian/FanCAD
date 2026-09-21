@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -38,9 +39,22 @@ void main() {
     });
   });
 
+  CommandLineNotifier commandLine({int? historyLimit}) {
+    final container = ProviderContainer(
+      overrides: [
+        if (historyLimit != null)
+          commandLineHistoryLimitOverrideProvider.overrideWithValue(
+            historyLimit,
+          ),
+      ],
+    );
+    addTearDown(container.dispose);
+    return container.read(commandLineNotifierProvider.notifier);
+  }
+
   group('CommandLineController', () {
     test('empty writes are ignored and the history is capped', () {
-      final line = CommandLineController(historyLimit: 2);
+      final line = commandLine(historyLimit: 2);
       line.write('');
       expect(line.lines, isEmpty);
       line.write('one\ntwo\nthree');
@@ -50,7 +64,7 @@ void main() {
     });
 
     test('a leftover log click offers text without submitting it', () {
-      final line = CommandLineController();
+      final line = commandLine();
       line.offerInput('LINE');
       expect(line.offeredInput, 'LINE');
       expect(line.takeOfferedInput(), 'LINE');
@@ -59,7 +73,7 @@ void main() {
     });
 
     test('submit feeds a prompt or returns a command when idle', () async {
-      final line = CommandLineController();
+      final line = commandLine();
       expect(line.submit('LINE'), 'LINE');
       expect(line.enteredHistory, ['LINE']);
 
@@ -84,7 +98,7 @@ void main() {
     test(
       'empty Enter cancels, a pointer can answer, and recall walks history',
       () async {
-        final line = CommandLineController();
+        final line = commandLine();
         final cancelled = line.request(
           PendingEntry(
             message: 'Point:',
@@ -117,8 +131,7 @@ void main() {
     test(
       'status, errors and a superseding prompt cannot leave a stale wait',
       () async {
-        final line = CommandLineController();
-        addTearDown(line.dispose);
+        final line = commandLine();
         line.writeError('bad');
         line.writeSuccess('ok');
         line.setStatus('LINE');
@@ -150,8 +163,7 @@ void main() {
     );
 
     test('Escape cancels a leftover prompt instead of hanging', () async {
-      final line = CommandLineController();
-      addTearDown(line.dispose);
+      final line = commandLine();
       expect(line.supplyFromPointer(const Vec2.zero()), isFalse);
 
       final pending = line.request(

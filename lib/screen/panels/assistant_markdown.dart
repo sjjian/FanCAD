@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 
-import '../../services/composer_pin.dart';
+import '../../models/assistant.dart';
 import '../theme/tokens.dart';
 import '../widgets/object_pin_chip.dart';
 
@@ -25,9 +25,9 @@ class AssistantMarkdown extends StatelessWidget {
   final String text;
   final ValueChanged<int>? onEntityId;
   final ValueChanged<int?>? onHoverEntityId;
-  final ValueChanged<ComposerPin>? onPin;
-  final ValueChanged<ComposerPin?>? onHoverPin;
-  final ComposerPin Function(ComposerPin pin)? resolvePin;
+  final ValueChanged<ComposerPinModel>? onPin;
+  final ValueChanged<ComposerPinModel?>? onHoverPin;
+  final ComposerPinModel Function(ComposerPinModel pin)? resolvePin;
 
   @override
   Widget build(BuildContext context) {
@@ -138,9 +138,9 @@ class _ComposerPinSyntax extends md.InlineSyntax {
 class _ComposerPinBuilder extends MarkdownElementBuilder {
   _ComposerPinBuilder({this.onTap, this.onHover, this.resolve});
 
-  final ValueChanged<ComposerPin>? onTap;
-  final ValueChanged<ComposerPin?>? onHover;
-  final ComposerPin Function(ComposerPin pin)? resolve;
+  final ValueChanged<ComposerPinModel>? onTap;
+  final ValueChanged<ComposerPinModel?>? onHover;
+  final ComposerPinModel Function(ComposerPinModel pin)? resolve;
 
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {

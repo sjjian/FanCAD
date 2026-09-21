@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import '../../l10n/l10n.dart';
+import '../../models/workspace.dart';
+import '../../services/plugin.dart';
+import '../../services/plugin_editor.dart';
 import '../../services/workspace.dart';
 import '../theme/tokens.dart';
 import '../workbench/shell_widgets.dart';
@@ -17,21 +20,19 @@ import '../workbench/shell_widgets.dart';
 /// person reviews what was written without leaving the application. Saving
 /// goes through `plugins.write` so the same path a model uses is the path a
 /// person uses, including the reload that follows.
-class PluginEditorPanel extends StatefulWidget {
+class PluginEditorPanel extends ConsumerStatefulWidget {
   const PluginEditorPanel({
     super.key,
     required this.workspace,
-    required this.host,
   });
 
   final Workspace workspace;
-  final PluginHost? host;
 
   @override
-  State<PluginEditorPanel> createState() => _PluginEditorPanelState();
+  ConsumerState<PluginEditorPanel> createState() => _PluginEditorPanelState();
 }
 
-class _PluginEditorPanelState extends State<PluginEditorPanel> {
+class _PluginEditorPanelState extends ConsumerState<PluginEditorPanel> {
   final TextEditingController _body = TextEditingController();
   String? _pluginId;
   String _relative = 'main.js';
@@ -42,35 +43,21 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
   @override
   void initState() {
     super.initState();
-    widget.workspace.addListener(_onWorkspace);
-    _consumeTarget();
-  }
-
-  @override
-  void didUpdateWidget(PluginEditorPanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.workspace != widget.workspace) {
-      oldWidget.workspace.removeListener(_onWorkspace);
-      widget.workspace.addListener(_onWorkspace);
-      _consumeTarget();
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _consumeTarget();
+    });
   }
 
   @override
   void dispose() {
-    widget.workspace.removeListener(_onWorkspace);
     _body.dispose();
     super.dispose();
   }
 
-  void _onWorkspace() {
-    if (!mounted) return;
-    _consumeTarget();
-  }
-
   void _consumeTarget() {
-    final request = widget.workspace.pluginEditorRequest;
-    final target = widget.workspace.pluginEditorTarget;
+    final editor = ref.read(pluginEditorNotifierProvider);
+    final request = editor.request;
+    final target = editor.target;
     if (target == null || request == _seenRequest) return;
     _seenRequest = request;
     unawaited(_switchTo(target.id, target.relative));
@@ -130,14 +117,20 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
   }
 
   Future<void> _open(String id, String relative) async {
-    final host = widget.host;
-    if (host == null) return;
-    final handle = host.plugin(id);
+    final store = ref.read(pluginNotifierProvider);
+    if (store.directory.isEmpty) return;
+    PluginRefModel? handle;
+    for (final plugin in store.plugins) {
+      if (plugin.id == id) {
+        handle = plugin;
+        break;
+      }
+    }
     if (handle == null) {
       setState(() => _error = context.l10n.plugin_not_installed(id));
       return;
     }
-    final file = File(p.join(handle.manifest.directory, relative));
+    final file = File(p.join(handle.directory, relative));
     if (!file.existsSync()) {
       setState(() => _error = context.l10n.no_such_file(relative));
       return;
@@ -168,9 +161,17 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(
+      pluginEditorNotifierProvider.select((s) => s.request),
+      (_, _) => _consumeTarget(),
+    );
     final tokens = context.tokens;
-    final host = widget.host;
-    final plugins = host?.plugins ?? const [];
+    final store = ref.watch(
+      pluginNotifierProvider.select(
+        (s) => (directory: s.directory, plugins: s.plugins, epoch: s.epoch),
+      ),
+    );
+    final plugins = store.plugins;
     return CallbackShortcuts(
       bindings: {
         SingleActivator(LogicalKeyboardKey.keyS, control: true): _save,
@@ -213,7 +214,12 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
                         unawaited(
                           _switchTo(
                             id,
-                            host?.plugin(id)?.manifest.entryPoint ?? 'main.js',
+                            () {
+                              for (final plugin in plugins) {
+                                if (plugin.id == id) return plugin.entryPoint;
+                              }
+                              return 'main.js';
+                            }(),
                           ),
                         );
                       },
@@ -222,9 +228,9 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
                           shellMenuItem(
                             context,
                             value: handle.id,
-                            label: handle.manifest.name.isEmpty
+                            label: handle.name.isEmpty
                                 ? handle.id
-                                : handle.manifest.name,
+                                : handle.name,
                             checked: handle.id == _pluginId,
                           ),
                       ],
@@ -239,9 +245,9 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
                                 if (current == null) {
                                   return context.l10n.extension;
                                 }
-                                return current.manifest.name.isEmpty
+                                return current.name.isEmpty
                                     ? current.id
-                                    : current.manifest.name;
+                                    : current.name;
                               }(),
                               style: tokens.bodyStyle,
                               overflow: TextOverflow.ellipsis,
@@ -287,15 +293,21 @@ class _PluginEditorPanelState extends State<PluginEditorPanel> {
                   style: tokens.labelStyle.copyWith(color: tokens.danger),
                 ),
               ),
-            Expanded(child: _editorBody(tokens, plugins)),
+            Expanded(
+              child: _editorBody(tokens, store.directory.isNotEmpty, plugins),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _editorBody(FanCadTokens tokens, List<PluginHandle> plugins) {
-    if (widget.host == null) {
+  Widget _editorBody(
+    FanCadTokens tokens,
+    bool available,
+    List<PluginRefModel> plugins,
+  ) {
+    if (!available) {
       return ShellEmpty(message: context.l10n.editor_unavailable);
     }
     if (plugins.isEmpty) {

@@ -5,67 +5,77 @@ import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter/foundation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../ai/authoring.dart';
 import '../ai/skills/bundled.dart';
-import '../models/assistant_chat.dart';
-import '../models/assistant_profile.dart';
+import '../models/assistant.dart';
 import '../storage/assistant_settings.dart';
-import 'composer_pin.dart';
-import 'document_tab.dart';
-import 'session_snapshot.dart';
+import 'plugin.dart';
+import 'providers.dart';
 import 'workspace.dart';
+
+part 'assistant.g.dart';
 
 /// Owns the assistant session for the application.
 ///
-/// The controller is a [ChangeNotifier] so the panel can rebuild on every
-/// streamed token without the rest of the shell knowing an agent exists.
-class AiController extends ChangeNotifier {
-  AiController({required this.workspace, required this.assistant, this.host})
-    : _chats = assistant.loadChats() {
-    _activeChatId = assistant.activeChatId(_chats);
+/// Streamed tokens mutate [Conversation] in place, so [AssistantModel.transcriptEpoch]
+/// bumps on each delta and the panel can rebuild without the rest of the shell
+/// knowing an agent exists.
+@Riverpod(keepAlive: true)
+class AssistantNotifier extends _$AssistantNotifier {
+  @override
+  AssistantModel build() {
+    final assistant = ref.read(appSettingsProvider).assistant;
+    final chats = assistant.loadChats();
+    final profiles = assistant.loadProfiles();
+    ref.onDispose(() {
+      _disposed = true;
+      _settlePending(false);
+      _settleAsk(const {'status': 'cancelled'});
+      _active?.cancel();
+    });
+    return AssistantModel(
+      profiles: profiles,
+      activeProfileId: assistant.activeProfileId(profiles),
+      chats: chats,
+      activeChatId: assistant.activeChatId(chats),
+      apiKeyRef: assistant.apiKeyRef,
+      autoApprove: assistant.autoApprove,
+    );
   }
 
-  final Workspace workspace;
-  final AssistantSettings assistant;
-  final PluginHost? host;
+  Workspace get workspace => ref.read(workspaceNotifierProvider.notifier);
+  AssistantSettings get _assistant => ref.read(appSettingsProvider).assistant;
+  PluginHost? get host => ref.read(pluginNotifierProvider.notifier).host;
 
-  final List<AssistantChat> _chats;
-  late String _activeChatId;
+  AssistantModel get _store => state;
 
-  bool _busy = false;
   bool _stopping = false;
   bool _disposed = false;
-  String? _error;
   AgentLoop? _active;
-  PendingChangeSet? _pending;
   Completer<bool>? _pendingDecision;
-  SessionQuestion? _pendingQuestion;
   Completer<Map<String, Object?>>? _askDecision;
-  final List<ComposerPin> _pins = [];
 
-  bool get isBusy => _busy;
-  String? get error => _error;
+  bool get isBusy => _store.busy;
+  String? get error => _store.error;
   String get draft => _chat.draft;
   Conversation get conversation => _chat.conversation;
   List<ChatMessage> get messages => conversation.visible;
-  PendingChangeSet? get pendingApproval => _pending;
-  SessionQuestion? get pendingQuestion => _pendingQuestion;
-  List<ComposerPin> get pins => List.unmodifiable(_pins);
+  PendingChangeSet? get pendingApproval => _store.approval;
+  SessionQuestion? get pendingQuestion => _store.question;
+  List<ComposerPinModel> get pins => _store.pins;
   LlmUsage? get lastUsage => _chat.usage;
-  List<AssistantChat> get chats => List.unmodifiable(_chats);
-  AssistantChat get activeChat => _chat;
+  List<AssistantChatModel> get chats => _store.chats;
+  AssistantChatModel get activeChat => _chat;
 
-  AssistantChat get _chat => _chats.firstWhere(
-    (chat) => chat.id == _activeChatId,
-    orElse: () => _chats.first,
-  );
+  AssistantChatModel get _chat => _store.activeChat;
 
   bool get isConfigured => _provider() != null;
 
-  List<AssistantProfile> get profiles => assistant.loadProfiles();
+  List<AssistantProfileModel> get profiles => _store.profiles;
 
-  AssistantProfile get activeProfile => assistant.activeProfile;
+  AssistantProfileModel get activeProfile => _store.activeProfile;
 
   String get model => activeProfile.model;
 
@@ -73,12 +83,11 @@ class AiController extends ChangeNotifier {
 
   String get apiKey => activeProfile.apiKey;
 
-  String get apiKeyRef => assistant.apiKeyRef;
+  String get apiKeyRef => _store.apiKeyRef;
 
   void setDraft(String value) {
     if (value == _chat.draft) return;
     _patchChat((chat) => chat.copyWith(draft: value));
-    notifyListeners();
   }
 
   void setModel(String value) {
@@ -95,8 +104,8 @@ class AiController extends ChangeNotifier {
 
   void setAutoApprove(bool value) {
     if (value == autoApprove) return;
-    assistant.setAutoApprove(value);
-    notifyListeners();
+    _assistant.setAutoApprove(value);
+    _setStore(_store.copyWith(autoApprove: value));
   }
 
   void setApiKey(String value) {
@@ -108,8 +117,8 @@ class AiController extends ChangeNotifier {
   void setApiKeyRef(String value) {
     final next = value.trim();
     if (next.isEmpty || next == apiKeyRef) return;
-    assistant.setApiKeyRef(next);
-    notifyListeners();
+    _assistant.setApiKeyRef(next);
+    _setStore(_store.copyWith(apiKeyRef: next));
   }
 
   void setProfileLabel(String value) {
@@ -118,7 +127,7 @@ class AiController extends ChangeNotifier {
   }
 
   void selectProfile(String id) {
-    if (_busy) return;
+    if (isBusy) return;
     if (id == activeProfile.id) return;
     final all = profiles;
     if (!all.any((profile) => profile.id == id)) return;
@@ -126,8 +135,8 @@ class AiController extends ChangeNotifier {
   }
 
   void addProfile() {
-    if (_busy) return;
-    final created = AssistantProfile(
+    if (isBusy) return;
+    final created = AssistantProfileModel(
       id: 'p${DateTime.now().microsecondsSinceEpoch}',
       model: model,
       baseUrl: baseUrl,
@@ -136,7 +145,7 @@ class AiController extends ChangeNotifier {
   }
 
   void removeProfile(String id) {
-    if (_busy) return;
+    if (isBusy) return;
     final all = [...profiles]..removeWhere((profile) => profile.id == id);
     if (all.isEmpty) return;
     final nextId = id == activeProfile.id ? all.first.id : activeProfile.id;
@@ -144,7 +153,7 @@ class AiController extends ChangeNotifier {
   }
 
   /// Hits `{baseUrl}/models` with this card's key. Notifies success or failure.
-  Future<void> testProfile(AssistantProfile profile) async {
+  Future<void> testProfile(AssistantProfileModel profile) async {
     final provider = OpenAiCompatibleProvider.fromEnvironment(
       baseUrl: profile.baseUrl,
       model: profile.model,
@@ -168,16 +177,15 @@ class AiController extends ChangeNotifier {
     }
   }
 
-  bool get autoApprove => assistant.autoApprove;
+  bool get autoApprove => _store.autoApprove;
 
   void clear() {
     _active?.cancel();
     _settlePending(false);
     conversation.clear();
     _patchChat((chat) => chat.copyWith(title: '', usage: null));
-    _error = null;
+    _setStore(_store.copyWith(error: null));
     _persistChats();
-    _notify();
   }
 
   /// Starts an empty thread. A leftover empty current chat is not duplicated.
@@ -185,51 +193,50 @@ class AiController extends ChangeNotifier {
     _active?.cancel();
     _settlePending(false);
     if (_chat.isEmpty) {
-      _error = null;
-      _notify();
+      _setStore(_store.copyWith(error: null));
       return;
     }
-    final created = AssistantChat(
+    final created = AssistantChatModel(
       id: 'c${DateTime.now().microsecondsSinceEpoch}',
     );
-    final index = _chats.indexWhere((chat) => chat.id == _activeChatId);
-    _chats.insert(index < 0 ? _chats.length : index + 1, created);
-    _activeChatId = created.id;
-    _error = null;
+    final chats = [..._store.chats];
+    final index = chats.indexWhere((chat) => chat.id == _store.activeChatId);
+    chats.insert(index < 0 ? chats.length : index + 1, created);
+    _setStore(
+      _store.copyWith(chats: chats, activeChatId: created.id, error: null),
+    );
     _persistChats();
-    _notify();
   }
 
   void selectSession(String id) {
-    if (id == _activeChatId) return;
-    if (!_chats.any((chat) => chat.id == id)) return;
+    if (id == _store.activeChatId) return;
+    if (!_store.chats.any((chat) => chat.id == id)) return;
     _active?.cancel();
     _settlePending(false);
-    _activeChatId = id;
-    _error = null;
+    _setStore(_store.copyWith(activeChatId: id, error: null));
     _persistChats();
-    _notify();
   }
 
   void deleteSession([String? id]) {
-    final target = id ?? _activeChatId;
+    final target = id ?? _store.activeChatId;
     _active?.cancel();
     _settlePending(false);
-    if (_chats.length <= 1) {
+    if (_store.chats.length <= 1) {
       conversation.clear();
       _patchChat((chat) => chat.copyWith(title: '', usage: null, draft: ''));
-      _error = null;
+      _setStore(_store.copyWith(error: null));
       _persistChats();
-      _notify();
       return;
     }
-    _chats.removeWhere((chat) => chat.id == target);
-    if (!_chats.any((chat) => chat.id == _activeChatId)) {
-      _activeChatId = _chats.first.id;
-    }
-    _error = null;
+    final chats = [
+      for (final chat in _store.chats)
+        if (chat.id != target) chat,
+    ];
+    final activeId = chats.any((chat) => chat.id == _store.activeChatId)
+        ? _store.activeChatId
+        : chats.first.id;
+    _setStore(_store.copyWith(chats: chats, activeChatId: activeId, error: null));
     _persistChats();
-    _notify();
   }
 
   /// Stops the in-flight turn after the current model reply or tool call.
@@ -283,7 +290,7 @@ class AiController extends ChangeNotifier {
     workspace.setHoverHighlights(ids);
   }
 
-  void flashPin(ComposerPin pin) {
+  void flashPin(ComposerPinModel pin) {
     if (pin.kind == ComposerPinKind.drawing) {
       workspace.activateDrawing(pin.tabId);
       return;
@@ -291,11 +298,11 @@ class AiController extends ChangeNotifier {
     flashEntities(pin.ids, tabId: pin.tabId);
   }
 
-  void hoverPin(ComposerPin? pin) {
+  void hoverPin(ComposerPinModel? pin) {
     hoverPins(pin == null ? const [] : [pin]);
   }
 
-  void hoverPins(List<ComposerPin> pins) {
+  void hoverPins(List<ComposerPinModel> pins) {
     final entityPins = [
       for (final pin in pins)
         if (pin.kind == ComposerPinKind.entity && pin.ids.isNotEmpty) pin,
@@ -309,12 +316,12 @@ class AiController extends ChangeNotifier {
     ], tabId: entityPins.first.tabId);
   }
 
-  ComposerPin resolvePin(ComposerPin pin) {
+  ComposerPinModel resolvePin(ComposerPinModel pin) {
     if (pin.kind != ComposerPinKind.drawing) return pin;
     if (pin.tabTitle.trim().isNotEmpty) return pin;
     final tab = workspace.findDrawing(pin.tabId);
     if (tab == null) return pin;
-    return ComposerPin.drawing(
+    return ComposerPinModel.drawing(
       tabId: pin.tabId,
       tabTitle: tab.title,
       path: tab.filePath,
@@ -354,20 +361,30 @@ class AiController extends ChangeNotifier {
   void pinDrawing(DocumentTab tab) {
     if (tab.isStartPage) return;
     final tabId = tab.session.id;
-    _pins.add(
-      ComposerPin.drawing(
-        tabId: tabId,
-        tabTitle: tab.title,
-        path: tab.filePath,
+    _setStore(
+      _store.copyWith(
+        pins: [
+          ..._store.pins,
+          ComposerPinModel.drawing(
+            tabId: tabId,
+            tabTitle: tab.title,
+            path: tab.filePath,
+          ),
+        ],
       ),
     );
-    notifyListeners();
   }
 
   void removePin(int index) {
-    if (index < 0 || index >= _pins.length) return;
-    _pins.removeAt(index);
-    notifyListeners();
+    if (index < 0 || index >= _store.pins.length) return;
+    _setStore(
+      _store.copyWith(
+        pins: [
+          for (var i = 0; i < _store.pins.length; i++)
+            if (i != index) _store.pins[i],
+        ],
+      ),
+    );
   }
 
   void _pinEntities(List<int> ids, {required DocumentTab tab}) {
@@ -375,7 +392,7 @@ class AiController extends ChangeNotifier {
     final live = entityIdsStillInDocument(document, ids);
     if (live.isEmpty) return;
     var total = live.length;
-    for (final pin in _pins) {
+    for (final pin in _store.pins) {
       if (pin.kind == ComposerPinKind.entity) {
         total += pin.ids.length;
       }
@@ -393,26 +410,30 @@ class AiController extends ChangeNotifier {
       if (entity == null) continue;
       kinds.update(entity.kind.name, (n) => n + 1, ifAbsent: () => 1);
     }
-    _pins.add(
-      ComposerPin.entities(
-        live,
-        tabId: tab.session.id,
-        tabTitle: tab.title,
-        path: tab.filePath,
-        label: kinds.entries.map((e) => '${e.value} ${e.key}').join(', '),
+    _setStore(
+      _store.copyWith(
+        pins: [
+          ..._store.pins,
+          ComposerPinModel.entities(
+            live,
+            tabId: tab.session.id,
+            tabTitle: tab.title,
+            path: tab.filePath,
+            label: kinds.entries.map((e) => '${e.value} ${e.key}').join(', '),
+          ),
+        ],
       ),
     );
-    notifyListeners();
   }
 
-  List<ComposerPin> _livePins(List<ComposerPin> pins) {
-    final live = <ComposerPin>[];
+  List<ComposerPinModel> _livePins(List<ComposerPinModel> pins) {
+    final live = <ComposerPinModel>[];
     for (final pin in pins) {
       if (pin.kind == ComposerPinKind.drawing) {
         final tab = workspace.findDrawing(pin.tabId);
         if (tab == null) continue;
         live.add(
-          ComposerPin.drawing(
+          ComposerPinModel.drawing(
             tabId: tab.session.id,
             tabTitle: tab.title,
             path: tab.filePath,
@@ -425,7 +446,7 @@ class AiController extends ChangeNotifier {
       final ids = entityIdsStillInDocument(tab.document, pin.ids);
       if (ids.isEmpty) continue;
       live.add(
-        ComposerPin.entities(
+        ComposerPinModel.entities(
           ids,
           tabId: tab.session.id,
           tabTitle: tab.title,
@@ -438,28 +459,29 @@ class AiController extends ChangeNotifier {
   }
 
   void clearError() {
-    if (_error == null) return;
-    _error = null;
-    notifyListeners();
+    if (_store.error == null) return;
+    _setStore(_store.copyWith(error: null));
   }
 
   /// Sends the draft, or [text] when supplied, and runs the agent loop.
   Future<void> send([String? text]) async {
     final typed = (text ?? draft).trim();
-    if ((_pins.isEmpty && typed.isEmpty) || _busy) return;
+    if ((_store.pins.isEmpty && typed.isEmpty) || isBusy) return;
     final provider = _provider();
     if (provider == null) {
-      _error =
-          'No API key. Paste one in Settings → Assistant, '
-          'or point the assistant at a local endpoint.';
-      notifyListeners();
+      _setStore(
+        _store.copyWith(
+          error:
+              'No API key. Paste one in Settings → Assistant, '
+              'or point the assistant at a local endpoint.',
+        ),
+      );
       return;
     }
-    final pinned = _livePins([..._pins]);
+    final pinned = _livePins([..._store.pins]);
     if (pinned.isEmpty && typed.isEmpty) {
-      if (_pins.isNotEmpty) {
-        _pins.clear();
-        notifyListeners();
+      if (_store.pins.isNotEmpty) {
+        _setStore(_store.copyWith(pins: const []));
       }
       return;
     }
@@ -473,12 +495,11 @@ class AiController extends ChangeNotifier {
     }
     final session = target?.session ?? workspace.active?.session;
     if (session == null) {
-      _error = 'Open a drawing first.';
-      notifyListeners();
+      _setStore(_store.copyWith(error: 'Open a drawing first.'));
       return;
     }
 
-    _pins.clear();
+    _setStore(_store.copyWith(pins: const [], error: null, busy: true));
     final message = flattenComposerPins(pinned, typed);
 
     _patchChat((chat) {
@@ -487,10 +508,7 @@ class AiController extends ChangeNotifier {
           : chat.title;
       return chat.copyWith(draft: '', title: titled, updatedAt: DateTime.now());
     });
-    _busy = true;
-    _error = null;
     workspace.setAssistantBusy(true);
-    notifyListeners();
 
     final typings = host == null
         ? null
@@ -520,10 +538,9 @@ class AiController extends ChangeNotifier {
       askApproval: _askApproval,
       askQuestion: _askQuestion,
       supplyToSession: (args) async => workspace.supplyInteractive(args),
-      onDelta: (_) => notifyListeners(),
+      onDelta: (_) => _bumpTranscript(),
       onUsage: (usage) {
         _patchChat((chat) => chat.copyWith(usage: usage));
-        notifyListeners();
       },
     );
     _active = agent;
@@ -533,19 +550,18 @@ class AiController extends ChangeNotifier {
       if (_stopping) {
         workspace.notify('Assistant stopped.');
       } else if (turn.error != null) {
-        _error = turn.error;
+        _replaceStore(_store.copyWith(error: turn.error));
       }
     } catch (error) {
-      _error = '$error';
+      _replaceStore(_store.copyWith(error: '$error'));
     } finally {
       if (identical(_active, agent)) _active = null;
-      _busy = false;
       _stopping = false;
       workspace.setAssistantBusy(false);
       _settlePending(false);
       _settleAsk(const {'status': 'cancelled'});
       _persistChats();
-      _notify();
+      _setStore(_store.copyWith(busy: false));
     }
   }
 
@@ -562,41 +578,37 @@ class AiController extends ChangeNotifier {
       _askQuestion(question);
 
   @visibleForTesting
-  List<ComposerPin> debugLivePins() => _livePins([..._pins]);
+  List<ComposerPinModel> debugLivePins() => _livePins([..._store.pins]);
 
   Future<bool> _askApproval(PendingChangeSet pending) async {
     _settlePending(false);
-    _pending = pending;
+    _replaceStore(_store.copyWith(approval: pending));
     final decision = Completer<bool>();
     _pendingDecision = decision;
     workspace.setPendingHighlights(pending.highlightIds);
-    _notify();
     try {
       return await decision.future;
     } finally {
-      if (identical(_pending, pending)) {
-        _pending = null;
+      if (identical(_store.approval, pending)) {
+        _setStore(_store.copyWith(approval: null));
         _pendingDecision = null;
         workspace.setPendingHighlights(const []);
-        _notify();
       }
     }
   }
 
   Future<Map<String, Object?>> _askQuestion(SessionQuestion question) async {
     _settleAsk(const {'status': 'cancelled'});
-    _pendingQuestion = question;
+    _replaceStore(_store.copyWith(question: question));
     final decision = Completer<Map<String, Object?>>();
     _askDecision = decision;
-    _notify();
     try {
       return await decision.future;
     } finally {
-      if (identical(_pendingQuestion, question)) {
-        _pendingQuestion = null;
+      if (identical(_store.question, question)) {
+        _setStore(_store.copyWith(question: null));
         _askDecision = null;
         hoverEntities(const []);
-        _notify();
       }
     }
   }
@@ -613,19 +625,6 @@ class AiController extends ChangeNotifier {
     decision.complete(result);
   }
 
-  void _notify() {
-    if (!_disposed) notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _disposed = true;
-    _settlePending(false);
-    _settleAsk(const {'status': 'cancelled'});
-    _active?.cancel();
-    super.dispose();
-  }
-
   LlmProvider? _provider() {
     return OpenAiCompatibleProvider.fromEnvironment(
       baseUrl: baseUrl,
@@ -636,52 +635,79 @@ class AiController extends ChangeNotifier {
     );
   }
 
-  void _writeActive(AssistantProfile Function(AssistantProfile) update) {
-    final all = [...profiles];
+  void _writeActive(
+    AssistantProfileModel Function(AssistantProfileModel) update,
+  ) {
+    final all = [..._store.profiles];
     final index = all.indexWhere((profile) => profile.id == activeProfile.id);
     final at = index < 0 ? 0 : index;
     all[at] = update(all[at]);
     _persist(all, activeId: all[at].id);
   }
 
-  void _persist(List<AssistantProfile> all, {required String activeId}) {
-    assistant.saveProfiles(all, activeId: activeId);
-    notifyListeners();
+  void _persist(List<AssistantProfileModel> all, {required String activeId}) {
+    _assistant.saveProfiles(all, activeId: activeId);
+    _setStore(_store.copyWith(profiles: all, activeProfileId: activeId));
+  }
+
+  void _setStore(AssistantModel next) {
+    if (_disposed) return;
+    state = next;
+  }
+
+  void _replaceStore(AssistantModel next) => _setStore(next);
+
+  void _bumpTranscript() {
+    if (_disposed) return;
+    state = state.copyWith(transcriptEpoch: state.transcriptEpoch + 1);
   }
 
   @visibleForTesting
   void debugSetBusy(bool value) {
-    _busy = value;
-    notifyListeners();
+    _setStore(_store.copyWith(busy: value));
   }
 
   @visibleForTesting
   void debugSetUsage(LlmUsage? usage) {
     _patchChat((chat) => chat.copyWith(usage: usage));
-    notifyListeners();
   }
 
-  void _patchChat(AssistantChat Function(AssistantChat chat) update) {
+  void _patchChat(AssistantChatModel Function(AssistantChatModel chat) update) {
     final current = _chat;
     final next = update(current);
     if (identical(next, current)) return;
-    final index = _chats.indexWhere((chat) => chat.id == current.id);
-    if (index < 0) return;
-    _chats[index] = next;
+    _setStore(
+      _store.copyWith(
+        chats: [
+          for (final chat in _store.chats)
+            if (chat.id == current.id) next else chat,
+        ],
+      ),
+    );
   }
 
   void _persistChats() {
-    while (_chats.length > AssistantSettings.chatCap) {
-      AssistantChat? oldest;
-      for (final chat in _chats) {
-        if (chat.id == _activeChatId) continue;
+    final chats = [..._store.chats];
+    while (chats.length > AssistantSettings.chatCap) {
+      AssistantChatModel? oldest;
+      for (final chat in chats) {
+        if (chat.id == _store.activeChatId) continue;
         if (oldest == null || chat.updatedAt.isBefore(oldest.updatedAt)) {
           oldest = chat;
         }
       }
       if (oldest == null) break;
-      _chats.remove(oldest);
+      chats.remove(oldest);
     }
-    assistant.saveChats(_chats, activeId: _activeChatId);
+    if (chats.length != _store.chats.length) {
+      _setStore(_store.copyWith(chats: chats));
+    }
+    _assistant.saveChats(_store.chats, activeId: _store.activeChatId);
   }
 }
+
+/// The assistant session. Prefer [AssistantNotifier] at new call sites.
+///
+/// Created even when no key is configured so the panel can explain how to
+/// set one up.
+typedef AiController = AssistantNotifier;

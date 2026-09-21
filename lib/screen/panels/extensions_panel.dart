@@ -1,9 +1,11 @@
 import 'dart:io';
 
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../models/workspace.dart';
+import '../../services/plugin.dart';
 import '../../services/workspace.dart';
 import '../theme/tokens.dart';
 import '../workbench/shell_widgets.dart';
@@ -14,22 +16,16 @@ import '../workbench/shell_widgets.dart';
 /// that threw on its last invocation, says so here with the message it produced,
 /// because the alternative — a command that silently does nothing — is the worst
 /// possible outcome of a plugin system.
-class ExtensionsPanel extends StatefulWidget {
+class ExtensionsPanel extends ConsumerStatefulWidget {
   const ExtensionsPanel({
     super.key,
     required this.workspace,
-    required this.host,
-    this.folder = '',
   });
 
   final Workspace workspace;
-  final PluginHost? host;
-
-  /// User extensions directory. Empty in tests and headless runs.
-  final String folder;
 
   @override
-  State<ExtensionsPanel> createState() => _ExtensionsPanelState();
+  ConsumerState<ExtensionsPanel> createState() => _ExtensionsPanelState();
 }
 
 Future<void> _openFolder(Workspace workspace, String path) async {
@@ -50,31 +46,37 @@ Future<void> _openFolder(Workspace workspace, String path) async {
   }
 }
 
-class _ExtensionsPanelState extends State<ExtensionsPanel> {
+class _ExtensionsPanelState extends ConsumerState<ExtensionsPanel> {
   String? _expanded;
 
   @override
   Widget build(BuildContext context) {
-    final host = widget.host;
+    final store = ref.watch(
+      pluginNotifierProvider.select(
+        (s) => (directory: s.directory, plugins: s.plugins, epoch: s.epoch),
+      ),
+    );
+    final available = store.directory.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PanelHeader(
           title: context.l10n.extensions,
           actions: [
-            if (widget.folder.isNotEmpty)
+            if (store.directory.isNotEmpty)
               ShellIconButton(
                 icon: Icons.folder_open_outlined,
                 tooltip: context.l10n.open_extensions_folder,
-                onPressed: () => _openFolder(widget.workspace, widget.folder),
+                onPressed: () =>
+                    _openFolder(widget.workspace, store.directory),
               ),
-            if (host != null)
+            if (available)
               ShellIconButton(
                 icon: Icons.add,
                 tooltip: context.l10n.create_extension,
                 onPressed: () => widget.workspace.run('plugins.scaffold'),
               ),
-            if (host != null)
+            if (available)
               ShellIconButton(
                 icon: Icons.refresh,
                 tooltip: context.l10n.reload_all_extensions,
@@ -83,24 +85,20 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
           ],
         ),
         Expanded(
-          child: host == null
+          child: !available
               ? ShellEmpty(message: context.l10n.extensions_unavailable)
-              : StreamBuilder<PluginHost>(
-                  stream: host.changes,
-                  builder: (context, _) => Column(
-                    children: [
-                      Expanded(child: _buildList(context, host)),
-                      _ExtensionFooter(host: host),
-                    ],
-                  ),
+              : Column(
+                  children: [
+                    Expanded(child: _buildList(context, store.plugins)),
+                    _ExtensionFooter(plugins: store.plugins),
+                  ],
                 ),
         ),
       ],
     );
   }
 
-  Widget _buildList(BuildContext context, PluginHost host) {
-    final plugins = host.plugins;
+  Widget _buildList(BuildContext context, List<PluginRefModel> plugins) {
     if (plugins.isEmpty) {
       return ShellEmpty(
         message: context.l10n.no_extensions_installed,
@@ -109,7 +107,7 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
       );
     }
     final failedId = plugins
-        .where((plugin) => plugin.state == PluginState.failed)
+        .where((plugin) => plugin.state == 'failed')
         .map((plugin) => plugin.id)
         .firstOrNull;
     return ListView.builder(
@@ -153,7 +151,7 @@ class _ExtensionTile extends StatelessWidget {
     required this.onSetEnabled,
   });
 
-  final PluginHandle handle;
+  final PluginRefModel handle;
   final bool isExpanded;
   final VoidCallback onToggle;
   final VoidCallback onReload;
@@ -165,7 +163,7 @@ class _ExtensionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final isDisabled = handle.state == PluginState.disabled;
+    final isDisabled = handle.state == 'disabled';
     return Container(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: tokens.border)),
@@ -187,11 +185,10 @@ class _ExtensionTile extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: ShellDot(
                       color: switch (handle.state) {
-                        PluginState.active => tokens.success,
-                        PluginState.activating => tokens.accent,
-                        PluginState.failed => tokens.danger,
-                        PluginState.disabled => tokens.textMuted,
-                        PluginState.installed => tokens.textMuted,
+                        'active' => tokens.success,
+                        'activating' => tokens.accent,
+                        'failed' => tokens.danger,
+                        _ => tokens.textMuted,
                       },
                       tooltip: _stateLabel(context.l10n, handle.state),
                     ),
@@ -202,14 +199,14 @@ class _ExtensionTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          handle.manifest.name,
+                          handle.name,
                           style: tokens.bodyStyle.copyWith(
                             color: isDisabled ? tokens.textMuted : tokens.text,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          '${handle.id}  ${handle.manifest.version}',
+                          '${handle.id}  ${handle.version}',
                           style: tokens.labelStyle,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -270,21 +267,20 @@ class _Details extends StatelessWidget {
     required this.onCopied,
   });
 
-  final PluginHandle handle;
+  final PluginRefModel handle;
   final ValueChanged<String> onRunCommand;
   final ValueChanged<String> onCopied;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final manifest = handle.manifest;
     return Container(
       color: tokens.surfaceRaised,
       padding: const EdgeInsets.only(bottom: FanCadTokens.space2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (manifest.description.isNotEmpty)
+          if (handle.description.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 FanCadTokens.space3,
@@ -292,32 +288,30 @@ class _Details extends StatelessWidget {
                 FanCadTokens.space3,
                 0,
               ),
-              child: Text(manifest.description, style: tokens.labelStyle),
+              child: Text(handle.description, style: tokens.labelStyle),
             ),
           _Row(
             label: context.l10n.state,
             value: _stateLabel(context.l10n, handle.state),
           ),
-          if (manifest.directory.isNotEmpty)
+          if (handle.directory.isNotEmpty)
             _Row(
               label: context.l10n.folder,
-              value: manifest.directory,
-              copyText: manifest.directory,
+              value: handle.directory,
+              copyText: handle.directory,
               onCopied: onCopied,
             ),
           _Row(
             label: context.l10n.permissions,
-            value: manifest.permissions.isEmpty
+            value: handle.permissions.isEmpty
                 ? 'none'
-                : manifest.permissions
-                      .map((permission) => permission.wireName)
-                      .join(', '),
+                : handle.permissions.join(', '),
           ),
-          if (manifest.commands.isNotEmpty)
+          if (handle.commands.isNotEmpty)
             PanelSection(
               title: context.l10n.commands,
               children: [
-                for (final command in manifest.commands)
+                for (final command in handle.commands)
                   PropertyRow(
                     label: command.title,
                     value: Text(command.id),
@@ -385,28 +379,23 @@ class _Row extends StatelessWidget {
   );
 }
 
-String _stateLabel(AppLocalizations l10n, PluginState state) => switch (state) {
-  PluginState.active => l10n.plugin_running,
-  PluginState.activating => l10n.plugin_starting,
-  PluginState.failed => l10n.plugin_failed,
-  PluginState.disabled => l10n.plugin_disabled,
-  PluginState.installed => l10n.plugin_installed,
+String _stateLabel(AppLocalizations l10n, String state) => switch (state) {
+  'active' => l10n.plugin_running,
+  'activating' => l10n.plugin_starting,
+  'failed' => l10n.plugin_failed,
+  'disabled' => l10n.plugin_disabled,
+  _ => l10n.plugin_installed,
 };
 
 class _ExtensionFooter extends StatelessWidget {
-  const _ExtensionFooter({required this.host});
+  const _ExtensionFooter({required this.plugins});
 
-  final PluginHost host;
+  final List<PluginRefModel> plugins;
 
   @override
   Widget build(BuildContext context) {
-    final plugins = host.plugins;
-    final failed = plugins
-        .where((plugin) => plugin.state == PluginState.failed)
-        .length;
-    final running = plugins
-        .where((plugin) => plugin.state == PluginState.active)
-        .length;
+    final failed = plugins.where((plugin) => plugin.state == 'failed').length;
+    final running = plugins.where((plugin) => plugin.state == 'active').length;
     return Container(
       height: FanCadTokens.statusBarHeight,
       padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),

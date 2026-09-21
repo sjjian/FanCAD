@@ -84,12 +84,11 @@ class SceneBuilder {
           double.tryParse(document.headerVariables[r'$LTSCALE'] ?? '') ?? 1,
     );
 
-    final measureWidth = (String text, double height) =>
-        paragraphs.measureWidth(
-          text,
-          height: height,
-          fontFamily: fonts.resolve(styleFont: 'txt', bigFont: '', text: text),
-        );
+    double measureWidth(String text, double height) => paragraphs.measureWidth(
+      text,
+      height: height,
+      fontFamily: fonts.resolve(styleFont: 'txt', bigFont: '', text: text),
+    );
     var drawn = 0;
     var culled = 0;
 

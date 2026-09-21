@@ -22,7 +22,8 @@ class FileCommands {
     required this.closeActive,
     required this.saveActive,
     required this.recentFiles,
-    this.listDrawings,
+    this.listSessions,
+    this.activeSessionId,
     this.activateDrawing,
     this.chooseSavePath,
   });
@@ -42,9 +43,12 @@ class FileCommands {
 
   final List<String> Function() recentFiles;
 
-  /// Open drawing tabs for `file.list`. Production injects
-  /// [Workspace.listOpenDrawings].
-  final List<Map<String, Object?>> Function()? listDrawings;
+  /// Open drawing sessions for `file.list`. Production injects
+  /// [Workspace.sessionIds] resolved through [Workspace.session].
+  final List<DocumentSession> Function()? listSessions;
+
+  /// Session id of the current drawing, for `file.list`'s `active` flag.
+  final String? Function()? activeSessionId;
 
   /// Brings a drawing to the front. Returns an error message, or null.
   final String? Function(String selector)? activateDrawing;

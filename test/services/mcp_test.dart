@@ -24,12 +24,8 @@ void main() {
 
     final dir = tempDir(prefix: 'fancad-mcp');
     final lockPath = '${dir.path}${Platform.pathSeparator}mcp.lock';
-    final host = FanCadOpsHost(
-      workspace: workspace,
-      lockPaths: [lockPath],
-      port: 0,
-    );
-    await host.start();
+    final host = app.container.read(mcpNotifierProvider.notifier);
+    await host.start(lockPaths: [lockPath], port: 0);
     addTearDown(host.stop);
 
     final lock = McpLock.readSync(lockPath);

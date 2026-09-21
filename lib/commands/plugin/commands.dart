@@ -18,12 +18,20 @@ import 'write.dart';
 /// `plugins.write` and `plugins.reload` are the three steps of "write a plugin
 /// and run it", exposed the same way to a person and to a model.
 class PluginCommands {
-  PluginCommands({required this.host, required this.pluginsDirectory});
+  PluginCommands({
+    required this.host,
+    required this.pluginsDirectory,
+    this.openEditor,
+  });
 
   final PluginHost host;
 
   /// Where user extensions live.
   final String pluginsDirectory;
+
+  /// Opens a file in the built-in editor. Null in headless runs that have no
+  /// editor.
+  final void Function(String id, String relative)? openEditor;
 
   List<CommandDescriptor> descriptors() => [
     PluginsListCommand(this).toDescriptor(),

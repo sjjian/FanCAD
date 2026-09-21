@@ -114,11 +114,11 @@ void main() {
     final entries = groupAssistantLog(messages);
     expect(entries, hasLength(3));
     expect(
-      (entries[1] as AssistantLogReceipt).receipt.headline,
+      (entries[1] as AssistantLogReceiptModel).receipt.headline,
       'ELLIPSE ×2  Add ellipse',
     );
     expect(
-      (entries[2] as AssistantLogReceipt).receipt.headline,
+      (entries[2] as AssistantLogReceiptModel).receipt.headline,
       'LINE  Add line',
     );
   });
@@ -149,11 +149,11 @@ void main() {
     ]);
     expect(entries, hasLength(3));
     expect(
-      (entries[1] as AssistantLogReceipt).receipt.headline,
+      (entries[1] as AssistantLogReceiptModel).receipt.headline,
       'ELLIPSE ×2  The user declined this change.',
     );
     expect(
-      (entries[2] as AssistantLogReceipt).receipt.headline,
+      (entries[2] as AssistantLogReceiptModel).receipt.headline,
       'CIRCLE  The user declined this change.',
     );
   });

@@ -1,41 +1,33 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/foundation.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../commands/builtins.dart';
+import '../commands/file/commands.dart';
 import '../l10n/l10n.dart';
+import '../models/workspace.dart';
 import '../storage/drawing_settings.dart';
-import 'command_line_model.dart';
-import 'document_tab.dart';
-import 'interactive_input.dart';
-import 'shx_fonts.dart';
+import 'command_line.dart';
+import 'providers.dart';
+import 'shell.dart';
 
-part 'workspace.freezed.dart';
+part 'workspace.g.dart';
 
-/// A request for the user to approve a set of pending changes.
+/// One-shot reply for an [ApprovalRequestModel].
 ///
-/// Raised as data rather than by showing a dialog directly, so the approval gate
-/// works identically whether the caller is a plugin, an AI turn, or a test.
-class ApprovalRequest {
-  ApprovalRequest({
-    required this.title,
-    required this.details,
-    this.highlightIds = const [],
-  });
+/// [approve] / [reject] complete the handshake; this is not persisted.
+class PendingApproval {
+  PendingApproval(this.request);
 
-  final String title;
-  final String details;
-
-  /// Entities the change would touch, highlighted on the canvas while the user
-  /// decides. Seeing what is about to change is most of what makes an approval
-  /// gate worth having.
-  final List<int> highlightIds;
-
+  final ApprovalRequestModel request;
   final Completer<bool> _completer = Completer<bool>();
 
   Future<bool> get decision => _completer.future;
@@ -49,15 +41,14 @@ class ApprovalRequest {
   }
 }
 
-/// A toast-style notification.
-@freezed
-abstract class Notice with _$Notice {
-  const factory Notice(
-    String message, {
-    @Default(false) bool isError,
-    required DateTime at,
-  }) = _Notice;
-}
+/// Builds [FileCommands] for a workspace. Tests override this instead of
+/// constructing the notifier by hand.
+typedef WorkspaceFileCommandsFactory =
+    FileCommands Function(WorkspaceNotifier workspace);
+
+/// Optional [FileCommands] used by headless tests that stub open / save.
+@Riverpod(keepAlive: true)
+WorkspaceFileCommandsFactory? workspaceFileCommandsOverride(Ref ref) => null;
 
 /// The application state: open documents, the command registry, and the wiring
 /// that lets a command reach the UI.
@@ -66,42 +57,74 @@ abstract class Notice with _$Notice {
 /// from a toolbar button, a typed command, a plugin, or the model — is a
 /// [CommandRegistry.run] call routed through here, so there is exactly one place
 /// where a change can be observed, logged, undone or refused.
-class Workspace extends ChangeNotifier implements CommandServices {
-  Workspace({
-    required this.commands,
-    required this.importer,
-    required this.drawing,
-    CommandLineController? commandLine,
-    this.localeOf,
-  }) : commandLine = commandLine ?? CommandLineController() {
+@Riverpod(keepAlive: true)
+class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
+  @override
+  WorkspaceModel build() {
+    commands = ref.read(commandRegistryProvider);
+    importer = ref.read(importerProvider);
+    _drawing = ref.read(appSettingsProvider).drawing;
     snapEngine = SnapEngine(
-      enabled: drawing.snapEnabled,
-      snapToGrid: drawing.showGrid,
+      enabled: _drawing.snapEnabled,
+      snapToGrid: _drawing.showGrid,
       modes: _restoreSnapModes(),
       tracking: TrackingSettings(
-        ortho: drawing.ortho,
-        polar: drawing.polar,
-        polarIncrement: drawing.polarIncrement(),
+        ortho: _drawing.ortho,
+        polar: _drawing.polar,
+        polarIncrement: _drawing.polarIncrement(),
       ),
+    );
+    final fileCommands =
+        ref.read(workspaceFileCommandsOverrideProvider)?.call(this) ??
+        FileCommands(
+          openFile: (path) async => await openFile(path) != null,
+          newDocument: newDocument,
+          closeActive: (session, {bool force = false}) =>
+              closeSession(session, force: force),
+          saveActive: (session, path) => saveSession(session, path),
+          recentFiles: () => _drawing.recentFiles,
+          listSessions: () => [
+            for (final id in sessionIds) ?session(id),
+          ],
+          activeSessionId: () => activeSession?.id,
+          activateDrawing: activateDrawing,
+        );
+    final registration = registerBuiltinCommands(
+      commands,
+      fileCommands: fileCommands,
+      pluginCommands: null,
+      clipboard: clipboard,
+    );
+    ref.onDispose(() {
+      registration.dispose();
+      _teardown();
+    });
+    // File-backed settings only: an in-memory store must not walk the disk.
+    if (ref.read(settingsProvider).file != null) {
+      unawaited(reloadShxFonts());
+    }
+    return WorkspaceModel(
+      snapEnabled: snapEngine.enabled,
+      ortho: snapEngine.tracking.ortho,
+      polar: snapEngine.tracking.polar,
+      snapModes: [for (final mode in snapEngine.modes) mode.name],
+      recentFiles: _drawing.recentFiles,
     );
   }
 
-  final CommandRegistry commands;
-  final DrawingImporter importer;
-  final DrawingSettings drawing;
-  final CommandLineController commandLine;
-
-  /// Current UI language. The shell supplies this so command prompts follow
-  /// the setting without rebuilding the workspace.
-  final String Function()? localeOf;
+  late CommandRegistry commands;
+  late DrawingImporter importer;
+  late DrawingSettings _drawing;
+  CommandLineNotifier get commandLine =>
+      ref.read(commandLineNotifierProvider.notifier);
 
   @override
   String get locale {
-    final value = localeOf?.call()?.trim() ?? '';
+    final value = ref.read(shellNotifierProvider).language.trim();
     return value.isEmpty ? 'en' : value;
   }
 
-  List<String> get recentFiles => drawing.recentFiles;
+  List<String> get recentFiles => state.recentFiles;
 
   /// Snapping is application-wide rather than per-tab, because the toggles live
   /// on the canvas HUD and users expect them to stay put when switching tabs.
@@ -114,51 +137,34 @@ class Workspace extends ChangeNotifier implements CommandServices {
   ShxFontTable _shxFonts = const ShxFontTable();
   bool _disposed = false;
 
-  final List<DocumentTab> _tabs = [];
-  int _activeIndex = -1;
+  WorkspaceModel get _store => state;
+  final Map<String, DocumentTab> _hosts = {};
   int _nextSessionId = 1;
   final Map<DocumentTab, StreamSubscription<Set<int>>> _selectionReveals = {};
 
-  final List<Notice> _notices = [];
-  final StreamController<ApprovalRequest> _approvals =
-      StreamController<ApprovalRequest>.broadcast();
+  final StreamController<PendingApproval> _approvals =
+      StreamController<PendingApproval>.broadcast();
   final StreamController<String> _panelReveals =
       StreamController<String>.broadcast();
-
-  /// Set while a command is running, so the UI can refuse to start another.
-  String? _runningCommand;
 
   /// The interactive input of the in-flight [run], when there is one.
   InteractiveCommandInput? _activeInput;
 
-  /// Entities an approval dialog is asking about, drawn as highlights.
-  List<int> _pendingHighlights = const [];
-
-  /// A short-lived flash, merged into [pendingHighlightIds].
-  List<int> _flashHighlights = const [];
   Timer? _flashTimer;
 
-  /// Hovered chip / `#id` in the assistant pane. Cleared on pointer exit.
-  List<int> _hoverHighlights = const [];
-
   /// Last geometry the human or the assistant created or changed.
-  List<int> _lastCreatedIds = const [];
-  List<int> _lastModifiedIds = const [];
 
-  /// True while an assistant turn is in flight. Blocks new interactive verbs
-  /// and drops in-flight canvas edits so the drawing stays read-only.
-  bool _assistantBusy = false;
 
-  /// The extension file `plugins.edit` asked the Re-Editor to open.
-  ({String id, String relative})? _pluginEditorTarget;
-  int _pluginEditorRequest = 0;
+  List<DocumentTab> get tabs => List.unmodifiable([
+    for (final session in _store.sessions) ?_hosts[session.id],
+  ]);
+  int get activeIndex => _store.activeIndex;
 
-  List<DocumentTab> get tabs => List.unmodifiable(_tabs);
-  int get activeIndex => _activeIndex;
-
-  DocumentTab? get active => _activeIndex >= 0 && _activeIndex < _tabs.length
-      ? _tabs[_activeIndex]
-      : null;
+  DocumentTab? get active {
+    final session = _store.active;
+    if (session == null) return null;
+    return _hosts[session.id];
+  }
 
   /// The active tab when it is a real drawing, not the start screen.
   DocumentTab? get activeDrawing {
@@ -169,56 +175,80 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   bool get hasDocument => activeDrawing != null;
 
-  List<Notice> get notices => List.unmodifiable(_notices);
+  /// Open drawing sessions, skipping start pages.
+  List<String> get sessionIds => _store.sessionIds;
+
+  DocumentSession? session(String id) {
+    final key = id.trim();
+    if (key.isEmpty) return null;
+    for (final record in _store.sessions) {
+      if (record.isStartPage) continue;
+      if (record.id != key) continue;
+      return _hosts[record.id]?.session;
+    }
+    return null;
+  }
+
+  DocumentSession? get activeSession => activeDrawing?.session;
+
+  List<NoticeModel> get notices => _store.notices;
 
   /// Fires when something asks the user to approve a change.
-  Stream<ApprovalRequest> get approvals => _approvals.stream;
+  Stream<PendingApproval> get approvals => _approvals.stream;
 
   /// Fires when a command asks for a panel to be brought forward.
   Stream<String> get panelReveals => _panelReveals.stream;
 
-  String? get runningCommand => _runningCommand;
-  bool get isBusy => _runningCommand != null;
-  bool get assistantBusy => _assistantBusy;
+  String? get runningCommand => _store.runningCommand;
+  bool get isBusy => _store.runningCommand != null;
+  bool get assistantBusy => _store.assistantBusy;
 
-  List<int> get lastCreatedIds => _lastCreatedIds;
-  List<int> get lastModifiedIds => _lastModifiedIds;
+  List<int> get lastCreatedIds => _store.lastCreatedIds;
+  List<int> get lastModifiedIds => _store.lastModifiedIds;
 
   /// Points collected by the in-flight interactive command.
-  int get collectedPointCount => _activeInput?.collectedPointCount ?? 0;
+  int get collectedPointCount =>
+      _activeInput?.collectedPointCount ?? _store.collectedPointCount;
 
   /// Entities the canvas should highlight while an approval is pending.
-  List<int> get pendingHighlightIds => [
-    ..._pendingHighlights,
-    ..._flashHighlights,
-    ..._hoverHighlights,
-  ];
+  ///
+  /// Approval ids stay on [WorkspaceModel.approval]. Held / flash / hover live
+  /// on the active session.
+  List<int> get pendingHighlightIds => _store.highlightIds;
 
-  ({String id, String relative})? get pluginEditorTarget => _pluginEditorTarget;
-  int get pluginEditorRequest => _pluginEditorRequest;
-
+  /// Holds [ids] on the active session until the caller clears them.
+  ///
+  /// Used by the assistant while a change set is waiting in chat. Command
+  /// approval highlights stay on [WorkspaceModel.approval].
   void setPendingHighlights(List<int> ids) {
-    _pendingHighlights = List.unmodifiable(ids);
-    notifyListeners();
+    final session = _store.active;
+    if (session == null) return;
+    if (_sameIds(session.heldIds, ids)) return;
+    _replaceSession(
+      session.id,
+      (record) => record.copyWith(heldIds: List<int>.unmodifiable(ids)),
+    );
   }
 
   /// Pulses [ids] on the canvas, then clears them so they do not stick.
   void flashHighlights(List<int> ids) {
     _flashTimer?.cancel();
-    _flashHighlights = List.unmodifiable(ids);
-    notifyListeners();
+    final session = _store.active;
+    if (session == null) return;
+    final id = session.id;
+    _replaceSession(id, (record) => record.copyWith(flashIds: ids));
     if (ids.isEmpty) return;
     _flashTimer = Timer(const Duration(milliseconds: 700), () {
-      _flashHighlights = const [];
-      notifyListeners();
+      _replaceSession(id, (record) => record.copyWith(flashIds: const []));
     });
   }
 
   /// Holds [ids] while the pointer is over a chip or `#id` in chat.
   void setHoverHighlights(List<int> ids) {
-    if (_sameIds(_hoverHighlights, ids)) return;
-    _hoverHighlights = List.unmodifiable(ids);
-    notifyListeners();
+    final session = _store.active;
+    if (session == null) return;
+    if (_sameIds(session.hoverIds, ids)) return;
+    _replaceSession(session.id, (record) => record.copyWith(hoverIds: ids));
   }
 
   static bool _sameIds(List<int> a, List<int> b) {
@@ -231,14 +261,13 @@ class Workspace extends ChangeNotifier implements CommandServices {
   }
 
   void setAssistantBusy(bool value) {
-    if (_assistantBusy == value) return;
-    _assistantBusy = value;
+    if (_store.assistantBusy == value) return;
     if (value) {
-      for (final tab in _tabs) {
+      for (final tab in _hosts.values) {
         tab.tools.cancelGesture();
       }
     }
-    notifyListeners();
+    _setStore(_store.copyWith(assistantBusy: value));
   }
 
   /// Feeds a value into the command line prompt the human is sitting in.
@@ -294,7 +323,6 @@ class Workspace extends ChangeNotifier implements CommandServices {
     final current = active;
     if (current != null && current.isStartPage && document == null) {
       current.promoteToDrawing(title: title);
-      notifyListeners();
       return current;
     }
     final session = DocumentSession(
@@ -302,34 +330,25 @@ class Workspace extends ChangeNotifier implements CommandServices {
       document: document ?? CadDocument(),
       title: title,
     );
-    final tab = _adopt(
-      DocumentTab(
-        session: session,
-        snapEngine: snapEngine,
-        selectionTool: _selectionTool(),
-      ),
-    );
+    final tab = _adopt(_createTab(session), _openRecord(session));
     _discardIdleStartPages();
     return tab;
   }
 
   /// Opens the start screen in a tab, or brings an existing one forward.
   DocumentTab openStartTab() {
-    for (var i = 0; i < _tabs.length; i++) {
-      if (!_tabs[i].isStartPage) continue;
+    for (var i = 0; i < _store.sessions.length; i++) {
+      if (!_store.sessions[i].isStartPage) continue;
       activate(i);
-      return _tabs[i];
+      return _hosts[_store.sessions[i].id]!;
     }
+    final session = DocumentSession(
+      id: '${_nextSessionId++}',
+      document: CadDocument(),
+    );
     return _adopt(
-      DocumentTab(
-        session: DocumentSession(
-          id: '${_nextSessionId++}',
-          document: CadDocument(),
-        ),
-        snapEngine: snapEngine,
-        selectionTool: _selectionTool(),
-        isStartPage: true,
-      ),
+      _createTab(session),
+      _openRecord(session, isStartPage: true),
     );
   }
 
@@ -345,12 +364,12 @@ class Workspace extends ChangeNotifier implements CommandServices {
     // resolved file, so a symlink or a `./` in the path is not a second tab.
     // Do this before the exists check: a tab whose path vanished on disk
     // should still come to the front.
-    for (var i = 0; i < _tabs.length; i++) {
-      if (_sameDrawingFile(_tabs[i].filePath, target)) {
-        activate(i);
-        _discardIdleStartPages();
-        return _tabs[i];
-      }
+    for (var i = 0; i < _store.sessions.length; i++) {
+      final tab = _hosts[_store.sessions[i].id];
+      if (tab == null || !_sameDrawingFile(tab.filePath, target)) continue;
+      activate(i);
+      _discardIdleStartPages();
+      return tab;
     }
     if (!File(target).existsSync()) {
       _dropRecent(target);
@@ -367,16 +386,12 @@ class Workspace extends ChangeNotifier implements CommandServices {
         filePath: stored,
       );
       final tab = _adopt(
-        DocumentTab(
-          session: session,
-          snapEngine: snapEngine,
-          filePath: stored,
-          diagnostics: result.diagnostics,
-          selectionTool: _selectionTool(),
-        ),
+        _createTab(session),
+        _openRecord(session, diagnostics: result.diagnostics),
       );
       tab.viewport.zoomToExtents(result.document);
-      drawing.pushRecent(stored);
+      _drawing.pushRecent(stored);
+      _syncRecent();
       unawaited(reloadShxFonts(drawingPath: stored));
       commandLine.writeSuccess(
         'Opened ${result.entityCount} entities in '
@@ -440,11 +455,11 @@ class Workspace extends ChangeNotifier implements CommandServices {
       final outcome = await importer.save(target, tab.document);
       final written = _fileIdentity(outcome.path);
       tab.markSaved(written);
-      drawing.pushRecent(written);
+      _drawing.pushRecent(written);
       if (outcome.usedFallback && outcome.plan.reason.isNotEmpty) {
         notify(outcome.plan.reason);
       }
-      notifyListeners();
+      _syncRecent();
       return written;
     } catch (error) {
       notify('Could not save $target: $error', isError: true);
@@ -452,49 +467,142 @@ class Workspace extends ChangeNotifier implements CommandServices {
     }
   }
 
-  DocumentTab _adopt(DocumentTab tab) {
-    _tabs.add(tab);
-    _activeIndex = _tabs.length - 1;
-    tab.setShowGrid(drawing.showGrid);
-    tab.addListener(notifyListeners);
+  DocumentTab _createTab(DocumentSession session) {
+    final tab = ref.read(documentTabNotifierProvider(session.id).notifier);
+    tab.attach(
+      session: session,
+      snapEngine: snapEngine,
+      selectionTool: _selectionTool(),
+    );
+    return tab;
+  }
+
+  DocumentTab _adopt(DocumentTab tab, WorkspaceSessionModel record) {
+    _hosts[record.id] = tab;
+    tab.bindStore(
+      read: () => _sessionRecord(record.id),
+      write: (update) => _replaceSession(record.id, update),
+    );
+    tab.addListener(_onHostTick);
     // A pick that names objects brings Properties forward so the left pane
     // matches what is on the canvas, instead of staying on Layers.
     _selectionReveals[tab] = tab.session.selection.changes.listen((ids) {
       if (ids.isEmpty || !identical(tab, active)) return;
       revealPanel('properties');
     });
-    notifyListeners();
+    _setStore(
+      _store.copyWith(
+        sessions: [..._store.sessions, record],
+        activeIndex: _store.sessions.length,
+      ),
+    );
     return tab;
   }
 
-  void activate(int index) {
-    if (index < 0 || index >= _tabs.length || index == _activeIndex) return;
-    _activeIndex = index;
-    snapEngine.snapToGrid = _tabs[index].showGrid;
-    notifyListeners();
+  WorkspaceSessionModel _sessionRecord(String id) {
+    for (final session in _store.sessions) {
+      if (session.id == id) return session;
+    }
+    throw StateError('Workspace session $id is not open');
   }
 
-  void activateTab(DocumentTab tab) => activate(_tabs.indexOf(tab));
+  void _setStore(WorkspaceModel next) {
+    if (_disposed) return;
+    state = next;
+  }
+
+  WorkspaceSessionModel _openRecord(
+    DocumentSession session, {
+    bool isStartPage = false,
+    List<String> diagnostics = const [],
+  }) {
+    return WorkspaceSessionModel(
+      id: session.id,
+      isStartPage: isStartPage,
+      showGrid: _drawing.showGrid,
+      diagnostics: diagnostics,
+      title: session.title,
+      isDirty: session.isDirty,
+    );
+  }
+
+  /// Viewport / tools also notify the tab. Only title and dirty tick the store.
+  void _onHostTick() => _syncTabStripChrome();
+
+  void _syncTabStripChrome() {
+    if (_disposed) return;
+    var changed = false;
+    final sessions = <WorkspaceSessionModel>[];
+    for (final session in _store.sessions) {
+      final tab = _hosts[session.id];
+      if (tab == null ||
+          (session.title == tab.title && session.isDirty == tab.isDirty)) {
+        sessions.add(session);
+        continue;
+      }
+      changed = true;
+      sessions.add(session.copyWith(title: tab.title, isDirty: tab.isDirty));
+    }
+    if (changed) _setStore(_store.copyWith(sessions: sessions));
+  }
+
+  bool _replaceSession(
+    String id,
+    WorkspaceSessionModel Function(WorkspaceSessionModel) update,
+  ) {
+    final sessions = <WorkspaceSessionModel>[];
+    var found = false;
+    for (final session in _store.sessions) {
+      if (session.id == id) {
+        sessions.add(update(session));
+        found = true;
+      } else {
+        sessions.add(session);
+      }
+    }
+    if (!found) return false;
+    _setStore(_store.copyWith(sessions: sessions));
+    return true;
+  }
+
+  void activate(int index) {
+    if (index < 0 ||
+        index >= _store.sessions.length ||
+        index == _store.activeIndex) {
+      return;
+    }
+    _setStore(_store.copyWith(activeIndex: index));
+    snapEngine.snapToGrid = _store.sessions[index].showGrid;
+  }
+
+  void activateTab(DocumentTab tab) {
+    for (var i = 0; i < _store.sessions.length; i++) {
+      if (_store.sessions[i].id == tab.session.id) {
+        activate(i);
+        return;
+      }
+    }
+  }
 
   /// Open drawing for [selector], or the active tab when [selector] is empty.
   ///
   /// Matches session id, then file path, then a unique title. Duplicate titles
-  /// are not a match — use the id from [listOpenDrawings].
+  /// are not a match — use an id from [sessionIds].
   DocumentTab? findDrawing(String? selector) {
     final key = selector?.trim() ?? '';
     if (key.isEmpty) return activeDrawing;
 
-    for (final tab in _tabs) {
+    for (final tab in tabs) {
       if (tab.isStartPage) continue;
       if (tab.session.id == key) return tab;
     }
-    for (final tab in _tabs) {
+    for (final tab in tabs) {
       if (tab.isStartPage) continue;
       if (_sameDrawingFile(tab.filePath, key)) return tab;
     }
     DocumentTab? titled;
     var matches = 0;
-    for (final tab in _tabs) {
+    for (final tab in tabs) {
       if (tab.isStartPage) continue;
       if (tab.title != key) continue;
       titled = tab;
@@ -508,7 +616,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   String drawingNotFoundMessage(String selector) {
     final key = selector.trim();
     final ids = [
-      for (final tab in _tabs)
+      for (final tab in tabs)
         if (tab.title == key) tab.session.id,
     ];
     if (ids.length > 1) {
@@ -526,35 +634,19 @@ class Workspace extends ChangeNotifier implements CommandServices {
     return null;
   }
 
-  List<Map<String, Object?>> listOpenDrawings() {
-    final current = activeDrawing;
-    return [
-      for (final tab in _tabs)
-        if (!tab.isStartPage)
-          {
-            'id': tab.session.id,
-            'title': tab.title,
-            'path': tab.filePath,
-            'dirty': tab.isDirty,
-            'active': identical(tab, current),
-            'entityCount': tab.document.entityCount,
-            'activeLayout': tab.document.activeLayoutName,
-          },
-    ];
-  }
-
   DocumentTab? tabForSession(DocumentSession session) {
     final index = indexOfSession(session);
     if (index < 0) return null;
-    return _tabs[index];
+    return _hosts[_store.sessions[index].id];
   }
 
   int indexOfSession(DocumentSession session) {
-    for (var i = 0; i < _tabs.length; i++) {
-      if (identical(_tabs[i].session, session)) return i;
+    for (var i = 0; i < _store.sessions.length; i++) {
+      final tab = _hosts[_store.sessions[i].id];
+      if (tab != null && identical(tab.session, session)) return i;
     }
-    for (var i = 0; i < _tabs.length; i++) {
-      if (_tabs[i].session.id == session.id) return i;
+    for (var i = 0; i < _store.sessions.length; i++) {
+      if (_store.sessions[i].id == session.id) return i;
     }
     return -1;
   }
@@ -569,67 +661,77 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   /// Drops the recent-files list. Missing paths otherwise stay in the File
   /// menu and on the empty workspace until the user restarts.
+  void _syncRecent() {
+    _setStore(state.copyWith(recentFiles: List<String>.of(_drawing.recentFiles)));
+  }
+
   void clearRecentFiles() {
-    drawing.setRecentFiles(const []);
-    notifyListeners();
+    _drawing.setRecentFiles(const []);
+    _syncRecent();
   }
 
   /// Drops recent paths whose files are gone, so the File menu and empty
   /// workspace stop offering drawings that cannot be opened.
   int pruneMissingRecentFiles() {
-    final recent = drawing.recentFiles;
+    final recent = _drawing.recentFiles;
     final kept = [
       for (final path in recent)
         if (File(path).existsSync()) path,
     ];
     if (kept.length == recent.length) return 0;
-    drawing.setRecentFiles(kept);
-    notifyListeners();
+    _drawing.setRecentFiles(kept);
+    _syncRecent();
     return recent.length - kept.length;
   }
 
   void _dropRecent(String path) {
     final identity = _fileIdentity(path);
-    final recent = drawing.recentFiles;
+    final recent = _drawing.recentFiles;
     final kept = [
       for (final item in recent)
         if (_fileIdentity(item) != identity) item,
     ];
     if (kept.length == recent.length) return;
-    drawing.setRecentFiles(kept);
-    notifyListeners();
+    _drawing.setRecentFiles(kept);
+    _syncRecent();
   }
 
   /// Closes a tab. Returns false when the caller should ask about unsaved
   /// changes first.
   bool closeTab(int index, {bool force = false}) {
-    if (index < 0 || index >= _tabs.length) return true;
-    final tab = _tabs[index];
-    if (tab.isDirty && !force) return false;
-    _tabs.removeAt(index);
-    _selectionReveals.remove(tab)?.cancel();
-    tab.removeListener(notifyListeners);
-    tab.dispose();
-    if (_tabs.isEmpty) {
-      _activeIndex = -1;
-    } else if (index < _activeIndex) {
+    if (index < 0 || index >= _store.sessions.length) return true;
+    final record = _store.sessions[index];
+    final tab = _hosts[record.id];
+    if (tab != null && tab.isDirty && !force) return false;
+    _hosts.remove(record.id);
+    if (tab != null) {
+      _selectionReveals.remove(tab)?.cancel();
+      tab.removeListener(_onHostTick);
+      ref.invalidate(documentTabNotifierProvider(record.id));
+    }
+    final sessions = [..._store.sessions]..removeAt(index);
+    var nextActive = _store.activeIndex;
+    if (sessions.isEmpty) {
+      nextActive = -1;
+    } else if (index < nextActive) {
       // A tab to the left disappeared; the active document did not move, so
       // its index has to follow it. Leaving the number alone would activate
       // whatever slid into this slot — usually the neighbour, not the drawing
       // the user was still looking at.
-      _activeIndex -= 1;
-    } else if (_activeIndex >= _tabs.length) {
-      _activeIndex = _tabs.length - 1;
+      nextActive -= 1;
+    } else if (nextActive >= sessions.length) {
+      nextActive = sessions.length - 1;
     }
-    notifyListeners();
+    _setStore(_store.copyWith(sessions: sessions, activeIndex: nextActive));
     return true;
   }
 
   void _discardIdleStartPages() {
     final keep = activeDrawing;
-    for (var i = _tabs.length - 1; i >= 0; i--) {
-      if (!_tabs[i].isStartPage) continue;
-      if (identical(_tabs[i], keep)) continue;
+    for (var i = _store.sessions.length - 1; i >= 0; i--) {
+      final tab = _hosts[_store.sessions[i].id];
+      if (tab == null || !tab.isStartPage) continue;
+      if (identical(tab, keep)) continue;
       closeTab(i, force: true);
     }
   }
@@ -639,7 +741,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   Future<bool> closeOtherTabs(DocumentTab keep) async {
     while (true) {
       DocumentTab? next;
-      for (final tab in _tabs) {
+      for (final tab in tabs) {
         if (!identical(tab, keep)) {
           next = tab;
           break;
@@ -657,7 +759,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   /// Closes every drawing. Returns false if the user cancelled a dirty prompt.
   Future<bool> closeAllTabs() async {
-    while (_tabs.isNotEmpty) {
+    while (_store.sessions.isNotEmpty) {
       final result = await run('file.close');
       if (!result.isOk) return false;
     }
@@ -683,13 +785,13 @@ class Workspace extends ChangeNotifier implements CommandServices {
       commandLine.writeError('Unknown command: $idOrAlias');
       return CommandResult.failed('Unknown command: $idOrAlias');
     }
-    if (_assistantBusy && !_isHostCommand(descriptor.id)) {
+    if (_store.assistantBusy && !_isHostCommand(descriptor.id)) {
       final message =
           'The assistant is working. Stop it before starting a command.';
       commandLine.writeError(message);
       return CommandResult.failed(message);
     }
-    if (_runningCommand != null) {
+    if (_store.runningCommand != null) {
       // Starting a new command cancels the old one, which is the behaviour
       // every CAD user already has in their fingers.
       commandLine.cancelPending('Superseded by $idOrAlias');
@@ -710,17 +812,14 @@ class Workspace extends ChangeNotifier implements CommandServices {
         activeDrawing ??
         (_isHostCommand(descriptor.id)
             ? (active ??
-                  DocumentTab(
-                    session: DocumentSession(
+                  _createTab(
+                    DocumentSession(
                       id: 'transient',
                       document: CadDocument(),
                     ),
-                    snapEngine: snapEngine,
-                    selectionTool: _selectionTool(),
                   ))
             : newDocument(title: 'Drawing1'));
-    _runningCommand = descriptor.id;
-    notifyListeners();
+    _setStore(_store.copyWith(runningCommand: descriptor.id));
 
     InteractiveCommandInput? input;
     try {
@@ -753,8 +852,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
     } finally {
       if (identical(_activeInput, input)) _activeInput = null;
       input?.cancel();
-      _runningCommand = null;
-      notifyListeners();
+      _setStore(_store.copyWith(runningCommand: null));
     }
   }
 
@@ -789,20 +887,13 @@ class Workspace extends ChangeNotifier implements CommandServices {
   /// itself is never part of that: Escape must not restore a maximised frame.
   void cancelActive() {
     final tab = active;
-    if (tab != null && tab.viewport.revertInteraction()) {
-      notifyListeners();
-      return;
-    }
-    if (tab != null && tab.tools.cancelGesture()) {
-      notifyListeners();
-      return;
-    }
+    if (tab != null && tab.viewport.revertInteraction()) return;
+    if (tab != null && tab.tools.cancelGesture()) return;
     if (commandLine.isAwaitingInput) {
       commandLine.cancelPending();
     } else {
       tab?.tools.cancel();
     }
-    notifyListeners();
   }
 
   /// Runs a command non-interactively from a supplied argument map.
@@ -826,10 +917,10 @@ class Workspace extends ChangeNotifier implements CommandServices {
       return CommandResult.failed('Unknown command: $idOrAlias');
     }
     if (source == ChangeSource.ai &&
-        _runningCommand != null &&
+        _store.runningCommand != null &&
         descriptor.risk != CommandRisk.readOnly) {
       return CommandResult.failed(
-        '$_runningCommand is running. Stop it or wait before changing '
+        '${_store.runningCommand} is running. Stop it or wait before changing '
         'the drawing.',
       );
     }
@@ -904,9 +995,8 @@ class Workspace extends ChangeNotifier implements CommandServices {
                   params: each.params,
                   locale: locale,
                 );
-                _runningCommand = each.id;
+                _setStore(_store.copyWith(runningCommand: each.id));
                 _activeInput = handed;
-                notifyListeners();
                 return handed!;
               },
             );
@@ -928,15 +1018,14 @@ class Workspace extends ChangeNotifier implements CommandServices {
     } finally {
       handed?.cancel();
       if (identical(_activeInput, handed)) _activeInput = null;
-      if (handed != null && _runningCommand == descriptor.id) {
-        _runningCommand = null;
-        notifyListeners();
+      if (handed != null && _store.runningCommand == descriptor.id) {
+        _setStore(_store.copyWith(runningCommand: null));
       }
     }
   }
 
   DocumentTab _tabForSession(DocumentSession session) {
-    for (final tab in _tabs) {
+    for (final tab in _hosts.values) {
       if (identical(tab.session, session)) return tab;
     }
     return activeDrawing ?? active!;
@@ -945,17 +1034,21 @@ class Workspace extends ChangeNotifier implements CommandServices {
   void _rememberResult(CommandResult result) {
     final change = result.transaction?.change;
     var created = change?.added ?? const <int>[];
-    var modified = change?.modified ?? const <int>[];
+    final modified = change?.modified ?? const <int>[];
     if (created.isEmpty) {
       created = _idsFromData(result.data);
     }
     if (created.isEmpty && modified.isEmpty) return;
-    if (created.isNotEmpty) {
-      _lastCreatedIds = List.unmodifiable(created);
-    }
-    if (modified.isNotEmpty) {
-      _lastModifiedIds = List.unmodifiable(modified);
-    }
+    _setStore(
+      _store.copyWith(
+        lastCreatedIds: created.isNotEmpty
+            ? List<int>.unmodifiable(created)
+            : _store.lastCreatedIds,
+        lastModifiedIds: modified.isNotEmpty
+            ? List<int>.unmodifiable(modified)
+            : _store.lastModifiedIds,
+      ),
+    );
   }
 
   static List<int> _idsFromData(Map<String, Object?>? data) {
@@ -1002,7 +1095,7 @@ class Workspace extends ChangeNotifier implements CommandServices {
   // -------------------------------------------------------------------------
 
   Set<SnapMode> _restoreSnapModes() {
-    final saved = drawing.snapModes;
+    final saved = _drawing.snapModes;
     if (saved.isEmpty) return {...SnapMode.defaults};
     return {for (final name in saved) ?SnapMode.parse(name)};
   }
@@ -1010,48 +1103,61 @@ class Workspace extends ChangeNotifier implements CommandServices {
   void toggleSnapMode(SnapMode mode) {
     if (!snapEngine.modes.remove(mode)) snapEngine.modes.add(mode);
     _persistSnapModes();
-    notifyListeners();
+    _syncDrafting();
   }
 
   void resetSnapModes() {
     snapEngine.modes = {...SnapMode.defaults};
     _persistSnapModes();
-    notifyListeners();
+    _syncDrafting();
   }
 
   void _persistSnapModes() {
-    drawing.setSnapModes([for (final each in snapEngine.modes) each.name]);
+    _drawing.setSnapModes([for (final each in snapEngine.modes) each.name]);
+  }
+
+  void _syncDrafting() {
+    _setStore(
+      state.copyWith(
+        snapEnabled: snapEngine.enabled,
+        ortho: snapEngine.tracking.ortho,
+        polar: snapEngine.tracking.polar,
+        snapModes: [for (final mode in snapEngine.modes) mode.name],
+      ),
+    );
   }
 
   void setSnapEnabled(bool value) {
     snapEngine.enabled = value;
-    drawing.setSnapEnabled(value);
-    notifyListeners();
+    _drawing.setSnapEnabled(value);
+    _syncDrafting();
   }
 
   void setOrtho(bool value) {
     snapEngine.tracking = snapEngine.tracking.copyWith(ortho: value);
-    drawing.setOrtho(value);
-    notifyListeners();
+    _drawing.setOrtho(value);
+    _syncDrafting();
   }
 
   void setPolar(bool value) {
     snapEngine.tracking = snapEngine.tracking.copyWith(polar: value);
-    drawing.setPolar(value);
-    notifyListeners();
+    _drawing.setPolar(value);
+    _syncDrafting();
   }
 
   void setShowGrid(bool value) {
-    drawing.setShowGrid(value);
-    active?.setShowGrid(value);
+    _drawing.setShowGrid(value);
     snapEngine.snapToGrid = value;
-    notifyListeners();
+    final session = _store.active;
+    if (session != null && session.showGrid != value) {
+      _replaceSession(session.id, (record) => record.copyWith(showGrid: value));
+      return;
+    }
   }
 
   void setPolarIncrement(double radians) {
     snapEngine.tracking = snapEngine.tracking.copyWith(polarIncrement: radians);
-    drawing.setPolarIncrement(radians);
-    notifyListeners();
+    _drawing.setPolarIncrement(radians);
   }
 
   SelectionTool _selectionTool() {
@@ -1075,20 +1181,29 @@ class Workspace extends ChangeNotifier implements CommandServices {
 
   @override
   void notify(String message, {bool isError = false}) {
-    _notices.add(Notice(message, isError: isError, at: DateTime.now()));
-    while (_notices.length > 32) {
-      _notices.removeAt(0);
+    final notices = [
+      ..._store.notices,
+      NoticeModel(message, isError: isError, at: DateTime.now()),
+    ];
+    while (notices.length > 32) {
+      notices.removeAt(0);
     }
     commandLine.write(
       message,
       level: isError ? HistoryLevel.error : HistoryLevel.normal,
     );
-    notifyListeners();
+    _setStore(_store.copyWith(notices: notices));
   }
 
-  void dismissNotice(Notice notice) {
-    _notices.remove(notice);
-    notifyListeners();
+  void dismissNotice(NoticeModel notice) {
+    _setStore(
+      _store.copyWith(
+        notices: [
+          for (final each in _store.notices)
+            if (each != notice) each,
+        ],
+      ),
+    );
   }
 
   @override
@@ -1122,15 +1237,80 @@ class Workspace extends ChangeNotifier implements CommandServices {
   /// Loads SHX from `FANCAD_FONT_PATH` and the drawing directory.
   ///
   /// Not called from the constructor: headless tests must not walk the disk.
+  /// [active] reads [state], which is uninitialized until [build] returns, so
+  /// skip it when no tab has been opened yet.
   Future<void> reloadShxFonts({String? drawingPath}) async {
     if (_disposed) return;
     _shxFonts = ShxFontCatalog.load(
-      drawingPath: drawingPath ?? active?.filePath,
+      drawingPath: drawingPath ?? (_hosts.isEmpty ? null : active?.filePath),
     );
-    for (final tab in _tabs) {
+    for (final tab in _hosts.values) {
       tab.invalidateAll();
     }
-    notifyListeners();
+  }
+
+  /// Collects [drawing], or the front tab, into a [SessionSnapshot].
+  ///
+  /// The assistant may be bound to a pinned drawing that is not on screen.
+  /// Do not bring that tab forward just to describe it.
+  SessionSnapshot collectSessionSnapshot({DocumentTab? drawing}) {
+    final tab = drawing ?? active;
+    final document = tab?.document;
+    final ids = tab?.selection.ids.toList() ?? const <int>[];
+    final listed = <SelectedObjectHint>[];
+    if (document != null) {
+      for (final id in ids.take(SessionSnapshot.maxListed)) {
+        final entity = document.entity(id);
+        if (entity == null) continue;
+        final box = document.boundsOfEntity(entity);
+        listed.add(
+          SelectedObjectHint(
+            id: id,
+            kind: entity.kind.name,
+            layer: entity.props.layer,
+            bounds: box.isEmpty
+                ? null
+                : [box.minX, box.minY, box.maxX, box.maxY],
+          ),
+        );
+      }
+    }
+
+    ViewportHint? viewport;
+    if (tab != null) {
+      final view = tab.viewport.viewport;
+      final box = view.visibleBounds;
+      viewport = ViewportHint(
+        centerX: view.center.x,
+        centerY: view.center.y,
+        scale: view.scale,
+        visible: box.isEmpty ? null : [box.minX, box.minY, box.maxX, box.maxY],
+      );
+    }
+
+    final modes = [for (final mode in snapEngine.modes) mode.name]..sort();
+    return SessionSnapshot(
+      drawingId: tab?.session.id,
+      drawingTitle: tab?.title,
+      drawingPath: tab?.filePath,
+      selectionCount: ids.length,
+      selection: listed,
+      viewport: viewport,
+      snapEnabled: snapEngine.enabled,
+      snapModes: modes,
+      ortho: snapEngine.tracking.ortho,
+      polar: snapEngine.tracking.polar,
+      showGrid: tab?.showGrid ?? true,
+      runningCommand: runningCommand,
+      prompt: commandLine.pending?.message,
+      collectedPointCount: collectedPointCount,
+      lastCreatedIds: [
+        ...lastCreatedIds.take(SessionSnapshot.maxResultIds),
+      ],
+      lastModifiedIds: [
+        ...lastModifiedIds.take(SessionSnapshot.maxResultIds),
+      ],
+    );
   }
 
   @override
@@ -1145,16 +1325,6 @@ class Workspace extends ChangeNotifier implements CommandServices {
       'size': [view.size.width, view.size.height],
       if (box.isNotEmpty) 'visible': [box.minX, box.minY, box.maxX, box.maxY],
     };
-  }
-
-  /// Opens [relative] of extension [id] in the Re-Editor and brings that panel
-  /// forward. The editor watches [pluginEditorRequest] so a second edit of the
-  /// same file still reloads it.
-  void openPluginEditor(String id, String relative) {
-    _pluginEditorTarget = (id: id, relative: relative);
-    _pluginEditorRequest += 1;
-    revealPanel('editor');
-    notifyListeners();
   }
 
   @override
@@ -1179,32 +1349,38 @@ class Workspace extends ChangeNotifier implements CommandServices {
       );
       return Future.value(false);
     }
-    final request = ApprovalRequest(
+    final request = ApprovalRequestModel(
       title: title,
       details: details,
       highlightIds: highlightIds,
     );
-    _approvals.add(request);
-    return request.decision;
+    _setStore(_store.copyWith(approval: request));
+    final pending = PendingApproval(request);
+    _approvals.add(pending);
+    return pending.decision.whenComplete(() {
+      if (identical(_store.approval, request)) {
+        _setStore(_store.copyWith(approval: null));
+      }
+    });
   }
 
-  @override
-  void dispose() {
+  void dispose() => _teardown();
+
+  void _teardown() {
+    if (_disposed) return;
     _flashTimer?.cancel();
     _disposed = true;
-    for (final tab in _tabs) {
-      tab.removeListener(notifyListeners);
-      tab.dispose();
+    for (final tab in _hosts.values) {
+      tab.removeListener(_onHostTick);
+      ref.invalidate(documentTabNotifierProvider(tab.session.id));
     }
     for (final sub in _selectionReveals.values) {
       sub.cancel();
     }
     _selectionReveals.clear();
-    _tabs.clear();
-    _approvals.close();
-    _panelReveals.close();
-    commandLine.dispose();
-    super.dispose();
+    _hosts.clear();
+    if (!_approvals.isClosed) _approvals.close();
+    if (!_panelReveals.isClosed) _panelReveals.close();
   }
 
   static bool _sameDrawingFile(String? existing, String incoming) {
@@ -1226,3 +1402,1017 @@ class Workspace extends ChangeNotifier implements CommandServices {
     return p.normalize(file.absolute.path);
   }
 }
+
+/// The workspace service. Prefer [WorkspaceNotifier] at new call sites.
+typedef Workspace = WorkspaceNotifier;
+
+/// One open drawing, with everything that is per-tab rather than per-app.
+///
+/// A tab bundles the three controllers that have to agree about which drawing
+/// is being looked at: the document session (content and undo), the viewport
+/// (camera) and the tool controller (interaction). Keeping them together is
+/// what makes switching tabs a single assignment rather than a resynchronisation
+/// of three independent pieces of state.
+///
+/// [state] is only the tool prompt. Pan and tool frames tick [Listenable]
+/// listeners and must not write Riverpod state.
+@Riverpod(keepAlive: true)
+class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
+  @override
+  DocumentTabModel build(String sessionId) {
+    ref.onDispose(_teardown);
+    return const DocumentTabModel();
+  }
+
+  DocumentSession? _session;
+  ViewportController? _viewport;
+  ToolController? _tools;
+  bool _attached = false;
+  bool _tornDown = false;
+
+  final TessellationCache tessellation = TessellationCache();
+  final _TabTicks _ticks = _TabTicks();
+
+  WorkspaceSessionModel _unbound = const WorkspaceSessionModel(id: '');
+  WorkspaceSessionModel Function()? _readRecord;
+  void Function(WorkspaceSessionModel Function(WorkspaceSessionModel))?
+  _writeRecord;
+
+  StreamSubscription<DocumentChange>? _changeSubscription;
+  StreamSubscription<Set<int>>? _selectionSubscription;
+
+  final List<String> _history = [];
+
+  /// Set by the shell so a document change can drop the right cached geometry.
+  ///
+  /// Picture recordings live on the canvas widget; tessellation lives on the
+  /// tab so hover pick can share it. This hook is how a session change reaches
+  /// the widget's picture cache without the tab holding a State.
+  void Function(DocumentChange change)? onGeometryInvalidated;
+
+  /// The most recent scene, for the canvas zoom readout's draw-call tooltip.
+  RenderScene? lastScene;
+
+  DocumentSession get session => _session!;
+  ViewportController get viewport => _viewport!;
+  ToolController get tools => _tools!;
+
+  WorkspaceSessionModel get _record => _readRecord?.call() ?? _unbound;
+
+  /// Wires the drawing session onto this family member.
+  void attach({
+    required DocumentSession session,
+    SnapEngine? snapEngine,
+    SelectionTool? selectionTool,
+  }) {
+    if (_attached) return;
+    _attached = true;
+    _session = session;
+    _unbound = WorkspaceSessionModel(id: session.id);
+    _viewport = ViewportController();
+    _tools = ToolController(
+      session: session,
+      viewportProvider: () => viewport.viewport,
+      snapEngine: snapEngine,
+      tessellation: tessellation,
+      onWrite: _history.add,
+      onPrompt: (message) {
+        setPrompt(message);
+      },
+    )..defaultTool = selectionTool ?? SelectionTool();
+
+    _changeSubscription = session.changes.listen(_onDocumentChange);
+    _selectionSubscription = session.selection.changes.listen((_) {
+      _tick();
+    });
+    viewport.addListener(_tick);
+    tools.addListener(_tick);
+  }
+
+  /// Binds this host to the workspace store record for [session].
+  void bindStore({
+    required WorkspaceSessionModel Function() read,
+    required void Function(
+      WorkspaceSessionModel Function(WorkspaceSessionModel),
+    )
+    write,
+  }) {
+    _readRecord = read;
+    _writeRecord = write;
+  }
+
+  /// The file this tab was opened from, if any.
+  String? get filePath => session.filePath;
+
+  /// Import warnings, kept so the user can review them after the fact.
+  List<String> get diagnostics => _record.diagnostics;
+
+  /// A tab that shows the start screen instead of a drawing.
+  ///
+  /// The tab strip plus control opens one of these so New / Open can be
+  /// chosen without inventing a leftover Drawing1.
+  bool get isStartPage => _record.isStartPage;
+
+  CadDocument get document => session.document;
+  SelectionSet get selection => session.selection;
+  UndoStack get history => session.history;
+
+  String get title => session.title;
+  bool get isDirty => session.isDirty;
+
+  /// Turns a start tab into an empty drawing, keeping this tab's place.
+  void promoteToDrawing({String? title}) {
+    if (!isStartPage) return;
+    if (title != null) session.title = title;
+    _patch(
+      (record) => record.copyWith(
+        isStartPage: false,
+        title: session.title,
+        isDirty: session.isDirty,
+      ),
+    );
+  }
+
+  /// The transient prompt for the command line.
+  String get prompt => state.prompt;
+
+  /// Which layers are drawn, or null for all of them. Set by LAYISO.
+  Set<String>? get isolatedLayers => _record.isolatedLayers;
+
+  /// Whether the reference grid is drawn.
+  bool get showGrid => _record.showGrid;
+
+  void setPrompt(String message) {
+    if (state.prompt == message) return;
+    state = state.copyWith(prompt: message);
+    _tick();
+  }
+
+  void setIsolatedLayers(Set<String>? layers) {
+    _patch((record) => record.copyWith(isolatedLayers: layers));
+  }
+
+  void setShowGrid(bool value) {
+    if (showGrid == value) return;
+    _patch((record) => record.copyWith(showGrid: value));
+  }
+
+  void _patch(WorkspaceSessionModel Function(WorkspaceSessionModel) update) {
+    final write = _writeRecord;
+    if (write != null) {
+      write(update);
+      return;
+    }
+    _unbound = update(_unbound);
+    _tick();
+  }
+
+  void noteScene(RenderScene scene) {
+    lastScene = scene;
+  }
+
+  /// Records that the document has been written to [path].
+  void markSaved(String path) {
+    session.markSaved(path);
+    _tick();
+  }
+
+  void _onDocumentChange(DocumentChange change) {
+    onGeometryInvalidated?.call(change);
+    _tick();
+  }
+
+  /// Refreshes everything that depends on document content, for changes the
+  /// document itself does not report such as a layer visibility toggle.
+  void invalidateAll() {
+    onGeometryInvalidated?.call(const DocumentChange(tablesChanged: true));
+    _tick();
+  }
+
+  void _tick() => _ticks.tick();
+
+  @override
+  void addListener(VoidCallback listener) => _ticks.addListener(listener);
+
+  @override
+  void removeListener(VoidCallback listener) => _ticks.removeListener(listener);
+
+  void _teardown() {
+    if (_tornDown) return;
+    _tornDown = true;
+    _changeSubscription?.cancel();
+    _selectionSubscription?.cancel();
+    _viewport?.removeListener(_tick);
+    _tools?.removeListener(_tick);
+    _tools?.dispose();
+    _viewport?.dispose();
+    _session?.dispose();
+    _ticks.dispose();
+  }
+}
+
+class _TabTicks extends ChangeNotifier {
+  void tick() => notifyListeners();
+}
+
+/// One open drawing. Prefer [DocumentTabNotifier] at new call sites.
+typedef DocumentTab = DocumentTabNotifier;
+
+/// A [CommandInput] that prompts a real user.
+///
+/// The important property is that a prompt is offered to the pointer and to the
+/// keyboard *simultaneously*, and whichever answers first wins while the other
+/// is torn down. That is what makes `LINE` feel right: the same prompt accepts a
+/// click, `10,20`, `@50<30`, or Escape, and the command that issued it does not
+/// know or care which happened.
+class InteractiveCommandInput implements CommandInput {
+  InteractiveCommandInput({
+    required this.tools,
+    required this.commandLine,
+    required this.args,
+    required List<ParamSpec> params,
+    this.locale = 'en',
+  }) : _params = params;
+
+  final ToolController tools;
+  final CommandLineController commandLine;
+  final String locale;
+
+  /// Arguments supplied up front, for example by the command line's own
+  /// `line 0,0 10,10` form. A prompt whose value is already known is not shown.
+  final CommandArgs args;
+
+  final List<ParamSpec> _params;
+  final Set<String> _consumed = {};
+
+  bool _cancelled = false;
+
+  /// The last point the user supplied, which relative coordinate entry and
+  /// rubber banding are both measured from.
+  Vec2? lastPoint;
+
+  @override
+  Vec2? get lastPick => lastPoint;
+
+  PreviewBuilder? _preview;
+  List<Vec2> _markers = const [];
+
+  @override
+  void setPreview(PreviewBuilder? builder) => _preview = builder;
+
+  @override
+  void setMarkers(List<Vec2> points) => _markers = points;
+
+  /// Vertices collected so far, for the session snapshot.
+  int get collectedPointCount => _markers.length;
+
+  @override
+  bool get isInteractive => true;
+
+  @override
+  bool get canHandOff => false;
+
+  @override
+  bool get isCancelled => _cancelled;
+
+  void cancel() {
+    _cancelled = true;
+    commandLine.cancelPending();
+    tools.cancel();
+  }
+
+  /// The next declared parameter of one of [types] that has not been used yet.
+  ParamSpec? _nextParam(Set<ParamType> types) {
+    for (final param in _params) {
+      if (_consumed.contains(param.name)) continue;
+      if (!types.contains(param.type)) continue;
+      return param;
+    }
+    return null;
+  }
+
+  /// A pre-supplied value for the next matching parameter, or null.
+  Object? _preSupplied(Set<ParamType> types) {
+    final param = _nextParam(types);
+    if (param == null) return null;
+    _consumed.add(param.name);
+    return args[param.name] ?? param.defaultValue;
+  }
+
+  // -------------------------------------------------------------------------
+  // Prompts
+  // -------------------------------------------------------------------------
+
+  @override
+  Future<Vec2> point(String message, {Vec2? basePoint}) async {
+    final result = await pointOrNull(message, basePoint: basePoint);
+    if (result == null) throw const CommandCancelled();
+    return result;
+  }
+
+  @override
+  Future<Vec2?> pointOrNull(String message, {Vec2? basePoint}) async {
+    final supplied = CommandArgs.parsePoint(_preSupplied({ParamType.point}));
+    if (supplied != null) {
+      lastPoint = supplied;
+      return supplied;
+    }
+
+    final anchor = basePoint ?? lastPoint;
+    final tool = PointPromptTool(
+      message: message,
+      anchor: anchor,
+      preview: _preview,
+      markers: _markers,
+    );
+    final typed = commandLine.request(
+      PendingEntry(
+        message: message,
+        completer: Completer<Object?>(),
+        accept: (raw) => CoordinateParser.parse(raw, base: anchor),
+      ),
+    );
+
+    final resolved = await _race<Vec2>(
+      fromPointer: () {
+        tools.push(tool);
+        return tool.result;
+      },
+      fromKeyboard: typed,
+      convert: (value) => value is Vec2 ? value : null,
+      onAbandonPointer: () => tools.cancel(),
+    );
+    if (resolved != null) lastPoint = resolved;
+    return resolved;
+  }
+
+  @override
+  Future<PointOrKeyword?> pointOrKeyword(
+    String message, {
+    Vec2? basePoint,
+    List<String> keywords = const [],
+  }) async {
+    final supplied = CommandArgs.parsePoint(_preSupplied({ParamType.point}));
+    if (supplied != null) {
+      lastPoint = supplied;
+      return PointOrKeyword.point(supplied);
+    }
+
+    final anchor = basePoint ?? lastPoint;
+    final label = keywords.isEmpty
+        ? message
+        : '$message [${keywords.join('/')}]';
+    final tool = PointPromptTool(
+      message: label,
+      anchor: anchor,
+      preview: _preview,
+      markers: _markers,
+    );
+    final typed = commandLine.request(
+      PendingEntry(
+        message: label,
+        completer: Completer<Object?>(),
+        keywords: keywords,
+        accept: (raw) {
+          final matched = ArgsCommandInput.matchKeyword(raw, keywords);
+          if (matched != null) return PointOrKeyword.keyword(matched);
+          final point = CoordinateParser.parse(raw, base: anchor);
+          return point == null ? null : PointOrKeyword.point(point);
+        },
+      ),
+    );
+
+    final resolved = await _race<PointOrKeyword>(
+      fromPointer: () {
+        tools.push(tool);
+        return tool.result.then(PointOrKeyword.point);
+      },
+      fromKeyboard: typed,
+      convert: (value) {
+        if (value is PointOrKeyword) return value;
+        if (value is Vec2) return PointOrKeyword.point(value);
+        if (value is String) {
+          final matched = ArgsCommandInput.matchKeyword(value, keywords);
+          return matched == null ? null : PointOrKeyword.keyword(matched);
+        }
+        return null;
+      },
+      onAbandonPointer: () => tools.cancel(),
+    );
+    if (resolved != null && resolved.isPoint) lastPoint = resolved.point;
+    return resolved;
+  }
+
+  @override
+  Future<double> distance(String message, {Vec2? basePoint}) async {
+    final supplied = _asDouble(
+      _preSupplied({ParamType.distance, ParamType.number}),
+    );
+    if (supplied != null) return supplied;
+
+    final anchor = basePoint ?? lastPoint;
+    // A distance can be typed as a number or picked as a second point, which is
+    // how a draughtsman actually specifies a radius or an offset.
+    final tool = PointPromptTool(
+      message: message,
+      anchor: anchor,
+      preview: _preview,
+      markers: _markers,
+    );
+    final typed = commandLine.request(
+      PendingEntry(
+        message: message,
+        completer: Completer<Object?>(),
+        accept: (raw) {
+          final direct = CoordinateParser.parseDistance(raw);
+          if (direct != null) return direct;
+          final asPoint = CoordinateParser.parse(raw, base: anchor);
+          if (asPoint != null && anchor != null) {
+            return anchor.distanceTo(asPoint);
+          }
+          return null;
+        },
+      ),
+    );
+
+    final resolved = await _race<double>(
+      fromPointer: () {
+        tools.push(tool);
+        return tool.result.then((picked) {
+          lastPoint = picked;
+          return anchor == null ? picked.length : anchor.distanceTo(picked);
+        });
+      },
+      fromKeyboard: typed,
+      convert: _asDouble,
+      onAbandonPointer: () => tools.cancel(),
+    );
+    if (resolved == null) throw const CommandCancelled();
+    return resolved;
+  }
+
+  @override
+  Future<double> angle(String message, {Vec2? basePoint}) async {
+    final supplied = _asDouble(
+      _preSupplied({ParamType.angle, ParamType.number}),
+    );
+    if (supplied != null) return supplied;
+
+    final anchor = basePoint ?? lastPoint;
+    final tool = PointPromptTool(
+      message: message,
+      anchor: anchor,
+      preview: _preview,
+      markers: _markers,
+    );
+    final typed = commandLine.request(
+      PendingEntry(
+        message: message,
+        completer: Completer<Object?>(),
+        accept: CoordinateParser.parseAngle,
+      ),
+    );
+
+    final resolved = await _race<double>(
+      fromPointer: () {
+        tools.push(tool);
+        return tool.result.then((picked) {
+          lastPoint = picked;
+          return anchor == null ? picked.angle : (picked - anchor).angle;
+        });
+      },
+      fromKeyboard: typed,
+      convert: _asDouble,
+      onAbandonPointer: () => tools.cancel(),
+    );
+    if (resolved == null) throw const CommandCancelled();
+    return resolved;
+  }
+
+  @override
+  Future<double> number(String message, {double? defaultValue}) async {
+    final supplied = _asDouble(
+      _preSupplied({ParamType.number, ParamType.distance}),
+    );
+    if (supplied != null) return supplied;
+    final label = defaultValue == null
+        ? message
+        : '$message <${_format(defaultValue)}>';
+    final value = await commandLine.request(
+      PendingEntry(
+        message: label,
+        completer: Completer<Object?>(),
+        allowEmpty: defaultValue != null,
+        accept: (raw) =>
+            raw.isEmpty ? defaultValue : CoordinateParser.parseDistance(raw),
+      ),
+    );
+    final resolved = _asDouble(value) ?? defaultValue;
+    if (resolved == null) throw const CommandCancelled();
+    return resolved;
+  }
+
+  @override
+  Future<int> integer(String message, {int? defaultValue}) async {
+    final supplied = _asDouble(
+      _preSupplied({ParamType.integer, ParamType.number}),
+    );
+    if (supplied != null) return supplied.round();
+    final label = defaultValue == null ? message : '$message <$defaultValue>';
+    final value = await commandLine.request(
+      PendingEntry(
+        message: label,
+        completer: Completer<Object?>(),
+        allowEmpty: defaultValue != null,
+        accept: (raw) => raw.isEmpty ? defaultValue : int.tryParse(raw.trim()),
+      ),
+    );
+    final resolved = value is int ? value : _asDouble(value)?.round();
+    if (resolved == null) throw const CommandCancelled();
+    return resolved;
+  }
+
+  @override
+  Future<String> text(String message, {String? defaultValue}) async {
+    final supplied = _preSupplied({
+      ParamType.text,
+      ParamType.layer,
+      ParamType.block,
+      ParamType.choice,
+    });
+    if (supplied != null && supplied.toString().isNotEmpty) {
+      return supplied.toString();
+    }
+    final label = defaultValue == null || defaultValue.isEmpty
+        ? message
+        : '$message <$defaultValue>';
+    final value = await commandLine.request(
+      PendingEntry(
+        message: label,
+        completer: Completer<Object?>(),
+        allowEmpty: defaultValue != null,
+        accept: (raw) => raw.isEmpty ? defaultValue : raw,
+      ),
+    );
+    if (value is! String) throw const CommandCancelled();
+    return value;
+  }
+
+  @override
+  Future<String> keyword(
+    String message,
+    List<String> options, {
+    String? defaultOption,
+  }) async {
+    final supplied = _preSupplied({ParamType.choice, ParamType.text});
+    if (supplied != null) {
+      final matched = ArgsCommandInput.matchKeyword(
+        supplied.toString(),
+        options,
+      );
+      if (matched != null) return matched;
+    }
+    final label = defaultOption == null
+        ? '$message [${options.join('/')}]'
+        : '$message [${options.join('/')}] <$defaultOption>';
+    PreviewHoldTool? hold;
+    if (_preview != null || _markers.isNotEmpty) {
+      hold = PreviewHoldTool(
+        message: label,
+        preview: _preview,
+        markers: _markers,
+      );
+      tools.push(hold);
+    }
+    try {
+      final value = await commandLine.request(
+        PendingEntry(
+          message: label,
+          completer: Completer<Object?>(),
+          keywords: options,
+          allowEmpty: defaultOption != null,
+          accept: (raw) => raw.isEmpty
+              ? defaultOption
+              : ArgsCommandInput.matchKeyword(raw, options),
+        ),
+      );
+      if (value is! String) throw const CommandCancelled();
+      return value;
+    } finally {
+      if (hold != null) tools.finishTool();
+    }
+  }
+
+  @override
+  Future<bool> confirm(String message, {bool defaultValue = false}) async {
+    final supplied = _preSupplied({ParamType.boolean});
+    if (supplied != null) {
+      final parsed = CommandArgs({'v': supplied}).boolean('v');
+      if (parsed != null) return parsed;
+    }
+    final answer = await keyword(message, const [
+      'Yes',
+      'No',
+    ], defaultOption: defaultValue ? 'Yes' : 'No');
+    return answer == 'Yes';
+  }
+
+  @override
+  Future<List<int>> selection(
+    String message, {
+    bool useExistingSelection = true,
+    bool single = false,
+  }) async {
+    final param = _nextParam({ParamType.selection, ParamType.entity});
+    if (param != null) {
+      _consumed.add(param.name);
+      final ids = args.ids(param.name);
+      if (ids != null && ids.isNotEmpty) return ids;
+    }
+    if (useExistingSelection && tools.selection.isNotEmpty) {
+      return tools.selection.ids.toList();
+    }
+
+    final tool = SelectionPromptTool(
+      message: message,
+      single: single,
+      formatPicked: (prompt, count) =>
+          l10nForLanguage(locale).prompt_selection_found(prompt, count),
+    );
+    // Typed entry at a selection prompt means "all", "last" or "previous",
+    // which are the three selection keywords worth supporting.
+    final typed = commandLine.request(
+      PendingEntry(
+        message: message,
+        completer: Completer<Object?>(),
+        keywords: const ['All', 'Last'],
+        accept: (raw) {
+          final keyword = ArgsCommandInput.matchKeyword(raw, const [
+            'All',
+            'Last',
+          ]);
+          if (keyword == 'All') {
+            return [
+              for (final entity in tools.document.activeEntities) entity.id,
+            ];
+          }
+          if (keyword == 'Last') {
+            final entities = tools.document.activeEntities;
+            return entities.isEmpty ? <int>[] : [entities.last.id];
+          }
+          return CommandArgs({'ids': raw}).ids('ids');
+        },
+      ),
+    );
+
+    final resolved = await _race<List<int>>(
+      fromPointer: () {
+        tools.push(tool);
+        return tool.result;
+      },
+      fromKeyboard: typed,
+      convert: (value) => value is List<int> ? value : null,
+      onAbandonPointer: () => tools.cancel(),
+    );
+    if (resolved == null) throw const CommandCancelled();
+    if (tool.lastClick != null) lastPoint = tool.lastClick;
+    if (resolved.isNotEmpty) tools.selection.replace(resolved);
+    return resolved;
+  }
+
+  @override
+  Future<Bounds2> window(String message) async {
+    final tool = WindowPromptTool(message: message);
+    tools.push(tool);
+    return tool.result;
+  }
+
+  @override
+  void write(String message) => commandLine.write(message);
+
+  @override
+  void status(String message) => commandLine.setStatus(message);
+
+  // -------------------------------------------------------------------------
+  // Racing the pointer against the keyboard
+  // -------------------------------------------------------------------------
+
+  /// Awaits the first of two sources to produce a value.
+  ///
+  /// Both sources are always started, and the loser is always torn down. Doing
+  /// this in one place matters: a leaked prompt tool would keep swallowing
+  /// clicks after its command had finished, which is the kind of bug that makes
+  /// an application feel haunted.
+  Future<T?> _race<T>({
+    required Future<T> Function() fromPointer,
+    required Future<Object?> fromKeyboard,
+    required T? Function(Object? value) convert,
+    required void Function() onAbandonPointer,
+  }) async {
+    final pointer = fromPointer();
+    // Errors on the losing branch are expected (they are how cancellation is
+    // signalled) and must not surface as unhandled asynchronous errors.
+    final pointerGuarded = pointer.then<_Outcome<T>>(
+      _Outcome.value,
+      onError: (Object error) => _Outcome<T>.error(error),
+    );
+    final keyboardGuarded = fromKeyboard.then<_Outcome<T>>(
+      (value) => _Outcome.value(convert(value)),
+      onError: (Object error) => _Outcome<T>.error(error),
+    );
+
+    final first = await Future.any([pointerGuarded, keyboardGuarded]);
+
+    // Tear down whichever source did not win.
+    onAbandonPointer();
+    commandLine.cancelPending('Superseded');
+    // Drain the loser so its error, if any, is observed.
+    unawaited(pointerGuarded.then((_) {}));
+    unawaited(keyboardGuarded.then((_) {}));
+
+    if (first.hasError) {
+      final error = first.error;
+      if (error is CommandCancelled) {
+        _cancelled = true;
+        return null;
+      }
+      throw error!;
+    }
+    return first.value;
+  }
+
+  static double? _asDouble(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value.trim());
+    return null;
+  }
+
+  static String _format(double value) =>
+      value == value.roundToDouble() && value.abs() < 1e15
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(4);
+}
+
+/// A completed-or-failed result, so both branches of a race can be awaited
+/// without either throwing before the other has been observed.
+class _Outcome<T> {
+  const _Outcome.value(this.value) : error = null;
+  const _Outcome.error(this.error) : value = null;
+
+  final T? value;
+  final Object? error;
+
+  bool get hasError => error != null;
+}
+
+/// Answers from [args] first, then hands the leftover prompt to a person.
+///
+/// This is how an assistant turn that omitted a point becomes a canvas pick
+/// instead of a cancelled tool call.
+class FallbackCommandInput implements CommandInput {
+  FallbackCommandInput({required this.primary, required this.fallbackOf});
+
+  final ArgsCommandInput primary;
+  final CommandInput Function() fallbackOf;
+
+  CommandInput? _fallback;
+  var _answeredPointFromArgs = false;
+
+  CommandInput get _next => _fallback ??= fallbackOf();
+
+  Future<T> _orFallback<T>(Future<T> Function(CommandInput input) run) async {
+    final live = _fallback;
+    if (live != null) return run(live);
+    try {
+      return await run(primary);
+    } on CommandCancelled {
+      return run(_next);
+    }
+  }
+
+  @override
+  bool get isInteractive => _fallback?.isInteractive ?? false;
+
+  @override
+  bool get canHandOff => true;
+
+  @override
+  bool get isCancelled =>
+      primary.isCancelled || (_fallback?.isCancelled ?? false);
+
+  @override
+  Vec2? get lastPick => _fallback?.lastPick ?? primary.lastPick;
+
+  void cancel() {
+    primary.cancel();
+    final live = _fallback;
+    if (live is InteractiveCommandInput) live.cancel();
+  }
+
+  @override
+  Future<Vec2> point(String message, {Vec2? basePoint}) =>
+      _orFallback((input) => input.point(message, basePoint: basePoint));
+
+  @override
+  Future<Vec2?> pointOrNull(String message, {Vec2? basePoint}) =>
+      primary.pointOrNull(message, basePoint: basePoint);
+
+  @override
+  Future<PointOrKeyword?> pointOrKeyword(
+    String message, {
+    Vec2? basePoint,
+    List<String> keywords = const [],
+  }) async {
+    if (_fallback != null) {
+      return _fallback!.pointOrKeyword(
+        message,
+        basePoint: basePoint,
+        keywords: keywords,
+      );
+    }
+    try {
+      final result = await primary.pointOrKeyword(
+        message,
+        basePoint: basePoint,
+        keywords: keywords,
+      );
+      if (result != null) {
+        _answeredPointFromArgs = true;
+        return result;
+      }
+    } on CommandCancelled {
+      return _next.pointOrKeyword(
+        message,
+        basePoint: basePoint,
+        keywords: keywords,
+      );
+    }
+    // LINE extra vertices after start/end from args: null means done.
+    // PLINE with no points array: null means take over the crosshair.
+    if (_answeredPointFromArgs) return null;
+    return _next.pointOrKeyword(
+      message,
+      basePoint: basePoint,
+      keywords: keywords,
+    );
+  }
+
+  @override
+  Future<double> distance(String message, {Vec2? basePoint}) =>
+      _orFallback((input) => input.distance(message, basePoint: basePoint));
+
+  @override
+  Future<double> angle(String message, {Vec2? basePoint}) =>
+      _orFallback((input) => input.angle(message, basePoint: basePoint));
+
+  @override
+  Future<double> number(String message, {double? defaultValue}) =>
+      _orFallback((input) => input.number(message, defaultValue: defaultValue));
+
+  @override
+  Future<int> integer(String message, {int? defaultValue}) => _orFallback(
+    (input) => input.integer(message, defaultValue: defaultValue),
+  );
+
+  @override
+  Future<String> text(String message, {String? defaultValue}) =>
+      _orFallback((input) => input.text(message, defaultValue: defaultValue));
+
+  @override
+  Future<String> keyword(
+    String message,
+    List<String> options, {
+    String? defaultOption,
+  }) => _orFallback(
+    (input) => input.keyword(message, options, defaultOption: defaultOption),
+  );
+
+  @override
+  Future<bool> confirm(String message, {bool defaultValue = false}) =>
+      primary.confirm(message, defaultValue: defaultValue);
+
+  @override
+  Future<List<int>> selection(
+    String message, {
+    bool useExistingSelection = true,
+    bool single = false,
+  }) =>
+      // Object identity stays on pins / explicit ids. A missing selection
+      // must fail, not become a canvas pick of everything in view.
+      primary.selection(
+        message,
+        useExistingSelection: useExistingSelection,
+        single: single,
+      );
+
+  @override
+  Future<Bounds2> window(String message) =>
+      _orFallback((input) => input.window(message));
+
+  @override
+  void write(String message) {
+    primary.write(message);
+    _fallback?.write(message);
+  }
+
+  @override
+  void status(String message) {
+    primary.status(message);
+    _fallback?.status(message);
+  }
+
+  @override
+  void setPreview(PreviewBuilder? builder) {
+    primary.setPreview(builder);
+    _fallback?.setPreview(builder);
+  }
+
+  @override
+  void setMarkers(List<Vec2> points) {
+    primary.setMarkers(points);
+    _fallback?.setMarkers(points);
+  }
+}
+
+/// Discovers SHX files on disk and builds the table the scene builder strokes.
+///
+/// Core never searches the filesystem. The host only reads `FANCAD_FONT_PATH`
+/// and fonts that travel with the drawing — not another CAD install.
+class ShxFontCatalog {
+  static const envPath = 'FANCAD_FONT_PATH';
+
+  /// Folders checked from first to last. A later file of the same family
+  /// wins, so a `fonts/` next to the drawing overrides `FANCAD_FONT_PATH`.
+  static List<String> searchDirectories({
+    String? drawingPath,
+    Map<String, String>? environment,
+  }) {
+    final env = environment ?? Platform.environment;
+    final dirs = <String>[];
+    void add(String? path) {
+      final trimmed = path?.trim() ?? '';
+      if (trimmed.isEmpty) return;
+      if (!dirs.contains(trimmed)) dirs.add(trimmed);
+    }
+
+    final extra = env[envPath];
+    if (extra != null && extra.isNotEmpty) {
+      final sep = Platform.isWindows ? ';' : ':';
+      for (final part in extra.split(sep)) {
+        add(part);
+      }
+    }
+
+    final drawing = drawingPath?.trim() ?? '';
+    if (drawing.isNotEmpty) {
+      final dir = p.dirname(drawing);
+      add(dir);
+      add(p.join(dir, 'fonts'));
+    }
+    return dirs;
+  }
+
+  /// Parses every `.shx` in [directories], or the default search path.
+  ///
+  /// Empty or truncated files are skipped. Does not throw: a missing font
+  /// must not prevent a drawing from opening.
+  static ShxFontTable load({
+    String? drawingPath,
+    Map<String, String>? environment,
+    Iterable<String>? directories,
+  }) {
+    final byFamily = <String, ShxFont>{};
+    final dirs =
+        directories ??
+        searchDirectories(drawingPath: drawingPath, environment: environment);
+    for (final dir in dirs) {
+      final folder = Directory(dir);
+      if (!folder.existsSync()) continue;
+      try {
+        for (final entity in folder.listSync(followLinks: false)) {
+          if (entity is! File) continue;
+          if (!entity.path.toLowerCase().endsWith('.shx')) continue;
+          try {
+            final font = ShxFont.parse(entity.readAsBytesSync());
+            if (font.isEmpty) continue;
+            final family = ShxFontTable.normalizeFamily(
+              p.basename(entity.path),
+            );
+            if (family.isEmpty) continue;
+            byFamily[family] = font;
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+    return ShxFontTable(byFamily);
+  }
+}
+
+/// Collects [drawing], or the front tab, into a [SessionSnapshot].
+///
+/// The assistant may be bound to a pinned drawing that is not on screen.
+/// Do not bring that tab forward just to describe it.
+SessionSnapshot collectSessionSnapshot(
+  Workspace workspace, {
+  DocumentTab? drawing,
+}) => workspace.collectSessionSnapshot(drawing: drawing);

@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:fancad/commands/edit/helpers.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('TEXT / MTEXT / dim / attrib / mleader are edit targets', () {

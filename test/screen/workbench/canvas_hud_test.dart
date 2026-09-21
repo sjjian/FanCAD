@@ -312,7 +312,7 @@ void main() {
     expect(find.byKey(const Key('command-log-panel')), findsNothing);
     expect(find.text('Filter by name, alias or category'), findsOneWidget);
 
-    container.read(assistantPaneProvider.notifier).toggle();
+    container.read(shellNotifierProvider.notifier).toggleAssistant();
     await tester.pump();
     expect(find.byKey(const Key('assistant-splitter')), findsOneWidget);
     expect(
@@ -341,7 +341,7 @@ void main() {
     tester,
   ) async {
     final container = await pumpWorkbench(tester, document: true);
-    final workspace = container.read(workspaceProvider);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
     unawaited(
       workspace.commandLine.request(
         PendingEntry(
@@ -364,7 +364,7 @@ void main() {
     'a long prompt and keyword chips stay inside a narrow command dock',
     (tester) async {
       final container = workbenchContainer();
-      final workspace = container.read(workspaceProvider);
+      final workspace = container.read(workspaceNotifierProvider.notifier);
       final focus = FocusNode();
       addTearDown(focus.dispose);
 
@@ -478,7 +478,7 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('canvas-command-suggest')), findsNothing);
-    final workspace = container.read(workspaceProvider);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
     expect(
       workspace.runningCommand ?? workspace.commands.lastCommandId,
       secondId,
@@ -489,7 +489,7 @@ void main() {
     tester,
   ) async {
     final container = await pumpWorkbench(tester, document: true);
-    final workspace = container.read(workspaceProvider);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
     unawaited(
       workspace.commandLine.request(
         PendingEntry(

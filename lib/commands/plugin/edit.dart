@@ -1,7 +1,6 @@
 import 'package:fancad_core/fancad_core.dart';
 import 'package:path/path.dart' as p;
 
-import '../../../services/workspace.dart';
 import '../command_base.dart';
 import 'commands.dart';
 import 'helpers.dart';
@@ -52,12 +51,8 @@ class PluginsEditCommand extends FanCadCommand {
       );
     }
     final relativePath = p.normalize(relative);
-    final services = context.services;
-    if (services is Workspace) {
-      services.openPluginEditor(id, relativePath);
-    } else {
-      services.revealPanel('editor');
-    }
+    plugins.openEditor?.call(id, relativePath);
+    context.services.revealPanel('editor');
     return CommandResult.ok(
       message:
           'Editing ${p.relative(file.path, from: handle.manifest.directory)}',

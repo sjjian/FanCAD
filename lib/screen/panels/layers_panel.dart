@@ -1,6 +1,7 @@
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../services/workspace.dart';
@@ -13,16 +14,16 @@ import '../workbench/shell_widgets.dart';
 /// which is why toggling a layer off is undoable and why the same toggle is
 /// available to a plugin and to the AI. A panel that wrote directly to the model
 /// would be the one place the "single write path" rule leaked.
-class LayersPanel extends StatefulWidget {
+class LayersPanel extends ConsumerStatefulWidget {
   const LayersPanel({super.key, required this.workspace});
 
   final Workspace workspace;
 
   @override
-  State<LayersPanel> createState() => _LayersPanelState();
+  ConsumerState<LayersPanel> createState() => _LayersPanelState();
 }
 
-class _LayersPanelState extends State<LayersPanel> {
+class _LayersPanelState extends ConsumerState<LayersPanel> {
   String _filter = '';
   final TextEditingController _filterController = TextEditingController();
 
@@ -36,6 +37,7 @@ class _LayersPanelState extends State<LayersPanel> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(workspaceNotifierProvider.select((s) => s.active?.id));
     final tokens = context.tokens;
     final tab = _workspace.active;
     if (tab == null) {
@@ -51,6 +53,17 @@ class _LayersPanelState extends State<LayersPanel> {
       );
     }
 
+    return ListenableBuilder(
+      listenable: tab,
+      builder: (context, _) => _layersBody(context, tokens, tab),
+    );
+  }
+
+  Widget _layersBody(
+    BuildContext context,
+    FanCadTokens tokens,
+    DocumentTab tab,
+  ) {
     final counts = <String, int>{};
     for (final entity in tab.document.entities) {
       counts.update(entity.props.layer, (n) => n + 1, ifAbsent: () => 1);

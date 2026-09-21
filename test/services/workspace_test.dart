@@ -4,7 +4,6 @@ import 'dart:ui';
 
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter/gestures.dart';
@@ -16,13 +15,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Workspace workspace({SettingsStore? settings}) {
-    final created = Workspace(
-      commands: CommandRegistry(),
-      importer: DrawingImporter(backend: MemoryDrawingBackend()),
-      drawing: DrawingSettings(settings ?? SettingsStore.inMemory()),
-    );
-    addTearDown(created.dispose);
-    return created;
+    return Headless(settings: settings, document: false).workspace;
   }
 
   test('tabs activate, refuse a dirty close, and force-close the last one', () {
@@ -55,6 +48,27 @@ void main() {
     expect(ws.activeIndex, -1);
   });
 
+  test('store chrome tracks title and dirty; hover stays off that record', () {
+    final ws = workspace();
+    final tab = ws.newDocument(title: 'A');
+    expect(ws.state.sessions.single.title, 'A');
+    expect(ws.state.sessions.single.isDirty, isFalse);
+
+    tab.session.edit('LINE', (transaction) {
+      transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+    });
+    expect(tab.isDirty, isTrue);
+    expect(ws.state.sessions.single.isDirty, isTrue);
+    expect(ws.state.sessions.single.hoverIds, isEmpty);
+
+    ws.setHoverHighlights(const [3]);
+    expect(ws.state.sessions.single.hoverIds, [3]);
+    expect(ws.state.sessions.single.isDirty, isTrue);
+    expect(ws.state.sessions.single.title, 'A');
+  });
+
   test('the tab plus control opens a start page instead of Drawing1', () {
     final ws = workspace();
     ws.newDocument(title: 'A');
@@ -71,6 +85,149 @@ void main() {
     expect(ws.hasDocument, isTrue);
     expect(ws.tabs, hasLength(2));
   });
+
+  test('sessionIds skip start pages and session lookup stays on drawings', () {
+    final ws = workspace();
+    expect(ws.sessionIds, isEmpty);
+    expect(ws.session(''), isNull);
+    expect(ws.session('missing'), isNull);
+    expect(ws.activeSession, isNull);
+    expect(ws.state.sessionIds, isEmpty);
+    expect(ws.state.activeSessionId, isNull);
+
+    final start = ws.openStartTab();
+    expect(ws.sessionIds, isEmpty);
+    expect(ws.session(start.session.id), isNull);
+    expect(ws.activeSession, isNull);
+    expect(ws.state.activeSessionId, isNull);
+
+    final alpha = ws.newDocument(title: 'Alpha');
+    expect(ws.sessionIds, [alpha.session.id]);
+    expect(ws.session(alpha.session.id), same(alpha.session));
+    expect(ws.activeSession, same(alpha.session));
+
+    final startAgain = ws.openStartTab();
+    expect(ws.sessionIds, [alpha.session.id]);
+    expect(ws.session(startAgain.session.id), isNull);
+    expect(ws.activeSession, isNull);
+    expect(ws.state.sessionIds, [alpha.session.id]);
+    expect(ws.state.activeSessionId, isNull);
+
+    ws.activateTab(alpha);
+    expect(ws.session(' ${alpha.session.id} '), same(alpha.session));
+    expect(ws.state.activeSessionId, alpha.session.id);
+    expect(ws.tabForSession(alpha.session), same(alpha));
+    expect(ws.indexOfSession(alpha.session), 0);
+  });
+
+  test('findDrawing matches id, unique title, or the active drawing', () {
+    final ws = workspace();
+    final alpha = ws.newDocument(title: 'Alpha');
+    final beta = ws.newDocument(title: 'Beta');
+    beta.session.filePath = '/tmp/beta.dxf';
+
+    expect(ws.findDrawing(null), same(beta));
+    expect(ws.findDrawing(''), same(beta));
+    expect(ws.findDrawing(alpha.session.id), same(alpha));
+    expect(ws.findDrawing('Alpha'), same(alpha));
+    expect(ws.findDrawing('/tmp/beta.dxf'), same(beta));
+    expect(ws.findDrawing('missing'), isNull);
+
+    expect(ws.activateDrawing(alpha.session.id), isNull);
+    expect(ws.active, same(alpha));
+    expect(ws.activateDrawing('gone'), contains('No open drawing'));
+  });
+
+  test('a leftover duplicate title is not a drawing match', () {
+    final ws = workspace();
+    final first = ws.newDocument(title: 'Sheet');
+    final second = ws.newDocument(title: 'Sheet');
+
+    expect(ws.findDrawing('Sheet'), isNull);
+    expect(
+      ws.drawingNotFoundMessage('Sheet'),
+      contains('ids: ${first.session.id}, ${second.session.id}'),
+    );
+    expect(ws.activateDrawing('Sheet'), contains('more than one drawing'));
+    expect(ws.active, same(second));
+  });
+
+  test('state carries notices; command line stays global', () {
+    final ws = workspace();
+    ws.notify('saved');
+    expect(ws.state.notices.single.message, 'saved');
+
+    final pending = ws.commandLine.request(
+      PendingEntry(
+        message: 'Specify next point',
+        completer: Completer<Object?>(),
+        accept: (raw) => raw,
+        keywords: const ['Undo'],
+      ),
+    );
+    addTearDown(() {
+      if (ws.commandLine.isAwaitingInput) ws.commandLine.cancelPending();
+    });
+    expect(ws.commandLine.pending?.message, 'Specify next point');
+    expect(ws.commandLine.pending?.keywords, ['Undo']);
+    expect(ws.commandLine.lines, isNotEmpty);
+    pending.ignore();
+  });
+
+  test('closeSession refuses a dirty drawing and force-closes it', () {
+    final ws = workspace();
+    final tab = ws.newDocument(title: 'A');
+    tab.session.edit('LINE', (transaction) {
+      transaction.add(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+    });
+    expect(ws.closeSession(tab.session), isFalse);
+    expect(ws.sessionIds, [tab.session.id]);
+    expect(ws.closeSession(tab.session, force: true), isTrue);
+    expect(ws.sessionIds, isEmpty);
+    expect(
+      ws.closeSession(DocumentSession(id: 'gone', document: CadDocument())),
+      isTrue,
+    );
+  });
+
+  test('file-backed settings can build without reading workspace state', () {
+    final dir = tempDir(prefix: 'fancad-shx-settings');
+    final settings = SettingsStore(
+      file: File('${dir.path}/settings.json'),
+    );
+    expect(workspace(settings: settings).tabs, isEmpty);
+  });
+
+  test('locale follows the shell language', () {
+    expect(workspace().locale, 'en');
+    final app = Headless(document: false);
+    app.container.read(shellNotifierProvider.notifier).setLanguage(
+      FanCadLanguage.chinese,
+    );
+    expect(app.workspace.locale, FanCadLanguage.chinese);
+  });
+
+  test(
+    'missing recent files are pruned and the leftover list can be cleared',
+    () {
+      final dir = tempDir(prefix: 'fancad-recent');
+      final kept = File('${dir.path}/keep.dxf')
+        ..writeAsStringSync('0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n');
+      final ws = workspace(
+        settings: SettingsStore.inMemory({
+          SettingsKeys.recentFiles: [kept.path, '${dir.path}/missing.dxf'],
+        }),
+      );
+      expect(ws.recentFiles, hasLength(2));
+      expect(ws.pruneMissingRecentFiles(), 1);
+      expect(ws.recentFiles, [kept.path]);
+      expect(ws.pruneMissingRecentFiles(), 0);
+      ws.clearRecentFiles();
+      expect(ws.recentFiles, isEmpty);
+    },
+  );
 
   test('selecting an object reveals the properties panel', () async {
     final ws = workspace();
@@ -114,7 +271,7 @@ void main() {
     () async {
       final ws = workspace();
       final first = ws.newDocument();
-      first.filePath = '/tmp/already-open.dxf';
+      first.session.filePath = '/tmp/already-open.dxf';
       ws.newDocument();
       expect(ws.activeIndex, 1);
 
@@ -176,7 +333,7 @@ void main() {
       final seen = ws.approvals.first;
       final pending = ws.requestApprovalFor('Edit', 'ok', const [7, 8]);
       final request = await seen;
-      expect(request.highlightIds, [7, 8]);
+      expect(request.request.highlightIds, [7, 8]);
       request.approve();
       request.reject();
       expect(await pending, isTrue);
@@ -207,7 +364,6 @@ void main() {
       ws.setPendingHighlights(const [3]);
 
       expect(ws.snapEngine.enabled, isFalse);
-      expect(ws.drawing.snapEnabled, isFalse);
       expect(ws.snapEngine.tracking.polar, isFalse);
       expect(ws.snapEngine.tracking.polarIncrement, 0.5);
       expect(tab.showGrid, isTrue);
@@ -218,13 +374,6 @@ void main() {
 
   test('headless run and save refuse work when nothing is open', () async {
     final ws = workspace();
-    ws.commands.register(
-      CommandDescriptor(
-        id: 'query.summary',
-        title: 'Summary',
-        handler: (_) async => const CommandResult.ok(),
-      ),
-    );
     expect(await ws.saveActive(), isNull);
     expect(ws.notices.single.message, contains('no drawing'));
     expect(
@@ -248,17 +397,6 @@ void main() {
 
   test('close on an empty workspace does not invent a drawing', () async {
     final ws = workspace();
-    registerBuiltinCommands(
-      ws.commands,
-      fileCommands: FileCommands(
-        openFile: (_) async => false,
-        newDocument: ws.newDocument,
-        closeActive: (session, {bool force = false}) =>
-            ws.closeSession(session, force: force),
-        saveActive: (session, path) async => path,
-        recentFiles: () => const [],
-      ),
-    );
 
     final result = await ws.run('file.close');
     expect(result.status, CommandStatus.failed);
@@ -268,17 +406,6 @@ void main() {
 
   test('opening settings without a drawing does not create a tab', () async {
     final ws = workspace();
-    registerBuiltinCommands(
-      ws.commands,
-      fileCommands: FileCommands(
-        openFile: (_) async => false,
-        newDocument: ws.newDocument,
-        closeActive: (session, {bool force = false}) =>
-            ws.closeSession(session, force: force),
-        saveActive: (session, path) async => path,
-        recentFiles: () => const [],
-      ),
-    );
 
     expect(ws.tabs, isEmpty);
     final result = await ws.run('workbench.preferences');
@@ -365,17 +492,6 @@ void main() {
 
   test('cancelActive abandons LINE at the first point', () async {
     final ws = workspace();
-    registerBuiltinCommands(
-      ws.commands,
-      fileCommands: FileCommands(
-        openFile: (_) async => false,
-        newDocument: ws.newDocument,
-        closeActive: (session, {bool force = false}) =>
-            ws.closeSession(session, force: force),
-        saveActive: (session, path) async => path,
-        recentFiles: () => const [],
-      ),
-    );
     final tab = ws.newDocument();
 
     final running = ws.run('draw.line');
@@ -393,17 +509,6 @@ void main() {
     'cancelActive abandons LINE after a leftover drag on the next point',
     () async {
       final ws = workspace();
-      registerBuiltinCommands(
-        ws.commands,
-        fileCommands: FileCommands(
-          openFile: (_) async => false,
-          newDocument: ws.newDocument,
-          closeActive: (session, {bool force = false}) =>
-              ws.closeSession(session, force: force),
-          saveActive: (session, path) async => path,
-          recentFiles: () => const [],
-        ),
-      );
       final tab = ws.newDocument();
       tab.viewport.viewport = const CadViewport(
         center: Vec2(5, 0),
@@ -565,14 +670,53 @@ void main() {
 
   test('flashHighlights show up on the pending overlay list', () {
     final ws = workspace();
+    ws.newDocument();
     ws.flashHighlights(const [3, 5]);
     expect(ws.pendingHighlightIds, [3, 5]);
     ws.setPendingHighlights(const [9]);
     expect(ws.pendingHighlightIds, [9, 3, 5]);
+    ws.flashHighlights(const []);
+    expect(ws.pendingHighlightIds, [9]);
+  });
+
+  test('a leftover empty workspace has no view and no leftover last ids', () {
+    final ws = workspace();
+    expect(ws.describeView(), isEmpty);
+    expect(ws.lastCreatedIds, isEmpty);
+    expect(ws.lastModifiedIds, isEmpty);
+    expect(ws.collectedPointCount, 0);
+  });
+
+  test('a successful draw records lastCreatedIds', () async {
+    final app = Headless();
+    final id = await app.drawLine(0, 0, 10, 0);
+    expect(app.workspace.lastCreatedIds, [id]);
+    expect(app.workspace.describeView(), isNotEmpty);
+  });
+
+  test('collectedPointCount follows an in-flight LINE', () async {
+    final app = Headless();
+    final running = app.workspace.run('draw.line');
+    await Future<void>.delayed(Duration.zero);
+    expect(app.workspace.collectedPointCount, 0);
+
+    expect(
+      app.workspace.supplyInteractive({
+        'point': [0, 0],
+      })['status'],
+      'ok',
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(app.workspace.collectedPointCount, 1);
+
+    app.workspace.cancelActive();
+    await running;
+    expect(app.workspace.collectedPointCount, 0);
   });
 
   test('hover highlights join the pending overlay list and clear on exit', () {
     final ws = workspace();
+    ws.newDocument();
     ws.setHoverHighlights(const [3]);
     expect(ws.pendingHighlightIds, [3]);
     ws.setPendingHighlights(const [9]);

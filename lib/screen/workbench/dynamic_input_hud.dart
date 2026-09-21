@@ -5,7 +5,7 @@ import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../services/command_line_model.dart';
+import '../../services/command_line.dart';
 import '../theme/tokens.dart';
 import '../widgets/shell_field.dart';
 

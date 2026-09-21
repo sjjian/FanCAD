@@ -2,22 +2,16 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fancad_core/fancad_core.dart';
-import 'package:flutter/foundation.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-part 'command_line_model.freezed.dart';
+import '../models/workspace.dart';
 
-/// The severity of a command-history line, which decides its colour.
-enum HistoryLevel { normal, prompt, success, warning, error }
+part 'command_line.g.dart';
 
-/// One line in the command history pane.
-@freezed
-abstract class HistoryLine with _$HistoryLine {
-  const factory HistoryLine(
-    String text, {
-    @Default(HistoryLevel.normal) HistoryLevel level,
-  }) = _HistoryLine;
-}
+/// Optional history cap used by headless tests that check truncation.
+@Riverpod(keepAlive: true)
+int? commandLineHistoryLimitOverride(Ref ref) => null;
 
 /// A request for a typed value that the command line is currently waiting on.
 ///
@@ -26,25 +20,33 @@ abstract class HistoryLine with _$HistoryLine {
 /// once, and whichever answers first wins.
 class PendingEntry {
   PendingEntry({
-    required this.message,
+    required String message,
     required this.completer,
     required this.accept,
-    this.keywords = const [],
-    this.allowEmpty = false,
-  });
+    List<String> keywords = const [],
+    bool allowEmpty = false,
+  }) : prompt = CommandPromptModel(
+         message: message,
+         keywords: keywords,
+         allowEmpty: allowEmpty,
+       );
 
-  final String message;
+  /// What the command line shows for this prompt.
+  final CommandPromptModel prompt;
+
+  String get message => prompt.message;
+
+  /// Keyword options offered by this prompt, shown as hints.
+  List<String> get keywords => prompt.keywords;
+
+  /// Whether pressing Enter with no text is meaningful, as it is for "finish".
+  bool get allowEmpty => prompt.allowEmpty;
+
   final Completer<Object?> completer;
 
   /// Parses raw text into a value, or returns null when it is not acceptable.
   /// Returning null leaves the prompt in place so the user can retype.
   final Object? Function(String raw) accept;
-
-  /// Keyword options offered by this prompt, shown as hints.
-  final List<String> keywords;
-
-  /// Whether pressing Enter with no text is meaningful, as it is for "finish".
-  final bool allowEmpty;
 
   bool get isDone => completer.isCompleted;
 
@@ -61,43 +63,48 @@ class PendingEntry {
 
 /// The state behind the command line and command history.
 ///
-/// Modelled as a controller rather than as widget state because commands,
+/// Modelled as a notifier rather than as widget state because commands,
 /// plugins and the AI agent all write to it, and none of them should need a
 /// [BuildContext] to do so.
-class CommandLineController extends ChangeNotifier {
-  CommandLineController({this.historyLimit = 500});
+@Riverpod(keepAlive: true)
+class CommandLineNotifier extends _$CommandLineNotifier {
+  @override
+  CommandLineModel build() {
+    historyLimit = ref.read(commandLineHistoryLimitOverrideProvider) ?? 500;
+    ref.onDispose(() => _pending?.cancel('Closed'));
+    return const CommandLineModel();
+  }
 
-  final int historyLimit;
+  late final int historyLimit;
 
-  final List<HistoryLine> _lines = [];
-  final List<String> _entered = [];
+  CommandLineModel get _store => state;
 
   PendingEntry? _pending;
-  String _status = '';
   int _recallIndex = -1;
 
-  List<HistoryLine> get lines => List.unmodifiable(_lines);
+  List<HistoryLineModel> get lines => _store.lines;
 
   /// Previously entered command text, for up-arrow recall.
-  List<String> get enteredHistory => List.unmodifiable(_entered);
+  List<String> get enteredHistory => List.unmodifiable(_store.entered);
 
   PendingEntry? get pending => _pending;
 
   /// The prompt to display: whatever a running command last asked for, or the
   /// idle prompt.
-  String get promptText => _pending?.message ?? _status;
+  String get promptText => _pending?.message ?? _store.status;
 
   bool get isAwaitingInput => _pending != null;
 
   void write(String message, {HistoryLevel level = HistoryLevel.normal}) {
     if (message.isEmpty) return;
+    final lines = [..._store.lines];
     for (final line in message.split('\n')) {
-      _lines.add(HistoryLine(line, level: level));
+      lines.add(HistoryLineModel(line, level: level));
     }
-    while (_lines.length > historyLimit) {
-      _lines.removeAt(0);
+    while (lines.length > historyLimit) {
+      lines.removeAt(0);
     }
-    notifyListeners();
+    _setStore(_store.copyWith(lines: lines));
   }
 
   void writeError(String message) => write(message, level: HistoryLevel.error);
@@ -107,29 +114,24 @@ class CommandLineController extends ChangeNotifier {
 
   /// Sets the idle prompt, which is what a tool shows while it waits.
   void setStatus(String message) {
-    if (_status == message) return;
-    _status = message;
-    notifyListeners();
+    if (_store.status == message) return;
+    _setStore(_store.copyWith(status: message));
   }
 
   void clear() {
-    _lines.clear();
-    notifyListeners();
+    _setStore(_store.copyWith(lines: const []));
   }
 
-  String? _offeredInput;
-
   /// Text a log click wants the command line to show, without submitting it.
-  String? get offeredInput => _offeredInput;
+  String? get offeredInput => _store.offeredInput;
 
   void offerInput(String text) {
-    _offeredInput = text;
-    notifyListeners();
+    _setStore(_store.copyWith(offeredInput: text));
   }
 
   String? takeOfferedInput() {
-    final text = _offeredInput;
-    _offeredInput = null;
+    final text = _store.offeredInput;
+    if (text != null) _setStore(_store.copyWith(offeredInput: null));
     return text;
   }
 
@@ -143,11 +145,11 @@ class CommandLineController extends ChangeNotifier {
     _pending?.cancel('Superseded by a new prompt');
     _pending = entry;
     write(entry.message, level: HistoryLevel.prompt);
-    notifyListeners();
+    _setStore(_store.copyWith(prompt: entry.prompt));
     return entry.completer.future.whenComplete(() {
       if (_pending == entry) {
         _pending = null;
-        notifyListeners();
+        _setStore(_store.copyWith(prompt: null));
       }
     });
   }
@@ -159,7 +161,7 @@ class CommandLineController extends ChangeNotifier {
     _pending = null;
     entry.cancel(reason);
     write('*Cancel*', level: HistoryLevel.warning);
-    notifyListeners();
+    _setStore(_store.copyWith(prompt: null));
   }
 
   /// Satisfies the outstanding request from the pointer rather than the
@@ -169,7 +171,7 @@ class CommandLineController extends ChangeNotifier {
     if (entry == null) return false;
     _pending = null;
     entry.supply(value);
-    notifyListeners();
+    _setStore(_store.copyWith(prompt: null));
     return true;
   }
 
@@ -180,11 +182,12 @@ class CommandLineController extends ChangeNotifier {
   String? submit(String raw) {
     final text = raw.trim();
     if (text.isNotEmpty) {
-      _entered.remove(text);
-      _entered.add(text);
-      while (_entered.length > 64) {
-        _entered.removeAt(0);
+      final entered = [..._store.entered]..remove(text);
+      entered.add(text);
+      while (entered.length > 64) {
+        entered.removeAt(0);
       }
+      _setStore(_store.copyWith(entered: entered));
     }
     _recallIndex = -1;
 
@@ -196,6 +199,7 @@ class CommandLineController extends ChangeNotifier {
       // for most prompts is a cancel.
       _pending = null;
       entry.cancel();
+      _setStore(_store.copyWith(prompt: null));
       return null;
     }
 
@@ -208,37 +212,38 @@ class CommandLineController extends ChangeNotifier {
     _pending = null;
     write('  $text');
     entry.supply(resolved);
-    notifyListeners();
+    _setStore(_store.copyWith(prompt: null));
     return null;
+  }
+
+  void _setStore(CommandLineModel next) {
+    state = next;
   }
 
   /// Walks back through previously entered lines.
   String? recallPrevious() {
-    if (_entered.isEmpty) return null;
+    if (_store.entered.isEmpty) return null;
     if (_recallIndex < 0) {
-      _recallIndex = _entered.length - 1;
+      _recallIndex = _store.entered.length - 1;
     } else if (_recallIndex > 0) {
       _recallIndex--;
     }
-    return _entered[_recallIndex];
+    return _store.entered[_recallIndex];
   }
 
   String? recallNext() {
-    if (_entered.isEmpty || _recallIndex < 0) return null;
-    if (_recallIndex >= _entered.length - 1) {
+    if (_store.entered.isEmpty || _recallIndex < 0) return null;
+    if (_recallIndex >= _store.entered.length - 1) {
       _recallIndex = -1;
       return '';
     }
     _recallIndex++;
-    return _entered[_recallIndex];
-  }
-
-  @override
-  void dispose() {
-    _pending?.cancel('Closed');
-    super.dispose();
+    return _store.entered[_recallIndex];
   }
 }
+
+/// The command-line service. Prefer [CommandLineNotifier] at new call sites.
+typedef CommandLineController = CommandLineNotifier;
 
 /// Parses coordinate entry the way a CAD command line does.
 ///

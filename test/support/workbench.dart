@@ -12,14 +12,14 @@ class LocalizedWorkbench extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final language = ref.watch(languageProvider);
-    ref.watch(themeBrightnessProvider);
-    final themeMode = switch (ref
-        .read(themeBrightnessProvider.notifier)
-        .preference) {
-      'light' => ThemeMode.light,
-      'system' => ThemeMode.system,
-      _ => ThemeMode.dark,
+    final shell = ref.watch(
+      shellNotifierProvider.select((s) => (theme: s.theme, language: s.language)),
+    );
+    final language = shell.language;
+    final themeMode = switch (shell.theme) {
+      ThemePreference.light => ThemeMode.light,
+      ThemePreference.system => ThemeMode.system,
+      ThemePreference.dark => ThemeMode.dark,
     };
     return MaterialApp(
       theme: FanCadTheme.light(),
@@ -63,7 +63,7 @@ Future<ProviderContainer> pumpWorkbench(
   addTearDown(debugResetSettingsDialog);
 
   final container = workbenchContainer(settings: settings);
-  if (document) container.read(workspaceProvider).newDocument();
+  if (document) container.read(workspaceNotifierProvider.notifier).newDocument();
   prepare?.call(container);
 
   await tester.pumpWidget(

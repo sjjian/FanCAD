@@ -3,11 +3,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../commands/keybindings.dart';
 import '../../l10n/l10n.dart';
-import '../../services/document_tab.dart';
 import '../../services/workspace.dart';
 import '../theme/tokens.dart';
 import 'shell_widgets.dart';
@@ -102,13 +102,14 @@ class TitleBar extends StatelessWidget {
 }
 
 /// The document tab strip.
-class DocumentTabStrip extends StatelessWidget {
+class DocumentTabStrip extends ConsumerWidget {
   const DocumentTabStrip({super.key, required this.workspace});
 
   final Workspace workspace;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(workspaceNotifierProvider.select((s) => s.tabStrip));
     final tokens = context.tokens;
     final tabs = workspace.tabs;
     if (tabs.isEmpty) return const SizedBox.shrink();

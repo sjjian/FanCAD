@@ -3,10 +3,10 @@ import 'dart:math' as math;
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../commands/edit/helpers.dart';
 import '../../l10n/l10n.dart';
-import '../../services/document_tab.dart';
 import '../../services/workspace.dart';
 import '../theme/tokens.dart';
 import '../workbench/shell_widgets.dart';
@@ -17,13 +17,14 @@ import '../workbench/shell_widgets.dart';
 /// selected objects reads `*Varies*` rather than showing the first value, which
 /// is the difference between a panel you can trust and one that silently
 /// misreports what you have selected.
-class PropertiesPanel extends StatelessWidget {
+class PropertiesPanel extends ConsumerWidget {
   const PropertiesPanel({super.key, required this.workspace});
 
   final Workspace workspace;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(workspaceNotifierProvider.select((s) => s.active?.id));
     final tab = workspace.active;
     if (tab == null) {
       return Column(
@@ -38,6 +39,13 @@ class PropertiesPanel extends StatelessWidget {
         ],
       );
     }
+    return ListenableBuilder(
+      listenable: tab,
+      builder: (context, _) => _propertiesBody(context, tab),
+    );
+  }
+
+  Widget _propertiesBody(BuildContext context, DocumentTab tab) {
     final ids = tab.selection.ids.toList();
     final entities = <CadEntity>[
       for (final id in ids) ?tab.document.entity(id),

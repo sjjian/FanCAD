@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/l10n.dart';
-import '../services/providers.dart';
+import '../models/shell.dart';
+import '../services/mcp.dart';
+import '../services/shell.dart';
+import '../services/workspace.dart';
 import 'theme/theme.dart';
 import 'workbench/workbench.dart';
 
@@ -32,7 +35,7 @@ class _FanCadAppState extends ConsumerState<FanCadApp> {
     super.initState();
     _openFiles = widget.openFiles ?? DesktopOpenFiles();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(opsHostProvider);
+      ref.read(mcpNotifierProvider);
       unawaited(_openLaunchFiles());
     });
   }
@@ -50,7 +53,7 @@ class _FanCadAppState extends ConsumerState<FanCadApp> {
   }
 
   Future<void> _openPaths(List<String> paths) async {
-    final workspace = ref.read(workspaceProvider);
+    final workspace = ref.read(workspaceNotifierProvider.notifier);
     for (final path in paths) {
       await workspace.openFile(path);
     }
@@ -67,14 +70,14 @@ class _FanCadAppState extends ConsumerState<FanCadApp> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(themeBrightnessProvider);
-    final language = ref.watch(languageProvider);
-    final themeMode = switch (ref
-        .read(themeBrightnessProvider.notifier)
-        .preference) {
-      'light' => ThemeMode.light,
-      'system' => ThemeMode.system,
-      _ => ThemeMode.dark,
+    final shell = ref.watch(
+      shellNotifierProvider.select((s) => (theme: s.theme, language: s.language)),
+    );
+    final language = shell.language;
+    final themeMode = switch (shell.theme) {
+      ThemePreference.light => ThemeMode.light,
+      ThemePreference.system => ThemeMode.system,
+      ThemePreference.dark => ThemeMode.dark,
     };
     return MaterialApp(
       title: 'FanCAD',

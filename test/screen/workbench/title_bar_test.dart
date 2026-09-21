@@ -1,5 +1,6 @@
 import 'package:fancad/fancad.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/workspace.dart';
@@ -38,23 +39,24 @@ void main() {
   testWidgets(
     'new-tab leftover sits after the last drawing, not the strip end',
     (tester) async {
-      final workspace = Headless().workspace;
+      final app = Headless();
+      final workspace = app.workspace;
 
       tester.view.physicalSize = const Size(1600, 1000);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: FanCadTheme.dark(),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: SizedBox(
-              width: 800,
-              child: ListenableBuilder(
-                listenable: workspace,
-                builder: (_, _) => DocumentTabStrip(workspace: workspace),
+        UncontrolledProviderScope(
+          container: app.container,
+          child: MaterialApp(
+            theme: FanCadTheme.dark(),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: SizedBox(
+                width: 800,
+                child: DocumentTabStrip(workspace: workspace),
               ),
             ),
           ),
