@@ -10,11 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../business/commands/builtins.dart';
-import '../business/commands/file/commands.dart';
-import '../business/commands/plugin/commands.dart';
-import '../business/l10n/locale.dart';
-import '../business/theme/tokens.dart';
+import '../commands/builtins.dart';
+import '../commands/file/commands.dart';
+import '../commands/plugin/commands.dart';
+import '../l10n/locale.dart';
+import '../screen/theme/tokens.dart';
 import '../storage/app_settings.dart';
 import '../storage/mcp_settings.dart';
 import '../storage/settings.dart';

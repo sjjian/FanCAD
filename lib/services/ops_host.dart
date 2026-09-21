@@ -4,7 +4,7 @@ import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_ops/fancad_ops.dart';
 
-import '../business/ai/skills/bundled.dart';
+import '../ai/skills/bundled.dart';
 import 'workspace.dart';
 
 /// Bind settings the MCP tab writes and the host reads.

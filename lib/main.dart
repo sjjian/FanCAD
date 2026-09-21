@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'business/app.dart';
+import 'screen/app.dart';
 import 'services/plugin_bootstrap.dart';
 import 'services/providers.dart';
 import 'storage/settings.dart';

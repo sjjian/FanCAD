@@ -8,11 +8,11 @@ import 'package:flutter/foundation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:path/path.dart' as p;
 
-import '../business/l10n/l10n.dart';
-import '../business/workbench/command_line_model.dart';
-import '../business/workbench/interactive_input.dart';
+import '../l10n/l10n.dart';
 import '../storage/drawing_settings.dart';
+import 'command_line_model.dart';
 import 'document_tab.dart';
+import 'interactive_input.dart';
 import 'shx_fonts.dart';
 
 part 'workspace.freezed.dart';

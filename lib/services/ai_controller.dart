@@ -6,8 +6,8 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter/foundation.dart';
 
-import '../business/ai/authoring.dart';
-import '../business/ai/skills/bundled.dart';
+import '../ai/authoring.dart';
+import '../ai/skills/bundled.dart';
 import '../models/assistant_chat.dart';
 import '../models/assistant_profile.dart';
 import '../storage/assistant_settings.dart';
