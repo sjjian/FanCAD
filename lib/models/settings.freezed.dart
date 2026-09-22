@@ -1356,4 +1356,276 @@ as String,
 
 }
 
+/// @nodoc
+mixin _$AssistantAccountsModel {
+
+ List<AssistantProfileModel> get profiles; String get activeProfileId; String get apiKeyRef; bool get autoApprove;
+/// Create a copy of AssistantAccountsModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$AssistantAccountsModelCopyWith<AssistantAccountsModel> get copyWith => _$AssistantAccountsModelCopyWithImpl<AssistantAccountsModel>(this as AssistantAccountsModel, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantAccountsModel&&const DeepCollectionEquality().equals(other.profiles, profiles)&&(identical(other.activeProfileId, activeProfileId) || other.activeProfileId == activeProfileId)&&(identical(other.apiKeyRef, apiKeyRef) || other.apiKeyRef == apiKeyRef)&&(identical(other.autoApprove, autoApprove) || other.autoApprove == autoApprove));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(profiles),activeProfileId,apiKeyRef,autoApprove);
+
+@override
+String toString() {
+  return 'AssistantAccountsModel(profiles: $profiles, activeProfileId: $activeProfileId, apiKeyRef: $apiKeyRef, autoApprove: $autoApprove)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $AssistantAccountsModelCopyWith<$Res>  {
+  factory $AssistantAccountsModelCopyWith(AssistantAccountsModel value, $Res Function(AssistantAccountsModel) _then) = _$AssistantAccountsModelCopyWithImpl;
+@useResult
+$Res call({
+ List<AssistantProfileModel> profiles, String activeProfileId, String apiKeyRef, bool autoApprove
+});
+
+
+
+
+}
+/// @nodoc
+class _$AssistantAccountsModelCopyWithImpl<$Res>
+    implements $AssistantAccountsModelCopyWith<$Res> {
+  _$AssistantAccountsModelCopyWithImpl(this._self, this._then);
+
+  final AssistantAccountsModel _self;
+  final $Res Function(AssistantAccountsModel) _then;
+
+/// Create a copy of AssistantAccountsModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? profiles = null,Object? activeProfileId = null,Object? apiKeyRef = null,Object? autoApprove = null,}) {
+  return _then(_self.copyWith(
+profiles: null == profiles ? _self.profiles : profiles // ignore: cast_nullable_to_non_nullable
+as List<AssistantProfileModel>,activeProfileId: null == activeProfileId ? _self.activeProfileId : activeProfileId // ignore: cast_nullable_to_non_nullable
+as String,apiKeyRef: null == apiKeyRef ? _self.apiKeyRef : apiKeyRef // ignore: cast_nullable_to_non_nullable
+as String,autoApprove: null == autoApprove ? _self.autoApprove : autoApprove // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [AssistantAccountsModel].
+extension AssistantAccountsModelPatterns on AssistantAccountsModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _AssistantAccountsModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _AssistantAccountsModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _AssistantAccountsModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _AssistantAccountsModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _AssistantAccountsModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _AssistantAccountsModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AssistantProfileModel> profiles,  String activeProfileId,  String apiKeyRef,  bool autoApprove)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _AssistantAccountsModel() when $default != null:
+return $default(_that.profiles,_that.activeProfileId,_that.apiKeyRef,_that.autoApprove);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AssistantProfileModel> profiles,  String activeProfileId,  String apiKeyRef,  bool autoApprove)  $default,) {final _that = this;
+switch (_that) {
+case _AssistantAccountsModel():
+return $default(_that.profiles,_that.activeProfileId,_that.apiKeyRef,_that.autoApprove);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AssistantProfileModel> profiles,  String activeProfileId,  String apiKeyRef,  bool autoApprove)?  $default,) {final _that = this;
+switch (_that) {
+case _AssistantAccountsModel() when $default != null:
+return $default(_that.profiles,_that.activeProfileId,_that.apiKeyRef,_that.autoApprove);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _AssistantAccountsModel extends AssistantAccountsModel {
+  const _AssistantAccountsModel({final  List<AssistantProfileModel> profiles = const [], this.activeProfileId = AssistantProfileModel.defaultId, this.apiKeyRef = 'OPENAI_API_KEY', this.autoApprove = false}): _profiles = profiles,super._();
+  
+
+ final  List<AssistantProfileModel> _profiles;
+@override@JsonKey() List<AssistantProfileModel> get profiles {
+  if (_profiles is EqualUnmodifiableListView) return _profiles;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_profiles);
+}
+
+@override@JsonKey() final  String activeProfileId;
+@override@JsonKey() final  String apiKeyRef;
+@override@JsonKey() final  bool autoApprove;
+
+/// Create a copy of AssistantAccountsModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$AssistantAccountsModelCopyWith<_AssistantAccountsModel> get copyWith => __$AssistantAccountsModelCopyWithImpl<_AssistantAccountsModel>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantAccountsModel&&const DeepCollectionEquality().equals(other._profiles, _profiles)&&(identical(other.activeProfileId, activeProfileId) || other.activeProfileId == activeProfileId)&&(identical(other.apiKeyRef, apiKeyRef) || other.apiKeyRef == apiKeyRef)&&(identical(other.autoApprove, autoApprove) || other.autoApprove == autoApprove));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_profiles),activeProfileId,apiKeyRef,autoApprove);
+
+@override
+String toString() {
+  return 'AssistantAccountsModel(profiles: $profiles, activeProfileId: $activeProfileId, apiKeyRef: $apiKeyRef, autoApprove: $autoApprove)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$AssistantAccountsModelCopyWith<$Res> implements $AssistantAccountsModelCopyWith<$Res> {
+  factory _$AssistantAccountsModelCopyWith(_AssistantAccountsModel value, $Res Function(_AssistantAccountsModel) _then) = __$AssistantAccountsModelCopyWithImpl;
+@override @useResult
+$Res call({
+ List<AssistantProfileModel> profiles, String activeProfileId, String apiKeyRef, bool autoApprove
+});
+
+
+
+
+}
+/// @nodoc
+class __$AssistantAccountsModelCopyWithImpl<$Res>
+    implements _$AssistantAccountsModelCopyWith<$Res> {
+  __$AssistantAccountsModelCopyWithImpl(this._self, this._then);
+
+  final _AssistantAccountsModel _self;
+  final $Res Function(_AssistantAccountsModel) _then;
+
+/// Create a copy of AssistantAccountsModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? profiles = null,Object? activeProfileId = null,Object? apiKeyRef = null,Object? autoApprove = null,}) {
+  return _then(_AssistantAccountsModel(
+profiles: null == profiles ? _self._profiles : profiles // ignore: cast_nullable_to_non_nullable
+as List<AssistantProfileModel>,activeProfileId: null == activeProfileId ? _self.activeProfileId : activeProfileId // ignore: cast_nullable_to_non_nullable
+as String,apiKeyRef: null == apiKeyRef ? _self.apiKeyRef : apiKeyRef // ignore: cast_nullable_to_non_nullable
+as String,autoApprove: null == autoApprove ? _self.autoApprove : autoApprove // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
 // dart format on

@@ -10,10 +10,10 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../ai/authoring.dart';
 import '../ai/skills/bundled.dart';
 import '../models/assistant.dart';
-import '../models/settings.dart';
 import '../storage/assistant_settings.dart';
 import 'plugin.dart';
 import 'providers.dart';
+import 'settings.dart';
 import 'workspace.dart';
 
 part 'assistant.g.dart';
@@ -30,7 +30,6 @@ class AssistantNotifier extends _$AssistantNotifier {
   AssistantModel build() {
     final assistant = ref.read(appSettingsProvider).assistant;
     final chats = assistant.loadChats();
-    final profiles = assistant.loadProfiles();
     ref.onDispose(() {
       _disposed = true;
       _settlePending(false);
@@ -38,12 +37,8 @@ class AssistantNotifier extends _$AssistantNotifier {
       _active?.cancel();
     });
     return AssistantModel(
-      profiles: profiles,
-      activeProfileId: assistant.activeProfileId(profiles),
       chats: chats,
       activeChatId: assistant.activeChatId(chats),
-      apiKeyRef: assistant.apiKeyRef,
-      autoApprove: assistant.autoApprove,
       pane: AssistantPaneModel(
         isOpen: assistant.paneOpen(),
         width: assistant
@@ -99,95 +94,6 @@ class AssistantNotifier extends _$AssistantNotifier {
   void setDraft(String value) {
     if (value == _chat.draft) return;
     _patchChat((chat) => chat.copyWith(draft: value));
-  }
-
-  void setModel(String value) {
-    final next = value.trim();
-    if (next.isEmpty || next == state.activeProfile.model) return;
-    _writeActive((profile) => profile.copyWith(model: next));
-  }
-
-  void setBaseUrl(String value) {
-    final next = value.trim();
-    if (next.isEmpty || next == state.activeProfile.baseUrl) return;
-    _writeActive((profile) => profile.copyWith(baseUrl: next));
-  }
-
-  void setAutoApprove(bool value) {
-    if (value == state.autoApprove) return;
-    _assistant.setAutoApprove(value);
-    _setStore(_store.copyWith(autoApprove: value));
-  }
-
-  void setApiKey(String value) {
-    final next = value.trim();
-    if (next == state.activeProfile.apiKey) return;
-    _writeActive((profile) => profile.copyWith(apiKey: next));
-  }
-
-  void setApiKeyRef(String value) {
-    final next = value.trim();
-    if (next.isEmpty || next == state.apiKeyRef) return;
-    _assistant.setApiKeyRef(next);
-    _setStore(_store.copyWith(apiKeyRef: next));
-  }
-
-  void setProfileLabel(String value) {
-    if (value == state.activeProfile.label) return;
-    _writeActive((profile) => profile.copyWith(label: value));
-  }
-
-  void selectProfile(String id) {
-    if (state.busy) return;
-    if (id == state.activeProfile.id) return;
-    final all = state.profiles;
-    if (!all.any((profile) => profile.id == id)) return;
-    _persist(all, activeId: id);
-  }
-
-  void addProfile() {
-    if (state.busy) return;
-    final profile = state.activeProfile;
-    final created = AssistantProfileModel(
-      id: 'p${DateTime.now().microsecondsSinceEpoch}',
-      model: profile.model,
-      baseUrl: profile.baseUrl,
-    );
-    _persist([...state.profiles, created], activeId: created.id);
-  }
-
-  void removeProfile(String id) {
-    if (state.busy) return;
-    final all = [...state.profiles]..removeWhere((profile) => profile.id == id);
-    if (all.isEmpty) return;
-    final activeId = state.activeProfile.id;
-    final nextId = id == activeId ? all.first.id : activeId;
-    _persist(all, activeId: nextId);
-  }
-
-  /// Hits `{baseUrl}/models` with this card's key. Notifies success or failure.
-  Future<void> testProfile(AssistantProfileModel profile) async {
-    final provider = OpenAiCompatibleProvider.fromEnvironment(
-      baseUrl: profile.baseUrl,
-      model: profile.model,
-      apiKey: profile.apiKey,
-      apiKeyEnvVar: state.apiKeyRef,
-      environment: Platform.environment,
-    );
-    if (provider == null) {
-      workspace.notify(
-        'No API key. Paste one in Settings, '
-        'or point the endpoint at a local server.',
-        isError: true,
-      );
-      return;
-    }
-    try {
-      await provider.probe();
-      workspace.notify('${profile.displayName} is reachable.');
-    } on LlmException catch (error) {
-      workspace.notify(error.message, isError: true);
-    }
   }
 
   void clear() {
@@ -547,7 +453,11 @@ class AssistantNotifier extends _$AssistantNotifier {
       sessionOf: () => collectSessionSnapshot(workspace, drawing: target),
       skills: bundledSkillRegistry(),
       authoring: const PluginAuthoring(),
-      policy: ApprovalPolicy(autoApproveEdits: state.autoApprove),
+      policy: ApprovalPolicy(
+        autoApproveEdits: ref
+            .read(assistantAccountsNotifierProvider)
+            .autoApprove,
+      ),
       askApproval: _askApproval,
       askQuestion: _askQuestion,
       supplyToSession: (args) async => workspace.supplyInteractive(args),
@@ -639,30 +549,14 @@ class AssistantNotifier extends _$AssistantNotifier {
   }
 
   LlmProvider? _provider() {
+    final accounts = ref.read(assistantAccountsNotifierProvider);
     return OpenAiCompatibleProvider.fromEnvironment(
-      baseUrl: state.activeProfile.baseUrl,
-      model: state.activeProfile.model,
-      apiKey: state.activeProfile.apiKey,
-      apiKeyEnvVar: state.apiKeyRef,
+      baseUrl: accounts.activeProfile.baseUrl,
+      model: accounts.activeProfile.model,
+      apiKey: accounts.activeProfile.apiKey,
+      apiKeyEnvVar: accounts.apiKeyRef,
       environment: Platform.environment,
     );
-  }
-
-  void _writeActive(
-    AssistantProfileModel Function(AssistantProfileModel) update,
-  ) {
-    final all = [..._store.profiles];
-    final index = all.indexWhere(
-      (profile) => profile.id == state.activeProfile.id,
-    );
-    final at = index < 0 ? 0 : index;
-    all[at] = update(all[at]);
-    _persist(all, activeId: all[at].id);
-  }
-
-  void _persist(List<AssistantProfileModel> all, {required String activeId}) {
-    _assistant.saveProfiles(all, activeId: activeId);
-    _setStore(_store.copyWith(profiles: all, activeProfileId: activeId));
   }
 
   void _setStore(AssistantModel next) {
@@ -680,6 +574,7 @@ class AssistantNotifier extends _$AssistantNotifier {
   @visibleForTesting
   void debugSetBusy(bool value) {
     _setStore(_store.copyWith(busy: value));
+    workspace.setAssistantBusy(value);
   }
 
   @visibleForTesting

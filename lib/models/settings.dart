@@ -145,6 +145,26 @@ abstract class AssistantProfileModel with _$AssistantProfileModel {
       _$AssistantProfileModelFromJson(_assistantProfileWire(raw));
 }
 
+/// Saved assistant connections, and whether edits are approved automatically.
+@freezed
+abstract class AssistantAccountsModel with _$AssistantAccountsModel {
+  const AssistantAccountsModel._();
+
+  const factory AssistantAccountsModel({
+    @Default([]) List<AssistantProfileModel> profiles,
+    @Default(AssistantProfileModel.defaultId) String activeProfileId,
+    @Default('OPENAI_API_KEY') String apiKeyRef,
+    @Default(false) bool autoApprove,
+  }) = _AssistantAccountsModel;
+
+  AssistantProfileModel get activeProfile {
+    for (final profile in profiles) {
+      if (profile.id == activeProfileId) return profile;
+    }
+    return profiles.first;
+  }
+}
+
 Map<String, dynamic> _assistantProfileWire(Map<Object?, Object?> raw) {
   String read(String key, [String fallback = '']) {
     final value = raw[key];

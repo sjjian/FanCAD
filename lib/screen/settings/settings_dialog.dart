@@ -5,9 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../models/settings.dart';
-import '../../services/appearance.dart';
-import '../../services/assistant.dart';
-import '../../services/mcp.dart';
+import '../../services/settings.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
 
@@ -136,15 +134,15 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
   late final TextEditingController _apiKey;
   late final TextEditingController _mcpPort;
   late final TextEditingController _mcpAllowlist;
-  late final AssistantNotifier _ai;
+  late final AssistantAccountsNotifier _ai;
   late final McpNotifier _mcp;
 
   @override
   void initState() {
     super.initState();
-    _ai = ref.read(assistantNotifierProvider.notifier);
+    _ai = ref.read(assistantAccountsNotifierProvider.notifier);
     _mcp = ref.read(mcpNotifierProvider.notifier);
-    final profile = ref.read(assistantNotifierProvider).activeProfile;
+    final profile = ref.read(assistantAccountsNotifierProvider).activeProfile;
     _label = TextEditingController(text: profile.label);
     _model = TextEditingController(text: profile.model);
     _endpoint = TextEditingController(text: profile.baseUrl);
@@ -186,7 +184,7 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
   }
 
   void _syncAssistantFields() {
-    final profile = ref.read(assistantNotifierProvider).activeProfile;
+    final profile = ref.read(assistantAccountsNotifierProvider).activeProfile;
     _label.text = profile.label;
     _model.text = profile.model;
     _endpoint.text = profile.baseUrl;
@@ -587,12 +585,12 @@ class _AssistantPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     ref.watch(
-      assistantNotifierProvider.select(
+      assistantAccountsNotifierProvider.select(
         (s) => (s.autoApprove, s.activeProfileId, s.profiles),
       ),
     );
-    final ai = ref.read(assistantNotifierProvider.notifier);
-    final model = ref.read(assistantNotifierProvider);
+    final ai = ref.read(assistantAccountsNotifierProvider.notifier);
+    final model = ref.read(assistantAccountsNotifierProvider);
     final approveHint = model.autoApprove
         ? l10n.edits_without_asking
         : l10n.ask_before_edits;
@@ -680,7 +678,7 @@ class _ModelsPageState extends ConsumerState<_ModelsPage> {
   void _addProfile() {
     widget.onAddProfile();
     setState(() {
-      _editingId = ref.read(assistantNotifierProvider).activeProfile.id;
+      _editingId = ref.read(assistantAccountsNotifierProvider).activeProfile.id;
     });
   }
 
@@ -695,9 +693,9 @@ class _ModelsPageState extends ConsumerState<_ModelsPage> {
   Future<void> _testProfile(String id) async {
     if (_testingId != null) return;
     if (_editingId == id) widget.onCommit();
-    final ai = ref.read(assistantNotifierProvider.notifier);
+    final ai = ref.read(assistantAccountsNotifierProvider.notifier);
     AssistantProfileModel? profile;
-    for (final item in ref.read(assistantNotifierProvider).profiles) {
+    for (final item in ref.read(assistantAccountsNotifierProvider).profiles) {
       if (item.id == id) {
         profile = item;
         break;
@@ -715,10 +713,12 @@ class _ModelsPageState extends ConsumerState<_ModelsPage> {
   @override
   Widget build(BuildContext context) {
     ref.watch(
-      assistantNotifierProvider.select((s) => (s.profiles, s.activeProfileId)),
+      assistantAccountsNotifierProvider.select(
+        (s) => (s.profiles, s.activeProfileId),
+      ),
     );
-    final ai = ref.read(assistantNotifierProvider.notifier);
-    final model = ref.read(assistantNotifierProvider);
+    final ai = ref.read(assistantAccountsNotifierProvider.notifier);
+    final model = ref.read(assistantAccountsNotifierProvider);
     final canDelete = model.profiles.length > 1;
     return ListView(
       padding: const EdgeInsets.all(FanCadTokens.space4),
@@ -780,7 +780,7 @@ class _ModelProfileCard extends StatelessWidget {
   });
 
   final AssistantProfileModel profile;
-  final AssistantNotifier ai;
+  final AssistantAccountsNotifier ai;
   final bool selected;
   final bool expanded;
   final bool testing;

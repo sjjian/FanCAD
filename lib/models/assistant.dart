@@ -6,8 +6,6 @@ import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'settings.dart';
-
 part 'assistant.freezed.dart';
 part 'assistant.g.dart';
 
@@ -27,19 +25,15 @@ abstract class AssistantPaneModel with _$AssistantPaneModel {
   }) = _AssistantPaneModel;
 }
 
-/// Application-layer store of the assistant: profiles, chats, composer pins,
+/// Application-layer store of the assistant: chats, composer pins,
 /// the docked pane, and the in-flight approval / question cards.
 @freezed
 abstract class AssistantModel with _$AssistantModel {
   const AssistantModel._();
 
   const factory AssistantModel({
-    @Default([]) List<AssistantProfileModel> profiles,
-    @Default(AssistantProfileModel.defaultId) String activeProfileId,
     @Default([]) List<AssistantChatModel> chats,
     @Default(AssistantChatModel.defaultId) String activeChatId,
-    @Default('OPENAI_API_KEY') String apiKeyRef,
-    @Default(false) bool autoApprove,
     @Default([]) List<ComposerPinModel> pins,
     String? error,
     PendingChangeSet? approval,
@@ -54,13 +48,6 @@ abstract class AssistantModel with _$AssistantModel {
       if (chat.id == activeChatId) return chat;
     }
     return chats.first;
-  }
-
-  AssistantProfileModel get activeProfile {
-    for (final profile in profiles) {
-      if (profile.id == activeProfileId) return profile;
-    }
-    return profiles.first;
   }
 }
 

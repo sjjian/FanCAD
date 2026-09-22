@@ -274,7 +274,7 @@ as double,
 /// @nodoc
 mixin _$AssistantModel {
 
- List<AssistantProfileModel> get profiles; String get activeProfileId; List<AssistantChatModel> get chats; String get activeChatId; String get apiKeyRef; bool get autoApprove; List<ComposerPinModel> get pins; String? get error; PendingChangeSet? get approval; SessionQuestion? get question; bool get busy; int get transcriptEpoch; AssistantPaneModel get pane;
+ List<AssistantChatModel> get chats; String get activeChatId; List<ComposerPinModel> get pins; String? get error; PendingChangeSet? get approval; SessionQuestion? get question; bool get busy; int get transcriptEpoch; AssistantPaneModel get pane;
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -285,16 +285,16 @@ $AssistantModelCopyWith<AssistantModel> get copyWith => _$AssistantModelCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantModel&&const DeepCollectionEquality().equals(other.profiles, profiles)&&(identical(other.activeProfileId, activeProfileId) || other.activeProfileId == activeProfileId)&&const DeepCollectionEquality().equals(other.chats, chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&(identical(other.apiKeyRef, apiKeyRef) || other.apiKeyRef == apiKeyRef)&&(identical(other.autoApprove, autoApprove) || other.autoApprove == autoApprove)&&const DeepCollectionEquality().equals(other.pins, pins)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pane, pane) || other.pane == pane));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantModel&&const DeepCollectionEquality().equals(other.chats, chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other.pins, pins)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pane, pane) || other.pane == pane));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(profiles),activeProfileId,const DeepCollectionEquality().hash(chats),activeChatId,apiKeyRef,autoApprove,const DeepCollectionEquality().hash(pins),error,approval,question,busy,transcriptEpoch,pane);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(chats),activeChatId,const DeepCollectionEquality().hash(pins),error,approval,question,busy,transcriptEpoch,pane);
 
 @override
 String toString() {
-  return 'AssistantModel(profiles: $profiles, activeProfileId: $activeProfileId, chats: $chats, activeChatId: $activeChatId, apiKeyRef: $apiKeyRef, autoApprove: $autoApprove, pins: $pins, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch, pane: $pane)';
+  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch, pane: $pane)';
 }
 
 
@@ -305,7 +305,7 @@ abstract mixin class $AssistantModelCopyWith<$Res>  {
   factory $AssistantModelCopyWith(AssistantModel value, $Res Function(AssistantModel) _then) = _$AssistantModelCopyWithImpl;
 @useResult
 $Res call({
- List<AssistantProfileModel> profiles, String activeProfileId, List<AssistantChatModel> chats, String activeChatId, String apiKeyRef, bool autoApprove, List<ComposerPinModel> pins, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch, AssistantPaneModel pane
+ List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch, AssistantPaneModel pane
 });
 
 
@@ -322,15 +322,11 @@ class _$AssistantModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? profiles = null,Object? activeProfileId = null,Object? chats = null,Object? activeChatId = null,Object? apiKeyRef = null,Object? autoApprove = null,Object? pins = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,Object? pane = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,Object? pane = null,}) {
   return _then(_self.copyWith(
-profiles: null == profiles ? _self.profiles : profiles // ignore: cast_nullable_to_non_nullable
-as List<AssistantProfileModel>,activeProfileId: null == activeProfileId ? _self.activeProfileId : activeProfileId // ignore: cast_nullable_to_non_nullable
-as String,chats: null == chats ? _self.chats : chats // ignore: cast_nullable_to_non_nullable
+chats: null == chats ? _self.chats : chats // ignore: cast_nullable_to_non_nullable
 as List<AssistantChatModel>,activeChatId: null == activeChatId ? _self.activeChatId : activeChatId // ignore: cast_nullable_to_non_nullable
-as String,apiKeyRef: null == apiKeyRef ? _self.apiKeyRef : apiKeyRef // ignore: cast_nullable_to_non_nullable
-as String,autoApprove: null == autoApprove ? _self.autoApprove : autoApprove // ignore: cast_nullable_to_non_nullable
-as bool,pins: null == pins ? _self.pins : pins // ignore: cast_nullable_to_non_nullable
+as String,pins: null == pins ? _self.pins : pins // ignore: cast_nullable_to_non_nullable
 as List<ComposerPinModel>,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,approval: freezed == approval ? _self.approval : approval // ignore: cast_nullable_to_non_nullable
 as PendingChangeSet?,question: freezed == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
@@ -431,10 +427,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AssistantProfileModel> profiles,  String activeProfileId,  List<AssistantChatModel> chats,  String activeChatId,  String apiKeyRef,  bool autoApprove,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  AssistantPaneModel pane)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  AssistantPaneModel pane)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AssistantModel() when $default != null:
-return $default(_that.profiles,_that.activeProfileId,_that.chats,_that.activeChatId,_that.apiKeyRef,_that.autoApprove,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pane);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pane);case _:
   return orElse();
 
 }
@@ -452,10 +448,10 @@ return $default(_that.profiles,_that.activeProfileId,_that.chats,_that.activeCha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AssistantProfileModel> profiles,  String activeProfileId,  List<AssistantChatModel> chats,  String activeChatId,  String apiKeyRef,  bool autoApprove,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  AssistantPaneModel pane)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  AssistantPaneModel pane)  $default,) {final _that = this;
 switch (_that) {
 case _AssistantModel():
-return $default(_that.profiles,_that.activeProfileId,_that.chats,_that.activeChatId,_that.apiKeyRef,_that.autoApprove,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pane);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pane);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -472,10 +468,10 @@ return $default(_that.profiles,_that.activeProfileId,_that.chats,_that.activeCha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AssistantProfileModel> profiles,  String activeProfileId,  List<AssistantChatModel> chats,  String activeChatId,  String apiKeyRef,  bool autoApprove,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  AssistantPaneModel pane)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  AssistantPaneModel pane)?  $default,) {final _that = this;
 switch (_that) {
 case _AssistantModel() when $default != null:
-return $default(_that.profiles,_that.activeProfileId,_that.chats,_that.activeChatId,_that.apiKeyRef,_that.autoApprove,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pane);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pane);case _:
   return null;
 
 }
@@ -487,17 +483,9 @@ return $default(_that.profiles,_that.activeProfileId,_that.chats,_that.activeCha
 
 
 class _AssistantModel extends AssistantModel {
-  const _AssistantModel({final  List<AssistantProfileModel> profiles = const [], this.activeProfileId = AssistantProfileModel.defaultId, final  List<AssistantChatModel> chats = const [], this.activeChatId = AssistantChatModel.defaultId, this.apiKeyRef = 'OPENAI_API_KEY', this.autoApprove = false, final  List<ComposerPinModel> pins = const [], this.error, this.approval, this.question, this.busy = false, this.transcriptEpoch = 0, this.pane = const AssistantPaneModel()}): _profiles = profiles,_chats = chats,_pins = pins,super._();
+  const _AssistantModel({final  List<AssistantChatModel> chats = const [], this.activeChatId = AssistantChatModel.defaultId, final  List<ComposerPinModel> pins = const [], this.error, this.approval, this.question, this.busy = false, this.transcriptEpoch = 0, this.pane = const AssistantPaneModel()}): _chats = chats,_pins = pins,super._();
   
 
- final  List<AssistantProfileModel> _profiles;
-@override@JsonKey() List<AssistantProfileModel> get profiles {
-  if (_profiles is EqualUnmodifiableListView) return _profiles;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_profiles);
-}
-
-@override@JsonKey() final  String activeProfileId;
  final  List<AssistantChatModel> _chats;
 @override@JsonKey() List<AssistantChatModel> get chats {
   if (_chats is EqualUnmodifiableListView) return _chats;
@@ -506,8 +494,6 @@ class _AssistantModel extends AssistantModel {
 }
 
 @override@JsonKey() final  String activeChatId;
-@override@JsonKey() final  String apiKeyRef;
-@override@JsonKey() final  bool autoApprove;
  final  List<ComposerPinModel> _pins;
 @override@JsonKey() List<ComposerPinModel> get pins {
   if (_pins is EqualUnmodifiableListView) return _pins;
@@ -532,16 +518,16 @@ _$AssistantModelCopyWith<_AssistantModel> get copyWith => __$AssistantModelCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantModel&&const DeepCollectionEquality().equals(other._profiles, _profiles)&&(identical(other.activeProfileId, activeProfileId) || other.activeProfileId == activeProfileId)&&const DeepCollectionEquality().equals(other._chats, _chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&(identical(other.apiKeyRef, apiKeyRef) || other.apiKeyRef == apiKeyRef)&&(identical(other.autoApprove, autoApprove) || other.autoApprove == autoApprove)&&const DeepCollectionEquality().equals(other._pins, _pins)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pane, pane) || other.pane == pane));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantModel&&const DeepCollectionEquality().equals(other._chats, _chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other._pins, _pins)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pane, pane) || other.pane == pane));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_profiles),activeProfileId,const DeepCollectionEquality().hash(_chats),activeChatId,apiKeyRef,autoApprove,const DeepCollectionEquality().hash(_pins),error,approval,question,busy,transcriptEpoch,pane);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_chats),activeChatId,const DeepCollectionEquality().hash(_pins),error,approval,question,busy,transcriptEpoch,pane);
 
 @override
 String toString() {
-  return 'AssistantModel(profiles: $profiles, activeProfileId: $activeProfileId, chats: $chats, activeChatId: $activeChatId, apiKeyRef: $apiKeyRef, autoApprove: $autoApprove, pins: $pins, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch, pane: $pane)';
+  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch, pane: $pane)';
 }
 
 
@@ -552,7 +538,7 @@ abstract mixin class _$AssistantModelCopyWith<$Res> implements $AssistantModelCo
   factory _$AssistantModelCopyWith(_AssistantModel value, $Res Function(_AssistantModel) _then) = __$AssistantModelCopyWithImpl;
 @override @useResult
 $Res call({
- List<AssistantProfileModel> profiles, String activeProfileId, List<AssistantChatModel> chats, String activeChatId, String apiKeyRef, bool autoApprove, List<ComposerPinModel> pins, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch, AssistantPaneModel pane
+ List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch, AssistantPaneModel pane
 });
 
 
@@ -569,15 +555,11 @@ class __$AssistantModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? profiles = null,Object? activeProfileId = null,Object? chats = null,Object? activeChatId = null,Object? apiKeyRef = null,Object? autoApprove = null,Object? pins = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,Object? pane = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,Object? pane = null,}) {
   return _then(_AssistantModel(
-profiles: null == profiles ? _self._profiles : profiles // ignore: cast_nullable_to_non_nullable
-as List<AssistantProfileModel>,activeProfileId: null == activeProfileId ? _self.activeProfileId : activeProfileId // ignore: cast_nullable_to_non_nullable
-as String,chats: null == chats ? _self._chats : chats // ignore: cast_nullable_to_non_nullable
+chats: null == chats ? _self._chats : chats // ignore: cast_nullable_to_non_nullable
 as List<AssistantChatModel>,activeChatId: null == activeChatId ? _self.activeChatId : activeChatId // ignore: cast_nullable_to_non_nullable
-as String,apiKeyRef: null == apiKeyRef ? _self.apiKeyRef : apiKeyRef // ignore: cast_nullable_to_non_nullable
-as String,autoApprove: null == autoApprove ? _self.autoApprove : autoApprove // ignore: cast_nullable_to_non_nullable
-as bool,pins: null == pins ? _self._pins : pins // ignore: cast_nullable_to_non_nullable
+as String,pins: null == pins ? _self._pins : pins // ignore: cast_nullable_to_non_nullable
 as List<ComposerPinModel>,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,approval: freezed == approval ? _self.approval : approval // ignore: cast_nullable_to_non_nullable
 as PendingChangeSet?,question: freezed == question ? _self.question : question // ignore: cast_nullable_to_non_nullable

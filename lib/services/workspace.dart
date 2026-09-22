@@ -16,7 +16,6 @@ import '../l10n/l10n.dart';
 import '../models/command_line.dart';
 import '../models/workspace.dart';
 import '../storage/drawing_settings.dart';
-import 'appearance.dart';
 import 'command_line.dart';
 import 'providers.dart';
 
@@ -118,10 +117,8 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       ref.read(commandLineNotifierProvider.notifier);
 
   @override
-  String get locale {
-    final value = ref.read(appearanceNotifierProvider).language.trim();
-    return value.isEmpty ? 'en' : value;
-  }
+  String get locale =>
+      FanCadLanguage.parse(ref.read(appSettingsProvider).appearance.language());
 
   /// Snapping is application-wide rather than per-tab, because the toggles live
   /// on the canvas HUD and users expect them to stay put when switching tabs.

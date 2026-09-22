@@ -6,8 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/l10n.dart';
 import '../models/settings.dart';
-import '../services/appearance.dart';
-import '../services/mcp.dart';
+import '../services/settings.dart';
 import '../services/workspace.dart';
 import 'widgets/theme.dart';
 import 'workspace/workbench.dart';

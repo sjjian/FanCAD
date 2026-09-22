@@ -11,15 +11,16 @@ Future<CommandResult> _noop(CommandContext context) async =>
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  AssistantNotifier controller({SettingsStore? settings}) {
+  Headless headless({SettingsStore? settings}) {
     final store = settings ?? SettingsStore.inMemory();
     store.set(SettingsKeys.aiApiKeyRef, 'FANCAD_TEST_MISSING_KEY');
     store.set(SettingsKeys.aiApiKey, '');
-    return Headless(
-      settings: store,
-      document: false,
-    ).container.read(assistantNotifierProvider.notifier);
+    return Headless(settings: store, document: false);
   }
+
+  AssistantNotifier controller({SettingsStore? settings}) => headless(
+    settings: settings,
+  ).container.read(assistantNotifierProvider.notifier);
 
   test('model, endpoint and auto-approve persist in settings', () {
     final store = SettingsStore.inMemory();
@@ -27,47 +28,60 @@ void main() {
     store.set(SettingsKeys.aiApiKey, '');
     final app = Headless(settings: store, document: false);
     final ai = app.container.read(assistantNotifierProvider.notifier);
+    final accounts = app.container.read(
+      assistantAccountsNotifierProvider.notifier,
+    );
     var ticks = 0;
+    var accountTicks = 0;
     app.container.listen(assistantNotifierProvider, (_, _) => ticks++);
+    app.container.listen(
+      assistantAccountsNotifierProvider,
+      (_, _) => accountTicks++,
+    );
 
     ai.setDraft('draw a line');
-    ai.setModel('deepseek-chat');
-    ai.setBaseUrl('http://127.0.0.1:9/v1');
-    ai.setAutoApprove(true);
-    ai.setApiKey('sk-test');
+    accounts.setModel('deepseek-chat');
+    accounts.setBaseUrl('http://127.0.0.1:9/v1');
+    accounts.setAutoApprove(true);
+    accounts.setApiKey('sk-test');
 
     expect(ai.state.activeChat.draft, 'draw a line');
-    expect(ai.state.activeProfile.model, 'deepseek-chat');
-    expect(ai.state.activeProfile.baseUrl, 'http://127.0.0.1:9/v1');
-    expect(ai.state.autoApprove, isTrue);
-    expect(ai.state.activeProfile.apiKey, 'sk-test');
-    expect(ai.state.activeProfile.model, 'deepseek-chat');
-    expect(ai.state.activeProfile.apiKey, 'sk-test');
-    expect(ticks, 5);
+    expect(accounts.state.activeProfile.model, 'deepseek-chat');
+    expect(accounts.state.activeProfile.baseUrl, 'http://127.0.0.1:9/v1');
+    expect(accounts.state.autoApprove, isTrue);
+    expect(accounts.state.activeProfile.apiKey, 'sk-test');
+    expect(accounts.state.activeProfile.model, 'deepseek-chat');
+    expect(accounts.state.activeProfile.apiKey, 'sk-test');
+    expect(ticks, 1);
+    expect(accountTicks, 4);
   });
 
   test('selecting a leftover profile swaps model, endpoint and key', () {
-    final ai = controller();
-    ai.setModel('deepseek-chat');
-    ai.setBaseUrl('https://api.deepseek.com/v1');
-    ai.setApiKey('sk-one');
-    ai.addProfile();
-    ai.setModel('gpt-4o-mini');
-    ai.setBaseUrl('https://api.openai.com/v1');
-    ai.setApiKey('sk-two');
+    final app = headless();
+    final ai = app.container.read(assistantNotifierProvider.notifier);
+    final accounts = app.container.read(
+      assistantAccountsNotifierProvider.notifier,
+    );
+    accounts.setModel('deepseek-chat');
+    accounts.setBaseUrl('https://api.deepseek.com/v1');
+    accounts.setApiKey('sk-one');
+    accounts.addProfile();
+    accounts.setModel('gpt-4o-mini');
+    accounts.setBaseUrl('https://api.openai.com/v1');
+    accounts.setApiKey('sk-two');
 
-    expect(ai.state.profiles, hasLength(2));
-    expect(ai.state.activeProfile.model, 'gpt-4o-mini');
+    expect(accounts.state.profiles, hasLength(2));
+    expect(accounts.state.activeProfile.model, 'gpt-4o-mini');
 
-    ai.selectProfile(ai.state.profiles.first.id);
-    expect(ai.state.activeProfile.model, 'deepseek-chat');
-    expect(ai.state.activeProfile.baseUrl, 'https://api.deepseek.com/v1');
-    expect(ai.state.activeProfile.apiKey, 'sk-one');
-    expect(ai.state.activeProfile.model, 'deepseek-chat');
+    accounts.selectProfile(accounts.state.profiles.first.id);
+    expect(accounts.state.activeProfile.model, 'deepseek-chat');
+    expect(accounts.state.activeProfile.baseUrl, 'https://api.deepseek.com/v1');
+    expect(accounts.state.activeProfile.apiKey, 'sk-one');
+    expect(accounts.state.activeProfile.model, 'deepseek-chat');
 
     ai.debugSetBusy(true);
-    ai.selectProfile(ai.state.profiles.last.id);
-    expect(ai.state.activeProfile.model, 'deepseek-chat');
+    accounts.selectProfile(accounts.state.profiles.last.id);
+    expect(accounts.state.activeProfile.model, 'deepseek-chat');
   });
 
   test('a leftover empty new session is not duplicated', () {
@@ -152,11 +166,15 @@ void main() {
   );
 
   test('clearing a leftover pasted key forgets it', () {
-    final ai = controller();
-    ai.setApiKey('sk-x');
-    expect(ai.state.activeProfile.apiKey, 'sk-x');
-    ai.setApiKey('');
-    expect(ai.state.activeProfile.apiKey, isEmpty);
+    final app = headless();
+    final ai = app.container.read(assistantNotifierProvider.notifier);
+    final accounts = app.container.read(
+      assistantAccountsNotifierProvider.notifier,
+    );
+    accounts.setApiKey('sk-x');
+    expect(accounts.state.activeProfile.apiKey, 'sk-x');
+    accounts.setApiKey('');
+    expect(accounts.state.activeProfile.apiKey, isEmpty);
     expect(ai.isConfigured, isFalse);
   });
 
@@ -239,8 +257,12 @@ void main() {
   });
 
   test('testProfile without a key notifies an error', () async {
-    final ai = controller();
-    await ai.testProfile(ai.state.activeProfile);
+    final app = headless();
+    final ai = app.container.read(assistantNotifierProvider.notifier);
+    final accounts = app.container.read(
+      assistantAccountsNotifierProvider.notifier,
+    );
+    await accounts.testProfile(accounts.state.activeProfile);
     expect(ai.workspace.state.notices, isNotEmpty);
     expect(ai.workspace.state.notices.last.isError, isTrue);
     expect(ai.workspace.state.notices.last.message, contains('No API key'));
