@@ -2305,6 +2305,75 @@ static uint32_t extract_sat_loops(coords *g, box *bounds, int64_t *runs,
   return run_count;
 }
 
+/* A clockwise hatch arc stores its angles in that clockwise frame. Feeding
+ * those numbers to a counter-clockwise parametrization draws the other half
+ * of the circle: a large-radius span along a logo outline then lands on the
+ * far side and stretches the fill into a spike. Negate first so both frames
+ * share one counter-clockwise parameter. */
+static double hatch_arc_angle(double angle, int ccw) {
+  return ccw ? angle : -angle;
+}
+
+/* Shortest signed sweep from a0 to a1, in (-π, π]. */
+static double hatch_short_sweep(double a0, double a1) {
+  double d = a1 - a0;
+  const double pi = 3.14159265358979323846;
+  const double tau = 6.28318530717958647692;
+  while (d <= -pi) d += tau;
+  while (d > pi) d -= tau;
+  return d;
+}
+
+static void hatch_push_xy(coords *out, uint32_t *point_count, double x,
+                          double y) {
+  if (*point_count > 0) {
+    double dx = x - out->data[out->length - 2];
+    double dy = y - out->data[out->length - 1];
+    if (dx * dx + dy * dy < 1e-8) return;
+  }
+  coords_push2(out, x, y);
+  (*point_count)++;
+}
+
+static void hatch_push_arc(coords *out, uint32_t *point_count, double cx,
+                           double cy, double radius, double start_angle,
+                           double end_angle, int ccw) {
+  double a0 = hatch_arc_angle(start_angle, ccw);
+  double a1 = hatch_arc_angle(end_angle, ccw);
+  double sweep = hatch_short_sweep(a0, a1);
+  int steps = (int)(fabs(sweep) / 0.19634954084936207); /* π/16 */
+  int i;
+  if (radius < 0.0) radius = -radius;
+  if (steps < 1) steps = 1;
+  if (steps > 64) steps = 64;
+  for (i = 0; i <= steps; i++) {
+    double t = a0 + sweep * (double)i / (double)steps;
+    hatch_push_xy(out, point_count, cx + radius * cos(t),
+                  cy + radius * sin(t));
+  }
+}
+
+static void hatch_push_ellipse(coords *out, uint32_t *point_count, double cx,
+                               double cy, double mx, double my, double ratio,
+                               double start_angle, double end_angle, int ccw) {
+  double a0 = hatch_arc_angle(start_angle, ccw);
+  double a1 = hatch_arc_angle(end_angle, ccw);
+  double sweep = hatch_short_sweep(a0, a1);
+  double bx = -my * ratio;
+  double by = mx * ratio;
+  int steps = (int)(fabs(sweep) / 0.19634954084936207);
+  int i;
+  if (steps < 1) steps = 1;
+  if (steps > 64) steps = 64;
+  for (i = 0; i <= steps; i++) {
+    double t = a0 + sweep * (double)i / (double)steps;
+    double ct = cos(t);
+    double st = sin(t);
+    hatch_push_xy(out, point_count, cx + mx * ct + bx * st,
+                  cy + my * ct + by * st);
+  }
+}
+
 static void import_hatch_paths(import_state *s, Dwg_Entity_HATCH *hatch,
                                coords *out, int64_t *ints,
                                uint32_t *int_count) {
@@ -2327,9 +2396,9 @@ static void import_hatch_paths(import_state *s, Dwg_Entity_HATCH *hatch,
         point_count++;
       }
     } else {
-      /* Edge boundary. Straight edges are exact; curved edges are reduced to
-       * their chord for now, which keeps the region selectable and filled
-       * while the exact tessellation is still to come. */
+      /* Edge boundary. Straight edges are exact. Arcs and elliptical arcs are
+       * sampled; a clockwise arc's angles are flipped into the same frame
+       * before sampling, or the fill follows the complementary half. */
       uint32_t seg;
       for (seg = 0; seg < p->num_segs_or_paths; seg++) {
         Dwg_HATCH_PathSeg *e;
@@ -2337,24 +2406,20 @@ static void import_hatch_paths(import_state *s, Dwg_Entity_HATCH *hatch,
         e = &p->segs[seg];
         if (e->curve_type == 1) {
           if (point_count == 0) {
-            coords_push2(out, e->first_endpoint.x, e->first_endpoint.y);
-            point_count++;
+            hatch_push_xy(out, &point_count, e->first_endpoint.x,
+                          e->first_endpoint.y);
           }
-          coords_push2(out, e->second_endpoint.x, e->second_endpoint.y);
-          point_count++;
+          hatch_push_xy(out, &point_count, e->second_endpoint.x,
+                        e->second_endpoint.y);
+        } else if (e->curve_type == 2) {
+          hatch_push_arc(out, &point_count, e->center.x, e->center.y, e->radius,
+                         e->start_angle, e->end_angle, e->is_ccw);
+        } else if (e->curve_type == 3) {
+          hatch_push_ellipse(out, &point_count, e->center.x, e->center.y,
+                             e->endpoint.x, e->endpoint.y, e->minor_major_ratio,
+                             e->start_angle, e->end_angle, e->is_ccw);
         } else {
           s->unsupported_hatch_segments++;
-          if (e->curve_type == 2) {
-            /* Circular arc: emit start and end so the loop stays closed. */
-            double cx = e->center.x;
-            double cy = e->center.y;
-            double r = e->radius;
-            coords_push2(out, cx + r * cos(e->start_angle),
-                         cy + r * sin(e->start_angle));
-            coords_push2(out, cx + r * cos(e->end_angle),
-                         cy + r * sin(e->end_angle));
-            point_count += 2;
-          }
         }
       }
     }
