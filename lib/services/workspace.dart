@@ -13,11 +13,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../commands/builtins.dart';
 import '../commands/file/commands.dart';
 import '../l10n/l10n.dart';
+import '../models/command_line.dart';
 import '../models/workspace.dart';
 import '../storage/drawing_settings.dart';
+import 'appearance.dart';
 import 'command_line.dart';
 import 'providers.dart';
-import 'shell.dart';
 
 part 'workspace.g.dart';
 
@@ -83,9 +84,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
               closeSession(session, force: force),
           saveActive: (session, path) => saveSession(session, path),
           recentFiles: () => _drawing.recentFiles,
-          listSessions: () => [
-            for (final id in sessionIds) ?session(id),
-          ],
+          listSessions: () => [for (final id in sessionIds) ?session(id)],
           activeSessionId: () => activeSession?.id,
           activateDrawing: activateDrawing,
         );
@@ -120,7 +119,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   @override
   String get locale {
-    final value = ref.read(shellNotifierProvider).language.trim();
+    final value = ref.read(appearanceNotifierProvider).language.trim();
     return value.isEmpty ? 'en' : value;
   }
 
@@ -153,7 +152,6 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   Timer? _flashTimer;
 
   /// Last geometry the human or the assistant created or changed.
-
 
   List<DocumentTab> get tabs => List.unmodifiable([
     for (final session in _store.sessions) ?_hosts[session.id],
@@ -346,10 +344,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       id: '${_nextSessionId++}',
       document: CadDocument(),
     );
-    return _adopt(
-      _createTab(session),
-      _openRecord(session, isStartPage: true),
-    );
+    return _adopt(_createTab(session), _openRecord(session, isStartPage: true));
   }
 
   /// Opens [path], reporting failures as notices rather than exceptions.
@@ -662,7 +657,9 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   /// Drops the recent-files list. Missing paths otherwise stay in the File
   /// menu and on the empty workspace until the user restarts.
   void _syncRecent() {
-    _setStore(state.copyWith(recentFiles: List<String>.of(_drawing.recentFiles)));
+    _setStore(
+      state.copyWith(recentFiles: List<String>.of(_drawing.recentFiles)),
+    );
   }
 
   void clearRecentFiles() {
@@ -813,10 +810,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
         (_isHostCommand(descriptor.id)
             ? (active ??
                   _createTab(
-                    DocumentSession(
-                      id: 'transient',
-                      document: CadDocument(),
-                    ),
+                    DocumentSession(id: 'transient', document: CadDocument()),
                   ))
             : newDocument(title: 'Drawing1'));
     _setStore(_store.copyWith(runningCommand: descriptor.id));
@@ -1304,12 +1298,8 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       runningCommand: runningCommand,
       prompt: commandLine.pending?.message,
       collectedPointCount: collectedPointCount,
-      lastCreatedIds: [
-        ...lastCreatedIds.take(SessionSnapshot.maxResultIds),
-      ],
-      lastModifiedIds: [
-        ...lastModifiedIds.take(SessionSnapshot.maxResultIds),
-      ],
+      lastCreatedIds: [...lastCreatedIds.take(SessionSnapshot.maxResultIds)],
+      lastModifiedIds: [...lastModifiedIds.take(SessionSnapshot.maxResultIds)],
     );
   }
 
@@ -1333,7 +1323,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   /// Asks for approval with the affected entities highlighted.
   ///
-  /// With nobody listening — a headless run, a test, a shell that has not
+  /// With nobody listening — a headless run, a test, a window that has not
   /// mounted yet — the answer is no. An unanswerable question must not hang the
   /// command that asked it, and defaulting a destructive operation to "yes"
   /// because no one was watching would be worse than refusing.
@@ -1443,7 +1433,7 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
 
   final List<String> _history = [];
 
-  /// Set by the shell so a document change can drop the right cached geometry.
+  /// Set by the workbench so a document change can drop the right cached geometry.
   ///
   /// Picture recordings live on the canvas widget; tessellation lives on the
   /// tab so hover pick can share it. This hook is how a session change reaches

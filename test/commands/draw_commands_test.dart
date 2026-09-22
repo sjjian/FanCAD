@@ -645,24 +645,27 @@ void main() {
       expect((document.entity(id)! as DimensionEntity).displayText, '6.00 mm');
     });
 
-    test('edit text object changes height without moving the insertion', () async {
-      final created = await run('draw.text', {
-        'content': 'A',
-        'at': [4, 2],
-        'height': 2.5,
-      });
-      final id = (created.data!['ids']! as List).first as int;
+    test(
+      'edit text object changes height without moving the insertion',
+      () async {
+        final created = await run('draw.text', {
+          'content': 'A',
+          'at': [4, 2],
+          'height': 2.5,
+        });
+        final id = (created.data!['ids']! as List).first as int;
 
-      final result = await run('edit.textObject', {
-        'ids': [id],
-        'height': 10,
-      });
+        final result = await run('edit.textObject', {
+          'ids': [id],
+          'height': 10,
+        });
 
-      expect(result.status, CommandStatus.ok, reason: result.message);
-      final text = document.entity(id)! as TextEntity;
-      expect(text.height, 10);
-      expect(text.position, const Vec2(4, 2));
-    });
+        expect(result.status, CommandStatus.ok, reason: result.message);
+        final text = document.entity(id)! as TextEntity;
+        expect(text.height, 10);
+        expect(text.position, const Vec2(4, 2));
+      },
+    );
 
     test('edit text object justifies and recolors in one undo', () async {
       final created = await run('draw.text', {
@@ -1318,25 +1321,28 @@ void main() {
       },
     );
 
-    test('LINE undo drops the last vertex and Close returns to the start', () async {
-      final result = await _runScripted(workspace, 'draw.line', const [
-        Vec2.zero(),
-        Vec2(10, 0),
-        Vec2(10, 10),
-        'Undo',
-        Vec2(0, 10),
-        'Close',
-      ]);
-      expect(result.status, CommandStatus.ok, reason: result.message);
-      final lines = document.entities.whereType<LineEntity>().toList();
-      expect(lines, hasLength(3));
-      expect(lines[0].start, const Vec2.zero());
-      expect(lines[0].end, const Vec2(10, 0));
-      expect(lines[1].start, const Vec2(10, 0));
-      expect(lines[1].end, const Vec2(0, 10));
-      expect(lines[2].start, const Vec2(0, 10));
-      expect(lines[2].end, const Vec2.zero());
-    });
+    test(
+      'LINE undo drops the last vertex and Close returns to the start',
+      () async {
+        final result = await _runScripted(workspace, 'draw.line', const [
+          Vec2.zero(),
+          Vec2(10, 0),
+          Vec2(10, 10),
+          'Undo',
+          Vec2(0, 10),
+          'Close',
+        ]);
+        expect(result.status, CommandStatus.ok, reason: result.message);
+        final lines = document.entities.whereType<LineEntity>().toList();
+        expect(lines, hasLength(3));
+        expect(lines[0].start, const Vec2.zero());
+        expect(lines[0].end, const Vec2(10, 0));
+        expect(lines[1].start, const Vec2(10, 0));
+        expect(lines[1].end, const Vec2(0, 10));
+        expect(lines[2].start, const Vec2(0, 10));
+        expect(lines[2].end, const Vec2.zero());
+      },
+    );
 
     test('PLINE Close seals the last vertex back to the first', () async {
       final result = await _runScripted(workspace, 'draw.polyline', const [

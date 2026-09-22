@@ -7,7 +7,7 @@ import 'package:fancad_ops/fancad_ops.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../ai/skills/bundled.dart';
-import '../models/mcp.dart';
+import '../models/settings.dart';
 import '../storage/mcp_settings.dart';
 import 'providers.dart';
 import 'workspace.dart';

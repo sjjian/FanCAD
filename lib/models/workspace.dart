@@ -110,18 +110,6 @@ abstract class WorkspaceSessionModel with _$WorkspaceSessionModel {
   }) = _WorkspaceSessionModel;
 }
 
-/// The command line pane: history plus the in-flight typed prompt, if any.
-@freezed
-abstract class CommandLineModel with _$CommandLineModel {
-  const factory CommandLineModel({
-    @Default([]) List<HistoryLineModel> lines,
-    CommandPromptModel? prompt,
-    @Default('') String status,
-    String? offeredInput,
-    @Default([]) List<String> entered,
-  }) = _CommandLineModel;
-}
-
 /// A toast-style notification.
 @freezed
 abstract class NoticeModel with _$NoticeModel {
@@ -150,91 +138,10 @@ abstract class ApprovalRequestModel with _$ApprovalRequestModel {
   }) = _ApprovalRequestModel;
 }
 
-/// The severity of a command-history line, which decides its colour.
-enum HistoryLevel { normal, prompt, success, warning, error }
-
-/// One line in the command history pane.
-@freezed
-abstract class HistoryLineModel with _$HistoryLineModel {
-  const factory HistoryLineModel(
-    String text, {
-    @Default(HistoryLevel.normal) HistoryLevel level,
-  }) = _HistoryLineModel;
-}
-
-/// What the command line shows while a verb waits for a typed value.
-@freezed
-abstract class CommandPromptModel with _$CommandPromptModel {
-  const factory CommandPromptModel({
-    required String message,
-    @Default([]) List<String> keywords,
-    @Default(false) bool allowEmpty,
-  }) = _CommandPromptModel;
-}
-
 /// Per-tab Riverpod state: the in-flight tool prompt. Camera and tools stay
 /// on the notifier so a pan does not write this store.
 @freezed
 abstract class DocumentTabModel with _$DocumentTabModel {
-  const factory DocumentTabModel({
-    @Default('') String prompt,
-  }) = _DocumentTabModel;
-}
-
-/// Extension file `plugins.edit` asked the built-in editor to open.
-@freezed
-abstract class PluginEditorTargetModel with _$PluginEditorTargetModel {
-  const factory PluginEditorTargetModel({
-    required String id,
-    required String relative,
-  }) = _PluginEditorTargetModel;
-}
-
-/// Store for the built-in extension editor.
-@freezed
-abstract class PluginEditorModel with _$PluginEditorModel {
-  const factory PluginEditorModel({
-    PluginEditorTargetModel? target,
-    @Default(0) int request,
-  }) = _PluginEditorModel;
-}
-
-/// One contributed command on a discovered extension.
-@freezed
-abstract class PluginCommandRefModel with _$PluginCommandRefModel {
-  const factory PluginCommandRefModel({
-    required String id,
-    @Default('') String title,
-  }) = _PluginCommandRefModel;
-}
-
-/// Snapshot of one installed extension. The pkg [PluginHost] stays on the
-/// notifier; this is what the panel selects.
-@freezed
-abstract class PluginRefModel with _$PluginRefModel {
-  const factory PluginRefModel({
-    required String id,
-    @Default('') String name,
-    @Default('') String version,
-    @Default('installed') String state,
-    String? error,
-    @Default('') String description,
-    @Default('') String directory,
-    @Default('main.js') String entryPoint,
-    @Default([]) List<String> permissions,
-    @Default([]) List<PluginCommandRefModel> commands,
-    @Default([]) List<String> log,
-  }) = _PluginRefModel;
-}
-
-/// Store for discovered extensions: list, logs, and a tick for host changes.
-@freezed
-abstract class PluginModel with _$PluginModel {
-  const factory PluginModel({
-    @Default(false) bool started,
-    @Default('') String directory,
-    @Default([]) List<PluginRefModel> plugins,
-    @Default({}) Map<String, List<String>> logs,
-    @Default(0) int epoch,
-  }) = _PluginModel;
+  const factory DocumentTabModel({@Default('') String prompt}) =
+      _DocumentTabModel;
 }

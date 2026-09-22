@@ -145,24 +145,27 @@ void main() {
       expect(rotated.end.y, closeTo(10, 1e-9));
     });
 
-    test('rotate turns text about the insertion when that is the base', () async {
-      final created = await run('draw.text', {
-        'content': 'A',
-        'at': [5, 0],
-        'height': 2.5,
-      });
-      final id = (created.data!['ids']! as List).first as int;
+    test(
+      'rotate turns text about the insertion when that is the base',
+      () async {
+        final created = await run('draw.text', {
+          'content': 'A',
+          'at': [5, 0],
+          'height': 2.5,
+        });
+        final id = (created.data!['ids']! as List).first as int;
 
-      await run('edit.rotate', {
-        'ids': [id],
-        'base': [5, 0],
-        'angle': 90,
-      });
+        await run('edit.rotate', {
+          'ids': [id],
+          'base': [5, 0],
+          'angle': 90,
+        });
 
-      final rotated = document.entity(id)! as TextEntity;
-      expect(rotated.position, const Vec2(5, 0));
-      expect(rotated.rotation, closeTo(math.pi / 2, 1e-9));
-    });
+        final rotated = document.entity(id)! as TextEntity;
+        expect(rotated.position, const Vec2(5, 0));
+        expect(rotated.rotation, closeTo(math.pi / 2, 1e-9));
+      },
+    );
 
     test('scale multiplies about the base point', () async {
       final id = await drawLine(0, 0, 10, 0);

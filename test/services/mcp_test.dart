@@ -10,63 +10,66 @@ import '../support/workspace.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('ops host lock lets a client list and run on the open drawing', () async {
-    final app = Headless(
-      files: (workspace) => FileCommands(
-        openFile: (_) async => false,
-        newDocument: workspace.newDocument,
-        closeActive: (session, {bool force = false}) => false,
-        saveActive: (session, _) async => null,
-        recentFiles: () => const <String>[],
-      ),
-    );
-    final workspace = app.workspace;
+  test(
+    'ops host lock lets a client list and run on the open drawing',
+    () async {
+      final app = Headless(
+        files: (workspace) => FileCommands(
+          openFile: (_) async => false,
+          newDocument: workspace.newDocument,
+          closeActive: (session, {bool force = false}) => false,
+          saveActive: (session, _) async => null,
+          recentFiles: () => const <String>[],
+        ),
+      );
+      final workspace = app.workspace;
 
-    final dir = tempDir(prefix: 'fancad-mcp');
-    final lockPath = '${dir.path}${Platform.pathSeparator}mcp.lock';
-    final host = app.container.read(mcpNotifierProvider.notifier);
-    await host.start(lockPaths: [lockPath], port: 0);
-    addTearDown(host.stop);
+      final dir = tempDir(prefix: 'fancad-mcp');
+      final lockPath = '${dir.path}${Platform.pathSeparator}mcp.lock';
+      final host = app.container.read(mcpNotifierProvider.notifier);
+      await host.start(lockPaths: [lockPath], port: 0);
+      addTearDown(host.stop);
 
-    final lock = McpLock.readSync(lockPath);
-    expect(lock, isNotNull);
-    expect(lock!.token, isNotEmpty);
-    expect(lock.url, host.url);
+      final lock = McpLock.readSync(lockPath);
+      expect(lock, isNotNull);
+      expect(lock!.token, isNotEmpty);
+      expect(lock.url, host.url);
 
-    final listed = await postMcpJsonRpc(
-      lock.mcpUri,
-      token: lock.token,
-      message: const JsonRpcMessage(
-        id: 1,
-        method: 'tools/call',
-        params: {
-          'name': 'fancad',
-          'arguments': {'action': 'help'},
-        },
-      ),
-    );
-    expect('${listed!.result}', contains('draw'));
+      final listed = await postMcpJsonRpc(
+        lock.mcpUri,
+        token: lock.token,
+        message: const JsonRpcMessage(
+          id: 1,
+          method: 'tools/call',
+          params: {
+            'name': 'fancad',
+            'arguments': {'action': 'help'},
+          },
+        ),
+      );
+      expect('${listed!.result}', contains('draw'));
 
-    final drawn = await postMcpJsonRpc(
-      lock.mcpUri,
-      token: lock.token,
-      message: const JsonRpcMessage(
-        id: 2,
-        method: 'tools/call',
-        params: {
-          'name': 'fancad',
-          'arguments': {
-            'action': 'run',
-            'path': 'draw.line',
-            'args': {
-              'start': [0, 0],
-              'end': [8, 0],
+      final drawn = await postMcpJsonRpc(
+        lock.mcpUri,
+        token: lock.token,
+        message: const JsonRpcMessage(
+          id: 2,
+          method: 'tools/call',
+          params: {
+            'name': 'fancad',
+            'arguments': {
+              'action': 'run',
+              'path': 'draw.line',
+              'args': {
+                'start': [0, 0],
+                'end': [8, 0],
+              },
             },
           },
-        },
-      ),
-    );
-    expect('${drawn!.result}', contains('ok'));
-    expect(workspace.active!.document.entityCount, 1);
-  });
+        ),
+      );
+      expect('${drawn!.result}', contains('ok'));
+      expect(workspace.active!.document.entityCount, 1);
+    },
+  );
 }

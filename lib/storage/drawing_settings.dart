@@ -6,7 +6,8 @@ class DrawingSettings {
 
   final SettingsStore _store;
 
-  List<String> get recentFiles => _store.getStringList(SettingsKeys.recentFiles);
+  List<String> get recentFiles =>
+      _store.getStringList(SettingsKeys.recentFiles);
 
   void setRecentFiles(List<String> paths) =>
       _store.set(SettingsKeys.recentFiles, paths);
@@ -14,8 +15,7 @@ class DrawingSettings {
   void pushRecent(String path) =>
       _store.pushRecent(SettingsKeys.recentFiles, path);
 
-  bool get showGrid =>
-      _store.getBool(SettingsKeys.showGrid, fallback: true);
+  bool get showGrid => _store.getBool(SettingsKeys.showGrid, fallback: true);
 
   void setShowGrid(bool value) => _store.set(SettingsKeys.showGrid, value);
 

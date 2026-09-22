@@ -15,9 +15,10 @@ void main() {
     final store = settings ?? SettingsStore.inMemory();
     store.set(SettingsKeys.aiApiKeyRef, 'FANCAD_TEST_MISSING_KEY');
     store.set(SettingsKeys.aiApiKey, '');
-    return Headless(settings: store, document: false).container.read(
-      assistantNotifierProvider.notifier,
-    );
+    return Headless(
+      settings: store,
+      document: false,
+    ).container.read(assistantNotifierProvider.notifier);
   }
 
   test('model, endpoint and auto-approve persist in settings', () {

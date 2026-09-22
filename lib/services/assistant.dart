@@ -10,6 +10,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../ai/authoring.dart';
 import '../ai/skills/bundled.dart';
 import '../models/assistant.dart';
+import '../models/settings.dart';
 import '../storage/assistant_settings.dart';
 import 'plugin.dart';
 import 'providers.dart';
@@ -20,8 +21,8 @@ part 'assistant.g.dart';
 /// Owns the assistant session for the application.
 ///
 /// Streamed tokens mutate [Conversation] in place, so [AssistantModel.transcriptEpoch]
-/// bumps on each delta and the panel can rebuild without the rest of the shell
-/// knowing an agent exists.
+/// bumps on each delta and the panel can rebuild without the rest of the
+/// window knowing an agent exists.
 @Riverpod(keepAlive: true)
 class AssistantNotifier extends _$AssistantNotifier {
   @override
@@ -42,7 +43,40 @@ class AssistantNotifier extends _$AssistantNotifier {
       activeChatId: assistant.activeChatId(chats),
       apiKeyRef: assistant.apiKeyRef,
       autoApprove: assistant.autoApprove,
+      pane: AssistantPaneModel(
+        isOpen: assistant.paneOpen(),
+        width: assistant
+            .paneWidth(fallback: AssistantPaneLayout.defaultWidth)
+            .clamp(AssistantPaneLayout.minWidth, AssistantPaneLayout.maxWidth),
+      ),
     );
+  }
+
+  void setAssistantOpen(bool value) {
+    state = state.copyWith(pane: state.pane.copyWith(isOpen: value));
+    _assistant.setPaneOpen(value);
+  }
+
+  void toggleAssistant() => setAssistantOpen(!state.pane.isOpen);
+
+  void resizeAssistant(double width) {
+    state = state.copyWith(
+      pane: state.pane.copyWith(
+        width: width.roundToDouble().clamp(
+          AssistantPaneLayout.minWidth,
+          AssistantPaneLayout.maxWidth,
+        ),
+      ),
+    );
+  }
+
+  void commitAssistantWidth() => _assistant.setPaneWidth(state.pane.width);
+
+  void resetAssistantWidth() {
+    state = state.copyWith(
+      pane: state.pane.copyWith(width: AssistantPaneLayout.defaultWidth),
+    );
+    commitAssistantWidth();
   }
 
   Workspace get workspace => ref.read(workspaceNotifierProvider.notifier);
@@ -235,7 +269,9 @@ class AssistantNotifier extends _$AssistantNotifier {
     final activeId = chats.any((chat) => chat.id == _store.activeChatId)
         ? _store.activeChatId
         : chats.first.id;
-    _setStore(_store.copyWith(chats: chats, activeChatId: activeId, error: null));
+    _setStore(
+      _store.copyWith(chats: chats, activeChatId: activeId, error: null),
+    );
     _persistChats();
   }
 

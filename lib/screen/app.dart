@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/l10n.dart';
-import '../models/shell.dart';
+import '../models/settings.dart';
+import '../services/appearance.dart';
 import '../services/mcp.dart';
-import '../services/shell.dart';
 import '../services/workspace.dart';
-import 'theme/theme.dart';
-import 'workbench/workbench.dart';
+import 'widgets/theme.dart';
+import 'workspace/workbench.dart';
 
 /// The application widget. Startup I/O stays in `main.dart` so this tree
 /// can read settings synchronously from the first frame.
@@ -70,11 +70,9 @@ class _FanCadAppState extends ConsumerState<FanCadApp> {
 
   @override
   Widget build(BuildContext context) {
-    final shell = ref.watch(
-      shellNotifierProvider.select((s) => (theme: s.theme, language: s.language)),
-    );
-    final language = shell.language;
-    final themeMode = switch (shell.theme) {
+    final appearance = ref.watch(appearanceNotifierProvider);
+    final language = appearance.language;
+    final themeMode = switch (appearance.theme) {
       ThemePreference.light => ThemeMode.light,
       ThemePreference.system => ThemeMode.system,
       ThemePreference.dark => ThemeMode.dark,

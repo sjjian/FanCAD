@@ -138,8 +138,8 @@ class SettingsStore extends ChangeNotifier {
   }
 }
 
-/// Setting keys used by the shell. Collected in one place so a rename is a
-/// single edit rather than a string hunt.
+/// Setting keys. Collected in one place so a rename is a single edit rather
+/// than a string hunt.
 class SettingsKeys {
   const SettingsKeys._();
 

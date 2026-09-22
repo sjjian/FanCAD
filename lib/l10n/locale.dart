@@ -1,1 +1,1 @@
-export '../models/shell.dart' show FanCadLanguage;
+export '../models/settings.dart' show FanCadLanguage;

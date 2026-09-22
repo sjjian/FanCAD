@@ -1,6 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../models/workspace.dart';
+import '../models/plugin.dart';
 
 part 'plugin_editor.g.dart';
 

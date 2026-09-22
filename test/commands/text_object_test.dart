@@ -36,17 +36,19 @@ void main() {
   });
 
   group('edit.textObject', () {
-    test('refuses a call with no content, height, colour, justify or rotation',
-        () async {
-      final id = await addText();
+    test(
+      'refuses a call with no content, height, colour, justify or rotation',
+      () async {
+        final id = await addText();
 
-      final result = await run('edit.textObject', {
-        'ids': [id],
-      });
+        final result = await run('edit.textObject', {
+          'ids': [id],
+        });
 
-      expect(result.status, CommandStatus.failed);
-      expect((document.entity(id)! as TextEntity).content, 'A');
-    });
+        expect(result.status, CommandStatus.failed);
+        expect((document.entity(id)! as TextEntity).content, 'A');
+      },
+    );
 
     test('refuses a non-text selection', () async {
       final id = await app.drawLine(0, 0, 10, 0);
@@ -195,33 +197,36 @@ void main() {
       expect(def.hAlign, TextHAlign.right);
     });
 
-    test('mleader height and attachment change without moving vertices', () async {
-      late final int id;
-      workspace.active!.session.edit('seed', (transaction) {
-        id = transaction.add(
-          MLeaderEntity(
-            id: 0,
-            vertices: Float64List.fromList([0, 0, 10, 0]),
-            content: 'NOTE',
-            textPosition: const Vec2(10, 1),
-            textHeight: 2.5,
-            attachment: 4,
-          ),
-        );
-      });
+    test(
+      'mleader height and attachment change without moving vertices',
+      () async {
+        late final int id;
+        workspace.active!.session.edit('seed', (transaction) {
+          id = transaction.add(
+            MLeaderEntity(
+              id: 0,
+              vertices: Float64List.fromList([0, 0, 10, 0]),
+              content: 'NOTE',
+              textPosition: const Vec2(10, 1),
+              textHeight: 2.5,
+              attachment: 4,
+            ),
+          );
+        });
 
-      final result = await run('edit.textObject', {
-        'ids': [id],
-        'height': 5,
-        'justify': 'tr',
-      });
+        final result = await run('edit.textObject', {
+          'ids': [id],
+          'height': 5,
+          'justify': 'tr',
+        });
 
-      expect(result.status, CommandStatus.ok, reason: result.message);
-      final leader = document.entity(id)! as MLeaderEntity;
-      expect(leader.textHeight, 5);
-      expect(leader.attachment, 3);
-      expect(leader.vertices.toList(), [0.0, 0.0, 10.0, 0.0]);
-    });
+        expect(result.status, CommandStatus.ok, reason: result.message);
+        final leader = document.entity(id)! as MLeaderEntity;
+        expect(leader.textHeight, 5);
+        expect(leader.attachment, 3);
+        expect(leader.vertices.toList(), [0.0, 0.0, 10.0, 0.0]);
+      },
+    );
 
     test('a dimension accepts colour and override, not height', () async {
       final created = await run('draw.dimLinear', {
@@ -309,10 +314,7 @@ void main() {
 
       expect(result.status, CommandStatus.ok, reason: result.message);
       expect((document.entity(textId)! as TextEntity).height, 8);
-      expect(
-        (document.entity(lineId)! as LineEntity).end,
-        const Vec2(10, 0),
-      );
+      expect((document.entity(lineId)! as LineEntity).end, const Vec2(10, 0));
     });
 
     test('refuses empty MTEXT and mleader notes', () async {
@@ -372,29 +374,32 @@ void main() {
       expect((document.entity(id)! as AttribEntity).value, isEmpty);
     });
 
-    test('empty content fails the whole set when any target requires it', () async {
-      final textId = await addText(content: 'ROOM');
-      late final int attribId;
-      workspace.active!.session.edit('seed', (transaction) {
-        attribId = transaction.add(
-          const AttribEntity(
-            id: 0,
-            position: Vec2.zero(),
-            tag: 'TITLE',
-            value: 'OLD',
-          ),
-        );
-      });
+    test(
+      'empty content fails the whole set when any target requires it',
+      () async {
+        final textId = await addText(content: 'ROOM');
+        late final int attribId;
+        workspace.active!.session.edit('seed', (transaction) {
+          attribId = transaction.add(
+            const AttribEntity(
+              id: 0,
+              position: Vec2.zero(),
+              tag: 'TITLE',
+              value: 'OLD',
+            ),
+          );
+        });
 
-      final result = await run('edit.textObject', {
-        'ids': [textId, attribId],
-        'text': '',
-      });
+        final result = await run('edit.textObject', {
+          'ids': [textId, attribId],
+          'text': '',
+        });
 
-      expect(result.status, CommandStatus.failed);
-      expect((document.entity(textId)! as TextEntity).content, 'ROOM');
-      expect((document.entity(attribId)! as AttribEntity).value, 'OLD');
-    });
+        expect(result.status, CommandStatus.failed);
+        expect((document.entity(textId)! as TextEntity).content, 'ROOM');
+        expect((document.entity(attribId)! as AttribEntity).value, 'OLD');
+      },
+    );
 
     test('colour alone recolors without moving the insertion', () async {
       final id = await addText(at: [4, 2], height: 2.5);
@@ -493,7 +498,11 @@ void main() {
         'widthFactor': 0.8,
         'oblique': 15,
       });
-      expect(createdStyle.status, CommandStatus.ok, reason: createdStyle.message);
+      expect(
+        createdStyle.status,
+        CommandStatus.ok,
+        reason: createdStyle.message,
+      );
       final id = await addText(content: 'A', at: const [1, 2]);
 
       final result = await run('edit.textObject', {
@@ -523,31 +532,31 @@ void main() {
       expect((document.entity(id)! as TextEntity).styleName, 'Standard');
     });
 
-    test('mtext column width can be set without moving the attachment', () async {
-      final created = await run('draw.mtext', {
-        'content': 'NOTE',
-        'at': [10, 20],
-        'height': 2.5,
-        'width': 40,
-      });
-      final id = (created.data!['ids']! as List).first as int;
+    test(
+      'mtext column width can be set without moving the attachment',
+      () async {
+        final created = await run('draw.mtext', {
+          'content': 'NOTE',
+          'at': [10, 20],
+          'height': 2.5,
+          'width': 40,
+        });
+        final id = (created.data!['ids']! as List).first as int;
 
-      final result = await run('edit.textObject', {
-        'ids': [id],
-        'width': 80,
-      });
+        final result = await run('edit.textObject', {
+          'ids': [id],
+          'width': 80,
+        });
 
-      expect(result.status, CommandStatus.ok, reason: result.message);
-      final note = document.entity(id)! as MTextEntity;
-      expect(note.rectangleWidth, 80);
-      expect(note.position, const Vec2(10, 20));
-    });
+        expect(result.status, CommandStatus.ok, reason: result.message);
+        final note = document.entity(id)! as MTextEntity;
+        expect(note.rectangleWidth, 80);
+        expect(note.position, const Vec2(10, 20));
+      },
+    );
 
     test('a fixed-height style writes that height onto TEXT', () async {
-      await run('annot.textstyle', {
-        'name': 'Title',
-        'height': 8,
-      });
+      await run('annot.textstyle', {'name': 'Title', 'height': 8});
       final id = await addText(height: 2.5);
 
       final result = await run('edit.textObject', {

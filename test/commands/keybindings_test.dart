@@ -30,10 +30,9 @@ void main() {
     });
 
     test('unmodified keys and numpad extras parse', () {
-      expect(
-        _chords(parseKeybinding('home')),
-        [(LogicalKeyboardKey.home, false, false, false)],
-      );
+      expect(_chords(parseKeybinding('home')), [
+        (LogicalKeyboardKey.home, false, false, false),
+      ]);
       expect(
         _chords(parseKeybinding('ctrl+numpadadd')),
         contains((LogicalKeyboardKey.numpadAdd, true, false, false)),

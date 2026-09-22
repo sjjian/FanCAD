@@ -5,7 +5,8 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../models/workspace.dart';
+import '../models/command_line.dart';
+import 'providers.dart';
 
 part 'command_line.g.dart';
 
@@ -68,12 +69,60 @@ class PendingEntry {
 /// [BuildContext] to do so.
 @Riverpod(keepAlive: true)
 class CommandLineNotifier extends _$CommandLineNotifier {
+  /// Not persisted. Survives a settings-driven [build] rebuild.
+  bool _paletteOpen = false;
+  bool _commandExpanded = false;
+
   @override
   CommandLineModel build() {
     historyLimit = ref.read(commandLineHistoryLimitOverrideProvider) ?? 500;
     ref.onDispose(() => _pending?.cancel('Closed'));
-    return const CommandLineModel();
+    final height = ref
+        .read(appSettingsProvider)
+        .commandLine
+        .paneHeight(fallback: CommandLineLayout.defaultHeight)
+        .clamp(CommandLineLayout.minHeight, CommandLineLayout.maxHeight);
+    return CommandLineModel(
+      pane: CommandPaneModel(height: height, isExpanded: _commandExpanded),
+      paletteOpen: _paletteOpen,
+    );
   }
+
+  void resizeCommand(double height) {
+    state = state.copyWith(
+      pane: state.pane.copyWith(
+        height: height.clamp(
+          CommandLineLayout.minHeight,
+          CommandLineLayout.maxHeight,
+        ),
+      ),
+    );
+  }
+
+  void commitCommandHeight() => ref
+      .read(appSettingsProvider)
+      .commandLine
+      .setPaneHeight(state.pane.height);
+
+  void toggleCommandExpanded() {
+    _commandExpanded = !state.pane.isExpanded;
+    state = state.copyWith(
+      pane: state.pane.copyWith(
+        isExpanded: _commandExpanded,
+        height: _commandExpanded
+            ? CommandLineLayout.expandedHeight
+            : CommandLineLayout.collapsedHeight,
+      ),
+    );
+  }
+
+  void setPaletteOpen(bool value) {
+    if (_paletteOpen == value) return;
+    _paletteOpen = value;
+    state = state.copyWith(paletteOpen: value);
+  }
+
+  void togglePalette() => setPaletteOpen(!state.paletteOpen);
 
   late final int historyLimit;
 

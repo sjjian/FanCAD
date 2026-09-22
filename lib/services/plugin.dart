@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../commands/plugin/commands.dart';
-import '../models/workspace.dart';
+import '../models/plugin.dart';
 import '../storage/plugin_settings.dart';
 import 'plugin_editor.dart';
 import 'providers.dart';
@@ -151,6 +151,7 @@ class PluginNotifier extends _$PluginNotifier {
     if (directory.isEmpty) {
       return PluginModel(directory: directory);
     }
+
     /// The extension host, or null when this session has no extensions folder.
     ///
     /// Null rather than a host with nowhere to load from: it keeps a test run
@@ -164,7 +165,9 @@ class PluginNotifier extends _$PluginNotifier {
       createHostCall: createFanCadHostCall,
     );
     _hostChanges = _host!.changes.listen((_) => _publish());
-    _contributionChanges = _host!.contributions.changes.listen((_) => _publish());
+    _contributionChanges = _host!.contributions.changes.listen(
+      (_) => _publish(),
+    );
     _registerCommands(directory);
     return PluginModel(directory: directory);
   }
@@ -322,5 +325,4 @@ HostCallHandler createFanCadHostCall({
 
 /// Folders of extensions shipped with the application.
 @Riverpod(keepAlive: true)
-List<String> bundledPluginDirectories(Ref ref) =>
-    const [];
+List<String> bundledPluginDirectories(Ref ref) => const [];

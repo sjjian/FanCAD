@@ -262,9 +262,9 @@ void main() {
 
     final ghost = pastePreviewShapes(clip);
     expect(ghost.whereType<OverlayRect>(), isEmpty);
-    final boxes = ghost
-        .whereType<OverlayPolyline>()
-        .where((shape) => shape.closed);
+    final boxes = ghost.whereType<OverlayPolyline>().where(
+      (shape) => shape.closed,
+    );
     expect(boxes, isNotEmpty);
     expect(boxes.first.points, hasLength(4));
   });

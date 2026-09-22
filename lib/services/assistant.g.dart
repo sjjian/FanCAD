@@ -6,13 +6,13 @@ part of 'assistant.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$assistantNotifierHash() => r'ecd06e64f64d003602457587a0a56abd076857c9';
+String _$assistantNotifierHash() => r'1f89a3b962236c15d358a611a14192c3b1d1f01c';
 
 /// Owns the assistant session for the application.
 ///
 /// Streamed tokens mutate [Conversation] in place, so [AssistantModel.transcriptEpoch]
-/// bumps on each delta and the panel can rebuild without the rest of the shell
-/// knowing an agent exists.
+/// bumps on each delta and the panel can rebuild without the rest of the
+/// window knowing an agent exists.
 ///
 /// Copied from [AssistantNotifier].
 @ProviderFor(AssistantNotifier)

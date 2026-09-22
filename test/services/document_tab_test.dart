@@ -12,11 +12,7 @@ void main() {
     addTearDown(container.dispose);
     final tab = container.read(documentTabNotifierProvider(id).notifier);
     tab.attach(
-      session: DocumentSession(
-        id: id,
-        document: CadDocument(),
-        title: title,
-      ),
+      session: DocumentSession(id: id, document: CadDocument(), title: title),
     );
     return tab;
   }

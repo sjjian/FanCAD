@@ -50,7 +50,10 @@ void main() {
     expect((spans[0] as ComposerPinTextModel).text, 'Keep ');
     expect((spans[1] as ComposerPinChipModel).pin.ids, [1, 2]);
     expect((spans[2] as ComposerPinTextModel).text, ' and ');
-    expect((spans[3] as ComposerPinChipModel).pin.kind, ComposerPinKind.drawing);
+    expect(
+      (spans[3] as ComposerPinChipModel).pin.kind,
+      ComposerPinKind.drawing,
+    );
     expect((spans[4] as ComposerPinTextModel).text, '.');
     expect(parseComposerPins(text), hasLength(2));
   });

@@ -194,18 +194,16 @@ void main() {
 
   test('file-backed settings can build without reading workspace state', () {
     final dir = tempDir(prefix: 'fancad-shx-settings');
-    final settings = SettingsStore(
-      file: File('${dir.path}/settings.json'),
-    );
+    final settings = SettingsStore(file: File('${dir.path}/settings.json'));
     expect(workspace(settings: settings).tabs, isEmpty);
   });
 
-  test('locale follows the shell language', () {
+  test('locale follows the appearance language', () {
     expect(workspace().locale, 'en');
     final app = Headless(document: false);
-    app.container.read(shellNotifierProvider.notifier).setLanguage(
-      FanCadLanguage.chinese,
-    );
+    app.container
+        .read(appearanceNotifierProvider.notifier)
+        .setLanguage(FanCadLanguage.chinese);
     expect(app.workspace.locale, FanCadLanguage.chinese);
   });
 

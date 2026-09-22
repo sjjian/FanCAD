@@ -42,6 +42,7 @@ void main() {
   CommandLineNotifier commandLine({int? historyLimit}) {
     final container = ProviderContainer(
       overrides: [
+        settingsProvider.overrideWithValue(SettingsStore.inMemory()),
         if (historyLimit != null)
           commandLineHistoryLimitOverrideProvider.overrideWithValue(
             historyLimit,

@@ -56,70 +56,77 @@ void main() {
       SettingsKeys.sidebarOpen: true,
       SettingsKeys.sidebarWidth: 240,
     });
-    final shell = containerOf(settings).read(shellNotifierProvider.notifier);
-    expect(shell.state.sidebar.viewId, 'layers');
-    expect(shell.state.sidebar.isOpen, isTrue);
-    expect(shell.state.sidebar.width, 240);
-    expect(Shell.sidebarDefaultWidth, FanCadTokens.sidePanelWidth);
-    expect(Shell.sidebarMinWidth, FanCadTokens.sidePanelMinWidth);
+    final sidebar = containerOf(
+      settings,
+    ).read(sidebarNotifierProvider.notifier);
+    expect(sidebar.state.viewId, 'layers');
+    expect(sidebar.state.isOpen, isTrue);
+    expect(sidebar.state.width, SidebarLayout.defaultWidth);
+    expect(
+      SidebarLayout.defaultWidth,
+      inInclusiveRange(SidebarLayout.minWidth, SidebarLayout.maxWidth),
+    );
 
     final narrow = containerOf(
       SettingsStore.inMemory({SettingsKeys.sidebarWidth: 40}),
-    ).read(shellNotifierProvider.notifier);
-    expect(narrow.state.sidebar.width, Shell.sidebarMinWidth);
+    ).read(sidebarNotifierProvider.notifier);
+    expect(narrow.state.width, SidebarLayout.minWidth);
 
-    shell.select('layers');
-    expect(shell.state.sidebar.isOpen, isFalse);
+    sidebar.select('layers');
+    expect(sidebar.state.isOpen, isFalse);
     expect(settings.getBool(SettingsKeys.sidebarOpen), isFalse);
 
-    shell.select('commands');
-    expect(shell.state.sidebar.viewId, 'commands');
-    expect(shell.state.sidebar.isOpen, isTrue);
+    sidebar.select('commands');
+    expect(sidebar.state.viewId, 'commands');
+    expect(sidebar.state.isOpen, isTrue);
     expect(settings.getString(SettingsKeys.sidebarView), 'commands');
 
-    shell.setOpen(false);
-    shell.reveal('properties');
-    expect(shell.state.sidebar.viewId, 'properties');
-    expect(shell.state.sidebar.isOpen, isTrue);
+    sidebar.setOpen(false);
+    sidebar.reveal('properties');
+    expect(sidebar.state.viewId, 'properties');
+    expect(sidebar.state.isOpen, isTrue);
 
-    shell.toggle();
-    expect(shell.state.sidebar.isOpen, isFalse);
+    sidebar.toggle();
+    expect(sidebar.state.isOpen, isFalse);
 
-    shell.resize(40);
-    expect(shell.state.sidebar.width, Shell.sidebarMinWidth);
-    shell.resize(240.6);
-    expect(shell.state.sidebar.width, 241);
-    shell.resize(900);
-    expect(shell.state.sidebar.width, Shell.sidebarMaxWidth);
-    shell.commitWidth();
-    expect(settings.getDouble(SettingsKeys.sidebarWidth), Shell.sidebarMaxWidth);
+    sidebar.resize(40);
+    expect(sidebar.state.width, SidebarLayout.minWidth);
+    sidebar.resize(240.6);
+    expect(sidebar.state.width, 241);
+    sidebar.resize(900);
+    expect(sidebar.state.width, SidebarLayout.maxWidth);
+    sidebar.commitWidth();
+    expect(
+      settings.getDouble(SettingsKeys.sidebarWidth),
+      SidebarLayout.maxWidth,
+    );
   });
 
   test('a leftover assistant view does not occupy the left sidebar', () {
-    final shell = containerOf(
+    final sidebar = containerOf(
       SettingsStore.inMemory({SettingsKeys.sidebarView: 'ai'}),
-    ).read(shellNotifierProvider.notifier);
-    expect(shell.state.sidebar.viewId, 'layers');
-    shell.select('ai');
-    expect(shell.state.sidebar.viewId, 'layers');
-    expect(shell.state.sidebar.isOpen, isFalse);
+    ).read(sidebarNotifierProvider.notifier);
+    expect(sidebar.state.viewId, 'layers');
+    sidebar.select('ai');
+    expect(sidebar.state.viewId, 'layers');
+    expect(sidebar.state.isOpen, isFalse);
 
-    shell.reveal('history');
-    expect(shell.state.sidebar.viewId, 'history');
-    expect(shell.state.sidebar.isOpen, isTrue);
+    sidebar.reveal('history');
+    expect(sidebar.state.viewId, 'history');
+    expect(sidebar.state.isOpen, isTrue);
 
-    shell.reveal('layouts');
-    expect(shell.state.sidebar.viewId, 'layouts');
-    expect(shell.state.sidebar.isOpen, isTrue);
+    sidebar.reveal('layouts');
+    expect(sidebar.state.viewId, 'layouts');
+    expect(sidebar.state.isOpen, isTrue);
 
-    shell.reveal('preferences');
-    expect(shell.state.sidebar.viewId, 'layers');
-    expect(shell.state.sidebar.isOpen, isTrue);
+    sidebar.reveal('preferences');
+    expect(sidebar.state.viewId, 'layers');
+    expect(sidebar.state.isOpen, isTrue);
 
     expect(
       containerOf(
         SettingsStore.inMemory({SettingsKeys.sidebarView: 'preferences'}),
-      ).read(shellNotifierProvider).sidebar.viewId,
+      ).read(sidebarNotifierProvider).viewId,
       'layers',
     );
   });
@@ -129,43 +136,48 @@ void main() {
       SettingsKeys.assistantOpen: true,
       SettingsKeys.assistantWidth: 40,
     });
-    final shell = containerOf(settings).read(shellNotifierProvider.notifier);
-    expect(shell.state.assistant.isOpen, isTrue);
-    expect(shell.state.assistant.width, Shell.assistantMinWidth);
+    final assistant = containerOf(
+      settings,
+    ).read(assistantNotifierProvider.notifier);
+    expect(assistant.state.pane.isOpen, isTrue);
+    expect(assistant.state.pane.width, AssistantPaneLayout.minWidth);
 
-    shell.toggleAssistant();
-    expect(shell.state.assistant.isOpen, isFalse);
+    assistant.toggleAssistant();
+    expect(assistant.state.pane.isOpen, isFalse);
     expect(settings.getBool(SettingsKeys.assistantOpen), isFalse);
-    shell.resizeAssistant(320.4);
-    expect(shell.state.assistant.width, 320);
-    shell.resizeAssistant(900);
-    shell.commitAssistantWidth();
+    assistant.resizeAssistant(320.4);
+    expect(assistant.state.pane.width, 320);
+    assistant.resizeAssistant(900);
+    assistant.commitAssistantWidth();
     expect(
       settings.getDouble(SettingsKeys.assistantWidth),
-      Shell.assistantMaxWidth,
+      AssistantPaneLayout.maxWidth,
     );
-    shell.resetAssistantWidth();
-    expect(shell.state.assistant.width, Shell.assistantDefaultWidth);
+    assistant.resetAssistantWidth();
+    expect(assistant.state.pane.width, AssistantPaneLayout.defaultWidth);
   });
 
   test('a stored pane height below the input row is lifted to collapsed', () {
-    final shell = containerOf(
+    final commandLine = containerOf(
       SettingsStore.inMemory({SettingsKeys.commandPaneHeight: 12}),
-    ).read(shellNotifierProvider.notifier);
-    expect(shell.state.commandPane.height, Shell.commandCollapsedHeight);
+    ).read(commandLineNotifierProvider.notifier);
+    expect(commandLine.state.pane.height, CommandLineLayout.collapsedHeight);
   });
 
   test('the command pane default leaves the canvas most of the window', () {
     expect(
-      Shell.commandCollapsedHeight,
-      FanCadTokens.splitterHit + FanCadTokens.commandLineHeight,
+      CommandLineLayout.collapsedHeight,
+      CommandLineLayout.splitterHit + CommandLineLayout.commandLineHeight,
     );
-    expect(Shell.commandDefaultHeight, 84);
-    expect(Shell.commandExpandedHeight, 200);
-    expect(Shell.commandDefaultHeight, lessThan(Shell.commandExpandedHeight));
+    expect(CommandLineLayout.defaultHeight, 84);
+    expect(CommandLineLayout.expandedHeight, 200);
     expect(
-      Shell.commandCollapsedHeight,
-      lessThan(Shell.commandDefaultHeight),
+      CommandLineLayout.defaultHeight,
+      lessThan(CommandLineLayout.expandedHeight),
+    );
+    expect(
+      CommandLineLayout.collapsedHeight,
+      lessThan(CommandLineLayout.defaultHeight),
     );
   });
 
@@ -173,36 +185,40 @@ void main() {
     final settings = SettingsStore.inMemory({
       SettingsKeys.commandPaneHeight: 100,
     });
-    final shell = containerOf(settings).read(shellNotifierProvider.notifier);
-    expect(shell.state.commandPane.height, 100);
-    expect(shell.state.commandPane.isExpanded, isFalse);
+    final commandLine = containerOf(
+      settings,
+    ).read(commandLineNotifierProvider.notifier);
+    expect(commandLine.state.pane.height, 100);
+    expect(commandLine.state.pane.isExpanded, isFalse);
 
-    shell.resizeCommand(10);
-    expect(shell.state.commandPane.height, Shell.commandMinHeight);
-    shell.resizeCommand(800);
-    expect(shell.state.commandPane.height, Shell.commandMaxHeight);
-    shell.commitCommandHeight();
+    commandLine.resizeCommand(10);
+    expect(commandLine.state.pane.height, CommandLineLayout.minHeight);
+    commandLine.resizeCommand(800);
+    expect(commandLine.state.pane.height, CommandLineLayout.maxHeight);
+    commandLine.commitCommandHeight();
     expect(
       settings.getDouble(SettingsKeys.commandPaneHeight),
-      Shell.commandMaxHeight,
+      CommandLineLayout.maxHeight,
     );
 
-    shell.toggleCommandExpanded();
-    expect(shell.state.commandPane.isExpanded, isTrue);
-    expect(shell.state.commandPane.height, Shell.commandExpandedHeight);
-    shell.toggleCommandExpanded();
-    expect(shell.state.commandPane.isExpanded, isFalse);
-    expect(shell.state.commandPane.height, Shell.commandCollapsedHeight);
+    commandLine.toggleCommandExpanded();
+    expect(commandLine.state.pane.isExpanded, isTrue);
+    expect(commandLine.state.pane.height, CommandLineLayout.expandedHeight);
+    commandLine.toggleCommandExpanded();
+    expect(commandLine.state.pane.isExpanded, isFalse);
+    expect(commandLine.state.pane.height, CommandLineLayout.collapsedHeight);
   });
 
   test('theme brightness restores from settings and persists a toggle', () {
     final light = containerOf(
       SettingsStore.inMemory({SettingsKeys.themeBrightness: 'light'}),
-    ).read(shellNotifierProvider.notifier);
+    ).read(appearanceNotifierProvider.notifier);
     expect(light.state.theme, ThemePreference.light);
 
     final settings = SettingsStore.inMemory();
-    final dark = containerOf(settings).read(shellNotifierProvider.notifier);
+    final dark = containerOf(
+      settings,
+    ).read(appearanceNotifierProvider.notifier);
     expect(dark.state.theme, ThemePreference.dark);
     dark.toggleTheme();
     expect(dark.state.theme, ThemePreference.light);
@@ -217,18 +233,20 @@ void main() {
 
   test('language defaults to English and persists a supported switch', () {
     final settings = SettingsStore.inMemory();
-    final shell = containerOf(settings).read(shellNotifierProvider.notifier);
-    expect(shell.state.language, FanCadLanguage.english);
+    final appearance = containerOf(
+      settings,
+    ).read(appearanceNotifierProvider.notifier);
+    expect(appearance.state.language, FanCadLanguage.english);
 
-    shell.setLanguage(FanCadLanguage.chinese);
-    expect(shell.state.language, FanCadLanguage.chinese);
+    appearance.setLanguage(FanCadLanguage.chinese);
+    expect(appearance.state.language, FanCadLanguage.chinese);
     expect(settings.getString(SettingsKeys.language), FanCadLanguage.chinese);
   });
 
   test('a leftover language code is treated as English', () {
     final leftover = containerOf(
       SettingsStore.inMemory({SettingsKeys.language: 'fr'}),
-    ).read(shellNotifierProvider.notifier);
+    ).read(appearanceNotifierProvider.notifier);
     expect(leftover.state.language, FanCadLanguage.english);
 
     leftover.setLanguage('not-a-locale');
@@ -238,7 +256,7 @@ void main() {
   test('regional Chinese leftovers collapse to zh', () {
     final leftover = containerOf(
       SettingsStore.inMemory({SettingsKeys.language: 'zh_CN'}),
-    ).read(shellNotifierProvider.notifier);
+    ).read(appearanceNotifierProvider.notifier);
     expect(leftover.state.language, FanCadLanguage.chinese);
   });
 
@@ -267,7 +285,12 @@ void main() {
       );
     });
     expect(
-      container.read(workspaceNotifierProvider).tabStrip.sessions.single.isDirty,
+      container
+          .read(workspaceNotifierProvider)
+          .tabStrip
+          .sessions
+          .single
+          .isDirty,
       isTrue,
     );
     expect(container.read(workspaceNotifierProvider).highlightIds, [7]);

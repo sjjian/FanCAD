@@ -6,11 +6,29 @@ import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'settings.dart';
+
 part 'assistant.freezed.dart';
 part 'assistant.g.dart';
 
+/// Default and permitted width of the docked assistant pane.
+abstract final class AssistantPaneLayout {
+  static const double defaultWidth = 320;
+  static const double minWidth = 180;
+  static const double maxWidth = 560;
+}
+
+/// The assistant chat, docked on the right so it can stay open next to Layers.
+@freezed
+abstract class AssistantPaneModel with _$AssistantPaneModel {
+  const factory AssistantPaneModel({
+    @Default(false) bool isOpen,
+    @Default(AssistantPaneLayout.defaultWidth) double width,
+  }) = _AssistantPaneModel;
+}
+
 /// Application-layer store of the assistant: profiles, chats, composer pins,
-/// and the in-flight approval / question cards.
+/// the docked pane, and the in-flight approval / question cards.
 @freezed
 abstract class AssistantModel with _$AssistantModel {
   const AssistantModel._();
@@ -28,6 +46,7 @@ abstract class AssistantModel with _$AssistantModel {
     SessionQuestion? question,
     @Default(false) bool busy,
     @Default(0) int transcriptEpoch,
+    @Default(AssistantPaneModel()) AssistantPaneModel pane,
   }) = _AssistantModel;
 
   AssistantChatModel get activeChat {
@@ -120,52 +139,6 @@ String titleFromUserMessage(String text) {
   if (first.isEmpty) return '';
   if (first.length <= 40) return first;
   return '${first.substring(0, 39)}…';
-}
-
-/// One assistant connection: model, endpoint and key.
-@freezed
-abstract class AssistantProfileModel with _$AssistantProfileModel {
-  const AssistantProfileModel._();
-
-  @JsonSerializable()
-  const factory AssistantProfileModel({
-    required String id,
-    @Default('') String label,
-    @Default('gpt-4o-mini') String model,
-    @Default('https://api.openai.com/v1') String baseUrl,
-    @Default('') String apiKey,
-  }) = _AssistantProfileModel;
-
-  static const String defaultId = 'default';
-  static const String defaultModel = 'gpt-4o-mini';
-  static const String defaultBaseUrl = 'https://api.openai.com/v1';
-
-  /// Settings list and the composer chip use this, not the raw model id.
-  String get displayName {
-    final named = label.trim();
-    if (named.isNotEmpty) return named;
-    final modelName = model.trim();
-    return modelName.isEmpty ? defaultModel : modelName;
-  }
-
-  factory AssistantProfileModel.fromJson(Map<Object?, Object?> raw) =>
-      _$AssistantProfileModelFromJson(_assistantProfileWire(raw));
-}
-
-Map<String, dynamic> _assistantProfileWire(Map<Object?, Object?> raw) {
-  String read(String key, [String fallback = '']) {
-    final value = raw[key];
-    return value is String ? value : fallback;
-  }
-
-  final id = read('id').trim();
-  return {
-    'id': id.isEmpty ? AssistantProfileModel.defaultId : id,
-    'label': read('label'),
-    'model': read('model', AssistantProfileModel.defaultModel),
-    'baseUrl': read('baseUrl', AssistantProfileModel.defaultBaseUrl),
-    'apiKey': read('apiKey'),
-  };
 }
 
 /// Compact token label for the composer ring, leftover `12400` → `12.4k`.

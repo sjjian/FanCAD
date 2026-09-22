@@ -820,7 +820,10 @@ void main() {
       expect(result.data!['layout'], 'Model');
       expect(result.data!['path'], path);
       expect(File(path).readAsBytesSync(), isNotEmpty);
-      expect(String.fromCharCodes(File(path).readAsBytesSync().take(5)), '%PDF-');
+      expect(
+        String.fromCharCodes(File(path).readAsBytesSync().take(5)),
+        '%PDF-',
+      );
     });
 
     test('exportSvg with a .pdf path writes PDF instead of SVG', () async {
@@ -828,7 +831,10 @@ void main() {
       final path = '${dir.path}/alias.pdf';
       final result = await run('print.exportSvg', {'path': path});
       expect(result.status, CommandStatus.ok, reason: result.message);
-      expect(String.fromCharCodes(File(path).readAsBytesSync().take(5)), '%PDF-');
+      expect(
+        String.fromCharCodes(File(path).readAsBytesSync().take(5)),
+        '%PDF-',
+      );
     });
 
     test('a plot window needs both corners and a positive size', () async {
@@ -911,7 +917,9 @@ void main() {
         final layouts = (result.data!['layouts']! as List)
             .cast<Map<String, Object?>>();
         final model = layouts.firstWhere((layout) => layout['name'] == 'Model');
-        final paper = layouts.firstWhere((layout) => layout['name'] == 'Layout1');
+        final paper = layouts.firstWhere(
+          (layout) => layout['name'] == 'Layout1',
+        );
 
         expect(model['current'], isFalse);
         expect(model['model'], isTrue);
@@ -949,7 +957,10 @@ void main() {
           })).status,
           CommandStatus.ok,
         );
-        expect((await run('layout.new', {'name': 'A3'})).status, CommandStatus.ok);
+        expect(
+          (await run('layout.new', {'name': 'A3'})).status,
+          CommandStatus.ok,
+        );
 
         final result = await run('file.audit');
         expect(result.status, CommandStatus.ok, reason: result.message);

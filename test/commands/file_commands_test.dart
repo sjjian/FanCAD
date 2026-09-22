@@ -40,10 +40,9 @@ void main() {
 
     test('file.open with a path does not invent a dialog', () async {
       final env = harness();
-      final result = await env.app.run(
-        'file.open',
-        const {'path': '/tmp/demo.dxf'},
-      );
+      final result = await env.app.run('file.open', const {
+        'path': '/tmp/demo.dxf',
+      });
       expect(result.status, CommandStatus.ok);
       expect(env.opened, ['/tmp/demo.dxf']);
       expect(result.message, contains('/tmp/demo.dxf'));
@@ -53,10 +52,9 @@ void main() {
       'file.open reports a failed importer instead of a silent success',
       () async {
         final env = harness(openFile: (_) async => false);
-        final result = await env.app.run(
-          'file.open',
-          const {'path': '/tmp/missing.dxf'},
-        );
+        final result = await env.app.run('file.open', const {
+          'path': '/tmp/missing.dxf',
+        });
         expect(result.status, CommandStatus.failed);
         expect(result.message, contains('/tmp/missing.dxf'));
         expect(env.opened, ['/tmp/missing.dxf']);
@@ -366,10 +364,7 @@ void main() {
         },
       );
 
-      final result = await app.run(
-        'file.openRecent',
-        const {'path': '  '},
-      );
+      final result = await app.run('file.openRecent', const {'path': '  '});
       expect(result.status, CommandStatus.failed);
       expect(result.message, contains('No recent file'));
       expect(opened, isNull);
@@ -385,10 +380,9 @@ void main() {
         },
       );
 
-      final result = await app.run(
-        'file.openRecent',
-        const {'path': '/tmp/b.dxf'},
-      );
+      final result = await app.run('file.openRecent', const {
+        'path': '/tmp/b.dxf',
+      });
       expect(result.status, CommandStatus.ok);
       expect(result.message, contains('/tmp/b.dxf'));
       expect(opened, '/tmp/b.dxf');

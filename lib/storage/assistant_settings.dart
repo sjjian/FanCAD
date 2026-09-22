@@ -1,11 +1,13 @@
 import '../models/assistant.dart';
+import '../models/settings.dart';
 import 'settings.dart';
 
 /// The assistant's slice of `settings.json`.
 ///
-/// Workspace and the shell never see these keys. The controller loads models
-/// here and writes them back; leftover flat `ai.model` rows still become one
-/// profile until `ai.profiles` exists.
+/// Chat and profile keys stay separate from the dock. `layout.assistantOpen`
+/// and `layout.assistantWidth` are read here as pane methods, not as chat
+/// fields. The controller loads models here and writes them back; leftover
+/// flat `ai.model` rows still become one profile until `ai.profiles` exists.
 class AssistantSettings {
   AssistantSettings(this._store);
 
@@ -32,9 +34,7 @@ class AssistantSettings {
   }
 
   void saveChats(List<AssistantChatModel> chats, {required String activeId}) {
-    _store.set(SettingsKeys.aiChats, [
-      for (final chat in chats) chat.toJson(),
-    ]);
+    _store.set(SettingsKeys.aiChats, [for (final chat in chats) chat.toJson()]);
     _store.set(SettingsKeys.aiActiveChat, activeId);
   }
 
@@ -114,4 +114,16 @@ class AssistantSettings {
 
   void setAutoApprove(bool value) =>
       _store.set(SettingsKeys.aiAutoApprove, value);
+
+  /// Dock open state. Separate from chat and profile keys.
+  bool paneOpen({bool fallback = false}) =>
+      _store.getBool(SettingsKeys.assistantOpen, fallback: fallback);
+
+  void setPaneOpen(bool value) => _store.set(SettingsKeys.assistantOpen, value);
+
+  double paneWidth({double fallback = 0}) =>
+      _store.getDouble(SettingsKeys.assistantWidth, fallback: fallback);
+
+  void setPaneWidth(double value) =>
+      _store.set(SettingsKeys.assistantWidth, value);
 }
