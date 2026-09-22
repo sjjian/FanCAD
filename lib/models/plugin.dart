@@ -48,14 +48,15 @@ abstract class PluginRefModel with _$PluginRefModel {
   }) = _PluginRefModel;
 }
 
-/// Store for discovered extensions: list, logs, and a tick for host changes.
+/// Store for discovered extensions: the list and a tick for host changes.
+///
+/// Each extension's log lives on [PluginRefModel.log], copied from the host.
 @freezed
 abstract class PluginModel with _$PluginModel {
   const factory PluginModel({
     @Default(false) bool started,
     @Default('') String directory,
     @Default([]) List<PluginRefModel> plugins,
-    @Default({}) Map<String, List<String>> logs,
     @Default(0) int epoch,
   }) = _PluginModel;
 }

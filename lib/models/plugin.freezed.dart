@@ -1123,7 +1123,7 @@ as List<String>,
 /// @nodoc
 mixin _$PluginModel {
 
- bool get started; String get directory; List<PluginRefModel> get plugins; Map<String, List<String>> get logs; int get epoch;
+ bool get started; String get directory; List<PluginRefModel> get plugins; int get epoch;
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1134,16 +1134,16 @@ $PluginModelCopyWith<PluginModel> get copyWith => _$PluginModelCopyWithImpl<Plug
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginModel&&(identical(other.started, started) || other.started == started)&&(identical(other.directory, directory) || other.directory == directory)&&const DeepCollectionEquality().equals(other.plugins, plugins)&&const DeepCollectionEquality().equals(other.logs, logs)&&(identical(other.epoch, epoch) || other.epoch == epoch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginModel&&(identical(other.started, started) || other.started == started)&&(identical(other.directory, directory) || other.directory == directory)&&const DeepCollectionEquality().equals(other.plugins, plugins)&&(identical(other.epoch, epoch) || other.epoch == epoch));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,started,directory,const DeepCollectionEquality().hash(plugins),const DeepCollectionEquality().hash(logs),epoch);
+int get hashCode => Object.hash(runtimeType,started,directory,const DeepCollectionEquality().hash(plugins),epoch);
 
 @override
 String toString() {
-  return 'PluginModel(started: $started, directory: $directory, plugins: $plugins, logs: $logs, epoch: $epoch)';
+  return 'PluginModel(started: $started, directory: $directory, plugins: $plugins, epoch: $epoch)';
 }
 
 
@@ -1154,7 +1154,7 @@ abstract mixin class $PluginModelCopyWith<$Res>  {
   factory $PluginModelCopyWith(PluginModel value, $Res Function(PluginModel) _then) = _$PluginModelCopyWithImpl;
 @useResult
 $Res call({
- bool started, String directory, List<PluginRefModel> plugins, Map<String, List<String>> logs, int epoch
+ bool started, String directory, List<PluginRefModel> plugins, int epoch
 });
 
 
@@ -1171,13 +1171,12 @@ class _$PluginModelCopyWithImpl<$Res>
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? started = null,Object? directory = null,Object? plugins = null,Object? logs = null,Object? epoch = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? started = null,Object? directory = null,Object? plugins = null,Object? epoch = null,}) {
   return _then(_self.copyWith(
 started: null == started ? _self.started : started // ignore: cast_nullable_to_non_nullable
 as bool,directory: null == directory ? _self.directory : directory // ignore: cast_nullable_to_non_nullable
 as String,plugins: null == plugins ? _self.plugins : plugins // ignore: cast_nullable_to_non_nullable
-as List<PluginRefModel>,logs: null == logs ? _self.logs : logs // ignore: cast_nullable_to_non_nullable
-as Map<String, List<String>>,epoch: null == epoch ? _self.epoch : epoch // ignore: cast_nullable_to_non_nullable
+as List<PluginRefModel>,epoch: null == epoch ? _self.epoch : epoch // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }
@@ -1263,10 +1262,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool started,  String directory,  List<PluginRefModel> plugins,  Map<String, List<String>> logs,  int epoch)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool started,  String directory,  List<PluginRefModel> plugins,  int epoch)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PluginModel() when $default != null:
-return $default(_that.started,_that.directory,_that.plugins,_that.logs,_that.epoch);case _:
+return $default(_that.started,_that.directory,_that.plugins,_that.epoch);case _:
   return orElse();
 
 }
@@ -1284,10 +1283,10 @@ return $default(_that.started,_that.directory,_that.plugins,_that.logs,_that.epo
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool started,  String directory,  List<PluginRefModel> plugins,  Map<String, List<String>> logs,  int epoch)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool started,  String directory,  List<PluginRefModel> plugins,  int epoch)  $default,) {final _that = this;
 switch (_that) {
 case _PluginModel():
-return $default(_that.started,_that.directory,_that.plugins,_that.logs,_that.epoch);case _:
+return $default(_that.started,_that.directory,_that.plugins,_that.epoch);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1304,10 +1303,10 @@ return $default(_that.started,_that.directory,_that.plugins,_that.logs,_that.epo
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool started,  String directory,  List<PluginRefModel> plugins,  Map<String, List<String>> logs,  int epoch)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool started,  String directory,  List<PluginRefModel> plugins,  int epoch)?  $default,) {final _that = this;
 switch (_that) {
 case _PluginModel() when $default != null:
-return $default(_that.started,_that.directory,_that.plugins,_that.logs,_that.epoch);case _:
+return $default(_that.started,_that.directory,_that.plugins,_that.epoch);case _:
   return null;
 
 }
@@ -1319,7 +1318,7 @@ return $default(_that.started,_that.directory,_that.plugins,_that.logs,_that.epo
 
 
 class _PluginModel implements PluginModel {
-  const _PluginModel({this.started = false, this.directory = '', final  List<PluginRefModel> plugins = const [], final  Map<String, List<String>> logs = const {}, this.epoch = 0}): _plugins = plugins,_logs = logs;
+  const _PluginModel({this.started = false, this.directory = '', final  List<PluginRefModel> plugins = const [], this.epoch = 0}): _plugins = plugins;
   
 
 @override@JsonKey() final  bool started;
@@ -1329,13 +1328,6 @@ class _PluginModel implements PluginModel {
   if (_plugins is EqualUnmodifiableListView) return _plugins;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_plugins);
-}
-
- final  Map<String, List<String>> _logs;
-@override@JsonKey() Map<String, List<String>> get logs {
-  if (_logs is EqualUnmodifiableMapView) return _logs;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(_logs);
 }
 
 @override@JsonKey() final  int epoch;
@@ -1350,16 +1342,16 @@ _$PluginModelCopyWith<_PluginModel> get copyWith => __$PluginModelCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginModel&&(identical(other.started, started) || other.started == started)&&(identical(other.directory, directory) || other.directory == directory)&&const DeepCollectionEquality().equals(other._plugins, _plugins)&&const DeepCollectionEquality().equals(other._logs, _logs)&&(identical(other.epoch, epoch) || other.epoch == epoch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginModel&&(identical(other.started, started) || other.started == started)&&(identical(other.directory, directory) || other.directory == directory)&&const DeepCollectionEquality().equals(other._plugins, _plugins)&&(identical(other.epoch, epoch) || other.epoch == epoch));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,started,directory,const DeepCollectionEquality().hash(_plugins),const DeepCollectionEquality().hash(_logs),epoch);
+int get hashCode => Object.hash(runtimeType,started,directory,const DeepCollectionEquality().hash(_plugins),epoch);
 
 @override
 String toString() {
-  return 'PluginModel(started: $started, directory: $directory, plugins: $plugins, logs: $logs, epoch: $epoch)';
+  return 'PluginModel(started: $started, directory: $directory, plugins: $plugins, epoch: $epoch)';
 }
 
 
@@ -1370,7 +1362,7 @@ abstract mixin class _$PluginModelCopyWith<$Res> implements $PluginModelCopyWith
   factory _$PluginModelCopyWith(_PluginModel value, $Res Function(_PluginModel) _then) = __$PluginModelCopyWithImpl;
 @override @useResult
 $Res call({
- bool started, String directory, List<PluginRefModel> plugins, Map<String, List<String>> logs, int epoch
+ bool started, String directory, List<PluginRefModel> plugins, int epoch
 });
 
 
@@ -1387,13 +1379,12 @@ class __$PluginModelCopyWithImpl<$Res>
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? started = null,Object? directory = null,Object? plugins = null,Object? logs = null,Object? epoch = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? started = null,Object? directory = null,Object? plugins = null,Object? epoch = null,}) {
   return _then(_PluginModel(
 started: null == started ? _self.started : started // ignore: cast_nullable_to_non_nullable
 as bool,directory: null == directory ? _self.directory : directory // ignore: cast_nullable_to_non_nullable
 as String,plugins: null == plugins ? _self._plugins : plugins // ignore: cast_nullable_to_non_nullable
-as List<PluginRefModel>,logs: null == logs ? _self._logs : logs // ignore: cast_nullable_to_non_nullable
-as Map<String, List<String>>,epoch: null == epoch ? _self.epoch : epoch // ignore: cast_nullable_to_non_nullable
+as List<PluginRefModel>,epoch: null == epoch ? _self.epoch : epoch // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }

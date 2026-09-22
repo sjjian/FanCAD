@@ -1,5 +1,6 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/workspace.dart';
@@ -56,9 +57,11 @@ void main() {
 
   test('showMessage notifies the workspace and writes a plugin log line', () {
     final ws = workspace();
+    final seen = <(String, String, String)>[];
     final delegate = AppPluginDelegate(
       workspace: () => ws,
       plugins: PluginSettings(SettingsStore.inMemory()),
+      onLog: (pluginId, level, message) => seen.add((pluginId, level, message)),
     );
 
     delegate.showMessage('demo', 'hello');
@@ -69,23 +72,41 @@ void main() {
       'broken',
     ]);
     expect(ws.state.notices.last.isError, isTrue);
-    expect(delegate.logs['demo'], ['[info] hello', '[error] broken']);
+    expect(seen, [('demo', 'info', 'hello'), ('demo', 'error', 'broken')]);
   });
 
-  test('plugin logs drop the oldest lines after 500', () {
+  test('plugin logs drop the oldest lines after 500', () async {
     final ws = workspace();
     final delegate = AppPluginDelegate(
       workspace: () => ws,
       plugins: PluginSettings(SettingsStore.inMemory()),
     );
+    final host = PluginHost(
+      registry: ws.commands,
+      delegate: delegate,
+      transport: LocalTransport(),
+    );
+    addTearDown(host.dispose);
+    host.registerManifest(
+      const PluginManifest(
+        id: 'demo',
+        name: 'demo',
+        version: '0.0.0',
+        entryPoint: 'main.js',
+      ),
+    );
+    delegate.onLog = (pluginId, level, message) {
+      host.appendLog(pluginId, level, message);
+    };
 
     for (var i = 0; i < 501; i++) {
       delegate.log('demo', 'info', '$i');
     }
 
-    expect(delegate.logs['demo'], hasLength(500));
-    expect(delegate.logs['demo']!.first, '[info] 1');
-    expect(delegate.logs['demo']!.last, '[info] 500');
+    final lines = host.plugin('demo')!.log;
+    expect(lines, hasLength(500));
+    expect(lines.first, '[info] 1');
+    expect(lines.last, '[info] 500');
   });
 
   test('a prompt without a handler cancels instead of hanging', () async {

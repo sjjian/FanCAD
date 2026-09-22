@@ -39,11 +39,8 @@ class AppPluginDelegate implements PluginHostDelegate {
 
   final PluginSettings _plugins;
 
-  /// Called after a log line is stored, so the plugin store can republish.
-  VoidCallback? onLog;
-
-  /// Log lines, newest last, keyed by plugin id. Read by the extensions panel.
-  final Map<String, List<String>> logs = {};
+  /// Called with each log line so the host records it and the store republishes.
+  void Function(String pluginId, String level, String message)? onLog;
 
   /// Set by the shell so a plugin can ask the user something. Null means there
   /// is no one to ask, and prompts resolve to null rather than hanging.
@@ -81,12 +78,7 @@ class AppPluginDelegate implements PluginHostDelegate {
 
   @override
   void log(String pluginId, String level, String message) {
-    final lines = logs.putIfAbsent(pluginId, () => <String>[]);
-    lines.add('[$level] $message');
-    if (lines.length > 500) {
-      lines.removeRange(0, lines.length - 500);
-    }
-    onLog?.call();
+    onLog?.call(pluginId, level, message);
   }
 
   @override
@@ -109,9 +101,6 @@ class AppPluginDelegate implements PluginHostDelegate {
   }
 }
 
-/// A callback with no arguments. Local so this file does not import Flutter.
-typedef VoidCallback = void Function();
-
 /// Discovered extensions and the host that loads them.
 ///
 /// The pkg [PluginHost] stays on this notifier. [PluginModel] is the snapshot
@@ -125,14 +114,13 @@ class PluginNotifier extends _$PluginNotifier {
   PluginWatcher? _watcher;
   StreamSubscription<PluginHost>? _hostChanges;
   StreamSubscription<void>? _contributionChanges;
-  bool _started = false;
   PluginHost? _eventHost;
   Object? _watchedSession;
   final List<StreamSubscription<void>> _sessionSubscriptions = [];
 
   PluginHost? get host => _host;
   PluginCommands? get commands => _commands;
-  bool get isStarted => _started;
+  bool get isStarted => state.started;
 
   @override
   PluginModel build() {
@@ -141,7 +129,7 @@ class PluginNotifier extends _$PluginNotifier {
     delegate = AppPluginDelegate(
       workspace: () => ref.read(workspaceNotifierProvider.notifier),
       plugins: ref.watch(appSettingsProvider).plugins,
-      onLog: _publish,
+      onLog: _recordLog,
     );
     ref.listen(
       workspaceNotifierProvider.select((s) => s.activeSessionId),
@@ -179,10 +167,10 @@ class PluginNotifier extends _$PluginNotifier {
   /// none of it should sit between the user launching the application and
   /// seeing a window.
   Future<void> start() async {
-    if (_started) return;
+    if (state.started) return;
     final host = _host;
     if (host == null) return;
-    _started = true;
+    state = state.copyWith(started: true);
     _publish();
 
     await host.start();
@@ -255,10 +243,15 @@ class PluginNotifier extends _$PluginNotifier {
     _commandScope = scope;
   }
 
+  void _recordLog(String pluginId, String level, String message) {
+    _host?.appendLog(pluginId, level, message);
+    _publish();
+  }
+
   void _publish() {
     final host = _host;
     state = state.copyWith(
-      started: _started,
+      started: state.started,
       directory: ref.read(pluginsDirectoryProvider),
       plugins: [
         for (final handle in host?.plugins ?? const <PluginHandle>[])
@@ -282,10 +275,6 @@ class PluginNotifier extends _$PluginNotifier {
             log: List<String>.of(handle.log),
           ),
       ],
-      logs: {
-        for (final entry in delegate.logs.entries)
-          entry.key: List<String>.of(entry.value),
-      },
       epoch: state.epoch + 1,
     );
   }
@@ -308,7 +297,6 @@ class PluginNotifier extends _$PluginNotifier {
     _host = null;
     _eventHost = null;
     _watchedSession = null;
-    _started = false;
   }
 }
 
