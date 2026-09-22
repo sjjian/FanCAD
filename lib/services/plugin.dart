@@ -7,7 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../commands/plugin/commands.dart';
 import '../models/plugin.dart';
-import '../storage/plugin_settings.dart';
+import '../storage/plugin.dart';
 import 'plugin_editor.dart';
 import 'providers.dart';
 import 'workspace.dart';
@@ -23,7 +23,7 @@ part 'plugin.g.dart';
 class AppPluginDelegate implements PluginHostDelegate {
   AppPluginDelegate({
     required Workspace Function() workspace,
-    required PluginSettings plugins,
+    required PluginStore plugins,
     this.onLog,
   }) : _workspace = workspace,
        _plugins = plugins;
@@ -37,7 +37,7 @@ class AppPluginDelegate implements PluginHostDelegate {
 
   Workspace get workspace => _workspace();
 
-  final PluginSettings _plugins;
+  final PluginStore _plugins;
 
   /// Called with each log line so the host records it and the store republishes.
   void Function(String pluginId, String level, String message)? onLog;

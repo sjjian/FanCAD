@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CommandPaneModel {
 
- double get height; bool get isExpanded;
+ bool get isExpanded;
 /// Create a copy of CommandPaneModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $CommandPaneModelCopyWith<CommandPaneModel> get copyWith => _$CommandPaneModelCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommandPaneModel&&(identical(other.height, height) || other.height == height)&&(identical(other.isExpanded, isExpanded) || other.isExpanded == isExpanded));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommandPaneModel&&(identical(other.isExpanded, isExpanded) || other.isExpanded == isExpanded));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,height,isExpanded);
+int get hashCode => Object.hash(runtimeType,isExpanded);
 
 @override
 String toString() {
-  return 'CommandPaneModel(height: $height, isExpanded: $isExpanded)';
+  return 'CommandPaneModel(isExpanded: $isExpanded)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $CommandPaneModelCopyWith<$Res>  {
   factory $CommandPaneModelCopyWith(CommandPaneModel value, $Res Function(CommandPaneModel) _then) = _$CommandPaneModelCopyWithImpl;
 @useResult
 $Res call({
- double height, bool isExpanded
+ bool isExpanded
 });
 
 
@@ -62,10 +62,9 @@ class _$CommandPaneModelCopyWithImpl<$Res>
 
 /// Create a copy of CommandPaneModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? height = null,Object? isExpanded = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? isExpanded = null,}) {
   return _then(_self.copyWith(
-height: null == height ? _self.height : height // ignore: cast_nullable_to_non_nullable
-as double,isExpanded: null == isExpanded ? _self.isExpanded : isExpanded // ignore: cast_nullable_to_non_nullable
+isExpanded: null == isExpanded ? _self.isExpanded : isExpanded // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -151,10 +150,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double height,  bool isExpanded)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool isExpanded)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CommandPaneModel() when $default != null:
-return $default(_that.height,_that.isExpanded);case _:
+return $default(_that.isExpanded);case _:
   return orElse();
 
 }
@@ -172,10 +171,10 @@ return $default(_that.height,_that.isExpanded);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double height,  bool isExpanded)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool isExpanded)  $default,) {final _that = this;
 switch (_that) {
 case _CommandPaneModel():
-return $default(_that.height,_that.isExpanded);case _:
+return $default(_that.isExpanded);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -192,10 +191,10 @@ return $default(_that.height,_that.isExpanded);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double height,  bool isExpanded)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool isExpanded)?  $default,) {final _that = this;
 switch (_that) {
 case _CommandPaneModel() when $default != null:
-return $default(_that.height,_that.isExpanded);case _:
+return $default(_that.isExpanded);case _:
   return null;
 
 }
@@ -207,10 +206,9 @@ return $default(_that.height,_that.isExpanded);case _:
 
 
 class _CommandPaneModel implements CommandPaneModel {
-  const _CommandPaneModel({this.height = CommandLineLayout.defaultHeight, this.isExpanded = false});
+  const _CommandPaneModel({this.isExpanded = false});
   
 
-@override@JsonKey() final  double height;
 @override@JsonKey() final  bool isExpanded;
 
 /// Create a copy of CommandPaneModel
@@ -223,16 +221,16 @@ _$CommandPaneModelCopyWith<_CommandPaneModel> get copyWith => __$CommandPaneMode
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommandPaneModel&&(identical(other.height, height) || other.height == height)&&(identical(other.isExpanded, isExpanded) || other.isExpanded == isExpanded));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommandPaneModel&&(identical(other.isExpanded, isExpanded) || other.isExpanded == isExpanded));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,height,isExpanded);
+int get hashCode => Object.hash(runtimeType,isExpanded);
 
 @override
 String toString() {
-  return 'CommandPaneModel(height: $height, isExpanded: $isExpanded)';
+  return 'CommandPaneModel(isExpanded: $isExpanded)';
 }
 
 
@@ -243,7 +241,7 @@ abstract mixin class _$CommandPaneModelCopyWith<$Res> implements $CommandPaneMod
   factory _$CommandPaneModelCopyWith(_CommandPaneModel value, $Res Function(_CommandPaneModel) _then) = __$CommandPaneModelCopyWithImpl;
 @override @useResult
 $Res call({
- double height, bool isExpanded
+ bool isExpanded
 });
 
 
@@ -260,10 +258,9 @@ class __$CommandPaneModelCopyWithImpl<$Res>
 
 /// Create a copy of CommandPaneModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? height = null,Object? isExpanded = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? isExpanded = null,}) {
   return _then(_CommandPaneModel(
-height: null == height ? _self.height : height // ignore: cast_nullable_to_non_nullable
-as double,isExpanded: null == isExpanded ? _self.isExpanded : isExpanded // ignore: cast_nullable_to_non_nullable
+isExpanded: null == isExpanded ? _self.isExpanded : isExpanded // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -274,7 +271,9 @@ as bool,
 /// @nodoc
 mixin _$CommandLineModel {
 
- List<HistoryLineModel> get lines; CommandPromptModel? get prompt; String get status; String? get offeredInput; List<String> get entered; CommandPaneModel get pane; bool get paletteOpen;
+ List<HistoryLineModel> get lines; CommandPromptModel? get prompt; String get status;/// Text a log click wants the command line to show, without submitting it.
+ String? get offeredInput;/// Previously entered command text, for up-arrow recall.
+ List<String> get entered; CommandPaneModel get pane; bool get paletteOpen;
 /// Create a copy of CommandLineModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -505,8 +504,11 @@ class _CommandLineModel implements CommandLineModel {
 
 @override final  CommandPromptModel? prompt;
 @override@JsonKey() final  String status;
+/// Text a log click wants the command line to show, without submitting it.
 @override final  String? offeredInput;
+/// Previously entered command text, for up-arrow recall.
  final  List<String> _entered;
+/// Previously entered command text, for up-arrow recall.
 @override@JsonKey() List<String> get entered {
   if (_entered is EqualUnmodifiableListView) return _entered;
   // ignore: implicit_dynamic_type

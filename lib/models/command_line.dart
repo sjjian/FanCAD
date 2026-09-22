@@ -26,19 +26,21 @@ abstract final class CommandLineLayout {
   static const double maxHeight = 420;
 }
 
-/// Height of the command line pane, and whether the history is expanded.
+/// Whether the history is expanded.
+///
+/// Expansion is not a setting. The stored pane height lives with the other
+/// workbench sizes.
 @freezed
 abstract class CommandPaneModel with _$CommandPaneModel {
-  const factory CommandPaneModel({
-    @Default(CommandLineLayout.defaultHeight) double height,
-    @Default(false) bool isExpanded,
-  }) = _CommandPaneModel;
+  const factory CommandPaneModel({@Default(false) bool isExpanded}) =
+      _CommandPaneModel;
 }
 
 /// The command line pane: history plus the in-flight typed prompt, if any.
 ///
-/// [pane] and [paletteOpen] are the layout of this pane. The palette is not
-/// written to settings; it only lasts for the session.
+/// [pane] is whether the history is expanded. [paletteOpen] is not written
+/// to settings; it only lasts for the session. Pane height is workbench
+/// layout state.
 @freezed
 abstract class CommandLineModel with _$CommandLineModel {
   const factory CommandLineModel({

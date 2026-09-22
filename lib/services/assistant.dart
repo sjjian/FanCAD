@@ -10,7 +10,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../ai/authoring.dart';
 import '../ai/skills/bundled.dart';
 import '../models/assistant.dart';
-import '../storage/assistant_settings.dart';
+import '../storage/assistant.dart';
 import 'plugin.dart';
 import 'providers.dart';
 import 'settings.dart';
@@ -39,44 +39,11 @@ class AssistantNotifier extends _$AssistantNotifier {
     return AssistantModel(
       chats: chats,
       activeChatId: assistant.activeChatId(chats),
-      pane: AssistantPaneModel(
-        isOpen: assistant.paneOpen(),
-        width: assistant
-            .paneWidth(fallback: AssistantPaneLayout.defaultWidth)
-            .clamp(AssistantPaneLayout.minWidth, AssistantPaneLayout.maxWidth),
-      ),
     );
-  }
-
-  void setAssistantOpen(bool value) {
-    state = state.copyWith(pane: state.pane.copyWith(isOpen: value));
-    _assistant.setPaneOpen(value);
-  }
-
-  void toggleAssistant() => setAssistantOpen(!state.pane.isOpen);
-
-  void resizeAssistant(double width) {
-    state = state.copyWith(
-      pane: state.pane.copyWith(
-        width: width.roundToDouble().clamp(
-          AssistantPaneLayout.minWidth,
-          AssistantPaneLayout.maxWidth,
-        ),
-      ),
-    );
-  }
-
-  void commitAssistantWidth() => _assistant.setPaneWidth(state.pane.width);
-
-  void resetAssistantWidth() {
-    state = state.copyWith(
-      pane: state.pane.copyWith(width: AssistantPaneLayout.defaultWidth),
-    );
-    commitAssistantWidth();
   }
 
   Workspace get workspace => ref.read(workspaceNotifierProvider.notifier);
-  AssistantSettings get _assistant => ref.read(appSettingsProvider).assistant;
+  AssistantStore get _assistant => ref.read(appSettingsProvider).assistant;
   PluginHost? get host => ref.read(pluginNotifierProvider.notifier).host;
 
   AssistantModel get _store => state;

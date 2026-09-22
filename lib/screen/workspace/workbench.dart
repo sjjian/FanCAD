@@ -12,8 +12,8 @@ import '../../models/command_line.dart';
 import '../../models/workspace.dart';
 import '../../services/assistant.dart';
 import '../../services/command_line.dart';
+import '../../services/layout.dart';
 import '../../services/plugin.dart';
-import '../../services/sidebar.dart';
 import '../../services/workspace.dart';
 import '../assistant/ai_panel.dart';
 import '../command_line/command_line.dart';
@@ -67,7 +67,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     final workspace = ref.read(workspaceNotifierProvider.notifier);
     _panelReveals = workspace.panelReveals.listen((panelId) {
       if (panelId == 'ai') {
-        ref.read(assistantNotifierProvider.notifier).setAssistantOpen(true);
+        ref.read(layoutNotifierProvider.notifier).setAssistantOpen(true);
         return;
       }
       if (isPreferencesPanel(panelId)) {
@@ -80,7 +80,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         );
         return;
       }
-      ref.read(sidebarNotifierProvider.notifier).reveal(panelId);
+      ref.read(layoutNotifierProvider.notifier).reveal(panelId);
     });
     _approvals = workspace.approvals.listen(_showApproval);
     _commandChanges = workspace.commands.changes.listen((_) {
@@ -282,9 +282,16 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
 
   Widget _buildWindow(BuildContext context, Workspace workspace) {
     final tokens = context.tokens;
-    final sidebar = ref.watch(sidebarNotifierProvider);
-    final assistant = ref.watch(
-      assistantNotifierProvider.select((s) => s.pane),
+    final layout = ref.watch(
+      layoutNotifierProvider.select(
+        (s) => (
+          sidebarView: s.sidebarView,
+          sidebarOpen: s.sidebarOpen,
+          assistantOpen: s.assistantOpen,
+          sidebarWidth: s.sidebarWidth,
+          assistantWidth: s.assistantWidth,
+        ),
+      ),
     );
     final paletteOpen = ref.watch(
       commandLineNotifierProvider.select((s) => s.paletteOpen),
@@ -312,12 +319,12 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
           child: Column(
             children: [
               TitleBar(
-                assistantOpen: assistant.isOpen,
+                assistantOpen: layout.assistantOpen,
                 onTogglePalette: () => ref
                     .read(commandLineNotifierProvider.notifier)
                     .togglePalette(),
                 onToggleAssistant: ref
-                    .read(assistantNotifierProvider.notifier)
+                    .read(layoutNotifierProvider.notifier)
                     .toggleAssistant,
               ),
               Expanded(
@@ -328,23 +335,23 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                         Row(
                           children: [
                             ActivityBar(
-                              activeViewId: sidebar.isOpen
-                                  ? sidebar.viewId
+                              activeViewId: layout.sidebarOpen
+                                  ? layout.sidebarView
                                   : '',
                               onSelect: ref
-                                  .read(sidebarNotifierProvider.notifier)
+                                  .read(layoutNotifierProvider.notifier)
                                   .select,
                               onOpenSettings: () {
                                 unawaited(showSettingsDialog(context));
                               },
                             ),
-                            if (sidebar.isOpen)
+                            if (layout.sidebarOpen)
                               SizedBox(
-                                width: sidebar.width,
+                                width: layout.sidebarWidth,
                                 child: ColoredBox(
                                   color: tokens.surface,
                                   child: _sidebarBody(
-                                    sidebar.viewId,
+                                    layout.sidebarView,
                                     workspace,
                                   ),
                                 ),
@@ -357,9 +364,9 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                                 ],
                               ),
                             ),
-                            if (assistant.isOpen)
+                            if (layout.assistantOpen)
                               SizedBox(
-                                width: assistant.width,
+                                width: layout.assistantWidth,
                                 child: ColoredBox(
                                   color: tokens.surface,
                                   child: AiPanel(
@@ -371,10 +378,11 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                               ),
                           ],
                         ),
-                        if (sidebar.isOpen)
+                        if (layout.sidebarOpen)
                           Positioned(
                             left: FanCadSplitter.overlayOrigin(
-                              FanCadTokens.activityBarWidth + sidebar.width,
+                              FanCadTokens.activityBarWidth +
+                                  layout.sidebarWidth,
                             ),
                             top: 0,
                             bottom: 0,
@@ -386,21 +394,21 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                                 key: const Key('sidebar-splitter'),
                                 axis: Axis.vertical,
                                 onDrag: (delta) => ref
-                                    .read(sidebarNotifierProvider.notifier)
-                                    .resize(sidebar.width + delta),
+                                    .read(layoutNotifierProvider.notifier)
+                                    .resizeSidebar(layout.sidebarWidth + delta),
                                 onDragEnd: ref
-                                    .read(sidebarNotifierProvider.notifier)
-                                    .commitWidth,
+                                    .read(layoutNotifierProvider.notifier)
+                                    .commit,
                                 onDoubleTap: ref
-                                    .read(sidebarNotifierProvider.notifier)
-                                    .resetWidth,
+                                    .read(layoutNotifierProvider.notifier)
+                                    .resetSidebarWidth,
                               ),
                             ),
                           ),
-                        if (assistant.isOpen)
+                        if (layout.assistantOpen)
                           Positioned(
                             left: FanCadSplitter.overlayOrigin(
-                              constraints.maxWidth - assistant.width,
+                              constraints.maxWidth - layout.assistantWidth,
                             ),
                             top: 0,
                             bottom: 0,
@@ -412,13 +420,15 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                                 key: const Key('assistant-splitter'),
                                 axis: Axis.vertical,
                                 onDrag: (delta) => ref
-                                    .read(assistantNotifierProvider.notifier)
-                                    .resizeAssistant(assistant.width - delta),
+                                    .read(layoutNotifierProvider.notifier)
+                                    .resizeAssistant(
+                                      layout.assistantWidth - delta,
+                                    ),
                                 onDragEnd: ref
-                                    .read(assistantNotifierProvider.notifier)
-                                    .commitAssistantWidth,
+                                    .read(layoutNotifierProvider.notifier)
+                                    .commit,
                                 onDoubleTap: ref
-                                    .read(assistantNotifierProvider.notifier)
+                                    .read(layoutNotifierProvider.notifier)
                                     .resetAssistantWidth,
                               ),
                             ),
@@ -471,7 +481,11 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
             onStopAssistant: () =>
                 ref.read(assistantNotifierProvider.notifier).stop(),
           );
-    final sidebar = ref.watch(sidebarNotifierProvider);
+    final layout = ref.watch(
+      layoutNotifierProvider.select(
+        (s) => (open: s.sidebarOpen, view: s.sidebarView),
+      ),
+    );
     final stack = Stack(
       children: [
         body,
@@ -486,7 +500,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     return CanvasHud(
       workspace: workspace,
       commandFocus: _commandFocus,
-      historyOpen: sidebar.isOpen && sidebar.viewId == 'history',
+      historyOpen: layout.open && layout.view == 'history',
       onOpenHistory: () => workspace.revealPanel('history'),
       child: stack,
     );
@@ -542,7 +556,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       ),
       ...chord(
         LogicalKeyboardKey.keyB,
-        ref.read(sidebarNotifierProvider.notifier).toggle,
+        ref.read(layoutNotifierProvider.notifier).toggleSidebar,
       ),
       ...chord(LogicalKeyboardKey.keyU, () {
         ref.read(assistantNotifierProvider.notifier).pinSelection();

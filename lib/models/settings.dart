@@ -59,6 +59,25 @@ enum ThemePreference {
   String get id => name;
 }
 
+/// Drafting toggles written to `settings.json`.
+///
+/// Snap chrome on screen lives on the workspace store. This is only the saved
+/// copy, and it is not a Riverpod state.
+@freezed
+abstract class DrawingModel with _$DrawingModel {
+  const factory DrawingModel({
+    @Default([]) List<String> recentFiles,
+    @Default(true) bool showGrid,
+    @Default(true) bool snapEnabled,
+    @Default([]) List<String> snapModes,
+    @Default(false) bool ortho,
+    @Default(true) bool polar,
+
+    /// 45 degrees. The HUD offers a few other steps; this is the stored one.
+    @Default(0.7853981633974483) double polarIncrement,
+  }) = _DrawingModel;
+}
+
 /// Theme and language. Layout panes live on their own stores.
 @freezed
 abstract class AppearanceModel with _$AppearanceModel {

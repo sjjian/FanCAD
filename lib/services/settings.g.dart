@@ -7,7 +7,7 @@ part of 'settings.dart';
 // **************************************************************************
 
 String _$appearanceNotifierHash() =>
-    r'388b693deabed9760ac68e888b46921166af7637';
+    r'b206eb81f9706d3486f19a72e40033abf01c1fa7';
 
 /// Theme and language. Not a layout pane.
 ///
@@ -26,7 +26,7 @@ final appearanceNotifierProvider =
 
 typedef _$AppearanceNotifier = Notifier<AppearanceModel>;
 String _$assistantAccountsNotifierHash() =>
-    r'f488fc1280dc8825499920af25b80d40f84d08e2';
+    r'7f27027f8ff8c04651bc6696f028d3ff5e9d5d57';
 
 /// Saved assistant connections: model, endpoint, key, and auto-approve.
 ///
@@ -47,7 +47,7 @@ final assistantAccountsNotifierProvider =
     );
 
 typedef _$AssistantAccountsNotifier = Notifier<AssistantAccountsModel>;
-String _$mcpNotifierHash() => r'72d43619c0831d57931b7670f0e649a3fabecc5f';
+String _$mcpNotifierHash() => r'99187bb11b84c18bf403965bb07c0159ad35fb73';
 
 /// MCP bind settings plus the localhost listener the stdio proxy connects to.
 ///

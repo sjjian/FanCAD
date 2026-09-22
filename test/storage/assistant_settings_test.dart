@@ -9,13 +9,12 @@ void main() {
       SettingsKeys.aiApiKey: 'sk-leftover',
     });
     final assistant = AssistantSettings(settings);
-    final profiles = assistant.loadProfiles();
-    expect(profiles, hasLength(1));
-    expect(profiles.single.id, AssistantProfileModel.defaultId);
-    expect(profiles.single.model, 'deepseek-chat');
-    expect(profiles.single.baseUrl, 'https://api.deepseek.com/v1');
-    expect(profiles.single.apiKey, 'sk-leftover');
-    expect(profiles.single.displayName, 'deepseek-chat');
-    expect(assistant.activeProfile.id, AssistantProfileModel.defaultId);
+    final accounts = assistant.loadAccounts();
+    expect(accounts.profiles, hasLength(1));
+    expect(accounts.activeProfile.id, AssistantProfileModel.defaultId);
+    expect(accounts.activeProfile.model, 'deepseek-chat');
+    expect(accounts.activeProfile.baseUrl, 'https://api.deepseek.com/v1');
+    expect(accounts.activeProfile.apiKey, 'sk-leftover');
+    expect(accounts.activeProfile.displayName, 'deepseek-chat');
   });
 }

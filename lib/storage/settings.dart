@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:fancad_ops/fancad_ops.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
+
+import '../models/settings.dart';
 
 /// Persistent application settings.
 ///
@@ -173,4 +176,92 @@ class SettingsKeys {
   static const String mcpToken = 'mcp.token';
   static const String mcpLocal = 'mcp.local';
   static const String mcpAllowlist = 'mcp.allowlist';
+}
+
+/// Theme and language in `settings.json`.
+abstract interface class AppearanceStore {
+  AppearanceModel load();
+
+  void save(AppearanceModel value);
+}
+
+class AppearanceSettings implements AppearanceStore {
+  AppearanceSettings(this._store);
+
+  final SettingsStore _store;
+
+  @override
+  AppearanceModel load() {
+    return AppearanceModel(
+      theme: ThemePreference.parse(
+        _store.getString(SettingsKeys.themeBrightness, fallback: 'dark'),
+      ),
+      language: FanCadLanguage.parse(
+        _store.getString(
+          SettingsKeys.language,
+          fallback: FanCadLanguage.english,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void save(AppearanceModel value) {
+    _store.set(SettingsKeys.themeBrightness, value.theme.id);
+    _store.set(SettingsKeys.language, value.language);
+  }
+}
+
+/// Whether this process listens for an MCP stdio proxy.
+///
+/// The HTTP URL Cursor copies from settings uses the port and token on
+/// [McpModel].
+abstract interface class McpStore {
+  McpModel load();
+
+  void save(McpModel value);
+}
+
+class McpSettings implements McpStore {
+  McpSettings(this._store);
+
+  final SettingsStore _store;
+
+  @override
+  McpModel load() {
+    return McpModel(
+      bind: McpBindModel(
+        enabled: _store.getBool(SettingsKeys.mcpEnabled, fallback: true),
+        port: _store.getInt(SettingsKeys.mcpPort, fallback: defaultMcpPort),
+        local: _store.getBool(SettingsKeys.mcpLocal, fallback: true),
+        allowlist: _allowlist(),
+      ),
+      token: _ensureToken(),
+    );
+  }
+
+  @override
+  void save(McpModel value) {
+    _store.set(SettingsKeys.mcpEnabled, value.bind.enabled);
+    _store.set(SettingsKeys.mcpPort, value.bind.port);
+    _store.set(SettingsKeys.mcpLocal, value.bind.local);
+    _store.set(SettingsKeys.mcpAllowlist, value.bind.allowlist);
+    _store.set(SettingsKeys.mcpToken, value.token);
+  }
+
+  List<String> _allowlist() {
+    final raw = _store.values[SettingsKeys.mcpAllowlist];
+    if (raw is String) return parseMcpAllowlist(raw);
+    return parseMcpAllowlist(
+      _store.getStringList(SettingsKeys.mcpAllowlist).join(','),
+    );
+  }
+
+  String _ensureToken() {
+    final existing = _store.getString(SettingsKeys.mcpToken);
+    if (existing.isNotEmpty) return existing;
+    final next = randomMcpToken();
+    _store.set(SettingsKeys.mcpToken, next);
+    return next;
+  }
 }

@@ -14,8 +14,9 @@ import '../commands/builtins.dart';
 import '../commands/file/commands.dart';
 import '../l10n/l10n.dart';
 import '../models/command_line.dart';
+import '../models/settings.dart';
 import '../models/workspace.dart';
-import '../storage/drawing_settings.dart';
+import '../storage/workspace.dart';
 import 'command_line.dart';
 import 'providers.dart';
 
@@ -63,15 +64,16 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   WorkspaceModel build() {
     commands = ref.read(commandRegistryProvider);
     importer = ref.read(importerProvider);
-    _drawing = ref.read(appSettingsProvider).drawing;
+    _drawing = ref.read(appSettingsProvider).workspace;
+    _draft = _drawing.load();
     snapEngine = SnapEngine(
-      enabled: _drawing.snapEnabled,
-      snapToGrid: _drawing.showGrid,
+      enabled: _draft.snapEnabled,
+      snapToGrid: _draft.showGrid,
       modes: _restoreSnapModes(),
       tracking: TrackingSettings(
-        ortho: _drawing.ortho,
-        polar: _drawing.polar,
-        polarIncrement: _drawing.polarIncrement(),
+        ortho: _draft.ortho,
+        polar: _draft.polar,
+        polarIncrement: _draft.polarIncrement,
       ),
     );
     final fileCommands =
@@ -82,7 +84,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
           closeActive: (session, {bool force = false}) =>
               closeSession(session, force: force),
           saveActive: (session, path) => saveSession(session, path),
-          recentFiles: () => _drawing.recentFiles,
+          recentFiles: () => _draft.recentFiles,
           listSessions: () => [for (final id in state.sessionIds) ?session(id)],
           activeSessionId: () => activeSession?.id,
           activateDrawing: activateDrawing,
@@ -106,19 +108,19 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       ortho: snapEngine.tracking.ortho,
       polar: snapEngine.tracking.polar,
       snapModes: [for (final mode in snapEngine.modes) mode.name],
-      recentFiles: _drawing.recentFiles,
+      recentFiles: _draft.recentFiles,
     );
   }
 
   late CommandRegistry commands;
   late DrawingImporter importer;
-  late DrawingSettings _drawing;
+  late WorkspaceStore _drawing;
+  DrawingModel _draft = const DrawingModel();
   CommandLineNotifier get commandLine =>
       ref.read(commandLineNotifierProvider.notifier);
 
   @override
-  String get locale =>
-      FanCadLanguage.parse(ref.read(appSettingsProvider).appearance.language());
+  String get locale => ref.read(appSettingsProvider).appearance.load().language;
 
   /// Snapping is application-wide rather than per-tab, because the toggles live
   /// on the canvas HUD and users expect them to stay put when switching tabs.
@@ -359,7 +361,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
         _openRecord(session, diagnostics: result.diagnostics),
       );
       tab.viewport.zoomToExtents(result.document);
-      _drawing.pushRecent(stored);
+      _rememberRecent(stored);
       _syncRecent();
       unawaited(reloadShxFonts(drawingPath: stored));
       commandLine.writeSuccess(
@@ -424,7 +426,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       final outcome = await importer.save(target, tab.document);
       final written = _fileIdentity(outcome.path);
       tab.markSaved(written);
-      _drawing.pushRecent(written);
+      _rememberRecent(written);
       if (outcome.usedFallback && outcome.plan.reason.isNotEmpty) {
         notify(outcome.plan.reason);
       }
@@ -489,7 +491,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     return WorkspaceSessionModel(
       id: session.id,
       isStartPage: isStartPage,
-      showGrid: _drawing.showGrid,
+      showGrid: _draft.showGrid,
       diagnostics: diagnostics,
       title: session.title,
       isDirty: session.isDirty,
@@ -632,39 +634,37 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   /// Drops the recent-files list. Missing paths otherwise stay in the File
   /// menu and on the empty workspace until the user restarts.
   void _syncRecent() {
-    _setStore(
-      state.copyWith(recentFiles: List<String>.of(_drawing.recentFiles)),
-    );
+    _setStore(state.copyWith(recentFiles: List<String>.of(_draft.recentFiles)));
   }
 
   void clearRecentFiles() {
-    _drawing.setRecentFiles(const []);
+    _saveDraft(_draft.copyWith(recentFiles: const []));
     _syncRecent();
   }
 
   /// Drops recent paths whose files are gone, so the File menu and empty
   /// workspace stop offering drawings that cannot be opened.
   int pruneMissingRecentFiles() {
-    final recent = _drawing.recentFiles;
+    final recent = _draft.recentFiles;
     final kept = [
       for (final path in recent)
         if (File(path).existsSync()) path,
     ];
     if (kept.length == recent.length) return 0;
-    _drawing.setRecentFiles(kept);
+    _saveDraft(_draft.copyWith(recentFiles: kept));
     _syncRecent();
     return recent.length - kept.length;
   }
 
   void _dropRecent(String path) {
     final identity = _fileIdentity(path);
-    final recent = _drawing.recentFiles;
+    final recent = _draft.recentFiles;
     final kept = [
       for (final item in recent)
         if (_fileIdentity(item) != identity) item,
     ];
     if (kept.length == recent.length) return;
-    _drawing.setRecentFiles(kept);
+    _saveDraft(_draft.copyWith(recentFiles: kept));
     _syncRecent();
   }
 
@@ -1064,7 +1064,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   // -------------------------------------------------------------------------
 
   Set<SnapMode> _restoreSnapModes() {
-    final saved = _drawing.snapModes;
+    final saved = _draft.snapModes;
     if (saved.isEmpty) return {...SnapMode.defaults};
     return {for (final name in saved) ?SnapMode.parse(name)};
   }
@@ -1082,7 +1082,11 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   }
 
   void _persistSnapModes() {
-    _drawing.setSnapModes([for (final each in snapEngine.modes) each.name]);
+    _saveDraft(
+      _draft.copyWith(
+        snapModes: [for (final each in snapEngine.modes) each.name],
+      ),
+    );
   }
 
   void _syncDrafting() {
@@ -1098,24 +1102,24 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   void setSnapEnabled(bool value) {
     snapEngine.enabled = value;
-    _drawing.setSnapEnabled(value);
+    _saveDraft(_draft.copyWith(snapEnabled: value));
     _syncDrafting();
   }
 
   void setOrtho(bool value) {
     snapEngine.tracking = snapEngine.tracking.copyWith(ortho: value);
-    _drawing.setOrtho(value);
+    _saveDraft(_draft.copyWith(ortho: value));
     _syncDrafting();
   }
 
   void setPolar(bool value) {
     snapEngine.tracking = snapEngine.tracking.copyWith(polar: value);
-    _drawing.setPolar(value);
+    _saveDraft(_draft.copyWith(polar: value));
     _syncDrafting();
   }
 
   void setShowGrid(bool value) {
-    _drawing.setShowGrid(value);
+    _saveDraft(_draft.copyWith(showGrid: value));
     snapEngine.snapToGrid = value;
     final session = _store.active;
     if (session != null && session.showGrid != value) {
@@ -1126,7 +1130,25 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   void setPolarIncrement(double radians) {
     snapEngine.tracking = snapEngine.tracking.copyWith(polarIncrement: radians);
-    _drawing.setPolarIncrement(radians);
+    _saveDraft(_draft.copyWith(polarIncrement: radians));
+  }
+
+  /// Adds [path] to the front of the saved recent list, ignoring a blank path.
+  void _rememberRecent(String path) {
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) return;
+    final existing = [..._draft.recentFiles]
+      ..remove(trimmed)
+      ..insert(0, trimmed);
+    while (existing.length > 12) {
+      existing.removeLast();
+    }
+    _saveDraft(_draft.copyWith(recentFiles: existing));
+  }
+
+  void _saveDraft(DrawingModel next) {
+    _draft = next;
+    _drawing.save(next);
   }
 
   SelectionTool _selectionTool() {

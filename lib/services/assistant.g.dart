@@ -6,7 +6,7 @@ part of 'assistant.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$assistantNotifierHash() => r'89351300f36c397a636261971ef11ca7e7802a17';
+String _$assistantNotifierHash() => r'aa84321d95c267ce4bb4215abdc1e52592929128';
 
 /// Owns the assistant session for the application.
 ///

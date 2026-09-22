@@ -16,17 +16,10 @@ abstract final class AssistantPaneLayout {
   static const double maxWidth = 560;
 }
 
-/// The assistant chat, docked on the right so it can stay open next to Layers.
-@freezed
-abstract class AssistantPaneModel with _$AssistantPaneModel {
-  const factory AssistantPaneModel({
-    @Default(false) bool isOpen,
-    @Default(AssistantPaneLayout.defaultWidth) double width,
-  }) = _AssistantPaneModel;
-}
-
 /// Application-layer store of the assistant: chats, composer pins,
-/// the docked pane, and the in-flight approval / question cards.
+/// and the in-flight approval / question cards.
+///
+/// Whether the dock is open, and how wide it is, live on the workbench layout.
 @freezed
 abstract class AssistantModel with _$AssistantModel {
   const AssistantModel._();
@@ -40,7 +33,6 @@ abstract class AssistantModel with _$AssistantModel {
     SessionQuestion? question,
     @Default(false) bool busy,
     @Default(0) int transcriptEpoch,
-    @Default(AssistantPaneModel()) AssistantPaneModel pane,
   }) = _AssistantModel;
 
   AssistantChatModel get activeChat {

@@ -12,269 +12,9 @@ part of 'assistant.dart';
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
-mixin _$AssistantPaneModel {
-
- bool get isOpen; double get width;
-/// Create a copy of AssistantPaneModel
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$AssistantPaneModelCopyWith<AssistantPaneModel> get copyWith => _$AssistantPaneModelCopyWithImpl<AssistantPaneModel>(this as AssistantPaneModel, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantPaneModel&&(identical(other.isOpen, isOpen) || other.isOpen == isOpen)&&(identical(other.width, width) || other.width == width));
-}
-
-
-@override
-int get hashCode => Object.hash(runtimeType,isOpen,width);
-
-@override
-String toString() {
-  return 'AssistantPaneModel(isOpen: $isOpen, width: $width)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $AssistantPaneModelCopyWith<$Res>  {
-  factory $AssistantPaneModelCopyWith(AssistantPaneModel value, $Res Function(AssistantPaneModel) _then) = _$AssistantPaneModelCopyWithImpl;
-@useResult
-$Res call({
- bool isOpen, double width
-});
-
-
-
-
-}
-/// @nodoc
-class _$AssistantPaneModelCopyWithImpl<$Res>
-    implements $AssistantPaneModelCopyWith<$Res> {
-  _$AssistantPaneModelCopyWithImpl(this._self, this._then);
-
-  final AssistantPaneModel _self;
-  final $Res Function(AssistantPaneModel) _then;
-
-/// Create a copy of AssistantPaneModel
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? isOpen = null,Object? width = null,}) {
-  return _then(_self.copyWith(
-isOpen: null == isOpen ? _self.isOpen : isOpen // ignore: cast_nullable_to_non_nullable
-as bool,width: null == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
-as double,
-  ));
-}
-
-}
-
-
-/// Adds pattern-matching-related methods to [AssistantPaneModel].
-extension AssistantPaneModelPatterns on AssistantPaneModel {
-/// A variant of `map` that fallback to returning `orElse`.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case _:
-///     return orElse();
-/// }
-/// ```
-
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _AssistantPaneModel value)?  $default,{required TResult orElse(),}){
-final _that = this;
-switch (_that) {
-case _AssistantPaneModel() when $default != null:
-return $default(_that);case _:
-  return orElse();
-
-}
-}
-/// A `switch`-like method, using callbacks.
-///
-/// Callbacks receives the raw object, upcasted.
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case final Subclass2 value:
-///     return ...;
-/// }
-/// ```
-
-@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _AssistantPaneModel value)  $default,){
-final _that = this;
-switch (_that) {
-case _AssistantPaneModel():
-return $default(_that);case _:
-  throw StateError('Unexpected subclass');
-
-}
-}
-/// A variant of `map` that fallback to returning `null`.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case _:
-///     return null;
-/// }
-/// ```
-
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _AssistantPaneModel value)?  $default,){
-final _that = this;
-switch (_that) {
-case _AssistantPaneModel() when $default != null:
-return $default(_that);case _:
-  return null;
-
-}
-}
-/// A variant of `when` that fallback to an `orElse` callback.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case _:
-///     return orElse();
-/// }
-/// ```
-
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool isOpen,  double width)?  $default,{required TResult orElse(),}) {final _that = this;
-switch (_that) {
-case _AssistantPaneModel() when $default != null:
-return $default(_that.isOpen,_that.width);case _:
-  return orElse();
-
-}
-}
-/// A `switch`-like method, using callbacks.
-///
-/// As opposed to `map`, this offers destructuring.
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case Subclass2(:final field2):
-///     return ...;
-/// }
-/// ```
-
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool isOpen,  double width)  $default,) {final _that = this;
-switch (_that) {
-case _AssistantPaneModel():
-return $default(_that.isOpen,_that.width);case _:
-  throw StateError('Unexpected subclass');
-
-}
-}
-/// A variant of `when` that fallback to returning `null`
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case _:
-///     return null;
-/// }
-/// ```
-
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool isOpen,  double width)?  $default,) {final _that = this;
-switch (_that) {
-case _AssistantPaneModel() when $default != null:
-return $default(_that.isOpen,_that.width);case _:
-  return null;
-
-}
-}
-
-}
-
-/// @nodoc
-
-
-class _AssistantPaneModel implements AssistantPaneModel {
-  const _AssistantPaneModel({this.isOpen = false, this.width = AssistantPaneLayout.defaultWidth});
-  
-
-@override@JsonKey() final  bool isOpen;
-@override@JsonKey() final  double width;
-
-/// Create a copy of AssistantPaneModel
-/// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-_$AssistantPaneModelCopyWith<_AssistantPaneModel> get copyWith => __$AssistantPaneModelCopyWithImpl<_AssistantPaneModel>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantPaneModel&&(identical(other.isOpen, isOpen) || other.isOpen == isOpen)&&(identical(other.width, width) || other.width == width));
-}
-
-
-@override
-int get hashCode => Object.hash(runtimeType,isOpen,width);
-
-@override
-String toString() {
-  return 'AssistantPaneModel(isOpen: $isOpen, width: $width)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class _$AssistantPaneModelCopyWith<$Res> implements $AssistantPaneModelCopyWith<$Res> {
-  factory _$AssistantPaneModelCopyWith(_AssistantPaneModel value, $Res Function(_AssistantPaneModel) _then) = __$AssistantPaneModelCopyWithImpl;
-@override @useResult
-$Res call({
- bool isOpen, double width
-});
-
-
-
-
-}
-/// @nodoc
-class __$AssistantPaneModelCopyWithImpl<$Res>
-    implements _$AssistantPaneModelCopyWith<$Res> {
-  __$AssistantPaneModelCopyWithImpl(this._self, this._then);
-
-  final _AssistantPaneModel _self;
-  final $Res Function(_AssistantPaneModel) _then;
-
-/// Create a copy of AssistantPaneModel
-/// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? isOpen = null,Object? width = null,}) {
-  return _then(_AssistantPaneModel(
-isOpen: null == isOpen ? _self.isOpen : isOpen // ignore: cast_nullable_to_non_nullable
-as bool,width: null == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
-as double,
-  ));
-}
-
-
-}
-
-/// @nodoc
 mixin _$AssistantModel {
 
- List<AssistantChatModel> get chats; String get activeChatId; List<ComposerPinModel> get pins; String? get error; PendingChangeSet? get approval; SessionQuestion? get question; bool get busy; int get transcriptEpoch; AssistantPaneModel get pane;
+ List<AssistantChatModel> get chats; String get activeChatId; List<ComposerPinModel> get pins; String? get error; PendingChangeSet? get approval; SessionQuestion? get question; bool get busy; int get transcriptEpoch;
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -285,16 +25,16 @@ $AssistantModelCopyWith<AssistantModel> get copyWith => _$AssistantModelCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantModel&&const DeepCollectionEquality().equals(other.chats, chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other.pins, pins)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pane, pane) || other.pane == pane));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantModel&&const DeepCollectionEquality().equals(other.chats, chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other.pins, pins)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(chats),activeChatId,const DeepCollectionEquality().hash(pins),error,approval,question,busy,transcriptEpoch,pane);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(chats),activeChatId,const DeepCollectionEquality().hash(pins),error,approval,question,busy,transcriptEpoch);
 
 @override
 String toString() {
-  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch, pane: $pane)';
+  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch)';
 }
 
 
@@ -305,11 +45,11 @@ abstract mixin class $AssistantModelCopyWith<$Res>  {
   factory $AssistantModelCopyWith(AssistantModel value, $Res Function(AssistantModel) _then) = _$AssistantModelCopyWithImpl;
 @useResult
 $Res call({
- List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch, AssistantPaneModel pane
+ List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch
 });
 
 
-$AssistantPaneModelCopyWith<$Res> get pane;
+
 
 }
 /// @nodoc
@@ -322,7 +62,7 @@ class _$AssistantModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,Object? pane = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,}) {
   return _then(_self.copyWith(
 chats: null == chats ? _self.chats : chats // ignore: cast_nullable_to_non_nullable
 as List<AssistantChatModel>,activeChatId: null == activeChatId ? _self.activeChatId : activeChatId // ignore: cast_nullable_to_non_nullable
@@ -332,20 +72,10 @@ as String?,approval: freezed == approval ? _self.approval : approval // ignore: 
 as PendingChangeSet?,question: freezed == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
 as SessionQuestion?,busy: null == busy ? _self.busy : busy // ignore: cast_nullable_to_non_nullable
 as bool,transcriptEpoch: null == transcriptEpoch ? _self.transcriptEpoch : transcriptEpoch // ignore: cast_nullable_to_non_nullable
-as int,pane: null == pane ? _self.pane : pane // ignore: cast_nullable_to_non_nullable
-as AssistantPaneModel,
+as int,
   ));
 }
-/// Create a copy of AssistantModel
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$AssistantPaneModelCopyWith<$Res> get pane {
-  
-  return $AssistantPaneModelCopyWith<$Res>(_self.pane, (value) {
-    return _then(_self.copyWith(pane: value));
-  });
-}
+
 }
 
 
@@ -427,10 +157,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  AssistantPaneModel pane)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AssistantModel() when $default != null:
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pane);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
   return orElse();
 
 }
@@ -448,10 +178,10 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.appr
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  AssistantPaneModel pane)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)  $default,) {final _that = this;
 switch (_that) {
 case _AssistantModel():
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pane);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -468,10 +198,10 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.appr
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  AssistantPaneModel pane)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)?  $default,) {final _that = this;
 switch (_that) {
 case _AssistantModel() when $default != null:
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pane);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
   return null;
 
 }
@@ -483,7 +213,7 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.appr
 
 
 class _AssistantModel extends AssistantModel {
-  const _AssistantModel({final  List<AssistantChatModel> chats = const [], this.activeChatId = AssistantChatModel.defaultId, final  List<ComposerPinModel> pins = const [], this.error, this.approval, this.question, this.busy = false, this.transcriptEpoch = 0, this.pane = const AssistantPaneModel()}): _chats = chats,_pins = pins,super._();
+  const _AssistantModel({final  List<AssistantChatModel> chats = const [], this.activeChatId = AssistantChatModel.defaultId, final  List<ComposerPinModel> pins = const [], this.error, this.approval, this.question, this.busy = false, this.transcriptEpoch = 0}): _chats = chats,_pins = pins,super._();
   
 
  final  List<AssistantChatModel> _chats;
@@ -506,7 +236,6 @@ class _AssistantModel extends AssistantModel {
 @override final  SessionQuestion? question;
 @override@JsonKey() final  bool busy;
 @override@JsonKey() final  int transcriptEpoch;
-@override@JsonKey() final  AssistantPaneModel pane;
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
@@ -518,16 +247,16 @@ _$AssistantModelCopyWith<_AssistantModel> get copyWith => __$AssistantModelCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantModel&&const DeepCollectionEquality().equals(other._chats, _chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other._pins, _pins)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pane, pane) || other.pane == pane));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantModel&&const DeepCollectionEquality().equals(other._chats, _chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other._pins, _pins)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_chats),activeChatId,const DeepCollectionEquality().hash(_pins),error,approval,question,busy,transcriptEpoch,pane);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_chats),activeChatId,const DeepCollectionEquality().hash(_pins),error,approval,question,busy,transcriptEpoch);
 
 @override
 String toString() {
-  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch, pane: $pane)';
+  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch)';
 }
 
 
@@ -538,11 +267,11 @@ abstract mixin class _$AssistantModelCopyWith<$Res> implements $AssistantModelCo
   factory _$AssistantModelCopyWith(_AssistantModel value, $Res Function(_AssistantModel) _then) = __$AssistantModelCopyWithImpl;
 @override @useResult
 $Res call({
- List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch, AssistantPaneModel pane
+ List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch
 });
 
 
-@override $AssistantPaneModelCopyWith<$Res> get pane;
+
 
 }
 /// @nodoc
@@ -555,7 +284,7 @@ class __$AssistantModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,Object? pane = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,}) {
   return _then(_AssistantModel(
 chats: null == chats ? _self._chats : chats // ignore: cast_nullable_to_non_nullable
 as List<AssistantChatModel>,activeChatId: null == activeChatId ? _self.activeChatId : activeChatId // ignore: cast_nullable_to_non_nullable
@@ -565,21 +294,11 @@ as String?,approval: freezed == approval ? _self.approval : approval // ignore: 
 as PendingChangeSet?,question: freezed == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
 as SessionQuestion?,busy: null == busy ? _self.busy : busy // ignore: cast_nullable_to_non_nullable
 as bool,transcriptEpoch: null == transcriptEpoch ? _self.transcriptEpoch : transcriptEpoch // ignore: cast_nullable_to_non_nullable
-as int,pane: null == pane ? _self.pane : pane // ignore: cast_nullable_to_non_nullable
-as AssistantPaneModel,
+as int,
   ));
 }
 
-/// Create a copy of AssistantModel
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$AssistantPaneModelCopyWith<$Res> get pane {
-  
-  return $AssistantPaneModelCopyWith<$Res>(_self.pane, (value) {
-    return _then(_self.copyWith(pane: value));
-  });
-}
+
 }
 
 /// @nodoc

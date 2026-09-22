@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../models/command_line.dart';
-import 'providers.dart';
+import 'layout.dart';
 
 part 'command_line.g.dart';
 
@@ -77,43 +77,26 @@ class CommandLineNotifier extends _$CommandLineNotifier {
   CommandLineModel build() {
     historyLimit = ref.read(commandLineHistoryLimitOverrideProvider) ?? 500;
     ref.onDispose(() => _pending?.cancel('Closed'));
-    final height = ref
-        .read(appSettingsProvider)
-        .commandLine
-        .paneHeight(fallback: CommandLineLayout.defaultHeight)
-        .clamp(CommandLineLayout.minHeight, CommandLineLayout.maxHeight);
     return CommandLineModel(
-      pane: CommandPaneModel(height: height, isExpanded: _commandExpanded),
+      pane: CommandPaneModel(isExpanded: _commandExpanded),
       paletteOpen: _paletteOpen,
     );
   }
 
-  void resizeCommand(double height) {
-    state = state.copyWith(
-      pane: state.pane.copyWith(
-        height: height.clamp(
-          CommandLineLayout.minHeight,
-          CommandLineLayout.maxHeight,
-        ),
-      ),
-    );
-  }
-
-  void commitCommandHeight() => ref
-      .read(appSettingsProvider)
-      .commandLine
-      .setPaneHeight(state.pane.height);
-
+  /// Flips the history open. The taller or shorter height is live layout
+  /// state and is not written here.
   void toggleCommandExpanded() {
     _commandExpanded = !state.pane.isExpanded;
     state = state.copyWith(
-      pane: state.pane.copyWith(
-        isExpanded: _commandExpanded,
-        height: _commandExpanded
-            ? CommandLineLayout.expandedHeight
-            : CommandLineLayout.collapsedHeight,
-      ),
+      pane: state.pane.copyWith(isExpanded: _commandExpanded),
     );
+    ref
+        .read(layoutNotifierProvider.notifier)
+        .resizeCommand(
+          _commandExpanded
+              ? CommandLineLayout.expandedHeight
+              : CommandLineLayout.collapsedHeight,
+        );
   }
 
   void setPaletteOpen(bool value) {

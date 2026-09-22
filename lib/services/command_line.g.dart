@@ -27,7 +27,7 @@ final commandLineHistoryLimitOverrideProvider = Provider<int?>.internal(
 // ignore: unused_element
 typedef CommandLineHistoryLimitOverrideRef = ProviderRef<int?>;
 String _$commandLineNotifierHash() =>
-    r'abc17807a51cba445f05c055bd1e9548f6e2c089';
+    r'e8bfc8e4ad338315686ab43bf59c9c758e7ca345';
 
 /// The state behind the command line and command history.
 ///

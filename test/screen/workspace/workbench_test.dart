@@ -203,7 +203,7 @@ void main() {
     tester,
   ) async {
     final container = await pumpWorkbench(tester, document: true);
-    expect(container.read(sidebarNotifierProvider).viewId, 'layers');
+    expect(container.read(layoutNotifierProvider).sidebarView, 'layers');
     expect(find.text('Layers'), findsOneWidget);
 
     final tab = container.read(workspaceNotifierProvider.notifier).active!;
@@ -213,7 +213,7 @@ void main() {
     tab.session.selection.replace([line.id]);
     await tester.pump();
 
-    expect(container.read(sidebarNotifierProvider).viewId, 'properties');
+    expect(container.read(layoutNotifierProvider).sidebarView, 'properties');
     expect(find.text('Properties'), findsOneWidget);
     expect(find.text('Layers'), findsNothing);
   });

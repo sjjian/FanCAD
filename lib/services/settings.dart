@@ -8,9 +8,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../ai/skills/bundled.dart';
 import '../models/settings.dart';
-import '../storage/appearance_settings.dart';
-import '../storage/assistant_settings.dart';
-import '../storage/mcp_settings.dart';
+import '../storage/assistant.dart';
+import '../storage/settings.dart';
 import 'providers.dart';
 import 'workspace.dart';
 
@@ -19,18 +18,10 @@ part 'settings.g.dart';
 /// Theme and language. Not a layout pane.
 @Riverpod(keepAlive: true)
 class AppearanceNotifier extends _$AppearanceNotifier {
-  AppearanceSettings get _settings => ref.read(appSettingsProvider).appearance;
+  AppearanceStore get _settings => ref.read(appSettingsProvider).appearance;
 
   @override
-  AppearanceModel build() {
-    final settings = ref.watch(appSettingsProvider).appearance;
-    return AppearanceModel(
-      theme: ThemePreference.parse(settings.themeBrightness()),
-      language: FanCadLanguage.parse(
-        settings.language(fallback: FanCadLanguage.english),
-      ),
-    );
-  }
+  AppearanceModel build() => ref.watch(appSettingsProvider).appearance.load();
 
   void toggleTheme() {
     setPreference(
@@ -43,36 +34,28 @@ class AppearanceNotifier extends _$AppearanceNotifier {
   void setPreference(ThemePreference value) {
     if (state.theme == value) return;
     state = state.copyWith(theme: value);
-    _settings.setThemeBrightness(value.id);
+    _settings.save(state);
   }
 
   void setLanguage(String value) {
     final language = FanCadLanguage.parse(value);
     if (state.language == language) return;
     state = state.copyWith(language: language);
-    _settings.setLanguage(state.language);
+    _settings.save(state);
   }
 }
 
 /// Saved assistant connections: model, endpoint, key, and auto-approve.
 @Riverpod(keepAlive: true)
 class AssistantAccountsNotifier extends _$AssistantAccountsNotifier {
-  AssistantSettings get _assistant => ref.read(appSettingsProvider).assistant;
+  AssistantStore get _assistant => ref.read(appSettingsProvider).assistant;
   Workspace get _workspace => ref.read(workspaceNotifierProvider.notifier);
 
   bool get _turnRunning => ref.read(workspaceNotifierProvider).assistantBusy;
 
   @override
-  AssistantAccountsModel build() {
-    final assistant = ref.read(appSettingsProvider).assistant;
-    final profiles = assistant.loadProfiles();
-    return AssistantAccountsModel(
-      profiles: profiles,
-      activeProfileId: assistant.activeProfileId(profiles),
-      apiKeyRef: assistant.apiKeyRef,
-      autoApprove: assistant.autoApprove,
-    );
-  }
+  AssistantAccountsModel build() =>
+      ref.read(appSettingsProvider).assistant.loadAccounts();
 
   void setModel(String value) {
     final next = value.trim();
@@ -88,8 +71,8 @@ class AssistantAccountsNotifier extends _$AssistantAccountsNotifier {
 
   void setAutoApprove(bool value) {
     if (value == state.autoApprove) return;
-    _assistant.setAutoApprove(value);
     state = state.copyWith(autoApprove: value);
+    _assistant.saveAccounts(state);
   }
 
   void setApiKey(String value) {
@@ -101,8 +84,8 @@ class AssistantAccountsNotifier extends _$AssistantAccountsNotifier {
   void setApiKeyRef(String value) {
     final next = value.trim();
     if (next.isEmpty || next == state.apiKeyRef) return;
-    _assistant.setApiKeyRef(next);
     state = state.copyWith(apiKeyRef: next);
+    _assistant.saveAccounts(state);
   }
 
   void setProfileLabel(String value) {
@@ -176,8 +159,8 @@ class AssistantAccountsNotifier extends _$AssistantAccountsNotifier {
   }
 
   void _persist(List<AssistantProfileModel> all, {required String activeId}) {
-    _assistant.saveProfiles(all, activeId: activeId);
     state = state.copyWith(profiles: all, activeProfileId: activeId);
+    _assistant.saveAccounts(state);
   }
 }
 
@@ -188,7 +171,7 @@ class AssistantAccountsNotifier extends _$AssistantAccountsNotifier {
 /// slot. Production always opens a file-backed store.
 @Riverpod(keepAlive: true)
 class McpNotifier extends _$McpNotifier {
-  McpSettings get _mcp => ref.read(appSettingsProvider).mcp;
+  McpStore get _mcp => ref.read(appSettingsProvider).mcp;
   Workspace get _workspace => ref.read(workspaceNotifierProvider.notifier);
 
   McpHttpServer? _server;
@@ -201,15 +184,7 @@ class McpNotifier extends _$McpNotifier {
       unawaited(stop());
     });
     Future<void>.microtask(_syncListen);
-    return McpModel(
-      bind: McpBindModel(
-        enabled: mcp.enabled,
-        port: mcp.port,
-        local: mcp.local,
-        allowlist: mcp.allowlist,
-      ),
-      token: mcp.ensureToken(),
-    );
+    return mcp.load();
   }
 
   String get url =>
@@ -219,7 +194,7 @@ class McpNotifier extends _$McpNotifier {
   void setEnabled(bool value) {
     if (state.bind.enabled == value) return;
     state = state.copyWith(bind: state.bind.copyWith(enabled: value));
-    _mcp.setEnabled(value);
+    _mcp.save(state);
     _syncListen();
   }
 
@@ -227,7 +202,7 @@ class McpNotifier extends _$McpNotifier {
     final port = parseMcpPort('$value', fallback: state.bind.port);
     if (state.bind.port == port) return;
     state = state.copyWith(bind: state.bind.copyWith(port: port));
-    _mcp.setPort(port);
+    _mcp.save(state);
     _syncListen();
   }
 
@@ -237,14 +212,14 @@ class McpNotifier extends _$McpNotifier {
   void setLocal(bool value) {
     if (state.bind.local == value) return;
     state = state.copyWith(bind: state.bind.copyWith(local: value));
-    _mcp.setLocal(value);
+    _mcp.save(state);
     _syncListen();
   }
 
   void setAllowlist(List<String> value) {
     if (_sameAllowlist(state.bind.allowlist, value)) return;
     state = state.copyWith(bind: state.bind.copyWith(allowlist: value));
-    _mcp.setAllowlist(value);
+    _mcp.save(state);
     _syncListen();
   }
 

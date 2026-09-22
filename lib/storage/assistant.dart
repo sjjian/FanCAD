@@ -4,17 +4,29 @@ import 'settings.dart';
 
 /// The assistant's slice of `settings.json`.
 ///
-/// Chat and profile keys stay separate from the dock. `layout.assistantOpen`
-/// and `layout.assistantWidth` are read here as pane methods, not as chat
-/// fields. The controller loads models here and writes them back; leftover
-/// flat `ai.model` rows still become one profile until `ai.profiles` exists.
-class AssistantSettings {
+/// Chat and profile keys stay separate from the dock. Whether the dock is
+/// open, and how wide it is, live on the workbench layout. Leftover flat
+/// `ai.model` rows still become one profile until `ai.profiles` exists.
+abstract interface class AssistantStore {
+  AssistantAccountsModel loadAccounts();
+
+  void saveAccounts(AssistantAccountsModel value);
+
+  List<AssistantChatModel> loadChats();
+
+  String activeChatId(List<AssistantChatModel> chats);
+
+  void saveChats(List<AssistantChatModel> chats, {required String activeId});
+}
+
+class AssistantSettings implements AssistantStore {
   AssistantSettings(this._store);
 
   final SettingsStore _store;
 
   static const int chatCap = 20;
 
+  @override
   List<AssistantChatModel> loadChats() {
     final raw = _store.values[SettingsKeys.aiChats];
     if (raw is List && raw.isNotEmpty) {
@@ -27,18 +39,41 @@ class AssistantSettings {
     return [AssistantChatModel(id: AssistantChatModel.defaultId)];
   }
 
+  @override
   String activeChatId(List<AssistantChatModel> chats) {
     final id = _store.getString(SettingsKeys.aiActiveChat);
     if (chats.any((chat) => chat.id == id)) return id;
     return chats.first.id;
   }
 
+  @override
   void saveChats(List<AssistantChatModel> chats, {required String activeId}) {
     _store.set(SettingsKeys.aiChats, [for (final chat in chats) chat.toJson()]);
     _store.set(SettingsKeys.aiActiveChat, activeId);
   }
 
-  List<AssistantProfileModel> loadProfiles() {
+  @override
+  AssistantAccountsModel loadAccounts() {
+    final profiles = _loadProfiles();
+    return AssistantAccountsModel(
+      profiles: profiles,
+      activeProfileId: activeProfileId(profiles),
+      apiKeyRef: _store.getString(
+        SettingsKeys.aiApiKeyRef,
+        fallback: 'OPENAI_API_KEY',
+      ),
+      autoApprove: _store.getBool(SettingsKeys.aiAutoApprove),
+    );
+  }
+
+  @override
+  void saveAccounts(AssistantAccountsModel value) {
+    _writeProfiles(value.profiles, activeId: value.activeProfileId);
+    _store.set(SettingsKeys.aiApiKeyRef, value.apiKeyRef);
+    _store.set(SettingsKeys.aiAutoApprove, value.autoApprove);
+  }
+
+  List<AssistantProfileModel> _loadProfiles() {
     final raw = _store.values[SettingsKeys.aiProfiles];
     if (raw is List && raw.isNotEmpty) {
       final parsed = <AssistantProfileModel>[];
@@ -81,13 +116,7 @@ class AssistantSettings {
     return profiles.first.id;
   }
 
-  AssistantProfileModel get activeProfile {
-    final profiles = loadProfiles();
-    final id = activeProfileId(profiles);
-    return profiles.firstWhere((profile) => profile.id == id);
-  }
-
-  void saveProfiles(
+  void _writeProfiles(
     List<AssistantProfileModel> profiles, {
     required String activeId,
   }) {
@@ -103,27 +132,4 @@ class AssistantSettings {
     _store.set(SettingsKeys.aiBaseUrl, current.baseUrl);
     _store.set(SettingsKeys.aiApiKey, current.apiKey);
   }
-
-  String get apiKeyRef =>
-      _store.getString(SettingsKeys.aiApiKeyRef, fallback: 'OPENAI_API_KEY');
-
-  void setApiKeyRef(String value) =>
-      _store.set(SettingsKeys.aiApiKeyRef, value);
-
-  bool get autoApprove => _store.getBool(SettingsKeys.aiAutoApprove);
-
-  void setAutoApprove(bool value) =>
-      _store.set(SettingsKeys.aiAutoApprove, value);
-
-  /// Dock open state. Separate from chat and profile keys.
-  bool paneOpen({bool fallback = false}) =>
-      _store.getBool(SettingsKeys.assistantOpen, fallback: fallback);
-
-  void setPaneOpen(bool value) => _store.set(SettingsKeys.assistantOpen, value);
-
-  double paneWidth({double fallback = 0}) =>
-      _store.getDouble(SettingsKeys.assistantWidth, fallback: fallback);
-
-  void setPaneWidth(double value) =>
-      _store.set(SettingsKeys.assistantWidth, value);
 }

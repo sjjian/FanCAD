@@ -12,6 +12,295 @@ part of 'settings.dart';
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
+mixin _$DrawingModel {
+
+ List<String> get recentFiles; bool get showGrid; bool get snapEnabled; List<String> get snapModes; bool get ortho; bool get polar;/// 45 degrees. The HUD offers a few other steps; this is the stored one.
+ double get polarIncrement;
+/// Create a copy of DrawingModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$DrawingModelCopyWith<DrawingModel> get copyWith => _$DrawingModelCopyWithImpl<DrawingModel>(this as DrawingModel, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DrawingModel&&const DeepCollectionEquality().equals(other.recentFiles, recentFiles)&&(identical(other.showGrid, showGrid) || other.showGrid == showGrid)&&(identical(other.snapEnabled, snapEnabled) || other.snapEnabled == snapEnabled)&&const DeepCollectionEquality().equals(other.snapModes, snapModes)&&(identical(other.ortho, ortho) || other.ortho == ortho)&&(identical(other.polar, polar) || other.polar == polar)&&(identical(other.polarIncrement, polarIncrement) || other.polarIncrement == polarIncrement));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(recentFiles),showGrid,snapEnabled,const DeepCollectionEquality().hash(snapModes),ortho,polar,polarIncrement);
+
+@override
+String toString() {
+  return 'DrawingModel(recentFiles: $recentFiles, showGrid: $showGrid, snapEnabled: $snapEnabled, snapModes: $snapModes, ortho: $ortho, polar: $polar, polarIncrement: $polarIncrement)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $DrawingModelCopyWith<$Res>  {
+  factory $DrawingModelCopyWith(DrawingModel value, $Res Function(DrawingModel) _then) = _$DrawingModelCopyWithImpl;
+@useResult
+$Res call({
+ List<String> recentFiles, bool showGrid, bool snapEnabled, List<String> snapModes, bool ortho, bool polar, double polarIncrement
+});
+
+
+
+
+}
+/// @nodoc
+class _$DrawingModelCopyWithImpl<$Res>
+    implements $DrawingModelCopyWith<$Res> {
+  _$DrawingModelCopyWithImpl(this._self, this._then);
+
+  final DrawingModel _self;
+  final $Res Function(DrawingModel) _then;
+
+/// Create a copy of DrawingModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? recentFiles = null,Object? showGrid = null,Object? snapEnabled = null,Object? snapModes = null,Object? ortho = null,Object? polar = null,Object? polarIncrement = null,}) {
+  return _then(_self.copyWith(
+recentFiles: null == recentFiles ? _self.recentFiles : recentFiles // ignore: cast_nullable_to_non_nullable
+as List<String>,showGrid: null == showGrid ? _self.showGrid : showGrid // ignore: cast_nullable_to_non_nullable
+as bool,snapEnabled: null == snapEnabled ? _self.snapEnabled : snapEnabled // ignore: cast_nullable_to_non_nullable
+as bool,snapModes: null == snapModes ? _self.snapModes : snapModes // ignore: cast_nullable_to_non_nullable
+as List<String>,ortho: null == ortho ? _self.ortho : ortho // ignore: cast_nullable_to_non_nullable
+as bool,polar: null == polar ? _self.polar : polar // ignore: cast_nullable_to_non_nullable
+as bool,polarIncrement: null == polarIncrement ? _self.polarIncrement : polarIncrement // ignore: cast_nullable_to_non_nullable
+as double,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [DrawingModel].
+extension DrawingModelPatterns on DrawingModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _DrawingModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _DrawingModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _DrawingModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _DrawingModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _DrawingModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _DrawingModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<String> recentFiles,  bool showGrid,  bool snapEnabled,  List<String> snapModes,  bool ortho,  bool polar,  double polarIncrement)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _DrawingModel() when $default != null:
+return $default(_that.recentFiles,_that.showGrid,_that.snapEnabled,_that.snapModes,_that.ortho,_that.polar,_that.polarIncrement);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<String> recentFiles,  bool showGrid,  bool snapEnabled,  List<String> snapModes,  bool ortho,  bool polar,  double polarIncrement)  $default,) {final _that = this;
+switch (_that) {
+case _DrawingModel():
+return $default(_that.recentFiles,_that.showGrid,_that.snapEnabled,_that.snapModes,_that.ortho,_that.polar,_that.polarIncrement);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<String> recentFiles,  bool showGrid,  bool snapEnabled,  List<String> snapModes,  bool ortho,  bool polar,  double polarIncrement)?  $default,) {final _that = this;
+switch (_that) {
+case _DrawingModel() when $default != null:
+return $default(_that.recentFiles,_that.showGrid,_that.snapEnabled,_that.snapModes,_that.ortho,_that.polar,_that.polarIncrement);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _DrawingModel implements DrawingModel {
+  const _DrawingModel({final  List<String> recentFiles = const [], this.showGrid = true, this.snapEnabled = true, final  List<String> snapModes = const [], this.ortho = false, this.polar = true, this.polarIncrement = 0.7853981633974483}): _recentFiles = recentFiles,_snapModes = snapModes;
+  
+
+ final  List<String> _recentFiles;
+@override@JsonKey() List<String> get recentFiles {
+  if (_recentFiles is EqualUnmodifiableListView) return _recentFiles;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_recentFiles);
+}
+
+@override@JsonKey() final  bool showGrid;
+@override@JsonKey() final  bool snapEnabled;
+ final  List<String> _snapModes;
+@override@JsonKey() List<String> get snapModes {
+  if (_snapModes is EqualUnmodifiableListView) return _snapModes;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_snapModes);
+}
+
+@override@JsonKey() final  bool ortho;
+@override@JsonKey() final  bool polar;
+/// 45 degrees. The HUD offers a few other steps; this is the stored one.
+@override@JsonKey() final  double polarIncrement;
+
+/// Create a copy of DrawingModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$DrawingModelCopyWith<_DrawingModel> get copyWith => __$DrawingModelCopyWithImpl<_DrawingModel>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DrawingModel&&const DeepCollectionEquality().equals(other._recentFiles, _recentFiles)&&(identical(other.showGrid, showGrid) || other.showGrid == showGrid)&&(identical(other.snapEnabled, snapEnabled) || other.snapEnabled == snapEnabled)&&const DeepCollectionEquality().equals(other._snapModes, _snapModes)&&(identical(other.ortho, ortho) || other.ortho == ortho)&&(identical(other.polar, polar) || other.polar == polar)&&(identical(other.polarIncrement, polarIncrement) || other.polarIncrement == polarIncrement));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_recentFiles),showGrid,snapEnabled,const DeepCollectionEquality().hash(_snapModes),ortho,polar,polarIncrement);
+
+@override
+String toString() {
+  return 'DrawingModel(recentFiles: $recentFiles, showGrid: $showGrid, snapEnabled: $snapEnabled, snapModes: $snapModes, ortho: $ortho, polar: $polar, polarIncrement: $polarIncrement)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$DrawingModelCopyWith<$Res> implements $DrawingModelCopyWith<$Res> {
+  factory _$DrawingModelCopyWith(_DrawingModel value, $Res Function(_DrawingModel) _then) = __$DrawingModelCopyWithImpl;
+@override @useResult
+$Res call({
+ List<String> recentFiles, bool showGrid, bool snapEnabled, List<String> snapModes, bool ortho, bool polar, double polarIncrement
+});
+
+
+
+
+}
+/// @nodoc
+class __$DrawingModelCopyWithImpl<$Res>
+    implements _$DrawingModelCopyWith<$Res> {
+  __$DrawingModelCopyWithImpl(this._self, this._then);
+
+  final _DrawingModel _self;
+  final $Res Function(_DrawingModel) _then;
+
+/// Create a copy of DrawingModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? recentFiles = null,Object? showGrid = null,Object? snapEnabled = null,Object? snapModes = null,Object? ortho = null,Object? polar = null,Object? polarIncrement = null,}) {
+  return _then(_DrawingModel(
+recentFiles: null == recentFiles ? _self._recentFiles : recentFiles // ignore: cast_nullable_to_non_nullable
+as List<String>,showGrid: null == showGrid ? _self.showGrid : showGrid // ignore: cast_nullable_to_non_nullable
+as bool,snapEnabled: null == snapEnabled ? _self.snapEnabled : snapEnabled // ignore: cast_nullable_to_non_nullable
+as bool,snapModes: null == snapModes ? _self._snapModes : snapModes // ignore: cast_nullable_to_non_nullable
+as List<String>,ortho: null == ortho ? _self.ortho : ortho // ignore: cast_nullable_to_non_nullable
+as bool,polar: null == polar ? _self.polar : polar // ignore: cast_nullable_to_non_nullable
+as bool,polarIncrement: null == polarIncrement ? _self.polarIncrement : polarIncrement // ignore: cast_nullable_to_non_nullable
+as double,
+  ));
+}
+
+
+}
+
+/// @nodoc
 mixin _$AppearanceModel {
 
  ThemePreference get theme; String get language;

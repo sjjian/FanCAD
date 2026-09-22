@@ -312,7 +312,7 @@ void main() {
     expect(find.byKey(const Key('command-log-panel')), findsNothing);
     expect(find.text('Filter by name, alias or category'), findsOneWidget);
 
-    container.read(assistantNotifierProvider.notifier).toggleAssistant();
+    container.read(layoutNotifierProvider.notifier).toggleAssistant();
     await tester.pump();
     expect(find.byKey(const Key('assistant-splitter')), findsOneWidget);
     expect(
