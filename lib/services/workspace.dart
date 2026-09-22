@@ -84,7 +84,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
               closeSession(session, force: force),
           saveActive: (session, path) => saveSession(session, path),
           recentFiles: () => _drawing.recentFiles,
-          listSessions: () => [for (final id in sessionIds) ?session(id)],
+          listSessions: () => [for (final id in state.sessionIds) ?session(id)],
           activeSessionId: () => activeSession?.id,
           activateDrawing: activateDrawing,
         );
@@ -123,8 +123,6 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     return value.isEmpty ? 'en' : value;
   }
 
-  List<String> get recentFiles => state.recentFiles;
-
   /// Snapping is application-wide rather than per-tab, because the toggles live
   /// on the canvas HUD and users expect them to stay put when switching tabs.
   late final SnapEngine snapEngine;
@@ -151,12 +149,9 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   Timer? _flashTimer;
 
-  /// Last geometry the human or the assistant created or changed.
-
   List<DocumentTab> get tabs => List.unmodifiable([
     for (final session in _store.sessions) ?_hosts[session.id],
   ]);
-  int get activeIndex => _store.activeIndex;
 
   DocumentTab? get active {
     final session = _store.active;
@@ -173,9 +168,6 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   bool get hasDocument => activeDrawing != null;
 
-  /// Open drawing sessions, skipping start pages.
-  List<String> get sessionIds => _store.sessionIds;
-
   DocumentSession? session(String id) {
     final key = id.trim();
     if (key.isEmpty) return null;
@@ -189,30 +181,15 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   DocumentSession? get activeSession => activeDrawing?.session;
 
-  List<NoticeModel> get notices => _store.notices;
-
   /// Fires when something asks the user to approve a change.
   Stream<PendingApproval> get approvals => _approvals.stream;
 
   /// Fires when a command asks for a panel to be brought forward.
   Stream<String> get panelReveals => _panelReveals.stream;
 
-  String? get runningCommand => _store.runningCommand;
-  bool get isBusy => _store.runningCommand != null;
-  bool get assistantBusy => _store.assistantBusy;
-
-  List<int> get lastCreatedIds => _store.lastCreatedIds;
-  List<int> get lastModifiedIds => _store.lastModifiedIds;
-
   /// Points collected by the in-flight interactive command.
   int get collectedPointCount =>
       _activeInput?.collectedPointCount ?? _store.collectedPointCount;
-
-  /// Entities the canvas should highlight while an approval is pending.
-  ///
-  /// Approval ids stay on [WorkspaceModel.approval]. Held / flash / hover live
-  /// on the active session.
-  List<int> get pendingHighlightIds => _store.highlightIds;
 
   /// Holds [ids] on the active session until the caller clears them.
   ///
@@ -1295,11 +1272,15 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       ortho: snapEngine.tracking.ortho,
       polar: snapEngine.tracking.polar,
       showGrid: tab?.showGrid ?? true,
-      runningCommand: runningCommand,
+      runningCommand: state.runningCommand,
       prompt: commandLine.pending?.message,
       collectedPointCount: collectedPointCount,
-      lastCreatedIds: [...lastCreatedIds.take(SessionSnapshot.maxResultIds)],
-      lastModifiedIds: [...lastModifiedIds.take(SessionSnapshot.maxResultIds)],
+      lastCreatedIds: [
+        ...state.lastCreatedIds.take(SessionSnapshot.maxResultIds),
+      ],
+      lastModifiedIds: [
+        ...state.lastModifiedIds.take(SessionSnapshot.maxResultIds),
+      ],
     );
   }
 
@@ -1625,7 +1606,7 @@ class InteractiveCommandInput implements CommandInput {
   }) : _params = params;
 
   final ToolController tools;
-  final CommandLineController commandLine;
+  final CommandLineNotifier commandLine;
   final String locale;
 
   /// Arguments supplied up front, for example by the command line's own

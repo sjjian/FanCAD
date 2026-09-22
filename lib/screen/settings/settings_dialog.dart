@@ -136,7 +136,7 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
   late final TextEditingController _apiKey;
   late final TextEditingController _mcpPort;
   late final TextEditingController _mcpAllowlist;
-  late final AiController _ai;
+  late final AssistantNotifier _ai;
   late final McpNotifier _mcp;
 
   @override
@@ -144,10 +144,11 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
     super.initState();
     _ai = ref.read(assistantNotifierProvider.notifier);
     _mcp = ref.read(mcpNotifierProvider.notifier);
-    _label = TextEditingController(text: _ai.activeProfile.label);
-    _model = TextEditingController(text: _ai.model);
-    _endpoint = TextEditingController(text: _ai.baseUrl);
-    _apiKey = TextEditingController(text: _ai.apiKey);
+    final profile = ref.read(assistantNotifierProvider).activeProfile;
+    _label = TextEditingController(text: profile.label);
+    _model = TextEditingController(text: profile.model);
+    _endpoint = TextEditingController(text: profile.baseUrl);
+    _apiKey = TextEditingController(text: profile.apiKey);
     final bind = ref.read(mcpNotifierProvider).bind;
     _mcpPort = TextEditingController(text: '${bind.port}');
     _mcpAllowlist = TextEditingController(text: bind.allowlist.join(', '));
@@ -179,20 +180,17 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
 
   void _flushAssistantFields() {
     _ai.setProfileLabel(_label.text);
-    final model = _model.text.trim();
-    if (model.isNotEmpty && model != _ai.model) _ai.setModel(model);
-    final endpoint = _endpoint.text.trim();
-    if (endpoint.isNotEmpty && endpoint != _ai.baseUrl) {
-      _ai.setBaseUrl(endpoint);
-    }
+    _ai.setModel(_model.text);
+    _ai.setBaseUrl(_endpoint.text);
     _ai.setApiKey(_apiKey.text);
   }
 
   void _syncAssistantFields() {
-    _label.text = _ai.activeProfile.label;
-    _model.text = _ai.model;
-    _endpoint.text = _ai.baseUrl;
-    _apiKey.text = _ai.apiKey;
+    final profile = ref.read(assistantNotifierProvider).activeProfile;
+    _label.text = profile.label;
+    _model.text = profile.model;
+    _endpoint.text = profile.baseUrl;
+    _apiKey.text = profile.apiKey;
   }
 
   void _selectProfile(String id) {
@@ -594,7 +592,8 @@ class _AssistantPage extends ConsumerWidget {
       ),
     );
     final ai = ref.read(assistantNotifierProvider.notifier);
-    final approveHint = ai.autoApprove
+    final model = ref.read(assistantNotifierProvider);
+    final approveHint = model.autoApprove
         ? l10n.edits_without_asking
         : l10n.ask_before_edits;
     return ListView(
@@ -605,7 +604,7 @@ class _AssistantPage extends ConsumerWidget {
           children: [
             SettingsToggle(
               label: l10n.auto_approve,
-              value: ai.autoApprove,
+              value: model.autoApprove,
               onChanged: ai.setAutoApprove,
               description: approveHint,
               tooltip: approveHint,
@@ -614,10 +613,10 @@ class _AssistantPage extends ConsumerWidget {
               label: l10n.settings_current_model,
               child: SettingsDropdown<String>(
                 key: const Key('settings-current-model'),
-                value: ai.activeProfile.id,
+                value: model.activeProfile.id,
                 onChanged: onSelectProfile,
                 options: [
-                  for (final profile in ai.profiles)
+                  for (final profile in model.profiles)
                     SettingsDropdownOption(
                       key: Key('settings-current-model-${profile.id}'),
                       value: profile.id,
@@ -681,10 +680,7 @@ class _ModelsPageState extends ConsumerState<_ModelsPage> {
   void _addProfile() {
     widget.onAddProfile();
     setState(() {
-      _editingId = ref
-          .read(assistantNotifierProvider.notifier)
-          .activeProfile
-          .id;
+      _editingId = ref.read(assistantNotifierProvider).activeProfile.id;
     });
   }
 
@@ -701,7 +697,7 @@ class _ModelsPageState extends ConsumerState<_ModelsPage> {
     if (_editingId == id) widget.onCommit();
     final ai = ref.read(assistantNotifierProvider.notifier);
     AssistantProfileModel? profile;
-    for (final item in ai.profiles) {
+    for (final item in ref.read(assistantNotifierProvider).profiles) {
       if (item.id == id) {
         profile = item;
         break;
@@ -722,7 +718,8 @@ class _ModelsPageState extends ConsumerState<_ModelsPage> {
       assistantNotifierProvider.select((s) => (s.profiles, s.activeProfileId)),
     );
     final ai = ref.read(assistantNotifierProvider.notifier);
-    final canDelete = ai.profiles.length > 1;
+    final model = ref.read(assistantNotifierProvider);
+    final canDelete = model.profiles.length > 1;
     return ListView(
       padding: const EdgeInsets.all(FanCadTokens.space4),
       children: [
@@ -736,11 +733,11 @@ class _ModelsPageState extends ConsumerState<_ModelsPage> {
             onPressed: _addProfile,
           ),
           children: [
-            for (final profile in ai.profiles)
+            for (final profile in model.profiles)
               _ModelProfileCard(
                 profile: profile,
                 ai: ai,
-                selected: profile.id == ai.activeProfile.id,
+                selected: profile.id == model.activeProfile.id,
                 expanded: profile.id == _editingId,
                 testing: profile.id == _testingId,
                 canDelete: canDelete,
@@ -783,7 +780,7 @@ class _ModelProfileCard extends StatelessWidget {
   });
 
   final AssistantProfileModel profile;
-  final AiController ai;
+  final AssistantNotifier ai;
   final bool selected;
   final bool expanded;
   final bool testing;

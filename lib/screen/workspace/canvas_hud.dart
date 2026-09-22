@@ -414,14 +414,17 @@ String _redoTooltip(
       : '${l10n.redo_named(label)}  $chord';
 }
 
-class _ActionBar extends StatelessWidget {
+class _ActionBar extends ConsumerWidget {
   const _ActionBar({required this.workspace});
 
   final Workspace workspace;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    final running = ref.watch(
+      workspaceNotifierProvider.select((s) => s.runningCommand),
+    );
     final tab = workspace.active;
     return SizedBox(
       key: const Key('canvas-action-card'),
@@ -463,7 +466,7 @@ class _ActionBar extends StatelessWidget {
                   '${l10n.commandTitle(tool.commandId, tool.fallback)}  ${tool.alias}',
               size: 24,
               enabled: tab != null,
-              isActive: workspace.runningCommand == tool.commandId,
+              isActive: running == tool.commandId,
               onPressed: () => workspace.run(tool.commandId),
             ),
           ],

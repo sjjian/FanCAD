@@ -109,7 +109,9 @@ class DocumentTabStrip extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(workspaceNotifierProvider.select((s) => s.tabStrip));
+    final strip = ref.watch(
+      workspaceNotifierProvider.select((s) => s.tabStrip),
+    );
     final tokens = context.tokens;
     final tabs = workspace.tabs;
     if (tabs.isEmpty) return const SizedBox.shrink();
@@ -129,7 +131,7 @@ class DocumentTabStrip extends ConsumerWidget {
               itemBuilder: (context, index) => _Tab(
                 workspace: workspace,
                 tab: tabs[index],
-                isActive: index == workspace.activeIndex,
+                isActive: index == strip.activeIndex,
                 onTap: () => workspace.activate(index),
                 onClose: () {
                   if (workspace.closeTab(index)) return;
@@ -145,7 +147,11 @@ class DocumentTabStrip extends ConsumerWidget {
             tooltip: context.l10n.new_tab,
             onPressed: workspace.openStartTab,
           ),
-          if (tabs.length > 1) _OpenDrawingsMenu(workspace: workspace),
+          if (tabs.length > 1)
+            _OpenDrawingsMenu(
+              workspace: workspace,
+              activeIndex: strip.activeIndex,
+            ),
           const SizedBox(width: FanCadTokens.space1),
         ],
       ),
@@ -156,9 +162,10 @@ class DocumentTabStrip extends ConsumerWidget {
 /// The strip scrolls; this list does not. A drawing that has gone off the
 /// right edge is still one click away.
 class _OpenDrawingsMenu extends StatelessWidget {
-  const _OpenDrawingsMenu({required this.workspace});
+  const _OpenDrawingsMenu({required this.workspace, required this.activeIndex});
 
   final Workspace workspace;
+  final int activeIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -174,8 +181,8 @@ class _OpenDrawingsMenu extends StatelessWidget {
             context,
             value: i,
             label: tabs[i].isStartPage ? context.l10n.start_tab : tabs[i].title,
-            checked: i == workspace.activeIndex ? true : null,
-            leading: i == workspace.activeIndex
+            checked: i == activeIndex ? true : null,
+            leading: i == activeIndex
                 ? null
                 : tabs[i].isDirty
                 ? Center(

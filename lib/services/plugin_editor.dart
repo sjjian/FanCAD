@@ -14,9 +14,6 @@ class PluginEditorNotifier extends _$PluginEditorNotifier {
   @override
   PluginEditorModel build() => const PluginEditorModel();
 
-  PluginEditorTargetModel? get target => state.target;
-  int get request => state.request;
-
   void open(String id, String relative) {
     state = state.copyWith(
       target: PluginEditorTargetModel(id: id, relative: relative),
@@ -24,6 +21,3 @@ class PluginEditorNotifier extends _$PluginEditorNotifier {
     );
   }
 }
-
-/// The extension editor. Prefer [PluginEditorNotifier] at new call sites.
-typedef PluginEditorController = PluginEditorNotifier;

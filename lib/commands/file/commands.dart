@@ -43,8 +43,8 @@ class FileCommands {
 
   final List<String> Function() recentFiles;
 
-  /// Open drawing sessions for `file.list`. Production injects
-  /// [Workspace.sessionIds] resolved through [Workspace.session].
+  /// Open drawing sessions for `file.list`. Production injects the workspace
+  /// model's open drawing ids, resolved through [Workspace.session].
   final List<DocumentSession> Function()? listSessions;
 
   /// Session id of the current drawing, for `file.list`'s `active` flag.

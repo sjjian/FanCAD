@@ -110,7 +110,7 @@ class CommandLinePane extends ConsumerStatefulWidget {
 class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
   final TextEditingController _input = TextEditingController();
 
-  CommandLineController get _model => widget.workspace.commandLine;
+  CommandLineNotifier get _model => widget.workspace.commandLine;
 
   @override
   void initState() {
@@ -285,10 +285,11 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
             onPressed: widget.onOpenHistory,
           ),
           _HistoryOverflow(
-            enabled: _model.lines.isNotEmpty,
+            enabled: ref.read(commandLineNotifierProvider).lines.isNotEmpty,
             onCopy: () {
               final text = [
-                for (final line in _model.lines) line.text,
+                for (final line in ref.read(commandLineNotifierProvider).lines)
+                  line.text,
               ].join('\n');
               Clipboard.setData(ClipboardData(text: text));
               widget.workspace.notify(context.l10n.copied_history);
@@ -365,7 +366,9 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
               ],
             ),
           ),
-          if (keywords.isNotEmpty || awaiting || widget.workspace.isBusy)
+          if (keywords.isNotEmpty ||
+              awaiting ||
+              ref.read(workspaceNotifierProvider).runningCommand != null)
             Flexible(
               child: Align(
                 alignment: Alignment.centerRight,
@@ -385,7 +388,9 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                             onPressed: () => _submit(keyword),
                           ),
                         ),
-                      if (awaiting || widget.workspace.isBusy)
+                      if (awaiting ||
+                          ref.read(workspaceNotifierProvider).runningCommand !=
+                              null)
                         Padding(
                           padding: const EdgeInsets.only(
                             left: FanCadTokens.space1,
@@ -559,7 +564,7 @@ class CommandLogPanel extends ConsumerStatefulWidget {
 class _CommandLogPanelState extends ConsumerState<CommandLogPanel> {
   final ScrollController _scroll = ScrollController();
 
-  CommandLineController get _model => widget.workspace.commandLine;
+  CommandLineNotifier get _model => widget.workspace.commandLine;
 
   @override
   void dispose() {
@@ -580,7 +585,9 @@ class _CommandLogPanelState extends ConsumerState<CommandLogPanel> {
   }
 
   void _copy() {
-    final text = [for (final line in _model.lines) line.text].join('\n');
+    final text = [
+      for (final line in ref.read(commandLineNotifierProvider).lines) line.text,
+    ].join('\n');
     Clipboard.setData(ClipboardData(text: text));
     widget.workspace.notify(context.l10n.copied_history);
   }
@@ -593,7 +600,7 @@ class _CommandLogPanelState extends ConsumerState<CommandLogPanel> {
     );
     ref.watch(commandLineNotifierProvider.select((s) => s.lines));
     final tokens = context.tokens;
-    final lines = _model.lines;
+    final lines = ref.read(commandLineNotifierProvider).lines;
     return Column(
       key: const Key('command-log-panel'),
       children: [

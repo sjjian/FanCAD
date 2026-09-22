@@ -45,8 +45,6 @@ class McpNotifier extends _$McpNotifier {
     );
   }
 
-  McpBindModel get bind => state.bind;
-
   String get url =>
       _server?.url ??
       fancadMcpUrl(host: state.bind.bindHost, port: state.bind.port);

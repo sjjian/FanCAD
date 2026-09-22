@@ -11,7 +11,7 @@ Future<CommandResult> _noop(CommandContext context) async =>
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  AiController controller({SettingsStore? settings}) {
+  AssistantNotifier controller({SettingsStore? settings}) {
     final store = settings ?? SettingsStore.inMemory();
     store.set(SettingsKeys.aiApiKeyRef, 'FANCAD_TEST_MISSING_KEY');
     store.set(SettingsKeys.aiApiKey, '');
@@ -36,13 +36,13 @@ void main() {
     ai.setAutoApprove(true);
     ai.setApiKey('sk-test');
 
-    expect(ai.draft, 'draw a line');
-    expect(ai.model, 'deepseek-chat');
-    expect(ai.baseUrl, 'http://127.0.0.1:9/v1');
-    expect(ai.autoApprove, isTrue);
-    expect(ai.apiKey, 'sk-test');
-    expect(ai.activeProfile.model, 'deepseek-chat');
-    expect(ai.activeProfile.apiKey, 'sk-test');
+    expect(ai.state.activeChat.draft, 'draw a line');
+    expect(ai.state.activeProfile.model, 'deepseek-chat');
+    expect(ai.state.activeProfile.baseUrl, 'http://127.0.0.1:9/v1');
+    expect(ai.state.autoApprove, isTrue);
+    expect(ai.state.activeProfile.apiKey, 'sk-test');
+    expect(ai.state.activeProfile.model, 'deepseek-chat');
+    expect(ai.state.activeProfile.apiKey, 'sk-test');
     expect(ticks, 5);
   });
 
@@ -56,40 +56,43 @@ void main() {
     ai.setBaseUrl('https://api.openai.com/v1');
     ai.setApiKey('sk-two');
 
-    expect(ai.profiles, hasLength(2));
-    expect(ai.model, 'gpt-4o-mini');
+    expect(ai.state.profiles, hasLength(2));
+    expect(ai.state.activeProfile.model, 'gpt-4o-mini');
 
-    ai.selectProfile(ai.profiles.first.id);
-    expect(ai.model, 'deepseek-chat');
-    expect(ai.baseUrl, 'https://api.deepseek.com/v1');
-    expect(ai.apiKey, 'sk-one');
-    expect(ai.activeProfile.model, 'deepseek-chat');
+    ai.selectProfile(ai.state.profiles.first.id);
+    expect(ai.state.activeProfile.model, 'deepseek-chat');
+    expect(ai.state.activeProfile.baseUrl, 'https://api.deepseek.com/v1');
+    expect(ai.state.activeProfile.apiKey, 'sk-one');
+    expect(ai.state.activeProfile.model, 'deepseek-chat');
 
     ai.debugSetBusy(true);
-    ai.selectProfile(ai.profiles.last.id);
-    expect(ai.model, 'deepseek-chat');
+    ai.selectProfile(ai.state.profiles.last.id);
+    expect(ai.state.activeProfile.model, 'deepseek-chat');
   });
 
   test('a leftover empty new session is not duplicated', () {
     final ai = controller();
-    expect(ai.chats, hasLength(1));
+    expect(ai.state.chats, hasLength(1));
     ai.newSession();
-    expect(ai.chats, hasLength(1));
-    expect(ai.messages, isEmpty);
+    expect(ai.state.chats, hasLength(1));
+    expect(ai.state.activeChat.conversation.visible, isEmpty);
   });
 
   test('new session keeps leftover messages on the previous thread', () {
     final ai = controller();
-    ai.conversation.addUser('draw a turtle');
+    ai.state.activeChat.conversation.addUser('draw a turtle');
     ai.newSession();
-    expect(ai.messages, isEmpty);
-    expect(ai.chats, hasLength(2));
-    final leftover = ai.chats.firstWhere(
+    expect(ai.state.activeChat.conversation.visible, isEmpty);
+    expect(ai.state.chats, hasLength(2));
+    final leftover = ai.state.chats.firstWhere(
       (chat) => chat.conversation.visible.isNotEmpty,
     );
     ai.selectSession(leftover.id);
-    expect(ai.messages.single.text, 'draw a turtle');
-    expect(ai.activeChat.id, leftover.id);
+    expect(
+      ai.state.activeChat.conversation.visible.single.text,
+      'draw a turtle',
+    );
+    expect(ai.state.activeChat.id, leftover.id);
   });
 
   test('a leftover stored chat is the active thread', () {
@@ -111,17 +114,23 @@ void main() {
       ],
     });
     final ai = controller(settings: store);
-    expect(ai.activeChat.id, 'c1');
-    expect(ai.messages.single.text, 'draw a turtle');
-    expect(ai.messages.single.text, isNot(contains('status')));
+    expect(ai.state.activeChat.id, 'c1');
+    expect(
+      ai.state.activeChat.conversation.visible.single.text,
+      'draw a turtle',
+    );
+    expect(
+      ai.state.activeChat.conversation.visible.single.text,
+      isNot(contains('status')),
+    );
   });
 
   test('clear drops leftover usage so the ring starts empty', () {
     final ai = controller();
     ai.debugSetUsage(const LlmUsage(promptTokens: 12400));
-    expect(ai.lastUsage, isNotNull);
+    expect(ai.state.activeChat.usage, isNotNull);
     ai.clear();
-    expect(ai.lastUsage, isNull);
+    expect(ai.state.activeChat.usage, isNull);
   });
 
   test(
@@ -129,36 +138,36 @@ void main() {
     () async {
       final ai = controller();
       await ai.send('   ');
-      expect(ai.error, isNull);
-      expect(ai.isBusy, isFalse);
-      expect(ai.messages, isEmpty);
+      expect(ai.state.error, isNull);
+      expect(ai.state.busy, isFalse);
+      expect(ai.state.activeChat.conversation.visible, isEmpty);
 
       ai.setDraft('draw a circle');
       await ai.send();
       expect(ai.isConfigured, isFalse);
-      expect(ai.error, contains('Paste one in Settings'));
-      expect(ai.isBusy, isFalse);
-      expect(ai.draft, 'draw a circle');
+      expect(ai.state.error, contains('Paste one in Settings'));
+      expect(ai.state.busy, isFalse);
+      expect(ai.state.activeChat.draft, 'draw a circle');
     },
   );
 
   test('clearing a leftover pasted key forgets it', () {
     final ai = controller();
     ai.setApiKey('sk-x');
-    expect(ai.apiKey, 'sk-x');
+    expect(ai.state.activeProfile.apiKey, 'sk-x');
     ai.setApiKey('');
-    expect(ai.apiKey, isEmpty);
+    expect(ai.state.activeProfile.apiKey, isEmpty);
     expect(ai.isConfigured, isFalse);
   });
 
   test('clear drops a leftover error so the next turn starts clean', () async {
     final ai = controller();
     await ai.send('hello');
-    expect(ai.error, isNotNull);
+    expect(ai.state.error, isNotNull);
 
     ai.clear();
-    expect(ai.error, isNull);
-    expect(ai.messages, isEmpty);
+    expect(ai.state.error, isNull);
+    expect(ai.state.activeChat.conversation.visible, isEmpty);
   });
 
   test('leftover pending args stay out of the in-panel approval', () async {
@@ -182,15 +191,15 @@ void main() {
     );
 
     final future = ai.debugAskApproval(pending);
-    expect(ai.pendingApproval, isNotNull);
-    expect(ai.pendingApproval!.details, isNot(contains('center')));
-    expect(ai.pendingApproval!.details, isNot(contains('mystery')));
-    expect(ai.workspace.pendingHighlightIds, [7, 8]);
+    expect(ai.state.approval, isNotNull);
+    expect(ai.state.approval!.details, isNot(contains('center')));
+    expect(ai.state.approval!.details, isNot(contains('mystery')));
+    expect(ai.workspace.state.highlightIds, [7, 8]);
 
     ai.acceptPending();
     expect(await future, isTrue);
-    expect(ai.pendingApproval, isNull);
-    expect(ai.workspace.pendingHighlightIds, isEmpty);
+    expect(ai.state.approval, isNull);
+    expect(ai.workspace.state.highlightIds, isEmpty);
   });
 
   test(
@@ -205,10 +214,10 @@ void main() {
       );
 
       final future = ai.debugAskApproval(pending);
-      expect(ai.pendingApproval, isNotNull);
+      expect(ai.state.approval, isNotNull);
       ai.clear();
       expect(await future, isFalse);
-      expect(ai.pendingApproval, isNull);
+      expect(ai.state.approval, isNull);
     },
   );
 
@@ -223,18 +232,18 @@ void main() {
       ids: [1, 2, 3, 4],
     );
     final future = ai.debugAskQuestion(question);
-    expect(ai.pendingQuestion, isNotNull);
-    expect(ai.workspace.pendingHighlightIds, isEmpty);
+    expect(ai.state.question, isNotNull);
+    expect(ai.workspace.state.highlightIds, isEmpty);
     ai.cancelQuestion();
     expect(await future, {'status': 'cancelled'});
   });
 
   test('testProfile without a key notifies an error', () async {
     final ai = controller();
-    await ai.testProfile(ai.activeProfile);
-    expect(ai.workspace.notices, isNotEmpty);
-    expect(ai.workspace.notices.last.isError, isTrue);
-    expect(ai.workspace.notices.last.message, contains('No API key'));
+    await ai.testProfile(ai.state.activeProfile);
+    expect(ai.workspace.state.notices, isNotEmpty);
+    expect(ai.workspace.state.notices.last.isError, isTrue);
+    expect(ai.workspace.state.notices.last.message, contains('No API key'));
   });
 
   test('pinning the leftover pick records ids for the next send', () {
@@ -248,10 +257,10 @@ void main() {
     final id = tab.document.entities.single.id;
     tab.selection.replace([id]);
     ai.pinSelection();
-    expect(ai.pins, hasLength(1));
-    expect(ai.pins.single.ids, [id]);
-    expect(ai.pins.single.tabId, tab.session.id);
-    final flattened = flattenComposerPins(ai.pins, 'offset these');
+    expect(ai.state.pins, hasLength(1));
+    expect(ai.state.pins.single.ids, [id]);
+    expect(ai.state.pins.single.tabId, tab.session.id);
+    final flattened = flattenComposerPins(ai.state.pins, 'offset these');
     expect(flattened, contains('#$id'));
     expect(flattened, contains('tab: ${tab.session.id}'));
     expect(flattened, contains(tab.session.id));
@@ -274,10 +283,10 @@ void main() {
     ai.pinSelection();
     tab.selection.replace([second]);
     ai.pinSelection();
-    expect(ai.pins, hasLength(2));
-    expect(ai.pins.first.ids, [first]);
-    expect(ai.pins.last.ids, [second]);
-    expect(ai.pins.map((pin) => pin.tabId).toSet(), {tab.session.id});
+    expect(ai.state.pins, hasLength(2));
+    expect(ai.state.pins.first.ids, [first]);
+    expect(ai.state.pins.last.ids, [second]);
+    expect(ai.state.pins.map((pin) => pin.tabId).toSet(), {tab.session.id});
   });
 
   test('pins from two drawings keep their own tab ids', () {
@@ -302,14 +311,14 @@ void main() {
     second.selection.replace([secondId]);
     ai.pinSelection();
 
-    expect(ai.pins, hasLength(2));
-    expect(ai.pins.map((pin) => pin.tabId).toSet(), {
+    expect(ai.state.pins, hasLength(2));
+    expect(ai.state.pins.map((pin) => pin.tabId).toSet(), {
       first.session.id,
       second.session.id,
     });
-    ai.hoverEntities(ai.pins.first.ids, tabId: ai.pins.first.tabId);
-    expect(ai.workspace.pendingHighlightIds, isEmpty);
-    final flattened = flattenComposerPins(ai.pins, 'move them');
+    ai.hoverEntities(ai.state.pins.first.ids, tabId: ai.state.pins.first.tabId);
+    expect(ai.workspace.state.highlightIds, isEmpty);
+    final flattened = flattenComposerPins(ai.state.pins, 'move them');
     expect(flattened, contains('tab: ${first.session.id}'));
     expect(flattened, contains('tab: ${second.session.id}'));
     expect(flattened, contains('Alpha'));
@@ -332,18 +341,18 @@ void main() {
       );
     });
     ai.pinDrawing(tab);
-    expect(ai.pins, hasLength(1));
-    expect(ai.pins.single.kind, ComposerPinKind.drawing);
-    expect(ai.pins.single.ids, isEmpty);
-    expect(ai.pins.single.tabId, tab.session.id);
-    final flattened = flattenComposerPins(ai.pins, 'how many lines');
+    expect(ai.state.pins, hasLength(1));
+    expect(ai.state.pins.single.kind, ComposerPinKind.drawing);
+    expect(ai.state.pins.single.ids, isEmpty);
+    expect(ai.state.pins.single.tabId, tab.session.id);
+    final flattened = flattenComposerPins(ai.state.pins, 'how many lines');
     expect(flattened, contains('tab: ${tab.session.id}'));
     expect(flattened, contains('Sheet'));
     expect(flattened, isNot(contains('ids:')));
     expect(flattened.toLowerCase(), contains('do not dump'));
 
     final inline = flattenComposerPins(
-      ai.pins,
+      ai.state.pins,
       'how many lines in $composerMentionToken',
     );
     expect(inline, 'how many lines in @drawing[tab=${tab.session.id}]');
@@ -358,6 +367,6 @@ void main() {
     expect(ai.debugLivePins(), hasLength(1));
     expect(ai.workspace.closeSession(tab.session, force: true), isTrue);
     expect(ai.debugLivePins(), isEmpty);
-    expect(ai.pins, hasLength(1));
+    expect(ai.state.pins, hasLength(1));
   });
 }

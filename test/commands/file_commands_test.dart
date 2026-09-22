@@ -158,7 +158,7 @@ void main() {
           saveActive: (session, path) => workspace.saveSession(session, path),
           recentFiles: () => const [],
           listSessions: () => [
-            for (final id in workspace.sessionIds) ?workspace.session(id),
+            for (final id in workspace.state.sessionIds) ?workspace.session(id),
           ],
           activeSessionId: () => workspace.activeSession?.id,
           activateDrawing: workspace.activateDrawing,
@@ -190,7 +190,7 @@ void main() {
         expect(second['id'], workspace.tabs[1].session.id);
         expect(second['title'], 'Beta');
         expect(second['active'], isTrue);
-        expect(workspace.activeIndex, 1);
+        expect(workspace.state.activeIndex, 1);
       },
     );
 
@@ -199,14 +199,14 @@ void main() {
       final workspace = app.workspace;
       final alpha = workspace.newDocument(title: 'Alpha');
       workspace.newDocument(title: 'Beta');
-      expect(workspace.activeIndex, 1);
+      expect(workspace.state.activeIndex, 1);
 
       final result = await workspace.runHeadless(
         'file.activate',
         args: {'id': alpha.session.id},
       );
       expect(result.status, CommandStatus.ok);
-      expect(workspace.activeIndex, 0);
+      expect(workspace.state.activeIndex, 0);
       expect(workspace.active!.title, 'Alpha');
     });
 
@@ -215,7 +215,7 @@ void main() {
       final workspace = app.workspace;
       final alpha = workspace.newDocument(title: 'Alpha');
       final beta = workspace.newDocument(title: 'Beta');
-      expect(workspace.activeIndex, 1);
+      expect(workspace.state.activeIndex, 1);
 
       final drawn = await workspace.runHeadless(
         'draw.line',
@@ -228,7 +228,7 @@ void main() {
       expect(drawn.status, CommandStatus.ok, reason: drawn.message);
       expect(alpha.document.entityCount, 1);
       expect(beta.document.entityCount, 0);
-      expect(workspace.activeIndex, 1);
+      expect(workspace.state.activeIndex, 1);
 
       final summary = await workspace.runHeadless(
         'query.summary',
@@ -253,7 +253,7 @@ void main() {
       );
       expect(result.status, CommandStatus.failed);
       expect(result.message, contains('No open drawing matches'));
-      expect(workspace.activeIndex, 1);
+      expect(workspace.state.activeIndex, 1);
       expect(beta.document.entityCount, 0);
     });
 
@@ -281,7 +281,7 @@ void main() {
         );
         expect(closed.status, CommandStatus.ok, reason: closed.message);
         expect(workspace.tabs, hasLength(1));
-        expect(workspace.activeIndex, 0);
+        expect(workspace.state.activeIndex, 0);
         expect(workspace.active!.title, 'Beta');
         expect(workspace.active!.document.entityCount, 1);
       },
@@ -318,7 +318,7 @@ void main() {
       );
       expect(drawn['status'], 'ok');
       expect(alpha.document.entityCount, 1);
-      expect(workspace.activeIndex, 1);
+      expect(workspace.state.activeIndex, 1);
     });
   });
 

@@ -12,7 +12,7 @@ import '../../support/workspace.dart';
 
 final _aiContainers = Expando<ProviderContainer>();
 
-AiController panelAi({SettingsStore? settings}) {
+AssistantNotifier panelAi({SettingsStore? settings}) {
   final store =
       settings ??
       SettingsStore.inMemory({
@@ -25,7 +25,11 @@ AiController panelAi({SettingsStore? settings}) {
   return created;
 }
 
-Future<void> pumpAiPanel(WidgetTester tester, AiController ai, {Widget? home}) {
+Future<void> pumpAiPanel(
+  WidgetTester tester,
+  AssistantNotifier ai, {
+  Widget? home,
+}) {
   return tester.pumpWidget(
     UncontrolledProviderScope(
       container: _aiContainers[ai]!,
@@ -50,8 +54,8 @@ void main() {
     tester,
   ) async {
     final ai = panelAi();
-    ai.conversation.appendReasoningDelta('plan the tail');
-    ai.conversation.appendAssistantDelta('Drew it.');
+    ai.state.activeChat.conversation.appendReasoningDelta('plan the tail');
+    ai.state.activeChat.conversation.appendAssistantDelta('Drew it.');
 
     await pumpAiPanel(tester, ai);
 
@@ -222,7 +226,7 @@ void main() {
         ),
       );
 
-      ai.conversation.addUser('画个小乌龟');
+      ai.state.activeChat.conversation.addUser('画个小乌龟');
       final decision = ai.debugAskApproval(_leftoverPending());
       await tester.pump();
 
@@ -244,7 +248,7 @@ void main() {
 
       await tester.tapAt(const Offset(20, 20));
       await tester.pump();
-      expect(ai.pendingApproval, isNotNull);
+      expect(ai.state.approval, isNotNull);
       expect(find.byKey(const Key('assistant-approval-card')), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('assistant-approval-continue')));
@@ -266,11 +270,13 @@ void main() {
       await pumpAiPanel(tester, ai);
 
       expect(
-        tester.widget(find.byKey(Key('assistant-session-${ai.activeChat.id}'))),
+        tester.widget(
+          find.byKey(Key('assistant-session-${ai.state.activeChat.id}')),
+        ),
         isA<FanCadTab>(),
       );
       final tab = tester.getRect(
-        find.byKey(Key('assistant-session-${ai.activeChat.id}')),
+        find.byKey(Key('assistant-session-${ai.state.activeChat.id}')),
       );
       final plus = tester.getRect(
         find.byKey(const Key('assistant-new-session')),
@@ -284,8 +290,8 @@ void main() {
     tester,
   ) async {
     final ai = panelAi();
-    ai.conversation.addUser('画个小乌龟');
-    final previous = ai.activeChat.id;
+    ai.state.activeChat.conversation.addUser('画个小乌龟');
+    final previous = ai.state.activeChat.id;
     ai.newSession();
 
     tester.view.physicalSize = const Size(1600, 1000);
@@ -302,7 +308,7 @@ void main() {
     await tester.tap(find.byKey(Key('assistant-session-$previous')));
     await tester.pump();
     expect(find.text('画个小乌龟'), findsWidgets);
-    expect(ai.messages.single.text, '画个小乌龟');
+    expect(ai.state.activeChat.conversation.visible.single.text, '画个小乌龟');
   });
 
   testWidgets('a configured composer shows pin controls', (tester) async {
@@ -387,7 +393,7 @@ void main() {
     expect(find.byKey(const Key('assistant-pin-remove-0')), findsOneWidget);
     await tester.tap(find.byKey(const Key('assistant-pin-remove-0')));
     await tester.pump();
-    expect(ai.pins, isEmpty);
+    expect(ai.state.pins, isEmpty);
     expect(find.byKey(const Key('assistant-pin-0')), findsNothing);
   });
 
@@ -436,9 +442,9 @@ void main() {
       );
       await tester.pump();
       expect(find.byKey(const Key('assistant-mention-list')), findsNothing);
-      expect(ai.pins, hasLength(1));
-      expect(ai.pins.single.kind, ComposerPinKind.drawing);
-      expect(ai.pins.single.tabId, beta.session.id);
+      expect(ai.state.pins, hasLength(1));
+      expect(ai.state.pins.single.kind, ComposerPinKind.drawing);
+      expect(ai.state.pins.single.tabId, beta.session.id);
       expect(
         tester.widget<TextField>(find.byType(TextField)).controller!.text,
         composerMentionToken,
@@ -575,7 +581,7 @@ void main() {
     unawaited(ai.debugAskQuestion(question));
     await pumpAiPanel(tester, ai);
     await tester.pump();
-    expect(ai.workspace.pendingHighlightIds, isEmpty);
+    expect(ai.workspace.state.highlightIds, isEmpty);
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
@@ -585,13 +591,13 @@ void main() {
       tester.getCenter(find.byKey(const Key('assistant-ask-left'))),
     );
     await tester.pump();
-    expect(ai.workspace.pendingHighlightIds, [1, 2]);
+    expect(ai.workspace.state.highlightIds, [1, 2]);
 
     await gesture.moveTo(
       tester.getCenter(find.byKey(const Key('assistant-ask-right'))),
     );
     await tester.pump();
-    expect(ai.workspace.pendingHighlightIds, [9]);
+    expect(ai.workspace.state.highlightIds, [9]);
   });
 
   testWidgets('a user bubble keeps chips instead of raw tags', (tester) async {
@@ -602,7 +608,9 @@ void main() {
         SettingsKeys.aiApiKey: 'sk-one',
       }),
     );
-    ai.conversation.addUser('offset @objects[tab=7 ids=1,2,3]');
+    ai.state.activeChat.conversation.addUser(
+      'offset @objects[tab=7 ids=1,2,3]',
+    );
     await pumpAiPanel(tester, ai);
 
     expect(find.byKey(const Key('assistant-pin-chip')), findsOneWidget);
@@ -618,7 +626,7 @@ void main() {
 
   testWidgets('a user leftover spans the composer width', (tester) async {
     final ai = panelAi();
-    ai.conversation.addUser('hi');
+    ai.state.activeChat.conversation.addUser('hi');
     await pumpAiPanel(tester, ai);
     await tester.pump();
 
@@ -667,7 +675,7 @@ void main() {
     tester,
   ) async {
     final ai = panelAi();
-    ai.conversation.addUser('第一行\n第二行\n第三行\n第四行');
+    ai.state.activeChat.conversation.addUser('第一行\n第二行\n第三行\n第四行');
     await pumpAiPanel(tester, ai);
     await tester.pump();
 
@@ -686,10 +694,10 @@ void main() {
     tester,
   ) async {
     final ai = panelAi();
-    ai.conversation.addUser('再看看');
-    ai.conversation.addAssistant('${'此前的回复。' * 24}\n' * 8);
-    ai.conversation.addUser('分析下为啥失败了');
-    ai.conversation.addAssistant('${'后面的回复。' * 24}\n' * 8);
+    ai.state.activeChat.conversation.addUser('再看看');
+    ai.state.activeChat.conversation.addAssistant('${'此前的回复。' * 24}\n' * 8);
+    ai.state.activeChat.conversation.addUser('分析下为啥失败了');
+    ai.state.activeChat.conversation.addAssistant('${'后面的回复。' * 24}\n' * 8);
 
     await pumpAiPanel(
       tester,
@@ -737,10 +745,10 @@ void main() {
 
   testWidgets('closing a leftover tab keeps the other thread', (tester) async {
     final ai = panelAi();
-    ai.conversation.addUser('画个小乌龟');
-    final previous = ai.activeChat.id;
+    ai.state.activeChat.conversation.addUser('画个小乌龟');
+    final previous = ai.state.activeChat.id;
     ai.newSession();
-    ai.conversation.addUser('draw a square');
+    ai.state.activeChat.conversation.addUser('draw a square');
 
     tester.view.physicalSize = const Size(1600, 1000);
     tester.view.devicePixelRatio = 1;
@@ -749,10 +757,10 @@ void main() {
     await pumpAiPanel(tester, ai);
 
     await tester.tap(
-      find.byKey(Key('assistant-session-close-${ai.activeChat.id}')),
+      find.byKey(Key('assistant-session-close-${ai.state.activeChat.id}')),
     );
     await tester.pump();
-    expect(ai.activeChat.id, previous);
+    expect(ai.state.activeChat.id, previous);
     expect(find.text('画个小乌龟'), findsWidgets);
     expect(find.text('draw a square'), findsNothing);
   });

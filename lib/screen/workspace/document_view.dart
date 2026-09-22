@@ -124,7 +124,8 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
     final target = canvasTextEditTarget(
       document: tab.document,
       entityId: hit?.entityId,
-      commandRunning: widget.workspace.runningCommand != null,
+      commandRunning:
+          ref.read(workspaceNotifierProvider).runningCommand != null,
     );
     if (target != null) {
       tab.selection.replace([target.id]);
@@ -267,7 +268,7 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
       final hasHidden = tab.document.activeEntities.any(
         (entity) => !entity.props.visible,
       );
-      final running = widget.workspace.runningCommand;
+      final running = ref.read(workspaceNotifierProvider).runningCommand;
       final runningTitle = running == null
           ? null
           : () {
@@ -744,7 +745,7 @@ class _CanvasTopCard extends StatelessWidget {
 
 /// Keeps the current prompt in the drawing, so a LINE or MOVE does not depend
 /// on the user looking down at the command line.
-class _CanvasPromptHud extends StatelessWidget {
+class _CanvasPromptHud extends ConsumerWidget {
   const _CanvasPromptHud({
     required this.workspace,
     required this.onKeyword,
@@ -756,16 +757,18 @@ class _CanvasPromptHud extends StatelessWidget {
   final VoidCallback onCancel;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
     final model = workspace.commandLine;
-    if (!workspace.isBusy && !model.isAwaitingInput) {
+    final running = ref.watch(
+      workspaceNotifierProvider.select((s) => s.runningCommand),
+    );
+    if (running == null && !model.isAwaitingInput) {
       return const SizedBox.shrink();
     }
     final prompt = model.promptText;
     if (prompt.isEmpty) return const SizedBox.shrink();
     final keywords = model.pending?.keywords ?? const <String>[];
-    final running = workspace.runningCommand;
     final title = running == null
         ? null
         : workspace.commands.find(running)?.title;

@@ -91,7 +91,7 @@ List<_AssistantTurn> _assistantTurns(List<AssistantLogEntryModel> entries) {
 class AiPanel extends ConsumerStatefulWidget {
   const AiPanel({super.key, required this.controller});
 
-  final AiController controller;
+  final AssistantNotifier controller;
 
   @override
   ConsumerState<AiPanel> createState() => _AiPanelState();
@@ -106,7 +106,9 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   @override
   void initState() {
     super.initState();
-    _input = _MentionTextController(text: widget.controller.draft);
+    _input = _MentionTextController(
+      text: ref.read(assistantNotifierProvider).activeChat.draft,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _pinLastUserToTop();
@@ -131,7 +133,12 @@ class _AiPanelState extends ConsumerState<AiPanel> {
 
   ChatMessage? _lastUserMessage() {
     ChatMessage? last;
-    for (final message in widget.controller.messages) {
+    for (final message
+        in ref
+            .read(assistantNotifierProvider)
+            .activeChat
+            .conversation
+            .visible) {
       if (message.role == ChatRole.user) last = message;
     }
     return last;
@@ -147,12 +154,11 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   }
 
   void _syncDraft() {
-    if (_input.text == widget.controller.draft) return;
+    final draft = ref.read(assistantNotifierProvider).activeChat.draft;
+    if (_input.text == draft) return;
     _input.value = TextEditingValue(
-      text: widget.controller.draft,
-      selection: TextSelection.collapsed(
-        offset: widget.controller.draft.length,
-      ),
+      text: draft,
+      selection: TextSelection.collapsed(offset: draft.length),
     );
   }
 
@@ -278,11 +284,12 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     });
     final tokens = context.tokens;
     final controller = widget.controller;
-    final messages = controller.messages;
+    final model = ref.read(assistantNotifierProvider);
+    final messages = model.activeChat.conversation.visible;
     final entries = groupAssistantLog(messages);
-    final busy = controller.isBusy;
-    final pending = controller.pendingApproval;
-    final question = controller.pendingQuestion;
+    final busy = model.busy;
+    final pending = model.approval;
+    final question = model.question;
     final showWorking =
         pending == null &&
         question == null &&
@@ -291,15 +298,15 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     final canSend =
         !busy &&
         controller.isConfigured &&
-        (controller.draft.trim().isNotEmpty || controller.pins.isNotEmpty);
-    _input.pins = controller.pins;
+        (model.activeChat.draft.trim().isNotEmpty || model.pins.isNotEmpty);
+    _input.pins = model.pins;
     _input.onFlashPin = controller.flashPin;
     _input.onHoverPin = controller.hoverPin;
     return Column(
       children: [
         _ChatTabStrip(
-          chats: controller.chats,
-          activeChatId: controller.activeChat.id,
+          chats: model.chats,
+          activeChatId: model.activeChat.id,
           emptyTitle: context.l10n.new_chat,
           onSelect: controller.selectSession,
           onClose: controller.deleteSession,
@@ -391,11 +398,11 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                   },
                 ),
         ),
-        if (controller.error != null)
+        if (model.error != null)
           FanCadBanner(
             tone: FanCadTone.danger,
             inset: true,
-            message: controller.error!,
+            message: model.error!,
             onDismiss: controller.clearError,
           ),
         _Composer(
@@ -409,8 +416,8 @@ class _AiPanelState extends ConsumerState<AiPanel> {
               ? context.l10n.ask_follow_up
               : context.l10n.ask_assistant,
           tokens: tokens,
-          usage: controller.lastUsage,
-          pins: controller.pins,
+          usage: model.activeChat.usage,
+          pins: model.pins,
           workspace: controller.workspace,
           ask: question == null
               ? null
@@ -1582,7 +1589,7 @@ class _AskLetter extends StatelessWidget {
   }
 }
 
-class _Composer extends StatefulWidget {
+class _Composer extends ConsumerStatefulWidget {
   const _Composer({
     required this.controller,
     required this.enabled,
@@ -1624,10 +1631,10 @@ class _Composer extends StatefulWidget {
   final VoidCallback onOpenSettings;
 
   @override
-  State<_Composer> createState() => _ComposerState();
+  ConsumerState<_Composer> createState() => _ComposerState();
 }
 
-class _ComposerState extends State<_Composer> {
+class _ComposerState extends ConsumerState<_Composer> {
   bool _escaped = false;
   bool _open = false;
   int _highlighted = 0;
@@ -1729,7 +1736,7 @@ class _ComposerState extends State<_Composer> {
     final mention = _mention;
     if (mention == null) return const [];
     return filterDrawingMentions([
-      for (final id in widget.workspace.sessionIds)
+      for (final id in ref.read(workspaceNotifierProvider).sessionIds)
         ?widget.workspace.session(id),
     ], mention.query);
   }

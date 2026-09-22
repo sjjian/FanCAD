@@ -131,11 +131,6 @@ class CommandLineNotifier extends _$CommandLineNotifier {
   PendingEntry? _pending;
   int _recallIndex = -1;
 
-  List<HistoryLineModel> get lines => _store.lines;
-
-  /// Previously entered command text, for up-arrow recall.
-  List<String> get enteredHistory => List.unmodifiable(_store.entered);
-
   PendingEntry? get pending => _pending;
 
   /// The prompt to display: whatever a running command last asked for, or the
@@ -170,9 +165,6 @@ class CommandLineNotifier extends _$CommandLineNotifier {
   void clear() {
     _setStore(_store.copyWith(lines: const []));
   }
-
-  /// Text a log click wants the command line to show, without submitting it.
-  String? get offeredInput => _store.offeredInput;
 
   void offerInput(String text) {
     _setStore(_store.copyWith(offeredInput: text));
@@ -290,9 +282,6 @@ class CommandLineNotifier extends _$CommandLineNotifier {
     return _store.entered[_recallIndex];
   }
 }
-
-/// The command-line service. Prefer [CommandLineNotifier] at new call sites.
-typedef CommandLineController = CommandLineNotifier;
 
 /// Parses coordinate entry the way a CAD command line does.
 ///

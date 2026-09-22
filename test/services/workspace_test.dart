@@ -28,7 +28,7 @@ void main() {
     ws.activate(0);
     expect(ws.active, same(first));
     ws.activate(0);
-    expect(ws.activeIndex, 0);
+    expect(ws.state.activeIndex, 0);
     ws.activateTab(second);
     expect(ws.active, same(second));
 
@@ -45,7 +45,7 @@ void main() {
 
     expect(ws.closeTab(0, force: true), isTrue);
     expect(ws.hasDocument, isFalse);
-    expect(ws.activeIndex, -1);
+    expect(ws.state.activeIndex, -1);
   });
 
   test('store chrome tracks title and dirty; hover stays off that record', () {
@@ -88,7 +88,7 @@ void main() {
 
   test('sessionIds skip start pages and session lookup stays on drawings', () {
     final ws = workspace();
-    expect(ws.sessionIds, isEmpty);
+    expect(ws.state.sessionIds, isEmpty);
     expect(ws.session(''), isNull);
     expect(ws.session('missing'), isNull);
     expect(ws.activeSession, isNull);
@@ -96,18 +96,18 @@ void main() {
     expect(ws.state.activeSessionId, isNull);
 
     final start = ws.openStartTab();
-    expect(ws.sessionIds, isEmpty);
+    expect(ws.state.sessionIds, isEmpty);
     expect(ws.session(start.session.id), isNull);
     expect(ws.activeSession, isNull);
     expect(ws.state.activeSessionId, isNull);
 
     final alpha = ws.newDocument(title: 'Alpha');
-    expect(ws.sessionIds, [alpha.session.id]);
+    expect(ws.state.sessionIds, [alpha.session.id]);
     expect(ws.session(alpha.session.id), same(alpha.session));
     expect(ws.activeSession, same(alpha.session));
 
     final startAgain = ws.openStartTab();
-    expect(ws.sessionIds, [alpha.session.id]);
+    expect(ws.state.sessionIds, [alpha.session.id]);
     expect(ws.session(startAgain.session.id), isNull);
     expect(ws.activeSession, isNull);
     expect(ws.state.sessionIds, [alpha.session.id]);
@@ -170,7 +170,7 @@ void main() {
     });
     expect(ws.commandLine.pending?.message, 'Specify next point');
     expect(ws.commandLine.pending?.keywords, ['Undo']);
-    expect(ws.commandLine.lines, isNotEmpty);
+    expect(ws.commandLine.state.lines, isNotEmpty);
     pending.ignore();
   });
 
@@ -183,9 +183,9 @@ void main() {
       );
     });
     expect(ws.closeSession(tab.session), isFalse);
-    expect(ws.sessionIds, [tab.session.id]);
+    expect(ws.state.sessionIds, [tab.session.id]);
     expect(ws.closeSession(tab.session, force: true), isTrue);
-    expect(ws.sessionIds, isEmpty);
+    expect(ws.state.sessionIds, isEmpty);
     expect(
       ws.closeSession(DocumentSession(id: 'gone', document: CadDocument())),
       isTrue,
@@ -218,12 +218,12 @@ void main() {
           SettingsKeys.recentFiles: [kept.path, '${dir.path}/missing.dxf'],
         }),
       );
-      expect(ws.recentFiles, hasLength(2));
+      expect(ws.state.recentFiles, hasLength(2));
       expect(ws.pruneMissingRecentFiles(), 1);
-      expect(ws.recentFiles, [kept.path]);
+      expect(ws.state.recentFiles, [kept.path]);
       expect(ws.pruneMissingRecentFiles(), 0);
       ws.clearRecentFiles();
-      expect(ws.recentFiles, isEmpty);
+      expect(ws.state.recentFiles, isEmpty);
     },
   );
 
@@ -257,7 +257,7 @@ void main() {
     expect(ws.closeTab(0), isTrue);
     expect(ws.tabs, [same(second), same(third)]);
     expect(ws.active, same(second));
-    expect(ws.activeIndex, 0);
+    expect(ws.state.activeIndex, 0);
 
     expect(ws.closeTab(1), isTrue);
     expect(ws.tabs, [same(second)]);
@@ -271,18 +271,21 @@ void main() {
       final first = ws.newDocument();
       first.session.filePath = '/tmp/already-open.dxf';
       ws.newDocument();
-      expect(ws.activeIndex, 1);
+      expect(ws.state.activeIndex, 1);
 
       final again = await ws.openFile('/tmp/already-open.dxf');
       expect(again, same(first));
       expect(ws.active, same(first));
 
       expect(await ws.openFile('/tmp/fancad-missing-open.dxf'), isNull);
-      expect(ws.notices.single.isError, isTrue);
-      expect(ws.notices.single.message, contains('fancad-missing-open.dxf'));
+      expect(ws.state.notices.single.isError, isTrue);
+      expect(
+        ws.state.notices.single.message,
+        contains('fancad-missing-open.dxf'),
+      );
 
       expect(await ws.openFile('   '), isNull);
-      expect(ws.notices.last.message, contains('no file to open'));
+      expect(ws.state.notices.last.message, contains('no file to open'));
       expect(ws.tabs, hasLength(2));
     },
   );
@@ -314,15 +317,15 @@ void main() {
       for (var i = 0; i < 40; i++) {
         ws.notify('n$i');
       }
-      expect(ws.notices, hasLength(32));
-      expect(ws.notices.first.message, 'n8');
-      ws.dismissNotice(ws.notices.first);
-      expect(ws.notices, hasLength(31));
-      expect(ws.notices.first.message, 'n9');
+      expect(ws.state.notices, hasLength(32));
+      expect(ws.state.notices.first.message, 'n8');
+      ws.dismissNotice(ws.state.notices.first);
+      expect(ws.state.notices, hasLength(31));
+      expect(ws.state.notices.first.message, 'n9');
 
       expect(await ws.requestApproval('Erase', '2 entities'), isFalse);
       expect(
-        ws.commandLine.lines.any(
+        ws.commandLine.state.lines.any(
           (line) => line.text.contains('no approval UI'),
         ),
         isTrue,
@@ -366,14 +369,14 @@ void main() {
       expect(ws.snapEngine.tracking.polarIncrement, 0.5);
       expect(tab.showGrid, isTrue);
       expect(ws.snapEngine.modes, {SnapMode.nearest, SnapMode.endpoint});
-      expect(ws.pendingHighlightIds, [3]);
+      expect(ws.state.highlightIds, [3]);
     },
   );
 
   test('headless run and save refuse work when nothing is open', () async {
     final ws = workspace();
     expect(await ws.saveActive(), isNull);
-    expect(ws.notices.single.message, contains('no drawing'));
+    expect(ws.state.notices.single.message, contains('no drawing'));
     expect(
       (await ws.runHeadless('query.summary')).message,
       contains('No drawing'),
@@ -387,7 +390,7 @@ void main() {
       final ws = workspace();
       ws.newDocument(title: 'Untitled');
       expect(await ws.saveActive('   '), isNull);
-      expect(ws.notices.single.message, contains('no path to save'));
+      expect(ws.state.notices.single.message, contains('no path to save'));
       expect(ws.active!.filePath, isNull);
       expect(ws.active!.isDirty, isFalse);
     },
@@ -549,7 +552,7 @@ void main() {
     final app = Headless();
     final running = app.workspace.run('draw.line');
     await Future<void>.delayed(Duration.zero);
-    expect(app.workspace.runningCommand, 'draw.line');
+    expect(app.workspace.state.runningCommand, 'draw.line');
 
     final blocked = await app.workspace.runHeadless(
       'draw.circle',
@@ -655,7 +658,7 @@ void main() {
       source: ChangeSource.ai,
     );
     await Future<void>.delayed(Duration.zero);
-    expect(app.workspace.runningCommand, 'draw.circle');
+    expect(app.workspace.state.runningCommand, 'draw.circle');
 
     final supplied = app.workspace.supplyInteractive({
       'point': [2, 3],
@@ -670,25 +673,25 @@ void main() {
     final ws = workspace();
     ws.newDocument();
     ws.flashHighlights(const [3, 5]);
-    expect(ws.pendingHighlightIds, [3, 5]);
+    expect(ws.state.highlightIds, [3, 5]);
     ws.setPendingHighlights(const [9]);
-    expect(ws.pendingHighlightIds, [9, 3, 5]);
+    expect(ws.state.highlightIds, [9, 3, 5]);
     ws.flashHighlights(const []);
-    expect(ws.pendingHighlightIds, [9]);
+    expect(ws.state.highlightIds, [9]);
   });
 
   test('a leftover empty workspace has no view and no leftover last ids', () {
     final ws = workspace();
     expect(ws.describeView(), isEmpty);
-    expect(ws.lastCreatedIds, isEmpty);
-    expect(ws.lastModifiedIds, isEmpty);
+    expect(ws.state.lastCreatedIds, isEmpty);
+    expect(ws.state.lastModifiedIds, isEmpty);
     expect(ws.collectedPointCount, 0);
   });
 
   test('a successful draw records lastCreatedIds', () async {
     final app = Headless();
     final id = await app.drawLine(0, 0, 10, 0);
-    expect(app.workspace.lastCreatedIds, [id]);
+    expect(app.workspace.state.lastCreatedIds, [id]);
     expect(app.workspace.describeView(), isNotEmpty);
   });
 
@@ -716,11 +719,11 @@ void main() {
     final ws = workspace();
     ws.newDocument();
     ws.setHoverHighlights(const [3]);
-    expect(ws.pendingHighlightIds, [3]);
+    expect(ws.state.highlightIds, [3]);
     ws.setPendingHighlights(const [9]);
-    expect(ws.pendingHighlightIds, [9, 3]);
+    expect(ws.state.highlightIds, [9, 3]);
     ws.setHoverHighlights(const []);
-    expect(ws.pendingHighlightIds, [9]);
+    expect(ws.state.highlightIds, [9]);
   });
 
   test('an AI polyline without points hands off to the crosshair', () async {
@@ -730,7 +733,7 @@ void main() {
       source: ChangeSource.ai,
     );
     await Future<void>.delayed(Duration.zero);
-    expect(app.workspace.runningCommand, 'draw.polyline');
+    expect(app.workspace.state.runningCommand, 'draw.polyline');
 
     expect(
       app.workspace.supplyInteractive({
@@ -782,7 +785,7 @@ void main() {
 
       final pasting = app.workspace.run('edit.pasteClip');
       await Future<void>.delayed(Duration.zero);
-      expect(app.workspace.runningCommand, 'edit.pasteClip');
+      expect(app.workspace.state.runningCommand, 'edit.pasteClip');
       expect(dest.tools.activeTool, isA<PointPromptTool>());
 
       dest.tools.onPointerMove(

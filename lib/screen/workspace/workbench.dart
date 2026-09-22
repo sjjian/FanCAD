@@ -154,7 +154,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       while (workspace.tabs.isNotEmpty) {
         if (!mounted) return;
         final dirtyIndex = workspace.tabs.indexWhere((tab) => tab.isDirty);
-        if (dirtyIndex >= 0 && workspace.activeIndex != dirtyIndex) {
+        if (dirtyIndex >= 0 &&
+            ref.read(workspaceNotifierProvider).activeIndex != dirtyIndex) {
           workspace.activate(dirtyIndex);
         }
         final result = await workspace.run('file.close');
@@ -447,7 +448,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     final showStart = tab == null || tab.isStartPage;
     final body = showStart
         ? EmptyWorkspace(
-            recentFiles: workspace.recentFiles,
+            recentFiles: ref.read(workspaceNotifierProvider).recentFiles,
             onOpenRecent: (path) =>
                 workspace.run('file.open', args: {'path': path}),
             onOpen: () => workspace.run('file.open'),
@@ -566,7 +567,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
 ///
 /// Worth a panel of its own because it is the honest answer to "what can this
 /// application do", and because it is the same list the assistant sees.
-class _CommandListPanel extends StatefulWidget {
+class _CommandListPanel extends ConsumerStatefulWidget {
   const _CommandListPanel({
     required this.workspace,
     required this.onOpenPalette,
@@ -576,10 +577,10 @@ class _CommandListPanel extends StatefulWidget {
   final VoidCallback onOpenPalette;
 
   @override
-  State<_CommandListPanel> createState() => _CommandListPanelState();
+  ConsumerState<_CommandListPanel> createState() => _CommandListPanelState();
 }
 
-class _CommandListPanelState extends State<_CommandListPanel> {
+class _CommandListPanelState extends ConsumerState<_CommandListPanel> {
   final TextEditingController _filter = TextEditingController();
   String _query = '';
 
@@ -591,6 +592,9 @@ class _CommandListPanelState extends State<_CommandListPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final running = ref.watch(
+      workspaceNotifierProvider.select((s) => s.runningCommand),
+    );
     final tokens = context.tokens;
     final l10n = context.l10n;
     final commands = searchCommandsLocalized(
@@ -676,7 +680,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
                     if (last != null)
                       PanelSection(
                         title: l10n.last_used,
-                        children: [_commandRow(tokens, last)],
+                        children: [_commandRow(tokens, last, running)],
                       ),
                     for (final category in categories)
                       PanelSection(
@@ -687,7 +691,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
                         ),
                         children: [
                           for (final descriptor in byCategory[category]!)
-                            _commandRow(tokens, descriptor),
+                            _commandRow(tokens, descriptor, running),
                         ],
                       ),
                     const SizedBox(height: FanCadTokens.space4),
@@ -711,7 +715,11 @@ class _CommandListPanelState extends State<_CommandListPanel> {
     );
   }
 
-  Widget _commandRow(FanCadTokens tokens, CommandDescriptor descriptor) {
+  Widget _commandRow(
+    FanCadTokens tokens,
+    CommandDescriptor descriptor,
+    String? running,
+  ) {
     final l10n = context.l10n;
     final hint = [
       if (descriptor.description.isNotEmpty)
@@ -722,7 +730,7 @@ class _CommandListPanelState extends State<_CommandListPanel> {
         formatKeybinding(descriptor.defaultKeybinding!),
     ].join('\n');
     final row = FanCadRow(
-      isSelected: widget.workspace.runningCommand == descriptor.id,
+      isSelected: running == descriptor.id,
       onTap: () => widget.workspace.run(descriptor.id),
       child: Row(
         children: [

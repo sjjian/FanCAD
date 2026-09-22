@@ -514,7 +514,9 @@ void main() {
       expect(
         workspace.clipboard.isEmpty,
         isFalse,
-        reason: workspace.commandLine.lines.map((e) => e.text).join(' | '),
+        reason: workspace.commandLine.state.lines
+            .map((e) => e.text)
+            .join(' | '),
       );
 
       workspace.newDocument();
@@ -526,7 +528,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
       await tester.pump();
-      expect(workspace.runningCommand, 'edit.pasteClip');
+      expect(workspace.state.runningCommand, 'edit.pasteClip');
       expect(workspace.active!.tools.activeTool, isA<PointPromptTool>());
 
       final dest = workspace.active!;
@@ -599,9 +601,11 @@ void main() {
       await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
       await tester.pump();
       expect(
-        workspace.runningCommand,
+        workspace.state.runningCommand,
         'edit.pasteClip',
-        reason: workspace.commandLine.lines.map((e) => e.text).join(' | '),
+        reason: workspace.commandLine.state.lines
+            .map((e) => e.text)
+            .join(' | '),
       );
     },
   );

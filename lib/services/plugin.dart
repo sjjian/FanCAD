@@ -20,8 +20,8 @@ part 'plugin.g.dart';
 /// into machinery the user already drives: commands run through
 /// [Workspace.runHeadless], so a plugin cannot reach a code path the command
 /// line cannot, and every edit lands in the same undo stack.
-class WorkspacePluginDelegate implements PluginHostDelegate {
-  WorkspacePluginDelegate({
+class AppPluginDelegate implements PluginHostDelegate {
+  AppPluginDelegate({
     required Workspace Function() workspace,
     required PluginSettings plugins,
     this.onLog,
@@ -118,7 +118,7 @@ typedef VoidCallback = void Function();
 /// the extensions panel selects.
 @Riverpod(keepAlive: true)
 class PluginNotifier extends _$PluginNotifier {
-  late WorkspacePluginDelegate delegate;
+  late AppPluginDelegate delegate;
   PluginHost? _host;
   PluginCommands? _commands;
   DisposableBag? _commandScope;
@@ -138,7 +138,7 @@ class PluginNotifier extends _$PluginNotifier {
   PluginModel build() {
     _disposeRuntime();
     final directory = ref.watch(pluginsDirectoryProvider);
-    delegate = WorkspacePluginDelegate(
+    delegate = AppPluginDelegate(
       workspace: () => ref.read(workspaceNotifierProvider.notifier),
       plugins: ref.watch(appSettingsProvider).plugins,
       onLog: _publish,

@@ -10,13 +10,13 @@ void main() {
 
     editor.open('demo', 'src/main.js');
     expect(
-      editor.target,
+      editor.state.target,
       const PluginEditorTargetModel(id: 'demo', relative: 'src/main.js'),
     );
-    expect(editor.request, 1);
+    expect(editor.state.request, 1);
 
     editor.open('demo', 'src/other.js');
-    expect(editor.request, 2);
-    expect(editor.target?.relative, 'src/other.js');
+    expect(editor.state.request, 2);
+    expect(editor.state.target?.relative, 'src/other.js');
   });
 }

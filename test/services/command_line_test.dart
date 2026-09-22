@@ -53,30 +53,30 @@ void main() {
     return container.read(commandLineNotifierProvider.notifier);
   }
 
-  group('CommandLineController', () {
+  group('CommandLineNotifier', () {
     test('empty writes are ignored and the history is capped', () {
       final line = commandLine(historyLimit: 2);
       line.write('');
-      expect(line.lines, isEmpty);
+      expect(line.state.lines, isEmpty);
       line.write('one\ntwo\nthree');
-      expect(line.lines.map((item) => item.text), ['two', 'three']);
+      expect(line.state.lines.map((item) => item.text), ['two', 'three']);
       line.clear();
-      expect(line.lines, isEmpty);
+      expect(line.state.lines, isEmpty);
     });
 
     test('a leftover log click offers text without submitting it', () {
       final line = commandLine();
       line.offerInput('LINE');
-      expect(line.offeredInput, 'LINE');
+      expect(line.state.offeredInput, 'LINE');
       expect(line.takeOfferedInput(), 'LINE');
-      expect(line.offeredInput, isNull);
+      expect(line.state.offeredInput, isNull);
       expect(line.submit('LINE'), 'LINE');
     });
 
     test('submit feeds a prompt or returns a command when idle', () async {
       final line = commandLine();
       expect(line.submit('LINE'), 'LINE');
-      expect(line.enteredHistory, ['LINE']);
+      expect(line.state.entered, ['LINE']);
 
       final future = line.request(
         PendingEntry(
@@ -88,7 +88,7 @@ void main() {
       expect(line.isAwaitingInput, isTrue);
       expect(line.submit('nope'), isNull);
       expect(
-        line.lines.any((item) => item.level == HistoryLevel.error),
+        line.state.lines.any((item) => item.level == HistoryLevel.error),
         isTrue,
       );
       expect(line.submit('1,2'), isNull);
@@ -137,7 +137,7 @@ void main() {
         line.writeSuccess('ok');
         line.setStatus('LINE');
         expect(line.promptText, 'LINE');
-        expect(line.lines.map((item) => item.level), [
+        expect(line.state.lines.map((item) => item.level), [
           HistoryLevel.error,
           HistoryLevel.success,
         ]);

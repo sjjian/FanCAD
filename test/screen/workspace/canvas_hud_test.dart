@@ -480,7 +480,7 @@ void main() {
     expect(find.byKey(const Key('canvas-command-suggest')), findsNothing);
     final workspace = container.read(workspaceNotifierProvider.notifier);
     expect(
-      workspace.runningCommand ?? workspace.commands.lastCommandId,
+      workspace.state.runningCommand ?? workspace.commands.lastCommandId,
       secondId,
     );
   });

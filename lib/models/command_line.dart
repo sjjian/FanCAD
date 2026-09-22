@@ -45,7 +45,11 @@ abstract class CommandLineModel with _$CommandLineModel {
     @Default([]) List<HistoryLineModel> lines,
     CommandPromptModel? prompt,
     @Default('') String status,
+
+    /// Text a log click wants the command line to show, without submitting it.
     String? offeredInput,
+
+    /// Previously entered command text, for up-arrow recall.
     @Default([]) List<String> entered,
     @Default(CommandPaneModel()) CommandPaneModel pane,
     @Default(false) bool paletteOpen,

@@ -20,9 +20,10 @@ part 'assistant.g.dart';
 
 /// Owns the assistant session for the application.
 ///
-/// Streamed tokens mutate [Conversation] in place, so [AssistantModel.transcriptEpoch]
-/// bumps on each delta and the panel can rebuild without the rest of the
-/// window knowing an agent exists.
+/// Created even when no key is configured so the panel can explain how to
+/// set one up. Streamed tokens mutate [Conversation] in place, so
+/// [AssistantModel.transcriptEpoch] bumps on each delta and the panel can
+/// rebuild without the rest of the window knowing an agent exists.
 @Riverpod(keepAlive: true)
 class AssistantNotifier extends _$AssistantNotifier {
   @override
@@ -91,33 +92,9 @@ class AssistantNotifier extends _$AssistantNotifier {
   Completer<bool>? _pendingDecision;
   Completer<Map<String, Object?>>? _askDecision;
 
-  bool get isBusy => _store.busy;
-  String? get error => _store.error;
-  String get draft => _chat.draft;
-  Conversation get conversation => _chat.conversation;
-  List<ChatMessage> get messages => conversation.visible;
-  PendingChangeSet? get pendingApproval => _store.approval;
-  SessionQuestion? get pendingQuestion => _store.question;
-  List<ComposerPinModel> get pins => _store.pins;
-  LlmUsage? get lastUsage => _chat.usage;
-  List<AssistantChatModel> get chats => _store.chats;
-  AssistantChatModel get activeChat => _chat;
-
-  AssistantChatModel get _chat => _store.activeChat;
+  AssistantChatModel get _chat => state.activeChat;
 
   bool get isConfigured => _provider() != null;
-
-  List<AssistantProfileModel> get profiles => _store.profiles;
-
-  AssistantProfileModel get activeProfile => _store.activeProfile;
-
-  String get model => activeProfile.model;
-
-  String get baseUrl => activeProfile.baseUrl;
-
-  String get apiKey => activeProfile.apiKey;
-
-  String get apiKeyRef => _store.apiKeyRef;
 
   void setDraft(String value) {
     if (value == _chat.draft) return;
@@ -126,63 +103,65 @@ class AssistantNotifier extends _$AssistantNotifier {
 
   void setModel(String value) {
     final next = value.trim();
-    if (next.isEmpty || next == model) return;
+    if (next.isEmpty || next == state.activeProfile.model) return;
     _writeActive((profile) => profile.copyWith(model: next));
   }
 
   void setBaseUrl(String value) {
     final next = value.trim();
-    if (next.isEmpty || next == baseUrl) return;
+    if (next.isEmpty || next == state.activeProfile.baseUrl) return;
     _writeActive((profile) => profile.copyWith(baseUrl: next));
   }
 
   void setAutoApprove(bool value) {
-    if (value == autoApprove) return;
+    if (value == state.autoApprove) return;
     _assistant.setAutoApprove(value);
     _setStore(_store.copyWith(autoApprove: value));
   }
 
   void setApiKey(String value) {
     final next = value.trim();
-    if (next == apiKey) return;
+    if (next == state.activeProfile.apiKey) return;
     _writeActive((profile) => profile.copyWith(apiKey: next));
   }
 
   void setApiKeyRef(String value) {
     final next = value.trim();
-    if (next.isEmpty || next == apiKeyRef) return;
+    if (next.isEmpty || next == state.apiKeyRef) return;
     _assistant.setApiKeyRef(next);
     _setStore(_store.copyWith(apiKeyRef: next));
   }
 
   void setProfileLabel(String value) {
-    if (value == activeProfile.label) return;
+    if (value == state.activeProfile.label) return;
     _writeActive((profile) => profile.copyWith(label: value));
   }
 
   void selectProfile(String id) {
-    if (isBusy) return;
-    if (id == activeProfile.id) return;
-    final all = profiles;
+    if (state.busy) return;
+    if (id == state.activeProfile.id) return;
+    final all = state.profiles;
     if (!all.any((profile) => profile.id == id)) return;
     _persist(all, activeId: id);
   }
 
   void addProfile() {
-    if (isBusy) return;
+    if (state.busy) return;
+    final profile = state.activeProfile;
     final created = AssistantProfileModel(
       id: 'p${DateTime.now().microsecondsSinceEpoch}',
-      model: model,
-      baseUrl: baseUrl,
+      model: profile.model,
+      baseUrl: profile.baseUrl,
     );
-    _persist([...profiles, created], activeId: created.id);
+    _persist([...state.profiles, created], activeId: created.id);
   }
 
   void removeProfile(String id) {
-    if (isBusy) return;
-    final all = [...profiles]..removeWhere((profile) => profile.id == id);
+    if (state.busy) return;
+    final all = [...state.profiles]..removeWhere((profile) => profile.id == id);
     if (all.isEmpty) return;
-    final nextId = id == activeProfile.id ? all.first.id : activeProfile.id;
+    final activeId = state.activeProfile.id;
+    final nextId = id == activeId ? all.first.id : activeId;
     _persist(all, activeId: nextId);
   }
 
@@ -192,7 +171,7 @@ class AssistantNotifier extends _$AssistantNotifier {
       baseUrl: profile.baseUrl,
       model: profile.model,
       apiKey: profile.apiKey,
-      apiKeyEnvVar: apiKeyRef,
+      apiKeyEnvVar: state.apiKeyRef,
       environment: Platform.environment,
     );
     if (provider == null) {
@@ -211,12 +190,10 @@ class AssistantNotifier extends _$AssistantNotifier {
     }
   }
 
-  bool get autoApprove => _store.autoApprove;
-
   void clear() {
     _active?.cancel();
     _settlePending(false);
-    conversation.clear();
+    _chat.conversation.clear();
     _patchChat((chat) => chat.copyWith(title: '', usage: null));
     _setStore(_store.copyWith(error: null));
     _persistChats();
@@ -256,7 +233,7 @@ class AssistantNotifier extends _$AssistantNotifier {
     _active?.cancel();
     _settlePending(false);
     if (_store.chats.length <= 1) {
-      conversation.clear();
+      _chat.conversation.clear();
       _patchChat((chat) => chat.copyWith(title: '', usage: null, draft: ''));
       _setStore(_store.copyWith(error: null));
       _persistChats();
@@ -501,8 +478,8 @@ class AssistantNotifier extends _$AssistantNotifier {
 
   /// Sends the draft, or [text] when supplied, and runs the agent loop.
   Future<void> send([String? text]) async {
-    final typed = (text ?? draft).trim();
-    if ((_store.pins.isEmpty && typed.isEmpty) || isBusy) return;
+    final typed = (text ?? _chat.draft).trim();
+    if ((_store.pins.isEmpty && typed.isEmpty) || state.busy) return;
     final provider = _provider();
     if (provider == null) {
       _setStore(
@@ -564,13 +541,13 @@ class AssistantNotifier extends _$AssistantNotifier {
         tab: tab,
       ),
       document: session.document,
-      conversation: conversation,
+      conversation: _chat.conversation,
       history: session.history,
       typings: typings,
       sessionOf: () => collectSessionSnapshot(workspace, drawing: target),
       skills: bundledSkillRegistry(),
       authoring: const PluginAuthoring(),
-      policy: ApprovalPolicy(autoApproveEdits: autoApprove),
+      policy: ApprovalPolicy(autoApproveEdits: state.autoApprove),
       askApproval: _askApproval,
       askQuestion: _askQuestion,
       supplyToSession: (args) async => workspace.supplyInteractive(args),
@@ -663,10 +640,10 @@ class AssistantNotifier extends _$AssistantNotifier {
 
   LlmProvider? _provider() {
     return OpenAiCompatibleProvider.fromEnvironment(
-      baseUrl: baseUrl,
-      model: model,
-      apiKey: apiKey,
-      apiKeyEnvVar: apiKeyRef,
+      baseUrl: state.activeProfile.baseUrl,
+      model: state.activeProfile.model,
+      apiKey: state.activeProfile.apiKey,
+      apiKeyEnvVar: state.apiKeyRef,
       environment: Platform.environment,
     );
   }
@@ -675,7 +652,9 @@ class AssistantNotifier extends _$AssistantNotifier {
     AssistantProfileModel Function(AssistantProfileModel) update,
   ) {
     final all = [..._store.profiles];
-    final index = all.indexWhere((profile) => profile.id == activeProfile.id);
+    final index = all.indexWhere(
+      (profile) => profile.id == state.activeProfile.id,
+    );
     final at = index < 0 ? 0 : index;
     all[at] = update(all[at]);
     _persist(all, activeId: all[at].id);
@@ -741,9 +720,3 @@ class AssistantNotifier extends _$AssistantNotifier {
     _assistant.saveChats(_store.chats, activeId: _store.activeChatId);
   }
 }
-
-/// The assistant session. Prefer [AssistantNotifier] at new call sites.
-///
-/// Created even when no key is configured so the panel can explain how to
-/// set one up.
-typedef AiController = AssistantNotifier;

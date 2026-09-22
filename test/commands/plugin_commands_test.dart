@@ -37,7 +37,7 @@ void main() {
   setUp(() async {
     root = tempDir(prefix: 'fancad-plugins');
     app = Headless();
-    final delegate = WorkspacePluginDelegate(
+    final delegate = AppPluginDelegate(
       workspace: () => workspace,
       plugins: PluginSettings(SettingsStore.inMemory()),
     );

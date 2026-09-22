@@ -19,6 +19,8 @@ abstract class WorkspaceModel with _$WorkspaceModel {
     @Default(true) bool polar,
     @Default([]) List<String> snapModes,
     @Default([]) List<String> recentFiles,
+
+    /// Last geometry the human or the assistant created or changed.
     @Default([]) List<int> lastCreatedIds,
     @Default([]) List<int> lastModifiedIds,
     @Default(0) int collectedPointCount,
@@ -56,7 +58,10 @@ abstract class WorkspaceModel with _$WorkspaceModel {
     activeIndex: activeIndex,
   );
 
-  /// Approval plus the active session's held / flash / hover ids.
+  /// Entities the canvas should highlight while an approval is pending.
+  ///
+  /// Approval ids stay on [approval]. Held / flash / hover live on the active
+  /// session.
   List<int> get highlightIds => [
     ...?approval?.highlightIds,
     ...?active?.heldIds,
