@@ -442,6 +442,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       session: session,
       snapEngine: snapEngine,
       selectionTool: _selectionTool(),
+      onWrite: commandLine.write,
     );
     return tab;
   }
@@ -1409,8 +1410,6 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
   StreamSubscription<DocumentChange>? _changeSubscription;
   StreamSubscription<Set<int>>? _selectionSubscription;
 
-  final List<String> _history = [];
-
   /// Set by the workbench so a document change can drop the right cached geometry.
   ///
   /// Picture recordings live on the canvas widget; tessellation lives on the
@@ -1432,6 +1431,7 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
     required DocumentSession session,
     SnapEngine? snapEngine,
     SelectionTool? selectionTool,
+    void Function(String message)? onWrite,
   }) {
     if (_attached) return;
     _attached = true;
@@ -1443,7 +1443,7 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
       viewportProvider: () => viewport.viewport,
       snapEngine: snapEngine,
       tessellation: tessellation,
-      onWrite: _history.add,
+      onWrite: onWrite,
       onPrompt: (message) {
         setPrompt(message);
       },
