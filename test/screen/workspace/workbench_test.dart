@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
@@ -36,6 +38,36 @@ void main() {
     expect(find.byKey(const Key('activity-preferences')), findsOneWidget);
     expect(find.byKey(const Key('activity-plugins')), findsNothing);
     expect(find.byKey(const Key('activity-editor')), findsNothing);
+  });
+
+  testWidgets('a long recent filename stays inside the start page row', (
+    tester,
+  ) async {
+    final dir = Directory.systemTemp.createTempSync('fancad-recent-row');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final file = File('${dir.path}/${'very-long-drawing-name-' * 4}.dwg')
+      ..createSync();
+    await pumpWorkbench(
+      tester,
+      settings: SettingsStore.inMemory({
+        SettingsKeys.recentFiles: [file.path],
+      }),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.textContaining('very-long-drawing-name-'), findsOneWidget);
+    final rowFinder = find.ancestor(
+      of: find.textContaining('very-long-drawing-name-'),
+      matching: find.byType(FanCadRow),
+    );
+    final reveal = tester.getRect(
+      find.descendant(
+        of: rowFinder,
+        matching: find.byType(FanCadIconButton),
+      ),
+    );
+    final row = tester.getRect(rowFinder);
+    expect(reveal.right, moreOrLessEquals(row.right, epsilon: 1));
   });
 
   testWidgets('a cold start lands on the start screen, not Drawing1', (

@@ -242,19 +242,15 @@ class _Recent extends StatelessWidget {
               color: missing ? tokens.textFaint : tokens.textMuted,
             ),
             const SizedBox(width: FanCadTokens.space2),
-            Text(
-              name,
-              style: tokens.bodyStyle.copyWith(
-                color: missing ? tokens.textFaint : tokens.text,
-                decoration: missing ? TextDecoration.lineThrough : null,
-              ),
-            ),
-            const SizedBox(width: FanCadTokens.space2),
             Expanded(
-              child: Text(
-                missing ? l10n.missing_folder(folder) : folder,
-                style: tokens.labelStyle,
-                overflow: TextOverflow.ellipsis,
+              child: _RecentLabel(
+                name: name,
+                folder: missing ? l10n.missing_folder(folder) : folder,
+                nameStyle: tokens.bodyStyle.copyWith(
+                  color: missing ? tokens.textFaint : tokens.text,
+                  decoration: missing ? TextDecoration.lineThrough : null,
+                ),
+                folderStyle: tokens.labelStyle,
               ),
             ),
             if (!missing)
@@ -268,6 +264,64 @@ class _Recent extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// File name at its own width, folder path in whatever is left.
+///
+/// The reveal button sits outside this, so it stays on the row's right edge.
+class _RecentLabel extends StatelessWidget {
+  const _RecentLabel({
+    required this.name,
+    required this.folder,
+    required this.nameStyle,
+    required this.folderStyle,
+  });
+
+  final String name;
+  final String folder;
+  final TextStyle nameStyle;
+  final TextStyle folderStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final gap = folder.isEmpty ? 0.0 : FanCadTokens.space2;
+        final room = constraints.maxWidth - gap;
+        final painter = TextPainter(
+          text: TextSpan(text: name, style: nameStyle),
+          maxLines: 1,
+          textDirection: Directionality.of(context),
+        )..layout(maxWidth: room < 0 ? 0 : room);
+        final nameWidth = painter.width;
+        painter.dispose();
+        return Row(
+          children: [
+            SizedBox(
+              width: nameWidth,
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: nameStyle,
+              ),
+            ),
+            if (folder.isNotEmpty) ...[
+              const SizedBox(width: FanCadTokens.space2),
+              Expanded(
+                child: Text(
+                  folder,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: folderStyle,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }
