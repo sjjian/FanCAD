@@ -2134,10 +2134,11 @@ static int write_tmp_and_replace(const char *dwg_path, Dwg_Data *dwg,
   snprintf(bak, sizeof(bak), "%s.bak", dwg_path);
   remove(tmp);
   remove(bak);
-  /* dwg_new_Document sets DWG_OPTS_IN, which includes INJSON. bit_write_TV
+  /* dwg_add_Document sets DWG_OPTS_IN, which includes INJSON. bit_write_TV
    * then runs bit_utf8_to_TV on every string. FanCAD already stored TV in
    * the drawing codepage; treating those bytes as UTF-8 turns 型材 into Ѝı
-   * and GstarCAD shows `?`. */
+   * and GstarCAD shows `?`. INDXF stays set: the rest of the encoder uses
+   * it, and clearing it writes a VIEW_CONTROL that faults in dwg_free. */
   dwg->opts &= (unsigned)~DWG_OPTS_INJSON;
   error = dwg_write_file(tmp, dwg);
   if (error >= DWG_ERR_CRITICAL) {
@@ -2284,9 +2285,23 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
           BITCODE_BSd coded = dxf_revcvt_lweight((int)weight);
           layer->linewt = (BITCODE_RC)coded;
         }
-        if (lf & FCB_LAYER_HIDDEN) layer->off = 1;
-        if (lf & FCB_LAYER_FROZEN) layer->frozen = 1;
-        if (lf & FCB_LAYER_LOCKED) layer->locked = 1;
+        /* DWG_OPTS_INDXF is still set, so the LAYER encoder rebuilds these
+         * from the DXF fields: off from a negative color index, frozen and
+         * locked from group 70. plotflag is left as stored; the LibreDWG
+         * patch stops that path forcing it on. */
+        if (lf & FCB_LAYER_HIDDEN) {
+          layer->off = 1;
+          if (layer->color.index > 0)
+            layer->color.index = (BITCODE_BSd)-layer->color.index;
+        }
+        if (lf & FCB_LAYER_FROZEN) {
+          layer->frozen = 1;
+          layer->flag = (BITCODE_RC)(layer->flag | 1u);
+        }
+        if (lf & FCB_LAYER_LOCKED) {
+          layer->locked = 1;
+          layer->flag = (BITCODE_RC)(layer->flag | 4u);
+        }
         if (lf & FCB_LAYER_NOPLOT) layer->plotflag = 0;
         layer->flag0 = (BITCODE_BS)((layer->frozen ? 1 : 0) |
                                     (layer->off ? 2 : 0) |

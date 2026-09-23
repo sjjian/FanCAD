@@ -157,7 +157,10 @@ bool _looksLikeSource(String root) {
 
 /// FanCAD-owned diffs applied onto the submodule before compile, then reverted
 /// so the gitlink stays fetchable. Hash is part of the `.a` stamp.
-const _libredwgPatches = ['libredwg-r2004-preview.patch'];
+const _libredwgPatches = [
+  'libredwg-r2004-preview.patch',
+  'libredwg-layer-plotflag.patch',
+];
 
 /// Configures and builds the submodule as a static PIC library.
 ///

@@ -40,4 +40,20 @@ void main() {
       reason: 'the submodule must stay unpatched; the hook applies the diff',
     );
   });
+
+  test('the layer plotflag patch still matches LibreDWG dwg.spec', () {
+    final spec = packageFile(
+      'native/third_party/libredwg/src/dwg.spec',
+    ).readAsStringSync();
+    final patch = packageFile(
+      'native/third_party/libredwg-layer-plotflag.patch',
+    ).readAsStringSync();
+    expect(patch, contains('FANCAD: dwg_add_LAYER already defaults plotflag'));
+    expect(spec, contains('FIELD_VALUE (plotflag) = 1;'));
+    expect(
+      spec,
+      isNot(contains('FANCAD: dwg_add_LAYER already defaults plotflag')),
+      reason: 'the submodule must stay unpatched; the hook applies the diff',
+    );
+  });
 }

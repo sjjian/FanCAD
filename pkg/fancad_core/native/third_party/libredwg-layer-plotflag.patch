@@ -1,0 +1,13 @@
+--- a/src/dwg.spec
++++ b/src/dwg.spec
+@@ -3328,7 +3328,9 @@
+         FIELD_VALUE (frozen_in_new) = FIELD_VALUE (flag) & 2;
+         FIELD_VALUE (locked)        = FIELD_VALUE (flag) & 4;
+         FIELD_VALUE (is_xref_ref)   = FIELD_VALUE (flag) & 64;
+-        FIELD_VALUE (plotflag) = 1;
++        /* FANCAD: dwg_add_LAYER already defaults plotflag to 1. Forcing it
++         * here drops a layer that was marked do-not-plot (DXF 290 / flag0
++         * bit 16). */
+       }
+       if (!(dwg->opts & DWG_OPTS_INJSON))
+         FIELD_VALUE (flag0) = (FIELD_VALUE (frozen) ? 1 : 0) +
