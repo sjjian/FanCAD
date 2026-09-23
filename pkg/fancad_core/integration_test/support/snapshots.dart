@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/io/fidelity.dart';
 import 'package:test/test.dart';
 
 /// DWG handles are not stable, so entities are aligned by kind, owner, and
