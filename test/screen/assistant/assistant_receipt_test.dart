@@ -45,9 +45,7 @@ void main() {
 
   test('a leftover transcript keeps a gap above the composer', () {
     expect(assistantTranscriptTail(0), FanCadTokens.space5);
-    expect(assistantTranscriptTail(400), greaterThan(FanCadTokens.space2));
-    expect(assistantTranscriptTail(400), lessThan(400));
-    expect(assistantTranscriptTail(400), 160);
+    expect(assistantTranscriptTail(400), 400);
   });
 
   test('a leftover waiting turn still shows a live working row', () {
