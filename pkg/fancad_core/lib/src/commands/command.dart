@@ -14,6 +14,7 @@ import '../editing/session.dart';
 import '../editing/transaction.dart';
 import '../geometry/bounds.dart';
 import '../geometry/vector.dart';
+import '../io/drawing_file_service.dart';
 import 'param.dart';
 
 part 'command.g.dart';
@@ -266,6 +267,10 @@ abstract class CommandServices {
   /// host loads fonts from disk; headless tests keep the TTF fallback.
   ShxFontTable get shxFonts => const ShxFontTable();
 
+  /// Opens and saves drawings. The host supplies the instance it injected,
+  /// so commands do not construct a second file service.
+  DrawingFileService get drawingFiles => DrawingFileService();
+
   /// Asks the user to approve a set of pending changes. Returns true when the
   /// caller may proceed. Non-interactive hosts return their default policy.
   Future<bool> requestApproval(String title, String details);
@@ -303,6 +308,11 @@ class _NullServices implements CommandServices {
 
   @override
   ShxFontTable get shxFonts => const ShxFontTable();
+
+  @override
+  DrawingFileService get drawingFiles => _memoryFiles;
+
+  static final DrawingFileService _memoryFiles = DrawingFileService.inMemory();
 
   @override
   String get locale => 'en';

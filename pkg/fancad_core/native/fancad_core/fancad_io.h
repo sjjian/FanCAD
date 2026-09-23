@@ -1,6 +1,6 @@
 /* FanCAD native DWG shim.
  *
- * This is the entire surface that Dart binds to. Deliberately tiny: five
+ * This is the entire surface that Dart binds to. Deliberately tiny: seven
  * functions and no structs by value, so the FFI bindings are hand-written and
  * reviewable, and so that dwg.h never has to be parsed by a binding generator.
  *
@@ -33,11 +33,9 @@ extern "C" {
 #define FC_STATUS_UNSUPPORTED (-5)
 #define FC_STATUS_INVALID_ARGUMENT (-6)
 
-/* Capability bits reported by fc_capabilities(). */
+/* Capability bits reported by fc_capabilities(). DXF stays in Dart. */
 #define FC_CAP_READ_DWG (1u << 0)
 #define FC_CAP_WRITE_DWG (1u << 1)
-#define FC_CAP_READ_DXF (1u << 2)
-#define FC_CAP_WRITE_DXF (1u << 3)
 
 /* Which formats this build can handle. */
 FC_EXPORT uint32_t fc_capabilities(void);
@@ -49,7 +47,7 @@ FC_EXPORT uint32_t fc_fcb_version(void);
  * "LibreDWG 0.14" or "no backend". Statically allocated. */
 FC_EXPORT const char *fc_backend_version(void);
 
-/* Reads a DWG or DXF file and serializes it as an FCB buffer.
+/* Reads a DWG file and serializes it as an FCB buffer.
  *
  * On FC_STATUS_OK, *out_data points at a buffer the caller must release with
  * fc_free(), *out_length holds its size, and *out_entity_count the number of
@@ -73,10 +71,6 @@ FC_EXPORT int32_t fc_last_error(char *out, int32_t capacity);
  * r2000. */
 FC_EXPORT int32_t fc_write_file(const char *path, const uint8_t *fcb,
                                 uint64_t length, int32_t target_version);
-
-/* Converts an ASCII DXF file to DWG r2000 or r2004. */
-FC_EXPORT int32_t fc_dxf_to_dwg(const char *dxf_path, const char *dwg_path,
-                                int32_t target_version);
 
 #ifdef __cplusplus
 }

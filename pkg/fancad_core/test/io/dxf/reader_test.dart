@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/io/dxf/reader.dart';
+import 'package:fancad_core/src/io/dxf/writer.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 

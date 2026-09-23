@@ -2,8 +2,14 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import '../../core.dart';
-
+import '../../document/document.dart';
+import '../../document/entity.dart';
+import '../../document/geometry_sink.dart';
+import '../../document/paper_viewport.dart';
+import '../../document/style.dart';
+import '../../geometry/bounds.dart';
+import '../../geometry/vector.dart';
+import '../../hatch/pattern.dart';
 import 'format.dart';
 
 /// The outcome of decoding an FCB buffer.

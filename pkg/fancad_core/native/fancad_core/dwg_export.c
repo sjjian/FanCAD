@@ -25,19 +25,6 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
   return FC_STATUS_NO_BACKEND;
 }
 
-int fcdwg_export_dxf_to_dwg(const char *dxf_path, const char *dwg_path,
-                            int32_t target_version, char *error_out,
-                            size_t error_capacity) {
-  (void)dxf_path;
-  (void)dwg_path;
-  (void)target_version;
-  if (error_out && error_capacity > 0) {
-    snprintf(error_out, error_capacity,
-             "This build has no DWG backend, so it cannot write DWG files.");
-  }
-  return FC_STATUS_NO_BACKEND;
-}
-
 #else
 
 #include <dwg.h>
@@ -2467,17 +2454,6 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
   dwg_free(dwg);
   free(dwg);
   return status;
-}
-
-int fcdwg_export_dxf_to_dwg(const char *dxf_path, const char *dwg_path,
-                            int32_t target_version, char *error_out,
-                            size_t error_capacity) {
-  (void)dxf_path;
-  (void)dwg_path;
-  (void)target_version;
-  set_error(error_out, error_capacity,
-            "DWG save writes FCB through fc_write_file, not DXF");
-  return FC_STATUS_UNSUPPORTED;
 }
 
 #endif

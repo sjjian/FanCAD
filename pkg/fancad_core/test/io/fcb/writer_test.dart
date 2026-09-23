@@ -1,6 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/io/fcb/format.dart';
+import 'package:fancad_core/src/io/fcb/reader.dart';
+import 'package:fancad_core/src/io/fcb/writer.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 

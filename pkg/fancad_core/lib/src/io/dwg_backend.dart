@@ -25,37 +25,9 @@ class DwgCapabilities {
       'DwgCapabilities($description, read: $canRead, write: $canWrite)';
 }
 
-/// Formats exposed by [DrawingFileService], including pure-Dart codecs.
-@immutable
-class DrawingFileCapabilities {
-  const DrawingFileCapabilities({
-    required this.dwg,
-    this.readDxf = true,
-    this.writeDxf = true,
-  });
-
-  final DwgCapabilities dwg;
-  final bool readDxf;
-  final bool writeDxf;
-
-  bool get readDwg => dwg.canRead;
-  bool get writeDwg => dwg.canWrite;
-  String get description => dwg.description;
-
-  List<String> get readableExtensions => [
-    if (readDwg) 'dwg',
-    if (readDxf) 'dxf',
-  ];
-
-  List<String> get writableExtensions => [
-    if (writeDwg) 'dwg',
-    if (writeDxf) 'dxf',
-  ];
-}
-
 /// The outcome of opening a drawing.
-class ImportResult {
-  const ImportResult({
+class OpenedDrawing {
+  const OpenedDrawing({
     required this.document,
     this.diagnostics = const [],
     this.entityCount = 0,
@@ -83,13 +55,13 @@ class ImportResult {
 
   @override
   String toString() =>
-      'ImportResult($entityCount entities, parse ${parseTime.inMilliseconds}ms, '
+      'OpenedDrawing($entityCount entities, parse ${parseTime.inMilliseconds}ms, '
       'decode ${decodeTime.inMilliseconds}ms)';
 }
 
-/// Raised when a drawing cannot be opened.
-class ImportException implements Exception {
-  const ImportException(this.message, {this.path, this.status});
+/// Raised when a drawing cannot be opened or saved.
+class DrawingFileException implements Exception {
+  const DrawingFileException(this.message, {this.path, this.status});
 
   final String message;
   final String? path;
@@ -97,7 +69,7 @@ class ImportException implements Exception {
 
   @override
   String toString() =>
-      'ImportException: $message${path == null ? '' : ' ($path)'}';
+      'DrawingFileException: $message${path == null ? '' : ' ($path)'}';
 }
 
 /// Translates DWG files to and from the FCB transfer format.
@@ -143,7 +115,7 @@ class MemoryDwgBackend implements DwgBackend {
   Future<Uint8List> readToFcb(String path) async {
     final bytes = _files[path];
     if (bytes == null) {
-      throw ImportException('No such drawing in memory', path: path);
+      throw DrawingFileException('No such drawing in memory', path: path);
     }
     return bytes;
   }

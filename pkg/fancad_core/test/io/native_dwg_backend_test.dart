@@ -6,6 +6,10 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/io/drawing_file_service.dart';
+import 'package:fancad_core/src/io/dxf/writer.dart';
+import 'package:fancad_core/src/io/fcb/format.dart';
+import 'package:fancad_core/src/io/native/native_dwg_backend.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
@@ -24,7 +28,7 @@ void _nativeBackend() {
 
   setUpAll(() {
     backend = NativeDwgBackend();
-    importer = DrawingFileService(dwgBackend: backend);
+    importer = drawingFilesWithBackend(backend);
   });
 
   test('the shim loads and reports a version', () {
@@ -981,7 +985,7 @@ void _nativeBackend() {
   test('a missing file fails cleanly rather than crashing', () {
     expect(
       () => backend.readToFcb('/definitely/not-a-drawing.dwg'),
-      throwsA(isA<ImportException>()),
+      throwsA(isA<DrawingFileException>()),
     );
   });
 }

@@ -5,7 +5,7 @@ import 'package:fancad_core/fancad_core.dart';
 
 /// Drawings generated in code for package tests.
 ///
-/// Not part of the public `fancad_io` API. Performance work needs a drawing
+/// A test helper, not part of the public API. Performance work needs a drawing
 /// whose entity count can be dialled up on demand.
 class SampleDrawings {
   const SampleDrawings._();

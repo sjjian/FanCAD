@@ -3,7 +3,15 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import '../../core.dart';
+import '../../document/document.dart';
+import '../../document/entity.dart';
+import '../../document/geometry_sink.dart';
+import '../../document/paper_viewport.dart';
+import '../../document/style.dart';
+import '../../geometry/bounds.dart';
+import '../../geometry/matrix.dart';
+import '../../geometry/vector.dart';
+import '../../hatch/pattern.dart';
 
 /// Reads ASCII DXF into a [CadDocument].
 ///

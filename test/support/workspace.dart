@@ -18,9 +18,7 @@ class Headless {
     container = ProviderContainer(
       overrides: [
         settingsProvider.overrideWithValue(this.settings),
-        drawingFilesProvider.overrideWithValue(
-          DrawingFileService(dwgBackend: MemoryDwgBackend()),
-        ),
+        drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
         if (files != null)
           workspaceFileCommandsOverrideProvider.overrideWithValue(files),
       ],

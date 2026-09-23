@@ -2,7 +2,9 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
-import '../core.dart';
+import '../document/document.dart';
+import '../document/paper_viewport.dart';
+import '../geometry/bounds.dart';
 
 part 'fidelity.g.dart';
 

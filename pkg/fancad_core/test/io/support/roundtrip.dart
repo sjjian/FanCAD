@@ -1,4 +1,9 @@
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/io/dxf/reader.dart';
+import 'package:fancad_core/src/io/dxf/writer.dart';
+import 'package:fancad_core/src/io/fcb/reader.dart';
+import 'package:fancad_core/src/io/fcb/writer.dart';
+import 'package:fancad_core/src/io/native/native_dwg_backend.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
@@ -12,11 +17,12 @@ class Roundtrip {
   static const timeout = Timeout(Duration(minutes: 2));
 
   void requireDwg() {
+    final dwg = NativeDwgBackend().capabilities;
     expect(
-      importer.capabilities.writeDwg && importer.capabilities.readDwg,
+      dwg.canWrite && dwg.canRead,
       isTrue,
       reason:
-          'Built without LibreDWG: ${importer.capabilities.description}. '
+          'Built without LibreDWG: ${dwg.description}. '
           'Set FANCAD_LIBREDWG_ROOT and rebuild.',
     );
   }

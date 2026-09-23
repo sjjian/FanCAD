@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:fancad_core/fancad_io.dart';
+import 'package:fancad_core/src/io/fcb/format.dart';
 import 'package:test/test.dart';
 
 File packageFile(String path) {

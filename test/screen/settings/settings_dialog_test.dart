@@ -1,5 +1,5 @@
 import 'package:fancad/fancad.dart';
-import 'package:fancad_core/fancad_io.dart';
+import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -70,9 +70,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWithValue(settings),
-          drawingFilesProvider.overrideWithValue(
-            DrawingFileService(dwgBackend: MemoryDwgBackend()),
-          ),
+          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),
@@ -146,9 +144,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWithValue(settings),
-          drawingFilesProvider.overrideWithValue(
-            DrawingFileService(dwgBackend: MemoryDwgBackend()),
-          ),
+          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),
@@ -227,9 +223,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWithValue(settings),
-          drawingFilesProvider.overrideWithValue(
-            DrawingFileService(dwgBackend: MemoryDwgBackend()),
-          ),
+          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),
@@ -290,9 +284,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWithValue(settings),
-          drawingFilesProvider.overrideWithValue(
-            DrawingFileService(dwgBackend: MemoryDwgBackend()),
-          ),
+          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),
@@ -350,9 +342,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWithValue(settings),
-          drawingFilesProvider.overrideWithValue(
-            DrawingFileService(dwgBackend: MemoryDwgBackend()),
-          ),
+          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),

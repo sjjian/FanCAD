@@ -1,4 +1,5 @@
-import 'package:fancad_core/fancad_io.dart';
+import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/io/save_strategy.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
@@ -77,13 +78,10 @@ void main() {
     expect(padded.format, SaveFormat.dxf);
     expect(padded.targetPath, '/tmp/part.dxf');
 
-    const outcome = SaveOutcome(
-      plan: SavePlan(
-        targetPath: '/tmp/untitled.fcb',
-        format: SaveFormat.fcb,
-        fallbackPath: '/tmp/untitled.fcb',
-      ),
+    const outcome = SavedDrawing(
       path: '/tmp/untitled.fcb',
+      usedFallback: true,
+      reason: 'unknown extension',
     );
     expect(outcome.usedFallback, isTrue);
   });

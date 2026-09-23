@@ -43,8 +43,6 @@ class FcCapability {
 
   static const int readDwg = 1 << 0;
   static const int writeDwg = 1 << 1;
-  static const int readDxf = 1 << 2;
-  static const int writeDxf = 1 << 3;
 }
 
 @Native<Uint32 Function()>(symbol: 'fc_capabilities')
@@ -91,18 +89,5 @@ external int fcWriteFile(
   Pointer<Char> path,
   Pointer<Uint8> fcb,
   int length,
-  int targetVersion,
-);
-
-@Native<
-  Int32 Function(
-    Pointer<Char> dxfPath,
-    Pointer<Char> dwgPath,
-    Int32 targetVersion,
-  )
->(symbol: 'fc_dxf_to_dwg')
-external int fcDxfToDwg(
-  Pointer<Char> dxfPath,
-  Pointer<Char> dwgPath,
   int targetVersion,
 );

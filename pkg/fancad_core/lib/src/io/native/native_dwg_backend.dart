@@ -51,14 +51,14 @@ class NativeDwgBackend implements DwgBackend {
   @override
   Future<Uint8List> readToFcb(String path) async {
     if (!File(path).existsSync()) {
-      throw ImportException(
+      throw DrawingFileException(
         'File does not exist',
         path: path,
         status: native.FcStatus.fileNotFound,
       );
     }
     if (!capabilities.canRead) {
-      throw ImportException(
+      throw DrawingFileException(
         'This build has no DWG backend (${capabilities.description}). '
         'See pkg/fancad_core/IO.md for how to enable it.',
         path: path,
@@ -78,7 +78,7 @@ class NativeDwgBackend implements DwgBackend {
         countOut,
       );
       if (status != native.FcStatus.ok) {
-        throw ImportException(
+        throw DrawingFileException(
           _lastError(fallback: native.FcStatus.describe(status)),
           path: path,
           status: status,
@@ -87,7 +87,7 @@ class NativeDwgBackend implements DwgBackend {
       final data = dataOut.value;
       final length = lengthOut.value;
       if (data == nullptr || length == 0) {
-        throw ImportException(
+        throw DrawingFileException(
           'The backend returned an empty drawing',
           path: path,
           status: native.FcStatus.parseError,
@@ -126,7 +126,7 @@ class NativeDwgBackend implements DwgBackend {
         targetVersion,
       );
       if (status != native.FcStatus.ok) {
-        throw ImportException(
+        throw DrawingFileException(
           _lastError(fallback: native.FcStatus.describe(status)),
           path: path,
           status: status,
@@ -135,40 +135,6 @@ class NativeDwgBackend implements DwgBackend {
     } finally {
       calloc.free(pathPointer);
       calloc.free(buffer);
-    }
-  }
-
-  /// Writes [dwgPath] as r2000 or r2004 from an already-written DXF file.
-  Future<void> exportDwgFromDxf(
-    String dxfPath,
-    String dwgPath, {
-    int targetVersion = 2000,
-  }) async {
-    if (!capabilities.canWrite) {
-      throw ImportException(
-        'This build cannot write DWG (${capabilities.description})',
-        path: dwgPath,
-        status: native.FcStatus.noBackend,
-      );
-    }
-    final dxfPointer = dxfPath.toNativeUtf8();
-    final dwgPointer = dwgPath.toNativeUtf8();
-    try {
-      final status = native.fcDxfToDwg(
-        dxfPointer.cast<Char>(),
-        dwgPointer.cast<Char>(),
-        targetVersion,
-      );
-      if (status != native.FcStatus.ok) {
-        throw ImportException(
-          _lastError(fallback: native.FcStatus.describe(status)),
-          path: dwgPath,
-          status: status,
-        );
-      }
-    } finally {
-      calloc.free(dxfPointer);
-      calloc.free(dwgPointer);
     }
   }
 

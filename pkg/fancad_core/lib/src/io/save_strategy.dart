@@ -22,37 +22,22 @@ class SavePlan {
 
 enum SaveFormat { dxf, dwg, fcb }
 
-/// The file that was actually written.
-class SaveOutcome {
-  const SaveOutcome({required this.plan, required this.path});
-
-  final SavePlan plan;
-  final String path;
-
-  bool get usedFallback => plan.usedFallback;
-}
-
 /// Chooses a writable format for a path.
 ///
 /// DWG writing depends on LibreDWG and is only trustworthy for r2000/r2004.
 /// When it is unavailable the plan falls back to DXF next to the requested
 /// file and says so, rather than silently writing nothing.
 class SaveStrategy {
-  const SaveStrategy({this.canWriteDwg = false, this.canWriteDxf = true});
+  const SaveStrategy({this.canWriteDwg = false});
 
   final bool canWriteDwg;
-  final bool canWriteDxf;
 
   SavePlan plan(String path) {
     final target = path.trim();
     final extension = _extension(target);
     switch (extension) {
       case 'dxf':
-        return SavePlan(
-          targetPath: target,
-          format: SaveFormat.dxf,
-          reason: canWriteDxf ? '' : 'DXF writer unavailable',
-        );
+        return SavePlan(targetPath: target, format: SaveFormat.dxf);
       case 'fcb':
         return SavePlan(targetPath: target, format: SaveFormat.fcb);
       case 'dwg':

@@ -34,8 +34,8 @@ static void fc_set_error(const char *message) {
 
 uint32_t fc_capabilities(void) {
   if (!fcdwg_has_backend()) return 0u;
-  /* DXF stays on the Dart side. Advertising a native DXF reader would send
-   * `.dxf` through dwg_read_file, which only understands DWG. */
+  /* DXF stays on the Dart side. A native reader would send `.dxf` through
+   * dwg_read_file, which only understands DWG. */
   return FC_CAP_READ_DWG | FC_CAP_WRITE_DWG;
 }
 
@@ -98,16 +98,5 @@ int32_t fc_write_file(const char *path, const uint8_t *fcb, uint64_t length,
     return FC_STATUS_INVALID_ARGUMENT;
   }
   return fcdwg_export_fcb_to_dwg(fcb, length, path, target_version, fc_error,
-                                 sizeof(fc_error));
-}
-
-int32_t fc_dxf_to_dwg(const char *dxf_path, const char *dwg_path,
-                      int32_t target_version) {
-  fc_set_error(NULL);
-  if (!dxf_path || !dwg_path) {
-    fc_set_error("fc_dxf_to_dwg: invalid argument");
-    return FC_STATUS_INVALID_ARGUMENT;
-  }
-  return fcdwg_export_dxf_to_dwg(dxf_path, dwg_path, target_version, fc_error,
                                  sizeof(fc_error));
 }

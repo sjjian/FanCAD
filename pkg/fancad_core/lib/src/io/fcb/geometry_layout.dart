@@ -3,9 +3,10 @@
 /// Every entity record addresses three ranges: `geom` in the double pool,
 /// `ints` in the integer pool, and `strings` in the string table. The meaning
 /// of those ranges depends on the entity type, and this file is the single
-/// normative description of that mapping. The C writer in
-/// `native/fancad_core/fcb_writer.c` and the Dart reader in `reader.dart` must
-/// agree with it exactly, so any change here is a format version bump.
+/// normative description of that mapping. The C side in
+/// `native/fancad_core/fcb_builder.h` and `native/fancad_core/dwg_import.c`,
+/// and the Dart reader in `reader.dart`, must agree with it exactly, so any
+/// change here is a format version bump.
 ///
 /// All coordinates are 2D WCS. Importers bake OCS through `Mat3.ocs` before
 /// writing a record. The Z component of a DWG entity is carried in the

@@ -49,7 +49,7 @@ class XrefReloadCommand extends FanCadCommand {
         );
       }
       try {
-        final imported = await DrawingFileService().open(path);
+        final imported = await context.services.drawingFiles.open(path);
         loaded.add((block: block, foreign: imported.document));
       } on Object catch (error) {
         return CommandResult.failed('Could not reload "${block.name}": $error');

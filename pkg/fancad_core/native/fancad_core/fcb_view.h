@@ -1,6 +1,6 @@
 /* Read-only view over an FCB buffer.
  *
- * Mirrors pkg/fancad_core/lib/src/fcb/reader.dart. The view knows nothing
+ * Mirrors pkg/fancad_core/lib/src/io/fcb/reader.dart. The view knows nothing
  * about DWG: it only locates sections and copies strings so the DWG exporter
  * and any future consumer can walk the same packed layout.
  */

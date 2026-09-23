@@ -1,6 +1,6 @@
 /* FanCAD Binary (FCB) writer.
  *
- * Mirrors pkg/fancad_core/lib/src/fcb/format.dart. Incompatible layout
+ * Mirrors pkg/fancad_core/lib/src/io/fcb/format.dart. Incompatible layout
  * changes must be made in both files and the format version bumped.
  * New optional TOC sections (unknown kinds are skipped) do not.
  *

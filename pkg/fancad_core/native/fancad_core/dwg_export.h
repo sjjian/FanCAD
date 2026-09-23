@@ -11,10 +11,4 @@ int fcdwg_export_fcb_to_dwg(const uint8_t *fcb, uint64_t length,
                             const char *dwg_path, int32_t target_version,
                             char *error_out, size_t error_capacity);
 
-/* Converts an ASCII DXF file into a DWG file. Kept for the FFI symbol;
- * drawing save no longer uses this path. */
-int fcdwg_export_dxf_to_dwg(const char *dxf_path, const char *dwg_path,
-                            int32_t target_version, char *error_out,
-                            size_t error_capacity);
-
 #endif

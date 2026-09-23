@@ -41,7 +41,7 @@ class XrefAttachCommand extends FanCadCommand {
       'path',
       context.l10n.prompt_drawing_to_attach,
     );
-    final imported = await DrawingFileService().open(path);
+    final imported = await context.services.drawingFiles.open(path);
     final at = context.args.point('at') ?? const Vec2.zero();
     late String name;
     final committed = context.edit('Attach xref', (transaction) {

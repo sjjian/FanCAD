@@ -112,6 +112,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   }
 
   late CommandRegistry commands;
+  @override
   late DrawingFileService drawingFiles;
   late WorkspaceStore _drawing;
   DrawingModel _draft = const DrawingModel();
@@ -378,7 +379,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       }
       _discardIdleStartPages();
       return tab;
-    } on ImportException catch (error) {
+    } on DrawingFileException catch (error) {
       notify(error.message, isError: true);
       return null;
     } catch (error) {
@@ -426,8 +427,8 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       final written = _fileIdentity(outcome.path);
       tab.markSaved(written);
       _rememberRecent(written);
-      if (outcome.usedFallback && outcome.plan.reason.isNotEmpty) {
-        notify(outcome.plan.reason);
+      if (outcome.usedFallback && outcome.reason.isNotEmpty) {
+        notify(outcome.reason);
       }
       _syncRecent();
       return written;

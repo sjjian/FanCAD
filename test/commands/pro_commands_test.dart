@@ -19,6 +19,10 @@ Future<CommandResult> run(String id, [Map<String, Object?> args = const {}]) =>
 Future<int> drawLine(double x1, double y1, double x2, double y2) =>
     app.drawLine(x1, y1, x2, y2);
 
+Future<void> writeDxf(String path, CadDocument document) {
+  return DrawingFileService.inMemory().save(path, document);
+}
+
 void main() {
   setUp(() {
     app = Headless();
@@ -665,7 +669,7 @@ void main() {
         ..addEntity(
           const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
         );
-      File(path).writeAsStringSync(const DxfWriter().writeString(foreign));
+      await writeDxf(path, foreign);
 
       final result = await run('xref.attach', {
         'path': path,
@@ -682,11 +686,10 @@ void main() {
     test('reload rereads the file and keeps the insert', () async {
       final dir = tempDir(prefix: 'fancad_xref');
       final path = '${dir.path}/part.dxf';
-      File(path).writeAsStringSync(
-        const DxfWriter().writeString(
-          CadDocument()..addEntity(
-            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
-          ),
+      await writeDxf(
+        path,
+        CadDocument()..addEntity(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
         ),
       );
 
@@ -699,11 +702,10 @@ void main() {
           .single
           .id;
 
-      File(path).writeAsStringSync(
-        const DxfWriter().writeString(
-          CadDocument()..addEntity(
-            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(20, 0)),
-          ),
+      await writeDxf(
+        path,
+        CadDocument()..addEntity(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(20, 0)),
         ),
       );
 
@@ -726,11 +728,10 @@ void main() {
     test('reload refuses a missing file', () async {
       final dir = tempDir(prefix: 'fancad_xref');
       final path = '${dir.path}/gone.dxf';
-      File(path).writeAsStringSync(
-        const DxfWriter().writeString(
-          CadDocument()..addEntity(
-            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
-          ),
+      await writeDxf(
+        path,
+        CadDocument()..addEntity(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
         ),
       );
       await run('xref.attach', {'path': path});
@@ -745,11 +746,10 @@ void main() {
     test('detach removes the insert and the xref block', () async {
       final dir = tempDir(prefix: 'fancad_xref');
       final path = '${dir.path}/part.dxf';
-      File(path).writeAsStringSync(
-        const DxfWriter().writeString(
-          CadDocument()..addEntity(
-            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
-          ),
+      await writeDxf(
+        path,
+        CadDocument()..addEntity(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
         ),
       );
       await run('xref.attach', {
@@ -779,11 +779,10 @@ void main() {
     test('bind keeps the insert and drops the file path', () async {
       final dir = tempDir(prefix: 'fancad_xref');
       final path = '${dir.path}/part.dxf';
-      File(path).writeAsStringSync(
-        const DxfWriter().writeString(
-          CadDocument()..addEntity(
-            const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
-          ),
+      await writeDxf(
+        path,
+        CadDocument()..addEntity(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
         ),
       );
       await run('xref.attach', {

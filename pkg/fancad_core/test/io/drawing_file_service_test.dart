@@ -2,6 +2,10 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/io/drawing_file_service.dart';
+import 'package:fancad_core/src/io/dwg_backend.dart';
+import 'package:fancad_core/src/io/fcb/reader.dart';
+import 'package:fancad_core/src/io/fcb/writer.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
@@ -51,7 +55,7 @@ class _CaptureDwgBackend implements DwgBackend {
 
 void main() {
   test('open refuses a path the importer cannot read', () {
-    final importer = DrawingFileService(dwgBackend: _DxfOnlyBackend());
+    final importer = drawingFilesWithBackend(_DxfOnlyBackend());
     expect(importer.canOpen('notes.txt'), isFalse);
     expect(importer.canOpen('part.dwg'), isFalse);
     expect(importer.canOpen('part.dxf'), isTrue);
@@ -62,7 +66,7 @@ void main() {
     expect(
       () => importer.open('notes.txt'),
       throwsA(
-        isA<ImportException>()
+        isA<DrawingFileException>()
             .having((error) => error.path, 'path', 'notes.txt')
             .having(
               (error) => error.message,
@@ -74,7 +78,7 @@ void main() {
     expect(
       () => importer.open('part.dwg'),
       throwsA(
-        isA<ImportException>().having(
+        isA<DrawingFileException>().having(
           (error) => error.message,
           'message',
           contains('no DWG backend'),
@@ -84,7 +88,11 @@ void main() {
     expect(
       () => importer.open('   '),
       throwsA(
-        isA<ImportException>().having((error) => error.path, 'path', '   '),
+        isA<DrawingFileException>().having(
+          (error) => error.path,
+          'path',
+          '   ',
+        ),
       ),
     );
   });
@@ -98,7 +106,7 @@ void main() {
           LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
         ],
       );
-      final importer = DrawingFileService(dwgBackend: _DxfOnlyBackend());
+      final importer = drawingFilesWithBackend(_DxfOnlyBackend());
       final outcome = await importer.save('${dir.path}/sheet.dwg', document);
 
       expect(outcome.usedFallback, isTrue);
@@ -116,7 +124,7 @@ void main() {
     final document = drawing(
       entities: const [LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0))],
     );
-    final importer = DrawingFileService(dwgBackend: _DxfOnlyBackend());
+    final importer = drawingFilesWithBackend(_DxfOnlyBackend());
     final outcome = await importer.save('${dir.path}/notes.txt', document);
 
     expect(outcome.usedFallback, isTrue);
@@ -129,7 +137,7 @@ void main() {
 
   test('a DWG save encodes FCB and hands it to the backend', () async {
     final backend = _CaptureDwgBackend();
-    final importer = DrawingFileService(dwgBackend: backend);
+    final importer = drawingFilesWithBackend(backend);
     final document = drawing(
       entities: const [LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0))],
     );
@@ -153,8 +161,7 @@ void main() {
     final document = SampleDrawings.mechanicalPart();
     final fcb = FcbWriter().write(document);
     final source = File('${temporary.path}/part.dwg')..writeAsBytesSync([0]);
-    final backend = MemoryDwgBackend(files: {source.path: fcb});
-    final importer = DrawingFileService(dwgBackend: backend);
+    final importer = DrawingFileService.inMemory(files: {source.path: fcb});
 
     expect(importer.canOpen(source.path), isTrue);
     expect(importer.canOpen('notes.fcb'), isTrue);
@@ -170,7 +177,7 @@ void main() {
     final document = drawing(
       entities: const [LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0))],
     );
-    final importer = DrawingFileService(dwgBackend: MemoryDwgBackend());
+    final importer = DrawingFileService.inMemory();
     final path = '${temporary.path}/part.fcb';
     final outcome = await importer.save(path, document);
     expect(outcome.usedFallback, isFalse);
@@ -182,7 +189,7 @@ void main() {
   });
 
   test('encodes and decodes FanCAD native files', () {
-    final importer = DrawingFileService(dwgBackend: _DxfOnlyBackend());
+    final importer = drawingFilesWithBackend(_DxfOnlyBackend());
     final document = SampleDrawings.mechanicalPart();
     final result = importer.decode(importer.encode(document));
     expect(result.entityCount, document.entityCount);

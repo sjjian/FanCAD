@@ -70,9 +70,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           settingsProvider.overrideWithValue(SettingsStore.inMemory()),
-          drawingFilesProvider.overrideWithValue(
-            DrawingFileService(dwgBackend: MemoryDwgBackend()),
-          ),
+          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
           pluginsDirectoryProvider.overrideWithValue(user.path),
           bundledPluginDirectoriesProvider.overrideWithValue([bundled.path]),
           pluginTransportProvider.overrideWithValue(

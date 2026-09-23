@@ -25,7 +25,10 @@ class FileAuditCommand extends FanCadCommand {
     final dir = Directory.systemTemp.createTempSync('fancad_audit');
     final path = '${dir.path}/audit.dxf';
     try {
-      final report = await DrawingFileService().audit(path, context.document);
+      final report = await context.services.drawingFiles.audit(
+        path,
+        context.document,
+      );
       return CommandResult.ok(message: report.summary, data: report.toJson());
     } finally {
       dir.deleteSync(recursive: true);

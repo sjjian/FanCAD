@@ -1,8 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/io/dwg_backend.dart';
+import 'package:fancad_core/src/io/fcb/writer.dart';
 import 'package:test/test.dart';
-
 import 'support/sample_drawing.dart';
 
 void main() {
@@ -21,18 +22,12 @@ void main() {
       dwgOnly.toString(),
       'DwgCapabilities(LibreDWG, read: true, write: true)',
     );
-
-    const files = DrawingFileCapabilities(
-      dwg: DwgCapabilities(canRead: true, description: 'memory'),
-    );
-    expect(files.readableExtensions, ['dwg', 'dxf']);
-    expect(files.writableExtensions, ['dxf']);
   });
 
   test(
     'import result and exception keep path and cache off the default form',
     () {
-      final result = ImportResult(
+      final result = OpenedDrawing(
         document: CadDocument(),
         entityCount: 3,
         parseTime: const Duration(milliseconds: 4),
@@ -41,16 +36,16 @@ void main() {
       expect(result.totalTime, const Duration(milliseconds: 10));
       expect(
         result.toString(),
-        'ImportResult(3 entities, parse 4ms, decode 6ms)',
+        'OpenedDrawing(3 entities, parse 4ms, decode 6ms)',
       );
 
       expect(
-        const ImportException('broken').toString(),
-        'ImportException: broken',
+        const DrawingFileException('broken').toString(),
+        'DrawingFileException: broken',
       );
       expect(
-        const ImportException('broken', path: '/tmp/a.dwg').toString(),
-        'ImportException: broken (/tmp/a.dwg)',
+        const DrawingFileException('broken', path: '/tmp/a.dwg').toString(),
+        'DrawingFileException: broken (/tmp/a.dwg)',
       );
     },
   );
@@ -74,7 +69,7 @@ void main() {
     expect(
       () => backend.readToFcb('/mem/missing.dwg'),
       throwsA(
-        isA<ImportException>().having(
+        isA<DrawingFileException>().having(
           (error) => error.toString(),
           'toString',
           contains('/mem/missing.dwg'),

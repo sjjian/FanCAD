@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
-import '../../core.dart';
+import '../../document/document.dart';
+import '../../document/entity.dart';
+import '../../document/style.dart';
 
 /// Writes a drawing as ASCII DXF R2000.
 ///

@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import '../../core.dart';
-
+import '../../document/document.dart';
+import '../../document/entity.dart';
+import '../../document/style.dart';
+import '../../geometry/bounds.dart';
 import 'format.dart';
 
 /// A growable `Float64List`, used for the FCB double pool.
