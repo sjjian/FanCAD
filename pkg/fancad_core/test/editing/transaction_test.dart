@@ -446,6 +446,35 @@ void main() {
       expect(session.document.blocks[block]!.entityIds, orderBefore);
     });
 
+    test('a new block survives undo and redo with its members', () {
+      final document = CadDocument();
+      final line = document.addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+      );
+      final point = document.addEntity(
+        const PointEntity(id: 0, position: Vec2(1, 1)),
+      );
+      final ids = [line.id, point.id];
+      final session = DocumentSession(id: '1', document: document);
+
+      session.edit('define PART', (t) {
+        t.putBlock(BlockRecord(name: 'PART', entityIds: ids));
+      });
+      expect(document.blocks['PART']?.entityIds, ids);
+
+      expect(session.undo(), isTrue);
+      expect(document.blocks.containsKey('PART'), isFalse);
+      expect(document.entity(line.id), isNotNull);
+      expect(document.entity(point.id), isNotNull);
+
+      expect(session.redo(), isTrue);
+      expect(document.blocks['PART']?.entityIds, ids);
+      expect(document.entity(line.id), isNotNull);
+      expect(document.entity(point.id), isNotNull);
+      expect(document.ownerOf(line.id), 'PART');
+      session.dispose();
+    });
+
     test('a new edit clears the redo branch', () {
       final session = DocumentSession(id: '1', document: newDocument());
       session.edit('a', (t) {

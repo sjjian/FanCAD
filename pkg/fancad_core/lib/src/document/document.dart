@@ -560,6 +560,39 @@ class CadDocument implements BlockLookup, StyleResolver {
     return removed;
   }
 
+  /// Removes a block definition but keeps the entities it named.
+  ///
+  /// This is what undoing "create a block" needs: the entities exist
+  /// independently of the definition, so only the definition and the
+  /// membership are undone. Ownership falls back to whichever remaining block
+  /// still lists the id, or clears when none does. Prefer [removeBlock] when
+  /// the entities are supposed to die with the block.
+  BlockRecord? dropBlock(String name) {
+    final removed = _blocks.remove(name);
+    if (removed == null) return null;
+    for (final id in removed.entityIds) {
+      if (_ownerOf[id] != name) continue;
+      final fallback = _blockContaining(id);
+      if (fallback == null) {
+        _ownerOf.remove(id);
+      } else {
+        _ownerOf[id] = fallback;
+      }
+    }
+    _indexes.remove(name);
+    _blockBounds.remove(name);
+    _version++;
+    return removed;
+  }
+
+  /// The name of any block that still lists [id], or null.
+  String? _blockContaining(int id) {
+    for (final entry in _blocks.entries) {
+      if (entry.value.entityIds.contains(id)) return entry.key;
+    }
+    return null;
+  }
+
   void addLayout(Layout layout) {
     _layouts
       ..removeWhere((existing) => existing.name == layout.name)

@@ -137,11 +137,41 @@ void main() {
     final put = PutBlockPatch(block, null);
     final undo = put.inverse(document);
 
-    expect(undo, isA<RemoveBlockPatch>());
+    expect(undo, isA<DropBlockPatch>());
     put.applyTo(document);
     expect(document.blocks.containsKey('TEMP'), isTrue);
     undo.applyTo(document);
     expect(document.blocks.containsKey('TEMP'), isFalse);
+  });
+
+  test('undoing a new block keeps the entities it named', () {
+    final document = CadDocument();
+    final line = document.addEntity(
+      const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+    );
+    final point = document.addEntity(
+      const PointEntity(id: 0, position: Vec2(1, 1)),
+    );
+    final ids = [line.id, point.id];
+
+    final put = PutBlockPatch(BlockRecord(name: 'PART', entityIds: ids), null);
+    final undo = put.inverse(document);
+
+    put.applyTo(document);
+    expect(document.blocks['PART']?.entityIds, ids);
+    expect(document.ownerOf(line.id), 'PART');
+
+    undo.applyTo(document);
+    expect(document.blocks.containsKey('PART'), isFalse);
+    // The members predate the block, so the undo must not delete them.
+    expect(document.entity(line.id), isNotNull);
+    expect(document.entity(point.id), isNotNull);
+    // Ownership falls back to the block that still lists them.
+    expect(document.ownerOf(line.id), document.modelSpaceBlockName);
+
+    put.applyTo(document);
+    expect(document.blocks['PART']?.entityIds, ids);
+    expect(document.ownerOf(line.id), 'PART');
   });
 
   test('undoing a new text style removes it', () {

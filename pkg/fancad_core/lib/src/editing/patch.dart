@@ -273,6 +273,10 @@ final class RemoveDimStylePatch extends Patch {
 }
 
 /// Creates or updates a block definition.
+///
+/// [block.entityIds] must already exist; this patch never creates or deletes
+/// entities. Undoing a brand-new block therefore drops the definition without
+/// touching its members, and undoing a replacement restores the previous one.
 final class PutBlockPatch extends Patch {
   const PutBlockPatch(this.block, this.previous);
 
@@ -287,7 +291,7 @@ final class PutBlockPatch extends Patch {
 
   @override
   Patch inverse(CadDocument document) => previous == null
-      ? RemoveBlockPatch(block.name, block)
+      ? DropBlockPatch(block)
       : PutBlockPatch(previous!, block);
 
   @override
@@ -340,6 +344,30 @@ final class RestoreBlockPatch extends Patch {
 
   @override
   String describe() => 'Restore block "${block.name}"';
+}
+
+/// Drops a block definition without deleting the entities it named.
+///
+/// The inverse of creating a block that did not exist before. The members
+/// predate the definition — they were merely re-parented — so undoing must not
+/// remove them the way [RemoveBlockPatch] does. [RestoreBlockPatch] stays the
+/// counterpart of [RemoveBlockPatch], where the block did own its entities.
+final class DropBlockPatch extends Patch {
+  const DropBlockPatch(this.block);
+
+  final BlockRecord block;
+
+  @override
+  DocumentChange applyTo(CadDocument document) {
+    document.dropBlock(block.name);
+    return const DocumentChange(structureChanged: true);
+  }
+
+  @override
+  Patch inverse(CadDocument document) => PutBlockPatch(block, null);
+
+  @override
+  String describe() => 'Drop block "${block.name}"';
 }
 
 /// Sets a header variable such as `$LTSCALE` or `$INSUNITS`.
