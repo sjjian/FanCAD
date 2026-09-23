@@ -1,6 +1,7 @@
 @Tags(['native'])
 library;
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -978,7 +979,7 @@ void _nativeBackend() {
         isTrue,
         reason: 'FanCAD DXF is UTF-8; the note must still round-trip',
       );
-      expect(_containsBytes(dumped.codeUnits, utf8Note), isTrue);
+      expect(_containsBytes(utf8.encode(dumped), utf8Note), isTrue);
     },
   );
 
