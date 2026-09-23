@@ -4,11 +4,11 @@ import 'dart:typed_data';
 import '../document/entity.dart';
 import '../document/geometry_sink.dart';
 import '../document/style.dart';
+import '../geometry/bounds.dart';
+import '../geometry/flatten.dart';
+import '../geometry/intersect.dart';
+import '../geometry/vector.dart';
 import 'boundary.dart';
-import 'bounds.dart';
-import 'flatten.dart';
-import 'intersect.dart';
-import 'vector.dart';
 
 /// The analytic constructions behind the editing commands.
 ///

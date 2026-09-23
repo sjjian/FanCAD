@@ -2,9 +2,9 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../document/entity.dart';
-import 'flatten.dart';
-import 'intersect.dart';
-import 'vector.dart';
+import '../geometry/flatten.dart';
+import '../geometry/intersect.dart';
+import '../geometry/vector.dart';
 
 /// Finds the hatch loops that enclose a pick, the way BHATCH does.
 ///

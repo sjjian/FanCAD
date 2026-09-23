@@ -3,9 +3,9 @@ import 'package:meta/meta.dart';
 import '../document/document.dart';
 import '../document/entity.dart';
 import '../document/style.dart';
-import '../geometry/construct.dart';
 import '../geometry/matrix.dart';
 import '../geometry/vector.dart';
+import 'construct.dart';
 import 'patch.dart';
 
 /// A committed, invertible unit of work.
