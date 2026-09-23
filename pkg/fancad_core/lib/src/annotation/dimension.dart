@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import '../document/entity.dart';
+import '../document/geometry_sink.dart';
+import '../document/style.dart';
 import '../geometry/vector.dart';
-import '../model/entity.dart';
-import '../model/geometry_sink.dart';
-import '../model/style.dart';
 
 /// Regenerates dimension graphics when the `*D` anonymous block is missing.
 ///

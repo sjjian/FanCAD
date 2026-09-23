@@ -40,12 +40,7 @@ class Intersect {
   }
 
   /// Intersections of an infinite line with a circle (0, 1 or 2 points).
-  static List<Vec2> lineCircle(
-    Vec2 p1,
-    Vec2 p2,
-    Vec2 center,
-    double radius,
-  ) {
+  static List<Vec2> lineCircle(Vec2 p1, Vec2 p2, Vec2 center, double radius) {
     final d = p2 - p1;
     final lengthSquared = d.lengthSquared;
     if (lengthSquared < epsilon) return const [];
@@ -65,12 +60,7 @@ class Intersect {
   }
 
   /// Intersections of two circles.
-  static List<Vec2> circleCircle(
-    Vec2 c1,
-    double r1,
-    Vec2 c2,
-    double r2,
-  ) {
+  static List<Vec2> circleCircle(Vec2 c1, double r1, Vec2 c2, double r2) {
     final delta = c2 - c1;
     final distance = delta.length;
     if (distance < epsilon) return const [];
@@ -108,7 +98,11 @@ class Intersect {
     final count = xy.length ~/ 2;
     if (count == 0) return null;
     if (count == 1) {
-      return PolylineHit(Vec2(xy[0], xy[1]), 0, p.distanceTo(Vec2(xy[0], xy[1])));
+      return PolylineHit(
+        Vec2(xy[0], xy[1]),
+        0,
+        p.distanceTo(Vec2(xy[0], xy[1])),
+      );
     }
     var best = double.infinity;
     var bestPoint = Vec2(xy[0], xy[1]);
@@ -327,7 +321,9 @@ class Intersect {
     for (var i = 0; i < segments; i++) {
       final a = Vec2(xy[i * 2], xy[i * 2 + 1]);
       final b = Vec2(xy[((i + 1) % count) * 2], xy[((i + 1) % count) * 2 + 1]);
-      final hit = infinite ? lineLine(p1, p2, a, b) : segmentSegment(p1, p2, a, b);
+      final hit = infinite
+          ? lineLine(p1, p2, a, b)
+          : segmentSegment(p1, p2, a, b);
       if (hit == null) continue;
       if (infinite && distanceToSegment(hit, a, b) > 1e-6) continue;
       if (!_containsPoint(out, hit)) out.add(hit);
@@ -664,9 +660,7 @@ class Intersect {
       ys.add(u + v);
     } else {
       final rho = math.sqrt(-aa / 3);
-      final theta = math.acos(
-        ((-bb / 2) / (rho * rho * rho)).clamp(-1.0, 1.0),
-      );
+      final theta = math.acos(((-bb / 2) / (rho * rho * rho)).clamp(-1.0, 1.0));
       ys
         ..add(2 * rho * math.cos(theta / 3))
         ..add(2 * rho * math.cos((theta + 2 * math.pi) / 3))
@@ -687,8 +681,9 @@ class Intersect {
     return [(-b - root) / (2 * a), (-b + root) / (2 * a)];
   }
 
-  static double _cbrt(double value) =>
-      value < 0 ? -math.pow(-value, 1 / 3).toDouble() : math.pow(value, 1 / 3).toDouble();
+  static double _cbrt(double value) => value < 0
+      ? -math.pow(-value, 1 / 3).toDouble()
+      : math.pow(value, 1 / 3).toDouble();
 
   static bool _containsPoint(List<Vec2> points, Vec2 hit) {
     for (final point in points) {

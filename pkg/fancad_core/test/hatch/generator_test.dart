@@ -65,10 +65,14 @@ void main() {
           loops: [
             HatchLoop(
               vertices: Float64List.fromList([
-                offset.$1, offset.$2,
-                offset.$1 + 20, offset.$2,
-                offset.$1 + 20, offset.$2 + 20,
-                offset.$1, offset.$2 + 20,
+                offset.$1,
+                offset.$2,
+                offset.$1 + 20,
+                offset.$2,
+                offset.$1 + 20,
+                offset.$2 + 20,
+                offset.$1,
+                offset.$2 + 20,
               ]),
             ),
           ],
@@ -81,7 +85,10 @@ void main() {
         );
         for (final stroke in strokes) {
           for (var i = 0; i < stroke.length; i += 2) {
-            expect(stroke[i], inInclusiveRange(offset.$1 - 1e-6, offset.$1 + 20 + 1e-6));
+            expect(
+              stroke[i],
+              inInclusiveRange(offset.$1 - 1e-6, offset.$1 + 20 + 1e-6),
+            );
             expect(
               stroke[i + 1],
               inInclusiveRange(offset.$2 - 1e-6, offset.$2 + 20 + 1e-6),
@@ -104,10 +111,14 @@ void main() {
         loops: [
           HatchLoop(
             vertices: Float64List.fromList([
-              55391, 9462,
-              58383, 9462,
-              58383, 9485,
-              55391, 9485,
+              55391,
+              9462,
+              58383,
+              9462,
+              58383,
+              9485,
+              55391,
+              9485,
             ]),
           ),
         ],
@@ -131,10 +142,14 @@ void main() {
         loops: [
           HatchLoop(
             vertices: Float64List.fromList([
-              54928.4, 7607.1,
-              54928.4, 9090.6,
-              54905.4, 9090.6,
-              54905.4, 7607.1,
+              54928.4,
+              7607.1,
+              54928.4,
+              9090.6,
+              54905.4,
+              9090.6,
+              54905.4,
+              7607.1,
             ]),
           ),
         ],
@@ -196,11 +211,7 @@ void main() {
           ),
         ],
         patternLines: const [
-          HatchPatternLine(
-            angle: 0,
-            deltaY: 40,
-            dashes: [8, -32],
-          ),
+          HatchPatternLine(angle: 0, deltaY: 40, dashes: [8, -32]),
         ],
       );
       final strokes = const HatchGenerator().generate(hatch);

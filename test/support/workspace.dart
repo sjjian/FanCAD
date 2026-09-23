@@ -1,6 +1,5 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,8 +18,8 @@ class Headless {
     container = ProviderContainer(
       overrides: [
         settingsProvider.overrideWithValue(this.settings),
-        importerProvider.overrideWithValue(
-          DrawingImporter(backend: MemoryDrawingBackend()),
+        drawingFilesProvider.overrideWithValue(
+          DrawingFileService(dwgBackend: MemoryDwgBackend()),
         ),
         if (files != null)
           workspaceFileCommandsOverrideProvider.overrideWithValue(files),

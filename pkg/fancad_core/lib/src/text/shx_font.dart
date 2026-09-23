@@ -74,16 +74,16 @@ class ShxFont {
         pen = command.to;
         if (pen.x > maxX) maxX = pen.x;
         final world = Vec2(
-          origin.x + (cursor + pen.x * widthFactor) * scale * cos -
+          origin.x +
+              (cursor + pen.x * widthFactor) * scale * cos -
               pen.y * scale * sin,
-          origin.y + (cursor + pen.x * widthFactor) * scale * sin +
+          origin.y +
+              (cursor + pen.x * widthFactor) * scale * sin +
               pen.y * scale * cos,
         );
         if (command.penDown) {
           if (current.isEmpty) {
-            final previous = glyph.commands.isEmpty
-                ? origin
-                : world;
+            final previous = glyph.commands.isEmpty ? origin : world;
             current.add(previous);
           }
           current.add(world);

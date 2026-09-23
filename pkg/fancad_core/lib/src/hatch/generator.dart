@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import '../document/entity.dart';
 import '../geometry/bounds.dart';
 import '../geometry/vector.dart';
-import '../model/entity.dart';
 import 'pattern.dart';
 
 /// Generates pattern strokes clipped to a hatch boundary.
@@ -15,10 +15,7 @@ class HatchGenerator {
   const HatchGenerator();
 
   /// Interleaved `[x, y, ...]` polylines, one list per stroke.
-  List<Float64List> generate(
-    HatchEntity hatch, {
-    double pixelSize = 0.5,
-  }) {
+  List<Float64List> generate(HatchEntity hatch, {double pixelSize = 0.5}) {
     if (hatch.solid || hatch.loops.isEmpty) return const [];
 
     // A file that carries its own definition lines has already resolved the
@@ -68,7 +65,8 @@ class HatchGenerator {
     final angle = line.angle + extraAngle;
     final dir = Vec2(math.cos(angle), math.sin(angle));
     final normal = Vec2(-dir.y, dir.x);
-    final spacing = (line.deltaY.abs() < 1e-9 ? 3.175 : line.deltaY.abs()) * scale;
+    final spacing =
+        (line.deltaY.abs() < 1e-9 ? 3.175 : line.deltaY.abs()) * scale;
     final origin = Vec2(line.originX, line.originY) * scale;
     final dashes = [for (final dash in line.dashes) dash * scale];
     final shiftStep = line.deltaX * scale;
@@ -240,8 +238,7 @@ class HatchGenerator {
         final bx = loop.vertices[j * 2];
         final by = loop.vertices[j * 2 + 1];
         if (((ay > point.y) != (by > point.y)) &&
-            point.x <
-                (bx - ax) * (point.y - ay) / ((by - ay) + 1e-16) + ax) {
+            point.x < (bx - ax) * (point.y - ay) / ((by - ay) + 1e-16) + ax) {
           crossings++;
         }
       }

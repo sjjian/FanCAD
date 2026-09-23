@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import '../model/entity.dart';
-import '../model/geometry_sink.dart';
-import '../model/style.dart';
+import '../document/entity.dart';
+import '../document/geometry_sink.dart';
+import '../document/style.dart';
 import 'boundary.dart';
 import 'bounds.dart';
 import 'flatten.dart';

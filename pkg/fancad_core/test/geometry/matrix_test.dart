@@ -82,7 +82,10 @@ void main() {
   });
 
   test('composes translation after rotation in the expected order', () {
-    final matrix = Mat3.translation(10, 0).multiplied(Mat3.rotation(math.pi / 2));
+    final matrix = Mat3.translation(
+      10,
+      0,
+    ).multiplied(Mat3.rotation(math.pi / 2));
     final moved = matrix.transform(const Vec2(1, 0));
     expect(moved.x, closeTo(10, 1e-12));
     expect(moved.y, closeTo(1, 1e-12));
@@ -128,9 +131,10 @@ void main() {
   });
 
   test('inverse round trips a point', () {
-    final matrix = Mat3.translation(4, -7)
-        .multiplied(Mat3.rotation(0.4))
-        .multiplied(Mat3.scaling(3, 1.5));
+    final matrix = Mat3.translation(
+      4,
+      -7,
+    ).multiplied(Mat3.rotation(0.4)).multiplied(Mat3.scaling(3, 1.5));
     const point = Vec2(2.5, -1.25);
     final back = matrix.inverted()!.transform(matrix.transform(point));
     expect(back.x, closeTo(point.x, 1e-9));

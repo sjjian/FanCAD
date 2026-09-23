@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,7 +62,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   @override
   WorkspaceModel build() {
     commands = ref.read(commandRegistryProvider);
-    importer = ref.read(importerProvider);
+    drawingFiles = ref.read(drawingFilesProvider);
     _drawing = ref.read(appSettingsProvider).workspace;
     _draft = _drawing.load();
     snapEngine = SnapEngine(
@@ -113,7 +112,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   }
 
   late CommandRegistry commands;
-  late DrawingImporter importer;
+  late DrawingFileService drawingFiles;
   late WorkspaceStore _drawing;
   DrawingModel _draft = const DrawingModel();
   CommandLineNotifier get commandLine =>
@@ -349,7 +348,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     }
     try {
       commandLine.write('Opening $target ...');
-      final result = await importer.open(target);
+      final result = await drawingFiles.open(target);
       final stored = _fileIdentity(target);
       final session = DocumentSession(
         id: '${_nextSessionId++}',
@@ -423,7 +422,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     }
 
     try {
-      final outcome = await importer.save(target, tab.document);
+      final outcome = await drawingFiles.save(target, tab.document);
       final written = _fileIdentity(outcome.path);
       tab.markSaved(written);
       _rememberRecent(written);

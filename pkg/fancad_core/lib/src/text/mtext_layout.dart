@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
+import '../document/entity.dart';
+import '../document/geometry_sink.dart';
 import '../geometry/vector.dart';
-import '../model/entity.dart';
-import '../model/geometry_sink.dart';
 
 /// One laid-out run of MTEXT.
 class MTextRun {

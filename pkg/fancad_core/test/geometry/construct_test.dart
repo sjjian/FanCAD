@@ -1063,10 +1063,7 @@ void main() {
 
     eachCase(
       [
-        (
-          name: 'a zero text height cannot invent a leader note',
-          height: 0.0,
-        ),
+        (name: 'a zero text height cannot invent a leader note', height: 0.0),
         (
           name: 'a negative text height cannot invent a leader note',
           height: -2.0,
@@ -1365,10 +1362,7 @@ void main() {
 
     eachCase(
       [
-        (
-          name: 'no points cannot invent a fit spline',
-          points: const <Vec2>[],
-        ),
+        (name: 'no points cannot invent a fit spline', points: const <Vec2>[]),
         (
           name: 'one point cannot invent a fit spline',
           points: const [Vec2(1, 1)],
@@ -1397,10 +1391,7 @@ void main() {
       expect(donut.bulgeAt(0), closeTo(1, 1e-9));
 
       final sink = PolylineSink();
-      donut.emit(
-        const EmitContext(tolerance: 0.1),
-        sink,
-      );
+      donut.emit(const EmitContext(tolerance: 0.1), sink);
       expect(sink.fills, isNotEmpty);
       expect(sink.fills.first.length, greaterThan(8));
     });
@@ -2930,10 +2921,7 @@ void main() {
             const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
           ],
         ),
-        (
-          name: 'an empty list cannot invent a join',
-          entities: <CadEntity>[],
-        ),
+        (name: 'an empty list cannot invent a join', entities: <CadEntity>[]),
         (
           name: 'a circle cannot invent a join',
           entities: [
@@ -3279,10 +3267,7 @@ void main() {
 
     eachCase(
       [
-        (
-          name: 'a zero spacing cannot invent measure points',
-          spacing: 0.0,
-        ),
+        (name: 'a zero spacing cannot invent measure points', spacing: 0.0),
         (
           name: 'a negative spacing cannot invent measure points',
           spacing: -3.0,
@@ -3298,7 +3283,11 @@ void main() {
       ],
       (c) {
         expect(
-          Construct.measureLine(line(0, 0, 10, 0), c.spacing, const Vec2.zero()),
+          Construct.measureLine(
+            line(0, 0, 10, 0),
+            c.spacing,
+            const Vec2.zero(),
+          ),
           isEmpty,
         );
       },
@@ -3495,10 +3484,7 @@ void main() {
         ),
       ],
       (c) {
-        expect(
-          Construct.measureCircle(c.circle, c.spacing, c.pick),
-          isEmpty,
-        );
+        expect(Construct.measureCircle(c.circle, c.spacing, c.pick), isEmpty);
       },
     );
 
@@ -4432,14 +4418,8 @@ void main() {
 
     eachCase(
       [
-        (
-          name: 'an empty keyword cannot invent an alignment',
-          keyword: '   ',
-        ),
-        (
-          name: 'fit cannot invent an alignment',
-          keyword: 'fit',
-        ),
+        (name: 'an empty keyword cannot invent an alignment', keyword: '   '),
+        (name: 'fit cannot invent an alignment', keyword: 'fit'),
         (
           name: 'an unknown justify keyword cannot invent an alignment',
           keyword: 'nope',
@@ -4463,14 +4443,8 @@ void main() {
           name: 'an unknown mtext justify cannot invent an attachment',
           keyword: 'nope',
         ),
-        (
-          name: 'fit cannot invent an mtext attachment',
-          keyword: 'fit',
-        ),
-        (
-          name: 'align cannot invent an mtext attachment',
-          keyword: 'align',
-        ),
+        (name: 'fit cannot invent an mtext attachment', keyword: 'fit'),
+        (name: 'align cannot invent an mtext attachment', keyword: 'align'),
       ],
       (c) {
         expect(

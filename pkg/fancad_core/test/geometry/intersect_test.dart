@@ -137,18 +137,12 @@ void main() {
       [const Vec2(0, 1)],
     );
     expect(
-      Intersect.circleCircle(
-        const Vec2.zero(),
-        5,
-        const Vec2(8, 0),
-        5,
-      ).length,
+      Intersect.circleCircle(const Vec2.zero(), 5, const Vec2(8, 0), 5).length,
       2,
     );
-    expect(
-      Intersect.circleCircle(const Vec2.zero(), 5, const Vec2(10, 0), 5),
-      [const Vec2(5, 0)],
-    );
+    expect(Intersect.circleCircle(const Vec2.zero(), 5, const Vec2(10, 0), 5), [
+      const Vec2(5, 0),
+    ]);
     expect(
       Intersect.circleCircle(const Vec2.zero(), 1, const Vec2.zero(), 2),
       isEmpty,
@@ -277,10 +271,7 @@ void main() {
       tolerance: 0.4,
     );
     // y = 9t(1-t) = 1 on this clamped cubic.
-    final roots = [
-      (9 - math.sqrt(45)) / 18,
-      (9 + math.sqrt(45)) / 18,
-    ];
+    final roots = [(9 - math.sqrt(45)) / 18, (9 + math.sqrt(45)) / 18];
     final expected = [
       for (final t in roots)
         Flatten.bsplineEvaluate(

@@ -51,19 +51,13 @@ class HatchPattern {
     'SOLID': const HatchPattern(name: 'SOLID', lines: []),
     'ANSI31': HatchPattern(
       name: 'ANSI31',
-      lines: [
-        HatchPatternLine(angle: math.pi / 4, deltaY: 3.175),
-      ],
+      lines: [HatchPatternLine(angle: math.pi / 4, deltaY: 3.175)],
     ),
     'ANSI32': HatchPattern(
       name: 'ANSI32',
       lines: [
         HatchPatternLine(angle: math.pi / 4, deltaY: 9.525),
-        HatchPatternLine(
-          angle: math.pi / 4,
-          originX: 4.7625,
-          deltaY: 9.525,
-        ),
+        HatchPatternLine(angle: math.pi / 4, originX: 4.7625, deltaY: 9.525),
       ],
     ),
     'ANSI37': HatchPattern(
@@ -83,11 +77,7 @@ class HatchPattern {
     'DOTS': HatchPattern(
       name: 'DOTS',
       lines: [
-        HatchPatternLine(
-          angle: 0,
-          deltaY: 3.175,
-          dashes: [0, -3.175],
-        ),
+        HatchPatternLine(angle: 0, deltaY: 3.175, dashes: [0, -3.175]),
       ],
     ),
     'STEEL': HatchPattern(
@@ -100,6 +90,5 @@ class HatchPattern {
   };
 
   static HatchPattern named(String name) =>
-      builtIn[name.toUpperCase()] ??
-      builtIn['ANSI31']!;
+      builtIn[name.toUpperCase()] ?? builtIn['ANSI31']!;
 }

@@ -48,25 +48,25 @@ final appSettingsProvider = Provider<AppSettings>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef AppSettingsRef = ProviderRef<AppSettings>;
-String _$importerHash() => r'f6003b6920f37961934bfb41428f49d3acf06a88';
+String _$drawingFilesHash() => r'17296ba422f53f3bc908b95ec01d385e04628eec';
 
-/// The drawing importer. Overridden in tests with a stub backend.
+/// Drawing file access. Overridden in tests with an in-memory DWG adapter.
 ///
-/// Copied from [importer].
-@ProviderFor(importer)
-final importerProvider = Provider<DrawingImporter>.internal(
-  importer,
-  name: r'importerProvider',
+/// Copied from [drawingFiles].
+@ProviderFor(drawingFiles)
+final drawingFilesProvider = Provider<DrawingFileService>.internal(
+  drawingFiles,
+  name: r'drawingFilesProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$importerHash,
+      : _$drawingFilesHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef ImporterRef = ProviderRef<DrawingImporter>;
+typedef DrawingFilesRef = ProviderRef<DrawingFileService>;
 String _$commandRegistryHash() => r'4cd054338bd2ebf82d8d94fc3662f6f6199e0756';
 
 /// See also [commandRegistry].

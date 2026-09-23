@@ -4,7 +4,8 @@ import 'dart:typed_data';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:test/test.dart';
 
-Uint8List _u16(int value) => Uint8List.fromList([value & 0xFF, (value >> 8) & 0xFF]);
+Uint8List _u16(int value) =>
+    Uint8List.fromList([value & 0xFF, (value >> 8) & 0xFF]);
 
 Uint8List _shx({
   String header = 'AutoCAD-86 shapes 1.0',
@@ -12,7 +13,13 @@ Uint8List _shx({
   int high = 255,
   required List<(int code, String name, List<int> shape)> glyphs,
 }) {
-  final out = <int>[...latin1.encode(header), 0x1A, ..._u16(low), ..._u16(high), ..._u16(glyphs.length)];
+  final out = <int>[
+    ...latin1.encode(header),
+    0x1A,
+    ..._u16(low),
+    ..._u16(high),
+    ..._u16(glyphs.length),
+  ];
   for (final (code, name, shape) in glyphs) {
     final payload = <int>[...latin1.encode(name), 0, ...shape];
     out.addAll(_u16(code));
@@ -27,24 +34,8 @@ void main() {
     final font = ShxFont.parse(
       _shx(
         glyphs: [
-          (
-            0,
-            '',
-            [8, 0, 8, 8, 0, 3, 0],
-          ),
-          (
-            65,
-            'A',
-            [
-              1,
-              8, 4, 0,
-              2,
-              8, 0, 4,
-              1,
-              8, 4, 0,
-              0,
-            ],
-          ),
+          (0, '', [8, 0, 8, 8, 0, 3, 0]),
+          (65, 'A', [1, 8, 4, 0, 2, 8, 0, 4, 1, 8, 4, 0, 0]),
         ],
       ),
     );
@@ -75,14 +66,29 @@ void main() {
             66,
             'B',
             [
-              3, 2,
-              4, 2,
+              3,
+              2,
+              4,
+              2,
               5,
               6,
-              9, 2, 0, 0, 0,
-              0x0A, 1,
-              0x0B, 1, 2, 3, 4, 5,
-              0x0C, 3, 0, 0,
+              9,
+              2,
+              0,
+              0,
+              0,
+              0x0A,
+              1,
+              0x0B,
+              1,
+              2,
+              3,
+              4,
+              5,
+              0x0C,
+              3,
+              0,
+              0,
               0x0E,
               0x14,
               0x0E,
@@ -108,22 +114,25 @@ void main() {
     expect(rotated, isNotEmpty);
   });
 
-  test('a zero-count table or nameless payload cannot invent a font metric', () {
-    final emptyTable = ShxFont.parse(_shx(low: 0, high: 0, glyphs: const []));
-    expect(emptyTable.isEmpty, isTrue);
-    expect(emptyTable.above, 1);
-    expect(emptyTable.below, 0);
+  test(
+    'a zero-count table or nameless payload cannot invent a font metric',
+    () {
+      final emptyTable = ShxFont.parse(_shx(low: 0, high: 0, glyphs: const []));
+      expect(emptyTable.isEmpty, isTrue);
+      expect(emptyTable.above, 1);
+      expect(emptyTable.below, 0);
 
-    final nameless = ShxFont.parse(
-      _shx(
-        glyphs: [
-          (67, '', [8, 1, 0, 0]),
-        ],
-      ),
-    );
-    expect(nameless.glyph(67)?.name, isEmpty);
-    expect(nameless.glyph(67)?.commands, isNotEmpty);
-  });
+      final nameless = ShxFont.parse(
+        _shx(
+          glyphs: [
+            (67, '', [8, 1, 0, 0]),
+          ],
+        ),
+      );
+      expect(nameless.glyph(67)?.name, isEmpty);
+      expect(nameless.glyph(67)?.commands, isNotEmpty);
+    },
+  );
 
   test('truncated or headerless buffers stay empty', () {
     expect(ShxFont.parse(Uint8List.fromList([1, 2, 3])).isEmpty, isTrue);
@@ -154,10 +163,7 @@ void main() {
 
   test('missing glyphs advance the cursor without throwing', () {
     final font = ShxFont(header: 'txt', glyphs: const {});
-    expect(
-      font.layout('AB', origin: const Vec2.zero(), height: 10),
-      isEmpty,
-    );
+    expect(font.layout('AB', origin: const Vec2.zero(), height: 10), isEmpty);
   });
 
   test('a stroked glyph produces a polyline at the requested height', () {
@@ -175,11 +181,7 @@ void main() {
         ),
       },
     );
-    final strokes = font.layout(
-      'A',
-      origin: const Vec2.zero(),
-      height: 10,
-    );
+    final strokes = font.layout('A', origin: const Vec2.zero(), height: 10);
     expect(strokes, isNotEmpty);
     expect(strokes.first.length, greaterThanOrEqualTo(2));
     expect(font.glyph(65)?.name, 'A');
@@ -187,26 +189,29 @@ void main() {
     expect(font.measureWidth('AA', height: 10), closeTo(20, 1e-9));
   });
 
-  test('an unknown code uses the fallback glyph instead of inventing strokes', () {
-    final font = ShxFont(
-      header: 'txt',
-      above: 0,
-      glyphs: {
-        0x3F: const ShxGlyph(
-          code: 0x3F,
-          name: 'Q',
-          commands: [
-            ShxDraw(to: Vec2.zero(), penDown: true),
-            ShxDraw(to: Vec2(1, 1), penDown: true),
-          ],
-        ),
-      },
-    );
+  test(
+    'an unknown code uses the fallback glyph instead of inventing strokes',
+    () {
+      final font = ShxFont(
+        header: 'txt',
+        above: 0,
+        glyphs: {
+          0x3F: const ShxGlyph(
+            code: 0x3F,
+            name: 'Q',
+            commands: [
+              ShxDraw(to: Vec2.zero(), penDown: true),
+              ShxDraw(to: Vec2(1, 1), penDown: true),
+            ],
+          ),
+        },
+      );
 
-    expect(font.glyph(65), isNull);
-    expect(font.glyph(0x3F)?.name, 'Q');
-    final strokes = font.layout('A', origin: const Vec2.zero(), height: 10);
-    expect(strokes, isNotEmpty);
-    expect(strokes.first.last, const Vec2(10, 10));
-  });
+      expect(font.glyph(65), isNull);
+      expect(font.glyph(0x3F)?.name, 'Q');
+      final strokes = font.layout('A', origin: const Vec2.zero(), height: 10);
+      expect(strokes, isNotEmpty);
+      expect(strokes.first.last, const Vec2(10, 10));
+    },
+  );
 }

@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 
 import '../command_base.dart';
 import 'xref_helpers.dart';
@@ -50,7 +49,7 @@ class XrefReloadCommand extends FanCadCommand {
         );
       }
       try {
-        final imported = await DrawingImporter().open(path);
+        final imported = await DrawingFileService().open(path);
         loaded.add((block: block, foreign: imported.document));
       } on Object catch (error) {
         return CommandResult.failed('Could not reload "${block.name}": $error');

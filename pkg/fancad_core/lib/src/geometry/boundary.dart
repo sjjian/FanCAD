@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import '../model/entity.dart';
+import '../document/entity.dart';
 import 'flatten.dart';
 import 'intersect.dart';
 import 'vector.dart';
@@ -43,9 +43,7 @@ class Boundary {
     }
     if (outer == null) return const [];
 
-    final loops = <HatchLoop>[
-      HatchLoop(vertices: outer.xy),
-    ];
+    final loops = <HatchLoop>[HatchLoop(vertices: outer.xy)];
     for (final face in cycles) {
       if (identical(face, outer)) continue;
       if (face.area >= outer.area - 1e-12) continue;
@@ -60,7 +58,9 @@ class Boundary {
     switch (entity) {
       case LineEntity(:final start, :final end):
         if (start.distanceSquaredTo(end) < 1e-20) return const [];
-        return [_Chain([start, end], closed: false)];
+        return [
+          _Chain([start, end], closed: false),
+        ];
       case PolylineEntity():
         if (entity.vertexCount < 2) return const [];
         final xy = Flatten.polylineWithBulges(
@@ -135,14 +135,19 @@ class Boundary {
         final unit = direction.lengthSquared < 1e-20
             ? const Vec2(1, 0)
             : direction.normalized();
-        return [_Chain([origin, origin + unit * length], closed: false)];
+        return [
+          _Chain([origin, origin + unit * length], closed: false),
+        ];
       case XLineEntity(:final origin, :final direction):
         final length = math.max(1.0, origin.distanceTo(const Vec2.zero()) * 4);
         final unit = direction.lengthSquared < 1e-20
             ? const Vec2(1, 0)
             : direction.normalized();
         return [
-          _Chain([origin - unit * length, origin + unit * length], closed: false),
+          _Chain([
+            origin - unit * length,
+            origin + unit * length,
+          ], closed: false),
         ];
       default:
         return const [];
@@ -174,7 +179,9 @@ class Boundary {
       }
     }
 
-    final cuts = [for (var i = 0; i < raw.length; i++) <Vec2>[raw[i].a, raw[i].b]];
+    final cuts = [
+      for (var i = 0; i < raw.length; i++) <Vec2>[raw[i].a, raw[i].b],
+    ];
     for (var i = 0; i < raw.length; i++) {
       for (var j = i + 1; j < raw.length; j++) {
         final hit = Intersect.segmentSegment(
@@ -219,7 +226,12 @@ class Boundary {
   }
 
   /// Inserts the interior projections of two collinear overlapping segments.
-  static void _splitCollinear(_Seg a, _Seg b, List<Vec2> cutsA, List<Vec2> cutsB) {
+  static void _splitCollinear(
+    _Seg a,
+    _Seg b,
+    List<Vec2> cutsA,
+    List<Vec2> cutsB,
+  ) {
     final da = a.b - a.a;
     final db = b.b - b.a;
     final la = da.lengthSquared;
@@ -229,7 +241,13 @@ class Boundary {
     if (parallel > 1e-8 * math.sqrt(la * lb)) return;
     if ((b.a - a.a).cross(da).abs() > 1e-8 * math.sqrt(la)) return;
 
-    void project(Vec2 point, Vec2 origin, Vec2 delta, double lengthSquared, List<Vec2> cuts) {
+    void project(
+      Vec2 point,
+      Vec2 origin,
+      Vec2 delta,
+      double lengthSquared,
+      List<Vec2> cuts,
+    ) {
       final t = (point - origin).dot(delta) / lengthSquared;
       if (t <= 1e-9 || t >= 1 - 1e-9) return;
       _addCut(cuts, origin + delta * t);

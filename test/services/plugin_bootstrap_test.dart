@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -71,8 +70,8 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           settingsProvider.overrideWithValue(SettingsStore.inMemory()),
-          importerProvider.overrideWithValue(
-            DrawingImporter(backend: MemoryDrawingBackend()),
+          drawingFilesProvider.overrideWithValue(
+            DrawingFileService(dwgBackend: MemoryDwgBackend()),
           ),
           pluginsDirectoryProvider.overrideWithValue(user.path),
           bundledPluginDirectoriesProvider.overrideWithValue([bundled.path]),

@@ -152,12 +152,7 @@ class Bounds2 {
 
   Bounds2 inflated(double amount) => isEmpty
       ? this
-      : Bounds2(
-          minX - amount,
-          minY - amount,
-          maxX + amount,
-          maxY + amount,
-        );
+      : Bounds2(minX - amount, minY - amount, maxX + amount, maxY + amount);
 
   bool intersects(Bounds2 other) =>
       isNotEmpty &&
@@ -210,9 +205,8 @@ class Bounds2 {
   int get hashCode => Object.hash(minX, minY, maxX, maxY);
 
   @override
-  String toString() => isEmpty
-      ? 'Bounds2.empty'
-      : 'Bounds2($minX, $minY .. $maxX, $maxY)';
+  String toString() =>
+      isEmpty ? 'Bounds2.empty' : 'Bounds2($minX, $minY .. $maxX, $maxY)';
 }
 
 double _percentile(List<double> sorted, double p) {

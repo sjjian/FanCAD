@@ -79,8 +79,7 @@ class Vec2 {
   int get hashCode => Object.hash(x, y);
 
   @override
-  String toString() =>
-      'Vec2(${x.toStringAsFixed(4)}, ${y.toStringAsFixed(4)})';
+  String toString() => 'Vec2(${x.toStringAsFixed(4)}, ${y.toStringAsFixed(4)})';
 }
 
 /// A 3D point. FanCAD is a 2D CAD application but DWG stores 3D coordinates

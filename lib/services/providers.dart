@@ -1,5 +1,4 @@
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_io/fancad_io.dart';
 import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -23,9 +22,9 @@ SettingsStore settings(Ref ref) =>
 @Riverpod(keepAlive: true)
 AppSettings appSettings(Ref ref) => AppSettings(ref.watch(settingsProvider));
 
-/// The drawing importer. Overridden in tests with a stub backend.
+/// Drawing file access. Overridden in tests with an in-memory DWG adapter.
 @Riverpod(keepAlive: true)
-DrawingImporter importer(Ref ref) => DrawingImporter();
+DrawingFileService drawingFiles(Ref ref) => DrawingFileService();
 
 @Riverpod(keepAlive: true)
 CommandRegistry commandRegistry(Ref ref) {

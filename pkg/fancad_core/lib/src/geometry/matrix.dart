@@ -55,14 +55,8 @@ class Mat3 {
   }
 
   /// Uniform or non-uniform scaling about an arbitrary [center].
-  factory Mat3.scalingAbout(double sx, double sy, Vec2 center) => Mat3(
-    sx,
-    0,
-    0,
-    sy,
-    center.x * (1 - sx),
-    center.y * (1 - sy),
-  );
+  factory Mat3.scalingAbout(double sx, double sy, Vec2 center) =>
+      Mat3(sx, 0, 0, sy, center.x * (1 - sx), center.y * (1 - sy));
 
   /// Maps [source1] onto [dest1].
   ///
@@ -163,9 +157,10 @@ class Mat3 {
     final xy = 2 * d.x * d.y;
     // Reflect about a line through the origin, then re-anchor.
     final m = Mat3(xx, xy, xy, -xx, 0, 0);
-    return Mat3.translation(origin.x, origin.y)
-        .multiplied(m)
-        .multiplied(Mat3.translation(-origin.x, -origin.y));
+    return Mat3.translation(
+      origin.x,
+      origin.y,
+    ).multiplied(m).multiplied(Mat3.translation(-origin.x, -origin.y));
   }
 
   final double a;

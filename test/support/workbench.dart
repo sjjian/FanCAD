@@ -1,6 +1,6 @@
 import 'package:desktop_open_files/desktop_open_files.dart';
 import 'package:fancad/fancad.dart';
-import 'package:fancad_io/fancad_io.dart';
+import 'package:fancad_core/fancad_io.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,8 +38,8 @@ ProviderContainer workbenchContainer({SettingsStore? settings}) {
       settingsProvider.overrideWithValue(settings ?? SettingsStore.inMemory()),
       // No cache and a stub backend, so a test run never touches the disk or
       // requires the native library to be present.
-      importerProvider.overrideWithValue(
-        DrawingImporter(backend: MemoryDrawingBackend()),
+      drawingFilesProvider.overrideWithValue(
+        DrawingFileService(dwgBackend: MemoryDwgBackend()),
       ),
     ],
   );

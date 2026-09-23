@@ -230,9 +230,10 @@ class Flatten {
     }
     final samples = tolerance <= 0
         ? maxSegments
-        : (polygonLength / math.max(tolerance * 8, 1e-9))
-              .ceil()
-              .clamp(n * 4, maxSegments);
+        : (polygonLength / math.max(tolerance * 8, 1e-9)).ceil().clamp(
+            n * 4,
+            maxSegments,
+          );
     final tMin = knots[degree];
     final tMax = knots[n];
     if (!(tMax > tMin)) return Float64List.fromList(controlPoints);
@@ -300,12 +301,7 @@ class Flatten {
     List<double> weights = const [],
   }) {
     final n = controlPoints.length ~/ 2;
-    final row = bsplineBasis(
-      knots: knots,
-      count: n,
-      degree: degree,
-      t: t,
-    );
+    final row = bsplineBasis(knots: knots, count: n, degree: degree, t: t);
     if (row.every((w) => w == 0)) return null;
     var x = 0.0, y = 0.0, w = 0.0;
     final rational = weights.length == n;
@@ -503,9 +499,7 @@ class Flatten {
     if (left.length < 2 || right.length < 2) return null;
 
     if (!closed) {
-      return WideStroke(
-        outer: _xyOf([...left, ...right.reversed]),
-      );
+      return WideStroke(outer: _xyOf([...left, ...right.reversed]));
     }
     final leftArea = _signedArea(left);
     final rightArea = _signedArea(right);

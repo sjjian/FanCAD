@@ -344,8 +344,12 @@ void main() {
     expect(quarter.radius, closeTo(10, 1e-9));
 
     final vertices = Float64List.fromList([
-      0, 0, math.tan(math.pi / 8),
-      10, 10, 0,
+      0,
+      0,
+      math.tan(math.pi / 8),
+      10,
+      10,
+      0,
     ]);
     final points = Flatten.polylineWithBulges(
       vertices: vertices,
@@ -450,12 +454,7 @@ void main() {
       controls,
     );
     expect(
-      Flatten.bsplineBasis(
-        knots: knots,
-        count: 4,
-        degree: 3,
-        t: 0,
-      ).first,
+      Flatten.bsplineBasis(knots: knots, count: 4, degree: 3, t: 0).first,
       closeTo(1, 1e-12),
     );
   });
