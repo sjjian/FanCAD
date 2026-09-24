@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../commands/keybindings.dart';
 import '../../l10n/l10n.dart';
 import '../../services/workspace.dart';
+import '../widgets/file_name.dart';
 import '../widgets/icon_button.dart';
 import '../widgets/row.dart';
 import '../widgets/tokens.dart';
@@ -289,42 +290,21 @@ class _RecentLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final gap = folder.isEmpty ? 0.0 : FanCadTokens.space2;
-        final room = constraints.maxWidth - gap;
-        final painter = TextPainter(
-          text: TextSpan(text: name, style: nameStyle),
-          maxLines: 1,
-          textDirection: Directionality.of(context),
-        )..layout(maxWidth: room < 0 ? 0 : room);
-        final nameWidth = painter.width;
-        painter.dispose();
-        return Row(
-          children: [
-            SizedBox(
-              width: nameWidth,
-              child: Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: nameStyle,
-              ),
+    return Row(
+      children: [
+        FileName(name: name, maxWidth: 200, style: nameStyle),
+        if (folder.isNotEmpty) ...[
+          const SizedBox(width: FanCadTokens.space2),
+          Expanded(
+            child: Text(
+              folder,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: folderStyle,
             ),
-            if (folder.isNotEmpty) ...[
-              const SizedBox(width: FanCadTokens.space2),
-              Expanded(
-                child: Text(
-                  folder,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: folderStyle,
-                ),
-              ),
-            ],
-          ],
-        );
-      },
+          ),
+        ],
+      ],
     );
   }
 }

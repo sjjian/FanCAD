@@ -181,6 +181,13 @@ class _OpenDrawingsMenu extends StatelessWidget {
             context,
             value: i,
             label: tabs[i].isStartPage ? context.l10n.start_tab : tabs[i].title,
+            labelChild: tabs[i].isStartPage
+                ? null
+                : FileName(
+                    name: tabs[i].title,
+                    maxWidth: 280,
+                    style: tokens.bodyStyle,
+                  ),
             checked: i == activeIndex ? true : null,
             leading: i == activeIndex
                 ? null
@@ -273,8 +280,9 @@ class _TabState extends State<_Tab> {
                       : context.l10n.unsaved_changes_path(tab.filePath!)
                 : tab.filePath ?? context.l10n.unsaved_drawing,
             waitDuration: const Duration(milliseconds: 500),
-            child: Text(
-              tab.isStartPage ? context.l10n.start_tab : tab.title,
+            child: FileName(
+              name: tab.isStartPage ? context.l10n.start_tab : tab.title,
+              maxWidth: 180,
               style: tokens.bodyStyle.copyWith(
                 color: widget.isActive ? tokens.text : tokens.textMuted,
               ),

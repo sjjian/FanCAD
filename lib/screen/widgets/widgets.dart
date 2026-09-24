@@ -5,6 +5,7 @@ export 'banner.dart';
 export 'canvas_window.dart';
 export 'chip.dart';
 export 'empty.dart';
+export 'file_name.dart';
 export 'field.dart';
 export 'form.dart';
 export 'hairline.dart';

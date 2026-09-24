@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-
 /// Overlay chrome shared by context menus and [FanCadMenuButton].
 ShapeBorder fanCadOverlayShape(FanCadTokens tokens) => RoundedRectangleBorder(
   borderRadius: BorderRadius.circular(FanCadTokens.radius),
@@ -142,6 +141,7 @@ PopupMenuItem<T> fanCadMenuItem<T>(
   BuildContext context, {
   required T value,
   required String label,
+  Widget? labelChild,
   Key? key,
   String? shortcut,
   IconData? icon,
@@ -171,15 +171,18 @@ PopupMenuItem<T> fanCadMenuItem<T>(
           SizedBox(width: 18, child: leadingMark),
           const SizedBox(width: FanCadTokens.space2),
         ],
-        Expanded(
-          child: Text(
-            label,
-            style: tokens.bodyStyle.copyWith(
-              color: enabled ? tokens.text : tokens.textFaint,
+        if (labelChild != null)
+          labelChild
+        else
+          Expanded(
+            child: Text(
+              label,
+              style: tokens.bodyStyle.copyWith(
+                color: enabled ? tokens.text : tokens.textFaint,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
-            overflow: TextOverflow.ellipsis,
           ),
-        ),
         if (shortcut != null) ...[
           const SizedBox(width: FanCadTokens.space4),
           Text(shortcut, style: tokens.labelStyle),

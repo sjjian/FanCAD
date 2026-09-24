@@ -2269,11 +2269,10 @@ class _DrawingMentionRow extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Text(
-                title,
+              child: FileName(
+                name: title,
+                maxWidth: double.infinity,
                 style: tokens.bodyStyle.copyWith(fontSize: 12),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (path.isNotEmpty) ...[
