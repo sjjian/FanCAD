@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/foundation.dart';
@@ -1240,68 +1239,50 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     }
   }
 
-  /// Collects [drawing], or the front tab, into a [SessionSnapshot].
+  /// Statistics for [session], without bringing its tab forward.
   ///
-  /// The assistant may be bound to a pinned drawing that is not on screen.
-  /// Do not bring that tab forward just to describe it.
-  SessionSnapshot collectSessionSnapshot({DocumentTab? drawing}) {
-    final tab = drawing ?? active;
-    final document = tab?.document;
-    final ids = tab?.selection.ids.toList() ?? const <int>[];
-    final listed = <SelectedObjectHint>[];
-    if (document != null) {
-      for (final id in ids.take(SessionSnapshot.maxListed)) {
-        final entity = document.entity(id);
-        if (entity == null) continue;
-        final box = document.boundsOfEntity(entity);
-        listed.add(
-          SelectedObjectHint(
-            id: id,
-            kind: entity.kind.name,
-            layer: entity.props.layer,
-            bounds: box.isEmpty
-                ? null
-                : [box.minX, box.minY, box.maxX, box.maxY],
-          ),
-        );
+  /// Counts and the camera only. Picked geometry stays on `query.selection`,
+  /// and entity totals stay on `query.summary`.
+  @override
+  Map<String, Object?> describeSession(DocumentSession session) {
+    DocumentTab? tab;
+    for (final host in _hosts.values) {
+      if (identical(host.session, session)) {
+        tab = host;
+        break;
       }
     }
-
-    ViewportHint? viewport;
+    Map<String, Object?>? viewport;
     if (tab != null) {
       final view = tab.viewport.viewport;
       final box = view.visibleBounds;
-      viewport = ViewportHint(
-        centerX: view.center.x,
-        centerY: view.center.y,
-        scale: view.scale,
-        visible: box.isEmpty ? null : [box.minX, box.minY, box.maxX, box.maxY],
-      );
+      viewport = {
+        'center': [view.center.x, view.center.y],
+        'scale': view.scale,
+        if (box.isNotEmpty) 'visible': [box.minX, box.minY, box.maxX, box.maxY],
+      };
     }
-
+    final path = (tab?.filePath ?? session.filePath)?.trim() ?? '';
+    final running = state.runningCommand?.trim() ?? '';
+    final prompt = commandLine.pending?.message.trim() ?? '';
     final modes = [for (final mode in snapEngine.modes) mode.name]..sort();
-    return SessionSnapshot(
-      drawingId: tab?.session.id,
-      drawingTitle: tab?.title,
-      drawingPath: tab?.filePath,
-      selectionCount: ids.length,
-      selection: listed,
-      viewport: viewport,
-      snapEnabled: snapEngine.enabled,
-      snapModes: modes,
-      ortho: snapEngine.tracking.ortho,
-      polar: snapEngine.tracking.polar,
-      showGrid: tab?.showGrid ?? true,
-      runningCommand: state.runningCommand,
-      prompt: commandLine.pending?.message,
-      collectedPointCount: collectedPointCount,
-      lastCreatedIds: [
-        ...state.lastCreatedIds.take(SessionSnapshot.maxResultIds),
-      ],
-      lastModifiedIds: [
-        ...state.lastModifiedIds.take(SessionSnapshot.maxResultIds),
-      ],
-    );
+    return {
+      'drawingId': session.id,
+      'title': tab?.title ?? session.title,
+      if (path.isNotEmpty) 'path': path,
+      'selectionCount': session.selection.ids.length,
+      'viewport': viewport,
+      'snapEnabled': snapEngine.enabled,
+      'snapModes': modes,
+      'ortho': snapEngine.tracking.ortho,
+      'polar': snapEngine.tracking.polar,
+      'grid': tab?.showGrid ?? true,
+      if (running.isNotEmpty) 'runningCommand': running,
+      if (prompt.isNotEmpty) 'prompt': prompt,
+      if (collectedPointCount > 0) 'collectedPointCount': collectedPointCount,
+      'lastCreatedIds': [...state.lastCreatedIds.take(32)],
+      'lastModifiedIds': [...state.lastModifiedIds.take(32)],
+    };
   }
 
   @override
@@ -1653,7 +1634,7 @@ class InteractiveCommandInput implements CommandInput {
   @override
   void setMarkers(List<Vec2> points) => _markers = points;
 
-  /// Vertices collected so far, for the session snapshot.
+  /// Vertices collected so far by the interactive command.
   int get collectedPointCount => _markers.length;
 
   @override
@@ -2397,12 +2378,3 @@ class ShxFontCatalog {
     return ShxFontTable(byFamily);
   }
 }
-
-/// Collects [drawing], or the front tab, into a [SessionSnapshot].
-///
-/// The assistant may be bound to a pinned drawing that is not on screen.
-/// Do not bring that tab forward just to describe it.
-SessionSnapshot collectSessionSnapshot(
-  Workspace workspace, {
-  DocumentTab? drawing,
-}) => workspace.collectSessionSnapshot(drawing: drawing);

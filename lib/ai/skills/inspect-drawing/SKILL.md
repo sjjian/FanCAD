@@ -12,9 +12,11 @@ there are, where something is, or to list objects in view.
 
 1. If more than one drawing may be open, run `file.list` first and pass `tab`
    with the target id on later calls.
-2. Read the session snapshot first: selection, viewport, snap, layer counts.
+2. Run `query.session` for the selection count, viewport, snap and any
+   running command, and `query.summary` for entity and layer counts.
 3. If that is enough, answer. Do not invent entity ids.
-4. For more detail run `query.summary`, then `query.entities` with a layer,
-   kind, or `window` taken from the viewport `visible` bounds.
-5. For the current selection run `query.selection` instead of guessing ids.
+4. For more detail run `query.entities` with a layer, kind, or `window`
+   taken from the viewport `visible` bounds.
+5. When the selection count is not zero and you need those objects, run
+   `query.selection`.
 6. Never dump the whole drawing. Prefer filters and a `limit`.

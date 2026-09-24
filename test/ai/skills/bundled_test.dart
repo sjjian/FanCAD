@@ -33,7 +33,6 @@ void main() {
     expect(registry.findByToolName('read_skill'), isNull);
 
     final conversation = Conversation();
-    final session = DocumentSession(id: 't', document: CadDocument());
     final agent = AgentLoop(
       provider: ScriptedLlmProvider([
         const LlmCompletion(
@@ -54,7 +53,6 @@ void main() {
       registry: registry,
       execute: (id, args, {tab}) async =>
           CommandResult.failed('command $id should not run'),
-      document: session.document,
       conversation: conversation,
       skills: bundledSkillRegistry(),
     );

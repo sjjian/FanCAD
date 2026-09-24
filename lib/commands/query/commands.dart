@@ -8,6 +8,7 @@ import 'id.dart';
 import 'layers.dart';
 import 'list.dart';
 import 'selection.dart';
+import 'session.dart';
 import 'summary.dart';
 import 'viewport.dart';
 
@@ -25,6 +26,7 @@ class QueryCommands {
     QueryListCommand().toDescriptor(),
     QueryEntitiesCommand().toDescriptor(),
     QuerySelectionCommand().toDescriptor(),
+    QuerySessionCommand().toDescriptor(),
     QueryViewportCommand().toDescriptor(),
     QueryIdCommand().toDescriptor(),
     QueryDistanceCommand().toDescriptor(),

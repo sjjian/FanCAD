@@ -54,7 +54,6 @@ class AgentLoop {
     required this.provider,
     required this.registry,
     required this.execute,
-    required this.document,
     this.conversation,
     this.policy = const ApprovalPolicy(),
     this.askApproval,
@@ -63,8 +62,6 @@ class AgentLoop {
     this.onUsage,
     this.maxRounds = 16,
     this.history,
-    this.session,
-    this.sessionOf,
     this.askQuestion,
     this.supplyToSession,
     this.skills,
@@ -76,7 +73,6 @@ class AgentLoop {
   final LlmProvider provider;
   final CommandRegistry registry;
   final ToolExecutor execute;
-  final CadDocument document;
   final Conversation? conversation;
   final ApprovalPolicy policy;
   final ApprovalAsker? askApproval;
@@ -84,8 +80,6 @@ class AgentLoop {
   final void Function(String delta)? onDelta;
   final void Function(LlmUsage usage)? onUsage;
   final int maxRounds;
-  final SessionSnapshot? session;
-  final SessionSnapshot Function()? sessionOf;
   final QuestionAsker? askQuestion;
   final SessionSupplier? supplyToSession;
   final SkillRegistry? skills;
@@ -136,9 +130,6 @@ class AgentLoop {
       }
       final system = LlmMessage.system(
         contextBuilder.systemPrompt(
-          document: document,
-          pluginTypings: typings,
-          session: sessionOf?.call() ?? session,
           skills: skills?.listSummaries() ?? const [],
         ),
       );

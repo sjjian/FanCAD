@@ -2210,6 +2210,10 @@
   "@command_query_selection": {
     "description": "command query selection"
   },
+  "command_query_session": "会话",
+  "@command_query_session": {
+    "description": "command query session"
+  },
   "command_query_viewport": "查询视口",
   "@command_query_viewport": {
     "description": "command query viewport"
@@ -2881,6 +2885,10 @@
   "command_query_selection_desc": "将当前选择集作为结构化记录返回（id、类型、图层、范围、简要几何）。用它代替猜测 id。空选择是成功的空列表，不是提示。",
   "@command_query_selection_desc": {
     "description": "command query selection desc"
+  },
+  "command_query_session_desc": "返回当前会话的紧凑统计：目标图纸、选择数量、可见窗口、捕捉，以及正在运行的命令。实体计数用 query.summary，选中对象用 query.selection。",
+  "@command_query_session_desc": {
+    "description": "command query session desc"
   },
   "command_query_viewport_desc": "返回活动相机：中心、比例和可见窗口 [minX, minY, maxX, maxY]。把该窗口传给 query.entities 可列出用户正在看的内容。",
   "@command_query_viewport_desc": {

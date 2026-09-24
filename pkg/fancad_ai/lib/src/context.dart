@@ -1,208 +1,17 @@
-import 'package:fancad_core/fancad_core.dart';
-
 import 'skills/skill.dart';
 
-/// What the user is looking at and has picked, rebuilt every turn.
+/// Builds the system prompt for one assistant turn.
 ///
-/// The statistical drawing summary is not enough: a model that cannot see the
-/// current selection will silently operate on leftover ids, and one that cannot
-/// see the viewport will query the whole file instead of the window on screen.
-class SessionSnapshot {
-  const SessionSnapshot({
-    this.drawingId,
-    this.drawingTitle,
-    this.drawingPath,
-    this.selectionCount = 0,
-    this.selection = const [],
-    this.viewport,
-    this.snapEnabled = true,
-    this.snapModes = const [],
-    this.ortho = false,
-    this.polar = false,
-    this.showGrid = true,
-    this.runningCommand,
-    this.prompt,
-    this.collectedPointCount = 0,
-    this.lastCreatedIds = const [],
-    this.lastModifiedIds = const [],
-  });
-
-  /// How many selected objects may be listed in the prompt.
-  static const int maxListed = 32;
-
-  /// How many last-created / last-modified ids may be listed.
-  static const int maxResultIds = 32;
-
-  final String? drawingId;
-  final String? drawingTitle;
-  final String? drawingPath;
-  final int selectionCount;
-  final List<SelectedObjectHint> selection;
-  final ViewportHint? viewport;
-  final bool snapEnabled;
-  final List<String> snapModes;
-  final bool ortho;
-  final bool polar;
-  final bool showGrid;
-
-  /// The interactive verb the human is in, if any. Read-only: do not fill
-  /// its remaining prompts from here.
-  final String? runningCommand;
-
-  /// The live command-line prompt, when a command is waiting.
-  final String? prompt;
-
-  /// Points already collected by the interactive command.
-  final int collectedPointCount;
-
-  final List<int> lastCreatedIds;
-  final List<int> lastModifiedIds;
-
-  /// Empty pick is written as `none` so the model cannot treat it as "use
-  /// whatever was selected last time".
-  String describe() {
-    final buffer = StringBuffer();
-    buffer.writeln('Session:');
-    final drawingId = this.drawingId?.trim() ?? '';
-    if (drawingId.isEmpty) {
-      buffer.writeln('- drawing: none');
-    } else {
-      final title = drawingTitle?.trim() ?? '';
-      final named = title.isEmpty ? drawingId : title;
-      buffer.writeln('- drawing: $named tab=$drawingId');
-      final path = drawingPath?.trim() ?? '';
-      if (path.isNotEmpty) buffer.writeln('- path: $path');
-    }
-    if (selectionCount == 0) {
-      buffer.writeln('- selection: none');
-    } else {
-      final listed = selection.length;
-      buffer.writeln(
-        listed < selectionCount
-            ? '- selection: $selectionCount objects (first $listed shown)'
-            : '- selection: $selectionCount object${selectionCount == 1 ? '' : 's'}',
-      );
-      for (final item in selection) {
-        buffer.writeln('  - ${item.describe()}');
-      }
-    }
-    final view = viewport;
-    if (view == null) {
-      buffer.writeln('- viewport: unknown');
-    } else {
-      buffer.writeln('- viewport: ${view.describe()}');
-    }
-    final modes = snapModes.isEmpty ? 'none' : snapModes.join(', ');
-    buffer.writeln('- snap: ${snapEnabled ? 'on' : 'off'} ($modes)');
-    buffer.writeln('- ortho: ${ortho ? 'on' : 'off'}');
-    buffer.writeln('- polar: ${polar ? 'on' : 'off'}');
-    buffer.writeln('- grid: ${showGrid ? 'on' : 'off'}');
-    final running = runningCommand?.trim() ?? '';
-    if (running.isEmpty) {
-      buffer.writeln('- running command: none');
-    } else {
-      buffer.writeln('- running command: $running (do not supply its points)');
-      final promptText = prompt?.trim() ?? '';
-      if (promptText.isNotEmpty) {
-        buffer.writeln('- prompt: $promptText');
-      }
-      if (collectedPointCount > 0) {
-        buffer.writeln('- collected points: $collectedPointCount');
-      }
-    }
-    _writeIds(buffer, 'last created', lastCreatedIds);
-    _writeIds(buffer, 'last modified', lastModifiedIds);
-    return buffer.toString().trimRight();
-  }
-
-  static void _writeIds(StringBuffer buffer, String label, List<int> ids) {
-    if (ids.isEmpty) {
-      buffer.writeln('- $label: none');
-      return;
-    }
-    final listed = ids.take(maxResultIds).join(', ');
-    buffer.writeln(
-      ids.length > maxResultIds
-          ? '- $label: ${ids.length} ids (first $maxResultIds: $listed)'
-          : '- $label: $listed',
-    );
-  }
-}
-
-/// Compact selected-entity row for the prompt. Geometry stays on query tools.
-class SelectedObjectHint {
-  const SelectedObjectHint({
-    required this.id,
-    required this.kind,
-    required this.layer,
-    this.bounds,
-  });
-
-  final int id;
-  final String kind;
-  final String layer;
-  final List<double>? bounds;
-
-  String describe() {
-    final box = bounds;
-    final boxText = box == null || box.length < 4
-        ? ''
-        : ' bounds=[${box[0].toStringAsFixed(2)},${box[1].toStringAsFixed(2)},'
-              '${box[2].toStringAsFixed(2)},${box[3].toStringAsFixed(2)}]';
-    return '#$id $kind layer=$layer$boxText';
-  }
-}
-
-/// Camera of the active tab, as numbers the model can reuse as a query window.
-class ViewportHint {
-  const ViewportHint({
-    required this.centerX,
-    required this.centerY,
-    required this.scale,
-    this.visible,
-  });
-
-  final double centerX;
-  final double centerY;
-  final double scale;
-  final List<double>? visible;
-
-  String describe() {
-    final box = visible;
-    final visibleText = box == null || box.length < 4
-        ? 'visible unknown'
-        : 'visible [${box[0].toStringAsFixed(2)}, ${box[1].toStringAsFixed(2)}, '
-              '${box[2].toStringAsFixed(2)}, ${box[3].toStringAsFixed(2)}]';
-    return 'center (${centerX.toStringAsFixed(2)}, ${centerY.toStringAsFixed(2)}), '
-        'scale ${scale.toStringAsFixed(4)}, $visibleText';
-  }
-}
-
-/// Builds the compact document context that goes into a system prompt.
-///
-/// A drawing with a hundred thousand entities cannot be serialised into a
-/// context window. The model is given a statistical summary and a handful of
-/// query tools, and it has to ask for the part it cares about. That is a
-/// design constraint, not a limitation to paper over later.
+/// Drawing statistics and the live session are not copied in. A large drawing
+/// must not be walked on every round. The model calls `query.summary` and
+/// `query.session` when it needs those numbers.
 class DocumentContextBuilder {
-  const DocumentContextBuilder({this.maxLayers = 40, this.maxKinds = 16});
+  const DocumentContextBuilder();
 
-  final int maxLayers;
-  final int maxKinds;
-
-  /// Role and a snapshot of the active drawing. Tool schemas are registered
-  /// on the agent and sent as [LlmRequest.tools], not copied here.
-  String systemPrompt({
-    required CadDocument document,
-    String? pluginTypings,
-    SessionSnapshot? session,
-    Iterable<SkillSummary> skills = const [],
-  }) {
+  /// Role text. Tool schemas are registered on the request, not copied here.
+  String systemPrompt({Iterable<SkillSummary> skills = const []}) {
     final skillList = skills.toList();
-    final typings = pluginTypings?.trim() ?? '';
     return _fillTemplate(_systemPromptTemplate, {
-      'drawing': summarize(document).trimRight(),
-      'session': (session ?? const SessionSnapshot()).describe(),
       'skills': skillList.isEmpty
           ? ''
           : _fillTemplate(_skillsTemplate, {
@@ -211,75 +20,7 @@ class DocumentContextBuilder {
                   '- ${skill.name}: ${skill.description}',
               ].join('\n'),
             }),
-      'plugin_typings': typings.isEmpty
-          ? ''
-          : _fillTemplate(_pluginTypingsTemplate, {'plugin_typings': typings}),
     });
-  }
-
-  /// A compact statistical summary. Cheap enough to rebuild every turn.
-  String summarize(CadDocument document) {
-    final byKind = <String, int>{};
-    final byLayer = <String, int>{};
-    for (final entity in document.activeEntities) {
-      byKind.update(entity.kind.name, (n) => n + 1, ifAbsent: () => 1);
-      byLayer.update(entity.props.layer, (n) => n + 1, ifAbsent: () => 1);
-    }
-    final extents = document.extents;
-    final kinds = byKind.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final layers = byLayer.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    final buffer = StringBuffer();
-    buffer.writeln('Active drawing:');
-    buffer.writeln('- entities: ${document.entityCount}');
-    buffer.writeln('- layout: ${document.activeLayoutName}');
-    buffer.writeln('- current layer: ${document.currentLayer}');
-    if (extents.isNotEmpty) {
-      buffer.writeln(
-        '- extents: ${extents.minX.toStringAsFixed(2)}, '
-        '${extents.minY.toStringAsFixed(2)} to '
-        '${extents.maxX.toStringAsFixed(2)}, '
-        '${extents.maxY.toStringAsFixed(2)}',
-      );
-    }
-    if (kinds.isNotEmpty) {
-      buffer.writeln(
-        '- by type: ${kinds.take(maxKinds).map((e) => '${e.key}×${e.value}').join(', ')}',
-      );
-    }
-    if (layers.isNotEmpty) {
-      buffer.writeln(
-        '- by layer: ${layers.take(maxLayers).map((e) => '${e.key}×${e.value}').join(', ')}',
-      );
-    }
-    final blocks = [for (final block in document.insertableBlocks) block.name];
-    if (blocks.isNotEmpty) {
-      buffer.writeln('- blocks: ${blocks.take(20).join(', ')}');
-    }
-    return buffer.toString();
-  }
-
-  /// The same numbers as [summarize], as a structured payload.
-  Map<String, Object?> summaryJson(CadDocument document) {
-    final byKind = <String, int>{};
-    final byLayer = <String, int>{};
-    for (final entity in document.activeEntities) {
-      byKind.update(entity.kind.name, (n) => n + 1, ifAbsent: () => 1);
-      byLayer.update(entity.props.layer, (n) => n + 1, ifAbsent: () => 1);
-    }
-    final extents = document.extents;
-    return {
-      'entityCount': document.entityCount,
-      'activeLayout': document.activeLayoutName,
-      'currentLayer': document.currentLayer,
-      'extents': extents.isEmpty
-          ? null
-          : [extents.minX, extents.minY, extents.maxX, extents.maxY],
-      'byKind': byKind,
-      'byLayer': byLayer,
-    };
   }
 }
 
@@ -293,21 +34,11 @@ String _fillTemplate(String template, Map<String, String> values) {
 }
 
 const _systemPromptTemplate = r'''
-You are FanCAD's drafting assistant. Prefer the session snapshot, query.summary and query.entities over guessing what is in the drawing. Never invent entity ids. An empty selection is none — do not treat it as a hidden target. Pass ids explicitly on every edit; the current pick is context, not a silent target. If a running command is listed, do not start a conflicting edit and do not reuse its points. One user message is one unit of work: batch related edits so they undo together. When a reply or ask option refers to objects or a drawing, write `@objects[tab=<id> ids=1,2,3]` or `@drawing[tab=<id>]` — do not list ids in prose.
-
-{{drawing}}
-
-{{session}}
+You are FanCAD's drafting assistant. Drawing statistics and the live session are not in this prompt. Call query.summary for entity counts, extents and layers, and query.session for the selection count, viewport, snap and any running command, before guessing what is on screen. Never invent entity ids. A selection count of zero is none — do not treat it as a hidden target. When the user means the current pick, call query.selection and pass those ids explicitly; the pick is not a silent target. If query.session reports a running command, do not start a conflicting edit and do not reuse its points. One user message is one unit of work: batch related edits so they undo together. When a reply or ask option refers to objects or a drawing, write `@objects[tab=<id> ids=1,2,3]` or `@drawing[tab=<id>]` — do not list ids in prose.
 {{skills}}
-{{plugin_typings}}
 ''';
 
 const _skillsTemplate = r'''
 Available skills:
 {{skill_list}}
-''';
-
-const _pluginTypingsTemplate = r'''
-When writing or repairing a plugin, the `fancad` API is:
-{{plugin_typings}}
 ''';

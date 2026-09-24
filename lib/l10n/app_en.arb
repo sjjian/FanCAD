@@ -2230,6 +2230,10 @@
   "@command_query_selection": {
     "description": "command query selection"
   },
+  "command_query_session": "Session",
+  "@command_query_session": {
+    "description": "command query session"
+  },
   "command_query_viewport": "Query Viewport",
   "@command_query_viewport": {
     "description": "command query viewport"
@@ -2901,6 +2905,10 @@
   "command_query_selection_desc": "Returns the current selection as structured records (id, kind, layer, bounds, short geometry). Use this instead of guessing ids. An empty selection is a successful empty list, not a prompt.",
   "@command_query_selection_desc": {
     "description": "command query selection desc"
+  },
+  "command_query_session_desc": "Returns compact statistics for the live session: which drawing is targeted, how many objects are selected, the visible window, snap, and any command already running. Call query.summary for entity counts and query.selection when you need the picked objects.",
+  "@command_query_session_desc": {
+    "description": "command query session desc"
   },
   "command_query_viewport_desc": "Returns the active camera: centre, scale and visible window as [minX, minY, maxX, maxY]. Pass that window to query.entities to list what the user is looking at.",
   "@command_query_viewport_desc": {

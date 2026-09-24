@@ -263,6 +263,13 @@ abstract class CommandServices {
   /// as a `query.entities` filter. Headless tests leave this empty.
   Map<String, Object?> describeView() => const {};
 
+  /// Live session statistics for `query.session`.
+  ///
+  /// Selection count, camera, snap and any command already running. Empty
+  /// when the host has no session to describe; the command then reports only
+  /// what [DocumentSession] itself knows.
+  Map<String, Object?> describeSession(DocumentSession session) => const {};
+
   /// Parsed SHX faces for emit, plot and transform ghosts. Empty until the
   /// host loads fonts from disk; headless tests keep the TTF fallback.
   ShxFontTable get shxFonts => const ShxFontTable();
@@ -305,6 +312,9 @@ class _NullServices implements CommandServices {
 
   @override
   Map<String, Object?> describeView() => const {};
+
+  @override
+  Map<String, Object?> describeSession(DocumentSession session) => const {};
 
   @override
   ShxFontTable get shxFonts => const ShxFontTable();

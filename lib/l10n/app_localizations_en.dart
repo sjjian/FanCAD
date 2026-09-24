@@ -1614,6 +1614,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get command_query_selection => 'Query Selection';
 
   @override
+  String get command_query_session => 'Session';
+
+  @override
   String get command_query_viewport => 'Query Viewport';
 
   @override
@@ -2230,6 +2233,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get command_query_selection_desc =>
       'Returns the current selection as structured records (id, kind, layer, bounds, short geometry). Use this instead of guessing ids. An empty selection is a successful empty list, not a prompt.';
+
+  @override
+  String get command_query_session_desc =>
+      'Returns compact statistics for the live session: which drawing is targeted, how many objects are selected, the visible window, snap, and any command already running. Call query.summary for entity counts and query.selection when you need the picked objects.';
 
   @override
   String get command_query_viewport_desc =>

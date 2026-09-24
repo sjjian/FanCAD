@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -11,7 +10,6 @@ import '../ai/authoring.dart';
 import '../ai/skills/bundled.dart';
 import '../models/assistant.dart';
 import '../storage/assistant.dart';
-import 'plugin.dart';
 import 'providers.dart';
 import 'settings.dart';
 import 'workspace.dart';
@@ -44,8 +42,6 @@ class AssistantNotifier extends _$AssistantNotifier {
 
   Workspace get workspace => ref.read(workspaceNotifierProvider.notifier);
   AssistantStore get _assistant => ref.read(appSettingsProvider).assistant;
-  PluginHost? get host => ref.read(pluginNotifierProvider.notifier).host;
-
   AssistantModel get _store => state;
 
   bool _stopping = false;
@@ -396,13 +392,6 @@ class AssistantNotifier extends _$AssistantNotifier {
     });
     workspace.setAssistantBusy(true);
 
-    final typings = host == null
-        ? null
-        : buildTypeDeclarations(
-            commands: workspace.commands.all,
-            hostVersion: host!.hostVersion,
-          );
-
     final agent = AgentLoop(
       provider: provider,
       registry: workspace.commands,
@@ -413,11 +402,8 @@ class AssistantNotifier extends _$AssistantNotifier {
         session: session,
         tab: tab,
       ),
-      document: session.document,
       conversation: _chat.conversation,
       history: session.history,
-      typings: typings,
-      sessionOf: () => collectSessionSnapshot(workspace, drawing: target),
       skills: bundledSkillRegistry(),
       authoring: const PluginAuthoring(),
       policy: ApprovalPolicy(

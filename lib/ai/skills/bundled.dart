@@ -28,11 +28,13 @@ there are, where something is, or to list objects in view.
 
 1. If more than one drawing may be open, run `file.list` first and pass `tab`
    with the target id on later calls.
-2. Read the session snapshot first: selection, viewport, snap, layer counts.
+2. Run `query.session` for the selection count, viewport, snap and any
+   running command, and `query.summary` for entity and layer counts.
 3. If that is enough, answer. Do not invent entity ids.
-4. For more detail run `query.summary`, then `query.entities` with a layer,
-   kind, or `window` taken from the viewport `visible` bounds.
-5. For the current selection run `query.selection` instead of guessing ids.
+4. For more detail run `query.entities` with a layer, kind, or `window`
+   taken from the viewport `visible` bounds.
+5. When the selection count is not zero and you need those objects, run
+   `query.selection`.
 6. Never dump the whole drawing. Prefer filters and a `limit`.
 ''',
   r'''---
@@ -47,14 +49,14 @@ refers to what is already picked.
 
 ## Workflow
 
-1. Read the snapshot and any Pinned ids on the user message. Pinned objects
-   name a `tab` id from `file.list`. Pass that `tab` with the ids; they are
-   not valid on another drawing. If the user pinned objects, use those ids.
-   If `selection: none` and nothing is pinned, do not run edit commands that
+1. Run `query.session`. Pinned objects on the user message name a `tab` id
+   from `file.list`. Pass that `tab` with the ids; they are not valid on
+   another drawing. If the user pinned objects, use those ids. If the
+   selection count is 0 and nothing is pinned, do not run edit commands that
    would guess a target. Use `ask` only for a small choice (radius,
    fillet vs chamfer), not to pick objects.
 2. If objects are selected and the user said "these", run `query.selection`
-   then pass those ids explicitly. Pass `tab` from the snapshot when more
+   then pass those ids explicitly. Pass `tab` from `file.list` when more
    than one drawing is open.
 3. Pass `ids` explicitly on edit commands. Do not rely on an implicit leftover.
 ''',
@@ -93,7 +95,7 @@ Use this skill when the user asks to create or fix an extension.
 1. `plugins.scaffold` to create the extension folder.
 2. `plugins.write` to write source.
 3. `plugins.reload` to activate.
-4. If activation fails, read `repairHint` and rewrite the file. Use the
-   `fancad` typings in the system prompt. Do not invent API names.
+4. If activation fails, read `repairHint` and rewrite the file. Call
+   `plugins.typings` for the `fancad` API. Do not invent API names.
 ''',
 ];

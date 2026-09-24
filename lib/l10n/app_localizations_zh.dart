@@ -1590,6 +1590,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_query_selection => '查询选择集';
 
   @override
+  String get command_query_session => '会话';
+
+  @override
   String get command_query_viewport => '查询视口';
 
   @override
@@ -2155,6 +2158,10 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get command_query_selection_desc =>
       '将当前选择集作为结构化记录返回（id、类型、图层、范围、简要几何）。用它代替猜测 id。空选择是成功的空列表，不是提示。';
+
+  @override
+  String get command_query_session_desc =>
+      '返回当前会话的紧凑统计：目标图纸、选择数量、可见窗口、捕捉，以及正在运行的命令。实体计数用 query.summary，选中对象用 query.selection。';
 
   @override
   String get command_query_viewport_desc =>

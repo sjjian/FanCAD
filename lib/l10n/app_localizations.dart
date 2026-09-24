@@ -3068,6 +3068,12 @@ abstract class AppLocalizations {
   /// **'Query Selection'**
   String get command_query_selection;
 
+  /// command query session
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get command_query_session;
+
   /// command query viewport
   ///
   /// In en, this message translates to:
@@ -4075,6 +4081,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Returns the current selection as structured records (id, kind, layer, bounds, short geometry). Use this instead of guessing ids. An empty selection is a successful empty list, not a prompt.'**
   String get command_query_selection_desc;
+
+  /// command query session desc
+  ///
+  /// In en, this message translates to:
+  /// **'Returns compact statistics for the live session: which drawing is targeted, how many objects are selected, the visible window, snap, and any command already running. Call query.summary for entity counts and query.selection when you need the picked objects.'**
+  String get command_query_session_desc;
 
   /// command query viewport desc
   ///

@@ -103,7 +103,6 @@ void main() {
       ]),
       registry: registry,
       execute: execute,
-      document: session.document,
     );
 
     final turn = await agent.run('What is in this drawing?');
@@ -121,7 +120,6 @@ void main() {
       }),
       registry: registry,
       execute: execute,
-      document: session.document,
     );
     await agent.run('Hi');
     expect(seen.tools.map((tool) => tool.name), [fancadToolName]);
@@ -137,7 +135,6 @@ void main() {
       provider: provider,
       registry: registry,
       execute: execute,
-      document: session.document,
       conversation: conversation,
     );
 
@@ -157,7 +154,6 @@ void main() {
       ]),
       registry: registry,
       execute: execute,
-      document: session.document,
     );
 
     final turn = await agent.run('Summarise this.');
@@ -184,7 +180,6 @@ void main() {
         ]),
         registry: registry,
         execute: execute,
-        document: session.document,
         askApproval: (_) async {
           asked++;
           return false;
@@ -209,7 +204,6 @@ void main() {
         ]),
         registry: registry,
         execute: execute,
-        document: session.document,
         conversation: Conversation(),
         askApproval: (pending) async {
           asked++;
@@ -245,7 +239,6 @@ void main() {
       ]),
       registry: registry,
       execute: execute,
-      document: session.document,
       history: session.history,
       policy: const ApprovalPolicy(autoApproveEdits: true),
     );
@@ -265,7 +258,6 @@ void main() {
       provider: ScriptedLlmProvider(const []),
       registry: registry,
       execute: execute,
-      document: session.document,
     );
     final turn = await agent.run('Hello');
     expect(turn.error, isNotNull);
@@ -287,7 +279,6 @@ void main() {
       ]),
       registry: registry,
       execute: execute,
-      document: session.document,
       onDelta: deltas.add,
       askApproval: (_) async => false,
     );
@@ -331,7 +322,6 @@ void main() {
           if (id == 'query.summary') throw StateError('offline');
           return execute(id, args);
         },
-        document: session.document,
         policy: const ApprovalPolicy(autoApproveEdits: true),
         askApproval: (_) async => true,
       );
@@ -374,7 +364,6 @@ void main() {
         registry: registry,
         conversation: conversation,
         execute: execute,
-        document: session.document,
         typings: 'declare const fancad: FanCadApi;',
         policy: const ApprovalPolicy(autoApproveEdits: true),
         authoring: const _RepairOnActivate(),
@@ -400,7 +389,6 @@ void main() {
         ]),
         registry: registry,
         execute: execute,
-        document: session.document,
         maxRounds: 1,
       );
       final stopped = await looping.run('Keep going');
@@ -416,7 +404,6 @@ void main() {
       provider: _ChunkedProvider(),
       registry: CommandRegistry(),
       execute: (id, args, {tab}) async => CommandResult.failed(id),
-      document: CadDocument(),
       conversation: conversation,
       onDelta: deltas.add,
     );
@@ -481,7 +468,6 @@ void main() {
           commandId: id,
         ),
       ),
-      document: lineSession.document,
       policy: const ApprovalPolicy(autoApproveEdits: true),
     );
 
@@ -502,7 +488,6 @@ void main() {
         provider: _ReasoningProvider(),
         registry: CommandRegistry(),
         execute: (id, args, {tab}) async => CommandResult.failed(id),
-        document: CadDocument(),
         conversation: conversation,
       );
 
@@ -543,7 +528,6 @@ void main() {
       ]),
       registry: registry,
       execute: execute,
-      document: session.document,
       askQuestion: (question) async {
         seen = question;
         return {'status': 'ok', 'id': 'fillet', 'label': 'Fillet 10'};
@@ -575,7 +559,6 @@ void main() {
       registry: registry,
       conversation: conversation,
       execute: execute,
-      document: session.document,
       askQuestion: (question) async {
         fail('should not ask via fancad: $question');
       },
@@ -597,7 +580,6 @@ void main() {
       }),
       registry: registry,
       execute: execute,
-      document: session.document,
       askQuestion: (question) async {
         fail('should not ask: $question');
       },
@@ -609,32 +591,27 @@ void main() {
     expect(seen.messages.first.content, isNot(contains('Available tools:')));
   });
 
-  test('a live session snapshot is rebuilt every round', () async {
-    var calls = 0;
-    late LlmRequest second;
-    final agent = AgentLoop(
-      provider: _CaptureProvider((request) {
-        calls++;
-        if (calls == 1) {
-          return LlmCompletion(toolCalls: [_run('1', 'query.summary')]);
-        }
-        second = request;
-        return const LlmCompletion(text: 'Done.');
-      }),
-      registry: registry,
-      execute: execute,
-      document: session.document,
-      sessionOf: () => SessionSnapshot(
-        selectionCount: calls,
-        selection: [
-          if (calls > 0)
-            const SelectedObjectHint(id: 9, kind: 'line', layer: '0'),
-        ],
-      ),
-    );
-    await agent.run('Summarise');
-    expect(second.messages.first.content, contains('selection: 1 object'));
-  });
+  test(
+    'drawing and session stay out of the prompt so the model queries them',
+    () async {
+      late LlmRequest seen;
+      final agent = AgentLoop(
+        provider: _CaptureProvider((request) {
+          seen = request;
+          return const LlmCompletion(text: 'Done.');
+        }),
+        registry: registry,
+        execute: execute,
+      );
+      await agent.run('Summarise');
+      final prompt = seen.messages.first.content;
+      expect(prompt, contains('query.summary'));
+      expect(prompt, contains('query.session'));
+      expect(prompt, isNot(contains('Active drawing:')));
+      expect(prompt, isNot(contains('Session:')));
+      expect(prompt, isNot(contains('selection: 1 object')));
+    },
+  );
 
   test('a full context stubs old tool JSON before the next request', () async {
     final conversation = Conversation();
@@ -657,7 +634,6 @@ void main() {
       }),
       registry: registry,
       execute: execute,
-      document: session.document,
       conversation: conversation,
       contextWindowTokens: 200,
     );
@@ -688,7 +664,6 @@ void main() {
       provider: _OverflowThenOkProvider(() => calls++),
       registry: registry,
       execute: execute,
-      document: session.document,
       conversation: conversation,
     );
 

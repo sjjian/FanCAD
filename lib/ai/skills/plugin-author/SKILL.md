@@ -12,5 +12,5 @@ Use this skill when the user asks to create or fix an extension.
 1. `plugins.scaffold` to create the extension folder.
 2. `plugins.write` to write source.
 3. `plugins.reload` to activate.
-4. If activation fails, read `repairHint` and rewrite the file. Use the
-   `fancad` typings in the system prompt. Do not invent API names.
+4. If activation fails, read `repairHint` and rewrite the file. Call
+   `plugins.typings` for the `fancad` API. Do not invent API names.

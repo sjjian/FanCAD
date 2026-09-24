@@ -4,9 +4,9 @@ import 'package:fancad_core/fancad_core.dart';
 /// Helpers for the "write a plugin and run it" loop.
 ///
 /// The loop itself is three commands already in the registry —
-/// `plugins.scaffold`, `plugins.write`, `plugins.reload` — plus the typings
-/// command. This class injects the live `fancad.d.ts` into the model's
-/// context and turns an activation error into a repair prompt.
+/// `plugins.scaffold`, `plugins.write`, `plugins.reload`. The model loads the
+/// API with `plugins.typings`. This class turns an activation error into a
+/// repair prompt.
 class PluginAuthoring implements ActivationRepair {
   const PluginAuthoring();
 
