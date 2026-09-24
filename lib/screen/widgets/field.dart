@@ -78,6 +78,7 @@ class SettingsTextField extends StatefulWidget {
     this.hintText,
     this.onChanged,
     this.onSubmitted,
+    this.onFocusLost,
     this.obscureText = false,
     this.style,
   });
@@ -86,6 +87,7 @@ class SettingsTextField extends StatefulWidget {
   final String? hintText;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+  final VoidCallback? onFocusLost;
   final bool obscureText;
   final TextStyle? style;
 
@@ -113,7 +115,9 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
   }
 
   void _onFocus() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    if (_focus.hasFocus) return;
+    widget.onFocusLost?.call();
   }
 
   @override

@@ -73,12 +73,12 @@ void main() {
 
     layout.select('layers');
     expect(layout.state.sidebarOpen, isFalse);
-    expect(settings.getBool(SettingsKeys.sidebarOpen), isFalse);
+    expect(settings.getBool(SettingsKeys.sidebarOpen), isTrue);
 
     layout.select('commands');
     expect(layout.state.sidebarView, 'commands');
     expect(layout.state.sidebarOpen, isTrue);
-    expect(settings.getString(SettingsKeys.sidebarView), 'commands');
+    expect(settings.getString(SettingsKeys.sidebarView), 'layers');
 
     layout.setSidebarOpen(false);
     layout.reveal('properties');
@@ -94,7 +94,8 @@ void main() {
     expect(layout.state.sidebarWidth, 241);
     layout.resizeSidebar(900);
     expect(layout.state.sidebarWidth, SidebarLayout.maxWidth);
-    layout.commit();
+    expect(settings.getDouble(SettingsKeys.sidebarWidth), 240);
+    layout.persist();
     expect(
       settings.getDouble(SettingsKeys.sidebarWidth),
       SidebarLayout.maxWidth,
@@ -142,17 +143,25 @@ void main() {
 
     layout.toggleAssistant();
     expect(layout.state.assistantOpen, isFalse);
-    expect(settings.getBool(SettingsKeys.assistantOpen), isFalse);
+    expect(settings.getBool(SettingsKeys.assistantOpen), isTrue);
     layout.resizeAssistant(320.4);
     expect(layout.state.assistantWidth, 320);
     layout.resizeAssistant(900);
-    layout.commit();
+    expect(
+      settings.getDouble(SettingsKeys.assistantWidth),
+      40,
+    );
+    layout.persist();
     expect(
       settings.getDouble(SettingsKeys.assistantWidth),
       AssistantPaneLayout.maxWidth,
     );
     layout.resetAssistantWidth();
     expect(layout.state.assistantWidth, AssistantPaneLayout.defaultWidth);
+    expect(
+      settings.getDouble(SettingsKeys.assistantWidth),
+      AssistantPaneLayout.maxWidth,
+    );
   });
 
   test('a stored pane height below the input row is lifted to collapsed', () {
@@ -193,7 +202,7 @@ void main() {
     expect(layout.state.commandHeight, CommandLineLayout.minHeight);
     layout.resizeCommand(800);
     expect(layout.state.commandHeight, CommandLineLayout.maxHeight);
-    layout.commit();
+    layout.persist();
     expect(
       settings.getDouble(SettingsKeys.commandPaneHeight),
       CommandLineLayout.maxHeight,

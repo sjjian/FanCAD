@@ -24,7 +24,9 @@ class PropertiesPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(workspaceNotifierProvider.select((s) => s.active?.id));
+    final activeId = ref.watch(
+      workspaceNotifierProvider.select((s) => s.active?.id),
+    );
     final tab = workspace.active;
     if (tab == null) {
       return Column(
@@ -39,10 +41,14 @@ class PropertiesPanel extends ConsumerWidget {
         ],
       );
     }
-    return ListenableBuilder(
-      listenable: tab,
-      builder: (context, _) => _propertiesBody(context, tab),
-    );
+    if (activeId != null) {
+      ref.watch(
+        documentTabNotifierProvider(
+          activeId,
+        ).select((s) => (s.contentEpoch, s.selectionEpoch)),
+      );
+    }
+    return _propertiesBody(context, tab);
   }
 
   Widget _propertiesBody(BuildContext context, DocumentTab tab) {

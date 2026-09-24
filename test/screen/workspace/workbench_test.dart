@@ -162,6 +162,13 @@ void main() {
       'deepseek-chat',
     );
     await tester.pump();
+    expect(
+      container.read(settingsProvider).getString(SettingsKeys.aiModel),
+      isNot('deepseek-chat'),
+    );
+
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
 
     expect(
       container.read(settingsProvider).getString(SettingsKeys.aiModel),

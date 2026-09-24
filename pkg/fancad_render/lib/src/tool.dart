@@ -202,6 +202,9 @@ class ToolController extends ChangeNotifier
   CadTool? get defaultTool => _defaultTool;
 
   Vec2? get cursor => _cursor;
+
+  @override
+  Vec2? get hoverPoint => cursor;
   SnapResult? get snap => _snap;
 
   /// True while a prompt tool owns the pointer, which is how the shell knows a

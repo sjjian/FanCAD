@@ -14,7 +14,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$WorkspaceModel {
 
- List<WorkspaceSessionModel> get sessions; int get activeIndex; List<NoticeModel> get notices; ApprovalRequestModel? get approval; bool get assistantBusy; String? get runningCommand; bool get snapEnabled; bool get ortho; bool get polar; List<String> get snapModes; List<String> get recentFiles; List<int> get lastCreatedIds; List<int> get lastModifiedIds; int get collectedPointCount;
+ List<WorkspaceSessionModel> get sessions; int get activeIndex; List<NoticeModel> get notices; ApprovalRequestModel? get approval; bool get assistantBusy; String? get runningCommand; bool get snapEnabled; bool get ortho; bool get polar; List<String> get snapModes; List<String> get recentFiles;/// Last geometry the human or the assistant created or changed.
+ List<int> get lastCreatedIds; List<int> get lastModifiedIds; int get collectedPointCount;
 /// Create a copy of WorkspaceModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -269,7 +270,9 @@ class _WorkspaceModel extends WorkspaceModel {
   return EqualUnmodifiableListView(_recentFiles);
 }
 
+/// Last geometry the human or the assistant created or changed.
  final  List<int> _lastCreatedIds;
+/// Last geometry the human or the assistant created or changed.
 @override@JsonKey() List<int> get lastCreatedIds {
   if (_lastCreatedIds is EqualUnmodifiableListView) return _lastCreatedIds;
   // ignore: implicit_dynamic_type
@@ -1762,7 +1765,7 @@ as List<int>,
 /// @nodoc
 mixin _$DocumentTabModel {
 
- String get prompt;
+ String get prompt; int get contentEpoch; int get selectionEpoch;
 /// Create a copy of DocumentTabModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1773,16 +1776,16 @@ $DocumentTabModelCopyWith<DocumentTabModel> get copyWith => _$DocumentTabModelCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DocumentTabModel&&(identical(other.prompt, prompt) || other.prompt == prompt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DocumentTabModel&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.contentEpoch, contentEpoch) || other.contentEpoch == contentEpoch)&&(identical(other.selectionEpoch, selectionEpoch) || other.selectionEpoch == selectionEpoch));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,prompt);
+int get hashCode => Object.hash(runtimeType,prompt,contentEpoch,selectionEpoch);
 
 @override
 String toString() {
-  return 'DocumentTabModel(prompt: $prompt)';
+  return 'DocumentTabModel(prompt: $prompt, contentEpoch: $contentEpoch, selectionEpoch: $selectionEpoch)';
 }
 
 
@@ -1793,7 +1796,7 @@ abstract mixin class $DocumentTabModelCopyWith<$Res>  {
   factory $DocumentTabModelCopyWith(DocumentTabModel value, $Res Function(DocumentTabModel) _then) = _$DocumentTabModelCopyWithImpl;
 @useResult
 $Res call({
- String prompt
+ String prompt, int contentEpoch, int selectionEpoch
 });
 
 
@@ -1810,10 +1813,12 @@ class _$DocumentTabModelCopyWithImpl<$Res>
 
 /// Create a copy of DocumentTabModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? prompt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? prompt = null,Object? contentEpoch = null,Object? selectionEpoch = null,}) {
   return _then(_self.copyWith(
 prompt: null == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
-as String,
+as String,contentEpoch: null == contentEpoch ? _self.contentEpoch : contentEpoch // ignore: cast_nullable_to_non_nullable
+as int,selectionEpoch: null == selectionEpoch ? _self.selectionEpoch : selectionEpoch // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
@@ -1898,10 +1903,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String prompt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String prompt,  int contentEpoch,  int selectionEpoch)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DocumentTabModel() when $default != null:
-return $default(_that.prompt);case _:
+return $default(_that.prompt,_that.contentEpoch,_that.selectionEpoch);case _:
   return orElse();
 
 }
@@ -1919,10 +1924,10 @@ return $default(_that.prompt);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String prompt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String prompt,  int contentEpoch,  int selectionEpoch)  $default,) {final _that = this;
 switch (_that) {
 case _DocumentTabModel():
-return $default(_that.prompt);case _:
+return $default(_that.prompt,_that.contentEpoch,_that.selectionEpoch);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1939,10 +1944,10 @@ return $default(_that.prompt);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String prompt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String prompt,  int contentEpoch,  int selectionEpoch)?  $default,) {final _that = this;
 switch (_that) {
 case _DocumentTabModel() when $default != null:
-return $default(_that.prompt);case _:
+return $default(_that.prompt,_that.contentEpoch,_that.selectionEpoch);case _:
   return null;
 
 }
@@ -1954,10 +1959,12 @@ return $default(_that.prompt);case _:
 
 
 class _DocumentTabModel implements DocumentTabModel {
-  const _DocumentTabModel({this.prompt = ''});
+  const _DocumentTabModel({this.prompt = '', this.contentEpoch = 0, this.selectionEpoch = 0});
   
 
 @override@JsonKey() final  String prompt;
+@override@JsonKey() final  int contentEpoch;
+@override@JsonKey() final  int selectionEpoch;
 
 /// Create a copy of DocumentTabModel
 /// with the given fields replaced by the non-null parameter values.
@@ -1969,16 +1976,16 @@ _$DocumentTabModelCopyWith<_DocumentTabModel> get copyWith => __$DocumentTabMode
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DocumentTabModel&&(identical(other.prompt, prompt) || other.prompt == prompt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DocumentTabModel&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.contentEpoch, contentEpoch) || other.contentEpoch == contentEpoch)&&(identical(other.selectionEpoch, selectionEpoch) || other.selectionEpoch == selectionEpoch));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,prompt);
+int get hashCode => Object.hash(runtimeType,prompt,contentEpoch,selectionEpoch);
 
 @override
 String toString() {
-  return 'DocumentTabModel(prompt: $prompt)';
+  return 'DocumentTabModel(prompt: $prompt, contentEpoch: $contentEpoch, selectionEpoch: $selectionEpoch)';
 }
 
 
@@ -1989,7 +1996,7 @@ abstract mixin class _$DocumentTabModelCopyWith<$Res> implements $DocumentTabMod
   factory _$DocumentTabModelCopyWith(_DocumentTabModel value, $Res Function(_DocumentTabModel) _then) = __$DocumentTabModelCopyWithImpl;
 @override @useResult
 $Res call({
- String prompt
+ String prompt, int contentEpoch, int selectionEpoch
 });
 
 
@@ -2006,10 +2013,12 @@ class __$DocumentTabModelCopyWithImpl<$Res>
 
 /// Create a copy of DocumentTabModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? prompt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? prompt = null,Object? contentEpoch = null,Object? selectionEpoch = null,}) {
   return _then(_DocumentTabModel(
 prompt: null == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
-as String,
+as String,contentEpoch: null == contentEpoch ? _self.contentEpoch : contentEpoch // ignore: cast_nullable_to_non_nullable
+as int,selectionEpoch: null == selectionEpoch ? _self.selectionEpoch : selectionEpoch // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 

@@ -43,6 +43,10 @@ class ViewportController extends ChangeNotifier {
 
   CadViewport _viewport;
 
+  /// Last snapped pointer, published by the canvas. Status readouts listen
+  /// here so a mouse move does not write a store or rebuild the page.
+  Vec2? _pointer;
+
   /// Set while a pan or zoom gesture is in flight, so the renderer can prefer
   /// reusing the last scene over building an exact one.
   bool _interacting = false;
@@ -58,7 +62,15 @@ class ViewportController extends ChangeNotifier {
   Bounds2? _pendingFit;
 
   CadViewport get viewport => _viewport;
+  Vec2? get pointer => _pointer;
   bool get isInteracting => _interacting;
+
+  /// Records the snapped pointer. Identical points do not notify.
+  void notePointer(Vec2? world) {
+    if (world == _pointer) return;
+    _pointer = world;
+    notifyListeners();
+  }
 
   RenderQuality get quality => _quality;
 

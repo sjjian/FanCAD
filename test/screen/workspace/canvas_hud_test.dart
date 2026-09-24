@@ -420,6 +420,7 @@ void main() {
 
     await tester.enterText(_commandField, 'L');
     await tester.pump();
+    await tester.pump();
 
     expect(find.byKey(const Key('canvas-command-suggest')), findsOneWidget);
     final card = tester.getRect(find.byKey(const Key('canvas-bottom-card')));
@@ -502,6 +503,7 @@ void main() {
     await tester.pump();
 
     await tester.enterText(_commandField, 'L');
+    await tester.pump();
     await tester.pump();
     expect(find.byKey(const Key('canvas-command-suggest')), findsNothing);
   });

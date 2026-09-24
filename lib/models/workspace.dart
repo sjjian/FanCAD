@@ -143,10 +143,17 @@ abstract class ApprovalRequestModel with _$ApprovalRequestModel {
   }) = _ApprovalRequestModel;
 }
 
-/// Per-tab Riverpod state: the in-flight tool prompt. Camera and tools stay
-/// on the notifier so a pan does not write this store.
+/// Per-tab Riverpod state: the in-flight tool prompt and content generations.
+///
+/// Camera and tools stay on the viewport controller so a pan does not write
+/// this store. [contentEpoch] moves when the drawing or its tables change.
+/// [selectionEpoch] moves when the pick changes. Screens select one of them
+/// instead of listening to the tab.
 @freezed
 abstract class DocumentTabModel with _$DocumentTabModel {
-  const factory DocumentTabModel({@Default('') String prompt}) =
-      _DocumentTabModel;
+  const factory DocumentTabModel({
+    @Default('') String prompt,
+    @Default(0) int contentEpoch,
+    @Default(0) int selectionEpoch,
+  }) = _DocumentTabModel;
 }

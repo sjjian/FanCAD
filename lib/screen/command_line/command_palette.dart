@@ -31,77 +31,13 @@ class CommandPalette extends StatefulWidget {
 class _CommandPaletteState extends State<CommandPalette> {
   final TextEditingController _query = TextEditingController();
   final FocusNode _focus = FocusNode();
-  final ScrollController _scroll = ScrollController();
-
-  List<CommandDescriptor> _matches = const [];
-  int _highlighted = 0;
-
-  static const double _rowHeight = 44;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _recompute('');
-    });
-  }
+  final GlobalKey<_PaletteResultsState> _resultsKey = GlobalKey();
 
   @override
   void dispose() {
     _query.dispose();
     _focus.dispose();
-    _scroll.dispose();
     super.dispose();
-  }
-
-  void _recompute(String text) {
-    setState(() {
-      var matches = searchCommandsLocalized(
-        widget.workspace.commands,
-        text,
-        context.l10n,
-        limit: 60,
-      );
-      final lastId = widget.workspace.commands.lastCommandId;
-      if (text.trim().isEmpty && lastId != null) {
-        final last = widget.workspace.commands.find(lastId);
-        if (last != null) {
-          matches = [last, ...matches.where((each) => each.id != lastId)];
-        }
-      }
-      _matches = matches;
-      _highlighted = 0;
-    });
-  }
-
-  void _move(int delta) {
-    if (_matches.isEmpty) return;
-    setState(() {
-      _highlighted = (_highlighted + delta).clamp(0, _matches.length - 1);
-    });
-    // Keep the highlighted row on screen; without this, arrowing past the
-    // bottom silently moves a selection the user cannot see.
-    final target = _highlighted * _rowHeight;
-    if (!_scroll.hasClients) return;
-    final position = _scroll.position;
-    if (target < position.pixels) {
-      _scroll.jumpTo(target);
-    } else if (target + _rowHeight >
-        position.pixels + position.viewportDimension) {
-      _scroll.jumpTo(
-        (target + _rowHeight - position.viewportDimension).clamp(
-          0,
-          position.maxScrollExtent,
-        ),
-      );
-    }
-  }
-
-  void _accept() {
-    if (_matches.isEmpty) return;
-    final descriptor = _matches[_highlighted];
-    widget.onDismiss();
-    widget.workspace.run(descriptor.id);
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
@@ -113,14 +49,14 @@ class _CommandPaletteState extends State<CommandPalette> {
         widget.onDismiss();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowDown:
-        _move(1);
+        _resultsKey.currentState?.move(1);
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowUp:
-        _move(-1);
+        _resultsKey.currentState?.move(-1);
         return KeyEventResult.handled;
       case LogicalKeyboardKey.enter:
       case LogicalKeyboardKey.numpadEnter:
-        _accept();
+        _resultsKey.currentState?.accept();
         return KeyEventResult.handled;
       default:
         return KeyEventResult.ignored;
@@ -184,19 +120,18 @@ class _CommandPaletteState extends State<CommandPalette> {
                           autofocus: true,
                           hintText: context.l10n.search_commands,
                           style: tokens.bodyStyle.copyWith(fontSize: 14),
-                          onChanged: _recompute,
-                          suffix: _query.text.isEmpty
-                              ? null
-                              : FanCadIconButton(
-                                  icon: Icons.close,
-                                  size: 20,
-                                  iconSize: FanCadTokens.iconSmall,
-                                  tooltip: context.l10n.clear_search,
-                                  onPressed: () {
-                                    _query.clear();
-                                    _recompute('');
-                                  },
-                                ),
+                          suffix: ListenableBuilder(
+                            listenable: _query,
+                            builder: (context, _) => _query.text.isEmpty
+                                ? const SizedBox.shrink()
+                                : FanCadIconButton(
+                                    icon: Icons.close,
+                                    size: 20,
+                                    iconSize: FanCadTokens.iconSmall,
+                                    tooltip: context.l10n.clear_search,
+                                    onPressed: _query.clear,
+                                  ),
+                          ),
                           prefix: Padding(
                             padding: const EdgeInsets.only(
                               right: FanCadTokens.space2,
@@ -209,87 +144,208 @@ class _CommandPaletteState extends State<CommandPalette> {
                           ),
                         ),
                       ),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 396),
-                        child: _matches.isEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: FanCadTokens.space4,
-                                  vertical: FanCadTokens.space5,
-                                ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      _query.text.trim().isEmpty
-                                          ? context.l10n.start_typing_command
-                                          : context.l10n.no_commands_match(
-                                              _query.text.trim(),
-                                            ),
-                                      style: tokens.bodyStyle,
-                                    ),
-                                    const SizedBox(height: FanCadTokens.space2),
-                                    Text(
-                                      context.l10n.try_alias_or_category,
-                                      style: tokens.labelStyle,
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : ListView.builder(
-                                controller: _scroll,
-                                shrinkWrap: true,
-                                itemExtent: _rowHeight,
-                                itemCount: _matches.length,
-                                itemBuilder: (context, index) => _PaletteRow(
-                                  descriptor: _matches[index],
-                                  isLastUsed:
-                                      index == 0 &&
-                                      _query.text.trim().isEmpty &&
-                                      _matches[index].id ==
-                                          widget
-                                              .workspace
-                                              .commands
-                                              .lastCommandId,
-                                  isHighlighted: index == _highlighted,
-                                  onHover: () {
-                                    if (_highlighted == index) return;
-                                    setState(() => _highlighted = index);
-                                  },
-                                  onTap: () {
-                                    setState(() => _highlighted = index);
-                                    _accept();
-                                  },
-                                ),
-                              ),
-                      ),
-                      Container(
-                        height: FanCadTokens.statusBarHeight,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: FanCadTokens.space4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: tokens.surfaceRaised,
-                          border: Border(top: BorderSide(color: tokens.border)),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              context.l10n.commandCount(_matches.length),
-                              style: tokens.labelStyle,
-                            ),
-                            const Spacer(),
-                            Text(
-                              context.l10n.palette_hints,
-                              style: tokens.labelStyle,
-                            ),
-                          ],
-                        ),
+                      _PaletteResults(
+                        key: _resultsKey,
+                        query: _query,
+                        workspace: widget.workspace,
+                        onAccept: (descriptor) {
+                          widget.onDismiss();
+                          widget.workspace.run(descriptor.id);
+                        },
                       ),
                     ],
                   ),
                 ),
               ),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Matches under the palette field. Search waits one frame so the typed
+/// character paints before the list walks the registry.
+class _PaletteResults extends StatefulWidget {
+  const _PaletteResults({
+    super.key,
+    required this.query,
+    required this.workspace,
+    required this.onAccept,
+  });
+
+  final TextEditingController query;
+  final Workspace workspace;
+  final ValueChanged<CommandDescriptor> onAccept;
+
+  @override
+  State<_PaletteResults> createState() => _PaletteResultsState();
+}
+
+class _PaletteResultsState extends State<_PaletteResults> {
+  final ScrollController _scroll = ScrollController();
+  List<CommandDescriptor> _matches = const [];
+  int _highlighted = 0;
+  bool _scheduled = false;
+
+  static const double _rowHeight = 44;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.query.addListener(_schedule);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _recompute();
+    });
+  }
+
+  @override
+  void didUpdateWidget(_PaletteResults oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.query != widget.query) {
+      oldWidget.query.removeListener(_schedule);
+      widget.query.addListener(_schedule);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.query.removeListener(_schedule);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _schedule() {
+    if (_scheduled) return;
+    _scheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scheduled = false;
+      if (!mounted) return;
+      _recompute();
+    });
+  }
+
+  void _recompute() {
+    final text = widget.query.text;
+    var matches = searchCommandsLocalized(
+      widget.workspace.commands,
+      text,
+      context.l10n,
+      limit: 60,
+    );
+    final lastId = widget.workspace.commands.lastCommandId;
+    if (text.trim().isEmpty && lastId != null) {
+      final last = widget.workspace.commands.find(lastId);
+      if (last != null) {
+        matches = [last, ...matches.where((each) => each.id != lastId)];
+      }
+    }
+    setState(() {
+      _matches = matches;
+      _highlighted = 0;
+    });
+  }
+
+  void move(int delta) {
+    if (_matches.isEmpty) return;
+    setState(() {
+      _highlighted = (_highlighted + delta).clamp(0, _matches.length - 1);
+    });
+    // Keep the highlighted row on screen; without this, arrowing past the
+    // bottom silently moves a selection the user cannot see.
+    final target = _highlighted * _rowHeight;
+    if (!_scroll.hasClients) return;
+    final position = _scroll.position;
+    if (target < position.pixels) {
+      _scroll.jumpTo(target);
+    } else if (target + _rowHeight >
+        position.pixels + position.viewportDimension) {
+      _scroll.jumpTo(
+        (target + _rowHeight - position.viewportDimension).clamp(
+          0.0,
+          position.maxScrollExtent,
+        ),
+      );
+    }
+  }
+
+  void accept() {
+    if (_matches.isEmpty) return;
+    widget.onAccept(_matches[_highlighted]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final query = widget.query.text.trim();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 396),
+          child: _matches.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: FanCadTokens.space4,
+                    vertical: FanCadTokens.space5,
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        query.isEmpty
+                            ? context.l10n.start_typing_command
+                            : context.l10n.no_commands_match(query),
+                        style: tokens.bodyStyle,
+                      ),
+                      const SizedBox(height: FanCadTokens.space2),
+                      Text(
+                        context.l10n.try_alias_or_category,
+                        style: tokens.labelStyle,
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scroll,
+                  shrinkWrap: true,
+                  itemExtent: _rowHeight,
+                  itemCount: _matches.length,
+                  itemBuilder: (context, index) => _PaletteRow(
+                    descriptor: _matches[index],
+                    isLastUsed:
+                        index == 0 &&
+                        query.isEmpty &&
+                        _matches[index].id ==
+                            widget.workspace.commands.lastCommandId,
+                    isHighlighted: index == _highlighted,
+                    onHover: () {
+                      if (_highlighted == index) return;
+                      setState(() => _highlighted = index);
+                    },
+                    onTap: () {
+                      setState(() => _highlighted = index);
+                      accept();
+                    },
+                  ),
+                ),
+        ),
+        Container(
+          height: FanCadTokens.statusBarHeight,
+          padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space4),
+          decoration: BoxDecoration(
+            color: tokens.surfaceRaised,
+            border: Border(top: BorderSide(color: tokens.border)),
+          ),
+          child: Row(
+            children: [
+              Text(
+                context.l10n.commandCount(_matches.length),
+                style: tokens.labelStyle,
+              ),
+              const Spacer(),
+              Text(context.l10n.palette_hints, style: tokens.labelStyle),
+            ],
           ),
         ),
       ],

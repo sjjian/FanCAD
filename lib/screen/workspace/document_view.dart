@@ -58,6 +58,7 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
   Vec2? _editingAnchor;
   CadEntity? _editingOriginal;
   CadEntity? _editingBlockLabel;
+  bool _dynamicShown = false;
 
   @override
   void initState() {
@@ -96,6 +97,7 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
   /// sessions, and the tab cannot reach into the canvas's cache, so the tab
   /// exposes a hook and the view is what ties the knot.
   void _bind(DocumentTab tab) {
+    _dynamicShown = tab.tools.showDynamicInput;
     tab.tools.onHudTypeIn = (character) {
       _dynHudKey.currentState?.takeTyping(character);
     };
@@ -448,8 +450,16 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
     });
   }
 
+  void _onCanvasInput() {
+    _dynHudKey.currentState?.syncFromCursor();
+    final show = widget.tab.tools.showDynamicInput;
+    if (show == _dynamicShown || !mounted) return;
+    setState(() => _dynamicShown = show);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tab = widget.tab;
     final pending = ref.watch(
       workspaceNotifierProvider.select((s) => s.highlightIds),
     );
@@ -457,31 +467,47 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
       workspaceNotifierProvider.select((s) => s.assistantBusy),
     );
     ref.watch(
-      commandLineNotifierProvider.select(
-        (s) => (s.prompt, s.status, s.lines.length),
-      ),
+      documentTabNotifierProvider(tab.session.id).select((s) => s.contentEpoch),
     );
-    return ListenableBuilder(
-      listenable: widget.tab,
-      builder: (context, _) => _buildView(context, pending, assistantBusy),
+    final chrome = ref.watch(
+      workspaceNotifierProvider.select((s) {
+        for (final session in s.sessions) {
+          if (session.id == tab.session.id) {
+            return (session.showGrid, session.isolatedLayers);
+          }
+        }
+        return (true, null as Set<String>?);
+      }),
     );
+    return _buildView(
+      context,
+      pending,
+      assistantBusy,
+      showGrid: chrome.$1,
+      isolatedLayers: chrome.$2,
+    );
+  }
+
+  OverlayModel _readOverlay(List<int> pending) {
+    var overlay = widget.tab.tools.buildOverlay();
+    if (pending.isNotEmpty) {
+      overlay = overlay.copyWith(
+        highlightedIds: [...overlay.highlightedIds, ...pending],
+      );
+    }
+    return overlay;
   }
 
   Widget _buildView(
     BuildContext context,
     List<int> pending,
-    bool assistantBusy,
-  ) {
+    bool assistantBusy, {
+    required bool showGrid,
+    required Set<String>? isolatedLayers,
+  }) {
     final tokens = context.tokens;
     final tab = widget.tab;
-    final overlay = tab.tools.buildOverlay();
     final editingEntity = _editingOriginal;
-    var effectiveOverlay = overlay;
-    if (pending.isNotEmpty) {
-      effectiveOverlay = effectiveOverlay.copyWith(
-        highlightedIds: [...effectiveOverlay.highlightedIds, ...pending],
-      );
-    }
     var hiddenCount = 0;
     for (final entity in tab.document.activeEntities) {
       if (!entity.props.visible) hiddenCount += 1;
@@ -529,66 +555,60 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
               document: tab.document,
               controller: tab.viewport,
               inputHandler: assistantBusy ? null : tab.tools,
-              overlay: effectiveOverlay,
+              readOverlay: () => _readOverlay(pending),
+              onInput: _onCanvasInput,
               background: tokens.canvas,
               palette: tokens.isDark ? AciPalette.dark : AciPalette.light,
-              showGrid: tab.showGrid,
+              showGrid: showGrid,
               onSceneBuilt: tab.noteScene,
               onContextMenu: assistantBusy ? null : _openContextMenu,
               onDoubleClick: assistantBusy ? null : _onDoubleClick,
-              onlyLayers: tab.isolatedLayers,
+              onlyLayers: isolatedLayers,
               tessellation: tab.tessellation,
               shxFonts: widget.workspace.shxFonts,
             ),
             Positioned.fill(
-              child: ListenableBuilder(
-                listenable: Listenable.merge([tab.tools, tab.viewport]),
-                builder: (context, _) {
-                  final prompt = widget.workspace.commandLine.promptText;
-                  final toolPrompt = tab.tools.activeTool?.promptText ?? '';
-                  return Stack(
-                    children: [
-                      if (!tab.tools.showDynamicInput)
-                        _CanvasPromptHud(
-                          workspace: widget.workspace,
-                          onKeyword: (keyword) {
-                            final remaining = widget.workspace.commandLine
-                                .submit(keyword);
-                            if (remaining != null) {
-                              widget.workspace.submitCommandLine(remaining);
-                            }
-                          },
-                          onCancel: widget.workspace.cancelActive,
-                        ),
-                      if (tab.tools.showDynamicInput)
-                        DynamicInputHud(
-                          key: _dynHudKey,
-                          tools: tab.tools,
-                          viewport: tab.viewport.viewport,
-                          prompt: prompt.isNotEmpty ? prompt : toolPrompt,
-                          distanceFocus: _dynDistanceFocus,
-                          angleFocus: _dynAngleFocus,
-                        ),
-                      if (editingEntity != null)
-                        TextEditOverlay(
-                          entity: editingEntity,
-                          document: tab.document,
-                          viewport: tab.viewport.viewport,
-                          styleNames: [...tab.document.textStyles.keys],
-                          anchor: _editingAnchor,
-                          onCommit: _commitTextEdit,
-                          onPreview: _previewTextEdit,
-                          onCancel: _cancelTextEdit,
-                        ),
-                    ],
-                  );
-                },
+              child: Stack(
+                children: [
+                  if (!_dynamicShown)
+                    _CanvasPromptHud(
+                      workspace: widget.workspace,
+                      onKeyword: (keyword) {
+                        final remaining = widget.workspace.commandLine.submit(
+                          keyword,
+                        );
+                        if (remaining != null) {
+                          widget.workspace.submitCommandLine(remaining);
+                        }
+                      },
+                      onCancel: widget.workspace.cancelActive,
+                    ),
+                  if (_dynamicShown)
+                    _DynamicInputPrompt(
+                      tools: tab.tools,
+                      hudKey: _dynHudKey,
+                      viewport: tab.viewport,
+                      distanceFocus: _dynDistanceFocus,
+                      angleFocus: _dynAngleFocus,
+                    ),
+                  if (editingEntity != null)
+                    ListenableBuilder(
+                      listenable: tab.viewport,
+                      builder: (context, _) => TextEditOverlay(
+                        entity: editingEntity,
+                        document: tab.document,
+                        viewport: tab.viewport.viewport,
+                        styleNames: [...tab.document.textStyles.keys],
+                        anchor: _editingAnchor,
+                        onCommit: _commitTextEdit,
+                        onPreview: _previewTextEdit,
+                        onCancel: _cancelTextEdit,
+                      ),
+                    ),
+                ],
               ),
             ),
-            if (tab.document.entityCount == 0 &&
-                !assistantBusy &&
-                !widget.workspace.commandLine.isAwaitingInput)
-              const _EmptyDrawingHint(),
+            _MaybeEmptyHint(tab: tab),
             ?_canvasNotice(
               assistantBusy: assistantBusy,
               hiddenCount: hiddenCount,
@@ -759,16 +779,19 @@ class _CanvasPromptHud extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
-    final model = workspace.commandLine;
+    final promptState = ref.watch(
+      commandLineNotifierProvider.select((s) => (s.prompt, s.status)),
+    );
     final running = ref.watch(
       workspaceNotifierProvider.select((s) => s.runningCommand),
     );
-    if (running == null && !model.isAwaitingInput) {
+    final promptModel = promptState.$1;
+    if (running == null && promptModel == null) {
       return const SizedBox.shrink();
     }
-    final prompt = model.promptText;
+    final prompt = promptModel?.message ?? promptState.$2;
     if (prompt.isEmpty) return const SizedBox.shrink();
-    final keywords = model.pending?.keywords ?? const <String>[];
+    final keywords = promptModel?.keywords ?? const <String>[];
     final title = running == null
         ? null
         : workspace.commands.find(running)?.title;
@@ -823,8 +846,69 @@ class _CanvasPromptHud extends ConsumerWidget {
   }
 }
 
-/// First-stroke hint on a new, empty drawing. Quiet text so it does not
-/// compete with the canvas HUD.
+/// Prompt label for the cursor HUD. The distance fields follow the viewport
+/// controller; this only rebuilds when the prompt text changes.
+class _DynamicInputPrompt extends ConsumerWidget {
+  const _DynamicInputPrompt({
+    required this.tools,
+    required this.hudKey,
+    required this.viewport,
+    required this.distanceFocus,
+    required this.angleFocus,
+  });
+
+  final ToolController tools;
+  final GlobalKey<DynamicInputHudState> hudKey;
+  final ViewportController viewport;
+  final FocusNode distanceFocus;
+  final FocusNode angleFocus;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final promptState = ref.watch(
+      commandLineNotifierProvider.select((s) => (s.prompt, s.status)),
+    );
+    final message = promptState.$1?.message ?? '';
+    final status = promptState.$2;
+    final toolPrompt = tools.activeTool?.promptText ?? '';
+    final prompt = message.isNotEmpty
+        ? message
+        : (status.isNotEmpty ? status : toolPrompt);
+    return DynamicInputHud(
+      key: hudKey,
+      tools: tools,
+      viewport: viewport.viewport,
+      camera: viewport,
+      prompt: prompt,
+      distanceFocus: distanceFocus,
+      angleFocus: angleFocus,
+    );
+  }
+}
+
+class _MaybeEmptyHint extends ConsumerWidget {
+  const _MaybeEmptyHint({required this.tab});
+
+  final DocumentTab tab;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(
+      documentTabNotifierProvider(tab.session.id).select((s) => s.contentEpoch),
+    );
+    final assistantBusy = ref.watch(
+      workspaceNotifierProvider.select((s) => s.assistantBusy),
+    );
+    final awaiting = ref.watch(
+      commandLineNotifierProvider.select((s) => s.prompt != null),
+    );
+    if (tab.document.entityCount != 0 || assistantBusy || awaiting) {
+      return const SizedBox.shrink();
+    }
+    return const _EmptyDrawingHint();
+  }
+}
+
 class _EmptyDrawingHint extends StatelessWidget {
   const _EmptyDrawingHint();
 

@@ -19,7 +19,7 @@ import '../widgets/widgets.dart';
 /// Operations sit on the top row, the command line on the bottom. Layout names
 /// and the command log live in the left sidebar. Cursor, selection, layer and
 /// zoom sit in the canvas corners. The window still keeps a thin [StatusBar].
-class CanvasHud extends ConsumerWidget {
+class CanvasHud extends StatelessWidget {
   const CanvasHud({
     super.key,
     required this.workspace,
@@ -36,51 +36,15 @@ class CanvasHud extends ConsumerWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(
-      workspaceNotifierProvider.select(
-        (s) => (
-          s.runningCommand,
-          s.snapEnabled,
-          s.ortho,
-          s.polar,
-          s.snapModes,
-          s.activeSessionId,
-        ),
-      ),
-    );
-    ref.watch(
-      commandLineNotifierProvider.select(
-        (s) => (s.lines, s.prompt, s.status, s.offeredInput),
-      ),
-    );
-    final tab = workspace.active;
-    Widget chrome() => Stack(
+  Widget build(BuildContext context) {
+    Widget readouts() => Stack(
       children: [
-        Positioned(
-          left: FanCadTokens.space3,
-          right: FanCadTokens.space3,
-          bottom: canvasHudDockBottom,
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: canvasHudMaxWidth),
-              child: _HudDock(
-                workspace: workspace,
-                commandFocus: commandFocus,
-                historyOpen: historyOpen,
-                onOpenHistory: onOpenHistory,
-              ),
-            ),
-          ),
-        ),
         Positioned(
           left: FanCadTokens.space3,
           bottom: FanCadTokens.space1,
           child: _CoordinateReadout(
             key: const Key('canvas-readout-cursor'),
             workspace: workspace,
-            cursor: workspace.active?.tools.cursor,
           ),
         ),
         if (workspace.active != null)
@@ -113,10 +77,24 @@ class CanvasHud extends ConsumerWidget {
       key: const Key('canvas-hud'),
       children: [
         child,
-        if (tab == null)
-          chrome()
-        else
-          ListenableBuilder(listenable: tab, builder: (context, _) => chrome()),
+        Positioned(
+          left: FanCadTokens.space3,
+          right: FanCadTokens.space3,
+          bottom: canvasHudDockBottom,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: canvasHudMaxWidth),
+              child: _HudDock(
+                workspace: workspace,
+                commandFocus: commandFocus,
+                historyOpen: historyOpen,
+                onOpenHistory: onOpenHistory,
+              ),
+            ),
+          ),
+        ),
+        readouts(),
       ],
     );
   }
@@ -161,171 +139,48 @@ class _HudDock extends StatefulWidget {
 }
 
 class _HudDockState extends State<_HudDock> {
-  final CommandSuggestController _suggest = CommandSuggestController();
+  final TextEditingController _input = TextEditingController();
+  final GlobalKey<CommandSuggestState> _suggestKey = GlobalKey();
 
   @override
   void dispose() {
-    _suggest.dispose();
+    _input.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _suggest,
-      builder: (context, _) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (_suggest.isOpen) ...[
-              _CommandSuggestPopup(suggest: _suggest),
-              const SizedBox(height: FanCadTokens.space2),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CommandSuggest(
+          key: _suggestKey,
+          input: _input,
+          workspace: widget.workspace,
+          onAccept: (descriptor) {
+            _input.clear();
+            widget.workspace.run(descriptor.id);
+          },
+        ),
+        _HudCard(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ActionBar(workspace: widget.workspace),
+              const FanCadHairline(),
+              _CommandBar(
+                workspace: widget.workspace,
+                commandFocus: widget.commandFocus,
+                historyOpen: widget.historyOpen,
+                onOpenHistory: widget.onOpenHistory,
+                input: _input,
+                suggestKey: _suggestKey,
+              ),
             ],
-            _HudCard(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _ActionBar(workspace: widget.workspace),
-                  const FanCadHairline(),
-                  _CommandBar(
-                    workspace: widget.workspace,
-                    commandFocus: widget.commandFocus,
-                    historyOpen: widget.historyOpen,
-                    onOpenHistory: widget.onOpenHistory,
-                    suggest: _suggest,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _CommandSuggestPopup extends StatelessWidget {
-  const _CommandSuggestPopup({required this.suggest});
-
-  final CommandSuggestController suggest;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final l10n = context.l10n;
-    return Material(
-      color: tokens.surfaceOverlay,
-      elevation: 3,
-      shadowColor: tokens.shadow,
-      borderRadius: BorderRadius.circular(canvasHudRadius),
-      child: Container(
-        key: const Key('canvas-command-suggest'),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(canvasHudRadius),
-          border: Border.all(color: tokens.borderStrong),
+          ),
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < suggest.matches.length; i++)
-              _CommandSuggestRow(
-                descriptor: suggest.matches[i],
-                isHighlighted: i == suggest.highlighted,
-                title: l10n.commandTitle(
-                  suggest.matches[i].id,
-                  suggest.matches[i].title,
-                ),
-                onHover: () => suggest.highlight(i),
-                onTap: () {
-                  suggest.highlight(i);
-                  suggest.accept();
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CommandSuggestRow extends StatelessWidget {
-  const _CommandSuggestRow({
-    required this.descriptor,
-    required this.isHighlighted,
-    required this.title,
-    required this.onHover,
-    required this.onTap,
-  });
-
-  final CommandDescriptor descriptor;
-  final bool isHighlighted;
-  final String title;
-  final VoidCallback onHover;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final l10n = context.l10n;
-    return MouseRegion(
-      onEnter: (_) => onHover(),
-      child: FanCadRow(
-        key: Key('canvas-command-suggest-row-${descriptor.id}'),
-        isSelected: isHighlighted,
-        onTap: onTap,
-        height: FanCadTokens.rowHeight,
-        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      title,
-                      style: tokens.bodyStyle.copyWith(fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (descriptor.description.isNotEmpty) ...[
-                    const SizedBox(width: FanCadTokens.space2),
-                    Expanded(
-                      child: Text(
-                        l10n.commandDescription(
-                          descriptor.id,
-                          descriptor.description,
-                        ),
-                        style: tokens.labelStyle.copyWith(fontSize: 10.5),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: FanCadTokens.space3),
-            Expanded(
-              child: descriptor.aliases.isEmpty
-                  ? const SizedBox.shrink()
-                  : Text(
-                      descriptor.aliases.first.toUpperCase(),
-                      textAlign: TextAlign.right,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tokens.monoStyle.copyWith(
-                        fontSize: 10.5,
-                        color: tokens.textFaint,
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
@@ -425,6 +280,17 @@ class _ActionBar extends ConsumerWidget {
     final running = ref.watch(
       workspaceNotifierProvider.select((s) => s.runningCommand),
     );
+    final activeId = ref.watch(
+      workspaceNotifierProvider.select((s) => s.activeSessionId),
+    );
+    if (activeId != null) {
+      ref.watch(
+        documentTabNotifierProvider(activeId).select((s) => s.contentEpoch),
+      );
+    }
+    ref.watch(
+      workspaceNotifierProvider.select((s) => s.active?.isDirty),
+    );
     final tab = workspace.active;
     return SizedBox(
       key: const Key('canvas-action-card'),
@@ -484,14 +350,16 @@ class _CommandBar extends StatelessWidget {
     required this.commandFocus,
     required this.historyOpen,
     required this.onOpenHistory,
-    required this.suggest,
+    required this.input,
+    required this.suggestKey,
   });
 
   final Workspace workspace;
   final FocusNode commandFocus;
   final bool historyOpen;
   final VoidCallback onOpenHistory;
-  final CommandSuggestController suggest;
+  final TextEditingController input;
+  final GlobalKey<CommandSuggestState> suggestKey;
 
   @override
   Widget build(BuildContext context) {
@@ -503,19 +371,25 @@ class _CommandBar extends StatelessWidget {
         focusNode: commandFocus,
         historyOpen: historyOpen,
         onOpenHistory: onOpenHistory,
-        suggest: suggest,
+        input: input,
+        suggestKey: suggestKey,
       ),
     );
   }
 }
 
-class _DraftingModes extends StatelessWidget {
+class _DraftingModes extends ConsumerWidget {
   const _DraftingModes({required this.workspace});
 
   final Workspace workspace;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(
+      workspaceNotifierProvider.select(
+        (s) => (s.snapEnabled, s.ortho, s.polar, s.snapModes, s.active?.showGrid),
+      ),
+    );
     final l10n = context.l10n;
     final tab = workspace.active;
     final snap = workspace.snapEngine;
@@ -628,32 +502,47 @@ Future<void> _openPolarIncrementMenu(
 
 /// The live cursor. A click copies it, or feeds it to a command that is
 /// already asking for a point — so a measured XY does not have to be retyped.
-class _CoordinateReadout extends StatefulWidget {
-  const _CoordinateReadout({
-    super.key,
-    required this.workspace,
-    required this.cursor,
-  });
+class _CoordinateReadout extends ConsumerStatefulWidget {
+  const _CoordinateReadout({super.key, required this.workspace});
 
   final Workspace workspace;
-  final Vec2? cursor;
 
   @override
-  State<_CoordinateReadout> createState() => _CoordinateReadoutState();
+  ConsumerState<_CoordinateReadout> createState() => _CoordinateReadoutState();
 }
 
-class _CoordinateReadoutState extends State<_CoordinateReadout> {
+class _CoordinateReadoutState extends ConsumerState<_CoordinateReadout> {
   bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
+    final awaiting = ref.watch(
+      commandLineNotifierProvider.select((s) => s.prompt != null),
+    );
+    final tab = widget.workspace.active;
+    if (tab == null) {
+      return _chrome(context, cursor: null, awaiting: awaiting);
+    }
+    return ListenableBuilder(
+      listenable: tab.viewport,
+      builder: (context, _) => _chrome(
+        context,
+        cursor: tab.viewport.pointer,
+        awaiting: awaiting,
+      ),
+    );
+  }
+
+  Widget _chrome(
+    BuildContext context, {
+    required Vec2? cursor,
+    required bool awaiting,
+  }) {
     final tokens = context.tokens;
     final l10n = context.l10n;
-    final cursor = widget.cursor;
     final text = cursor == null
         ? null
         : '${cursor.x.toStringAsFixed(3)}, ${cursor.y.toStringAsFixed(3)}';
-    final awaiting = widget.workspace.commandLine.isAwaitingInput;
     final enabled = text != null;
     return Tooltip(
       message: text == null
@@ -696,7 +585,7 @@ class _CoordinateReadoutState extends State<_CoordinateReadout> {
   }
 }
 
-class _SelectionReadout extends StatelessWidget {
+class _SelectionReadout extends ConsumerWidget {
   const _SelectionReadout({
     super.key,
     required this.workspace,
@@ -707,7 +596,12 @@ class _SelectionReadout extends StatelessWidget {
   final DocumentTab tab;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(
+      documentTabNotifierProvider(tab.session.id).select(
+        (s) => s.selectionEpoch,
+      ),
+    );
     final l10n = context.l10n;
     return FanCadTextButton(
       label: l10n.selected_count(tab.selection.length),
@@ -720,22 +614,31 @@ class _SelectionReadout extends StatelessWidget {
   }
 }
 
-class _CurrentLayerIndicator extends StatefulWidget {
+class _CurrentLayerIndicator extends ConsumerStatefulWidget {
   const _CurrentLayerIndicator({super.key, required this.workspace});
 
   final Workspace workspace;
 
   @override
-  State<_CurrentLayerIndicator> createState() => _CurrentLayerIndicatorState();
+  ConsumerState<_CurrentLayerIndicator> createState() =>
+      _CurrentLayerIndicatorState();
 }
 
-class _CurrentLayerIndicatorState extends State<_CurrentLayerIndicator> {
+class _CurrentLayerIndicatorState
+    extends ConsumerState<_CurrentLayerIndicator> {
   bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final tab = widget.workspace.active;
+    if (tab != null) {
+      ref.watch(
+        documentTabNotifierProvider(tab.session.id).select(
+          (s) => s.contentEpoch,
+        ),
+      );
+    }
+    final tokens = context.tokens;
     if (tab == null) return const SizedBox.shrink();
     final name = tab.document.currentLayer;
     final layer = tab.document.layer(name);
@@ -860,6 +763,13 @@ class _ZoomReadout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: tab.viewport,
+      builder: (context, _) => _label(context),
+    );
+  }
+
+  Widget _label(BuildContext context) {
     final l10n = context.l10n;
     final scene = tab.lastScene;
     return FanCadTextButton(

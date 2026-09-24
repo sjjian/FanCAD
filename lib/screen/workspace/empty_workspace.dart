@@ -2,32 +2,35 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../commands/keybindings.dart';
 import '../../l10n/l10n.dart';
+import '../../services/workspace.dart';
 import '../widgets/icon_button.dart';
 import '../widgets/row.dart';
 import '../widgets/tokens.dart';
 
 /// The empty state shown when no drawing is open.
-class EmptyWorkspace extends StatelessWidget {
+class EmptyWorkspace extends ConsumerWidget {
   const EmptyWorkspace({
     super.key,
-    required this.recentFiles,
     required this.onOpenRecent,
     required this.onOpen,
     required this.onNew,
     required this.onShowCommands,
   });
 
-  final List<String> recentFiles;
   final ValueChanged<String> onOpenRecent;
   final VoidCallback onOpen;
   final VoidCallback onNew;
   final VoidCallback onShowCommands;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recentFiles = ref.watch(
+      workspaceNotifierProvider.select((s) => s.recentFiles),
+    );
     final tokens = context.tokens;
     return Container(
       color: tokens.canvas,

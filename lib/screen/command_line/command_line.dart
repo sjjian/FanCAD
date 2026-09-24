@@ -12,68 +12,170 @@ import '../widgets/widgets.dart';
 import 'dynamic_input_hud.dart';
 
 /// Ranked command matches shown above the canvas HUD while a verb is typed.
-class CommandSuggestController extends ChangeNotifier {
-  List<CommandDescriptor> _matches = const [];
-  int _highlighted = 0;
-  VoidCallback? _onAccept;
+///
+/// Listens to the command field's [TextEditingController]. The search runs
+/// once on the next frame.
+class CommandSuggest extends ConsumerStatefulWidget {
+  const CommandSuggest({
+    super.key,
+    required this.input,
+    required this.workspace,
+    required this.onAccept,
+  });
+
+  final TextEditingController input;
+  final Workspace workspace;
+  final ValueChanged<CommandDescriptor> onAccept;
 
   /// Enough rows to scan, short enough that the drawing stays visible.
   static const int limit = 8;
 
-  List<CommandDescriptor> get matches => _matches;
-  int get highlighted => _highlighted;
+  @override
+  ConsumerState<CommandSuggest> createState() => CommandSuggestState();
+}
+
+class CommandSuggestState extends ConsumerState<CommandSuggest> {
+  List<CommandDescriptor> _matches = const [];
+  int _highlighted = 0;
+  bool _scheduled = false;
+
   bool get isOpen => _matches.isNotEmpty;
   CommandDescriptor? get current => isOpen ? _matches[_highlighted] : null;
 
-  /// [CommandLinePane] binds this so a click on a row can clear the field
-  /// and start the command, the same path as Enter.
-  void bindAccept(VoidCallback? handler) {
-    _onAccept = handler;
+  @override
+  void initState() {
+    super.initState();
+    widget.input.addListener(_schedule);
   }
 
-  void update({
-    required String query,
-    required CommandRegistry registry,
-    required AppLocalizations l10n,
-    required bool awaiting,
-  }) {
+  @override
+  void didUpdateWidget(CommandSuggest oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.input != widget.input) {
+      oldWidget.input.removeListener(_schedule);
+      widget.input.addListener(_schedule);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.input.removeListener(_schedule);
+    super.dispose();
+  }
+
+  void _schedule() {
+    if (widget.input.text.trim().isEmpty) {
+      _clear();
+      return;
+    }
+    if (_scheduled) return;
+    _scheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scheduled = false;
+      if (!mounted) return;
+      _search();
+    });
+  }
+
+  void _clear() {
+    if (_matches.isEmpty) return;
+    setState(() {
+      _matches = const [];
+      _highlighted = 0;
+    });
+  }
+
+  void _search() {
+    final awaiting = ref.read(commandLineNotifierProvider).prompt != null;
+    final query = widget.input.text;
     if (awaiting || query.trim().isEmpty) {
-      clear();
+      if (_matches.isEmpty) return;
+      setState(() {
+        _matches = const [];
+        _highlighted = 0;
+      });
       return;
     }
     final matches = searchCommandsLocalized(
-      registry,
+      widget.workspace.commands,
       query,
-      l10n,
-      limit: limit,
+      context.l10n,
+      limit: CommandSuggest.limit,
     );
-    _matches = matches;
-    _highlighted = 0;
-    notifyListeners();
+    setState(() {
+      _matches = matches;
+      _highlighted = 0;
+    });
   }
 
   void move(int delta) {
     if (_matches.isEmpty) return;
-    _highlighted = (_highlighted + delta).clamp(0, _matches.length - 1);
-    notifyListeners();
+    setState(() {
+      _highlighted = (_highlighted + delta).clamp(0, _matches.length - 1);
+    });
   }
 
   void highlight(int index) {
     if (_matches.isEmpty) return;
     final next = index.clamp(0, _matches.length - 1);
     if (next == _highlighted) return;
-    _highlighted = next;
-    notifyListeners();
+    setState(() => _highlighted = next);
   }
 
-  void clear() {
-    if (_matches.isEmpty) return;
-    _matches = const [];
-    _highlighted = 0;
-    notifyListeners();
+  void accept() {
+    final descriptor = current;
+    if (descriptor == null) return;
+    widget.onAccept(descriptor);
   }
 
-  void accept() => _onAccept?.call();
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(commandLineNotifierProvider.select((s) => s.prompt != null), (
+      _,
+      _,
+    ) {
+      _schedule();
+    });
+    if (!isOpen) return const SizedBox.shrink();
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: tokens.surfaceOverlay,
+          elevation: 3,
+          shadowColor: tokens.shadow,
+          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+          child: Container(
+            key: const Key('canvas-command-suggest'),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+              border: Border.all(color: tokens.borderStrong),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < _matches.length; i++)
+                  _CommandSuggestRow(
+                    descriptor: _matches[i],
+                    isHighlighted: i == _highlighted,
+                    title: l10n.commandTitle(_matches[i].id, _matches[i].title),
+                    onHover: () => highlight(i),
+                    onTap: () {
+                      highlight(i);
+                      accept();
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: FanCadTokens.space2),
+      ],
+    );
+  }
 }
 
 /// The command line on the canvas dock.
@@ -89,7 +191,8 @@ class CommandLinePane extends ConsumerStatefulWidget {
     required this.focusNode,
     required this.onOpenHistory,
     this.historyOpen = false,
-    this.suggest,
+    this.input,
+    this.suggestKey,
   });
 
   final Workspace workspace;
@@ -100,25 +203,31 @@ class CommandLinePane extends ConsumerStatefulWidget {
   /// a click, which is what keeps typed input working mid-command.
   final FocusNode focusNode;
 
-  /// Live matches above the HUD. Absent when this pane is hosted alone.
-  final CommandSuggestController? suggest;
+  /// Shared with [CommandSuggest] when the HUD shows matches above the field.
+  final TextEditingController? input;
+
+  final GlobalKey<CommandSuggestState>? suggestKey;
 
   @override
   ConsumerState<CommandLinePane> createState() => _CommandLinePaneState();
 }
 
 class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
-  final TextEditingController _input = TextEditingController();
+  TextEditingController? _ownedInput;
+
+  TextEditingController get _input => widget.input ?? _ownedInput!;
+
+  CommandSuggestState? get _suggest => widget.suggestKey?.currentState;
 
   CommandLineNotifier get _model => widget.workspace.commandLine;
 
   @override
   void initState() {
     super.initState();
+    if (widget.input == null) _ownedInput = TextEditingController();
     // The canvas focuses this node, not the wrapping Focus widget, so Escape
     // has to be handled on the node that actually owns focus.
     widget.focusNode.onKeyEvent = _onKey;
-    widget.suggest?.bindAccept(_acceptSuggest);
   }
 
   @override
@@ -128,17 +237,15 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
       oldWidget.focusNode.onKeyEvent = null;
       widget.focusNode.onKeyEvent = _onKey;
     }
-    if (oldWidget.suggest != widget.suggest) {
-      oldWidget.suggest?.bindAccept(null);
-      widget.suggest?.bindAccept(_acceptSuggest);
+    if (widget.input == null && _ownedInput == null) {
+      _ownedInput = TextEditingController();
     }
   }
 
   @override
   void dispose() {
     widget.focusNode.onKeyEvent = null;
-    widget.suggest?.bindAccept(null);
-    _input.dispose();
+    _ownedInput?.dispose();
     super.dispose();
   }
 
@@ -151,14 +258,11 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
         widget.focusNode.requestFocus();
       }
     }
-    _syncSuggest();
-    setState(() {});
   }
 
   void _submit(String raw) {
     final remaining = _model.submit(raw);
     _input.clear();
-    _syncSuggest();
     if (remaining == null) return;
     // Not consumed by a prompt, so it is a command to run. An empty line
     // repeats the previous command, which the workspace handles.
@@ -166,34 +270,24 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
   }
 
   void _acceptSuggest() {
-    final descriptor = widget.suggest?.current;
+    final descriptor = _suggest?.current;
     _input.clear();
-    widget.suggest?.clear();
     if (descriptor == null) return;
     widget.workspace.run(descriptor.id);
-  }
-
-  void _syncSuggest() {
-    widget.suggest?.update(
-      query: _input.text,
-      registry: widget.workspace.commands,
-      l10n: context.l10n,
-      awaiting: _model.isAwaitingInput,
-    );
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
-    final suggestOpen = widget.suggest?.isOpen == true;
+    final suggestOpen = _suggest?.isOpen == true;
     if (suggestOpen) {
       switch (event.logicalKey) {
         case LogicalKeyboardKey.arrowUp:
-          widget.suggest!.move(-1);
+          _suggest!.move(-1);
           return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowDown:
-          widget.suggest!.move(1);
+          _suggest!.move(1);
           return KeyEventResult.handled;
         case LogicalKeyboardKey.enter:
         case LogicalKeyboardKey.numpadEnter:
@@ -206,7 +300,6 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
       case LogicalKeyboardKey.escape:
         widget.workspace.cancelActive();
         _input.clear();
-        _syncSuggest();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowUp:
         final recalled = _model.recallPrevious();
@@ -241,7 +334,6 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
     _input
       ..text = value
       ..selection = TextSelection.collapsed(offset: value.length);
-    _syncSuggest();
   }
 
   @override
@@ -253,16 +345,28 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
       if (next == null) return;
       _onModelChanged();
     });
-    ref.watch(
-      commandLineNotifierProvider.select((s) => (s.lines, s.prompt, s.status)),
+    final promptState = ref.watch(
+      commandLineNotifierProvider.select((s) => (s.prompt, s.status)),
     );
-    return _buildInput(context.tokens);
+    final running = ref.watch(
+      workspaceNotifierProvider.select((s) => s.runningCommand),
+    );
+    return _buildInput(
+      context.tokens,
+      prompt: promptState.$1?.message ?? promptState.$2,
+      keywords: promptState.$1?.keywords ?? const [],
+      awaiting: promptState.$1 != null,
+      running: running != null,
+    );
   }
 
-  Widget _buildInput(FanCadTokens tokens) {
-    final prompt = _model.promptText;
-    final keywords = _model.pending?.keywords ?? const <String>[];
-    final awaiting = _model.isAwaitingInput;
+  Widget _buildInput(
+    FanCadTokens tokens, {
+    required String prompt,
+    required List<String> keywords,
+    required bool awaiting,
+    required bool running,
+  }) {
     return Container(
       height: CommandLineLayout.commandLineHeight,
       decoration: BoxDecoration(
@@ -285,7 +389,6 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
             onPressed: widget.onOpenHistory,
           ),
           _HistoryOverflow(
-            enabled: ref.read(commandLineNotifierProvider).lines.isNotEmpty,
             onCopy: () {
               final text = [
                 for (final line in ref.read(commandLineNotifierProvider).lines)
@@ -331,7 +434,6 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                       const SingleActivator(LogicalKeyboardKey.escape): () {
                         widget.workspace.cancelActive();
                         _input.clear();
-                        _syncSuggest();
                       },
                     },
                     child: Focus(
@@ -346,9 +448,8 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                             : prompt.isEmpty
                             ? context.l10n.hint_type_command
                             : null,
-                        onChanged: (_) => _syncSuggest(),
                         onSubmitted: (raw) {
-                          if (widget.suggest?.isOpen == true) {
+                          if (_suggest?.isOpen == true) {
                             _acceptSuggest();
                             return;
                           }
@@ -366,9 +467,7 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
               ],
             ),
           ),
-          if (keywords.isNotEmpty ||
-              awaiting ||
-              ref.read(workspaceNotifierProvider).runningCommand != null)
+          if (keywords.isNotEmpty || awaiting || running)
             Flexible(
               child: Align(
                 alignment: Alignment.centerRight,
@@ -388,9 +487,7 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                             onPressed: () => _submit(keyword),
                           ),
                         ),
-                      if (awaiting ||
-                          ref.read(workspaceNotifierProvider).runningCommand !=
-                              null)
+                      if (awaiting || running)
                         Padding(
                           padding: const EdgeInsets.only(
                             left: FanCadTokens.space1,
@@ -402,7 +499,6 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                             onPressed: () {
                               widget.workspace.cancelActive();
                               _input.clear();
-                              _syncSuggest();
                             },
                           ),
                         ),
@@ -412,6 +508,86 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _CommandSuggestRow extends StatelessWidget {
+  const _CommandSuggestRow({
+    required this.descriptor,
+    required this.isHighlighted,
+    required this.title,
+    required this.onHover,
+    required this.onTap,
+  });
+
+  final CommandDescriptor descriptor;
+  final bool isHighlighted;
+  final String title;
+  final VoidCallback onHover;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    return MouseRegion(
+      onEnter: (_) => onHover(),
+      child: FanCadRow(
+        key: Key('canvas-command-suggest-row-${descriptor.id}'),
+        isSelected: isHighlighted,
+        onTap: onTap,
+        height: FanCadTokens.rowHeight,
+        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      title,
+                      style: tokens.bodyStyle.copyWith(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (descriptor.description.isNotEmpty) ...[
+                    const SizedBox(width: FanCadTokens.space2),
+                    Expanded(
+                      child: Text(
+                        l10n.commandDescription(
+                          descriptor.id,
+                          descriptor.description,
+                        ),
+                        style: tokens.labelStyle.copyWith(fontSize: 10.5),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: FanCadTokens.space3),
+            Expanded(
+              child: descriptor.aliases.isEmpty
+                  ? const SizedBox.shrink()
+                  : Text(
+                      descriptor.aliases.first.toUpperCase(),
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tokens.monoStyle.copyWith(
+                        fontSize: 10.5,
+                        color: tokens.textFaint,
+                      ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -498,14 +674,16 @@ Color? _historyDot(HistoryLevel level, FanCadTokens tokens) => switch (level) {
 /// line rather than a toolbar.
 class _HistoryOverflow extends StatelessWidget {
   const _HistoryOverflow({
-    required this.enabled,
     required this.onCopy,
     required this.onClear,
+    this.enabled = true,
   });
 
-  final bool enabled;
   final VoidCallback onCopy;
   final VoidCallback onClear;
+
+  /// The command row leaves this on. The log panel passes its own line list.
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {

@@ -11,8 +11,8 @@ part 'layout.g.dart';
 
 /// Workbench chrome: open panes, the sidebar view, and the three sizes.
 ///
-/// Dragging a sash updates [state] only. The file is written when the drag
-/// ends, and when a pane is opened, closed, or switched.
+/// Every change stays in memory. The file is written once, when the process
+/// is about to exit, via [persist].
 @Riverpod(keepAlive: true)
 class LayoutNotifier extends _$LayoutNotifier {
   LayoutStore get _settings => ref.read(appSettingsProvider).layout;
@@ -60,26 +60,22 @@ class LayoutNotifier extends _$LayoutNotifier {
       return;
     }
     state = state.copyWith(sidebarView: left, sidebarOpen: true);
-    _settings.save(state);
   }
 
   /// Brings a view forward without toggling, for `revealPanel`.
   void reveal(String viewId) {
     final left = _leftViewId(viewId);
     state = state.copyWith(sidebarView: left, sidebarOpen: true);
-    _settings.save(state);
   }
 
   void setSidebarOpen(bool value) {
     state = state.copyWith(sidebarOpen: value);
-    _settings.save(state);
   }
 
   void toggleSidebar() => setSidebarOpen(!state.sidebarOpen);
 
   void setAssistantOpen(bool value) {
     state = state.copyWith(assistantOpen: value);
-    _settings.save(state);
   }
 
   void toggleAssistant() => setAssistantOpen(!state.assistantOpen);
@@ -111,19 +107,16 @@ class LayoutNotifier extends _$LayoutNotifier {
     );
   }
 
-  /// Persisted on drag end rather than on every frame, to avoid writing the
-  /// settings file sixty times a second.
-  void commit() => _settings.save(state);
+  /// Writes the in-memory layout. Called once before the process exits.
+  void persist() => _settings.save(state);
 
   /// Double-clicking the sash puts the pane back where it started, instead of
   /// hunting for a comfortable width after a drag went too far.
   void resetSidebarWidth() {
     state = state.copyWith(sidebarWidth: SidebarLayout.defaultWidth);
-    commit();
   }
 
   void resetAssistantWidth() {
     state = state.copyWith(assistantWidth: AssistantPaneLayout.defaultWidth);
-    commit();
   }
 }

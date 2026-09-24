@@ -76,7 +76,7 @@ void main() {
           theme: FanCadTheme.dark(),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: SettingsDialog(tab: tab),
+          home: SettingsDialog(initialTab: tab.value),
         ),
       ),
     );
@@ -150,7 +150,7 @@ void main() {
           theme: FanCadTheme.dark(),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: SettingsDialog(tab: tab),
+          home: SettingsDialog(initialTab: tab.value),
         ),
       ),
     );
@@ -229,7 +229,7 @@ void main() {
           theme: FanCadTheme.dark(),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: SettingsDialog(tab: tab),
+          home: SettingsDialog(initialTab: tab.value),
         ),
       ),
     );
@@ -290,7 +290,7 @@ void main() {
           theme: FanCadTheme.dark(),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: SettingsDialog(tab: tab),
+          home: SettingsDialog(initialTab: tab.value),
         ),
       ),
     );
@@ -348,7 +348,7 @@ void main() {
           theme: FanCadTheme.dark(),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: SettingsDialog(tab: tab),
+          home: SettingsDialog(initialTab: tab.value),
         ),
       ),
     );

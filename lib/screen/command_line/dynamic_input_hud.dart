@@ -18,6 +18,7 @@ class DynamicInputHud extends StatefulWidget {
     super.key,
     required this.tools,
     required this.viewport,
+    this.camera,
     required this.prompt,
     required this.distanceFocus,
     required this.angleFocus,
@@ -25,6 +26,9 @@ class DynamicInputHud extends StatefulWidget {
 
   final ToolController tools;
   final CadViewport viewport;
+
+  /// When set, the card follows the pointer through this layout controller.
+  final ViewportController? camera;
   final String prompt;
   final FocusNode distanceFocus;
   final FocusNode angleFocus;
@@ -58,10 +62,9 @@ class DynamicInputHudState extends State<DynamicInputHud> {
   @override
   void initState() {
     super.initState();
-    _tools.addListener(_syncFromCursor);
     widget.distanceFocus.addListener(_onFocus);
     widget.angleFocus.addListener(_onFocus);
-    _syncFromCursor(rebuild: false);
+    syncFromCursor();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (!hasFieldFocus) widget.distanceFocus.requestFocus();
@@ -70,7 +73,6 @@ class DynamicInputHudState extends State<DynamicInputHud> {
 
   @override
   void dispose() {
-    _tools.removeListener(_syncFromCursor);
     widget.distanceFocus.removeListener(_onFocus);
     widget.angleFocus.removeListener(_onFocus);
     _distance.dispose();
@@ -87,7 +89,6 @@ class DynamicInputHudState extends State<DynamicInputHud> {
       _dyn.focusedField = DynamicInputField.angle;
       if (!_angleDirty) _selectAll(_angle);
     }
-    setState(() {});
   }
 
   void takeTyping(String character) {
@@ -108,7 +109,10 @@ class DynamicInputHudState extends State<DynamicInputHud> {
     setState(() {});
   }
 
-  void _syncFromCursor({bool rebuild = true}) {
+  /// Writes the live distance and angle into the field controllers.
+  ///
+  /// The canvas calls this when the tool moves. The fields repaint themselves.
+  void syncFromCursor() {
     if (!mounted) return;
     final base = _tools.activeTool?.basePoint;
     final cursor = _tools.cursor;
@@ -126,7 +130,6 @@ class DynamicInputHudState extends State<DynamicInputHud> {
       _setLiveText(_angle, DynamicInput.formatNumber(degrees));
     }
     _syncing = false;
-    if (rebuild) setState(() {});
   }
 
   void _setText(TextEditingController controller, String value) {
@@ -236,17 +239,26 @@ class DynamicInputHudState extends State<DynamicInputHud> {
 
   @override
   Widget build(BuildContext context) {
+    final camera = widget.camera;
+    if (camera == null) return _build(context, widget.viewport);
+    return ListenableBuilder(
+      listenable: camera,
+      builder: (context, _) => _build(context, camera.viewport),
+    );
+  }
+
+  Widget _build(BuildContext context, CadViewport viewport) {
     final tokens = context.tokens;
     final cursor = _tools.cursor;
     if (!_tools.showDynamicInput || cursor == null) {
       return const SizedBox.shrink();
     }
 
-    final screen = widget.viewport.toScreen(cursor);
+    final screen = viewport.toScreen(cursor);
     const gap = 18.0;
     const width = 280.0;
-    final maxX = widget.viewport.size.width;
-    final maxY = widget.viewport.size.height;
+    final maxX = viewport.size.width;
+    final maxY = viewport.size.height;
     var left = screen.dx + gap;
     var top = screen.dy + gap;
     if (left + width > maxX - 8) left = screen.dx - width - 8;
@@ -331,7 +343,7 @@ class DynamicInputHudState extends State<DynamicInputHud> {
   }
 }
 
-class _Field extends StatelessWidget {
+class _Field extends StatefulWidget {
   const _Field({
     super.key,
     required this.width,
@@ -358,12 +370,43 @@ class _Field extends StatelessWidget {
   final String? suffix;
 
   @override
+  State<_Field> createState() => _FieldState();
+}
+
+class _FieldState extends State<_Field> {
+  @override
+  void initState() {
+    super.initState();
+    widget.focusNode.addListener(_onFocus);
+  }
+
+  @override
+  void didUpdateWidget(_Field oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      oldWidget.focusNode.removeListener(_onFocus);
+      widget.focusNode.addListener(_onFocus);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.focusNode.removeListener(_onFocus);
+    super.dispose();
+  }
+
+  void _onFocus() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final focused = focusNode.hasFocus;
+    final focused = widget.focusNode.hasFocus;
+    final tokens = widget.tokens;
     return Focus(
-      onKeyEvent: onKey,
+      onKeyEvent: widget.onKey,
       child: Container(
-        width: width,
+        width: widget.width,
         height: 22,
         padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
         alignment: Alignment.centerLeft,
@@ -373,21 +416,27 @@ class _Field extends StatelessWidget {
               : tokens.surfaceRaised,
           borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
           border: Border.all(
-            color: locked || focused ? tokens.accent : tokens.border,
+            color: widget.locked || focused ? tokens.accent : tokens.border,
           ),
         ),
         child: FanCadTextField(
-          controller: controller,
-          focusNode: focusNode,
+          controller: widget.controller,
+          focusNode: widget.focusNode,
           style: tokens.monoStyle.copyWith(fontSize: 11),
-          prefix: prefix == null
+          prefix: widget.prefix == null
               ? null
-              : Text(prefix!, style: tokens.monoStyle.copyWith(fontSize: 11)),
-          suffix: suffix == null
+              : Text(
+                  widget.prefix!,
+                  style: tokens.monoStyle.copyWith(fontSize: 11),
+                ),
+          suffix: widget.suffix == null
               ? null
-              : Text(suffix!, style: tokens.monoStyle.copyWith(fontSize: 11)),
-          onChanged: onChanged,
-          onSubmitted: onSubmitted,
+              : Text(
+                  widget.suffix!,
+                  style: tokens.monoStyle.copyWith(fontSize: 11),
+                ),
+          onChanged: widget.onChanged,
+          onSubmitted: widget.onSubmitted,
         ),
       ),
     );

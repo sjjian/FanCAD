@@ -19,7 +19,9 @@ class LayoutsPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(workspaceNotifierProvider.select((s) => s.active?.id));
+    final activeId = ref.watch(
+      workspaceNotifierProvider.select((s) => s.active?.id),
+    );
     final tab = workspace.active;
     if (tab == null) {
       return Column(
@@ -36,10 +38,12 @@ class LayoutsPanel extends ConsumerWidget {
       );
     }
 
-    return ListenableBuilder(
-      listenable: tab,
-      builder: (context, _) => _layoutsBody(context, tab),
-    );
+    if (activeId != null) {
+      ref.watch(
+        documentTabNotifierProvider(activeId).select((s) => s.contentEpoch),
+      );
+    }
+    return _layoutsBody(context, tab);
   }
 
   Widget _layoutsBody(BuildContext context, DocumentTab tab) {

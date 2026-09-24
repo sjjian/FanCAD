@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,15 +13,15 @@ enum SettingsTab { general, assistant, models, mcp }
 
 const _settingsRouteName = 'fancad.settings';
 
-ValueNotifier<SettingsTab>? _openSettingsTab;
+void Function(SettingsTab)? _switchSettingsTab;
 
 /// Whether the settings dialog is already on screen.
 @visibleForTesting
-bool get settingsDialogIsOpen => _openSettingsTab != null;
+bool get settingsDialogIsOpen => _switchSettingsTab != null;
 
 @visibleForTesting
 void debugResetSettingsDialog() {
-  _openSettingsTab = null;
+  _switchSettingsTab = null;
 }
 
 SettingsTab settingsTabFromPanelId(String panelId) {
@@ -46,24 +45,19 @@ Future<void> showSettingsDialog(
   BuildContext context, {
   SettingsTab initialTab = SettingsTab.general,
 }) {
-  final existing = _openSettingsTab;
+  final existing = _switchSettingsTab;
   if (existing != null) {
-    existing.value = initialTab;
+    existing(initialTab);
     return Future<void>.value();
   }
-  final tab = ValueNotifier(initialTab);
-  _openSettingsTab = tab;
   return showDialog<void>(
     context: context,
     useSafeArea: false,
     barrierColor: Colors.black.withValues(alpha: 0.4),
     routeSettings: const RouteSettings(name: _settingsRouteName),
-    builder: (context) => SettingsDialog(tab: tab),
+    builder: (context) => SettingsDialog(initialTab: initialTab),
   ).whenComplete(() {
-    if (identical(_openSettingsTab, tab)) {
-      _openSettingsTab = null;
-    }
-    tab.dispose();
+    _switchSettingsTab = null;
   });
 }
 
@@ -72,10 +66,28 @@ Future<void> showSettingsDialog(
 /// Writes go through the shell and assistant views so a theme or language
 /// change is visible before the dialog closes. There is no Save: the store
 /// already debounces to disk, and a discarded draft would fight that.
-class SettingsDialog extends StatelessWidget {
-  const SettingsDialog({super.key, required this.tab});
+class SettingsDialog extends StatefulWidget {
+  const SettingsDialog({super.key, required this.initialTab});
 
-  final ValueListenable<SettingsTab> tab;
+  final SettingsTab initialTab;
+
+  @override
+  State<SettingsDialog> createState() => _SettingsDialogState();
+}
+
+class _SettingsDialogState extends State<SettingsDialog> {
+  late SettingsTab _tab = widget.initialTab;
+
+  @override
+  void initState() {
+    super.initState();
+    _switchSettingsTab = _setTab;
+  }
+
+  void _setTab(SettingsTab next) {
+    if (!mounted || next == _tab) return;
+    setState(() => _tab = next);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +120,7 @@ class SettingsDialog extends StatelessWidget {
                 minSize: const Size(520, 400),
                 onClose: close,
                 onBarrierTap: close,
-                child: _SettingsBody(tab: tab),
+                child: _SettingsBody(tab: _tab, onTab: _setTab),
               ),
             ],
           ),
@@ -119,9 +131,10 @@ class SettingsDialog extends StatelessWidget {
 }
 
 class _SettingsBody extends ConsumerStatefulWidget {
-  const _SettingsBody({required this.tab});
+  const _SettingsBody({required this.tab, required this.onTab});
 
-  final ValueListenable<SettingsTab> tab;
+  final SettingsTab tab;
+  final ValueChanged<SettingsTab> onTab;
 
   @override
   ConsumerState<_SettingsBody> createState() => _SettingsBodyState();
@@ -150,12 +163,10 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
     final bind = ref.read(mcpNotifierProvider).bind;
     _mcpPort = TextEditingController(text: '${bind.port}');
     _mcpAllowlist = TextEditingController(text: bind.allowlist.join(', '));
-    widget.tab.addListener(_onTab);
   }
 
   @override
   void dispose() {
-    widget.tab.removeListener(_onTab);
     _flushAssistantFields();
     _flushMcpFields();
     _label.dispose();
@@ -165,10 +176,6 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
     _mcpPort.dispose();
     _mcpAllowlist.dispose();
     super.dispose();
-  }
-
-  void _onTab() {
-    if (mounted) setState(() {});
   }
 
   void _flushMcpFields() {
@@ -211,17 +218,12 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
     setState(() {});
   }
 
-  void _setTab(SettingsTab next) {
-    final tab = widget.tab;
-    if (tab is ValueNotifier<SettingsTab>) {
-      tab.value = next;
-    }
-  }
+  void _setTab(SettingsTab next) => widget.onTab(next);
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final tab = widget.tab.value;
+    final tab = widget.tab;
     // Watch so a language or theme write rebuilds this surface in place.
     ref.watch(appearanceNotifierProvider);
     return Row(
@@ -886,7 +888,7 @@ class _ModelProfileCard extends StatelessWidget {
                       child: SettingsTextField(
                         key: const Key('settings-profile-label'),
                         controller: label,
-                        onChanged: ai.setProfileLabel,
+                        onFocusLost: onCommit,
                         onSubmitted: (_) => onCommit(),
                       ),
                     ),
@@ -898,10 +900,7 @@ class _ModelProfileCard extends StatelessWidget {
                         controller: model,
                         hintText: l10n.model_id,
                         style: tokens.monoStyle,
-                        onChanged: (value) {
-                          final next = value.trim();
-                          if (next.isNotEmpty) ai.setModel(next);
-                        },
+                        onFocusLost: onCommit,
                         onSubmitted: (_) => onCommit(),
                       ),
                     ),
@@ -912,10 +911,7 @@ class _ModelProfileCard extends StatelessWidget {
                         controller: endpoint,
                         hintText: 'https://api.deepseek.com/v1',
                         style: tokens.monoStyle,
-                        onChanged: (value) {
-                          final next = value.trim();
-                          if (next.isNotEmpty) ai.setBaseUrl(next);
-                        },
+                        onFocusLost: onCommit,
                         onSubmitted: (_) => onCommit(),
                       ),
                     ),
@@ -928,7 +924,7 @@ class _ModelProfileCard extends StatelessWidget {
                         hintText: 'sk-…',
                         obscureText: true,
                         style: tokens.monoStyle,
-                        onChanged: ai.setApiKey,
+                        onFocusLost: onCommit,
                         onSubmitted: (_) => onCommit(),
                       ),
                     ),

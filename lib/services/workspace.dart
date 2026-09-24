@@ -1454,7 +1454,7 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
 
     _changeSubscription = session.changes.listen(_onDocumentChange);
     _selectionSubscription = session.selection.changes.listen((_) {
-      _tick();
+      _bumpSelection();
     });
     viewport.addListener(_tick);
     tools.addListener(_tick);
@@ -1550,6 +1550,16 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
 
   void _onDocumentChange(DocumentChange change) {
     onGeometryInvalidated?.call(change);
+    _bumpContent();
+  }
+
+  void _bumpContent() {
+    state = state.copyWith(contentEpoch: state.contentEpoch + 1);
+    _tick();
+  }
+
+  void _bumpSelection() {
+    state = state.copyWith(selectionEpoch: state.selectionEpoch + 1);
     _tick();
   }
 

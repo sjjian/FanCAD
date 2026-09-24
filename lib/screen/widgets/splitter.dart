@@ -43,6 +43,128 @@ class FanCadSplitter extends StatefulWidget {
   State<FanCadSplitter> createState() => _FanCadSplitterState();
 }
 
+/// Live width of one [FanCadSplit] pane.
+///
+/// Listeners see each drag step. The split does not store the width anywhere
+/// else; the owner reads [extent] when the gesture ends and persists it.
+class FanCadSplitController extends ChangeNotifier {
+  FanCadSplitController({
+    required double extent,
+    required this.minExtent,
+    required this.maxExtent,
+  }) : _extent = extent.clamp(minExtent, maxExtent);
+
+  final double minExtent;
+  final double maxExtent;
+
+  double _extent;
+
+  double get extent => _extent;
+
+  set extent(double value) {
+    final next = value.clamp(minExtent, maxExtent);
+    if (next == _extent) return;
+    _extent = next;
+    notifyListeners();
+  }
+
+  /// Moves the fixed pane by [delta] logical pixels.
+  void applyDelta(double delta) => extent = _extent + delta;
+}
+
+/// Two panes and an overlay sash. The fixed pane is [first], unless [reverse].
+///
+/// A drag writes [controller] and passes [first] and [second] through
+/// unchanged, so the panes are not rebuilt on each move. [onDragEnd] tells the
+/// owner the gesture finished; this widget does not persist the width.
+class FanCadSplit extends StatelessWidget {
+  const FanCadSplit({
+    super.key,
+    required this.controller,
+    required this.first,
+    required this.second,
+    this.reverse = false,
+    this.onDragEnd,
+    this.onDoubleTap,
+    this.handleKey,
+    this.tooltip,
+  });
+
+  final FanCadSplitController controller;
+  final Widget first;
+  final Widget second;
+
+  /// The fixed pane is [second], on the trailing edge.
+  final bool reverse;
+  final VoidCallback? onDragEnd;
+  final VoidCallback? onDoubleTap;
+  final Key? handleKey;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, child) {
+        final slots = child! as _SplitChildren;
+        final extent = controller.extent;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final fixed = SizedBox(width: extent, child: slots.fixed);
+            final flex = Expanded(child: slots.flex);
+            final seam = reverse ? constraints.maxWidth - extent : extent;
+            final handle = FanCadSplitter(
+              key: handleKey,
+              axis: Axis.vertical,
+              onDrag: (delta) =>
+                  controller.applyDelta(reverse ? -delta : delta),
+              onDragEnd: onDragEnd,
+              onDoubleTap: onDoubleTap,
+            );
+            return SizedBox(
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+              child: Stack(
+                children: [
+                  Row(children: reverse ? [flex, fixed] : [fixed, flex]),
+                  Positioned(
+                    left: FanCadSplitter.overlayOrigin(seam),
+                    top: 0,
+                    bottom: 0,
+                    width: CommandLineLayout.splitterHit,
+                    child: tooltip == null
+                        ? handle
+                        : Tooltip(
+                            message: tooltip,
+                            waitDuration: const Duration(milliseconds: 500),
+                            child: handle,
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+      child: _SplitChildren(
+        fixed: reverse ? second : first,
+        flex: reverse ? first : second,
+      ),
+    );
+  }
+}
+
+/// Carries the two panes in [ListenableBuilder]'s child slot.
+class _SplitChildren extends StatelessWidget {
+  const _SplitChildren({required this.fixed, required this.flex});
+
+  final Widget fixed;
+  final Widget flex;
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
 class _FanCadSplitterState extends State<FanCadSplitter> {
   bool _active = false;
 

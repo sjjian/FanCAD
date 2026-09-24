@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -102,6 +103,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   final GlobalKey _lastUserKey = GlobalKey();
   ChatMessage? _pinnedUser;
   late final _MentionTextController _input;
+  String? _shownChatId;
 
   @override
   void initState() {
@@ -126,6 +128,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
 
   @override
   void dispose() {
+    widget.controller.setDraft(_input.text);
     _input.dispose();
     _scroll.dispose();
     super.dispose();
@@ -153,12 +156,19 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     _pinnedUser = last;
   }
 
-  void _syncDraft() {
-    final draft = ref.read(assistantNotifierProvider).activeChat.draft;
-    if (_input.text == draft) return;
+  void _flushDraft() {
+    widget.controller.setDraft(_input.text);
+  }
+
+  /// Copies the stored draft into the field when the open chat changes.
+  void _syncDraft({bool force = false}) {
+    final chat = ref.read(assistantNotifierProvider).activeChat;
+    if (!force && chat.id == _shownChatId) return;
+    _shownChatId = chat.id;
+    if (_input.text == chat.draft) return;
     _input.value = TextEditingValue(
-      text: draft,
-      selection: TextSelection.collapsed(offset: draft.length),
+      text: chat.draft,
+      selection: TextSelection.collapsed(offset: chat.draft.length),
     );
   }
 
@@ -170,6 +180,8 @@ class _AiPanelState extends ConsumerState<AiPanel> {
 
   void _send() {
     final text = _input.text;
+    widget.controller.setDraft(text);
+    _input.clear();
     widget.controller.send(text);
   }
 
@@ -273,7 +285,6 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           s.question,
           s.pins,
           s.error,
-          s.activeChat.draft,
         ),
       ),
     );
@@ -295,10 +306,6 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         question == null &&
         assistantPanelShowsWorking(busy: busy, messages: messages);
     final showCaret = assistantPanelShowsCaret(busy: busy, messages: messages);
-    final canSend =
-        !busy &&
-        controller.isConfigured &&
-        (model.activeChat.draft.trim().isNotEmpty || model.pins.isNotEmpty);
     _input.pins = model.pins;
     _input.onFlashPin = controller.flashPin;
     _input.onHoverPin = controller.hoverPin;
@@ -308,9 +315,18 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           chats: model.chats,
           activeChatId: model.activeChat.id,
           emptyTitle: context.l10n.new_chat,
-          onSelect: controller.selectSession,
-          onClose: controller.deleteSession,
-          onNew: controller.newSession,
+          onSelect: (id) {
+            _flushDraft();
+            controller.selectSession(id);
+          },
+          onClose: (id) {
+            if (id == model.activeChat.id) _flushDraft();
+            controller.deleteSession(id);
+          },
+          onNew: () {
+            _flushDraft();
+            controller.newSession();
+          },
         ),
         Expanded(
           child:
@@ -319,7 +335,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                   configured: controller.isConfigured,
                   onUsePrompt: (prompt) {
                     controller.setDraft(prompt);
-                    _syncDraft();
+                    _syncDraft(force: true);
                   },
                   onOpenSettings: () =>
                       controller.workspace.revealPanel('preferences:models'),
@@ -408,7 +424,6 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         _Composer(
           controller: _input,
           enabled: controller.isConfigured,
-          canSend: canSend,
           busy: busy,
           hint: !controller.isConfigured
               ? context.l10n.ask_assistant_unavailable
@@ -430,7 +445,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                   onHoverPins: controller.hoverPins,
                   resolvePin: controller.resolvePin,
                 ),
-          onChanged: controller.setDraft,
+          onChanged: (_) {},
           onSend: _send,
           onStop: controller.stop,
           onPaste: _onPaste,
@@ -1240,14 +1255,6 @@ class _AskCardState extends State<_AskCard> {
   String get _customLetter => askOptionLetter(widget.question.options.length);
 
   @override
-  void initState() {
-    super.initState();
-    _customFocus.addListener(() {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
   void dispose() {
     _customFocus.dispose();
     _custom.dispose();
@@ -1287,9 +1294,6 @@ class _AskCardState extends State<_AskCard> {
     if (_custom.text.trim().isNotEmpty) return true;
     return _picked.isNotEmpty;
   }
-
-  bool get _customSelected =>
-      _customFocus.hasFocus || _custom.text.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -1367,16 +1371,15 @@ class _AskCardState extends State<_AskCard> {
                   if (question.allowCustom)
                     _AskCustomRow(
                       letter: _customLetter,
-                      selected: _customSelected,
                       controller: _custom,
                       focusNode: _customFocus,
                       hint: l10n.ask_other,
                       onTap: _focusCustom,
-                      onChanged: (_) => setState(() {
-                        if (!_multiple && _custom.text.trim().isNotEmpty) {
-                          _picked.clear();
-                        }
-                      }),
+                      onChanged: (_) {
+                        if (_multiple || _picked.isEmpty) return;
+                        if (_custom.text.trim().isEmpty) return;
+                        setState(() => _picked.clear());
+                      },
                       onSubmitted: (_) => _submit(),
                     ),
                   const SizedBox(height: FanCadTokens.space2),
@@ -1404,23 +1407,11 @@ class _AskCardState extends State<_AskCard> {
                         ),
                       ),
                       const SizedBox(width: FanCadTokens.space1),
-                      FilledButton(
-                        key: const Key('assistant-ask-submit'),
-                        onPressed: _canSubmit ? _submit : null,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _canSubmit
-                              ? tokens.warning
-                              : tokens.border,
-                          foregroundColor: tokens.canvas,
-                          disabledForegroundColor: tokens.textFaint,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: FanCadTokens.space3,
-                            vertical: FanCadTokens.space1,
-                          ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(l10n.continue_action),
+                      _AskSubmitButton(
+                        custom: _custom,
+                        hasPick: _picked.isNotEmpty,
+                        label: l10n.continue_action,
+                        onSubmit: _submit,
                       ),
                     ],
                   ),
@@ -1490,10 +1481,78 @@ class _AskOptionRow extends StatelessWidget {
   }
 }
 
-class _AskCustomRow extends StatelessWidget {
+class _AskSubmitButton extends StatefulWidget {
+  const _AskSubmitButton({
+    required this.custom,
+    required this.hasPick,
+    required this.label,
+    required this.onSubmit,
+  });
+
+  final TextEditingController custom;
+  final bool hasPick;
+  final String label;
+  final VoidCallback onSubmit;
+
+  @override
+  State<_AskSubmitButton> createState() => _AskSubmitButtonState();
+}
+
+class _AskSubmitButtonState extends State<_AskSubmitButton> {
+  @override
+  void initState() {
+    super.initState();
+    widget.custom.addListener(_onText);
+  }
+
+  @override
+  void didUpdateWidget(_AskSubmitButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.custom != widget.custom) {
+      oldWidget.custom.removeListener(_onText);
+      widget.custom.addListener(_onText);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.custom.removeListener(_onText);
+    super.dispose();
+  }
+
+  void _onText() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _canSubmit =>
+      widget.custom.text.trim().isNotEmpty || widget.hasPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final canSubmit = _canSubmit;
+    return FilledButton(
+      key: const Key('assistant-ask-submit'),
+      onPressed: canSubmit ? widget.onSubmit : null,
+      style: FilledButton.styleFrom(
+        backgroundColor: canSubmit ? tokens.warning : tokens.border,
+        foregroundColor: tokens.canvas,
+        disabledForegroundColor: tokens.textFaint,
+        padding: const EdgeInsets.symmetric(
+          horizontal: FanCadTokens.space3,
+          vertical: FanCadTokens.space1,
+        ),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(widget.label),
+    );
+  }
+}
+
+class _AskCustomRow extends StatefulWidget {
   const _AskCustomRow({
     required this.letter,
-    required this.selected,
     required this.controller,
     required this.focusNode,
     required this.hint,
@@ -1503,7 +1562,6 @@ class _AskCustomRow extends StatelessWidget {
   });
 
   final String letter;
-  final bool selected;
   final TextEditingController controller;
   final FocusNode focusNode;
   final String hint;
@@ -1512,30 +1570,70 @@ class _AskCustomRow extends StatelessWidget {
   final ValueChanged<String> onSubmitted;
 
   @override
+  State<_AskCustomRow> createState() => _AskCustomRowState();
+}
+
+class _AskCustomRowState extends State<_AskCustomRow> {
+  @override
+  void initState() {
+    super.initState();
+    widget.focusNode.addListener(_rebuild);
+    widget.controller.addListener(_rebuild);
+  }
+
+  @override
+  void didUpdateWidget(_AskCustomRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      oldWidget.focusNode.removeListener(_rebuild);
+      widget.focusNode.addListener(_rebuild);
+    }
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_rebuild);
+      widget.controller.addListener(_rebuild);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.focusNode.removeListener(_rebuild);
+    widget.controller.removeListener(_rebuild);
+    super.dispose();
+  }
+
+  void _rebuild() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _selected =>
+      widget.focusNode.hasFocus || widget.controller.text.trim().isNotEmpty;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final selected = _selected;
     return InkWell(
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: FanCadTokens.space1),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _AskLetter(letter: letter, selected: selected),
+            _AskLetter(letter: widget.letter, selected: selected),
             const SizedBox(width: FanCadTokens.space2),
             Expanded(
               child: TextField(
                 key: const Key('assistant-ask-custom'),
-                controller: controller,
-                focusNode: focusNode,
+                controller: widget.controller,
+                focusNode: widget.focusNode,
                 style: tokens.bodyStyle.copyWith(height: 1.4),
                 cursorColor: tokens.accent,
                 cursorWidth: 1.5,
                 decoration: InputDecoration(
                   isDense: true,
                   filled: false,
-                  hintText: hint,
+                  hintText: widget.hint,
                   hintStyle: tokens.bodyStyle.copyWith(
                     color: tokens.textFaint,
                     height: 1.4,
@@ -1545,9 +1643,9 @@ class _AskCustomRow extends StatelessWidget {
                   focusedBorder: InputBorder.none,
                   contentPadding: const EdgeInsets.only(top: 1),
                 ),
-                onTap: onTap,
-                onChanged: onChanged,
-                onSubmitted: onSubmitted,
+                onTap: widget.onTap,
+                onChanged: widget.onChanged,
+                onSubmitted: widget.onSubmitted,
               ),
             ),
           ],
@@ -1593,7 +1691,6 @@ class _Composer extends ConsumerStatefulWidget {
   const _Composer({
     required this.controller,
     required this.enabled,
-    required this.canSend,
     required this.busy,
     required this.hint,
     required this.tokens,
@@ -1613,7 +1710,6 @@ class _Composer extends ConsumerStatefulWidget {
 
   final TextEditingController controller;
   final bool enabled;
-  final bool canSend;
   final bool busy;
   final String hint;
   final FanCadTokens tokens;
@@ -1635,6 +1731,7 @@ class _Composer extends ConsumerStatefulWidget {
 }
 
 class _ComposerState extends ConsumerState<_Composer> {
+  bool _textReady = false;
   bool _escaped = false;
   bool _open = false;
   int _highlighted = 0;
@@ -1647,6 +1744,7 @@ class _ComposerState extends ConsumerState<_Composer> {
   void initState() {
     super.initState();
     _lastText = widget.controller.text;
+    _textReady = _lastText.trim().isNotEmpty;
     widget.controller.addListener(_onText);
     _bindRemoveMention(widget.controller);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1699,7 +1797,30 @@ class _ComposerState extends ConsumerState<_Composer> {
     _onComposerChanged(next);
   }
 
+  bool get _canSend =>
+      !widget.busy &&
+      widget.enabled &&
+      (_textReady || widget.pins.isNotEmpty);
+
+  /// Empty to non-empty flips the send button. A chat switch writes the
+  /// controller from the panel build, so that case waits until the frame ends.
+  void _noteDraftReady() {
+    final ready = widget.controller.text.trim().isNotEmpty;
+    if (ready == _textReady) return;
+    _textReady = ready;
+    if (!mounted) return;
+    if (WidgetsBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return;
+    }
+    setState(() {});
+  }
+
   void _onText() {
+    _noteDraftReady();
     final mention = composerAtMentionAt(
       widget.controller.text,
       widget.controller.selection.baseOffset,
@@ -1872,7 +1993,7 @@ class _ComposerState extends ConsumerState<_Composer> {
     if (HardwareKeyboard.instance.isShiftPressed) {
       return KeyEventResult.ignored;
     }
-    if (widget.canSend) widget.onSend();
+    if (_canSend) widget.onSend();
     return KeyEventResult.handled;
   }
 
@@ -2040,7 +2161,7 @@ class _ComposerState extends ConsumerState<_Composer> {
                       ),
                       child: _SendStopButton(
                         busy: widget.busy,
-                        canSend: widget.canSend,
+                        canSend: _canSend,
                         onSend: widget.onSend,
                         onStop: widget.onStop,
                       ),

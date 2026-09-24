@@ -24,7 +24,6 @@ class LayersPanel extends ConsumerStatefulWidget {
 }
 
 class _LayersPanelState extends ConsumerState<LayersPanel> {
-  String _filter = '';
   final TextEditingController _filterController = TextEditingController();
 
   @override
@@ -37,7 +36,9 @@ class _LayersPanelState extends ConsumerState<LayersPanel> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(workspaceNotifierProvider.select((s) => s.active?.id));
+    final activeId = ref.watch(
+      workspaceNotifierProvider.select((s) => s.active?.id),
+    );
     final tokens = context.tokens;
     final tab = _workspace.active;
     if (tab == null) {
@@ -53,10 +54,12 @@ class _LayersPanelState extends ConsumerState<LayersPanel> {
       );
     }
 
-    return ListenableBuilder(
-      listenable: tab,
-      builder: (context, _) => _layersBody(context, tokens, tab),
-    );
+    if (activeId != null) {
+      ref.watch(
+        documentTabNotifierProvider(activeId).select((s) => s.contentEpoch),
+      );
+    }
+    return _layersBody(context, tokens, tab);
   }
 
   Widget _layersBody(
@@ -70,12 +73,6 @@ class _LayersPanelState extends ConsumerState<LayersPanel> {
     }
     final layers = tab.document.layers.values.toList()
       ..sort((a, b) => _compareLayerNames(a.name, b.name));
-    final visible = _filter.isEmpty
-        ? layers
-        : [
-            for (final layer in layers)
-              if (layer.name.toLowerCase().contains(_filter)) layer,
-          ];
     final hiddenCount = layers.where((layer) => !layer.visible).length;
     final lockedCount = layers.where((layer) => layer.locked).length;
     final palette = tokens.isDark ? AciPalette.dark : AciPalette.light;
@@ -125,32 +122,43 @@ class _LayersPanelState extends ConsumerState<LayersPanel> {
                 color: tokens.textFaint,
               ),
             ),
-            onChanged: (value) =>
-                setState(() => _filter = value.trim().toLowerCase()),
-            suffix: _filter.isEmpty
-                ? null
-                : FanCadIconButton(
-                    icon: Icons.close,
-                    size: 18,
-                    iconSize: FanCadTokens.iconSmall,
-                    tooltip: context.l10n.clear_filter,
-                    onPressed: () {
-                      _filterController.clear();
-                      setState(() => _filter = '');
-                    },
-                  ),
+            suffix: ListenableBuilder(
+              listenable: _filterController,
+              builder: (context, _) => _filterController.text.isEmpty
+                  ? const SizedBox.shrink()
+                  : FanCadIconButton(
+                      icon: Icons.close,
+                      size: 18,
+                      iconSize: FanCadTokens.iconSmall,
+                      tooltip: context.l10n.clear_filter,
+                      onPressed: _filterController.clear,
+                    ),
+            ),
           ),
         ),
         Expanded(
-          child: visible.isEmpty
-              ? FanCadEmpty(
-                  message: _filter.isEmpty
-                      ? context.l10n.no_layers
-                      : context.l10n.no_layers_match(
-                          _filterController.text.trim(),
-                        ),
-                )
-              : ListView.builder(
+          child: ListenableBuilder(
+            listenable: _filterController,
+            builder: (context, _) {
+              final filter = _filterController.text.trim().toLowerCase();
+              final visible = filter.isEmpty
+                  ? layers
+                  : [
+                      for (final layer in layers)
+                        if (layer.name.toLowerCase().contains(filter)) layer,
+                    ];
+              return Column(
+                children: [
+                  Expanded(
+                    child: visible.isEmpty
+                        ? FanCadEmpty(
+                            message: filter.isEmpty
+                                ? context.l10n.no_layers
+                                : context.l10n.no_layers_match(
+                                    _filterController.text.trim(),
+                                  ),
+                          )
+                        : ListView.builder(
                   itemCount: visible.length,
                   itemExtent: FanCadTokens.rowHeight,
                   itemBuilder: (context, index) {
@@ -188,26 +196,33 @@ class _LayersPanelState extends ConsumerState<LayersPanel> {
                             ),
                     );
                   },
-                ),
-        ),
-        Container(
-          height: FanCadTokens.statusBarHeight,
-          padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
-          alignment: Alignment.centerLeft,
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: tokens.border)),
-          ),
-          child: Text(
-            _layerSummary(
-              total: layers.length,
-              shown: visible.length,
-              hidden: hiddenCount,
-              locked: lockedCount,
-              current: tab.document.currentLayer,
-              filtered: _filter.isNotEmpty,
-            ),
-            style: tokens.labelStyle,
-            overflow: TextOverflow.ellipsis,
+                        ),
+                  ),
+                  Container(
+                    height: FanCadTokens.statusBarHeight,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: FanCadTokens.space3,
+                    ),
+                    alignment: Alignment.centerLeft,
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: tokens.border)),
+                    ),
+                    child: Text(
+                      _layerSummary(
+                        total: layers.length,
+                        shown: visible.length,
+                        hidden: hiddenCount,
+                        locked: lockedCount,
+                        current: tab.document.currentLayer,
+                        filtered: filter.isNotEmpty,
+                      ),
+                      style: tokens.labelStyle,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],

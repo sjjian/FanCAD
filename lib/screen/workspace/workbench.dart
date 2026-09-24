@@ -8,7 +8,8 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../commands/keybindings.dart';
 import '../../l10n/l10n.dart';
-import '../../models/command_line.dart';
+import '../../models/assistant.dart';
+import '../../models/sidebar.dart';
 import '../../models/workspace.dart';
 import '../../services/assistant.dart';
 import '../../services/command_line.dart';
@@ -53,13 +54,25 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
 
   StreamSubscription<String>? _panelReveals;
   StreamSubscription<PendingApproval>? _approvals;
-  StreamSubscription<CommandRegistry>? _commandChanges;
+  late final FanCadSplitController _sidebarSplit;
+  late final FanCadSplitController _assistantSplit;
   bool _listeningForWindowClose = false;
   bool _closingWindow = false;
 
   @override
   void initState() {
     super.initState();
+    final layout = ref.read(layoutNotifierProvider);
+    _sidebarSplit = FanCadSplitController(
+      extent: layout.sidebarWidth,
+      minExtent: SidebarLayout.minWidth,
+      maxExtent: SidebarLayout.maxWidth,
+    );
+    _assistantSplit = FanCadSplitController(
+      extent: layout.assistantWidth,
+      minExtent: AssistantPaneLayout.minWidth,
+      maxExtent: AssistantPaneLayout.maxWidth,
+    );
     HardwareKeyboard.instance.addHandler(_onHardwareEscape);
     _escapeChannel.setMethodCallHandler(_onNativeEscape);
     // Subscribed in initState rather than in build so a rebuild does not
@@ -83,9 +96,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       ref.read(layoutNotifierProvider.notifier).reveal(panelId);
     });
     _approvals = workspace.approvals.listen(_showApproval);
-    _commandChanges = workspace.commands.changes.listen((_) {
-      if (mounted) setState(() {});
-    });
     unawaited(_bindWindowClose());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _commandFocus.requestFocus();
@@ -104,7 +114,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     }
     _panelReveals?.cancel();
     _approvals?.cancel();
-    _commandChanges?.cancel();
+    _sidebarSplit.dispose();
+    _assistantSplit.dispose();
     _commandFocus.dispose();
     super.dispose();
   }
@@ -162,6 +173,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         if (!result.isOk) return;
       }
       if (!mounted) return;
+      _persistLayout();
       await windowManager.setPreventClose(false);
       await windowManager.destroy();
     } catch (_) {
@@ -273,10 +285,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   @override
   Widget build(BuildContext context) {
     final workspace = ref.read(workspaceNotifierProvider.notifier);
-    ref.watch(
-      workspaceNotifierProvider.select((s) => (s.tabStrip, s.recentFiles)),
-    );
-    ref.watch(pluginNotifierProvider.select((s) => s.epoch));
     return _buildWindow(context, workspace);
   }
 
@@ -328,121 +336,32 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                     .toggleAssistant,
               ),
               Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Stack(
+                child: Stack(
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            ActivityBar(
-                              activeViewId: layout.sidebarOpen
-                                  ? layout.sidebarView
-                                  : '',
-                              onSelect: ref
-                                  .read(layoutNotifierProvider.notifier)
-                                  .select,
-                              onOpenSettings: () {
-                                unawaited(showSettingsDialog(context));
-                              },
-                            ),
-                            if (layout.sidebarOpen)
-                              SizedBox(
-                                width: layout.sidebarWidth,
-                                child: ColoredBox(
-                                  color: tokens.surface,
-                                  child: _sidebarBody(
-                                    layout.sidebarView,
-                                    workspace,
-                                  ),
-                                ),
-                              ),
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  DocumentTabStrip(workspace: workspace),
-                                  Expanded(child: _canvasArea(workspace)),
-                                ],
-                              ),
-                            ),
-                            if (layout.assistantOpen)
-                              SizedBox(
-                                width: layout.assistantWidth,
-                                child: ColoredBox(
-                                  color: tokens.surface,
-                                  child: AiPanel(
-                                    controller: ref.read(
-                                      assistantNotifierProvider.notifier,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
+                        ActivityBar(
+                          activeViewId: layout.sidebarOpen
+                              ? layout.sidebarView
+                              : '',
+                          onSelect: ref
+                              .read(layoutNotifierProvider.notifier)
+                              .select,
+                          onOpenSettings: () {
+                            unawaited(showSettingsDialog(context));
+                          },
                         ),
-                        if (layout.sidebarOpen)
-                          Positioned(
-                            left: FanCadSplitter.overlayOrigin(
-                              FanCadTokens.activityBarWidth +
-                                  layout.sidebarWidth,
-                            ),
-                            top: 0,
-                            bottom: 0,
-                            width: CommandLineLayout.splitterHit,
-                            child: Tooltip(
-                              message: context.l10n.resize_reset_width,
-                              waitDuration: const Duration(milliseconds: 500),
-                              child: FanCadSplitter(
-                                key: const Key('sidebar-splitter'),
-                                axis: Axis.vertical,
-                                onDrag: (delta) => ref
-                                    .read(layoutNotifierProvider.notifier)
-                                    .resizeSidebar(layout.sidebarWidth + delta),
-                                onDragEnd: ref
-                                    .read(layoutNotifierProvider.notifier)
-                                    .commit,
-                                onDoubleTap: ref
-                                    .read(layoutNotifierProvider.notifier)
-                                    .resetSidebarWidth,
-                              ),
-                            ),
-                          ),
-                        if (layout.assistantOpen)
-                          Positioned(
-                            left: FanCadSplitter.overlayOrigin(
-                              constraints.maxWidth - layout.assistantWidth,
-                            ),
-                            top: 0,
-                            bottom: 0,
-                            width: CommandLineLayout.splitterHit,
-                            child: Tooltip(
-                              message: context.l10n.resize_reset_width,
-                              waitDuration: const Duration(milliseconds: 500),
-                              child: FanCadSplitter(
-                                key: const Key('assistant-splitter'),
-                                axis: Axis.vertical,
-                                onDrag: (delta) => ref
-                                    .read(layoutNotifierProvider.notifier)
-                                    .resizeAssistant(
-                                      layout.assistantWidth - delta,
-                                    ),
-                                onDragEnd: ref
-                                    .read(layoutNotifierProvider.notifier)
-                                    .commit,
-                                onDoubleTap: ref
-                                    .read(layoutNotifierProvider.notifier)
-                                    .resetAssistantWidth,
-                              ),
-                            ),
-                          ),
-                        if (paletteOpen)
-                          CommandPalette(
-                            workspace: workspace,
-                            onDismiss: () => ref
-                                .read(commandLineNotifierProvider.notifier)
-                                .setPaletteOpen(false),
-                          ),
+                        Expanded(child: _splitPanes(context, workspace, layout)),
                       ],
-                    );
-                  },
+                    ),
+                    if (paletteOpen)
+                      CommandPalette(
+                        workspace: workspace,
+                        onDismiss: () => ref
+                            .read(commandLineNotifierProvider.notifier)
+                            .setPaletteOpen(false),
+                      ),
+                  ],
                 ),
               ),
               const StatusBar(),
@@ -453,12 +372,77 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     );
   }
 
+  Widget _splitPanes(
+    BuildContext context,
+    Workspace workspace,
+    ({
+      String sidebarView,
+      bool sidebarOpen,
+      bool assistantOpen,
+      double sidebarWidth,
+      double assistantWidth,
+    })
+    layout,
+  ) {
+    final tooltip = context.l10n.resize_reset_width;
+    Widget body = Column(
+      children: [
+        DocumentTabStrip(workspace: workspace),
+        Expanded(child: _canvasArea(workspace)),
+      ],
+    );
+    if (layout.sidebarOpen) {
+      body = FanCadSplit(
+        controller: _sidebarSplit,
+        tooltip: tooltip,
+        handleKey: const Key('sidebar-splitter'),
+        onDoubleTap: () =>
+            _sidebarSplit.extent = SidebarLayout.defaultWidth,
+        first: ColoredBox(
+          color: context.tokens.surface,
+          child: _sidebarBody(layout.sidebarView, workspace),
+        ),
+        second: body,
+      );
+    }
+    if (layout.assistantOpen) {
+      body = FanCadSplit(
+        controller: _assistantSplit,
+        reverse: true,
+        tooltip: tooltip,
+        handleKey: const Key('assistant-splitter'),
+        onDoubleTap: () =>
+            _assistantSplit.extent = AssistantPaneLayout.defaultWidth,
+        first: body,
+        second: ColoredBox(
+          color: context.tokens.surface,
+          child: AiPanel(
+            controller: ref.read(assistantNotifierProvider.notifier),
+          ),
+        ),
+      );
+    }
+    return body;
+  }
+
+  /// Copies the live sash widths into the layout and writes the file.
+  ///
+  /// Widths stay on the split controllers until the process is leaving.
+  void _persistLayout() {
+    final layoutNotifier = ref.read(layoutNotifierProvider.notifier);
+    layoutNotifier.resizeSidebar(_sidebarSplit.extent);
+    layoutNotifier.resizeAssistant(_assistantSplit.extent);
+    layoutNotifier.persist();
+  }
+
   Widget _canvasArea(Workspace workspace) {
+    ref.watch(
+      workspaceNotifierProvider.select((s) => s.activeSessionId),
+    );
     final tab = workspace.active;
     final showStart = tab == null || tab.isStartPage;
     final body = showStart
         ? EmptyWorkspace(
-            recentFiles: ref.read(workspaceNotifierProvider).recentFiles,
             onOpenRecent: (path) =>
                 workspace.run('file.open', args: {'path': path}),
             onOpen: () => workspace.run('file.open'),
@@ -596,7 +580,6 @@ class _CommandListPanel extends ConsumerStatefulWidget {
 
 class _CommandListPanelState extends ConsumerState<_CommandListPanel> {
   final TextEditingController _filter = TextEditingController();
-  String _query = '';
 
   @override
   void dispose() {
@@ -611,22 +594,6 @@ class _CommandListPanelState extends ConsumerState<_CommandListPanel> {
     );
     final tokens = context.tokens;
     final l10n = context.l10n;
-    final commands = searchCommandsLocalized(
-      widget.workspace.commands,
-      _query,
-      l10n,
-      limit: 500,
-    );
-    final lastId = widget.workspace.commands.lastCommandId;
-    final last = _query.trim().isEmpty && lastId != null
-        ? widget.workspace.commands.find(lastId)
-        : null;
-    final byCategory = <String, List<CommandDescriptor>>{};
-    for (final descriptor in commands) {
-      if (last != null && descriptor.id == last.id) continue;
-      byCategory.putIfAbsent(descriptor.category, () => []).add(descriptor);
-    }
-    final categories = byCategory.keys.toList()..sort();
 
     return Column(
       children: [
@@ -660,21 +627,119 @@ class _CommandListPanelState extends ConsumerState<_CommandListPanel> {
                 color: tokens.textFaint,
               ),
             ),
-            onChanged: (value) => setState(() => _query = value),
-            suffix: _query.isEmpty
-                ? null
-                : FanCadIconButton(
-                    icon: Icons.close,
-                    size: 18,
-                    iconSize: FanCadTokens.iconSmall,
-                    tooltip: l10n.clear_filter,
-                    onPressed: () {
-                      _filter.clear();
-                      setState(() => _query = '');
-                    },
-                  ),
+            suffix: ListenableBuilder(
+              listenable: _filter,
+              builder: (context, _) => _filter.text.isEmpty
+                  ? const SizedBox.shrink()
+                  : FanCadIconButton(
+                      icon: Icons.close,
+                      size: 18,
+                      iconSize: FanCadTokens.iconSmall,
+                      tooltip: l10n.clear_filter,
+                      onPressed: _filter.clear,
+                    ),
+            ),
           ),
         ),
+        Expanded(
+          child: _CommandMatchList(
+            filter: _filter,
+            workspace: widget.workspace,
+            running: running,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The filtered command list. It listens to the field's text controller so a
+/// keystroke does not rebuild the field.
+class _CommandMatchList extends StatefulWidget {
+  const _CommandMatchList({
+    required this.filter,
+    required this.workspace,
+    required this.running,
+  });
+
+  final TextEditingController filter;
+  final Workspace workspace;
+  final String? running;
+
+  @override
+  State<_CommandMatchList> createState() => _CommandMatchListState();
+}
+
+class _CommandMatchListState extends State<_CommandMatchList> {
+  String _query = '';
+  bool _scheduled = false;
+  StreamSubscription<CommandRegistry>? _registry;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.filter.addListener(_schedule);
+    _registry = widget.workspace.commands.changes.listen((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void didUpdateWidget(_CommandMatchList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filter != widget.filter) {
+      oldWidget.filter.removeListener(_schedule);
+      widget.filter.addListener(_schedule);
+    }
+    if (oldWidget.workspace != widget.workspace) {
+      _registry?.cancel();
+      _registry = widget.workspace.commands.changes.listen((_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.filter.removeListener(_schedule);
+    _registry?.cancel();
+    super.dispose();
+  }
+
+  void _schedule() {
+    if (_scheduled) return;
+    _scheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scheduled = false;
+      if (!mounted) return;
+      final next = widget.filter.text;
+      if (next == _query) return;
+      setState(() => _query = next);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    final commands = searchCommandsLocalized(
+      widget.workspace.commands,
+      _query,
+      l10n,
+      limit: 500,
+    );
+    final lastId = widget.workspace.commands.lastCommandId;
+    final last = _query.trim().isEmpty && lastId != null
+        ? widget.workspace.commands.find(lastId)
+        : null;
+    final byCategory = <String, List<CommandDescriptor>>{};
+    for (final descriptor in commands) {
+      if (last != null && descriptor.id == last.id) continue;
+      byCategory.putIfAbsent(descriptor.category, () => []).add(descriptor);
+    }
+    final categories = byCategory.keys.toList()..sort();
+    return Column(
+      children: [
         Expanded(
           child: commands.isEmpty
               ? Center(
@@ -694,7 +759,7 @@ class _CommandListPanelState extends ConsumerState<_CommandListPanel> {
                     if (last != null)
                       PanelSection(
                         title: l10n.last_used,
-                        children: [_commandRow(tokens, last, running)],
+                        children: [_commandRow(tokens, last)],
                       ),
                     for (final category in categories)
                       PanelSection(
@@ -705,7 +770,7 @@ class _CommandListPanelState extends ConsumerState<_CommandListPanel> {
                         ),
                         children: [
                           for (final descriptor in byCategory[category]!)
-                            _commandRow(tokens, descriptor, running),
+                            _commandRow(tokens, descriptor),
                         ],
                       ),
                     const SizedBox(height: FanCadTokens.space4),
@@ -729,11 +794,8 @@ class _CommandListPanelState extends ConsumerState<_CommandListPanel> {
     );
   }
 
-  Widget _commandRow(
-    FanCadTokens tokens,
-    CommandDescriptor descriptor,
-    String? running,
-  ) {
+  Widget _commandRow(FanCadTokens tokens, CommandDescriptor descriptor) {
+    final running = widget.running;
     final l10n = context.l10n;
     final hint = [
       if (descriptor.description.isNotEmpty)

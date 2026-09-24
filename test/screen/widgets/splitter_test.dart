@@ -43,4 +43,72 @@ void main() {
       288,
     );
   });
+
+  testWidgets('a drag resizes the pane and leaves it unbuilt', (tester) async {
+    final builds = _BuildCounter(boxKey: const Key('fixed'));
+    final flexBuilds = _BuildCounter(boxKey: const Key('flex'));
+    final controller = FanCadSplitController(
+      extent: 120,
+      minExtent: 80,
+      maxExtent: 240,
+    );
+    var notices = 0;
+    controller.addListener(() => notices += 1);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FanCadTheme.dark(),
+        home: SizedBox(
+          width: 400,
+          height: 80,
+          child: FanCadSplit(
+            controller: controller,
+            handleKey: const Key('sash'),
+            first: builds,
+            second: flexBuilds,
+          ),
+        ),
+      ),
+    );
+    expect(builds.count, 1);
+    expect(flexBuilds.count, 1);
+    expect(tester.getSize(find.byKey(const Key('fixed'))).width, 120);
+    final flexBefore = tester.getSize(find.byKey(const Key('flex'))).width;
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byKey(const Key('sash'))),
+    );
+    await gesture.moveBy(const Offset(30, 0));
+    await tester.pump();
+    expect(builds.count, 1);
+    expect(flexBuilds.count, 1);
+    expect(controller.extent, 150);
+    expect(notices, greaterThan(0));
+    expect(tester.getSize(find.byKey(const Key('fixed'))).width, 150);
+    expect(tester.getSize(find.byKey(const Key('flex'))).width, flexBefore - 30);
+
+    await gesture.up();
+    await tester.pump();
+    expect(builds.count, 1);
+    expect(flexBuilds.count, 1);
+    expect(controller.extent, 150);
+  });
+}
+
+class _BuildCounter extends StatefulWidget {
+  _BuildCounter({required this.boxKey});
+
+  final Key boxKey;
+  int count = 0;
+
+  @override
+  State<_BuildCounter> createState() => _BuildCounterState();
+}
+
+class _BuildCounterState extends State<_BuildCounter> {
+  @override
+  Widget build(BuildContext context) {
+    widget.count += 1;
+    return SizedBox(key: widget.boxKey);
+  }
 }

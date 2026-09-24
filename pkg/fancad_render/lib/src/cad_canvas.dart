@@ -32,6 +32,12 @@ abstract class CanvasInputHandler {
   /// still deliver [onPointerDown], otherwise PASTECLIP / LINE lose the
   /// placement click that followed a focus click.
   bool get isPrompting => false;
+
+  /// Snapped pointer, when the handler tracks one.
+  ///
+  /// The canvas publishes it on the viewport so a coordinate readout can
+  /// follow the pointer by listening to that layout controller.
+  Vec2? get hoverPoint => null;
 }
 
 /// The drawing viewport.
@@ -47,6 +53,8 @@ class CadCanvas extends StatefulWidget {
     required this.document,
     required this.controller,
     this.overlay = OverlayModel.empty,
+    this.readOverlay,
+    this.onInput,
     this.inputHandler,
     this.palette,
     this.overlayTheme = const OverlayTheme(),
@@ -64,6 +72,15 @@ class CadCanvas extends StatefulWidget {
   final CadDocument document;
   final ViewportController controller;
   final OverlayModel overlay;
+
+  /// Live overlay, read when the input handler notifies. The canvas owns that
+  /// subscription so a rubber band does not rebuild the page around it.
+  final OverlayModel Function()? readOverlay;
+
+  /// Called when the input handler notifies, before the canvas republishes
+  /// the pointer. The shell uses it to push live text into field controllers.
+  final VoidCallback? onInput;
+
   final CanvasInputHandler? inputHandler;
   final AciPalette? palette;
   final OverlayTheme overlayTheme;
@@ -111,6 +128,7 @@ class CadCanvasState extends State<CadCanvas> {
   final DrawingCache _cache = DrawingCache();
   int _paintEpoch = 0;
   int _seenVersion = -1;
+  List<int> _hiddenIds = const [];
 
   /// Set while a mouse-button pan is in flight (middle, right, or space+left).
   int? _panPointer;
@@ -140,6 +158,8 @@ class CadCanvasState extends State<CadCanvas> {
   double _lastTrackpadScale = 1;
   Duration? _lastTrackpadTime;
 
+  CanvasInputHandler? _input;
+
   @override
   void initState() {
     super.initState();
@@ -148,6 +168,8 @@ class CadCanvasState extends State<CadCanvas> {
     _scenePainter = ScenePainter(paragraphs: _paragraphs);
     _bindAppearance();
     widget.controller.addListener(_onViewportChanged);
+    _bindInput(widget.inputHandler);
+    _hiddenIds = _overlay.hiddenIds;
   }
 
   void _bindAppearance() {
@@ -172,6 +194,10 @@ class CadCanvasState extends State<CadCanvas> {
       oldWidget.controller.removeListener(_onViewportChanged);
       widget.controller.addListener(_onViewportChanged);
     }
+    if (oldWidget.inputHandler != widget.inputHandler) {
+      _unbindInput();
+      _bindInput(widget.inputHandler);
+    }
     if (oldWidget.document != widget.document) {
       if (widget.tessellation != null) {
         _tessellation = widget.tessellation!;
@@ -195,7 +221,9 @@ class CadCanvasState extends State<CadCanvas> {
       _cache.invalidate();
       _paintEpoch++;
     }
-    if (!_sameIds(oldWidget.overlay.hiddenIds, widget.overlay.hiddenIds)) {
+    final hidden = _overlay.hiddenIds;
+    if (!_sameIds(_hiddenIds, hidden)) {
+      _hiddenIds = hidden;
       _cache.invalidate();
       _paintEpoch++;
     }
@@ -211,10 +239,38 @@ class CadCanvasState extends State<CadCanvas> {
 
   @override
   void dispose() {
+    _unbindInput();
     widget.controller.removeListener(_onViewportChanged);
     _cache.dispose();
     _paragraphs.clear();
     super.dispose();
+  }
+
+  void _bindInput(CanvasInputHandler? handler) {
+    _input = handler;
+    if (handler is Listenable) {
+      (handler as Listenable).addListener(_onInput);
+    }
+  }
+
+  void _unbindInput() {
+    final handler = _input;
+    if (handler is Listenable) {
+      (handler as Listenable).removeListener(_onInput);
+    }
+    _input = null;
+  }
+
+  void _onInput() {
+    widget.onInput?.call();
+    _publishPointer();
+    if (mounted) setState(() {});
+  }
+
+  OverlayModel get _overlay => widget.readOverlay?.call() ?? widget.overlay;
+
+  void _publishPointer() {
+    widget.controller.notePointer(widget.inputHandler?.hoverPoint);
   }
 
   bool _wasInteracting = false;
@@ -330,6 +386,7 @@ class CadCanvasState extends State<CadCanvas> {
               onExit: (_) {
                 _lastLocal = null;
                 widget.inputHandler?.onPointerExit();
+                widget.controller.notePointer(null);
               },
               child: ColoredBox(
                 color: widget.background,
@@ -349,7 +406,7 @@ class CadCanvasState extends State<CadCanvas> {
                           quality: widget.controller.quality,
                           paintEpoch: _paintEpoch,
                           onlyLayers: widget.onlyLayers,
-                          hiddenIds: widget.overlay.hiddenIds,
+                          hiddenIds: _overlay.hiddenIds,
                           onSceneBuilt: widget.onSceneBuilt,
                           grid: widget.showGrid
                               ? _GridStyle(
@@ -366,7 +423,7 @@ class CadCanvasState extends State<CadCanvas> {
                           document: widget.document,
                           documentVersion: widget.document.version,
                           viewport: widget.controller.viewport,
-                          model: widget.overlay,
+                          model: _overlay,
                           painter: _overlayPainter,
                           paintEpoch: _paintEpoch,
                         ),
@@ -418,11 +475,13 @@ class CadCanvasState extends State<CadCanvas> {
     }
     _rememberLocal(event.localPosition);
     widget.inputHandler?.onPointerMove(_toWorld(event.localPosition), event);
+    _publishPointer();
   }
 
   void _handlePointerHover(PointerHoverEvent event) {
     _rememberLocal(event.localPosition);
     widget.inputHandler?.onPointerMove(_toWorld(event.localPosition), event);
+    _publishPointer();
   }
 
   void _handlePointerUp(PointerUpEvent event) {
