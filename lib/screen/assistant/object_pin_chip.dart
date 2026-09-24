@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
 import '../../models/assistant.dart';
+import '../widgets/file_name.dart';
 import '../widgets/tokens.dart';
 
 /// Shared object/drawing pin chip: composer can delete, transcript only flashes.
@@ -34,11 +35,26 @@ class _ObjectPinChipState extends State<ObjectPinChip> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final pin = widget.pin;
-    final label = pin == null
-        ? '…'
-        : pin.kind == ComposerPinKind.entity
-        ? context.l10n.objects_count(pin.ids.length)
-        : pin.drawingName;
+    final isDrawing = pin != null && pin.kind != ComposerPinKind.entity;
+    final labelStyle = tokens.labelStyle.copyWith(
+      fontSize: 12,
+      color: tokens.text,
+    );
+    final label = isDrawing
+        ? Tooltip(
+            message: pin.drawingName,
+            child: FileName(
+              name: pin.drawingName,
+              maxWidth: double.infinity,
+              style: labelStyle,
+            ),
+          )
+        : Text(
+            pin == null ? '…' : context.l10n.objects_count(pin.ids.length),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: labelStyle,
+          );
     final kindIcon = pin?.kind == ComposerPinKind.entity
         ? Icons.category_outlined
         : Icons.insert_drive_file_outlined;
@@ -86,15 +102,11 @@ class _ObjectPinChipState extends State<ObjectPinChip> {
                 ),
               ),
               const SizedBox(width: 4),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: widget.onFlash,
-                child: Text(
-                  label,
-                  style: tokens.labelStyle.copyWith(
-                    fontSize: 12,
-                    color: tokens.text,
-                  ),
+              Flexible(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: widget.onFlash,
+                  child: label,
                 ),
               ),
             ],
