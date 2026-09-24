@@ -143,13 +143,14 @@ class RenderScene {
   final Duration buildTime;
 
   /// Whether [other] looks at a region this scene holds geometry for, on the
-  /// same widget and display.
+  /// same display.
   ///
-  /// Says nothing about zoom: a zoom in flight can still replay this scene,
-  /// which is what [placementFor] is for.
+  /// The widget size may differ. A window resize keeps the drawing still on
+  /// screen, which is a pan, and the recording can be translated until the
+  /// newly revealed strip leaves [coverage]. Says nothing about zoom: a zoom
+  /// in flight can still replay this scene, which is what [placementFor] is for.
   bool covers(CadViewport other) =>
       coverage.isNotEmpty &&
-      other.size == viewport.size &&
       other.devicePixelRatio == viewport.devicePixelRatio &&
       coverage.containsBox(other.visibleBounds);
 

@@ -130,6 +130,63 @@ void main() {
     expect(controller.viewport.visibleBounds.isNotEmpty, isTrue);
   });
 
+  test('zoom extents fits the uncovered interval, not the covered strips', () {
+    final controller = ViewportController();
+    addTearDown(controller.dispose);
+    controller.setSize(const Size(800, 600), 1);
+    const bounds = Bounds2(0, 0, 400, 200);
+
+    controller.zoomTo(bounds, insetLeft: 200, insetRight: 0);
+
+    final view = controller.viewport;
+    expect(view.size, const Size(800, 600));
+    final hole = view.visibleThrough(left: 200);
+    expect(hole.containsBox(bounds), isTrue);
+    expect(view.visibleBounds.containsBox(bounds), isTrue);
+    // The drawing sits in the open interval, so its centre is right of the
+    // widget centre.
+    expect(view.toScreen(bounds.center).dx, closeTo(200 + 600 / 2, 1));
+  });
+
+  test('a resize without a screen origin keeps the centre', () {
+    final controller = ViewportController();
+    addTearDown(controller.dispose);
+    controller.setSize(size, 1);
+    final center = controller.viewport.center;
+
+    controller.setSize(const Size(640, 600), 1);
+
+    expect(controller.viewport.center.x, closeTo(center.x, 1e-9));
+    expect(controller.viewport.center.y, closeTo(center.y, 1e-9));
+    expect(controller.quality, RenderQuality.crisp);
+  });
+
+  test(
+    'dragging either edge keeps a drawing point on the same screen pixel',
+    () {
+      final controller = ViewportController();
+      addTearDown(controller.dispose);
+      controller.setSize(size, 1, screenOrigin: Offset.zero);
+      const world = Vec2(30, -12);
+      final screen = controller.viewport.toScreen(world);
+
+      // Left splitter: the canvas origin moves right and the width shrinks.
+      const leftOrigin = Offset(40, 0);
+      controller.setSize(const Size(760, 600), 1, screenOrigin: leftOrigin);
+      final afterLeft = leftOrigin + controller.viewport.toScreen(world);
+      expect(afterLeft.dx, closeTo(screen.dx, 1e-6));
+      expect(afterLeft.dy, closeTo(screen.dy, 1e-6));
+
+      // Right splitter: the origin stays, the width shrinks from the right.
+      final rightScreen = afterLeft;
+      controller.setSize(const Size(700, 600), 1, screenOrigin: leftOrigin);
+      final afterRight = leftOrigin + controller.viewport.toScreen(world);
+      expect(afterRight.dx, closeTo(rightScreen.dx, 1e-6));
+      expect(afterRight.dy, closeTo(rightScreen.dy, 1e-6));
+      expect(controller.quality, RenderQuality.interactive);
+    },
+  );
+
   test('notifies once per change', () {
     final controller = ViewportController();
     addTearDown(controller.dispose);

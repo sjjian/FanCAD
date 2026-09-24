@@ -25,7 +25,6 @@ class CanvasHud extends StatelessWidget {
     required this.workspace,
     required this.commandFocus,
     required this.onOpenHistory,
-    required this.child,
     this.historyOpen = false,
   });
 
@@ -33,50 +32,14 @@ class CanvasHud extends StatelessWidget {
   final FocusNode commandFocus;
   final VoidCallback onOpenHistory;
   final bool historyOpen;
-  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    Widget readouts() => Stack(
-      children: [
-        Positioned(
-          left: FanCadTokens.space3,
-          bottom: FanCadTokens.space1,
-          child: _CoordinateReadout(
-            key: const Key('canvas-readout-cursor'),
-            workspace: workspace,
-          ),
-        ),
-        if (workspace.active != null)
-          Positioned(
-            right: FanCadTokens.space3,
-            bottom: FanCadTokens.space1,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _SelectionReadout(
-                  key: const Key('canvas-readout-selection'),
-                  workspace: workspace,
-                  tab: workspace.active!,
-                ),
-                _CurrentLayerIndicator(
-                  key: const Key('canvas-readout-layer'),
-                  workspace: workspace,
-                ),
-                _ZoomReadout(
-                  key: const Key('canvas-readout-zoom'),
-                  workspace: workspace,
-                  tab: workspace.active!,
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
+    final tab = workspace.active;
     return Stack(
       key: const Key('canvas-hud'),
+      fit: StackFit.expand,
       children: [
-        child,
         Positioned(
           left: FanCadTokens.space3,
           right: FanCadTokens.space3,
@@ -94,7 +57,38 @@ class CanvasHud extends StatelessWidget {
             ),
           ),
         ),
-        readouts(),
+        Positioned(
+          left: FanCadTokens.space3,
+          bottom: FanCadTokens.space1,
+          child: _CoordinateReadout(
+            key: const Key('canvas-readout-cursor'),
+            workspace: workspace,
+          ),
+        ),
+        if (tab != null)
+          Positioned(
+            right: FanCadTokens.space3,
+            bottom: FanCadTokens.space1,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _SelectionReadout(
+                  key: const Key('canvas-readout-selection'),
+                  workspace: workspace,
+                  tab: tab,
+                ),
+                _CurrentLayerIndicator(
+                  key: const Key('canvas-readout-layer'),
+                  workspace: workspace,
+                ),
+                _ZoomReadout(
+                  key: const Key('canvas-readout-zoom'),
+                  workspace: workspace,
+                  tab: tab,
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -288,9 +282,7 @@ class _ActionBar extends ConsumerWidget {
         documentTabNotifierProvider(activeId).select((s) => s.contentEpoch),
       );
     }
-    ref.watch(
-      workspaceNotifierProvider.select((s) => s.active?.isDirty),
-    );
+    ref.watch(workspaceNotifierProvider.select((s) => s.active?.isDirty));
     final tab = workspace.active;
     return SizedBox(
       key: const Key('canvas-action-card'),
@@ -387,7 +379,8 @@ class _DraftingModes extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(
       workspaceNotifierProvider.select(
-        (s) => (s.snapEnabled, s.ortho, s.polar, s.snapModes, s.active?.showGrid),
+        (s) =>
+            (s.snapEnabled, s.ortho, s.polar, s.snapModes, s.active?.showGrid),
       ),
     );
     final l10n = context.l10n;
@@ -525,11 +518,8 @@ class _CoordinateReadoutState extends ConsumerState<_CoordinateReadout> {
     }
     return ListenableBuilder(
       listenable: tab.viewport,
-      builder: (context, _) => _chrome(
-        context,
-        cursor: tab.viewport.pointer,
-        awaiting: awaiting,
-      ),
+      builder: (context, _) =>
+          _chrome(context, cursor: tab.viewport.pointer, awaiting: awaiting),
     );
   }
 
@@ -598,9 +588,9 @@ class _SelectionReadout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(
-      documentTabNotifierProvider(tab.session.id).select(
-        (s) => s.selectionEpoch,
-      ),
+      documentTabNotifierProvider(
+        tab.session.id,
+      ).select((s) => s.selectionEpoch),
     );
     final l10n = context.l10n;
     return FanCadTextButton(
@@ -633,9 +623,9 @@ class _CurrentLayerIndicatorState
     final tab = widget.workspace.active;
     if (tab != null) {
       ref.watch(
-        documentTabNotifierProvider(tab.session.id).select(
-          (s) => s.contentEpoch,
-        ),
+        documentTabNotifierProvider(
+          tab.session.id,
+        ).select((s) => s.contentEpoch),
       );
     }
     final tokens = context.tokens;

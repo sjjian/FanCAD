@@ -73,6 +73,9 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       minExtent: AssistantPaneLayout.minWidth,
       maxExtent: AssistantPaneLayout.maxWidth,
     );
+    _sidebarSplit.addListener(_noteViewOcclusion);
+    _assistantSplit.addListener(_noteViewOcclusion);
+    _noteViewOcclusion();
     HardwareKeyboard.instance.addHandler(_onHardwareEscape);
     _escapeChannel.setMethodCallHandler(_onNativeEscape);
     // Subscribed in initState rather than in build so a rebuild does not
@@ -114,6 +117,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     }
     _panelReveals?.cancel();
     _approvals?.cancel();
+    _sidebarSplit.removeListener(_noteViewOcclusion);
+    _assistantSplit.removeListener(_noteViewOcclusion);
     _sidebarSplit.dispose();
     _assistantSplit.dispose();
     _commandFocus.dispose();
@@ -296,8 +301,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
           sidebarView: s.sidebarView,
           sidebarOpen: s.sidebarOpen,
           assistantOpen: s.assistantOpen,
-          sidebarWidth: s.sidebarWidth,
-          assistantWidth: s.assistantWidth,
         ),
       ),
     );
@@ -351,7 +354,9 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                             unawaited(showSettingsDialog(context));
                           },
                         ),
-                        Expanded(child: _splitPanes(context, workspace, layout)),
+                        Expanded(
+                          child: _splitPanes(context, workspace, layout),
+                        ),
                       ],
                     ),
                     if (paletteOpen)
@@ -372,48 +377,78 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     );
   }
 
+  /// Writes the live pane widths the camera does not follow.
+  ///
+  /// The controllers already notify the split. This only stores the crop, so
+  /// a drag does not rebuild the canvas.
+  void _noteViewOcclusion() {
+    final layout = ref.read(layoutNotifierProvider);
+    ref
+        .read(workspaceNotifierProvider.notifier)
+        .noteViewOcclusion(
+          left: layout.sidebarOpen ? _sidebarSplit.extent : 0,
+          right: layout.assistantOpen ? _assistantSplit.extent : 0,
+        );
+  }
+
   Widget _splitPanes(
     BuildContext context,
     Workspace workspace,
-    ({
-      String sidebarView,
-      bool sidebarOpen,
-      bool assistantOpen,
-      double sidebarWidth,
-      double assistantWidth,
-    })
-    layout,
+    ({String sidebarView, bool sidebarOpen, bool assistantOpen}) layout,
   ) {
     final tooltip = context.l10n.resize_reset_width;
-    Widget body = Column(
+    _noteViewOcclusion();
+    final showStart = workspace.active == null || workspace.active!.isStartPage;
+    final historyOpen = layout.sidebarOpen && layout.sidebarView == 'history';
+    Widget viewport = Stack(
+      fit: StackFit.expand,
       children: [
-        DocumentTabStrip(workspace: workspace),
-        Expanded(child: _canvasArea(workspace)),
+        if (showStart)
+          EmptyWorkspace(
+            onOpenRecent: (path) =>
+                workspace.run('file.open', args: {'path': path}),
+            onOpen: () => workspace.run('file.open'),
+            onNew: () => workspace.run('file.new'),
+            onShowCommands: () => ref
+                .read(commandLineNotifierProvider.notifier)
+                .setPaletteOpen(true),
+          )
+        else
+          CanvasHud(
+            workspace: workspace,
+            commandFocus: _commandFocus,
+            historyOpen: historyOpen,
+            onOpenHistory: () => workspace.revealPanel('history'),
+          ),
+        Positioned(
+          right: FanCadTokens.space4,
+          top: FanCadTokens.space3,
+          child: _Notices(workspace: workspace),
+        ),
       ],
     );
     if (layout.sidebarOpen) {
-      body = FanCadSplit(
+      viewport = FanCadSplit(
         controller: _sidebarSplit,
         tooltip: tooltip,
         handleKey: const Key('sidebar-splitter'),
-        onDoubleTap: () =>
-            _sidebarSplit.extent = SidebarLayout.defaultWidth,
+        onDoubleTap: () => _sidebarSplit.extent = SidebarLayout.defaultWidth,
         first: ColoredBox(
           color: context.tokens.surface,
           child: _sidebarBody(layout.sidebarView, workspace),
         ),
-        second: body,
+        second: viewport,
       );
     }
     if (layout.assistantOpen) {
-      body = FanCadSplit(
+      viewport = FanCadSplit(
         controller: _assistantSplit,
         reverse: true,
         tooltip: tooltip,
         handleKey: const Key('assistant-splitter'),
         onDoubleTap: () =>
             _assistantSplit.extent = AssistantPaneLayout.defaultWidth,
-        first: body,
+        first: viewport,
         second: ColoredBox(
           color: context.tokens.surface,
           child: AiPanel(
@@ -422,7 +457,12 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         ),
       );
     }
-    return body;
+    return Column(
+      children: [
+        DocumentTabStrip(workspace: workspace),
+        Expanded(child: Stack(children: [_canvasArea(workspace), viewport])),
+      ],
+    );
   }
 
   /// Copies the live sash widths into the layout and writes the file.
@@ -436,21 +476,11 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   }
 
   Widget _canvasArea(Workspace workspace) {
-    ref.watch(
-      workspaceNotifierProvider.select((s) => s.activeSessionId),
-    );
+    ref.watch(workspaceNotifierProvider.select((s) => s.activeSessionId));
     final tab = workspace.active;
     final showStart = tab == null || tab.isStartPage;
     final body = showStart
-        ? EmptyWorkspace(
-            onOpenRecent: (path) =>
-                workspace.run('file.open', args: {'path': path}),
-            onOpen: () => workspace.run('file.open'),
-            onNew: () => workspace.run('file.new'),
-            onShowCommands: () => ref
-                .read(commandLineNotifierProvider.notifier)
-                .setPaletteOpen(true),
-          )
+        ? ColoredBox(color: context.tokens.canvas)
         : DocumentView(
             // Keyed by tab so switching tabs gets a fresh canvas state rather
             // than one holding another drawing's tessellation cache.
@@ -465,29 +495,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
             onStopAssistant: () =>
                 ref.read(assistantNotifierProvider.notifier).stop(),
           );
-    final layout = ref.watch(
-      layoutNotifierProvider.select(
-        (s) => (open: s.sidebarOpen, view: s.sidebarView),
-      ),
-    );
-    final stack = Stack(
-      children: [
-        body,
-        Positioned(
-          right: FanCadTokens.space4,
-          top: FanCadTokens.space3,
-          child: _Notices(workspace: workspace),
-        ),
-      ],
-    );
-    if (showStart) return stack;
-    return CanvasHud(
-      workspace: workspace,
-      commandFocus: _commandFocus,
-      historyOpen: layout.open && layout.view == 'history',
-      onOpenHistory: () => workspace.revealPanel('history'),
-      child: stack,
-    );
+    return body;
   }
 
   Widget _sidebarBody(String viewId, Workspace workspace) => switch (viewId) {

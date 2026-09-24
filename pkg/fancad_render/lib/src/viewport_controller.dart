@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' show Offset, Size;
 
 import 'package:fancad_core/fancad_core.dart';
@@ -60,6 +61,15 @@ class ViewportController extends ChangeNotifier {
 
   /// Pending fit request, applied once the widget reports a real size.
   Bounds2? _pendingFit;
+  double _pendingInsetLeft = 0;
+  double _pendingInsetRight = 0;
+
+  /// Canvas top-left in the window, from the last layout that reported one.
+  ///
+  /// A splitter drag moves this origin, the widget size, or both. The next
+  /// [setSize] shifts [CadViewport.center] so a drawing point keeps the screen
+  /// pixel it already occupied.
+  Offset? _screenOrigin;
 
   CadViewport get viewport => _viewport;
   Vec2? get pointer => _pointer;
@@ -85,27 +95,66 @@ class ViewportController extends ChangeNotifier {
   }
 
   /// Called by the canvas on layout. Applies a deferred fit if one is queued.
-  void setSize(Size size, double devicePixelRatio) {
-    if (size == _viewport.size &&
+  ///
+  /// [screenOrigin] is the canvas top-left in the window. When the previous
+  /// layout reported one too, the centre moves with the widget so the drawing
+  /// stays still on screen while the window is resized. Omit it and the
+  /// centre stays put, which is what tests and the first layout do.
+  ///
+  /// A resize that does anchor the drawing is interactive until
+  /// [settleDelay] elapses. Pixel locking waits for that settle, so the
+  /// resize does not snap the recording onto a new pixel grid every frame.
+  void setSize(Size size, double devicePixelRatio, {Offset? screenOrigin}) {
+    final previousOrigin = _screenOrigin;
+    final previousSize = _viewport.size;
+    if (screenOrigin != null) _screenOrigin = screenOrigin;
+    if (size == previousSize &&
         devicePixelRatio == _viewport.devicePixelRatio) {
       return;
     }
-    _viewport = _viewport.copyWith(
-      size: size,
-      devicePixelRatio: devicePixelRatio,
-    );
     final pending = _pendingFit;
-    if (pending != null && !size.isEmpty) {
-      _pendingFit = null;
-      _viewport = CadViewport.fit(
-        pending,
-        size,
-        devicePixelRatio: devicePixelRatio,
+    final fitting = pending != null && !size.isEmpty;
+    if (fitting) _pendingFit = null;
+    final insetLeft = _pendingInsetLeft;
+    final insetRight = _pendingInsetRight;
+    final anchor =
+        !fitting &&
+        screenOrigin != null &&
+        previousOrigin != null &&
+        _viewport.isUsable;
+    var next = fitting
+        ? _frame(
+            pending,
+            size,
+            devicePixelRatio: devicePixelRatio,
+            insetLeft: insetLeft,
+            insetRight: insetRight,
+          )
+        : _viewport.copyWith(size: size, devicePixelRatio: devicePixelRatio);
+    if (anchor) {
+      final dLeft = screenOrigin.dx - previousOrigin.dx;
+      final dTop = screenOrigin.dy - previousOrigin.dy;
+      final dWidth = size.width - previousSize.width;
+      final dHeight = size.height - previousSize.height;
+      final scale = _viewport.scale;
+      next = next.copyWith(
+        center: Vec2(
+          _viewport.center.x + (dLeft + dWidth / 2) / scale,
+          _viewport.center.y - (dTop + dHeight / 2) / scale,
+        ),
       );
+    }
+    if (anchor) {
+      _viewport = next;
+      _quality = RenderQuality.interactive;
+      _settle?.cancel();
+      _settle = Timer(settleDelay, _onResizeSettled);
+      notifyListeners();
+      return;
     }
     // A new size or ratio moves the screen origin, so the lock is reapplied
     // even though the centre did not change.
-    _viewport = _viewport.pixelLocked();
+    _viewport = next.pixelLocked();
     notifyListeners();
   }
 
@@ -155,6 +204,14 @@ class ViewportController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Ends a resize: lock the camera once, then rebuild at the settled size.
+  void _onResizeSettled() {
+    _settle = null;
+    _viewport = _viewport.pixelLocked();
+    _quality = RenderQuality.crisp;
+    notifyListeners();
+  }
+
   void _settleNow() {
     _settle?.cancel();
     _settle = null;
@@ -188,38 +245,84 @@ class ViewportController extends ChangeNotifier {
   void zoomBy(double factor, Offset anchor) =>
       _moveTo(_viewport.zoomed(factor, anchor));
 
-  void zoomAtCenter(double factor) =>
-      _moveTo(_viewport.zoomedAtCenter(factor));
+  void zoomAtCenter(double factor) => _moveTo(_viewport.zoomedAtCenter(factor));
 
   void zoomIn() => zoomAtCenter(1.25);
   void zoomOut() => zoomAtCenter(0.8);
 
   /// Frames [bounds]. Defers until the widget has a size, so this can be
   /// called immediately after opening a file.
-  void zoomTo(Bounds2 bounds, {double margin = 0.06}) {
+  ///
+  /// [insetLeft] and [insetRight] are the panes covering the widget. The fit
+  /// uses the uncovered interval, then the centre is shifted so that interval
+  /// holds the drawing. The widget size stays the full canvas.
+  void zoomTo(
+    Bounds2 bounds, {
+    double margin = 0.06,
+    double insetLeft = 0,
+    double insetRight = 0,
+  }) {
     if (bounds.isEmpty || !bounds.isFinite) return;
     if (_viewport.size.isEmpty) {
       _pendingFit = bounds;
+      _pendingInsetLeft = insetLeft;
+      _pendingInsetRight = insetRight;
       return;
     }
-    viewport = CadViewport.fit(
+    viewport = _frame(
       bounds,
       _viewport.size,
       margin: margin,
       devicePixelRatio: _viewport.devicePixelRatio,
+      insetLeft: insetLeft,
+      insetRight: insetRight,
+    );
+  }
+
+  CadViewport _frame(
+    Bounds2 bounds,
+    Size size, {
+    double margin = 0.06,
+    required double devicePixelRatio,
+    double insetLeft = 0,
+    double insetRight = 0,
+  }) {
+    final left = insetLeft.clamp(0, size.width).toDouble();
+    final right = insetRight
+        .clamp(0, math.max(0, size.width - left))
+        .toDouble();
+    final hole = Size(math.max(size.width - left - right, 1), size.height);
+    final fitted = CadViewport.fit(
+      bounds,
+      hole,
+      margin: margin,
+      devicePixelRatio: devicePixelRatio,
+    );
+    final shift = (left - right) / (2 * fitted.scale);
+    return fitted.copyWith(
+      size: size,
+      center: Vec2(fitted.center.x - shift, fitted.center.y),
     );
   }
 
   /// Frames the whole drawing.
-  void zoomToExtents(CadDocument document) {
+  void zoomToExtents(
+    CadDocument document, {
+    double insetLeft = 0,
+    double insetRight = 0,
+  }) {
     final extents = document.extents;
     if (extents.isEmpty) {
       // An empty drawing still needs a sensible working scale rather than an
       // arbitrary one, so show a 200 unit wide area around the origin.
-      zoomTo(const Bounds2(-100, -100, 100, 100));
+      zoomTo(
+        const Bounds2(-100, -100, 100, 100),
+        insetLeft: insetLeft,
+        insetRight: insetRight,
+      );
       return;
     }
-    zoomTo(extents);
+    zoomTo(extents, insetLeft: insetLeft, insetRight: insetRight);
   }
 
   /// Centres on a drawing point without changing zoom.

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
@@ -131,6 +132,14 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   ShxFontTable _shxFonts = const ShxFontTable();
   bool _disposed = false;
+
+  /// Logical pixels of the side panes covering the canvas. The camera stays
+  /// the full widget; [describeView] and zoom-extents read this crop.
+  ({double left, double right}) _viewOcclusion = (left: 0, right: 0);
+
+  void noteViewOcclusion({required double left, required double right}) {
+    _viewOcclusion = (left: left, right: right);
+  }
 
   WorkspaceModel get _store => state;
   final Map<String, DocumentTab> _hosts = {};
@@ -1200,11 +1209,17 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   void zoomTo(Bounds2? bounds) {
     final tab = active;
     if (tab == null) return;
+    final left = _viewOcclusion.left;
+    final right = _viewOcclusion.right;
     if (bounds == null) {
-      tab.viewport.zoomToExtents(tab.document);
+      tab.viewport.zoomToExtents(
+        tab.document,
+        insetLeft: left,
+        insetRight: right,
+      );
       return;
     }
-    tab.viewport.zoomTo(bounds);
+    tab.viewport.zoomTo(bounds, insetLeft: left, insetRight: right);
   }
 
   @override
@@ -1254,13 +1269,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     }
     Map<String, Object?>? viewport;
     if (tab != null) {
-      final view = tab.viewport.viewport;
-      final box = view.visibleBounds;
-      viewport = {
-        'center': [view.center.x, view.center.y],
-        'scale': view.scale,
-        if (box.isNotEmpty) 'visible': [box.minX, box.minY, box.maxX, box.maxY],
-      };
+      viewport = _describedView(tab.viewport.viewport);
     }
     final path = (tab?.filePath ?? session.filePath)?.trim() ?? '';
     final running = state.runningCommand?.trim() ?? '';
@@ -1289,12 +1298,20 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   Map<String, Object?> describeView() {
     final tab = active;
     if (tab == null) return const {};
-    final view = tab.viewport.viewport;
-    final box = view.visibleBounds;
+    return _describedView(tab.viewport.viewport);
+  }
+
+  /// Camera centre and scale of the full canvas, with [visible] and [size]
+  /// cropped to the interval the side panes do not cover.
+  Map<String, Object?> _describedView(CadViewport view) {
+    final left = _viewOcclusion.left;
+    final right = _viewOcclusion.right;
+    final box = view.visibleThrough(left: left, right: right);
+    final width = math.max(0.0, view.size.width - left - right);
     return {
       'center': [view.center.x, view.center.y],
       'scale': view.scale,
-      'size': [view.size.width, view.size.height],
+      'size': [width, view.size.height],
       if (box.isNotEmpty) 'visible': [box.minX, box.minY, box.maxX, box.maxY],
     };
   }

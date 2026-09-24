@@ -269,7 +269,8 @@ void main() {
     await tester.pump();
 
     final canvas = tester.getRect(find.byType(CadCanvas));
-    final location = Offset(canvas.left + 160, canvas.top + 72);
+    final viewport = tester.getRect(find.byKey(const Key('canvas-hud')));
+    final location = Offset(viewport.left + 40, canvas.top + 72);
     final pointer = TestPointer(
       1,
       PointerDeviceKind.mouse,

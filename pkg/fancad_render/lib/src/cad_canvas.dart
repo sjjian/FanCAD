@@ -360,7 +360,12 @@ class CadCanvasState extends State<CadCanvas> {
         if (size != widget.controller.viewport.size ||
             ratio != widget.controller.viewport.devicePixelRatio) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) widget.controller.setSize(size, ratio);
+            if (!mounted) return;
+            final box = context.findRenderObject();
+            final origin = box is RenderBox && box.hasSize
+                ? box.localToGlobal(Offset.zero)
+                : null;
+            widget.controller.setSize(size, ratio, screenOrigin: origin);
           });
         }
 

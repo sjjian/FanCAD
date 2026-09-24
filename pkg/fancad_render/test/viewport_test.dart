@@ -17,11 +17,7 @@ void main() {
     });
 
     test('screen and drawing coordinates round trip', () {
-      const view = CadViewport(
-        center: Vec2(120, -45),
-        scale: 3.75,
-        size: size,
-      );
+      const view = CadViewport(center: Vec2(120, -45), scale: 3.75, size: size);
       const point = Vec2(133.25, -12.5);
       final back = view.toWorld(view.toScreen(point));
       expect(back.x, closeTo(point.x, 1e-9));
@@ -29,11 +25,7 @@ void main() {
     });
 
     test('the matrices agree with the point helpers', () {
-      const view = CadViewport(
-        center: Vec2(5, 7),
-        scale: 2.5,
-        size: size,
-      );
+      const view = CadViewport(center: Vec2(5, 7), scale: 2.5, size: size);
       const point = Vec2(-3, 11);
       final byMatrix = view.worldToScreen.transform(point);
       final byHelper = view.toScreen(point);
@@ -46,11 +38,7 @@ void main() {
     });
 
     test('zoom keeps the drawing point under the cursor fixed', () {
-      const view = CadViewport(
-        center: Vec2(10, 10),
-        scale: 4,
-        size: size,
-      );
+      const view = CadViewport(center: Vec2(10, 10), scale: 4, size: size);
       const anchor = Offset(200, 150);
       final before = view.toWorld(anchor);
       final zoomed = view.zoomed(2.5, anchor);
@@ -64,6 +52,16 @@ void main() {
       const view = CadViewport(center: Vec2.zero(), scale: 1, size: size);
       expect(view.copyWith(scale: 1e30).scale, CadViewport.maxScale);
       expect(view.copyWith(scale: 1e-30).scale, CadViewport.minScale);
+    });
+
+    test('visibleThrough drops the strips covered on the left and right', () {
+      const view = CadViewport(center: Vec2.zero(), scale: 1, size: size);
+      final hole = view.visibleThrough(left: 100, right: 50);
+      final full = view.visibleBounds;
+      expect(hole.minX, closeTo(full.minX + 100, 1e-9));
+      expect(hole.maxX, closeTo(full.maxX - 50, 1e-9));
+      expect(hole.minY, closeTo(full.minY, 1e-9));
+      expect(hole.maxY, closeTo(full.maxY, 1e-9));
     });
 
     test('fit frames the bounds with a margin', () {
@@ -95,11 +93,14 @@ void main() {
       expect(near.tolerance, closeTo(0.005, 1e-12));
     });
 
-    test('a pick radius in pixels stays a world length at the current scale', () {
-      const view = CadViewport(center: Vec2.zero(), scale: 4, size: size);
-      expect(view.pixelsToWorld(8), closeTo(2, 1e-12));
-      expect(view.isUsable, isTrue);
-    });
+    test(
+      'a pick radius in pixels stays a world length at the current scale',
+      () {
+        const view = CadViewport(center: Vec2.zero(), scale: 4, size: size);
+        expect(view.pixelsToWorld(8), closeTo(2, 1e-12));
+        expect(view.isUsable, isTrue);
+      },
+    );
 
     test('zoomedAtCenter is the same as anchoring on the widget centre', () {
       const view = CadViewport(center: Vec2(10, 4), scale: 2, size: size);
@@ -107,39 +108,46 @@ void main() {
       final byAnchor = view.zoomed(2, const Offset(400, 300));
       expect(byCenter, byAnchor);
       expect(
-        {
-          view,
-        }.contains(const CadViewport(center: Vec2(10, 4), scale: 2, size: size)),
+        {view}.contains(
+          const CadViewport(center: Vec2(10, 4), scale: 2, size: size),
+        ),
         isTrue,
       );
       expect(view.toString(), contains('800x600'));
     });
 
-    test('zoom at the clamp and an unusable size refuse to invent a window', () {
-      const tight = CadViewport(
-        center: Vec2.zero(),
-        scale: CadViewport.maxScale,
-        size: size,
-      );
-      expect(identical(tight.zoomed(2, Offset.zero), tight), isTrue);
+    test(
+      'zoom at the clamp and an unusable size refuse to invent a window',
+      () {
+        const tight = CadViewport(
+          center: Vec2.zero(),
+          scale: CadViewport.maxScale,
+          size: size,
+        );
+        expect(identical(tight.zoomed(2, Offset.zero), tight), isTrue);
 
-      const empty = CadViewport(center: Vec2.zero(), scale: 1, size: Size.zero);
-      expect(empty.isUsable, isFalse);
-      expect(empty.visibleBounds.isEmpty, isTrue);
-      expect(empty.paddedBounds().isEmpty, isTrue);
+        const empty = CadViewport(
+          center: Vec2.zero(),
+          scale: 1,
+          size: Size.zero,
+        );
+        expect(empty.isUsable, isFalse);
+        expect(empty.visibleBounds.isEmpty, isTrue);
+        expect(empty.paddedBounds().isEmpty, isTrue);
 
-      final unfit = CadViewport.fit(const Bounds2(0, 0, 10, 10), Size.zero);
-      expect(unfit.scale, 1);
-      expect(unfit.size, Size.zero);
+        final unfit = CadViewport.fit(const Bounds2(0, 0, 10, 10), Size.zero);
+        expect(unfit.scale, 1);
+        expect(unfit.size, Size.zero);
 
-      final poisoned = CadViewport.fit(
-        const Bounds2(-1e41, double.nan, -1e41, double.nan),
-        size,
-      );
-      expect(poisoned.scale, 1);
-      expect(poisoned.center, const Vec2.zero());
-      expect(poisoned.isUsable, isTrue);
-    });
+        final poisoned = CadViewport.fit(
+          const Bounds2(-1e41, double.nan, -1e41, double.nan),
+          size,
+        );
+        expect(poisoned.scale, 1);
+        expect(poisoned.center, const Vec2.zero());
+        expect(poisoned.isUsable, isTrue);
+      },
+    );
 
     test('grid step stays on the 1-2-5 sequence the snap engine uses', () {
       expect(niceGridStep(12), 20);

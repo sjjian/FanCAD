@@ -82,6 +82,26 @@ class CadViewport {
     );
   }
 
+  /// The drawing under the screen interval that [left] and [right] do not cover.
+  ///
+  /// [center] and [scale] stay this camera. The side panes sit on top of the
+  /// full widget, so the window a person can see is this inset, not
+  /// [visibleBounds].
+  Bounds2 visibleThrough({double left = 0, double right = 0}) {
+    if (!isUsable) return const Bounds2.empty();
+    final insetLeft = left.clamp(0, size.width).toDouble();
+    final insetRight = right.clamp(0, size.width - insetLeft).toDouble();
+    if (size.width - insetLeft - insetRight <= 0) return const Bounds2.empty();
+    final topLeft = toWorld(Offset(insetLeft, 0));
+    final bottomRight = toWorld(Offset(size.width - insetRight, size.height));
+    return Bounds2(
+      math.min(topLeft.x, bottomRight.x),
+      math.min(topLeft.y, bottomRight.y),
+      math.max(topLeft.x, bottomRight.x),
+      math.max(topLeft.y, bottomRight.y),
+    );
+  }
+
   /// The visible area grown by [factor], used to keep geometry just off screen
   /// in the batch so that a small pan does not force a rebuild.
   Bounds2 paddedBounds([double factor = 0.25]) {

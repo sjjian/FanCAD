@@ -45,10 +45,13 @@ class DrawingCache {
   /// How the recording can stand in for [viewport], or null when the scene has
   /// to be rebuilt.
   ///
-  /// A pan is always allowed and always exact. A zoom is allowed only while a
-  /// gesture is in flight: during the gesture the linework follows the geometry
-  /// rather than being realigned, and once the camera settles the caller asks
-  /// again with `interactive: false` and gets a crisp rebuild.
+  /// A pan at the same widget size is always allowed and always exact. A window
+  /// resize is that same translation while the size is still changing, then a
+  /// crisp rebuild once the camera settles. A zoom is allowed only while a
+  /// gesture is in
+  /// flight: during the gesture the linework follows the geometry rather than
+  /// being realigned, and once the camera settles the caller asks again with
+  /// `interactive: false` and gets a crisp rebuild.
   ScenePlacement? placementFor(
     CadViewport viewport,
     int documentVersion, {
@@ -59,8 +62,14 @@ class DrawingCache {
     if (_documentVersion != documentVersion) return null;
     if (!scene.covers(viewport)) return null;
     final placement = scene.placementFor(viewport);
-    if (placement.isTranslation) return placement;
+    // A pan at the same widget size is exact. A window resize is the same kind
+    // of translation, but only while the size is still changing: once the
+    // camera settles the new size has to be recorded, including the strip the
+    // overscan did not cover.
+    final resized = scene.viewport.size != viewport.size;
+    if (placement.isTranslation && !resized) return placement;
     if (!interactive) return null;
+    if (resized && placement.isTranslation) return placement;
     if (!placement.scale.isFinite) return null;
     if (placement.scale < minPreviewScale ||
         placement.scale > maxPreviewScale) {

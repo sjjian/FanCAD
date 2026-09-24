@@ -61,6 +61,23 @@ void main() {
     expect(scene.placementFor(view.copyWith(scale: 4)).isTranslation, isFalse);
   });
 
+  test('a same-scale resize can reuse the scene when the view stays inside', () {
+    final document = gridDocument(500);
+    const view = CadViewport(center: Vec2(100, 0), scale: 2, size: size);
+    final scene = SceneBuilder(palette: AciPalette.dark).build(document, view);
+
+    // Narrower widget, centre shifted so the left edge of the window stays.
+    // The visible area is a subset of the recording's coverage.
+    final shrunk = view.copyWith(
+      size: const Size(900, 800),
+      center: Vec2(view.center.x - 50, view.center.y),
+    );
+    expect(shrunk.scale, view.scale);
+    expect(shrunk.size, isNot(view.size));
+    expect(scene.covers(shrunk), isTrue);
+    expect(scene.placementFor(shrunk).isTranslation, isTrue);
+  });
+
   test('a pan beyond the overscan cannot reuse the scene', () {
     final document = gridDocument(500);
     const view = CadViewport(center: Vec2(100, 0), scale: 2, size: size);
