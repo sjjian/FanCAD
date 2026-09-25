@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../models/command_line.dart';
@@ -83,6 +85,7 @@ class FanCadSplit extends StatelessWidget {
     required this.controller,
     required this.first,
     required this.second,
+    this.flexMinExtent = 0,
     this.reverse = false,
     this.onDragEnd,
     this.onDoubleTap,
@@ -94,6 +97,10 @@ class FanCadSplit extends StatelessWidget {
   final Widget first;
   final Widget second;
 
+  /// Smallest width kept for the flexible pane. The fixed pane gives up width
+  /// down to [FanCadSplitController.minExtent] before this floor is broken.
+  final double flexMinExtent;
+
   /// The fixed pane is [second], on the trailing edge.
   final bool reverse;
   final VoidCallback? onDragEnd;
@@ -101,18 +108,34 @@ class FanCadSplit extends StatelessWidget {
   final Key? handleKey;
   final String? tooltip;
 
+  double _fixedWidth(double available) {
+    if (!available.isFinite) return controller.extent;
+    if (available >= controller.extent + flexMinExtent) {
+      return controller.extent;
+    }
+    final room = available - flexMinExtent;
+    if (room >= controller.minExtent) return room;
+    return controller.minExtent;
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: controller,
       builder: (context, child) {
         final slots = child! as _SplitChildren;
-        final extent = controller.extent;
         return LayoutBuilder(
           builder: (context, constraints) {
-            final fixed = SizedBox(width: extent, child: slots.fixed);
-            final flex = Expanded(child: slots.flex);
-            final seam = reverse ? constraints.maxWidth - extent : extent;
+            final available = constraints.maxWidth;
+            final fixedWidth = _fixedWidth(available);
+            final flexWidth = math.max(
+              flexMinExtent,
+              available.isFinite ? available - fixedWidth : flexMinExtent,
+            );
+            final total = fixedWidth + flexWidth;
+            final fixed = SizedBox(width: fixedWidth, child: slots.fixed);
+            final flex = SizedBox(width: flexWidth, child: slots.flex);
+            final seam = reverse ? total - fixedWidth : fixedWidth;
             final handle = FanCadSplitter(
               key: handleKey,
               axis: Axis.vertical,
@@ -121,8 +144,8 @@ class FanCadSplit extends StatelessWidget {
               onDragEnd: onDragEnd,
               onDoubleTap: onDoubleTap,
             );
-            return SizedBox(
-              width: constraints.maxWidth,
+            final pane = SizedBox(
+              width: total,
               height: constraints.maxHeight,
               child: Stack(
                 children: [
@@ -142,6 +165,15 @@ class FanCadSplit extends StatelessWidget {
                   ),
                 ],
               ),
+            );
+            if (!available.isFinite || total <= available) return pane;
+            return OverflowBox(
+              alignment: reverse ? Alignment.centerRight : Alignment.centerLeft,
+              minWidth: total,
+              maxWidth: total,
+              minHeight: constraints.maxHeight,
+              maxHeight: constraints.maxHeight,
+              child: pane,
             );
           },
         );

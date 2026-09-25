@@ -9,6 +9,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../commands/keybindings.dart';
 import '../../l10n/l10n.dart';
 import '../../models/assistant.dart';
+import '../../models/layout.dart';
 import '../../models/sidebar.dart';
 import '../../models/workspace.dart';
 import '../../services/assistant.dart';
@@ -430,6 +431,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     if (layout.sidebarOpen) {
       viewport = FanCadSplit(
         controller: _sidebarSplit,
+        flexMinExtent: ViewportLayout.minWidth,
         tooltip: tooltip,
         handleKey: const Key('sidebar-splitter'),
         onDoubleTap: () => _sidebarSplit.extent = SidebarLayout.defaultWidth,
@@ -444,6 +446,9 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       viewport = FanCadSplit(
         controller: _assistantSplit,
         reverse: true,
+        flexMinExtent: layout.sidebarOpen
+            ? SidebarLayout.minWidth + ViewportLayout.minWidth
+            : ViewportLayout.minWidth,
         tooltip: tooltip,
         handleKey: const Key('assistant-splitter'),
         onDoubleTap: () =>

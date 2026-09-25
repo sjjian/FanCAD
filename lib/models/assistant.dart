@@ -12,7 +12,7 @@ part 'assistant.g.dart';
 /// Default and permitted width of the docked assistant pane.
 abstract final class AssistantPaneLayout {
   static const double defaultWidth = 320;
-  static const double minWidth = 180;
+  static const double minWidth = 280;
   static const double maxWidth = 560;
 }
 

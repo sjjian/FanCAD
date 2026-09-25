@@ -85,13 +85,46 @@ void main() {
     expect(controller.extent, 150);
     expect(notices, greaterThan(0));
     expect(tester.getSize(find.byKey(const Key('fixed'))).width, 150);
-    expect(tester.getSize(find.byKey(const Key('flex'))).width, flexBefore - 30);
+    expect(
+      tester.getSize(find.byKey(const Key('flex'))).width,
+      flexBefore - 30,
+    );
 
     await gesture.up();
     await tester.pump();
     expect(builds.count, 1);
     expect(flexBuilds.count, 1);
     expect(controller.extent, 150);
+  });
+
+  testWidgets('the flexible pane keeps its minimum and the fixed pane yields', (
+    tester,
+  ) async {
+    final controller = FanCadSplitController(
+      extent: 160,
+      minExtent: 80,
+      maxExtent: 240,
+    );
+    addTearDown(controller.dispose);
+    await tester.binding.setSurfaceSize(const Size(200, 40));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 200,
+          height: 40,
+          child: FanCadSplit(
+            controller: controller,
+            flexMinExtent: 100,
+            first: const SizedBox(key: Key('fixed')),
+            second: const SizedBox(key: Key('flex')),
+          ),
+        ),
+      ),
+    );
+    expect(tester.getSize(find.byKey(const Key('fixed'))).width, 100);
+    expect(tester.getSize(find.byKey(const Key('flex'))).width, 100);
+    expect(controller.extent, 160);
   });
 }
 

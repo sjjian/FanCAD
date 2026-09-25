@@ -96,7 +96,7 @@ Future<void> _configureWindow() async {
   final frame = await _displayWorkArea();
   final options = WindowOptions(
     size: frame.size,
-    minimumSize: const Size(900, 600),
+    minimumSize: const Size(1000, 600),
     center: frame.origin == null,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
@@ -121,7 +121,7 @@ Future<void> _configureWindow() async {
 /// default when the screen plugin is missing (a headless test run).
 Future<({Size size, Offset? origin})> _displayWorkArea() async {
   const fallback = Size(1440, 900);
-  const minimum = Size(900, 600);
+  const minimum = Size(1000, 600);
   try {
     final primary = await screenRetriever.getPrimaryDisplay();
     final displays = await screenRetriever.getAllDisplays();

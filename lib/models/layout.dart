@@ -6,6 +6,14 @@ import 'sidebar.dart';
 
 part 'layout.freezed.dart';
 
+/// Minimum width of the middle viewport, between the sidebar and the assistant.
+///
+/// The welcome column is designed at this width. The split keeps the pane at
+/// least this wide so a long recent-file row is not crushed.
+abstract final class ViewportLayout {
+  static const double minWidth = 480;
+}
+
 /// Workbench chrome: which panes are open, which sidebar view is showing,
 /// and the three pane sizes.
 ///
