@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./logo.png" alt="FanCAD" width="160"/>
+  <img src="./logo_full.png" alt="FanCAD"/>
 </p>
 
 <p align="center">
