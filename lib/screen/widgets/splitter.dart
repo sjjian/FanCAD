@@ -61,9 +61,13 @@ class FanCadSplitController extends ChangeNotifier {
 
   double _extent;
 
+  /// Pointer travel past [minExtent] or [maxExtent] that has not been walked back.
+  double _slack = 0;
+
   double get extent => _extent;
 
   set extent(double value) {
+    _slack = 0;
     final next = value.clamp(minExtent, maxExtent);
     if (next == _extent) return;
     _extent = next;
@@ -71,7 +75,20 @@ class FanCadSplitController extends ChangeNotifier {
   }
 
   /// Moves the fixed pane by [delta] logical pixels.
-  void applyDelta(double delta) => extent = _extent + delta;
+  ///
+  /// Travel past either limit is remembered. The pane stays put until a later
+  /// delta in the opposite direction uses that slack up.
+  void applyDelta(double delta) {
+    final proposed = _extent + _slack + delta;
+    final next = proposed.clamp(minExtent, maxExtent);
+    _slack = proposed - next;
+    if (next == _extent) return;
+    _extent = next;
+    notifyListeners();
+  }
+
+  /// Drops leftover slack so the next drag starts from the pane edge.
+  void endDrag() => _slack = 0;
 }
 
 /// Two panes and an overlay sash. The fixed pane is [first], unless [reverse].
@@ -141,7 +158,10 @@ class FanCadSplit extends StatelessWidget {
               axis: Axis.vertical,
               onDrag: (delta) =>
                   controller.applyDelta(reverse ? -delta : delta),
-              onDragEnd: onDragEnd,
+              onDragEnd: () {
+                controller.endDrag();
+                onDragEnd?.call();
+              },
               onDoubleTap: onDoubleTap,
             );
             final pane = SizedBox(

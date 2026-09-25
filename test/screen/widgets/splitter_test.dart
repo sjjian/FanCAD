@@ -126,6 +126,29 @@ void main() {
     expect(tester.getSize(find.byKey(const Key('flex'))).width, 100);
     expect(controller.extent, 160);
   });
+
+  test('dragging past the maximum waits until the pointer comes back', () {
+    final controller = FanCadSplitController(
+      extent: 200,
+      minExtent: 80,
+      maxExtent: 240,
+    );
+    addTearDown(controller.dispose);
+    controller.applyDelta(80);
+    expect(controller.extent, 240);
+
+    controller.applyDelta(-10);
+    expect(controller.extent, 240);
+
+    controller.applyDelta(-40);
+    expect(controller.extent, 230);
+
+    controller.applyDelta(50);
+    expect(controller.extent, 240);
+    controller.endDrag();
+    controller.applyDelta(-10);
+    expect(controller.extent, 230);
+  });
 }
 
 class _BuildCounter extends StatefulWidget {
