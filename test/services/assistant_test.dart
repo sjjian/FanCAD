@@ -84,12 +84,21 @@ void main() {
     expect(accounts.state.activeProfile.model, 'deepseek-chat');
   });
 
-  test('a leftover empty new session is not duplicated', () {
+  test('a new session is created even when the current chat is empty', () {
     final ai = controller();
     expect(ai.state.chats, hasLength(1));
+    final previous = ai.state.activeChat.id;
     ai.newSession();
-    expect(ai.state.chats, hasLength(1));
+    expect(ai.state.chats, hasLength(2));
+    expect(ai.state.activeChat.id, isNot(previous));
     expect(ai.state.activeChat.conversation.visible, isEmpty);
+    expect(
+      ai.state.chats
+          .firstWhere((chat) => chat.id == previous)
+          .conversation
+          .visible,
+      isEmpty,
+    );
   });
 
   test('new session keeps leftover messages on the previous thread', () {

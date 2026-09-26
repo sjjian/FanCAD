@@ -765,6 +765,24 @@ void main() {
     expect(find.text('draw a square'), findsNothing);
   });
 
+  testWidgets('an empty chat still grows a tab when new is tapped', (
+    tester,
+  ) async {
+    final ai = panelAi();
+
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await pumpAiPanel(tester, ai);
+    expect(find.byType(FanCadTab), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('assistant-new-session')));
+    await tester.pump();
+    expect(find.byType(FanCadTab), findsNWidgets(2));
+    expect(ai.state.activeChat.conversation.visible, isEmpty);
+  });
+
   testWidgets('a new chat tab appears on the next frame', (tester) async {
     final ai = panelAi();
     ai.state.activeChat.conversation.addUser('draw a square');

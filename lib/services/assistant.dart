@@ -77,14 +77,11 @@ class AssistantNotifier extends _$AssistantNotifier {
     _persistChats();
   }
 
-  /// Starts an empty thread. A leftover empty current chat is not duplicated.
+  /// Starts an empty thread after the current one, even when that thread
+  /// is still empty. Skipping the empty case made the plus button look stuck.
   void newSession() {
     _active?.cancel();
     _settlePending(false);
-    if (_chat.isEmpty) {
-      _setStore(_store.copyWith(error: null));
-      return;
-    }
     final created = AssistantChatModel(
       id: 'c${DateTime.now().microsecondsSinceEpoch}',
     );
