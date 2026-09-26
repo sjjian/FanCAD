@@ -2217,9 +2217,11 @@ class Construct {
         free,
       );
       if (grown == null) return null;
+      // The inward end of the segment stays. When both arc ends are the same
+      // distance from the old free point, that tie is the unmoved end.
       final newFree =
-          free.distanceSquaredTo(grown.startPoint) <=
-              free.distanceSquaredTo(grown.endPoint)
+          grown.startPoint.distanceSquaredTo(inward) >=
+              grown.endPoint.distanceSquaredTo(inward)
           ? grown.startPoint
           : grown.endPoint;
       if (newFree.distanceTo(free) < 1e-9) return null;
