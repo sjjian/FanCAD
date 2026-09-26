@@ -285,6 +285,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           s.question,
           s.pins,
           s.error,
+          [for (final chat in s.chats) chat.id].join('\u0001'),
         ),
       ),
     );

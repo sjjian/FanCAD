@@ -80,9 +80,11 @@ void main() {
     expect(tab.document.entities, hasLength(1));
     expect(dropped, isNotEmpty);
 
+    final epoch = tab.state.contentEpoch;
     tab.invalidateAll();
     expect(dropped.last.tablesChanged, isTrue);
     expect(dropped.last.requiresFullRegeneration, isTrue);
+    expect(tab.state.contentEpoch, epoch + 1);
   });
 
   test('markSaved clears dirty and a selection change wakes the tab', () {

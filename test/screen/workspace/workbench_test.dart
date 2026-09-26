@@ -368,6 +368,43 @@ void main() {
     _expectViewportCenter(tester, const Key('canvas-assistant-busy'));
   });
 
+  testWidgets('switching layout selects that row on the next frame', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+    await tester.tap(find.byKey(const Key('activity-layouts')));
+    await tester.pump();
+
+    final created = await workspace.run(
+      'layout.new',
+      args: {'name': 'Layout1'},
+    );
+    expect(created.isOk, isTrue);
+    await tester.pump();
+    expect(
+      tester
+          .widget<FanCadTab>(find.byKey(const Key('layout-tab-Layout1')))
+          .selected,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(const Key('layout-tab-Model')));
+    await tester.pump();
+    expect(
+      tester
+          .widget<FanCadTab>(find.byKey(const Key('layout-tab-Model')))
+          .selected,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<FanCadTab>(find.byKey(const Key('layout-tab-Layout1')))
+          .selected,
+      isFalse,
+    );
+  });
+
   testWidgets('a hidden layer uses the same floating canvas notice', (
     tester,
   ) async {

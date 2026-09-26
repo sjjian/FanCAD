@@ -1582,9 +1582,12 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
 
   /// Refreshes everything that depends on document content, for changes the
   /// document itself does not report such as a layer visibility toggle.
+  ///
+  /// The canvas hears [onGeometryInvalidated]. Lists hear [contentEpoch], so
+  /// a layout switch still moves that counter.
   void invalidateAll() {
     onGeometryInvalidated?.call(const DocumentChange(tablesChanged: true));
-    _tick();
+    _bumpContent();
   }
 
   void _tick() => _ticks.tick();

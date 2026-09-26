@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../ai/authoring.dart';
@@ -27,12 +28,18 @@ class AssistantNotifier extends _$AssistantNotifier {
   @override
   AssistantModel build() {
     final assistant = ref.read(appSettingsProvider).assistant;
+    _assistant = assistant;
     final chats = assistant.loadChats();
     ref.onDispose(() {
+      final pending = _persistScheduled;
+      _persistScheduled = false;
       _disposed = true;
       _settlePending(false);
       _settleAsk(const {'status': 'cancelled'});
       _active?.cancel();
+      if (pending) {
+        _assistant.saveChats(state.chats, activeId: state.activeChatId);
+      }
     });
     return AssistantModel(
       chats: chats,
@@ -41,11 +48,12 @@ class AssistantNotifier extends _$AssistantNotifier {
   }
 
   Workspace get workspace => ref.read(workspaceNotifierProvider.notifier);
-  AssistantStore get _assistant => ref.read(appSettingsProvider).assistant;
+  late AssistantStore _assistant;
   AssistantModel get _store => state;
 
   bool _stopping = false;
   bool _disposed = false;
+  bool _persistScheduled = false;
   AgentLoop? _active;
   Completer<bool>? _pendingDecision;
   Completer<Map<String, Object?>>? _askDecision;
@@ -64,6 +72,7 @@ class AssistantNotifier extends _$AssistantNotifier {
     _settlePending(false);
     _chat.conversation.clear();
     _patchChat((chat) => chat.copyWith(title: '', usage: null));
+    _bumpTranscript();
     _setStore(_store.copyWith(error: null));
     _persistChats();
   }
@@ -104,6 +113,7 @@ class AssistantNotifier extends _$AssistantNotifier {
     if (_store.chats.length <= 1) {
       _chat.conversation.clear();
       _patchChat((chat) => chat.copyWith(title: '', usage: null, draft: ''));
+      _bumpTranscript();
       _setStore(_store.copyWith(error: null));
       _persistChats();
       return;
@@ -549,7 +559,30 @@ class AssistantNotifier extends _$AssistantNotifier {
     );
   }
 
+  /// Encodes every conversation, so it waits until the tab strip has painted.
+  ///
+  /// Several clicks in one turn share one write. With no frame already
+  /// scheduled — a headless call, a test — the write stays synchronous.
+  /// The disk flush itself is already debounced; this only keeps the JSON
+  /// off the click.
   void _persistChats() {
+    if (_disposed) return;
+    final binding = SchedulerBinding.instance;
+    if (!binding.hasScheduledFrame) {
+      _writeChats();
+      return;
+    }
+    if (_persistScheduled) return;
+    _persistScheduled = true;
+    binding.addPostFrameCallback((_) {
+      _persistScheduled = false;
+      if (_disposed) return;
+      _writeChats();
+    });
+  }
+
+  void _writeChats() {
+    if (_disposed) return;
     final chats = [..._store.chats];
     while (chats.length > AssistantSettings.chatCap) {
       AssistantChatModel? oldest;

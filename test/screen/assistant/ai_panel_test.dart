@@ -764,6 +764,59 @@ void main() {
     expect(find.text('画个小乌龟'), findsWidgets);
     expect(find.text('draw a square'), findsNothing);
   });
+
+  testWidgets('a new chat tab appears on the next frame', (tester) async {
+    final ai = panelAi();
+    ai.state.activeChat.conversation.addUser('draw a square');
+
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await pumpAiPanel(tester, ai);
+    expect(find.byType(FanCadTab), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('assistant-new-session')));
+    await tester.pump();
+    expect(find.byType(FanCadTab), findsNWidgets(2));
+    expect(
+      find.byKey(Key('assistant-session-${ai.state.activeChat.id}')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('closing a background tab drops it on the next frame', (
+    tester,
+  ) async {
+    final ai = panelAi();
+    ai.state.activeChat.conversation.addUser('画个小乌龟');
+    final background = ai.state.activeChat.id;
+    ai.newSession();
+    final current = ai.state.activeChat.id;
+
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await pumpAiPanel(tester, ai);
+    expect(find.byKey(Key('assistant-session-$background')), findsOneWidget);
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(
+      tester.getCenter(find.byKey(Key('assistant-session-$background'))),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(Key('assistant-session-close-$background')));
+    await gesture.removePointer();
+    await tester.pump();
+
+    expect(find.byKey(Key('assistant-session-$background')), findsNothing);
+    expect(find.byKey(Key('assistant-session-$current')), findsOneWidget);
+    expect(ai.state.activeChat.id, current);
+  });
 }
 
 void _expectEmptyGuideCentered(WidgetTester tester) {
