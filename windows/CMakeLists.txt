@@ -84,6 +84,35 @@ install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}
 install(FILES "${FLUTTER_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
   COMPONENT Runtime)
 
+# The MSVC CRT is loaded from the executable directory. Copying it beside
+# fancad.exe avoids the VC++ redistributable installer, which asks for a
+# reboot when one of its DLLs is in use.
+if(MSVC)
+  set(_fancad_crt_dlls "")
+  set(_fancad_search "${CMAKE_CXX_COMPILER}")
+  foreach(_fancad_i RANGE 8)
+    get_filename_component(_fancad_search "${_fancad_search}" DIRECTORY)
+    file(GLOB _fancad_crt_dirs
+      "${_fancad_search}/Redist/MSVC/*/x64/Microsoft.VC14*.CRT")
+    if(_fancad_crt_dirs)
+      list(SORT _fancad_crt_dirs COMPARE NATURAL ORDER DESCENDING)
+      list(GET _fancad_crt_dirs 0 _fancad_crt_dir)
+      file(GLOB _fancad_crt_dlls "${_fancad_crt_dir}/*.dll")
+      break()
+    endif()
+  endforeach()
+  if(NOT _fancad_crt_dlls)
+    message(FATAL_ERROR
+      "MSVC CRT DLLs were not found beside ${CMAKE_CXX_COMPILER}. "
+      "FanCAD copies them next to the executable instead of installing the "
+      "VC++ redistributable.")
+  endif()
+  install(FILES ${_fancad_crt_dlls}
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    CONFIGURATIONS Profile;Release
+    COMPONENT Runtime)
+endif()
+
 if(PLUGIN_BUNDLED_LIBRARIES)
   install(FILES "${PLUGIN_BUNDLED_LIBRARIES}"
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
