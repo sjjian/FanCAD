@@ -36,8 +36,8 @@ import 'properties_panel.dart';
 
 /// The drawing window.
 ///
-/// Laid out as a title bar, activity bar, sidebar, tab strip, drawing and
-/// status bar around one flexible canvas. Operations and the command line
+/// Laid out as a title bar, then one split row: the sidebar, the document
+/// tabs over the drawing, and the assistant. Operations and the command line
 /// share one floating card on the canvas. Layout names live in the left sidebar.
 class Workbench extends ConsumerStatefulWidget {
   const Workbench({super.key});
@@ -401,33 +401,47 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     _noteViewOcclusion();
     final showStart = workspace.active == null || workspace.active!.isStartPage;
     final historyOpen = layout.sidebarOpen && layout.sidebarView == 'history';
-    Widget viewport = Stack(
-      fit: StackFit.expand,
+    // The document tabs share this row with the sidebar header and the
+    // assistant tabs. The drawing itself stays full-bleed under the side
+    // panes, starting just below that row.
+    final hasDocumentTabs = ref.watch(
+      workspaceNotifierProvider.select((s) => s.sessionIds.isNotEmpty),
+    );
+    Widget center = Column(
       children: [
-        if (showStart)
-          EmptyWorkspace(
-            onOpenRecent: (path) =>
-                workspace.run('file.open', args: {'path': path}),
-            onOpen: () => workspace.run('file.open'),
-            onNew: () => workspace.run('file.new'),
-            onShowCommands: () => ref
-                .read(commandLineNotifierProvider.notifier)
-                .setPaletteOpen(true),
-          )
-        else
-          CanvasHud(
-            workspace: workspace,
-            commandFocus: _commandFocus,
-            historyOpen: historyOpen,
-            onOpenHistory: () => workspace.revealPanel('history'),
+        DocumentTabStrip(workspace: workspace),
+        Expanded(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (showStart)
+                EmptyWorkspace(
+                  onOpenRecent: (path) =>
+                      workspace.run('file.open', args: {'path': path}),
+                  onOpen: () => workspace.run('file.open'),
+                  onNew: () => workspace.run('file.new'),
+                  onShowCommands: () => ref
+                      .read(commandLineNotifierProvider.notifier)
+                      .setPaletteOpen(true),
+                )
+              else
+                CanvasHud(
+                  workspace: workspace,
+                  commandFocus: _commandFocus,
+                  historyOpen: historyOpen,
+                  onOpenHistory: () => workspace.revealPanel('history'),
+                ),
+              Positioned(
+                right: FanCadTokens.space4,
+                top: FanCadTokens.space3,
+                child: _Notices(workspace: workspace),
+              ),
+            ],
           ),
-        Positioned(
-          right: FanCadTokens.space4,
-          top: FanCadTokens.space3,
-          child: _Notices(workspace: workspace),
         ),
       ],
     );
+    Widget viewport = center;
     if (layout.sidebarOpen) {
       viewport = FanCadSplit(
         controller: _sidebarSplit,
@@ -462,10 +476,15 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         ),
       );
     }
-    return Column(
+    return Stack(
       children: [
-        DocumentTabStrip(workspace: workspace),
-        Expanded(child: Stack(children: [_canvasArea(workspace), viewport])),
+        Padding(
+          padding: EdgeInsets.only(
+            top: hasDocumentTabs ? FanCadTokens.tabBarHeight : 0,
+          ),
+          child: _canvasArea(workspace),
+        ),
+        viewport,
       ],
     );
   }

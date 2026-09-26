@@ -335,6 +335,17 @@ void main() {
           .strong,
       isFalse,
     );
+    final strip = tester.getRect(find.byType(DocumentTabStrip));
+    final canvas = tester.getRect(find.byKey(const Key('canvas-hud')));
+    final chats = tester.getRect(
+      find.byKey(const Key('assistant-session-tabs')),
+    );
+    final sidebarHeader = tester.getRect(find.byType(PanelHeader));
+    expect(strip.top, sidebarHeader.top);
+    expect(strip.top, chats.top);
+    expect(strip.left, closeTo(canvas.left, 1));
+    expect(strip.right, closeTo(canvas.right, 1));
+    expect(strip.bottom, closeTo(canvas.top, 1));
   });
 
   testWidgets('command actions sit on the same right edge as the action bar', (
