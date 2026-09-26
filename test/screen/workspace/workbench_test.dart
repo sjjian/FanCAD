@@ -61,10 +61,7 @@ void main() {
       matching: find.byType(FanCadRow),
     );
     final reveal = tester.getRect(
-      find.descendant(
-        of: rowFinder,
-        matching: find.byType(FanCadIconButton),
-      ),
+      find.descendant(of: rowFinder, matching: find.byType(FanCadIconButton)),
     );
     final row = tester.getRect(rowFinder);
     expect(reveal.right, moreOrLessEquals(row.right, epsilon: 1));

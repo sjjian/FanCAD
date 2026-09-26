@@ -52,10 +52,8 @@ abstract class JsEngine {
 ///
 /// [memoryLimit] and [stackSize] are per-plugin, which is the only resource
 /// ceiling the engine can actually enforce for us.
-typedef JsEngineFactory = JsEngine Function({
-  required int memoryLimit,
-  required int stackSize,
-});
+typedef JsEngineFactory =
+    JsEngine Function({required int memoryLimit, required int stackSize});
 
 /// A deliberately simple engine for tests and for hosts without the native
 /// library.

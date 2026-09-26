@@ -212,4 +212,3 @@ class RenderScene {
       '$drawCallCount draw calls, '
       '${(buildTime.inMicroseconds / 1000).toStringAsFixed(1)}ms)';
 }
-

@@ -47,7 +47,4 @@ Map<String, Object?> failed(String message) => {
   'message': message,
 };
 
-Map<String, Object?> ok(Map<String, Object?> data) => {
-  'status': 'ok',
-  ...data,
-};
+Map<String, Object?> ok(Map<String, Object?> data) => {'status': 'ok', ...data};

@@ -114,11 +114,7 @@ void main() {
     final document = CadDocument();
     for (var i = 0; i < 100; i++) {
       document.addEntity(
-        LineEntity(
-          id: i,
-          start: Vec2(i * 10, 0),
-          end: Vec2(i * 10 + 8, 8),
-        ),
+        LineEntity(id: i, start: Vec2(i * 10, 0), end: Vec2(i * 10 + 8, 8)),
       );
     }
     builder.build(document, CadViewport.fit(document.extents, size));
@@ -131,9 +127,7 @@ void main() {
     final ids = [
       for (var i = 0; i < 20; i++)
         document
-            .addEntity(
-              CircleEntity(id: 0, center: Vec2(i * 10, 0), radius: 4),
-            )
+            .addEntity(CircleEntity(id: 0, center: Vec2(i * 10, 0), radius: 4))
             .id,
     ];
     final cache = TessellationCache();
@@ -156,10 +150,10 @@ void main() {
     }
     // A budget far too small for the whole drawing.
     final cache = TessellationCache(budget: 2000);
-    SceneBuilder(palette: AciPalette.dark, cache: cache).build(
-      document,
-      CadViewport.fit(document.extents, size),
-    );
+    SceneBuilder(
+      palette: AciPalette.dark,
+      cache: cache,
+    ).build(document, CadViewport.fit(document.extents, size));
     expect(cache.totalWeight, lessThanOrEqualTo(2000));
   });
 

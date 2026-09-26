@@ -29,8 +29,8 @@ String buildTypeDeclarations({
   }
   buffer.writeln();
   buffer.writeln('declare namespace FanCadCommands {');
-  for (final command in commands.toList()
-    ..sort((a, b) => a.id.compareTo(b.id))) {
+  for (final command
+      in commands.toList()..sort((a, b) => a.id.compareTo(b.id))) {
     buffer.writeln('  /**');
     buffer.writeln('   * ${command.title}');
     if (command.description.isNotEmpty) {
@@ -67,8 +67,7 @@ String _tsTypeOf(ParamSpec param) => switch (param.type) {
   ParamType.boolean => 'boolean',
   ParamType.point => 'Point',
   ParamType.selection => 'number[]',
-  ParamType.choice =>
-    param.options.map((option) => "'$option'").join(' | '),
+  ParamType.choice => param.options.map((option) => "'$option'").join(' | '),
   ParamType.json => 'Record<string, unknown>',
   ParamType.points => 'Point[]',
 };

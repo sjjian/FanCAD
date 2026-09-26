@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-
 /// A compact accent tag, as used on command palette rows.
 class FanCadBadge extends StatelessWidget {
   const FanCadBadge({super.key, required this.text, this.onTap, this.selected});

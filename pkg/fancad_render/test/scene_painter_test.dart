@@ -221,8 +221,7 @@ void main() {
     // goes through [DrawingCache] rather than translating a canvas by hand.
     final from = window();
     final scene = build(rules([0]), from);
-    final cache = DrawingCache()
-      ..store(scene, ScenePainter().record(scene), 0);
+    final cache = DrawingCache()..store(scene, ScenePainter().record(scene), 0);
     addTearDown(cache.dispose);
 
     final to = from.panned(const Offset(0, -2)).pixelLocked();
@@ -242,47 +241,49 @@ void main() {
     );
   });
 
-  test('a pan inside the overscan still has the linework that was off screen',
-      () async {
-    // A vertical hairline sitting in the overscan to the left of a 40 px
-    // window. Replaying a pan used to reveal a blank strip there because the
-    // recording had been culled to the widget, throwing the extra geometry
-    // away even though the batches still held it.
-    final document = CadDocument()
-      ..addEntity(
-        const LineEntity(
-          id: 0,
-          props: EntityProps(color: CadColor.indexed(3)),
-          start: Vec2(-25, -10),
-          end: Vec2(-25, 10),
+  test(
+    'a pan inside the overscan still has the linework that was off screen',
+    () async {
+      // A vertical hairline sitting in the overscan to the left of a 40 px
+      // window. Replaying a pan used to reveal a blank strip there because the
+      // recording had been culled to the widget, throwing the extra geometry
+      // away even though the batches still held it.
+      final document = CadDocument()
+        ..addEntity(
+          const LineEntity(
+            id: 0,
+            props: EntityProps(color: CadColor.indexed(3)),
+            start: Vec2(-25, -10),
+            end: Vec2(-25, 10),
+          ),
+        );
+      final from = window();
+      final scene = build(document, from);
+      final to = from.panned(const Offset(12, 0)).pixelLocked();
+      expect(scene.covers(to), isTrue);
+
+      final cache = DrawingCache()
+        ..store(scene, ScenePainter().record(scene), 0);
+      addTearDown(cache.dispose);
+
+      final placement = cache.placementFor(to, 0, interactive: false);
+      expect(placement, isNotNull);
+      final raster = await rasterFrom(to, (canvas) {
+        cache.replay(canvas, placement!, to.devicePixelRatio);
+      });
+
+      expect(raster.litColumns(Channel.green), isNotEmpty);
+      expect(
+        raster.peakInColumn(
+          raster.litColumns(Channel.green).single,
+          Channel.green,
+          from: 10,
+          to: 30,
         ),
+        greaterThan(solidCore),
       );
-    final from = window();
-    final scene = build(document, from);
-    final to = from.panned(const Offset(12, 0)).pixelLocked();
-    expect(scene.covers(to), isTrue);
-
-    final cache = DrawingCache()
-      ..store(scene, ScenePainter().record(scene), 0);
-    addTearDown(cache.dispose);
-
-    final placement = cache.placementFor(to, 0, interactive: false);
-    expect(placement, isNotNull);
-    final raster = await rasterFrom(to, (canvas) {
-      cache.replay(canvas, placement!, to.devicePixelRatio);
-    });
-
-    expect(raster.litColumns(Channel.green), isNotEmpty);
-    expect(
-      raster.peakInColumn(
-        raster.litColumns(Channel.green).single,
-        Channel.green,
-        from: 10,
-        to: 30,
-      ),
-      greaterThan(solidCore),
-    );
-  });
+    },
+  );
 
   test('a hairline at device ratio 2 occupies one physical pixel', () async {
     final document = CadDocument()
@@ -314,43 +315,46 @@ void main() {
     );
   });
 
-  test('a vertical dimension label still rasterises when wrap is unset', () async {
-    const labelled = CadViewport(
-      center: Vec2.zero(),
-      scale: 1,
-      size: Size(200, 200),
-    );
-    final scene = RenderScene.single(
-      viewport: labelled,
-      texts: const [
-        TextItem(
-          text: 'AL',
-          origin: Offset(100, 100),
-          pixelHeight: 20,
-          rotation: -1.5707963267948966,
-          color: Color(0xFFFFFF00),
-          hAlign: 1,
-          vAlign: 2,
-          boxAnchor: true,
-          fontFamily: 'Roboto',
-        ),
-      ],
-      entityCount: 1,
-      coverage: const Bounds2(-100, -100, 100, 100),
-    );
-    final picture = ScenePainter().record(scene);
-    final image = await picture.toImage(200, 200);
-    final bytes = await image.toByteData();
-    var yellow = 0;
-    for (var i = 0; i + 3 < (bytes?.lengthInBytes ?? 0); i += 4) {
-      if (bytes!.getUint8(i) > 180 &&
-          bytes.getUint8(i + 1) > 180 &&
-          bytes.getUint8(i + 2) < 80) {
-        yellow++;
+  test(
+    'a vertical dimension label still rasterises when wrap is unset',
+    () async {
+      const labelled = CadViewport(
+        center: Vec2.zero(),
+        scale: 1,
+        size: Size(200, 200),
+      );
+      final scene = RenderScene.single(
+        viewport: labelled,
+        texts: const [
+          TextItem(
+            text: 'AL',
+            origin: Offset(100, 100),
+            pixelHeight: 20,
+            rotation: -1.5707963267948966,
+            color: Color(0xFFFFFF00),
+            hAlign: 1,
+            vAlign: 2,
+            boxAnchor: true,
+            fontFamily: 'Roboto',
+          ),
+        ],
+        entityCount: 1,
+        coverage: const Bounds2(-100, -100, 100, 100),
+      );
+      final picture = ScenePainter().record(scene);
+      final image = await picture.toImage(200, 200);
+      final bytes = await image.toByteData();
+      var yellow = 0;
+      for (var i = 0; i + 3 < (bytes?.lengthInBytes ?? 0); i += 4) {
+        if (bytes!.getUint8(i) > 180 &&
+            bytes.getUint8(i + 1) > 180 &&
+            bytes.getUint8(i + 2) < 80) {
+          yellow++;
+        }
       }
-    }
-    expect(yellow, greaterThan(10));
-    image.dispose();
-    picture.dispose();
-  });
+      expect(yellow, greaterThan(10));
+      image.dispose();
+      picture.dispose();
+    },
+  );
 }

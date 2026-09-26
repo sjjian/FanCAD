@@ -172,9 +172,7 @@ class HostBridge {
   }
 
   Map<String, Object?> _listCommands() => {
-    'commands': [
-      for (final command in delegate.commands) command.toJson(),
-    ],
+    'commands': [for (final command in delegate.commands) command.toJson()],
   };
 
   Map<String, Object?> _summary() {
@@ -203,14 +201,13 @@ class HostBridge {
     final limit = (filter['limit'] as num?)?.toInt() ?? 500;
 
     final wanted = <String>{
-      if (kinds is List) for (final value in kinds) '$value',
+      if (kinds is List)
+        for (final value in kinds) '$value',
       if (kinds is String) kinds,
     };
     Bounds2? bounds;
     if (window is List && window.length >= 4) {
-      final values = [
-        for (final value in window) (value as num).toDouble(),
-      ];
+      final values = [for (final value in window) (value as num).toDouble()];
       bounds = Bounds2(values[0], values[1], values[2], values[3]);
     }
 
@@ -288,7 +285,8 @@ class HostBridge {
         '"operations" must be an array',
       );
     }
-    final label = params['label'] is String && (params['label'] as String).isNotEmpty
+    final label =
+        params['label'] is String && (params['label'] as String).isNotEmpty
         ? params['label'] as String
         : manifest.name;
 
@@ -484,8 +482,7 @@ class HostBridge {
       lineType: props['lineType'] is String
           ? props['lineType'] as String
           : 'ByLayer',
-      lineWeight: (props['lineWeight'] as num?)?.toInt() ??
-          LineWeight.byLayer,
+      lineWeight: (props['lineWeight'] as num?)?.toInt() ?? LineWeight.byLayer,
     );
   }
 
@@ -527,44 +524,45 @@ class HostBridge {
       'kind': entity.kind.name,
       'layer': entity.props.layer,
       'bounds': [bounds.minX, bounds.minY, bounds.maxX, bounds.maxY],
-      if (detailed) ...switch (entity) {
-        LineEntity(:final start, :final end) => {
-          'start': [start.x, start.y],
-          'end': [end.x, end.y],
-        },
-        CircleEntity(:final center, :final radius) => {
-          'center': [center.x, center.y],
-          'radius': radius,
-        },
-        ArcEntity(
-          :final center,
-          :final radius,
-          :final startAngle,
-          :final endAngle,
-        ) =>
-          {
+      if (detailed)
+        ...switch (entity) {
+          LineEntity(:final start, :final end) => {
+            'start': [start.x, start.y],
+            'end': [end.x, end.y],
+          },
+          CircleEntity(:final center, :final radius) => {
             'center': [center.x, center.y],
             'radius': radius,
-            'startAngle': startAngle,
-            'endAngle': endAngle,
           },
-        PolylineEntity(:final closed, :final vertexCount) => {
-          'points': [
-            for (var i = 0; i < vertexCount; i++)
-              [entity.vertexAt(i).x, entity.vertexAt(i).y],
-          ],
-          'closed': closed,
+          ArcEntity(
+            :final center,
+            :final radius,
+            :final startAngle,
+            :final endAngle,
+          ) =>
+            {
+              'center': [center.x, center.y],
+              'radius': radius,
+              'startAngle': startAngle,
+              'endAngle': endAngle,
+            },
+          PolylineEntity(:final closed, :final vertexCount) => {
+            'points': [
+              for (var i = 0; i < vertexCount; i++)
+                [entity.vertexAt(i).x, entity.vertexAt(i).y],
+            ],
+            'closed': closed,
+          },
+          TextEntity(:final position, :final content, :final height) => {
+            'position': [position.x, position.y],
+            'text': content,
+            'height': height,
+          },
+          PointEntity(:final position) => {
+            'position': [position.x, position.y],
+          },
+          _ => const <String, Object?>{},
         },
-        TextEntity(:final position, :final content, :final height) => {
-          'position': [position.x, position.y],
-          'text': content,
-          'height': height,
-        },
-        PointEntity(:final position) => {
-          'position': [position.x, position.y],
-        },
-        _ => const <String, Object?>{},
-      },
     };
   }
 }

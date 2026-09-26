@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-
 /// A compact drafting-mode toggle.
 ///
 /// On is a slightly darker grey wash and the same ink as the rest of the

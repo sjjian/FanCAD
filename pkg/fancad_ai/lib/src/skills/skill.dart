@@ -40,11 +40,15 @@ class InMemorySkillRegistry implements SkillRegistry {
 
   @override
   List<SkillSummary> listSummaries() =>
-      _skills.values.map((skill) => SkillSummary(
-        name: skill.name,
-        description: skill.description,
-        path: skill.path,
-      )).toList()
+      _skills.values
+          .map(
+            (skill) => SkillSummary(
+              name: skill.name,
+              description: skill.description,
+              path: skill.path,
+            ),
+          )
+          .toList()
         ..sort((a, b) => a.name.compareTo(b.name));
 
   @override

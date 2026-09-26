@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-
 /// How a [FanCadTab] paints its selected and hover chrome.
 enum FanCadTabStyle {
   /// Document and assistant session tabs: quiet fill, bottom accent.

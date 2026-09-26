@@ -40,8 +40,12 @@ class PluginRuntime {
   final JsEngineFactory createEngine;
 
   /// Forwards a plugin's request to the application.
-  final Future<Object?> Function(String pluginId, String method,
-      Map<String, Object?> params) callHost;
+  final Future<Object?> Function(
+    String pluginId,
+    String method,
+    Map<String, Object?> params,
+  )
+  callHost;
 
   final String hostVersion;
   final int memoryLimit;
@@ -131,10 +135,7 @@ class PluginRuntime {
         '${manifest.id} is already loaded',
       );
     }
-    final engine = createEngine(
-      memoryLimit: memoryLimit,
-      stackSize: stackSize,
-    );
+    final engine = createEngine(memoryLimit: memoryLimit, stackSize: stackSize);
     try {
       engine.defineFunction(
         BootstrapGlobals.rpc,
@@ -156,10 +157,12 @@ class PluginRuntime {
 
       // `activate` is optional: a plugin whose whole job is registering
       // commands at load time has nothing to put in it.
-      await _maybeAwait(engine.evaluate(
-        'typeof activate === "function" ? activate(fancad) : null',
-        name: '${manifest.id}/activate',
-      ));
+      await _maybeAwait(
+        engine.evaluate(
+          'typeof activate === "function" ? activate(fancad) : null',
+          name: '${manifest.id}/activate',
+        ),
+      );
 
       final registered = _decodeRegistered(engine);
       _plugins[manifest.id] = _LoadedPlugin(
@@ -303,10 +306,7 @@ class PluginRuntime {
       });
     } catch (error) {
       return jsonEncode({
-        'error': {
-          'code': RpcErrorCode.internalError,
-          'message': '$error',
-        },
+        'error': {'code': RpcErrorCode.internalError, 'message': '$error'},
       });
     }
   }
@@ -333,10 +333,7 @@ class PluginRuntime {
   _LoadedPlugin _require(String pluginId) {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
-      throw RpcException(
-        RpcErrorCode.invalidParams,
-        '$pluginId is not loaded',
-      );
+      throw RpcException(RpcErrorCode.invalidParams, '$pluginId is not loaded');
     }
     return plugin;
   }
@@ -397,10 +394,7 @@ class PluginRuntime {
   static String _requireString(Map<String, Object?> params, String key) {
     final value = params[key];
     if (value is! String) {
-      throw RpcException(
-        RpcErrorCode.invalidParams,
-        '"$key" must be a string',
-      );
+      throw RpcException(RpcErrorCode.invalidParams, '"$key" must be a string');
     }
     return value;
   }

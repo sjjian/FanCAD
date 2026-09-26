@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-
 /// A dense selectable row, the building block of every panel list.
 class FanCadRow extends StatefulWidget {
   const FanCadRow({

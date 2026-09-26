@@ -67,7 +67,9 @@ class McpLock {
   static Future<void> write(String path, McpLock lock) async {
     final file = File(path);
     await file.parent.create(recursive: true);
-    await file.writeAsString('${const JsonEncoder.withIndent('  ').convert(lock.toJson())}\n');
+    await file.writeAsString(
+      '${const JsonEncoder.withIndent('  ').convert(lock.toJson())}\n',
+    );
   }
 
   static Future<void> remove(String path) async {

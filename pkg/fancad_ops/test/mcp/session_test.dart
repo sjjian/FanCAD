@@ -4,7 +4,10 @@ import 'package:test/test.dart';
 void main() {
   test('tools/list advertises only fancad', () async {
     final session = McpSession(
-      dispatch: (request) async => {'status': 'ok', 'echo': request.action.name},
+      dispatch: (request) async => {
+        'status': 'ok',
+        'echo': request.action.name,
+      },
     );
     final reply = await session.handle(
       const JsonRpcMessage(id: 1, method: 'tools/list'),
@@ -52,7 +55,9 @@ void main() {
       ),
       isNull,
     );
-    final ping = await session.handle(const JsonRpcMessage(id: 3, method: 'ping'));
+    final ping = await session.handle(
+      const JsonRpcMessage(id: 3, method: 'ping'),
+    );
     expect(ping!.result, isNotNull);
   });
 }

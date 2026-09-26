@@ -41,9 +41,7 @@ void main() {
   });
 
   test('a trailing slash on the base URL does not double the path', () async {
-    final client = _FakeClient(
-      http.Response(_choiceJson(content: 'ok'), 200),
-    );
+    final client = _FakeClient(http.Response(_choiceJson(content: 'ok'), 200));
     final provider = OpenAiCompatibleProvider(
       apiKey: 'test-key',
       baseUrl: 'https://api.example.com/v1/',
@@ -123,54 +121,56 @@ void main() {
     expect(client.lastHeaders['authorization'], 'Bearer test-key');
   });
 
-  test('tool calls skip junk entries and keep raw JSON that is not an object',
-      () async {
-    final client = _FakeClient(
-      http.Response(
-        jsonEncode({
-          'choices': [
-            {
-              'message': {
-                'tool_calls': [
-                  'not-a-map',
-                  {'function': 'not-a-map'},
-                  {
-                    'function': {'name': ''},
-                  },
-                  {
-                    'function': {
-                      'name': 'draw_line',
-                      'arguments': '{not json',
+  test(
+    'tool calls skip junk entries and keep raw JSON that is not an object',
+    () async {
+      final client = _FakeClient(
+        http.Response(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {
+                  'tool_calls': [
+                    'not-a-map',
+                    {'function': 'not-a-map'},
+                    {
+                      'function': {'name': ''},
                     },
-                  },
-                  {
-                    'id': 'c2',
-                    'function': {
-                      'name': 'query_summary',
-                      'arguments': {'ok': true},
+                    {
+                      'function': {
+                        'name': 'draw_line',
+                        'arguments': '{not json',
+                      },
                     },
-                  },
-                ],
+                    {
+                      'id': 'c2',
+                      'function': {
+                        'name': 'query_summary',
+                        'arguments': {'ok': true},
+                      },
+                    },
+                  ],
+                },
               },
-            },
-          ],
-        }),
-        200,
-      ),
-    );
-    final provider = OpenAiCompatibleProvider(
-      apiKey: 'test-key',
-      client: client,
-    );
+            ],
+          }),
+          200,
+        ),
+      );
+      final provider = OpenAiCompatibleProvider(
+        apiKey: 'test-key',
+        client: client,
+      );
 
-    final events = await provider.complete(_userRequest()).toList();
-    final calls = (events.first as LlmToolCalls).calls;
-    expect(calls, hasLength(2));
-    expect(calls[0].id, 'call_0');
-    expect(calls[0].arguments, {'raw': '{not json'});
-    expect(calls[1].id, 'c2');
-    expect(calls[1].arguments['ok'], true);
-  });
+      final events = await provider.complete(_userRequest()).toList();
+      final calls = (events.first as LlmToolCalls).calls;
+      expect(calls, hasLength(2));
+      expect(calls[0].id, 'call_0');
+      expect(calls[0].arguments, {'raw': '{not json'});
+      expect(calls[1].id, 'c2');
+      expect(calls[1].arguments['ok'], true);
+    },
+  );
 
   test('HTTP errors, broken JSON and empty choices become LlmError', () async {
     Future<LlmEvent> first(http.Response response) {
@@ -189,11 +189,7 @@ void main() {
 
     expect(
       await first(http.Response('not-json', 200)),
-      isA<LlmError>().having(
-        (e) => e.message,
-        'message',
-        contains('not JSON'),
-      ),
+      isA<LlmError>().having((e) => e.message, 'message', contains('not JSON')),
     );
     expect(
       await first(http.Response('{"choices":[]}', 200)),
@@ -249,67 +245,69 @@ void main() {
     ]);
   });
 
-  test('leftover reasoning_content is a thinking delta, not reply text',
-      () async {
-    final body = [
-      'data: ${jsonEncode({
-        'choices': [
-          {
-            'delta': {'reasoning_content': 'plan '},
-          },
-        ],
-      })}',
-      'data: ${jsonEncode({
-        'choices': [
-          {
-            'delta': {'content': 'ok'},
-            'finish_reason': 'stop',
-          },
-        ],
-      })}',
-      'data: [DONE]',
-    ].join('\n');
-    final provider = OpenAiCompatibleProvider(
-      apiKey: 'test-key',
-      client: _FakeClient(
-        http.Response(
-          body,
-          200,
-          headers: {'content-type': 'text/event-stream'},
+  test(
+    'leftover reasoning_content is a thinking delta, not reply text',
+    () async {
+      final body = [
+        'data: ${jsonEncode({
+          'choices': [
+            {
+              'delta': {'reasoning_content': 'plan '},
+            },
+          ],
+        })}',
+        'data: ${jsonEncode({
+          'choices': [
+            {
+              'delta': {'content': 'ok'},
+              'finish_reason': 'stop',
+            },
+          ],
+        })}',
+        'data: [DONE]',
+      ].join('\n');
+      final provider = OpenAiCompatibleProvider(
+        apiKey: 'test-key',
+        client: _FakeClient(
+          http.Response(
+            body,
+            200,
+            headers: {'content-type': 'text/event-stream'},
+          ),
         ),
-      ),
-    );
+      );
 
-    final events = await provider.complete(_userRequest()).toList();
-    expect(events, [
-      isA<LlmReasoningDelta>().having((event) => event.text, 'text', 'plan '),
-      isA<LlmTextDelta>().having((event) => event.text, 'text', 'ok'),
-      isA<LlmFinished>(),
-    ]);
+      final events = await provider.complete(_userRequest()).toList();
+      expect(events, [
+        isA<LlmReasoningDelta>().having((event) => event.text, 'text', 'plan '),
+        isA<LlmTextDelta>().having((event) => event.text, 'text', 'ok'),
+        isA<LlmFinished>(),
+      ]);
 
-    final once = OpenAiCompatibleProvider(
-      apiKey: 'test-key',
-      client: _FakeClient(
-        http.Response(
-          jsonEncode({
-            'choices': [
-              {
-                'finish_reason': 'stop',
-                'message': {
-                  'reasoning_content': 'hidden leftover',
-                  'content': 'visible',
+      final once = OpenAiCompatibleProvider(
+        apiKey: 'test-key',
+        client: _FakeClient(
+          http.Response(
+            jsonEncode({
+              'choices': [
+                {
+                  'finish_reason': 'stop',
+                  'message': {
+                    'reasoning_content': 'hidden leftover',
+                    'content': 'visible',
+                  },
                 },
-              },
-            ],
-          }),
-          200,
+              ],
+            }),
+            200,
+          ),
         ),
-      ),
-    );
-    final completion = await once.completeOnce(_userRequest());
-    expect(completion.text, 'visible');
-    expect(completion.text, isNot(contains('hidden leftover')));
-  });
+      );
+      final completion = await once.completeOnce(_userRequest());
+      expect(completion.text, 'visible');
+      expect(completion.text, isNot(contains('hidden leftover')));
+    },
+  );
 
   test('a leftover empty-choices usage chunk is not reply text', () async {
     final body = [
@@ -323,11 +321,7 @@ void main() {
       })}',
       'data: ${jsonEncode({
         'choices': <Object?>[],
-        'usage': {
-          'prompt_tokens': 12400,
-          'completion_tokens': 12,
-          'total_tokens': 12412,
-        },
+        'usage': {'prompt_tokens': 12400, 'completion_tokens': 12, 'total_tokens': 12412},
       })}',
       'data: [DONE]',
     ].join('\n');
@@ -375,11 +369,7 @@ void main() {
       'data: [DONE]',
     ].join('\n');
     final client = _FakeClient(
-      http.Response(
-        body,
-        200,
-        headers: {'content-type': 'text/event-stream'},
-      ),
+      http.Response(body, 200, headers: {'content-type': 'text/event-stream'}),
     );
     final provider = OpenAiCompatibleProvider(
       apiKey: 'test-key',
@@ -408,10 +398,7 @@ void main() {
           200,
         ),
       );
-      final ok = OpenAiCompatibleProvider(
-        apiKey: 'test-key',
-        client: client,
-      );
+      final ok = OpenAiCompatibleProvider(apiKey: 'test-key', client: client);
       final completion = await ok.completeOnce(_userRequest());
       expect(jsonDecode(client.lastBody)['stream'], isFalse);
       expect(completion.text, 'hello');
@@ -470,13 +457,13 @@ LlmRequest _userRequest() =>
     const LlmRequest(messages: [LlmMessage.user('hi')]);
 
 String _choiceJson({String? content, String? finishReason}) => jsonEncode({
-      'choices': [
-        {
-          'finish_reason': ?finishReason,
-          'message': {'content': ?content},
-        },
-      ],
-    });
+  'choices': [
+    {
+      'finish_reason': ?finishReason,
+      'message': {'content': ?content},
+    },
+  ],
+});
 
 class _FakeClient extends http.BaseClient {
   _FakeClient(this._response) : _error = null;

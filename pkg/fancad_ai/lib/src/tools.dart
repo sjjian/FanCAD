@@ -22,10 +22,7 @@ class CommandToolCatalog {
 }
 
 /// The command a `fancad` run refers to. Other tool names are unknown.
-CommandDescriptor? commandForCall(
-  CommandRegistry registry,
-  LlmToolCall call,
-) {
+CommandDescriptor? commandForCall(CommandRegistry registry, LlmToolCall call) {
   if (call.name != fancadToolName) return null;
   final path = '${call.arguments['path'] ?? ''}'.trim();
   if (path.isEmpty) return null;

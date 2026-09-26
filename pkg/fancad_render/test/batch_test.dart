@@ -5,17 +5,20 @@ import 'package:fancad_render/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('a line batch vertex buffer grows, exposes a filled view and can clear', () {
-    final buffer = LineBatch(const BatchKey(Color(0xFF000000), 1)).vertices;
-    expect(buffer.isEmpty, isTrue);
-    buffer.add2(1, 2);
-    buffer.add4(3, 4, 5, 6);
-    expect(buffer.length, 6);
-    expect(buffer.view, Float32List.fromList([1, 2, 3, 4, 5, 6]));
-    buffer.clear();
-    expect(buffer.isEmpty, isTrue);
-    expect(buffer.length, 0);
-  });
+  test(
+    'a line batch vertex buffer grows, exposes a filled view and can clear',
+    () {
+      final buffer = LineBatch(const BatchKey(Color(0xFF000000), 1)).vertices;
+      expect(buffer.isEmpty, isTrue);
+      buffer.add2(1, 2);
+      buffer.add4(3, 4, 5, 6);
+      expect(buffer.length, 6);
+      expect(buffer.view, Float32List.fromList([1, 2, 3, 4, 5, 6]));
+      buffer.clear();
+      expect(buffer.isEmpty, isTrue);
+      expect(buffer.length, 0);
+    },
+  );
 
   test('a line batch skips short runs and closes a ring', () {
     const key = BatchKey(Color(0xFFFFFFFF), 1);

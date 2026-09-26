@@ -88,13 +88,13 @@ abstract final class RpcErrorCode {
 /// A null [id] marks a notification: fire and forget, no reply expected. This
 /// is what lets events flow to plugins without the host waiting on every one.
 @immutable
-@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
+@JsonSerializable(
+  createFactory: false,
+  includeIfNull: false,
+  ignoreUnannotated: true,
+)
 class RpcRequest {
-  const RpcRequest({
-    required this.method,
-    this.params = const {},
-    this.id,
-  });
+  const RpcRequest({required this.method, this.params = const {}, this.id});
 
   const RpcRequest.notification(this.method, [this.params = const {}])
     : id = null;
@@ -116,10 +116,7 @@ class RpcRequest {
   static RpcRequest fromJson(Map<String, Object?> json) {
     final method = json['method'];
     if (method is! String) {
-      throw const RpcException(
-        RpcErrorCode.invalidRequest,
-        'missing "method"',
-      );
+      throw const RpcException(RpcErrorCode.invalidRequest, 'missing "method"');
     }
     final params = json['params'];
     return RpcRequest(
@@ -166,8 +163,9 @@ class RpcResponse {
   }
 
   @override
-  String toString() =>
-      isError ? 'RpcResponse($id, error: ${error!.message})' : 'RpcResponse($id)';
+  String toString() => isError
+      ? 'RpcResponse($id, error: ${error!.message})'
+      : 'RpcResponse($id)';
 }
 
 /// The error payload of a failed response.
@@ -332,7 +330,8 @@ class RpcPeer {
   void close([RpcError? reason]) {
     if (_closed) return;
     _closed = true;
-    final error = reason ??
+    final error =
+        reason ??
         const RpcError(RpcErrorCode.workerDead, 'the connection was closed');
     final pending = List.of(_pending.values);
     _pending.clear();

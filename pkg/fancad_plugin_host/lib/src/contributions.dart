@@ -14,8 +14,9 @@ class ContributionRegistry {
   final Map<String, _OwnedPanel> _panels = {};
   final List<_OwnedMenuItem> _menuItems = [];
   final List<_OwnedKeybinding> _keybindings = [];
-  final StreamController<void> _changes =
-      StreamController<void>.broadcast(sync: true);
+  final StreamController<void> _changes = StreamController<void>.broadcast(
+    sync: true,
+  );
 
   /// Fires when contributions change, so the shell can rebuild its chrome.
   Stream<void> get changes => _changes.stream;

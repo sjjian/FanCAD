@@ -22,13 +22,8 @@ class McpSession {
       case 'initialize':
         return JsonRpcMessage.resultOf(message.id, {
           'protocolVersion': '2024-11-05',
-          'capabilities': {
-            'tools': <String, Object?>{},
-          },
-          'serverInfo': {
-            'name': 'fancad',
-            'version': '0.1.0',
-          },
+          'capabilities': {'tools': <String, Object?>{}},
+          'serverInfo': {'name': 'fancad', 'version': '0.1.0'},
         });
       case 'ping':
         return JsonRpcMessage.resultOf(message.id, const {});

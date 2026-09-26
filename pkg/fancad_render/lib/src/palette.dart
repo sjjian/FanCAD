@@ -11,7 +11,8 @@ import 'package:fancad_core/fancad_core.dart';
 /// usually being viewed on a dark canvas, so very dark colours are lifted
 /// enough to stay legible without changing their hue.
 class AciPalette {
-  AciPalette({required this.background}) : _isDarkBackground = _isDark(background);
+  AciPalette({required this.background})
+    : _isDarkBackground = _isDark(background);
 
   /// The dark canvas most CAD applications default to, and the value FanCAD
   /// uses.
@@ -96,8 +97,7 @@ class AciPalette {
   static bool _isDark(Color color) {
     // Rec. 601 luma, which tracks perceived brightness well enough to decide
     // whether index 7 should be white or black.
-    final luma =
-        0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
+    final luma = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
     return luma < 0.5;
   }
 

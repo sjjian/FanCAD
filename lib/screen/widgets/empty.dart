@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-
 /// A panel-centered empty state. Optional action is a leftover accent row.
 class FanCadEmpty extends StatelessWidget {
   const FanCadEmpty({

@@ -257,11 +257,7 @@ class TessellationCache {
     int bucket, {
     double minExtent = 0,
   }) {
-    final key = _CacheKey(
-      entity.id,
-      bucket,
-      extentBucket(minExtent),
-    );
+    final key = _CacheKey(entity.id, bucket, extentBucket(minExtent));
     final existing = _entries.remove(key);
     if (existing == null) {
       _misses++;
@@ -281,11 +277,7 @@ class TessellationCache {
   }) {
     final weight = recorder.weight;
     if (weight < minStoreWeight) return;
-    final key = _CacheKey(
-      entity.id,
-      bucket,
-      extentBucket(minExtent),
-    );
+    final key = _CacheKey(entity.id, bucket, extentBucket(minExtent));
     if (_entries.containsKey(key)) {
       _totalWeight -= _weights.remove(key) ?? 0;
       _entries.remove(key);

@@ -40,7 +40,12 @@ class Raster {
       _bytes.getUint8(((y * width) + x) * 4 + channel.offset);
 
   /// The brightest value in a run of columns on one row.
-  int peakInRow(int row, Channel channel, {required int from, required int to}) {
+  int peakInRow(
+    int row,
+    Channel channel, {
+    required int from,
+    required int to,
+  }) {
     var peak = 0;
     for (var x = from; x <= to; x++) {
       final value = at(x, row, channel);

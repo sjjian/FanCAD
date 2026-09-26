@@ -4,7 +4,13 @@ import 'json.dart';
 
 /// One JSON-RPC 2.0 message, encoded as a single line.
 class JsonRpcMessage {
-  const JsonRpcMessage({this.id, this.method, this.params, this.result, this.error});
+  const JsonRpcMessage({
+    this.id,
+    this.method,
+    this.params,
+    this.result,
+    this.error,
+  });
 
   final Object? id;
   final String? method;
@@ -49,10 +55,6 @@ class JsonRpcMessage {
     Object? data,
   }) => JsonRpcMessage(
     id: id,
-    error: {
-      'code': code,
-      'message': message,
-      'data': ?data,
-    },
+    error: {'code': code, 'message': message, 'data': ?data},
   );
 }

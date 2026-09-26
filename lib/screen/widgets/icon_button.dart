@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-
 /// A flat square icon button, as used in the activity bar and tab strip.
 class FanCadIconButton extends StatefulWidget {
   const FanCadIconButton({

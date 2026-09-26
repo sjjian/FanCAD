@@ -11,11 +11,7 @@ void main() {
   CadDocument paperWithModelLine() {
     final document = CadDocument();
     document.addEntity(
-      LineEntity(
-        id: 0,
-        start: const Vec2(0, 0),
-        end: const Vec2(80, 0),
-      ),
+      LineEntity(id: 0, start: const Vec2(0, 0), end: const Vec2(80, 0)),
       blockName: document.modelSpaceBlockName,
     );
     document.addLayout(
@@ -52,11 +48,7 @@ void main() {
     final document = paperWithModelLine();
     final view = CadViewport.fit(document.extents, size);
 
-    final hit = const Picker().pickTopmost(
-      document,
-      view,
-      const Vec2(280, 80),
-    );
+    final hit = const Picker().pickTopmost(document, view, const Vec2(280, 80));
 
     expect(hit, isNull);
   });
@@ -362,10 +354,9 @@ void main() {
         .id;
     document.indexFor(document.modelSpaceBlockName);
 
-    Transaction(document).transform(
-      dim,
-      Mat3.rotationAbout(math.pi / 2, Vec2.zero()),
-    );
+    Transaction(
+      document,
+    ).transform(dim, Mat3.rotationAbout(math.pi / 2, Vec2.zero()));
 
     const view = CadViewport(
       center: Vec2(-2, 5),

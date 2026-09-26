@@ -1524,8 +1524,7 @@ class _AskSubmitButtonState extends State<_AskSubmitButton> {
     if (mounted) setState(() {});
   }
 
-  bool get _canSubmit =>
-      widget.custom.text.trim().isNotEmpty || widget.hasPick;
+  bool get _canSubmit => widget.custom.text.trim().isNotEmpty || widget.hasPick;
 
   @override
   Widget build(BuildContext context) {
@@ -1798,9 +1797,7 @@ class _ComposerState extends ConsumerState<_Composer> {
   }
 
   bool get _canSend =>
-      !widget.busy &&
-      widget.enabled &&
-      (_textReady || widget.pins.isNotEmpty);
+      !widget.busy && widget.enabled && (_textReady || widget.pins.isNotEmpty);
 
   /// Empty to non-empty flips the send button. A chat switch writes the
   /// controller from the panel build, so that case waits until the frame ends.

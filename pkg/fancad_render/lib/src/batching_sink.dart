@@ -241,10 +241,7 @@ class BatchingSink implements GeometrySink {
     void segment(double x0, double y0, double x1, double y1) {
       final cut = _clipSegment(x0, y0, x1, y1, clip);
       if (cut == null) return;
-      polyline(
-        Float64List.fromList([cut.$1, cut.$2, cut.$3, cut.$4]),
-        style,
-      );
+      polyline(Float64List.fromList([cut.$1, cut.$2, cut.$3, cut.$4]), style);
     }
 
     final count = xy.length ~/ 2;
@@ -364,21 +361,23 @@ class BatchingSink implements GeometrySink {
       // is still information. Draw the block it occupies.
       final box = geometry.estimatedBounds();
       if (box.isEmpty) return;
-      final key = BatchKey(
-        color.withValues(alpha: 0.5),
-        0,
-        order: drawOrder,
-      );
-      fillBatches.putIfAbsent(key, () => FillBatch(key)).addRing(
-        _project(
-          Float64List.fromList([
-            box.minX, box.minY,
-            box.maxX, box.minY,
-            box.maxX, box.maxY,
-            box.minX, box.maxY,
-          ]),
-        ),
-      );
+      final key = BatchKey(color.withValues(alpha: 0.5), 0, order: drawOrder);
+      fillBatches
+          .putIfAbsent(key, () => FillBatch(key))
+          .addRing(
+            _project(
+              Float64List.fromList([
+                box.minX,
+                box.minY,
+                box.maxX,
+                box.minY,
+                box.maxX,
+                box.maxY,
+                box.minX,
+                box.maxY,
+              ]),
+            ),
+          );
       return;
     }
     texts.add(

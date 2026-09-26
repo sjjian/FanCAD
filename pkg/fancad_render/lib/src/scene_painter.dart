@@ -79,12 +79,7 @@ class ScenePainter {
   /// Underlays first, then fills, then the linework that bounds them, then
   /// markers, then text. That is the order AutoCAD's draw order produces in
   /// practice for a document that does not specify one.
-  void _paintPass(
-    ui.Canvas canvas,
-    RenderPass pass,
-    double dpr,
-    Size extent,
-  ) {
+  void _paintPass(ui.Canvas canvas, RenderPass pass, double dpr, Size extent) {
     for (final item in pass.images) {
       _paintImagePlaceholder(canvas, item, dpr);
     }
@@ -175,10 +170,22 @@ class ScenePainter {
       final shear = math.tan(item.obliqueAngle);
       canvas.transform(
         Float64List.fromList([
-          1, 0, 0, 0,
-          shear, 1, 0, 0,
-          0, 0, 1, 0,
-          0, 0, 0, 1,
+          1,
+          0,
+          0,
+          0,
+          shear,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
         ]),
       );
     }

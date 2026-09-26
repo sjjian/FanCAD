@@ -159,44 +159,45 @@ class _LayersPanelState extends ConsumerState<LayersPanel> {
                                   ),
                           )
                         : ListView.builder(
-                  itemCount: visible.length,
-                  itemExtent: FanCadTokens.rowHeight,
-                  itemBuilder: (context, index) {
-                    final layer = visible[index];
-                    return _LayerRow(
-                      layer: layer,
-                      color: palette.colorOf(layer.color),
-                      count: counts[layer.name] ?? 0,
-                      isCurrent: layer.name == tab.document.currentLayer,
-                      onSetCurrent: () => _workspace.run(
-                        'layer.setCurrent',
-                        args: {'name': layer.name},
-                      ),
-                      onToggleVisible: () => _workspace.run(
-                        'layer.toggleVisible',
-                        args: {'name': layer.name},
-                      ),
-                      onToggleLock: () => _workspace.run(
-                        'layer.toggleLock',
-                        args: {'name': layer.name},
-                      ),
-                      onIsolate: () => _workspace.run(
-                        'layer.isolate',
-                        args: {'name': layer.name},
-                      ),
-                      onSelect: () => _workspace.run(
-                        'select.byLayer',
-                        args: {'layer': layer.name},
-                      ),
-                      onDelete: layer.name == '0'
-                          ? null
-                          : () => _workspace.run(
-                              'layer.delete',
-                              args: {'name': layer.name},
-                            ),
-                    );
-                  },
-                        ),
+                            itemCount: visible.length,
+                            itemExtent: FanCadTokens.rowHeight,
+                            itemBuilder: (context, index) {
+                              final layer = visible[index];
+                              return _LayerRow(
+                                layer: layer,
+                                color: palette.colorOf(layer.color),
+                                count: counts[layer.name] ?? 0,
+                                isCurrent:
+                                    layer.name == tab.document.currentLayer,
+                                onSetCurrent: () => _workspace.run(
+                                  'layer.setCurrent',
+                                  args: {'name': layer.name},
+                                ),
+                                onToggleVisible: () => _workspace.run(
+                                  'layer.toggleVisible',
+                                  args: {'name': layer.name},
+                                ),
+                                onToggleLock: () => _workspace.run(
+                                  'layer.toggleLock',
+                                  args: {'name': layer.name},
+                                ),
+                                onIsolate: () => _workspace.run(
+                                  'layer.isolate',
+                                  args: {'name': layer.name},
+                                ),
+                                onSelect: () => _workspace.run(
+                                  'select.byLayer',
+                                  args: {'layer': layer.name},
+                                ),
+                                onDelete: layer.name == '0'
+                                    ? null
+                                    : () => _workspace.run(
+                                        'layer.delete',
+                                        args: {'name': layer.name},
+                                      ),
+                              );
+                            },
+                          ),
                   ),
                   Container(
                     height: FanCadTokens.statusBarHeight,

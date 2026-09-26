@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-
 /// A 1px rule shared by section breaks and short chrome ticks.
 ///
 /// Painted as a [ColoredBox], not a Material [Divider], so the line cannot

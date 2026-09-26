@@ -7,11 +7,12 @@ import 'protocol.dart';
 import 'quickjs_engine.dart';
 
 /// Serves a request a plugin made of the application.
-typedef HostCallHandler = Future<Object?> Function(
-  String pluginId,
-  String method,
-  Map<String, Object?> params,
-);
+typedef HostCallHandler =
+    Future<Object?> Function(
+      String pluginId,
+      String method,
+      Map<String, Object?> params,
+    );
 
 /// A channel to a place where plugins run.
 ///
@@ -44,12 +45,11 @@ abstract class PluginTransport {
 
 /// Runs the plugin runtime on the calling isolate.
 class LocalTransport implements PluginTransport {
-  LocalTransport({
-    JsEngineFactory? engineFactory,
-    this.hostVersion = '0.1.0',
-  }) : _engineFactory = engineFactory ??
-            (({required int memoryLimit, required int stackSize}) =>
-                ScriptedJsEngine());
+  LocalTransport({JsEngineFactory? engineFactory, this.hostVersion = '0.1.0'})
+    : _engineFactory =
+          engineFactory ??
+          (({required int memoryLimit, required int stackSize}) =>
+              ScriptedJsEngine());
 
   final JsEngineFactory _engineFactory;
   final String hostVersion;
@@ -111,7 +111,10 @@ class LocalTransport implements PluginTransport {
 /// port bookkeeping without buying isolation the per-plugin JavaScript runtimes
 /// do not already provide.
 class IsolateTransport implements PluginTransport {
-  IsolateTransport({this.hostVersion = '0.1.0', this.debugName = 'fancad.plugins'});
+  IsolateTransport({
+    this.hostVersion = '0.1.0',
+    this.debugName = 'fancad.plugins',
+  });
 
   final String hostVersion;
   final String debugName;
@@ -142,7 +145,9 @@ class IsolateTransport implements PluginTransport {
     final onExit = ReceivePort();
     final onError = ReceivePort();
     onExit.listen((_) => _handleDeath('the plugin worker exited'));
-    onError.listen((error) => _handleDeath('the plugin worker crashed: $error'));
+    onError.listen(
+      (error) => _handleDeath('the plugin worker crashed: $error'),
+    );
 
     receive.listen((message) {
       if (message is SendPort) {
@@ -181,11 +186,7 @@ class IsolateTransport implements PluginTransport {
     }
     final params = Map<String, Object?>.from(request.params);
     final pluginId = params.remove('pluginId');
-    return handler(
-      pluginId is String ? pluginId : '',
-      request.method,
-      params,
-    );
+    return handler(pluginId is String ? pluginId : '', request.method, params);
   }
 
   void _handleDeath(String reason) {
@@ -266,10 +267,7 @@ void pluginWorkerMain(Object? bootstrap) {
     handle: (request) async {
       if (request.method == WorkerMethod.shutdown) {
         await runtime.disposeAll();
-        Future<void>.delayed(
-          const Duration(milliseconds: 10),
-          fromHost.close,
-        );
+        Future<void>.delayed(const Duration(milliseconds: 10), fromHost.close);
         return {'ok': true};
       }
       return runtime.handle(request);
@@ -281,10 +279,8 @@ void pluginWorkerMain(Object? bootstrap) {
     // top-level state, so anything the host configured would not be visible.
     createEngine: QuickJsEngine.create,
     hostVersion: bootstrap.hostVersion,
-    callHost: (pluginId, method, params) => peer.request(
-      method,
-      params: {...params, 'pluginId': pluginId},
-    ),
+    callHost: (pluginId, method, params) =>
+        peer.request(method, params: {...params, 'pluginId': pluginId}),
   );
 
   fromHost.listen((message) {

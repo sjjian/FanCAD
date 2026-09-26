@@ -47,10 +47,7 @@ void main() {
 
   test('only deletes ask; leftover draw and save calls run', () {
     const policy = ApprovalPolicy();
-    expect(
-      policy.requiresApproval(registry.find('query.summary')!),
-      isFalse,
-    );
+    expect(policy.requiresApproval(registry.find('query.summary')!), isFalse);
     expect(policy.requiresApproval(registry.find('draw.line')!), isFalse);
     expect(policy.requiresApproval(registry.find('edit.erase')!), isTrue);
     expect(policy.requiresApproval(registry.find('file.save')!), isFalse);
@@ -63,26 +60,7 @@ void main() {
   test('pendingOf keeps only the calls that need a decision', () {
     const policy = ApprovalPolicy();
     expect(
-      policy.pendingOf(
-        const [
-          LlmToolCall(
-            id: '1',
-            name: fancadToolName,
-            arguments: {'action': 'run', 'path': 'query.summary'},
-          ),
-          LlmToolCall(
-            id: '2',
-            name: fancadToolName,
-            arguments: {'action': 'run', 'path': 'draw.line'},
-          ),
-        ],
-        registry,
-      ),
-      isNull,
-    );
-
-    final pending = policy.pendingOf(
-      const [
+      policy.pendingOf(const [
         LlmToolCall(
           id: '1',
           name: fancadToolName,
@@ -91,18 +69,31 @@ void main() {
         LlmToolCall(
           id: '2',
           name: fancadToolName,
-          arguments: {
-            'action': 'run',
-            'path': 'edit.erase',
-            'args': {
-              'ids': [4, 7],
-            },
-          },
+          arguments: {'action': 'run', 'path': 'draw.line'},
         ),
-        LlmToolCall(id: '3', name: 'unknown_tool', arguments: {}),
-      ],
-      registry,
-    )!;
+      ], registry),
+      isNull,
+    );
+
+    final pending = policy.pendingOf(const [
+      LlmToolCall(
+        id: '1',
+        name: fancadToolName,
+        arguments: {'action': 'run', 'path': 'query.summary'},
+      ),
+      LlmToolCall(
+        id: '2',
+        name: fancadToolName,
+        arguments: {
+          'action': 'run',
+          'path': 'edit.erase',
+          'args': {
+            'ids': [4, 7],
+          },
+        },
+      ),
+      LlmToolCall(id: '3', name: 'unknown_tool', arguments: {}),
+    ], registry)!;
     expect(pending.calls, hasLength(1));
     expect(pending.title, 'Allow Erase?');
     expect(pending.details, contains('Erase'));
@@ -118,16 +109,8 @@ void main() {
         LlmToolCall(id: '2', name: 'file_save', arguments: {'path': '/a.dxf'}),
       ],
       commands: [
-        CommandDescriptor(
-          id: 'edit.erase',
-          title: 'Erase',
-          handler: _noop,
-        ),
-        CommandDescriptor(
-          id: 'file.save',
-          title: 'Save',
-          handler: _noop,
-        ),
+        CommandDescriptor(id: 'edit.erase', title: 'Erase', handler: _noop),
+        CommandDescriptor(id: 'file.save', title: 'Save', handler: _noop),
       ],
       highlightIds: [1],
     );
@@ -160,16 +143,8 @@ void main() {
         ),
       ],
       commands: [
-        CommandDescriptor(
-          id: 'draw.ellipse',
-          title: 'Ellipse',
-          handler: _noop,
-        ),
-        CommandDescriptor(
-          id: 'draw.ellipse',
-          title: 'Ellipse',
-          handler: _noop,
-        ),
+        CommandDescriptor(id: 'draw.ellipse', title: 'Ellipse', handler: _noop),
+        CommandDescriptor(id: 'draw.ellipse', title: 'Ellipse', handler: _noop),
       ],
     );
 
@@ -183,11 +158,7 @@ void main() {
   test('a leftover draw batch does not wait for approval', () {
     final ellipseRegistry = CommandRegistry()
       ..register(
-        CommandDescriptor(
-          id: 'draw.ellipse',
-          title: 'Ellipse',
-          handler: _noop,
-        ),
+        CommandDescriptor(id: 'draw.ellipse', title: 'Ellipse', handler: _noop),
       )
       ..register(
         CommandDescriptor(
@@ -200,44 +171,38 @@ void main() {
 
     const policy = ApprovalPolicy();
     expect(
-      policy.pendingOf(
-        const [
-          LlmToolCall(
-            id: '1',
-            name: 'draw_ellipse',
-            arguments: {
-              'center': [0, 0],
-              'leftover': true,
-            },
-          ),
-        ],
-        ellipseRegistry,
-      ),
+      policy.pendingOf(const [
+        LlmToolCall(
+          id: '1',
+          name: 'draw_ellipse',
+          arguments: {
+            'center': [0, 0],
+            'leftover': true,
+          },
+        ),
+      ], ellipseRegistry),
       isNull,
     );
 
-    final pending = policy.pendingOf(
-      const [
-        LlmToolCall(
-          id: '1',
-          name: fancadToolName,
-          arguments: {'action': 'run', 'path': 'draw.ellipse'},
-        ),
-        LlmToolCall(
-          id: '2',
-          name: fancadToolName,
-          arguments: {
-            'action': 'run',
-            'path': 'edit.erase',
-            'args': {
-              'ids': [3],
-              'mystery': 'leftover',
-            },
+    final pending = policy.pendingOf(const [
+      LlmToolCall(
+        id: '1',
+        name: fancadToolName,
+        arguments: {'action': 'run', 'path': 'draw.ellipse'},
+      ),
+      LlmToolCall(
+        id: '2',
+        name: fancadToolName,
+        arguments: {
+          'action': 'run',
+          'path': 'edit.erase',
+          'args': {
+            'ids': [3],
+            'mystery': 'leftover',
           },
-        ),
-      ],
-      ellipseRegistry,
-    )!;
+        },
+      ),
+    ], ellipseRegistry)!;
     expect(pending.calls, hasLength(1));
     expect(pending.calls.single.arguments['path'], 'edit.erase');
     expect(pending.details, isNot(contains('mystery')));

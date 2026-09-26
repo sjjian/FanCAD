@@ -17,9 +17,7 @@ void main() {
           execute: (args, {tab}) async => {'status': 'ok', 'n': 1},
         ),
       );
-    final session = McpSession(
-      dispatch: OpsDispatcher(catalog).dispatch,
-    );
+    final session = McpSession(dispatch: OpsDispatcher(catalog).dispatch);
     final server = McpHttpServer(session: session, token: 'secret');
     final port = await server.start();
     addTearDown(server.stop);
@@ -63,9 +61,7 @@ void main() {
       HttpStatus.notFound,
     );
     expect(
-      await _postStatus(
-        Uri.parse('http://127.0.0.1:$port/mcp?token=secret'),
-      ),
+      await _postStatus(Uri.parse('http://127.0.0.1:$port/mcp?token=secret')),
       HttpStatus.unauthorized,
     );
   });

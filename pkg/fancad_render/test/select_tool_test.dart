@@ -34,7 +34,10 @@ void main() {
     );
   }
 
-  ToolController controllerFor(DocumentSession session, {CadViewport? viewport}) {
+  ToolController controllerFor(
+    DocumentSession session, {
+    CadViewport? viewport,
+  }) {
     final controller = ToolController(
       session: session,
       viewportProvider: () => viewport ?? view,

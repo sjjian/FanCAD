@@ -147,10 +147,7 @@ void main() {
     layout.resizeAssistant(320.4);
     expect(layout.state.assistantWidth, 320);
     layout.resizeAssistant(900);
-    expect(
-      settings.getDouble(SettingsKeys.assistantWidth),
-      40,
-    );
+    expect(settings.getDouble(SettingsKeys.assistantWidth), 40);
     layout.persist();
     expect(
       settings.getDouble(SettingsKeys.assistantWidth),

@@ -39,7 +39,10 @@ void main() {
     expect(cache.misses, 1);
     expect(cache.length, 1);
 
-    cache.obtain(item('A1', color: const Color(0xFFFF0000)), fontFamily: 'Roboto');
+    cache.obtain(
+      item('A1', color: const Color(0xFFFF0000)),
+      fontFamily: 'Roboto',
+    );
     expect(cache.misses, 2);
     expect(cache.length, 2);
   });
@@ -91,11 +94,7 @@ void main() {
 
   test('width factor stretches the measured advance', () {
     final cache = ParagraphCache();
-    final narrow = cache.measureWidth(
-      'MM',
-      height: 10,
-      fontFamily: 'Roboto',
-    );
+    final narrow = cache.measureWidth('MM', height: 10, fontFamily: 'Roboto');
     final wide = cache.measureWidth(
       'MM',
       height: 10,
@@ -119,9 +118,15 @@ void main() {
       obliqueAngle: oblique,
     );
     final upright = cache.obtain(slantedItem(), fontFamily: 'Roboto');
-    final slanted = cache.obtain(slantedItem(oblique: 0.3), fontFamily: 'Roboto');
+    final slanted = cache.obtain(
+      slantedItem(oblique: 0.3),
+      fontFamily: 'Roboto',
+    );
     expect(identical(upright, slanted), isTrue);
-    expect(slanted.alphabeticBaseline, closeTo(upright.alphabeticBaseline, 1e-9));
+    expect(
+      slanted.alphabeticBaseline,
+      closeTo(upright.alphabeticBaseline, 1e-9),
+    );
   });
 
   test('a 20 px TEXT is 20 px tall at the cap, not 0.72 of an em', () {

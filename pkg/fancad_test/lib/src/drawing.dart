@@ -43,5 +43,9 @@ CadDocument drawing({
 /// A document that holds a single [entity].
 CadDocument drawingOf(CadEntity entity, {String? blockName}) {
   if (blockName == null) return drawing(entities: [entity]);
-  return drawing(owned: {blockName: [entity]});
+  return drawing(
+    owned: {
+      blockName: [entity],
+    },
+  );
 }

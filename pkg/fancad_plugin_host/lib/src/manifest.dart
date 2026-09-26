@@ -312,7 +312,11 @@ class KeybindingContribution {
 /// evaluated, so a plugin that never activates still costs nothing but is
 /// still discoverable.
 @immutable
-@JsonSerializable(createFactory: false, includeIfNull: false, ignoreUnannotated: true)
+@JsonSerializable(
+  createFactory: false,
+  includeIfNull: false,
+  ignoreUnannotated: true,
+)
 class PluginManifest {
   const PluginManifest({
     required this.id,
@@ -411,8 +415,10 @@ class PluginManifest {
       throw ManifestException('not valid JSON (${error.message})', path: path);
     }
     if (decoded is! Map<String, Object?>) {
-      throw ManifestException('expected a JSON object at the top level',
-          path: path);
+      throw ManifestException(
+        'expected a JSON object at the top level',
+        path: path,
+      );
     }
     return fromJson(decoded, path: path);
   }
@@ -476,9 +482,7 @@ class PluginManifest {
           for (final command in commands) _commandContributionToJson(command),
         ],
       if (panels.isNotEmpty)
-        'panels': [
-          for (final panel in panels) _panelContributionToJson(panel),
-        ],
+        'panels': [for (final panel in panels) _panelContributionToJson(panel)],
     },
   };
 
@@ -660,14 +664,15 @@ List<String>? _permissionsToJson(Set<PluginPermission> permissions) =>
     ? null
     : [for (final value in permissions) value.wireName];
 
-Map<String, Object?> _commandContributionToJson(CommandContribution command) => {
-  'id': command.id,
-  'title': command.title,
-  'category': command.category,
-  if (command.description.isNotEmpty) 'description': command.description,
-  if (command.aliases.isNotEmpty) 'aliases': command.aliases,
-  'risk': command.risk.name,
-};
+Map<String, Object?> _commandContributionToJson(CommandContribution command) =>
+    {
+      'id': command.id,
+      'title': command.title,
+      'category': command.category,
+      if (command.description.isNotEmpty) 'description': command.description,
+      if (command.aliases.isNotEmpty) 'aliases': command.aliases,
+      'risk': command.risk.name,
+    };
 
 Map<String, Object?> _panelContributionToJson(PanelContribution panel) => {
   'id': panel.id,

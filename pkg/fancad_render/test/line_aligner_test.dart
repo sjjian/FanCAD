@@ -90,9 +90,9 @@ void main() {
     );
 
     for (var step = 0; step < 60; step++) {
-      final drifted = window(1.6)
-          .panned(Offset(step * 0.37, step * -0.19))
-          .pixelLocked();
+      final drifted = window(
+        1.6,
+      ).panned(Offset(step * 0.37, step * -0.19)).pixelLocked();
       expect(rowCount(builder.build(document, drifted)), baseline);
     }
   });

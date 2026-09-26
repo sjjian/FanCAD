@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'tokens.dart';
 
-
 /// A clickable keyword offered by the current command prompt.
 ///
 /// A prompt that can only be answered by typing is a dead end for anyone who

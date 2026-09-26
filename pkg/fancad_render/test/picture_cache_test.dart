@@ -141,8 +141,7 @@ void main() {
     );
     final painter = ScenePainter();
     final scene = SceneBuilder(palette: AciPalette.dark).build(document, view);
-    final cache = DrawingCache()
-      ..store(scene, painter.record(scene), 7);
+    final cache = DrawingCache()..store(scene, painter.record(scene), 7);
     addTearDown(cache.dispose);
 
     expect(cache.placementFor(view, 7, interactive: false), isNotNull);
@@ -158,8 +157,7 @@ void main() {
     );
     final painter = ScenePainter();
     final scene = SceneBuilder(palette: AciPalette.dark).build(document, view);
-    final cache = DrawingCache()
-      ..store(scene, painter.record(scene), 0);
+    final cache = DrawingCache()..store(scene, painter.record(scene), 0);
     addTearDown(cache.dispose);
 
     final zoomed = view.copyWith(scale: 1.5);

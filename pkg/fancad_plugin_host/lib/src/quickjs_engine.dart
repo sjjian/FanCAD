@@ -39,10 +39,8 @@ class QuickJsEngine implements JsEngine {
 
   static const int defaultStackSize = 1024 * 1024;
 
-  static JsEngine create({
-    required int memoryLimit,
-    required int stackSize,
-  }) => QuickJsEngine(memoryLimit: memoryLimit, stackSize: stackSize);
+  static JsEngine create({required int memoryLimit, required int stackSize}) =>
+      QuickJsEngine(memoryLimit: memoryLimit, stackSize: stackSize);
 
   final QuickJsRuntime2 _runtime;
   late final StreamSubscription<dynamic> _portSubscription;
@@ -85,9 +83,9 @@ class QuickJsEngine implements JsEngine {
     _assertAlive();
     // One arrow function, reused for every binding. Evaluating a fresh setter
     // per call would leak a JS function object each time.
-    final setter = _globalSetter ??= _runtime
-        .evaluate('(key, value) => { this[key] = value; }')
-        .rawResult as JSInvokable;
+    final setter = _globalSetter ??=
+        _runtime.evaluate('(key, value) => { this[key] = value; }').rawResult
+            as JSInvokable;
     _runtime.localContext['fancad.globalSetter'] = setter;
     setter.invoke([name, callback]);
   }
@@ -95,18 +93,20 @@ class QuickJsEngine implements JsEngine {
   @override
   Object? callGlobal(String name, List<Object?> args) {
     _assertAlive();
-    final caller = _globalCaller ??= _runtime
-        .evaluate(
-          '(name, args) => {\n'
-          '  const fn = this[name];\n'
-          '  if (typeof fn !== "function") {\n'
-          '    throw new Error(name + " is not a function");\n'
-          '  }\n'
-          '  return fn.apply(undefined, args);\n'
-          '}',
-          name: '<callGlobal>',
-        )
-        .rawResult as JSInvokable;
+    final caller = _globalCaller ??=
+        _runtime
+                .evaluate(
+                  '(name, args) => {\n'
+                  '  const fn = this[name];\n'
+                  '  if (typeof fn !== "function") {\n'
+                  '    throw new Error(name + " is not a function");\n'
+                  '  }\n'
+                  '  return fn.apply(undefined, args);\n'
+                  '}',
+                  name: '<callGlobal>',
+                )
+                .rawResult
+            as JSInvokable;
     _runtime.localContext['fancad.globalCaller'] = caller;
     try {
       final result = caller.invoke([name, args]);

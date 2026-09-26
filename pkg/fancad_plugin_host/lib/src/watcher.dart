@@ -62,7 +62,8 @@ class PluginWatcher {
     // Only source and manifest changes matter; a plugin writing to its own
     // storage must not reload itself into a loop.
     final extension = p.extension(changedPath);
-    final isRelevant = extension == '.js' ||
+    final isRelevant =
+        extension == '.js' ||
         extension == '.mjs' ||
         p.basename(changedPath) == PluginManifest.fileName;
     return isRelevant ? folder : null;
