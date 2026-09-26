@@ -45,8 +45,8 @@ void main() {
   ) async {
     final dir = Directory.systemTemp.createTempSync('fancad-recent-row');
     addTearDown(() => dir.deleteSync(recursive: true));
-    final file = File('${dir.path}/${'very-long-drawing-name-' * 4}.dwg')
-      ..createSync();
+    final name = '${'very-long-drawing-name-' * 4}.dwg';
+    final file = File('${dir.path}/$name')..createSync();
     await pumpWorkbench(
       tester,
       settings: SettingsStore.inMemory({
@@ -55,9 +55,16 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('very-long-drawing-name-'), findsOneWidget);
+    final label = find.byType(FileName);
+    expect(label, findsOneWidget);
+    expect(tester.widget<FileName>(label).name, name);
+    final shown = tester.widget<Text>(
+      find.descendant(of: label, matching: find.byType(Text)),
+    );
+    expect(shown.data, isNot(name));
+    expect(shown.data, endsWith('.dwg'));
     final rowFinder = find.ancestor(
-      of: find.textContaining('very-long-drawing-name-'),
+      of: label,
       matching: find.byType(FanCadRow),
     );
     final reveal = tester.getRect(
