@@ -72,6 +72,8 @@ set_target_properties(${BINARY_NAME}
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
+# Force-include the export macro before plugin sources. See flutter_plugin_export.h.
+add_compile_options("-include" "${CMAKE_CURRENT_SOURCE_DIR}/flutter_plugin_export.h")
 include(flutter/generated_plugins.cmake)
 
 
