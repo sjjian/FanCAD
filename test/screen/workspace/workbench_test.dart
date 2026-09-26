@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:fancad/fancad.dart';
@@ -326,6 +327,45 @@ void main() {
     container.read(workspaceNotifierProvider.notifier).setAssistantBusy(false);
     await tester.pump();
     expect(find.byKey(const Key('canvas-assistant-busy')), findsNothing);
+  });
+
+  testWidgets('viewport chrome is centered on the drawing, not the canvas', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+
+    expect(find.byKey(const Key('canvas-empty-hint')), findsOneWidget);
+    _expectViewportCenter(
+      tester,
+      const Key('canvas-empty-hint'),
+      vertical: true,
+    );
+
+    final completer = Completer<Object?>();
+    addTearDown(() {
+      if (!completer.isCompleted) completer.complete(null);
+    });
+    unawaited(
+      workspace.commandLine.request(
+        PendingEntry(
+          message: 'Select objects:',
+          completer: completer,
+          accept: (raw) => raw,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('canvas-prompt-hud')), findsOneWidget);
+    expect(find.byKey(const Key('canvas-empty-hint')), findsNothing);
+    _expectViewportCenter(tester, const Key('canvas-prompt-hud'));
+
+    completer.complete(null);
+    await tester.pump();
+
+    workspace.setAssistantBusy(true);
+    await tester.pump();
+    _expectViewportCenter(tester, const Key('canvas-assistant-busy'));
   });
 
   testWidgets('a hidden layer uses the same floating canvas notice', (
@@ -689,4 +729,20 @@ void main() {
       }
     }
   });
+}
+
+/// [key] sits in the center column. The canvas is wider, under the sidebar.
+void _expectViewportCenter(
+  WidgetTester tester,
+  Key key, {
+  bool vertical = false,
+}) {
+  final hud = tester.getRect(find.byKey(const Key('canvas-hud')));
+  final rect = tester.getRect(find.byKey(key));
+  expect(rect.center.dx, closeTo(hud.center.dx, 1));
+  if (vertical) {
+    expect(rect.center.dy, closeTo(hud.center.dy, 1));
+  }
+  final canvas = tester.getRect(find.byType(CadCanvas));
+  expect((canvas.center.dx - hud.center.dx).abs(), greaterThan(20));
 }

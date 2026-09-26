@@ -424,13 +424,19 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                       .read(commandLineNotifierProvider.notifier)
                       .setPaletteOpen(true),
                 )
-              else
+              else ...[
                 CanvasHud(
                   workspace: workspace,
                   commandFocus: _commandFocus,
                   historyOpen: historyOpen,
                   onOpenHistory: () => workspace.revealPanel('history'),
                 ),
+                CanvasViewportChrome(
+                  workspace: workspace,
+                  onStopAssistant: () =>
+                      ref.read(assistantNotifierProvider.notifier).stop(),
+                ),
+              ],
               Positioned(
                 right: FanCadTokens.space4,
                 top: FanCadTokens.space3,
@@ -516,8 +522,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
               ref.read(assistantNotifierProvider.notifier).pinSelection();
               workspace.revealPanel('ai');
             },
-            onStopAssistant: () =>
-                ref.read(assistantNotifierProvider.notifier).stop(),
           );
     return body;
   }

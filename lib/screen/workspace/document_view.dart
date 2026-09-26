@@ -29,7 +29,6 @@ class DocumentView extends ConsumerStatefulWidget {
     required this.tab,
     required this.commandLineFocus,
     this.onAddSelectionToChat,
-    this.onStopAssistant,
   });
 
   final Workspace workspace;
@@ -40,9 +39,6 @@ class DocumentView extends ConsumerStatefulWidget {
 
   /// Puts the current selection on the next assistant message.
   final VoidCallback? onAddSelectionToChat;
-
-  /// Stops the in-flight assistant turn from the canvas banner.
-  final VoidCallback? onStopAssistant;
 
   @override
   ConsumerState<DocumentView> createState() => _DocumentViewState();
@@ -508,15 +504,6 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
     final tokens = context.tokens;
     final tab = widget.tab;
     final editingEntity = _editingOriginal;
-    var hiddenCount = 0;
-    for (final entity in tab.document.activeEntities) {
-      if (!entity.props.visible) hiddenCount += 1;
-    }
-    var hiddenLayers = 0;
-    for (final layer in tab.document.layers.values) {
-      if (!layer.visible) hiddenLayers += 1;
-    }
-    final currentLayer = tab.document.layer(tab.document.currentLayer);
     return Focus(
       onKeyEvent: (node, event) {
         if (event is! KeyDownEvent) return KeyEventResult.ignored;
@@ -570,19 +557,6 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
             Positioned.fill(
               child: Stack(
                 children: [
-                  if (!_dynamicShown)
-                    _CanvasPromptHud(
-                      workspace: widget.workspace,
-                      onKeyword: (keyword) {
-                        final remaining = widget.workspace.commandLine.submit(
-                          keyword,
-                        );
-                        if (remaining != null) {
-                          widget.workspace.submitCommandLine(remaining);
-                        }
-                      },
-                      onCancel: widget.workspace.cancelActive,
-                    ),
                   if (_dynamicShown)
                     _DynamicInputPrompt(
                       tools: tab.tools,
@@ -608,85 +582,233 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
                 ],
               ),
             ),
-            _MaybeEmptyHint(tab: tab),
-            ?_canvasNotice(
-              assistantBusy: assistantBusy,
-              hiddenCount: hiddenCount,
-              hiddenLayers: hiddenLayers,
-              currentLayer: currentLayer,
-            ),
           ],
         ),
       ),
     );
   }
+}
 
-  /// One floating strip: assistant first, then hidden objects, off layers,
-  /// then a locked current layer. Overlay so it does not shift the viewport.
-  Widget? _canvasNotice({
-    required bool assistantBusy,
-    required int hiddenCount,
-    required int hiddenLayers,
-    required LayerDef? currentLayer,
-  }) {
-    final l10n = context.l10n;
-    if (assistantBusy) {
-      return _CanvasNoticeBanner(
-        key: const Key('canvas-assistant-busy'),
-        icon: Icons.auto_awesome_outlined,
-        message: l10n.assistant_canvas_locked,
-        action: widget.onStopAssistant == null ? null : l10n.stop,
-        onAction: widget.onStopAssistant,
-      );
+/// Command strip, notices, and the empty-drawing hint.
+///
+/// These belong to the visible viewport, the center column between the side
+/// panes. The canvas is full-bleed under those panes, so centering on the
+/// canvas misses the drawing the user can see.
+class CanvasViewportChrome extends ConsumerWidget {
+  const CanvasViewportChrome({
+    super.key,
+    required this.workspace,
+    this.onStopAssistant,
+  });
+
+  final Workspace workspace;
+
+  /// Stops the in-flight assistant turn from the notice banner.
+  final VoidCallback? onStopAssistant;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sessionId = ref.watch(
+      workspaceNotifierProvider.select((s) => s.activeSessionId),
+    );
+    final tab = workspace.active;
+    if (sessionId == null || tab == null || tab.isStartPage) {
+      return const SizedBox.shrink();
     }
-    if (hiddenCount > 0) {
-      return _CanvasNoticeBanner(
-        key: const Key('canvas-objects-hidden'),
-        icon: Icons.visibility_off_outlined,
-        message: hiddenCount == 1
-            ? l10n.one_object_hidden
-            : l10n.many_objects_hidden(hiddenCount),
-        action: l10n.show_all,
-        onAction: () => widget.workspace.run('view.unisolateObjects'),
-      );
-    }
-    if (hiddenLayers > 0) {
-      return _CanvasNoticeBanner(
-        key: const Key('canvas-layers-off'),
-        icon: Icons.layers_outlined,
-        message: hiddenLayers == 1
-            ? l10n.one_layer_off
-            : l10n.many_layers_off(hiddenLayers),
-        action: l10n.show_all_layers,
-        onAction: () => widget.workspace.run('layer.showAll'),
-      );
-    }
-    if (currentLayer != null && currentLayer.locked) {
-      return _CanvasNoticeBanner(
-        key: const Key('canvas-layer-locked'),
-        icon: Icons.lock_outline,
-        message: l10n.current_layer_locked(currentLayer.name),
-        action: l10n.unlock,
-        onAction: () => widget.workspace.run(
-          'layer.toggleLock',
-          args: {'name': currentLayer.name},
+    return Stack(
+      children: [
+        _MaybeEmptyHint(tab: tab),
+        _CanvasPromptHost(
+          key: ValueKey(tab.session.id),
+          workspace: workspace,
+          tab: tab,
         ),
-      );
-    }
-    return null;
+        _CanvasNoticeHost(
+          workspace: workspace,
+          tab: tab,
+          onStopAssistant: onStopAssistant,
+        ),
+      ],
+    );
   }
 }
 
-/// Floats over the canvas so showing it does not shift the viewport.
+/// Hides the command strip while the cursor HUD is up.
+///
+/// [ToolController] notifies on every pointer move. This listens and rebuilds
+/// only when [ToolController.showDynamicInput] flips, so a drag does not
+/// rebuild the strip or walk the drawing.
+class _CanvasPromptHost extends StatefulWidget {
+  const _CanvasPromptHost({
+    super.key,
+    required this.workspace,
+    required this.tab,
+  });
+
+  final Workspace workspace;
+  final DocumentTab tab;
+
+  @override
+  State<_CanvasPromptHost> createState() => _CanvasPromptHostState();
+}
+
+class _CanvasPromptHostState extends State<_CanvasPromptHost> {
+  bool _dynamicShown = false;
+
+  ToolController get _tools => widget.tab.tools;
+
+  @override
+  void initState() {
+    super.initState();
+    _dynamicShown = _tools.showDynamicInput;
+    _tools.addListener(_onTools);
+  }
+
+  @override
+  void didUpdateWidget(_CanvasPromptHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tab.tools == widget.tab.tools) return;
+    oldWidget.tab.tools.removeListener(_onTools);
+    _dynamicShown = _tools.showDynamicInput;
+    _tools.addListener(_onTools);
+  }
+
+  @override
+  void dispose() {
+    _tools.removeListener(_onTools);
+    super.dispose();
+  }
+
+  void _onTools() {
+    final show = _tools.showDynamicInput;
+    if (show == _dynamicShown || !mounted) return;
+    setState(() => _dynamicShown = show);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_dynamicShown) return const SizedBox.shrink();
+    return _CanvasPromptHud(
+      workspace: widget.workspace,
+      onKeyword: (keyword) {
+        final remaining = widget.workspace.commandLine.submit(keyword);
+        if (remaining != null) {
+          widget.workspace.submitCommandLine(remaining);
+        }
+      },
+      onCancel: widget.workspace.cancelActive,
+    );
+  }
+}
+
+class _CanvasNoticeHost extends ConsumerWidget {
+  const _CanvasNoticeHost({
+    required this.workspace,
+    required this.tab,
+    this.onStopAssistant,
+  });
+
+  final Workspace workspace;
+  final DocumentTab tab;
+  final VoidCallback? onStopAssistant;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(
+      documentTabNotifierProvider(tab.session.id).select((s) => s.contentEpoch),
+    );
+    final assistantBusy = ref.watch(
+      workspaceNotifierProvider.select((s) => s.assistantBusy),
+    );
+    var hiddenCount = 0;
+    for (final entity in tab.document.activeEntities) {
+      if (!entity.props.visible) hiddenCount += 1;
+    }
+    var hiddenLayers = 0;
+    for (final layer in tab.document.layers.values) {
+      if (!layer.visible) hiddenLayers += 1;
+    }
+    final currentLayer = tab.document.layer(tab.document.currentLayer);
+    return _canvasNotice(
+          context,
+          workspace: workspace,
+          onStopAssistant: onStopAssistant,
+          assistantBusy: assistantBusy,
+          hiddenCount: hiddenCount,
+          hiddenLayers: hiddenLayers,
+          currentLayer: currentLayer,
+        ) ??
+        const SizedBox.shrink();
+  }
+}
+
+/// One floating strip: assistant first, then hidden objects, off layers,
+/// then a locked current layer. Overlay so it does not shift the drawing.
+Widget? _canvasNotice(
+  BuildContext context, {
+  required Workspace workspace,
+  required VoidCallback? onStopAssistant,
+  required bool assistantBusy,
+  required int hiddenCount,
+  required int hiddenLayers,
+  required LayerDef? currentLayer,
+}) {
+  final l10n = context.l10n;
+  if (assistantBusy) {
+    return _CanvasNoticeBanner(
+      cardKey: const Key('canvas-assistant-busy'),
+      icon: Icons.auto_awesome_outlined,
+      message: l10n.assistant_canvas_locked,
+      action: onStopAssistant == null ? null : l10n.stop,
+      onAction: onStopAssistant,
+    );
+  }
+  if (hiddenCount > 0) {
+    return _CanvasNoticeBanner(
+      cardKey: const Key('canvas-objects-hidden'),
+      icon: Icons.visibility_off_outlined,
+      message: hiddenCount == 1
+          ? l10n.one_object_hidden
+          : l10n.many_objects_hidden(hiddenCount),
+      action: l10n.show_all,
+      onAction: () => workspace.run('view.unisolateObjects'),
+    );
+  }
+  if (hiddenLayers > 0) {
+    return _CanvasNoticeBanner(
+      cardKey: const Key('canvas-layers-off'),
+      icon: Icons.layers_outlined,
+      message: hiddenLayers == 1
+          ? l10n.one_layer_off
+          : l10n.many_layers_off(hiddenLayers),
+      action: l10n.show_all_layers,
+      onAction: () => workspace.run('layer.showAll'),
+    );
+  }
+  if (currentLayer != null && currentLayer.locked) {
+    return _CanvasNoticeBanner(
+      cardKey: const Key('canvas-layer-locked'),
+      icon: Icons.lock_outline,
+      message: l10n.current_layer_locked(currentLayer.name),
+      action: l10n.unlock,
+      onAction: () =>
+          workspace.run('layer.toggleLock', args: {'name': currentLayer.name}),
+    );
+  }
+  return null;
+}
+
+/// Floats in the viewport so showing it does not shift the drawing.
 class _CanvasNoticeBanner extends StatelessWidget {
   const _CanvasNoticeBanner({
-    super.key,
+    required this.cardKey,
     required this.icon,
     required this.message,
     this.action,
     this.onAction,
   });
 
+  final Key cardKey;
   final IconData icon;
   final String message;
   final String? action;
@@ -696,6 +818,7 @@ class _CanvasNoticeBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return _CanvasTopCard(
+      cardKey: cardKey,
       borderColor: tokens.warning.withValues(alpha: 0.5),
       child: Row(
         children: [
@@ -726,8 +849,14 @@ class _CanvasNoticeBanner extends StatelessWidget {
 
 /// Shared chrome for the floating strip at the top of the drawing.
 class _CanvasTopCard extends StatelessWidget {
-  const _CanvasTopCard({required this.borderColor, required this.child});
+  const _CanvasTopCard({
+    required this.cardKey,
+    required this.borderColor,
+    required this.child,
+  });
 
+  /// On the card itself, so a test measures the strip and not the full align.
+  final Key cardKey;
   final Color borderColor;
   final Widget child;
 
@@ -746,6 +875,7 @@ class _CanvasTopCard extends StatelessWidget {
             shadowColor: Colors.black.withValues(alpha: 0.35),
             borderRadius: BorderRadius.circular(FanCadTokens.radius),
             child: Container(
+              key: cardKey,
               padding: const EdgeInsets.symmetric(
                 horizontal: FanCadTokens.space3,
                 vertical: FanCadTokens.space2,
@@ -797,6 +927,7 @@ class _CanvasPromptHud extends ConsumerWidget {
         : workspace.commands.find(running)?.title;
 
     return _CanvasTopCard(
+      cardKey: const Key('canvas-prompt-hud'),
       borderColor: tokens.borderStrong,
       child: Row(
         children: [
@@ -919,6 +1050,7 @@ class _EmptyDrawingHint extends StatelessWidget {
       child: Align(
         alignment: Alignment.center,
         child: ConstrainedBox(
+          key: const Key('canvas-empty-hint'),
           constraints: const BoxConstraints(maxWidth: 360),
           child: Column(
             mainAxisSize: MainAxisSize.min,
