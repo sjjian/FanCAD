@@ -1,4 +1,4 @@
-#include "include/desktop_open_files/desktop_open_files_plugin.h"
+#include "include/desktop_open_files/open_files_plugin.h"
 
 #include <flutter_linux/flutter_linux.h>
 #include <cstring>

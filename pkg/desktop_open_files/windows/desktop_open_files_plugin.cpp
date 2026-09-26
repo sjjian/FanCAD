@@ -1,4 +1,4 @@
-#include "include/desktop_open_files/desktop_open_files_plugin.h"
+#include "include/desktop_open_files/open_files_plugin.h"
 
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
