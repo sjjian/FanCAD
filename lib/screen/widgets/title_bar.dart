@@ -45,9 +45,11 @@ class TitleBar extends StatelessWidget {
   /// Space after the last title-bar control.
   ///
   /// macOS has no window-button cluster on the right, so the assistant
-  /// icon would otherwise sit flush against the window edge.
+  /// icon would otherwise sit flush against the window edge. Caption
+  /// buttons already end on the window edge, so that cluster takes no inset.
   @visibleForTesting
-  static double trailingInset() => FanCadTokens.space2;
+  static double trailingInset({required bool usesNativeTrafficLights}) =>
+      usesNativeTrafficLights ? FanCadTokens.space2 : 0;
 
   /// Whether this platform draws its own minimise / maximise / close cluster.
   @visibleForTesting
@@ -61,41 +63,47 @@ class TitleBar extends StatelessWidget {
     final l10n = context.l10n;
     final nativeLights = Platform.isMacOS;
 
-    return Container(
+    return SizedBox(
       key: const Key('title-bar'),
       height: FanCadTokens.titleBarHeight,
-      decoration: BoxDecoration(
-        color: tokens.surfaceRaised,
-        border: Border(bottom: BorderSide(color: tokens.borderMuted)),
-      ),
-      child: Row(
-        children: [
-          SizedBox(width: leadingInset(usesNativeTrafficLights: nativeLights)),
-          const Expanded(child: _DragArea(child: SizedBox.expand())),
-          FanCadIconButton(
-            icon: Icons.search,
-            tooltip:
-                '${l10n.command_palette}  ${formatKeybinding('ctrl+shift+p')}',
-            onPressed: onTogglePalette,
+      child: DecoratedBox(
+        // Foreground so the seam stays visible and the row keeps its full height.
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: tokens.borderMuted)),
+        ),
+        child: ColoredBox(
+          color: tokens.surfaceRaised,
+          child: Row(
+            children: [
+              SizedBox(
+                width: leadingInset(usesNativeTrafficLights: nativeLights),
+              ),
+              const Expanded(child: _DragArea(child: SizedBox.expand())),
+              FanCadIconButton(
+                icon: Icons.search,
+                tooltip:
+                    '${l10n.command_palette}  ${formatKeybinding('ctrl+shift+p')}',
+                onPressed: onTogglePalette,
+              ),
+              FanCadIconButton(
+                icon: Icons.auto_awesome_outlined,
+                tooltip: assistantOpen
+                    ? l10n.hide_assistant
+                    : l10n.show_assistant,
+                isActive: assistantOpen,
+                onPressed: onToggleAssistant,
+              ),
+              if (usesCustomWindowButtons(
+                usesNativeTrafficLights: nativeLights,
+              ))
+                const _WindowButtons(),
+              SizedBox(
+                width: trailingInset(usesNativeTrafficLights: nativeLights),
+              ),
+            ],
           ),
-          FanCadIconButton(
-            icon: Icons.auto_awesome_outlined,
-            tooltip: assistantOpen ? l10n.hide_assistant : l10n.show_assistant,
-            isActive: assistantOpen,
-            onPressed: onToggleAssistant,
-          ),
-          if (usesCustomWindowButtons(
-            usesNativeTrafficLights: nativeLights,
-          )) ...[
-            const FanCadHairline(
-              axis: Axis.vertical,
-              extent: 18,
-              padding: EdgeInsets.symmetric(horizontal: FanCadTokens.space2),
-            ),
-            const _WindowButtons(),
-          ],
-          SizedBox(width: trailingInset()),
-        ],
+        ),
       ),
     );
   }
@@ -525,25 +533,190 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
   }
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      FanCadIconButton(
-        icon: Icons.remove,
-        tooltip: context.l10n.minimise,
-        onPressed: windowManager.minimize,
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Row(
+      children: [
+        _CaptionButton(
+          key: const Key('window-minimize'),
+          glyph: _CaptionGlyph.minimize,
+          tooltip: l10n.minimise,
+          onPressed: windowManager.minimize,
+        ),
+        _CaptionButton(
+          key: const Key('window-maximize'),
+          glyph: _maximized ? _CaptionGlyph.restore : _CaptionGlyph.maximize,
+          tooltip: _maximized ? l10n.restore : l10n.maximise,
+          onPressed: _toggleMaximize,
+        ),
+        _CaptionButton(
+          key: const Key('window-close'),
+          glyph: _CaptionGlyph.close,
+          tooltip: l10n.close_window,
+          close: true,
+          onPressed: windowManager.close,
+        ),
+      ],
+    );
+  }
+}
+
+/// A full-height caption button. The hit target is a square-cornered
+/// rectangle the height of the title bar, the way Chrome draws minimise,
+/// maximise and close, rather than a rounded toolbar icon.
+class _CaptionButton extends StatefulWidget {
+  const _CaptionButton({
+    super.key,
+    required this.glyph,
+    required this.tooltip,
+    required this.onPressed,
+    this.close = false,
+  });
+
+  final _CaptionGlyph glyph;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  /// Close fills with the Windows caption red and turns the glyph white.
+  final bool close;
+
+  /// Windows and Chrome use a 46px caption button at 96 dpi.
+  static const double width = 46;
+
+  @override
+  State<_CaptionButton> createState() => _CaptionButtonState();
+}
+
+class _CaptionButtonState extends State<_CaptionButton> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final fill = _fill(tokens);
+    final glyph = widget.close && (_hovered || _pressed)
+        ? Colors.white
+        : tokens.text;
+    // The restore glyph punches out the rear square. Idle buttons are
+    // transparent, so that punch uses the title-bar surface.
+    final punch = fill == Colors.transparent ? tokens.surfaceRaised : fill;
+
+    return Tooltip(
+      message: widget.tooltip,
+      waitDuration: const Duration(milliseconds: 500),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() {
+          _hovered = false;
+          _pressed = false;
+        }),
+        child: GestureDetector(
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) => setState(() => _pressed = false),
+          onTapCancel: () => setState(() => _pressed = false),
+          onTap: widget.onPressed,
+          child: SizedBox(
+            width: _CaptionButton.width,
+            height: FanCadTokens.titleBarHeight,
+            child: ColoredBox(
+              color: fill,
+              child: CustomPaint(
+                painter: _CaptionGlyphPainter(
+                  glyph: widget.glyph,
+                  color: glyph,
+                  background: punch,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
-      FanCadIconButton(
-        icon: _maximized ? Icons.filter_none : Icons.crop_square,
-        iconSize: FanCadTokens.iconSmall,
-        tooltip: _maximized ? context.l10n.restore : context.l10n.maximise,
-        onPressed: _toggleMaximize,
-      ),
-      FanCadIconButton(
-        icon: Icons.close,
-        tooltip: context.l10n.close_window,
-        destructive: true,
-        onPressed: windowManager.close,
-      ),
-    ],
-  );
+    );
+  }
+
+  /// Minimise and maximise wash the whole button. Close uses the caption
+  /// red Chrome shows on Windows, darker while the pointer is down.
+  Color _fill(FanCadTokens tokens) {
+    if (widget.close) {
+      if (_pressed) return const Color(0xFFC50F1F);
+      if (_hovered) return const Color(0xFFE81123);
+      return Colors.transparent;
+    }
+    if (_pressed) {
+      return tokens.isDark
+          ? Colors.white.withValues(alpha: 0.12)
+          : Colors.black.withValues(alpha: 0.10);
+    }
+    if (_hovered) {
+      return tokens.isDark
+          ? Colors.white.withValues(alpha: 0.08)
+          : Colors.black.withValues(alpha: 0.06);
+    }
+    return Colors.transparent;
+  }
+}
+
+enum _CaptionGlyph { minimize, maximize, restore, close }
+
+/// 1px caption glyphs: a dash, a square, two offset squares, or an X.
+class _CaptionGlyphPainter extends CustomPainter {
+  const _CaptionGlyphPainter({
+    required this.glyph,
+    required this.color,
+    required this.background,
+  });
+
+  final _CaptionGlyph glyph;
+  final Color color;
+  final Color background;
+
+  static const double _extent = 10;
+  static const double _stroke = 1;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = _stroke
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.butt
+      ..strokeJoin = StrokeJoin.miter;
+    final center = Offset(size.width / 2, size.height / 2);
+    switch (glyph) {
+      case _CaptionGlyph.minimize:
+        canvas.drawLine(
+          Offset(center.dx - _extent / 2, center.dy),
+          Offset(center.dx + _extent / 2, center.dy),
+          paint,
+        );
+      case _CaptionGlyph.maximize:
+        canvas.drawRect(_square(center, _extent), paint);
+      case _CaptionGlyph.restore:
+        _paintRestore(canvas, center, paint);
+      case _CaptionGlyph.close:
+        final box = _square(center, _extent);
+        canvas.drawLine(box.topLeft, box.bottomRight, paint);
+        canvas.drawLine(box.topRight, box.bottomLeft, paint);
+    }
+  }
+
+  /// Rear square up and to the right, front square punched over it.
+  void _paintRestore(Canvas canvas, Offset center, Paint stroke) {
+    const box = 8.0;
+    const shift = 1.0;
+    final back = _square(center + const Offset(shift, -shift), box);
+    final front = _square(center + const Offset(-shift, shift), box);
+    canvas.drawRect(back, stroke);
+    canvas.drawRect(front, Paint()..color = background);
+    canvas.drawRect(front, stroke);
+  }
+
+  Rect _square(Offset center, double extent) =>
+      Rect.fromCenter(center: center, width: extent, height: extent);
+
+  @override
+  bool shouldRepaint(covariant _CaptionGlyphPainter old) =>
+      old.glyph != glyph || old.color != color || old.background != background;
 }
