@@ -108,11 +108,7 @@ Future<void> _compile({
     // C99 hides strdup unless a feature macro is set before the libc headers.
     // Without it Clang treats the implicit declaration as int and truncates
     // the returned pointer.
-    flags: [
-      '-Wall',
-      if (Platform.isLinux) '-D_DEFAULT_SOURCE',
-      ...extraFlags,
-    ],
+    flags: ['-Wall', if (Platform.isLinux) '-D_DEFAULT_SOURCE', ...extraFlags],
   );
   await builder.run(input: input, output: output, logger: logger);
 }
