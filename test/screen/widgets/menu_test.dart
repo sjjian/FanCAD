@@ -56,4 +56,41 @@ void main() {
       16 + fanCadMenuItemHeight * 2,
     );
   });
+
+  test('a cursor menu grows down-right and slides only by the overflow', () {
+    const menu = Size(200, 300);
+    const overlay = Size(800, 600);
+
+    Offset origin(Offset cursor) =>
+        fanCadCursorMenuOrigin(cursor: cursor, menu: menu, overlay: overlay);
+
+    expect(origin(const Offset(100, 80)), const Offset(100, 80));
+    expect(origin(const Offset(500, 80)), const Offset(500, 80));
+
+    final bottom = overlay.height - fanCadMenuScreenPadding - menu.height + 40;
+    expect(origin(Offset(100, bottom)), Offset(100, bottom - 40));
+
+    final right = overlay.width - fanCadMenuScreenPadding - menu.width + 40;
+    expect(origin(Offset(right, 80)), Offset(right - 40, 80));
+
+    expect(origin(Offset(right, bottom)), Offset(right - 40, bottom - 40));
+
+    expect(
+      fanCadCursorMenuOrigin(
+        cursor: const Offset(90, 90),
+        menu: const Size(400, 400),
+        overlay: const Size(100, 100),
+      ),
+      const Offset(fanCadMenuScreenPadding, fanCadMenuScreenPadding),
+    );
+
+    final pinned = fanCadCursorMenuRect(
+      cursor: const Offset(500, 80),
+      menu: menu,
+      overlay: overlay,
+    );
+    expect(pinned.left, 500);
+    expect(pinned.top, 80);
+    expect(pinned.right, overlay.width);
+  });
 }

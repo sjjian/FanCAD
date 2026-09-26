@@ -18,6 +18,9 @@ enum FanCadMenuPlacement {
 
   /// Down unless the trigger is in the lower half of the overlay.
   auto,
+
+  /// From a cursor: grow down and right, then slide only by what overflows.
+  cursor,
 }
 
 /// Resolves [requested] against the trigger's vertical place in the overlay.
@@ -79,6 +82,60 @@ RelativeRect fanCadMenuAnchorRect({
 const double fanCadMenuMinWidth = 180;
 const double fanCadMenuItemHeight = 32;
 
+/// Material's default menu cap, and the inset [_fitInsideScreen] keeps.
+const double fanCadMenuMaxWidth = 280;
+const double fanCadMenuScreenPadding = 8;
+
+/// Top-left of a cursor menu. It opens down and to the right of [cursor].
+///
+/// A shortfall moves the origin by that overflow only, so the menu stays in
+/// the cursor's lower-right instead of flipping wholly above or to the left.
+/// An edge that still cannot fit is clamped to [padding].
+@visibleForTesting
+Offset fanCadCursorMenuOrigin({
+  required Offset cursor,
+  required Size menu,
+  required Size overlay,
+  double padding = fanCadMenuScreenPadding,
+}) {
+  return Offset(
+    _slideToFit(cursor.dx, menu.width, overlay.width, padding),
+    _slideToFit(cursor.dy, menu.height, overlay.height, padding),
+  );
+}
+
+double _slideToFit(double origin, double extent, double limit, double padding) {
+  var value = origin;
+  if (value + extent > limit - padding) {
+    value = limit - padding - extent;
+  }
+  if (value < padding) value = padding;
+  return value;
+}
+
+/// [RelativeRect] whose top and left are [origin].
+///
+/// [showMenu] grows left when `left > right`, so the right inset is the full
+/// overlay width and the menu's left edge stays on [origin].
+@visibleForTesting
+RelativeRect fanCadCursorMenuRect({
+  required Offset cursor,
+  required Size menu,
+  required Size overlay,
+}) {
+  final origin = fanCadCursorMenuOrigin(
+    cursor: cursor,
+    menu: menu,
+    overlay: overlay,
+  );
+  return RelativeRect.fromLTRB(
+    origin.dx,
+    origin.dy,
+    overlay.width,
+    overlay.height - origin.dy,
+  );
+}
+
 Rect _fanCadMenuTriggerRect(RelativeRect position, Size overlay) {
   // [fanCadMenuPosition] copies x/y into the right/bottom insets. That is a
   // point, not a box from the click to the opposite corner.
@@ -106,22 +163,33 @@ Future<T?> showFanCadMenu<T>({
   required List<PopupMenuEntry<T>> items,
   FanCadMenuPlacement placement = FanCadMenuPlacement.auto,
   double? width,
+  AnimationStyle? popUpAnimationStyle,
 }) {
   final tokens = context.tokens;
   final overlay = Overlay.maybeOf(context)?.context.findRenderObject();
   var resolved = position;
   if (overlay is RenderBox) {
     final size = overlay.size;
-    resolved = fanCadMenuAnchorRect(
-      trigger: _fanCadMenuTriggerRect(position, size),
-      overlaySize: size,
-      placement: placement,
-      menuHeight: fanCadMenuExtent(items),
-    );
+    final trigger = _fanCadMenuTriggerRect(position, size);
+    if (placement == FanCadMenuPlacement.cursor) {
+      resolved = fanCadCursorMenuRect(
+        cursor: trigger.topLeft,
+        menu: Size(width ?? fanCadMenuMaxWidth, fanCadMenuExtent(items)),
+        overlay: size,
+      );
+    } else {
+      resolved = fanCadMenuAnchorRect(
+        trigger: trigger,
+        overlaySize: size,
+        placement: placement,
+        menuHeight: fanCadMenuExtent(items),
+      );
+    }
   }
   return showMenu<T>(
     context: context,
     position: resolved,
+    popUpAnimationStyle: popUpAnimationStyle,
     color: tokens.surfaceOverlay,
     shape: fanCadOverlayShape(tokens),
     elevation: 3,

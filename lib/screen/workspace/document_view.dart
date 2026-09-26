@@ -284,6 +284,8 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
           global.dx + 1,
           global.dy + 1,
         ),
+        placement: FanCadMenuPlacement.cursor,
+        popUpAnimationStyle: AnimationStyle.noAnimation,
         items: [
           if (runningTitle != null)
             fanCadMenuItem(

@@ -287,10 +287,14 @@ void main() {
     await tester.sendEventToBinding(pointer.up());
     await tester.pump();
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
 
     final addToChat = find.byKey(const Key('canvas-add-to-chat'));
     expect(addToChat, findsOneWidget);
+    final menu = tester.getRect(
+      find.ancestor(of: addToChat, matching: find.byType(Material)).first,
+    );
+    expect(menu.left, closeTo(location.dx, 1));
+    expect(menu.top, closeTo(location.dy, 1));
     await tester.tap(addToChat);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
