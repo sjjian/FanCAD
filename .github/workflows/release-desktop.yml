@@ -54,6 +54,8 @@ jobs:
         run: flutter pub get
 
       - name: Build macOS release
+        env:
+          FANCAD_REQUIRE_LIBREDWG: "1"
         run: flutter build macos --release
 
       - name: Package DMG
@@ -91,6 +93,8 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows release
+        env:
+          FANCAD_REQUIRE_LIBREDWG: "1"
         run: flutter build windows --release
 
       - name: Install Inno Setup
@@ -146,6 +150,8 @@ jobs:
         run: flutter pub get
 
       - name: Build Linux release
+        env:
+          FANCAD_REQUIRE_LIBREDWG: "1"
         run: flutter build linux --release
 
       - name: Package tarball

@@ -45,7 +45,7 @@ void main(List<String> arguments) async {
           sources: sources,
           includes: [nativeDirectory.toFilePath(), ...libredwg.includes],
           defines: {'FANCAD_HAVE_LIBREDWG': '1'},
-          libraries: ['m'],
+          libraries: [if (!Platform.isWindows) 'm'],
           libraryDirectories: const [],
           extraFlags: [
             if (Platform.isMacOS) '-mmacosx-version-min=12.0',
@@ -59,12 +59,16 @@ void main(List<String> arguments) async {
           'Compiling against LibreDWG at ${libredwg.root} failed: $error\n'
           'Falling back to a build without a DWG backend.',
         );
+        if (_libredwgRequired) rethrow;
       }
     } else {
       logger.warning(
         'LibreDWG is unavailable (missing source or a failed in-tree build). '
         'Building without a DWG backend.',
       );
+      if (_libredwgRequired) {
+        throw StateError('LibreDWG is required for this build.');
+      }
     }
 
     await _compile(
@@ -191,13 +195,13 @@ Future<_LibreDwg?> _buildFromSource(
     if (File('$source/CMakeLists.txt').existsSync() &&
         _which('cmake') != null) {
       rebuilt = await _cmakeBuild(source, buildDir.toFilePath(), logger);
-      if (!rebuilt) {
+      if (!rebuilt && !Platform.isWindows) {
         logger.warning(
           'cmake could not compile LibreDWG; trying autotools instead.',
         );
       }
     }
-    if (!rebuilt) {
+    if (!rebuilt && !Platform.isWindows) {
       final autoDir = '${buildDir.toFilePath()}/autotools';
       Directory(autoDir).createSync(recursive: true);
       if (await _ensureConfigure(source, logger)) {
@@ -471,6 +475,8 @@ Future<bool> _cmakeBuild(String source, String buildDir, Logger logger) async {
     '-DDISABLE_WERROR=ON',
     '-DCMAKE_BUILD_TYPE=Release',
     '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
+    // CMake 4 drops compatibility with projects that still declare 2.8.
+    '-DCMAKE_POLICY_VERSION_MINIMUM=3.5',
     if (Platform.isMacOS) ...[
       '-DCMAKE_C_FLAGS=-D_DARWIN_C_SOURCE',
       '-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0',
@@ -560,9 +566,21 @@ Future<bool> _autotoolsBuild(
   return true;
 }
 
+bool get _libredwgRequired =>
+    Platform.environment['FANCAD_REQUIRE_LIBREDWG'] == '1';
+
 String? _which(String name) {
-  final result = Process.runSync('which', [name]);
+  final finder = Platform.isWindows ? 'where' : 'which';
+  ProcessResult result;
+  try {
+    result = Process.runSync(finder, [name]);
+  } on ProcessException {
+    return null;
+  }
   if (result.exitCode != 0) return null;
-  final path = (result.stdout as String).trim();
+  final path = (result.stdout as String)
+      .split(RegExp(r'\r?\n'))
+      .map((line) => line.trim())
+      .firstWhere((line) => line.isNotEmpty, orElse: () => '');
   return path.isEmpty ? null : path;
 }
