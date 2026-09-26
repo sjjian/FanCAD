@@ -149,11 +149,19 @@ class DocumentTabStrip extends ConsumerWidget {
               ),
             ),
           ),
-          FanCadIconButton(
-            key: const Key('document-new-tab'),
-            icon: Icons.add,
-            tooltip: context.l10n.new_tab,
-            onPressed: workspace.openStartTab,
+          Padding(
+            padding: const EdgeInsets.only(
+              left: FanCadTokens.space1,
+              top: FanCadTokens.space1,
+              bottom: FanCadTokens.space1,
+            ),
+            child: FanCadIconButton(
+              key: const Key('document-new-tab'),
+              icon: Icons.add,
+              size: FanCadTokens.tabBarHeight - FanCadTokens.space1 * 2,
+              tooltip: context.l10n.new_tab,
+              onPressed: workspace.openStartTab,
+            ),
           ),
           if (tabs.length > 1)
             _OpenDrawingsMenu(

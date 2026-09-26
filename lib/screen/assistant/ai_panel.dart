@@ -510,12 +510,20 @@ class _ChatTabStrip extends StatelessWidget {
               },
             ),
           ),
-          FanCadIconButton(
-            key: const Key('assistant-new-session'),
-            icon: Icons.add,
-            tooltip: context.l10n.new_chat,
-            iconSize: FanCadTokens.iconSmall,
-            onPressed: onNew,
+          Padding(
+            padding: const EdgeInsets.only(
+              left: FanCadTokens.space1,
+              top: FanCadTokens.space1,
+              bottom: FanCadTokens.space1,
+            ),
+            child: FanCadIconButton(
+              key: const Key('assistant-new-session'),
+              icon: Icons.add,
+              tooltip: context.l10n.new_chat,
+              size: FanCadTokens.tabBarHeight - FanCadTokens.space1 * 2,
+              iconSize: FanCadTokens.iconSmall,
+              onPressed: onNew,
+            ),
           ),
           const SizedBox(width: FanCadTokens.space1),
         ],

@@ -275,13 +275,19 @@ void main() {
         ),
         isA<FanCadTab>(),
       );
+      final strip = tester.getRect(
+        find.byKey(const Key('assistant-session-tabs')),
+      );
       final tab = tester.getRect(
         find.byKey(Key('assistant-session-${ai.state.activeChat.id}')),
       );
       final plus = tester.getRect(
         find.byKey(const Key('assistant-new-session')),
       );
-      expect(plus.left - tab.right, lessThan(8));
+      final gap = plus.left - tab.right;
+      expect(gap, FanCadTokens.space1);
+      expect(gap, closeTo(plus.top - strip.top, 1.5));
+      expect(gap, closeTo(strip.bottom - plus.bottom, 1.5));
       expect(plus.left, lessThan(200));
     },
   );
