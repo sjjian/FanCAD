@@ -155,16 +155,22 @@ class _BuildCounter extends StatefulWidget {
   _BuildCounter({required this.boxKey});
 
   final Key boxKey;
-  int count = 0;
+  final _BuildTally tally = _BuildTally();
+
+  int get count => tally.count;
 
   @override
   State<_BuildCounter> createState() => _BuildCounterState();
 }
 
+class _BuildTally {
+  int count = 0;
+}
+
 class _BuildCounterState extends State<_BuildCounter> {
   @override
   Widget build(BuildContext context) {
-    widget.count += 1;
+    widget.tally.count += 1;
     return SizedBox(key: widget.boxKey);
   }
 }
