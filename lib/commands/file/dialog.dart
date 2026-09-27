@@ -39,17 +39,21 @@ Future<String?> openFileDialog() async {
   return file?.path;
 }
 
-Future<String?> saveFileDialog({String suggestedName = 'Drawing'}) async {
-  final name =
-      suggestedName.toLowerCase().endsWith('.dwg') ||
-          suggestedName.toLowerCase().endsWith('.dxf') ||
-          suggestedName.toLowerCase().endsWith('.fcb')
-      ? suggestedName
-      : '$suggestedName.dwg';
+Future<String?> saveFileDialog({
+  String suggestedName = 'Drawing',
+  List<String> extensions = _drawingExtensions,
+  String typeLabel = 'Drawings',
+  List<String> uniformTypeIdentifiers = const [
+    'com.autodesk.dwg',
+    'com.autodesk.dxf',
+    'app.fancad.fcb',
+  ],
+}) async {
+  final name = _suggestedFileName(suggestedName, extensions);
   if (Platform.isMacOS) {
     try {
       final path = await _macDialog.invokeMethod<String>('save', {
-        'extensions': _drawingExtensions,
+        'extensions': extensions,
         'suggestedName': name,
       });
       if (path != null) return path;
@@ -59,17 +63,21 @@ Future<String?> saveFileDialog({String suggestedName = 'Drawing'}) async {
   }
   final location = await picker.getSaveLocation(
     suggestedName: name,
-    acceptedTypeGroups: const [
+    acceptedTypeGroups: [
       picker.XTypeGroup(
-        label: 'Drawings',
-        extensions: _drawingExtensions,
-        uniformTypeIdentifiers: [
-          'com.autodesk.dwg',
-          'com.autodesk.dxf',
-          'app.fancad.fcb',
-        ],
+        label: typeLabel,
+        extensions: extensions,
+        uniformTypeIdentifiers: uniformTypeIdentifiers,
       ),
     ],
   );
   return location?.path;
+}
+
+String _suggestedFileName(String suggestedName, List<String> extensions) {
+  final lower = suggestedName.toLowerCase();
+  for (final extension in extensions) {
+    if (lower.endsWith('.$extension')) return suggestedName;
+  }
+  return '$suggestedName.${extensions.first}';
 }

@@ -1662,6 +1662,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_print_export_pdf => '导出 PDF';
 
   @override
+  String get export_menu => '导出';
+
+  @override
+  String exported_file(String name) {
+    return '已导出 $name';
+  }
+
+  @override
   String get command_xref_attach => '附着外部参照';
 
   @override

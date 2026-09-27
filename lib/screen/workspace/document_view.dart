@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fancad_core/fancad_core.dart';
@@ -55,6 +56,8 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
   CadEntity? _editingOriginal;
   CadEntity? _editingBlockLabel;
   bool _dynamicShown = false;
+  OverlayEntry? _exportFormats;
+  Timer? _exportFormatsClose;
 
   @override
   void initState() {
@@ -79,6 +82,7 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
 
   @override
   void dispose() {
+    _hideExportFormats();
     _restoreEditingOriginal(notify: false);
     widget.tab.onGeometryInvalidated = null;
     widget.tab.tools.onHudTypeIn = null;
@@ -276,6 +280,7 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
             }();
       String? chord(String id) =>
           shortcutLabelForCommand(widget.workspace.commands, id);
+      final tokens = context.tokens;
       showFanCadMenu<String>(
         context: context,
         position: RelativeRect.fromLTRB(
@@ -409,6 +414,19 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
                 : l10n.no_hidden_objects,
             enabled: hasHidden,
           ),
+          fanCadMenuItem(
+            context,
+            key: const Key('canvas-export'),
+            value: '__export__',
+            label: l10n.export_menu,
+            trailing: Icon(
+              Icons.chevron_right,
+              size: FanCadTokens.iconSmall,
+              color: tokens.textMuted,
+            ),
+            onHover: _showExportFormats,
+            onHoverExit: _scheduleHideExportFormats,
+          ),
           const PopupMenuDivider(),
           fanCadMenuItem(
             context,
@@ -430,6 +448,7 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
           ),
         ],
       ).then((id) {
+        _hideExportFormats();
         if (id == null || !mounted) return;
         if (id == '__cancel__') {
           widget.workspace.cancelActive();
@@ -443,9 +462,126 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
           widget.onAddSelectionToChat?.call();
           return;
         }
+        if (id == '__export__') return;
         widget.workspace.run(id);
       });
     });
+  }
+
+  void _hideExportFormats() {
+    _exportFormatsClose?.cancel();
+    _exportFormatsClose = null;
+    final entry = _exportFormats;
+    _exportFormats = null;
+    entry?.remove();
+  }
+
+  void _scheduleHideExportFormats() {
+    _exportFormatsClose?.cancel();
+    _exportFormatsClose = Timer(
+      const Duration(milliseconds: 150),
+      _hideExportFormats,
+    );
+  }
+
+  /// Opens beside the export row without a second menu route, so the parent
+  /// menu stays up while the pointer moves across.
+  void _showExportFormats(Rect anchor) {
+    _exportFormatsClose?.cancel();
+    _exportFormatsClose = null;
+    if (_exportFormats != null || !mounted) return;
+    final overlay = Overlay.maybeOf(context);
+    final overlayBox = overlay?.context.findRenderObject();
+    if (overlay == null || overlayBox is! RenderBox || !overlayBox.hasSize) {
+      return;
+    }
+    // Tuck into the parent, and lift by the submenu's own padding so the
+    // first row sits on the same line as the export row.
+    const overlap = 8.0;
+    const submenuPad = 8.0;
+    final origin = fanCadCursorMenuOrigin(
+      cursor: Offset(anchor.right - overlap, anchor.top - submenuPad),
+      menu: const Size(fanCadMenuMinWidth, fanCadMenuItemHeight * 2 + 16),
+      overlay: overlayBox.size,
+    );
+    final tokens = context.tokens;
+    final entry = OverlayEntry(
+      builder: (_) {
+        return Positioned(
+          left: origin.dx,
+          top: origin.dy,
+          child: MouseRegion(
+            onEnter: (_) {
+              _exportFormatsClose?.cancel();
+              _exportFormatsClose = null;
+            },
+            onExit: (_) => _scheduleHideExportFormats(),
+            child: Material(
+              color: tokens.surfaceOverlay,
+              elevation: 3,
+              shadowColor: tokens.shadow,
+              shape: fanCadOverlayShape(tokens),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: fanCadMenuMinWidth),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: submenuPad),
+                  child: IntrinsicWidth(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _exportFormatRow(
+                          key: const Key('canvas-export-svg'),
+                          label: 'SVG',
+                          command: 'print.exportSvg',
+                        ),
+                        _exportFormatRow(
+                          key: const Key('canvas-export-pdf'),
+                          label: 'PDF',
+                          command: 'print.exportPdf',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    _exportFormats = entry;
+    overlay.insert(entry);
+  }
+
+  Widget _exportFormatRow({
+    required Key key,
+    required String label,
+    required String command,
+  }) {
+    final tokens = context.tokens;
+    return InkWell(
+      key: key,
+      onTap: () => _chooseExportFormat(command),
+      child: SizedBox(
+        height: fanCadMenuItemHeight,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              label,
+              style: tokens.bodyStyle.copyWith(color: tokens.text),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _chooseExportFormat(String command) {
+    _hideExportFormats();
+    Navigator.of(context).maybePop();
+    widget.workspace.run(command);
   }
 
   void _onCanvasInput() {

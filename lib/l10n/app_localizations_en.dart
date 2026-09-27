@@ -1686,6 +1686,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get command_print_export_pdf => 'Export PDF';
 
   @override
+  String get export_menu => 'Export';
+
+  @override
+  String exported_file(String name) {
+    return 'Exported $name';
+  }
+
+  @override
   String get command_xref_attach => 'Attach Xref';
 
   @override

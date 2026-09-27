@@ -2326,6 +2326,19 @@
   "@command_print_export_pdf": {
     "description": "command print export pdf"
   },
+  "export_menu": "Export",
+  "@export_menu": {
+    "description": "Canvas menu row that opens SVG and PDF"
+  },
+  "exported_file": "Exported {name}",
+  "@exported_file": {
+    "description": "Command line confirmation after a plot file is written",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "command_xref_attach": "Attach Xref",
   "@command_xref_attach": {
     "description": "command xref attach"

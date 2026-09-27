@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:fancad/commands/pro/plot_helpers.dart';
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_test/fancad_test.dart';
@@ -810,6 +811,21 @@ void main() {
   });
 
   group('print', () {
+    test('export names the file instead of a byte count', () async {
+      final dir = tempDir(prefix: 'fancad-print-');
+      final path = '${dir.path}/sheet.svg';
+      final result = await run('print.exportSvg', {'path': path});
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(result.message, 'Exported sheet.svg');
+      expect(plotSuggestedName('小乌龟2.dwg', 'pdf'), '小乌龟2.pdf');
+      expect(plotSuggestedName('Drawing1', 'svg'), 'Drawing1.svg');
+    });
+
+    test('export without a path fails when nobody can pick a file', () async {
+      final result = await run('print.exportPdf');
+      expect(result.status, CommandStatus.failed);
+    });
+
     test('exportPdf writes a vector PDF of the current layout', () async {
       final dir = tempDir(prefix: 'fancad-print-');
       final path = '${dir.path}/sheet.pdf';

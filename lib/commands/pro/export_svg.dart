@@ -29,7 +29,9 @@ class PrintExportSvgCommand extends FanCadCommand {
     ParamSpec(
       name: 'path',
       type: ParamType.text,
-      description: 'Destination .svg path',
+      description:
+          'Destination .svg path. Omit it in the app to choose a file.',
+      required: false,
     ),
     ParamSpec(
       name: 'layout',
@@ -53,10 +55,14 @@ class PrintExportSvgCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final path = await context.resolveText(
-      'path',
-      context.l10n.prompt_svg_path,
+    final destination = await resolvePlotPath(
+      context,
+      extension: 'svg',
+      typeLabel: 'SVG',
+      uniformTypeIdentifiers: const ['public.svg-image'],
     );
+    if (destination.stop != null) return destination.stop!;
+    final path = destination.path!;
     final layout = plotLayout(context);
     if (layout == null) {
       return CommandResult.failed(
@@ -78,7 +84,7 @@ class PrintExportSvgCommand extends FanCadCommand {
     );
     await File(path).writeAsString(svg);
     return CommandResult.ok(
-      message: 'Wrote ${svg.length} characters to $path',
+      message: exportedPlotMessage(context, path),
       data: {'path': path, 'bytes': svg.length, 'layout': layout.name},
     );
   }

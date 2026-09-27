@@ -3212,6 +3212,18 @@ abstract class AppLocalizations {
   /// **'Export PDF'**
   String get command_print_export_pdf;
 
+  /// Canvas menu row that opens SVG and PDF
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get export_menu;
+
+  /// Command line confirmation after a plot file is written
+  ///
+  /// In en, this message translates to:
+  /// **'Exported {name}'**
+  String exported_file(String name);
+
   /// command xref attach
   ///
   /// In en, this message translates to:

@@ -26,7 +26,9 @@ class PrintExportPdfCommand extends FanCadCommand {
     ParamSpec(
       name: 'path',
       type: ParamType.text,
-      description: 'Destination .pdf path',
+      description:
+          'Destination .pdf path. Omit it in the app to choose a file.',
+      required: false,
     ),
     ParamSpec(
       name: 'layout',
@@ -50,10 +52,14 @@ class PrintExportPdfCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final path = await context.resolveText(
-      'path',
-      context.l10n.prompt_pdf_path,
+    final destination = await resolvePlotPath(
+      context,
+      extension: 'pdf',
+      typeLabel: 'PDF',
+      uniformTypeIdentifiers: const ['com.adobe.pdf'],
     );
+    if (destination.stop != null) return destination.stop!;
+    final path = destination.path!;
     final layout = plotLayout(context);
     if (layout == null) {
       return CommandResult.failed(

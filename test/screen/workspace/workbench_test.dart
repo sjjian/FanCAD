@@ -304,6 +304,66 @@ void main() {
     expect(find.byKey(const Key('assistant-pin-0')), findsOneWidget);
   });
 
+  testWidgets('a right-click offers export as a format submenu', (
+    tester,
+  ) async {
+    await pumpWorkbench(tester, document: true);
+    final canvas = tester.getRect(find.byType(CadCanvas));
+    final viewport = tester.getRect(find.byKey(const Key('canvas-hud')));
+    final location = Offset(viewport.left + 40, canvas.top + 72);
+    final pointer = TestPointer(
+      1,
+      PointerDeviceKind.mouse,
+      null,
+      kSecondaryMouseButton,
+    );
+    await tester.sendEventToBinding(pointer.hover(location));
+    await tester.sendEventToBinding(pointer.down(location));
+    await tester.sendEventToBinding(pointer.up());
+    await tester.pump();
+    await tester.pump();
+
+    final export = find.byKey(const Key('canvas-export'));
+    expect(export, findsOneWidget);
+    final exportRect = tester.getRect(export);
+    final undo = tester.getRect(find.text('Undo'));
+    expect(exportRect.bottom, lessThanOrEqualTo(undo.top));
+    expect(
+      tester.getRect(find.text('Export')).left,
+      closeTo(tester.getRect(find.text('Select all')).left, 1),
+    );
+    final undoRow = find.ancestor(
+      of: find.text('Undo'),
+      matching: find.byType(PopupMenuItem<String>),
+    );
+    final shortcut = find.descendant(of: undoRow, matching: find.byType(Text));
+    expect(
+      tester.getRect(find.byIcon(Icons.chevron_right)).right,
+      closeTo(tester.getRect(shortcut.last).right, 1),
+    );
+
+    final hover = TestPointer(2, PointerDeviceKind.mouse);
+    await tester.sendEventToBinding(hover.hover(exportRect.center));
+    await tester.pump();
+
+    expect(export, findsOneWidget);
+    expect(find.text('Undo'), findsOneWidget);
+    final svg = find.byKey(const Key('canvas-export-svg'));
+    expect(svg, findsOneWidget);
+    expect(find.byKey(const Key('canvas-export-pdf')), findsOneWidget);
+    final submenu = tester.getRect(
+      find.ancestor(of: svg, matching: find.byType(Material)).first,
+    );
+    expect(submenu.top, closeTo(exportRect.top - 8, 2));
+    expect(submenu.left, closeTo(exportRect.right - 8, 2));
+    expect(tester.getRect(svg).top, closeTo(exportRect.top, 2));
+
+    await tester.tap(export);
+    await tester.pump();
+    expect(export, findsOneWidget);
+    expect(svg, findsOneWidget);
+  });
+
   testWidgets('an assistant turn banners the canvas as read-only', (
     tester,
   ) async {

@@ -91,7 +91,6 @@ const double fanCadMenuScreenPadding = 8;
 /// A shortfall moves the origin by that overflow only, so the menu stays in
 /// the cursor's lower-right instead of flipping wholly above or to the left.
 /// An edge that still cannot fit is clamped to [padding].
-@visibleForTesting
 Offset fanCadCursorMenuOrigin({
   required Offset cursor,
   required Size menu,
@@ -217,6 +216,9 @@ PopupMenuItem<T> fanCadMenuItem<T>(
   bool? checked,
   bool enabled = true,
   EdgeInsets? padding,
+  Widget? trailing,
+  ValueChanged<Rect>? onHover,
+  VoidCallback? onHoverExit,
 }) {
   final tokens = context.tokens;
   final leadingMark =
@@ -227,41 +229,106 @@ PopupMenuItem<T> fanCadMenuItem<T>(
   final checkMark = checked == true
       ? Icon(Icons.check, size: FanCadTokens.iconSmall, color: tokens.accent)
       : null;
-  return PopupMenuItem<T>(
+  final row = Row(
+    children: [
+      if (leadingMark != null) ...[
+        SizedBox(width: 18, child: leadingMark),
+        const SizedBox(width: FanCadTokens.space2),
+      ],
+      if (labelChild != null)
+        labelChild
+      else
+        Expanded(
+          child: Text(
+            label,
+            style: tokens.bodyStyle.copyWith(
+              color: enabled ? tokens.text : tokens.textFaint,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      if (shortcut != null) ...[
+        const SizedBox(width: FanCadTokens.space4),
+        Text(shortcut, style: tokens.labelStyle),
+      ],
+      if (checked != null) ...[
+        const SizedBox(width: FanCadTokens.space2),
+        SizedBox(width: 18, child: checkMark),
+      ],
+      if (trailing != null) ...[
+        const SizedBox(width: FanCadTokens.space2),
+        trailing,
+      ],
+    ],
+  );
+  final hover = onHover;
+  if (hover == null) {
+    return PopupMenuItem<T>(
+      key: key,
+      value: value,
+      enabled: enabled,
+      height: fanCadMenuItemHeight,
+      padding: padding,
+      child: row,
+    );
+  }
+  return _FanCadHoverMenuItem<T>(
     key: key,
     value: value,
     enabled: enabled,
     height: fanCadMenuItemHeight,
-    padding: padding,
-    child: Row(
-      children: [
-        if (leadingMark != null) ...[
-          SizedBox(width: 18, child: leadingMark),
-          const SizedBox(width: FanCadTokens.space2),
-        ],
-        if (labelChild != null)
-          labelChild
-        else
-          Expanded(
-            child: Text(
-              label,
-              style: tokens.bodyStyle.copyWith(
-                color: enabled ? tokens.text : tokens.textFaint,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        if (shortcut != null) ...[
-          const SizedBox(width: FanCadTokens.space4),
-          Text(shortcut, style: tokens.labelStyle),
-        ],
-        if (checked != null) ...[
-          const SizedBox(width: FanCadTokens.space2),
-          SizedBox(width: 18, child: checkMark),
-        ],
-      ],
-    ),
+    onHover: hover,
+    onHoverExit: onHoverExit ?? () {},
+    child: row,
   );
+}
+
+/// A menu row that opens a sibling submenu. A tap must not pop the parent
+/// menu, or the submenu is left on its own.
+class _FanCadHoverMenuItem<T> extends PopupMenuItem<T> {
+  const _FanCadHoverMenuItem({
+    super.key,
+    super.value,
+    super.enabled,
+    super.height,
+    required this.onHover,
+    required this.onHoverExit,
+    required super.child,
+  });
+
+  final ValueChanged<Rect> onHover;
+  final VoidCallback onHoverExit;
+
+  @override
+  PopupMenuItemState<T, _FanCadHoverMenuItem<T>> createState() =>
+      _FanCadHoverMenuItemState<T>();
+}
+
+class _FanCadHoverMenuItemState<T>
+    extends PopupMenuItemState<T, _FanCadHoverMenuItem<T>> {
+  @override
+  void handleTap() {
+    _reportHover();
+  }
+
+  void _reportHover() {
+    final object = context.findRenderObject();
+    if (object is! RenderBox || !object.hasSize) return;
+    final origin = object.localToGlobal(Offset.zero);
+    widget.onHover(origin & object.size);
+  }
+
+  @override
+  Widget buildChild() {
+    return MouseRegion(
+      onEnter: (_) => _reportHover(),
+      onExit: (_) => widget.onHoverExit(),
+      child: SizedBox(
+        height: widget.height,
+        child: super.buildChild() ?? const SizedBox.shrink(),
+      ),
+    );
+  }
 }
 
 /// A disabled section label, as the file menu uses for Recent.
