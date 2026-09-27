@@ -407,7 +407,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     final hasDocumentTabs = ref.watch(
       workspaceNotifierProvider.select((s) => s.sessionIds.isNotEmpty),
     );
-    Widget center = Column(
+    final center = Column(
       children: [
         DocumentTabStrip(workspace: workspace),
         Expanded(
