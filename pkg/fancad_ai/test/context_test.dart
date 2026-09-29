@@ -14,6 +14,10 @@ void main() {
     expect(prompt, isNot(contains('{{')));
     expect(prompt, contains('@objects[tab=<id> ids=1,2,3]'));
     expect(prompt, contains('@drawing[tab=<id>]'));
+    expect(prompt, contains('print.export'));
+    expect(prompt, contains('corner1'));
+    expect(prompt, contains('corner2'));
+    expect(prompt, contains('Do not export extents'));
     expect(prompt, isNot(contains('fancad API')));
   });
 
