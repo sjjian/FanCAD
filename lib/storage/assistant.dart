@@ -1,3 +1,5 @@
+import 'package:path/path.dart' as p;
+
 import '../models/assistant.dart';
 import '../models/settings.dart';
 import 'settings.dart';
@@ -17,6 +19,9 @@ abstract interface class AssistantStore {
   String activeChatId(List<AssistantChatModel> chats);
 
   void saveChats(List<AssistantChatModel> chats, {required String activeId});
+
+  /// Folder for chat pictures. Null when settings are kept in memory.
+  String? get imageDirectory;
 }
 
 class AssistantSettings implements AssistantStore {
@@ -25,6 +30,13 @@ class AssistantSettings implements AssistantStore {
   final SettingsStore _store;
 
   static const int chatCap = 20;
+
+  @override
+  String? get imageDirectory {
+    final parent = _store.file?.parent.path;
+    if (parent == null) return null;
+    return p.join(parent, 'assistant-images');
+  }
 
   @override
   List<AssistantChatModel> loadChats() {

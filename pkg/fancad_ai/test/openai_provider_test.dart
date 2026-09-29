@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:http/http.dart' as http;
@@ -119,6 +120,47 @@ void main() {
     expect((messages[2] as Map)['tool_call_id'], 'c1');
     expect((messages[2] as Map)['name'], 'query_summary');
     expect(client.lastHeaders['authorization'], 'Bearer test-key');
+  });
+
+  test('vision sends image parts and a text model keeps a string', () async {
+    final client = _FakeClient(http.Response(_choiceJson(content: 'ok'), 200));
+    final vision = OpenAiCompatibleProvider(
+      apiKey: 'test-key',
+      client: client,
+      vision: true,
+      readImage: (id) async => Uint8List.fromList(const [1, 2, 3]),
+    );
+    await vision.completeOnce(
+      const LlmRequest(
+        messages: [
+          LlmMessage.user('see', images: [LlmImage(id: 'shot')]),
+        ],
+      ),
+    );
+    final seen = jsonDecode(client.lastBody) as Map<String, Object?>;
+    final parts =
+        ((seen['messages'] as List<Object?>).single as Map)['content'];
+    expect(parts, isA<List<Object?>>());
+    expect(jsonEncode(parts), contains('image_url'));
+    expect(jsonEncode(parts), contains('data:image/png;base64,'));
+
+    final text = OpenAiCompatibleProvider(
+      apiKey: 'test-key',
+      client: client,
+      readImage: (id) async => Uint8List.fromList(const [1, 2, 3]),
+    );
+    await text.completeOnce(
+      const LlmRequest(
+        messages: [
+          LlmMessage.user('see', images: [LlmImage(id: 'shot')]),
+        ],
+      ),
+    );
+    final plain = jsonDecode(client.lastBody) as Map<String, Object?>;
+    expect(
+      ((plain['messages'] as List<Object?>).single as Map)['content'],
+      'see',
+    );
   });
 
   test(

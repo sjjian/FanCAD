@@ -28,6 +28,7 @@ abstract class AssistantModel with _$AssistantModel {
     @Default([]) List<AssistantChatModel> chats,
     @Default(AssistantChatModel.defaultId) String activeChatId,
     @Default([]) List<ComposerPinModel> pins,
+    @Default([]) List<AssistantImageModel> images,
     String? error,
     PendingChangeSet? approval,
     SessionQuestion? question,
@@ -130,6 +131,26 @@ String formatAssistantTokens(int tokens) {
   return '${tenths}k';
 }
 
+/// One picture waiting in the composer or hanging on a tool card.
+@freezed
+abstract class AssistantImageModel with _$AssistantImageModel {
+  const AssistantImageModel._();
+
+  const factory AssistantImageModel({
+    required String id,
+    @Default('image/png') String mime,
+  }) = _AssistantImageModel;
+
+  LlmImage toLlm() => LlmImage(id: id, mime: mime);
+}
+
+/// A text model cannot continue a thread that already contains a picture.
+bool assistantNeedsVision({
+  required bool vision,
+  required bool conversationHasImages,
+  required bool pendingImages,
+}) => !vision && (conversationHasImages || pendingImages);
+
 /// A command-line style reading of one tool result.
 ///
 /// The model still receives the raw JSON. This is only what the panel shows.
@@ -145,12 +166,15 @@ abstract class AssistantReceiptModel with _$AssistantReceiptModel {
     String? toolName,
     @Default(false) bool isError,
     @Default(1) int count,
+    @Default([]) List<AssistantImageModel> images,
   }) = _AssistantReceiptModel;
 
   bool get isOk => status == 'ok';
 
-  AssistantReceiptModel merge(AssistantReceiptModel other) =>
-      copyWith(count: count + other.count);
+  AssistantReceiptModel merge(AssistantReceiptModel other) => copyWith(
+    count: count + other.count,
+    images: [...images, ...other.images],
+  );
 
   String get headline {
     final name = count > 1 ? '$verb ×$count' : verb;
@@ -202,6 +226,7 @@ AssistantReceiptModel parseAssistantReceipt(ChatMessage message) {
         raw: raw,
         toolName: message.toolName,
         isError: message.isError || status != 'ok',
+        images: _receiptImages(message),
       );
     }
     return AssistantReceiptModel(
@@ -211,6 +236,7 @@ AssistantReceiptModel parseAssistantReceipt(ChatMessage message) {
       raw: raw,
       toolName: message.toolName,
       isError: message.isError,
+      images: _receiptImages(message),
     );
   }
   final trimmed = raw.trim();
@@ -225,8 +251,14 @@ AssistantReceiptModel parseAssistantReceipt(ChatMessage message) {
     raw: raw,
     toolName: message.toolName,
     isError: message.isError,
+    images: _receiptImages(message),
   );
 }
+
+List<AssistantImageModel> _receiptImages(ChatMessage message) => [
+  for (final image in message.images)
+    AssistantImageModel(id: image.id, mime: image.mime),
+];
 
 /// One row in the assistant history list.
 @freezed

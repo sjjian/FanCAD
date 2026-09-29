@@ -11,6 +11,7 @@ ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) => ChatMessage(
   text: _stringOrEmpty(json['text']),
   toolName: json['toolName'] as String?,
   isError: json['isError'] as bool? ?? false,
+  images: json['images'] == null ? const [] : llmImagesFromJson(json['images']),
 );
 
 Map<String, dynamic> _$ChatMessageToJson(ChatMessage instance) =>
@@ -19,10 +20,12 @@ Map<String, dynamic> _$ChatMessageToJson(ChatMessage instance) =>
       'text': instance.text,
       if (instance.toolName case final value?) 'toolName': value,
       if (_omitFalse(instance.isError) case final value?) 'isError': value,
+      if (llmImagesToJson(instance.images) case final value?) 'images': value,
     };
 
 Map<String, dynamic> _$ConversationToJson(Conversation instance) =>
     <String, dynamic>{
       'llm': _llmListToJson(instance.llmMessages),
       'visible': _chatListToJson(instance.visible),
+      'hasImages': instance.hasImages,
     };

@@ -16,6 +16,7 @@ class ChatMessage {
     required this.text,
     this.toolName,
     this.isError = false,
+    this.images = const [],
   });
 
   @JsonKey(fromJson: _chatRoleFromJson, toJson: _chatRoleToJson)
@@ -25,6 +26,8 @@ class ChatMessage {
   final String? toolName;
   @JsonKey(toJson: _omitFalse)
   final bool isError;
+  @JsonKey(fromJson: llmImagesFromJson, toJson: llmImagesToJson)
+  final List<LlmImage> images;
 
   Map<String, Object?> toJson() => _$ChatMessageToJson(this);
 
@@ -62,10 +65,50 @@ class Conversation {
   @JsonKey(toJson: _chatListToJson)
   final List<ChatMessage> visible = [];
 
-  void addUser(String text) {
-    if (text.trim().isEmpty) return;
-    llmMessages.add(LlmMessage.user(text));
-    visible.add(ChatMessage(role: ChatRole.user, text: text));
+  void addUser(String text, {List<LlmImage> images = const []}) {
+    if (text.trim().isEmpty && images.isEmpty) return;
+    llmMessages.add(LlmMessage.user(text, images: images));
+    visible.add(ChatMessage(role: ChatRole.user, text: text, images: images));
+  }
+
+  /// True when the person can see a picture in this thread.
+  bool get hasImages {
+    for (final message in visible) {
+      if (message.images.isNotEmpty) return true;
+    }
+    return false;
+  }
+
+  /// Shows each tool image on the row that produced it.
+  ///
+  /// Chat Completions keep `role: tool` content as text. A picture is a
+  /// later user message, and that message is added only after the caller
+  /// has already written a tool result for every `tool_call_id` in the turn.
+  void attachToolImages(
+    List<({int visibleIndex, LlmImage image})> placed, {
+    required bool forModel,
+  }) {
+    if (placed.isEmpty) return;
+    for (final item in placed) {
+      final index = item.visibleIndex;
+      if (index < 0 || index >= visible.length) continue;
+      final row = visible[index];
+      if (row.role != ChatRole.tool) continue;
+      visible[index] = ChatMessage(
+        role: row.role,
+        text: row.text,
+        toolName: row.toolName,
+        isError: row.isError,
+        images: [...row.images, item.image],
+      );
+    }
+    if (!forModel) return;
+    llmMessages.add(
+      LlmMessage.user(
+        'Image returned by the tool.',
+        images: [for (final item in placed) item.image],
+      ),
+    );
   }
 
   void addAssistant(String text) {
@@ -120,6 +163,7 @@ class Conversation {
         toolCalls: message.toolCalls,
         toolCallId: message.toolCallId,
         name: message.name,
+        images: message.images,
       ),
     );
     if (visible.isNotEmpty &&

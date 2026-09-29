@@ -171,4 +171,62 @@ void main() {
     expect(conversation.visible[1].text, '{"entities":[1,2,3]}');
     expect(isToolStubContent(conversation.llmMessages[2].content), isTrue);
   });
+
+  test('a picture without text stays in the transcript', () {
+    final conversation = Conversation();
+    conversation.addUser('', images: const [LlmImage(id: 'upload')]);
+    conversation.addUser('   ');
+    expect(conversation.visible, hasLength(1));
+    expect(conversation.llmMessages.single.images.single.id, 'upload');
+  });
+
+  test('tool images stay on their rows and follow the whole tool run', () {
+    final conversation = Conversation();
+    conversation.addToolResult(
+      call: const LlmToolCall(id: '1', name: 'fancad', arguments: {}),
+      content: '{"status":"ok","data":{"bytes":4}}',
+      toolName: 'print.export',
+    );
+    conversation.addToolResult(
+      call: const LlmToolCall(id: '2', name: 'fancad', arguments: {}),
+      content: '{"status":"ok"}',
+      toolName: 'query.summary',
+    );
+    conversation.attachToolImages(const [
+      (visibleIndex: 0, image: LlmImage(id: 'plot')),
+      (visibleIndex: 0, image: LlmImage(id: 'plot-2')),
+    ], forModel: true);
+    expect(conversation.visible[0].images.map((image) => image.id), [
+      'plot',
+      'plot-2',
+    ]);
+    expect(conversation.visible[1].images, isEmpty);
+    expect(conversation.llmMessages[0].role, LlmRole.tool);
+    expect(conversation.llmMessages[0].images, isEmpty);
+    expect(conversation.llmMessages[1].role, LlmRole.tool);
+    expect(conversation.llmMessages.last.role, LlmRole.user);
+    expect(conversation.llmMessages.last.images.map((image) => image.id), [
+      'plot',
+      'plot-2',
+    ]);
+    expect(
+      conversation.llmMessages.where((message) => message.role == LlmRole.user),
+      hasLength(1),
+    );
+    expect(conversation.hasImages, isTrue);
+  });
+
+  test(
+    'old pictures become a text marker when the transcript is compacted',
+    () {
+      final conversation = Conversation();
+      conversation.addUser('see', images: const [LlmImage(id: 'old')]);
+      conversation.addUser('next');
+      final next = stubOldToolResults(conversation.llmMessages);
+      expect(next.first.images, isEmpty);
+      expect(next.first.content, contains('[image]'));
+      expect(next.last.content, 'next');
+      expect(next.last.images, isEmpty);
+    },
+  );
 }

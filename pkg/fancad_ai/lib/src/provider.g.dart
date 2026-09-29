@@ -14,6 +14,7 @@ LlmMessage _$LlmMessageFromJson(Map<String, dynamic> json) => LlmMessage(
       : _toolCallsFromJson(json['tool_calls']),
   toolCallId: json['tool_call_id'] as String?,
   name: json['name'] as String?,
+  images: json['images'] == null ? const [] : llmImagesFromJson(json['images']),
 );
 
 Map<String, dynamic> _$LlmMessageToJson(
@@ -25,6 +26,7 @@ Map<String, dynamic> _$LlmMessageToJson(
     'tool_calls': value,
   if (instance.toolCallId case final value?) 'tool_call_id': value,
   if (instance.name case final value?) 'name': value,
+  if (llmImagesToJson(instance.images) case final value?) 'images': value,
 };
 
 Map<String, dynamic> _$LlmToolToJson(LlmTool instance) => <String, dynamic>{

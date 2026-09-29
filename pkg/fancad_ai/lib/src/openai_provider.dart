@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
 import 'provider.dart';
+
+/// Loads a stored chat picture when a multimodal request is encoded.
+typedef ImageBytesReader = Future<Uint8List?> Function(String id);
 
 /// An OpenAI-compatible chat-completions provider.
 ///
@@ -17,6 +21,8 @@ class OpenAiCompatibleProvider extends LlmProvider {
     this.baseUrl = 'https://api.openai.com/v1',
     this.model = 'gpt-4o-mini',
     this.name = 'openai',
+    this.vision = false,
+    this.readImage,
     http.Client? client,
   }) : _client = client ?? http.Client();
 
@@ -26,6 +32,10 @@ class OpenAiCompatibleProvider extends LlmProvider {
   final String apiKey;
   final String baseUrl;
   final String model;
+
+  /// When false, pictures stay out of the request body.
+  final bool vision;
+  final ImageBytesReader? readImage;
   final http.Client _client;
 
   /// Builds a provider from environment and settings. Returns null when no
@@ -37,6 +47,8 @@ class OpenAiCompatibleProvider extends LlmProvider {
     String apiKey = '',
     String apiKeyEnvVar = 'OPENAI_API_KEY',
     Map<String, String>? environment,
+    bool vision = false,
+    ImageBytesReader? readImage,
   }) {
     final env = environment ?? const <String, String>{};
     final pasted = apiKey.trim();
@@ -47,6 +59,8 @@ class OpenAiCompatibleProvider extends LlmProvider {
       apiKey: key,
       baseUrl: baseUrl,
       model: model,
+      vision: vision,
+      readImage: readImage,
     );
   }
 
@@ -58,11 +72,13 @@ class OpenAiCompatibleProvider extends LlmProvider {
           : '$baseUrl/chat/completions',
     );
     final stream = request.stream;
+    final messages = <Map<String, Object?>>[];
+    for (final message in request.messages) {
+      messages.add(await _encodeMessage(message));
+    }
     final body = <String, Object?>{
       'model': request.model ?? model,
-      'messages': [
-        for (final message in request.messages) _encodeMessage(message),
-      ],
+      'messages': messages,
       'stream': stream,
       if (stream) 'stream_options': {'include_usage': true},
       if (request.tools.isNotEmpty)
@@ -300,15 +316,44 @@ class OpenAiCompatibleProvider extends LlmProvider {
     return pending.length - 1;
   }
 
-  static Map<String, Object?> _encodeMessage(LlmMessage message) {
+  Future<List<Map<String, Object?>>> _imageParts(LlmMessage message) async {
+    if (!vision || message.images.isEmpty) return const [];
+    final read = readImage;
+    if (read == null) return const [];
+    final parts = <Map<String, Object?>>[];
+    for (final image in message.images) {
+      final bytes = await read(image.id);
+      if (bytes == null || bytes.isEmpty) continue;
+      parts.add({
+        'type': 'image_url',
+        'image_url': {
+          'url': 'data:${image.mime};base64,${base64Encode(bytes)}',
+        },
+      });
+    }
+    return parts;
+  }
+
+  Future<Map<String, Object?>> _encodeMessage(LlmMessage message) async {
     final encoded = <String, Object?>{'role': message.role.name};
     if (message.role == LlmRole.tool) {
+      // Tool content is text only. Images are user content parts, and they
+      // are sent only after this tool-result run is complete.
       encoded['tool_call_id'] = message.toolCallId;
       encoded['content'] = message.content;
       if (message.name != null) encoded['name'] = message.name;
       return encoded;
     }
-    if (message.content.isNotEmpty) encoded['content'] = message.content;
+    final parts = await _imageParts(message);
+    if (parts.isNotEmpty) {
+      encoded['content'] = [
+        if (message.content.isNotEmpty)
+          {'type': 'text', 'text': message.content},
+        ...parts,
+      ];
+    } else if (message.content.isNotEmpty) {
+      encoded['content'] = message.content;
+    }
     if (message.toolCalls.isNotEmpty) {
       encoded['tool_calls'] = [
         for (final call in message.toolCalls)

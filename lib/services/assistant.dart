@@ -11,6 +11,7 @@ import '../ai/authoring.dart';
 import '../ai/skills/bundled.dart';
 import '../models/assistant.dart';
 import '../storage/assistant.dart';
+import 'assistant_images.dart';
 import 'providers.dart';
 import 'settings.dart';
 import 'workspace.dart';
@@ -49,7 +50,13 @@ class AssistantNotifier extends _$AssistantNotifier {
 
   Workspace get workspace => ref.read(workspaceNotifierProvider.notifier);
   late AssistantStore _assistant;
+  AssistantImageFiles? _images;
   AssistantModel get _store => state;
+
+  AssistantImageFiles get _imageFiles =>
+      _images ??= AssistantImageFiles(directory: _assistant.imageDirectory);
+
+  Future<Uint8List?> readChatImage(String id) => _imageFiles.read(id);
 
   bool _stopping = false;
   bool _disposed = false;
@@ -89,7 +96,12 @@ class AssistantNotifier extends _$AssistantNotifier {
     final index = chats.indexWhere((chat) => chat.id == _store.activeChatId);
     chats.insert(index < 0 ? chats.length : index + 1, created);
     _setStore(
-      _store.copyWith(chats: chats, activeChatId: created.id, error: null),
+      _store.copyWith(
+        chats: chats,
+        activeChatId: created.id,
+        images: const [],
+        error: null,
+      ),
     );
     _persistChats();
   }
@@ -99,7 +111,7 @@ class AssistantNotifier extends _$AssistantNotifier {
     if (!_store.chats.any((chat) => chat.id == id)) return;
     _active?.cancel();
     _settlePending(false);
-    _setStore(_store.copyWith(activeChatId: id, error: null));
+    _setStore(_store.copyWith(activeChatId: id, images: const [], error: null));
     _persistChats();
   }
 
@@ -355,7 +367,19 @@ class AssistantNotifier extends _$AssistantNotifier {
   /// Sends the draft, or [text] when supplied, and runs the agent loop.
   Future<void> send([String? text]) async {
     final typed = (text ?? _chat.draft).trim();
-    if ((_store.pins.isEmpty && typed.isEmpty) || state.busy) return;
+    final pendingImages = [..._store.images];
+    if ((_store.pins.isEmpty && typed.isEmpty && pendingImages.isEmpty) ||
+        state.busy) {
+      return;
+    }
+    final accounts = ref.read(assistantAccountsNotifierProvider);
+    if (assistantNeedsVision(
+      vision: accounts.activeProfile.vision,
+      conversationHasImages: _chat.conversation.hasImages,
+      pendingImages: pendingImages.isNotEmpty,
+    )) {
+      return;
+    }
     final provider = _provider();
     if (provider == null) {
       _setStore(
@@ -368,7 +392,7 @@ class AssistantNotifier extends _$AssistantNotifier {
       return;
     }
     final pinned = _livePins([..._store.pins]);
-    if (pinned.isEmpty && typed.isEmpty) {
+    if (pinned.isEmpty && typed.isEmpty && pendingImages.isEmpty) {
       if (_store.pins.isNotEmpty) {
         _setStore(_store.copyWith(pins: const []));
       }
@@ -388,7 +412,14 @@ class AssistantNotifier extends _$AssistantNotifier {
       return;
     }
 
-    _setStore(_store.copyWith(pins: const [], error: null, busy: true));
+    _setStore(
+      _store.copyWith(
+        pins: const [],
+        images: const [],
+        error: null,
+        busy: true,
+      ),
+    );
     final message = flattenComposerPins(pinned, typed);
 
     _patchChat((chat) {
@@ -425,11 +456,15 @@ class AssistantNotifier extends _$AssistantNotifier {
       onUsage: (usage) {
         _patchChat((chat) => chat.copyWith(usage: usage));
       },
+      onToolImage: _attachToolImages,
     );
     _active = agent;
 
     try {
-      final turn = await agent.run(message);
+      final turn = await agent.run(
+        message,
+        images: [for (final image in pendingImages) image.toLlm()],
+      );
       if (_stopping) {
         workspace.notify('Assistant stopped.');
       } else if (turn.error != null) {
@@ -508,6 +543,40 @@ class AssistantNotifier extends _$AssistantNotifier {
     decision.complete(result);
   }
 
+  /// Stores an uploaded picture on the composer. Ignored for text models.
+  Future<void> addUpload(Uint8List bytes, {required String mime}) async {
+    if (!ref.read(assistantAccountsNotifierProvider).activeProfile.vision) {
+      return;
+    }
+    final image = await _imageFiles.save(bytes, mime: mime);
+    _setStore(_store.copyWith(images: [..._store.images, image]));
+  }
+
+  void removeImage(String id) {
+    _setStore(
+      _store.copyWith(
+        images: [
+          for (final image in _store.images)
+            if (image.id != id) image,
+        ],
+      ),
+    );
+  }
+
+  Future<void> _attachToolImages(
+    Conversation conversation,
+    List<ToolImage> images,
+    bool forModel,
+  ) async {
+    final placed = <({int visibleIndex, LlmImage image})>[];
+    for (final item in images) {
+      final saved = await _imageFiles.save(item.bytes, mime: 'image/png');
+      placed.add((visibleIndex: item.visibleIndex, image: saved.toLlm()));
+    }
+    conversation.attachToolImages(placed, forModel: forModel);
+    _bumpTranscript();
+  }
+
   LlmProvider? _provider() {
     final accounts = ref.read(assistantAccountsNotifierProvider);
     return OpenAiCompatibleProvider.fromEnvironment(
@@ -516,6 +585,8 @@ class AssistantNotifier extends _$AssistantNotifier {
       apiKey: accounts.activeProfile.apiKey,
       apiKeyEnvVar: accounts.apiKeyRef,
       environment: Platform.environment,
+      vision: accounts.activeProfile.vision,
+      readImage: _imageFiles.read,
     );
   }
 

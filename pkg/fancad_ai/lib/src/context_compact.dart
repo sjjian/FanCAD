@@ -18,7 +18,7 @@ int estimateMessageTokens(LlmMessage message) {
     chars += call.id.length + call.name.length;
     chars += jsonEncode(call.arguments).length;
   }
-  return chars ~/ 4;
+  return chars ~/ 4 + message.images.length * imageTokenEstimate;
 }
 
 int estimateTranscriptTokens(Iterable<LlmMessage> messages) {
@@ -77,13 +77,30 @@ LlmMessage stubToolMessage(LlmMessage message) {
   );
 }
 
-/// Keeps the last user turn intact; stubs older tool payloads.
+/// Drops pictures from an old turn and leaves a text marker.
+LlmMessage stubMessageImages(LlmMessage message) {
+  if (message.images.isEmpty) return message;
+  final content = message.content.contains('[image]')
+      ? message.content
+      : message.content.trim().isEmpty
+      ? '[image]'
+      : '${message.content}\n[image]';
+  return LlmMessage(
+    role: message.role,
+    content: content,
+    toolCalls: message.toolCalls,
+    toolCallId: message.toolCallId,
+    name: message.name,
+  );
+}
+
+/// Keeps the last user turn intact; stubs older tool payloads and pictures.
 List<LlmMessage> stubOldToolResults(List<LlmMessage> messages) {
   final turns = splitLlmTurns(messages);
   if (turns.length <= 1) return List<LlmMessage>.of(messages);
   final prefix = [
     for (final turn in turns.take(turns.length - 1))
-      for (final message in turn) stubToolMessage(message),
+      for (final message in turn) stubMessageImages(stubToolMessage(message)),
   ];
   return [...prefix, ...turns.last];
 }
@@ -93,7 +110,8 @@ String compactSummarySource(List<LlmMessage> prefix) {
   for (final message in prefix) {
     switch (message.role) {
       case LlmRole.user:
-        buffer.writeln('User: ${message.content}');
+        final pictures = message.images.isEmpty ? '' : ' [image]';
+        buffer.writeln('User: ${message.content}$pictures');
       case LlmRole.assistant:
         buffer.writeln('Assistant: ${message.content}');
         for (final call in message.toolCalls) {

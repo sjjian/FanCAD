@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_ops/fancad_ops.dart';
@@ -14,6 +15,22 @@ import 'session_ask.dart';
 import 'skills/host_tools.dart';
 import 'skills/skill.dart';
 import 'tools.dart';
+
+/// PNG bytes lifted out of one tool result, and the visible row to hang them on.
+class ToolImage {
+  const ToolImage({required this.visibleIndex, required this.bytes});
+
+  final int visibleIndex;
+  final Uint8List bytes;
+}
+
+/// Saves tool images and places them after that tool-result run.
+typedef ToolImageHandler =
+    Future<void> Function(
+      Conversation conversation,
+      List<ToolImage> images,
+      bool forModel,
+    );
 
 /// How a tool is executed by the host.
 typedef ToolExecutor =
@@ -68,6 +85,7 @@ class AgentLoop {
     this.hostTools = const [],
     this.authoring = const NoActivationRepair(),
     this.contextWindowTokens = LlmUsage.contextWindowTokens,
+    this.onToolImage,
   });
 
   final LlmProvider provider;
@@ -86,6 +104,9 @@ class AgentLoop {
   final List<HostTool> hostTools;
   final ActivationRepair authoring;
   final int contextWindowTokens;
+
+  /// Called once after a tool batch, with every image that batch returned.
+  final ToolImageHandler? onToolImage;
 
   /// When set, every edit this turn produced is collapsed into one undo entry.
   final UndoStack? history;
@@ -107,8 +128,11 @@ class AgentLoop {
   ];
 
   /// Runs one user message to completion.
-  Future<AgentTurn> run(String userMessage) async {
-    if (userMessage.trim().isEmpty) {
+  Future<AgentTurn> run(
+    String userMessage, {
+    List<LlmImage> images = const [],
+  }) async {
+    if (userMessage.trim().isEmpty && images.isEmpty) {
       return AgentTurn(
         reply: '',
         toolCalls: const [],
@@ -117,7 +141,7 @@ class AgentLoop {
       );
     }
     final convo = conversation ?? Conversation();
-    convo.addUser(userMessage);
+    convo.addUser(userMessage, images: images);
 
     final tools = advertisedTools;
     final collectedCalls = <LlmToolCall>[];
@@ -381,8 +405,13 @@ class AgentLoop {
 
   Future<void> _runCalls(List<LlmToolCall> calls, Conversation convo) async {
     final dispatcher = OpsDispatcher(_opsCatalog());
+    final images = <ToolImage>[];
+    var answeredAll = true;
     for (final call in calls) {
-      if (_cancelled) return;
+      if (_cancelled) {
+        answeredAll = false;
+        break;
+      }
       if (call.name == askToolId) {
         await _runAsk(call, convo);
         continue;
@@ -403,8 +432,24 @@ class AgentLoop {
         );
         continue;
       }
-      await _runFancad(call, convo, dispatcher);
+      final png = await _runFancad(call, convo, dispatcher);
+      if (png != null) {
+        images.add(
+          ToolImage(visibleIndex: convo.visible.length - 1, bytes: png),
+        );
+      }
     }
+    await _attachToolImages(convo, images, forModel: answeredAll);
+  }
+
+  Future<void> _attachToolImages(
+    Conversation convo,
+    List<ToolImage> images, {
+    required bool forModel,
+  }) async {
+    final handler = onToolImage;
+    if (handler == null || images.isEmpty) return;
+    await handler(convo, images, forModel);
   }
 
   Future<void> _runAsk(LlmToolCall call, Conversation convo) async {
@@ -440,7 +485,7 @@ class AgentLoop {
     );
   }
 
-  Future<void> _runFancad(
+  Future<Uint8List?> _runFancad(
     LlmToolCall call,
     Conversation convo,
     OpsDispatcher dispatcher,
@@ -460,7 +505,7 @@ class AgentLoop {
         isError: true,
         toolName: fancadToolName,
       );
-      return;
+      return null;
     }
 
     Map<String, Object?> payload;
@@ -486,12 +531,14 @@ class AgentLoop {
       }
     }
 
+    final image = takeCommandImage(payload);
     convo.addToolResult(
       call: call,
-      content: jsonEncode(payload),
-      isError: payload['status'] == 'failed',
+      content: jsonEncode(image.payload),
+      isError: image.payload['status'] == 'failed',
       toolName: request.displayName,
     );
+    return image.bytes;
   }
 
   Future<void> _compactTranscript(

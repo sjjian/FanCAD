@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AssistantModel {
 
- List<AssistantChatModel> get chats; String get activeChatId; List<ComposerPinModel> get pins; String? get error; PendingChangeSet? get approval; SessionQuestion? get question; bool get busy; int get transcriptEpoch;
+ List<AssistantChatModel> get chats; String get activeChatId; List<ComposerPinModel> get pins; List<AssistantImageModel> get images; String? get error; PendingChangeSet? get approval; SessionQuestion? get question; bool get busy; int get transcriptEpoch;
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $AssistantModelCopyWith<AssistantModel> get copyWith => _$AssistantModelCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantModel&&const DeepCollectionEquality().equals(other.chats, chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other.pins, pins)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantModel&&const DeepCollectionEquality().equals(other.chats, chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other.pins, pins)&&const DeepCollectionEquality().equals(other.images, images)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(chats),activeChatId,const DeepCollectionEquality().hash(pins),error,approval,question,busy,transcriptEpoch);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(chats),activeChatId,const DeepCollectionEquality().hash(pins),const DeepCollectionEquality().hash(images),error,approval,question,busy,transcriptEpoch);
 
 @override
 String toString() {
-  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch)';
+  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, images: $images, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $AssistantModelCopyWith<$Res>  {
   factory $AssistantModelCopyWith(AssistantModel value, $Res Function(AssistantModel) _then) = _$AssistantModelCopyWithImpl;
 @useResult
 $Res call({
- List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch
+ List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, List<AssistantImageModel> images, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch
 });
 
 
@@ -62,12 +62,13 @@ class _$AssistantModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? images = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,}) {
   return _then(_self.copyWith(
 chats: null == chats ? _self.chats : chats // ignore: cast_nullable_to_non_nullable
 as List<AssistantChatModel>,activeChatId: null == activeChatId ? _self.activeChatId : activeChatId // ignore: cast_nullable_to_non_nullable
 as String,pins: null == pins ? _self.pins : pins // ignore: cast_nullable_to_non_nullable
-as List<ComposerPinModel>,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as List<ComposerPinModel>,images: null == images ? _self.images : images // ignore: cast_nullable_to_non_nullable
+as List<AssistantImageModel>,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,approval: freezed == approval ? _self.approval : approval // ignore: cast_nullable_to_non_nullable
 as PendingChangeSet?,question: freezed == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
 as SessionQuestion?,busy: null == busy ? _self.busy : busy // ignore: cast_nullable_to_non_nullable
@@ -157,10 +158,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AssistantModel() when $default != null:
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
   return orElse();
 
 }
@@ -178,10 +179,10 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.appr
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)  $default,) {final _that = this;
 switch (_that) {
 case _AssistantModel():
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -198,10 +199,10 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.appr
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)?  $default,) {final _that = this;
 switch (_that) {
 case _AssistantModel() when $default != null:
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
   return null;
 
 }
@@ -213,7 +214,7 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.error,_that.appr
 
 
 class _AssistantModel extends AssistantModel {
-  const _AssistantModel({final  List<AssistantChatModel> chats = const [], this.activeChatId = AssistantChatModel.defaultId, final  List<ComposerPinModel> pins = const [], this.error, this.approval, this.question, this.busy = false, this.transcriptEpoch = 0}): _chats = chats,_pins = pins,super._();
+  const _AssistantModel({final  List<AssistantChatModel> chats = const [], this.activeChatId = AssistantChatModel.defaultId, final  List<ComposerPinModel> pins = const [], final  List<AssistantImageModel> images = const [], this.error, this.approval, this.question, this.busy = false, this.transcriptEpoch = 0}): _chats = chats,_pins = pins,_images = images,super._();
   
 
  final  List<AssistantChatModel> _chats;
@@ -229,6 +230,13 @@ class _AssistantModel extends AssistantModel {
   if (_pins is EqualUnmodifiableListView) return _pins;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_pins);
+}
+
+ final  List<AssistantImageModel> _images;
+@override@JsonKey() List<AssistantImageModel> get images {
+  if (_images is EqualUnmodifiableListView) return _images;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_images);
 }
 
 @override final  String? error;
@@ -247,16 +255,16 @@ _$AssistantModelCopyWith<_AssistantModel> get copyWith => __$AssistantModelCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantModel&&const DeepCollectionEquality().equals(other._chats, _chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other._pins, _pins)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantModel&&const DeepCollectionEquality().equals(other._chats, _chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other._pins, _pins)&&const DeepCollectionEquality().equals(other._images, _images)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_chats),activeChatId,const DeepCollectionEquality().hash(_pins),error,approval,question,busy,transcriptEpoch);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_chats),activeChatId,const DeepCollectionEquality().hash(_pins),const DeepCollectionEquality().hash(_images),error,approval,question,busy,transcriptEpoch);
 
 @override
 String toString() {
-  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch)';
+  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, images: $images, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch)';
 }
 
 
@@ -267,7 +275,7 @@ abstract mixin class _$AssistantModelCopyWith<$Res> implements $AssistantModelCo
   factory _$AssistantModelCopyWith(_AssistantModel value, $Res Function(_AssistantModel) _then) = __$AssistantModelCopyWithImpl;
 @override @useResult
 $Res call({
- List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch
+ List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, List<AssistantImageModel> images, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch
 });
 
 
@@ -284,12 +292,13 @@ class __$AssistantModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? images = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,}) {
   return _then(_AssistantModel(
 chats: null == chats ? _self._chats : chats // ignore: cast_nullable_to_non_nullable
 as List<AssistantChatModel>,activeChatId: null == activeChatId ? _self.activeChatId : activeChatId // ignore: cast_nullable_to_non_nullable
 as String,pins: null == pins ? _self._pins : pins // ignore: cast_nullable_to_non_nullable
-as List<ComposerPinModel>,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as List<ComposerPinModel>,images: null == images ? _self._images : images // ignore: cast_nullable_to_non_nullable
+as List<AssistantImageModel>,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,approval: freezed == approval ? _self.approval : approval // ignore: cast_nullable_to_non_nullable
 as PendingChangeSet?,question: freezed == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
 as SessionQuestion?,busy: null == busy ? _self.busy : busy // ignore: cast_nullable_to_non_nullable
@@ -574,9 +583,269 @@ as String,
 }
 
 /// @nodoc
+mixin _$AssistantImageModel {
+
+ String get id; String get mime;
+/// Create a copy of AssistantImageModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$AssistantImageModelCopyWith<AssistantImageModel> get copyWith => _$AssistantImageModelCopyWithImpl<AssistantImageModel>(this as AssistantImageModel, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantImageModel&&(identical(other.id, id) || other.id == id)&&(identical(other.mime, mime) || other.mime == mime));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,id,mime);
+
+@override
+String toString() {
+  return 'AssistantImageModel(id: $id, mime: $mime)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $AssistantImageModelCopyWith<$Res>  {
+  factory $AssistantImageModelCopyWith(AssistantImageModel value, $Res Function(AssistantImageModel) _then) = _$AssistantImageModelCopyWithImpl;
+@useResult
+$Res call({
+ String id, String mime
+});
+
+
+
+
+}
+/// @nodoc
+class _$AssistantImageModelCopyWithImpl<$Res>
+    implements $AssistantImageModelCopyWith<$Res> {
+  _$AssistantImageModelCopyWithImpl(this._self, this._then);
+
+  final AssistantImageModel _self;
+  final $Res Function(AssistantImageModel) _then;
+
+/// Create a copy of AssistantImageModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? mime = null,}) {
+  return _then(_self.copyWith(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [AssistantImageModel].
+extension AssistantImageModelPatterns on AssistantImageModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _AssistantImageModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _AssistantImageModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _AssistantImageModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _AssistantImageModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _AssistantImageModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _AssistantImageModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String mime)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _AssistantImageModel() when $default != null:
+return $default(_that.id,_that.mime);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String mime)  $default,) {final _that = this;
+switch (_that) {
+case _AssistantImageModel():
+return $default(_that.id,_that.mime);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String mime)?  $default,) {final _that = this;
+switch (_that) {
+case _AssistantImageModel() when $default != null:
+return $default(_that.id,_that.mime);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _AssistantImageModel extends AssistantImageModel {
+  const _AssistantImageModel({required this.id, this.mime = 'image/png'}): super._();
+  
+
+@override final  String id;
+@override@JsonKey() final  String mime;
+
+/// Create a copy of AssistantImageModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$AssistantImageModelCopyWith<_AssistantImageModel> get copyWith => __$AssistantImageModelCopyWithImpl<_AssistantImageModel>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantImageModel&&(identical(other.id, id) || other.id == id)&&(identical(other.mime, mime) || other.mime == mime));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,id,mime);
+
+@override
+String toString() {
+  return 'AssistantImageModel(id: $id, mime: $mime)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$AssistantImageModelCopyWith<$Res> implements $AssistantImageModelCopyWith<$Res> {
+  factory _$AssistantImageModelCopyWith(_AssistantImageModel value, $Res Function(_AssistantImageModel) _then) = __$AssistantImageModelCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String mime
+});
+
+
+
+
+}
+/// @nodoc
+class __$AssistantImageModelCopyWithImpl<$Res>
+    implements _$AssistantImageModelCopyWith<$Res> {
+  __$AssistantImageModelCopyWithImpl(this._self, this._then);
+
+  final _AssistantImageModel _self;
+  final $Res Function(_AssistantImageModel) _then;
+
+/// Create a copy of AssistantImageModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? mime = null,}) {
+  return _then(_AssistantImageModel(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,mime: null == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
 mixin _$AssistantReceiptModel {
 
- String get verb; String get summary; String get status; String get raw; String? get toolName; bool get isError; int get count;
+ String get verb; String get summary; String get status; String get raw; String? get toolName; bool get isError; int get count; List<AssistantImageModel> get images;
 /// Create a copy of AssistantReceiptModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -587,16 +856,16 @@ $AssistantReceiptModelCopyWith<AssistantReceiptModel> get copyWith => _$Assistan
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantReceiptModel&&(identical(other.verb, verb) || other.verb == verb)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.status, status) || other.status == status)&&(identical(other.raw, raw) || other.raw == raw)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&(identical(other.isError, isError) || other.isError == isError)&&(identical(other.count, count) || other.count == count));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantReceiptModel&&(identical(other.verb, verb) || other.verb == verb)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.status, status) || other.status == status)&&(identical(other.raw, raw) || other.raw == raw)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&(identical(other.isError, isError) || other.isError == isError)&&(identical(other.count, count) || other.count == count)&&const DeepCollectionEquality().equals(other.images, images));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,verb,summary,status,raw,toolName,isError,count);
+int get hashCode => Object.hash(runtimeType,verb,summary,status,raw,toolName,isError,count,const DeepCollectionEquality().hash(images));
 
 @override
 String toString() {
-  return 'AssistantReceiptModel(verb: $verb, summary: $summary, status: $status, raw: $raw, toolName: $toolName, isError: $isError, count: $count)';
+  return 'AssistantReceiptModel(verb: $verb, summary: $summary, status: $status, raw: $raw, toolName: $toolName, isError: $isError, count: $count, images: $images)';
 }
 
 
@@ -607,7 +876,7 @@ abstract mixin class $AssistantReceiptModelCopyWith<$Res>  {
   factory $AssistantReceiptModelCopyWith(AssistantReceiptModel value, $Res Function(AssistantReceiptModel) _then) = _$AssistantReceiptModelCopyWithImpl;
 @useResult
 $Res call({
- String verb, String summary, String status, String raw, String? toolName, bool isError, int count
+ String verb, String summary, String status, String raw, String? toolName, bool isError, int count, List<AssistantImageModel> images
 });
 
 
@@ -624,7 +893,7 @@ class _$AssistantReceiptModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantReceiptModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? verb = null,Object? summary = null,Object? status = null,Object? raw = null,Object? toolName = freezed,Object? isError = null,Object? count = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? verb = null,Object? summary = null,Object? status = null,Object? raw = null,Object? toolName = freezed,Object? isError = null,Object? count = null,Object? images = null,}) {
   return _then(_self.copyWith(
 verb: null == verb ? _self.verb : verb // ignore: cast_nullable_to_non_nullable
 as String,summary: null == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
@@ -633,7 +902,8 @@ as String,raw: null == raw ? _self.raw : raw // ignore: cast_nullable_to_non_nul
 as String,toolName: freezed == toolName ? _self.toolName : toolName // ignore: cast_nullable_to_non_nullable
 as String?,isError: null == isError ? _self.isError : isError // ignore: cast_nullable_to_non_nullable
 as bool,count: null == count ? _self.count : count // ignore: cast_nullable_to_non_nullable
-as int,
+as int,images: null == images ? _self.images : images // ignore: cast_nullable_to_non_nullable
+as List<AssistantImageModel>,
   ));
 }
 
@@ -718,10 +988,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String verb,  String summary,  String status,  String raw,  String? toolName,  bool isError,  int count)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String verb,  String summary,  String status,  String raw,  String? toolName,  bool isError,  int count,  List<AssistantImageModel> images)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AssistantReceiptModel() when $default != null:
-return $default(_that.verb,_that.summary,_that.status,_that.raw,_that.toolName,_that.isError,_that.count);case _:
+return $default(_that.verb,_that.summary,_that.status,_that.raw,_that.toolName,_that.isError,_that.count,_that.images);case _:
   return orElse();
 
 }
@@ -739,10 +1009,10 @@ return $default(_that.verb,_that.summary,_that.status,_that.raw,_that.toolName,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String verb,  String summary,  String status,  String raw,  String? toolName,  bool isError,  int count)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String verb,  String summary,  String status,  String raw,  String? toolName,  bool isError,  int count,  List<AssistantImageModel> images)  $default,) {final _that = this;
 switch (_that) {
 case _AssistantReceiptModel():
-return $default(_that.verb,_that.summary,_that.status,_that.raw,_that.toolName,_that.isError,_that.count);case _:
+return $default(_that.verb,_that.summary,_that.status,_that.raw,_that.toolName,_that.isError,_that.count,_that.images);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -759,10 +1029,10 @@ return $default(_that.verb,_that.summary,_that.status,_that.raw,_that.toolName,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String verb,  String summary,  String status,  String raw,  String? toolName,  bool isError,  int count)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String verb,  String summary,  String status,  String raw,  String? toolName,  bool isError,  int count,  List<AssistantImageModel> images)?  $default,) {final _that = this;
 switch (_that) {
 case _AssistantReceiptModel() when $default != null:
-return $default(_that.verb,_that.summary,_that.status,_that.raw,_that.toolName,_that.isError,_that.count);case _:
+return $default(_that.verb,_that.summary,_that.status,_that.raw,_that.toolName,_that.isError,_that.count,_that.images);case _:
   return null;
 
 }
@@ -774,7 +1044,7 @@ return $default(_that.verb,_that.summary,_that.status,_that.raw,_that.toolName,_
 
 
 class _AssistantReceiptModel extends AssistantReceiptModel {
-  const _AssistantReceiptModel({required this.verb, required this.summary, required this.status, required this.raw, this.toolName, this.isError = false, this.count = 1}): super._();
+  const _AssistantReceiptModel({required this.verb, required this.summary, required this.status, required this.raw, this.toolName, this.isError = false, this.count = 1, final  List<AssistantImageModel> images = const []}): _images = images,super._();
   
 
 @override final  String verb;
@@ -784,6 +1054,13 @@ class _AssistantReceiptModel extends AssistantReceiptModel {
 @override final  String? toolName;
 @override@JsonKey() final  bool isError;
 @override@JsonKey() final  int count;
+ final  List<AssistantImageModel> _images;
+@override@JsonKey() List<AssistantImageModel> get images {
+  if (_images is EqualUnmodifiableListView) return _images;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_images);
+}
+
 
 /// Create a copy of AssistantReceiptModel
 /// with the given fields replaced by the non-null parameter values.
@@ -795,16 +1072,16 @@ _$AssistantReceiptModelCopyWith<_AssistantReceiptModel> get copyWith => __$Assis
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantReceiptModel&&(identical(other.verb, verb) || other.verb == verb)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.status, status) || other.status == status)&&(identical(other.raw, raw) || other.raw == raw)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&(identical(other.isError, isError) || other.isError == isError)&&(identical(other.count, count) || other.count == count));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantReceiptModel&&(identical(other.verb, verb) || other.verb == verb)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.status, status) || other.status == status)&&(identical(other.raw, raw) || other.raw == raw)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&(identical(other.isError, isError) || other.isError == isError)&&(identical(other.count, count) || other.count == count)&&const DeepCollectionEquality().equals(other._images, _images));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,verb,summary,status,raw,toolName,isError,count);
+int get hashCode => Object.hash(runtimeType,verb,summary,status,raw,toolName,isError,count,const DeepCollectionEquality().hash(_images));
 
 @override
 String toString() {
-  return 'AssistantReceiptModel(verb: $verb, summary: $summary, status: $status, raw: $raw, toolName: $toolName, isError: $isError, count: $count)';
+  return 'AssistantReceiptModel(verb: $verb, summary: $summary, status: $status, raw: $raw, toolName: $toolName, isError: $isError, count: $count, images: $images)';
 }
 
 
@@ -815,7 +1092,7 @@ abstract mixin class _$AssistantReceiptModelCopyWith<$Res> implements $Assistant
   factory _$AssistantReceiptModelCopyWith(_AssistantReceiptModel value, $Res Function(_AssistantReceiptModel) _then) = __$AssistantReceiptModelCopyWithImpl;
 @override @useResult
 $Res call({
- String verb, String summary, String status, String raw, String? toolName, bool isError, int count
+ String verb, String summary, String status, String raw, String? toolName, bool isError, int count, List<AssistantImageModel> images
 });
 
 
@@ -832,7 +1109,7 @@ class __$AssistantReceiptModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantReceiptModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? verb = null,Object? summary = null,Object? status = null,Object? raw = null,Object? toolName = freezed,Object? isError = null,Object? count = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? verb = null,Object? summary = null,Object? status = null,Object? raw = null,Object? toolName = freezed,Object? isError = null,Object? count = null,Object? images = null,}) {
   return _then(_AssistantReceiptModel(
 verb: null == verb ? _self.verb : verb // ignore: cast_nullable_to_non_nullable
 as String,summary: null == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
@@ -841,7 +1118,8 @@ as String,raw: null == raw ? _self.raw : raw // ignore: cast_nullable_to_non_nul
 as String,toolName: freezed == toolName ? _self.toolName : toolName // ignore: cast_nullable_to_non_nullable
 as String?,isError: null == isError ? _self.isError : isError // ignore: cast_nullable_to_non_nullable
 as bool,count: null == count ? _self.count : count // ignore: cast_nullable_to_non_nullable
-as int,
+as int,images: null == images ? _self._images : images // ignore: cast_nullable_to_non_nullable
+as List<AssistantImageModel>,
   ));
 }
 

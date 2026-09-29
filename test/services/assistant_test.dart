@@ -84,6 +84,52 @@ void main() {
     expect(accounts.state.activeProfile.model, 'deepseek-chat');
   });
 
+  test(
+    'vision is copied onto a new profile and a text model cannot continue',
+    () async {
+      final app = headless();
+      final ai = app.container.read(assistantNotifierProvider.notifier);
+      final accounts = app.container.read(
+        assistantAccountsNotifierProvider.notifier,
+      );
+      expect(accounts.state.activeProfile.vision, isFalse);
+      accounts.setVision(true);
+      accounts.addProfile();
+      expect(accounts.state.profiles.first.vision, isTrue);
+      expect(accounts.state.activeProfile.vision, isTrue);
+      expect(AssistantProfileModel.fromJson({'id': 'x'}).vision, isFalse);
+      expect(
+        AssistantProfileModel.fromJson({'id': 'y', 'vision': true}).vision,
+        isTrue,
+      );
+
+      accounts.setVision(false);
+      ai.state.activeChat.conversation.addUser(
+        'look',
+        images: const [LlmImage(id: 'shot')],
+      );
+      await ai.send('what is this');
+      expect(ai.state.activeChat.conversation.visible, hasLength(1));
+      expect(ai.state.error, isNull);
+      expect(
+        assistantNeedsVision(
+          vision: false,
+          conversationHasImages: true,
+          pendingImages: false,
+        ),
+        isTrue,
+      );
+      expect(
+        assistantNeedsVision(
+          vision: true,
+          conversationHasImages: true,
+          pendingImages: false,
+        ),
+        isFalse,
+      );
+    },
+  );
+
   test('a new session is created even when the current chat is empty', () {
     final ai = controller();
     expect(ai.state.chats, hasLength(1));

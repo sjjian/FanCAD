@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_ops/fancad_ops.dart';
@@ -160,6 +162,79 @@ void main() {
     expect(ran, ['query.summary']);
     expect(turn.reply, contains('Nothing'));
     expect(turn.cancelled, isFalse);
+  });
+
+  test('a drawing png follows every tool result in that turn', () async {
+    registry.register(
+      CommandDescriptor(
+        id: 'print.export',
+        title: 'Export',
+        risk: CommandRisk.readOnly,
+        handler: (context) async => CommandResult.ok(
+          data: {
+            'bytes': 4,
+            'image': {
+              'mime': 'image/png',
+              'data': base64Encode(const [1, 2, 3, 4]),
+            },
+          },
+        ),
+      ),
+    );
+    late List<LlmMessage> followUp;
+    var round = 0;
+    final conversation = Conversation();
+    final agent = AgentLoop(
+      provider: _CaptureProvider((request) {
+        round++;
+        if (round == 1) {
+          return LlmCompletion(
+            toolCalls: [
+              _run('export', 'print.export', {'format': 'png'}),
+              _run('summary', 'query.summary'),
+            ],
+          );
+        }
+        followUp = request.messages;
+        return const LlmCompletion(text: 'I see the drawing.');
+      }),
+      registry: registry,
+      execute: execute,
+      conversation: conversation,
+      onToolImage: (convo, images, forModel) async {
+        convo.attachToolImages([
+          for (final image in images)
+            (
+              visibleIndex: image.visibleIndex,
+              image: LlmImage(id: 'plot-${image.visibleIndex}'),
+            ),
+        ], forModel: forModel);
+      },
+    );
+
+    final turn = await agent.run('Look at this.');
+    expect(turn.reply, 'I see the drawing.');
+    final assistant = followUp.indexWhere(
+      (message) => message.toolCalls.isNotEmpty,
+    );
+    expect(assistant, greaterThanOrEqualTo(0));
+    final ids = followUp[assistant].toolCalls.map((call) => call.id).toSet();
+    final answered = <String>{};
+    var cursor = assistant + 1;
+    while (cursor < followUp.length && followUp[cursor].role == LlmRole.tool) {
+      answered.add(followUp[cursor].toolCallId ?? '');
+      cursor++;
+    }
+    expect(answered, ids);
+    expect(followUp[cursor].role, LlmRole.user);
+    expect(followUp[cursor].images, isNotEmpty);
+    expect(followUp.skip(cursor + 1), isEmpty);
+    final tools = conversation.visible
+        .where((message) => message.role == ChatRole.tool)
+        .toList();
+    expect(tools.first.toolName, 'print.export');
+    expect(tools.first.images, isNotEmpty);
+    expect(tools.last.images, isEmpty);
   });
 
   test(

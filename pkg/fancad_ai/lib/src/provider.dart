@@ -5,6 +5,43 @@ import 'package:meta/meta.dart';
 
 part 'provider.g.dart';
 
+/// A picture stored by id. The bytes stay on disk; requests encode them later.
+@immutable
+class LlmImage {
+  const LlmImage({required this.id, this.mime = 'image/png'});
+
+  final String id;
+  final String mime;
+
+  Map<String, Object?> toJson() => {'id': id, 'mime': mime};
+
+  @override
+  bool operator ==(Object other) =>
+      other is LlmImage && other.id == id && other.mime == mime;
+
+  @override
+  int get hashCode => Object.hash(id, mime);
+}
+
+/// Fixed cost so a picture is not priced by its base64 length.
+const imageTokenEstimate = 1100;
+
+List<LlmImage> llmImagesFromJson(Object? raw) {
+  if (raw is! List) return const [];
+  final images = <LlmImage>[];
+  for (final item in raw) {
+    if (item is! Map) continue;
+    final id = '${item['id'] ?? ''}'.trim();
+    if (id.isEmpty) continue;
+    final mime = '${item['mime'] ?? 'image/png'}'.trim();
+    images.add(LlmImage(id: id, mime: mime.isEmpty ? 'image/png' : mime));
+  }
+  return images;
+}
+
+List<Map<String, Object?>>? llmImagesToJson(List<LlmImage> images) =>
+    images.isEmpty ? null : [for (final image in images) image.toJson()];
+
 /// A message in an LLM conversation.
 @immutable
 @JsonSerializable(includeIfNull: false)
@@ -15,15 +52,17 @@ class LlmMessage {
     this.toolCalls = const [],
     this.toolCallId,
     this.name,
+    this.images = const [],
   });
 
   const LlmMessage.system(this.content)
     : role = LlmRole.system,
       toolCalls = const [],
       toolCallId = null,
-      name = null;
+      name = null,
+      images = const [];
 
-  const LlmMessage.user(this.content)
+  const LlmMessage.user(this.content, {this.images = const []})
     : role = LlmRole.user,
       toolCalls = const [],
       toolCallId = null,
@@ -32,14 +71,16 @@ class LlmMessage {
   const LlmMessage.assistant(this.content, {this.toolCalls = const []})
     : role = LlmRole.assistant,
       toolCallId = null,
-      name = null;
+      name = null,
+      images = const [];
 
   const LlmMessage.tool({
     required this.toolCallId,
     required this.content,
     this.name,
   }) : role = LlmRole.tool,
-       toolCalls = const [];
+       toolCalls = const [],
+       images = const [];
 
   @JsonKey(fromJson: _llmRoleFromJson, toJson: _llmRoleToJson)
   final LlmRole role;
@@ -54,6 +95,8 @@ class LlmMessage {
   @JsonKey(name: 'tool_call_id')
   final String? toolCallId;
   final String? name;
+  @JsonKey(fromJson: llmImagesFromJson, toJson: llmImagesToJson)
+  final List<LlmImage> images;
 
   Map<String, Object?> toJson() => _$LlmMessageToJson(this);
 
