@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fancad_ops/fancad_ops.dart';
 import 'package:test/test.dart';
 
@@ -41,6 +43,43 @@ void main() {
     final result = asObjectMap(reply!.result);
     expect(result['isError'], isFalse);
     expect('${result['content']}', contains('draw'));
+  });
+
+  test('a png export is an image part and the text omits the bytes', () async {
+    const encoded = 'AQIDBA==';
+    final session = McpSession(
+      dispatch: (request) async => {
+        'status': 'ok',
+        'data': {
+          'bytes': 4,
+          'image': {'mime': 'image/png', 'data': encoded},
+        },
+      },
+    );
+    final reply = await session.handle(
+      JsonRpcMessage(
+        id: 3,
+        method: 'tools/call',
+        params: {
+          'name': 'fancad',
+          'arguments': {
+            'action': 'run',
+            'path': 'print.export',
+            'args': {'format': 'png'},
+          },
+        },
+      ),
+    );
+    final result = asObjectMap(reply!.result);
+    final content = result['content'] as List<Object?>;
+    expect(content, hasLength(2));
+    final text = '${(content[0] as Map)['text']}';
+    expect(text, contains('bytes'));
+    expect(text, isNot(contains(encoded)));
+    expect((content[1] as Map)['type'], 'image');
+    expect((content[1] as Map)['mimeType'], 'image/png');
+    expect((content[1] as Map)['data'], encoded);
+    expect(base64Decode(encoded), [1, 2, 3, 4]);
   });
 
   test('initialize and ping succeed; notifications stay silent', () async {

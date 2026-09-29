@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../encode.dart';
 import '../json.dart';
 import '../request.dart';
 import '../rpc.dart';
@@ -69,13 +70,19 @@ class McpSession {
     }
     try {
       final payload = await dispatch(request);
-      final failed = payload['status'] == 'failed';
+      final image = takeCommandImage(payload);
+      final failed = image.payload['status'] == 'failed';
+      final text = const JsonEncoder.withIndent('  ').convert(image.payload);
+      final bytes = image.bytes;
       return {
         'content': [
-          {
-            'type': 'text',
-            'text': const JsonEncoder.withIndent('  ').convert(payload),
-          },
+          {'type': 'text', 'text': text},
+          if (bytes != null)
+            {
+              'type': 'image',
+              'data': base64Encode(bytes),
+              'mimeType': image.mime ?? 'image/png',
+            },
         ],
         'isError': failed,
       };

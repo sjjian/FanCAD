@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:fancad/commands/pro/export.dart';
@@ -622,10 +623,7 @@ void main() {
       final dir = tempDir(prefix: 'fancad_plot');
       final path = '${dir.path}/sheet.svg';
 
-      final result = await run('print.export', {
-        'path': path,
-        'layout': 'A3',
-      });
+      final result = await run('print.export', {'path': path, 'layout': 'A3'});
 
       expect(result.status, CommandStatus.ok, reason: result.message);
       expect(document.activeLayoutName, 'Model');
@@ -825,6 +823,22 @@ void main() {
       final result = await run('print.export');
       expect(result.status, CommandStatus.failed);
     });
+
+    test(
+      'a headless png export returns bytes and does not write a file',
+      () async {
+        await drawLine(0, 0, 12, 0);
+        final result = await run('print.export', {'format': 'png'});
+        expect(result.status, CommandStatus.ok, reason: result.message);
+        final image = result.data!['image'] as Map<Object?, Object?>;
+        expect(image['mime'], 'image/png');
+        expect(result.data!.containsKey('path'), isFalse);
+        final bytes = base64Decode('${image['data']}');
+        expect(bytes.take(4), [0x89, 0x50, 0x4E, 0x47]);
+        final jpg = await run('print.export', {'format': 'jpg'});
+        expect(jpg.status, CommandStatus.failed);
+      },
+    );
 
     test('export can keep one layer and the selection window', () async {
       document

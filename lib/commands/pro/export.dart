@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -22,9 +23,13 @@ class PrintExportCommand extends FanCadCommand {
   String get title => 'Export';
   @override
   String get category => _category;
+
+  @override
+  CommandRisk get risk => CommandRisk.readOnly;
   @override
   String get description =>
       'Opens the export pane. Pass path to write the file now. '
+      'A headless png export with no path returns the picture instead of a file. '
       'Optional format (svg, pdf, png, jpg), scope (extents, view, window, or selection), '
       'and layers. The file extension picks the format when format is omitted. '
       'corner1 and corner2 set a one-shot window and override scope.';
@@ -204,6 +209,10 @@ Future<CommandResult> runExport(CommandContext context) async {
   final given = context.args.text('path')?.trim() ?? '';
   if (given.isEmpty) {
     if (!context.input.isInteractive) {
+      final requested = context.args.text('format')?.trim() ?? '';
+      if (ExportFormat.tryParse(requested) == ExportFormat.png) {
+        return _readPngResult(context);
+      }
       return const CommandResult.failed('A destination path is required.');
     }
     final requestedFormat = context.args.text('format')?.trim() ?? '';
@@ -264,21 +273,79 @@ String? _exportFormat(CommandContext context, String path) {
 }
 
 (String?, Bounds2?) _visiblePlotWindow(CommandContext context) {
-  final visible = context.services.describeView()['visible'];
-  if (visible is! List || visible.length < 4) {
-    return ('A visible window is not available.', null);
-  }
+  final sessionView = context.services.describeSession(
+    context.session,
+  )['viewport'];
+  final described = context.services.describeView();
+  final box =
+      _boundsOf(sessionView is Map ? sessionView['visible'] : null) ??
+      _boundsOf(sessionView is Map ? sessionView['frame'] : null) ??
+      _boundsOf(described['visible']) ??
+      _boundsOf(described['frame']);
+  if (box == null) return ('A visible window is not available.', null);
+  return (null, box);
+}
+
+Bounds2? _boundsOf(Object? visible) {
+  if (visible is! List || visible.length < 4) return null;
   final coords = <double>[];
   for (final item in visible.take(4)) {
-    if (item is! num) return ('A visible window is not available.', null);
+    if (item is! num) return null;
     coords.add(item.toDouble());
   }
   final box = Bounds2(coords[0], coords[1], coords[2], coords[3]);
-  if (box.width <= 1e-9 || box.height <= 1e-9) {
-    return ('A visible window is not available.', null);
-  }
-  return (null, box);
+  if (box.width <= 1e-9 || box.height <= 1e-9) return null;
+  return box;
 }
+
+/// Paints [layout] to PNG bytes. Does not write a file.
+Future<Uint8List> readPlotPng({
+  required CadDocument document,
+  required Layout layout,
+  ShxFontTable shxFonts = const ShxFontTable(),
+  Bounds2? window,
+  Set<String>? layers,
+}) {
+  final frame = Plotter.frame(document, layout: layout, window: window);
+  return renderPlotPng(
+    document: document,
+    frame: frame,
+    layers: layers ?? defaultPlotLayers(document),
+    shxFonts: shxFonts,
+  );
+}
+
+Future<CommandResult> _readPngResult(CommandContext context) async {
+  final layout = plotLayout(context);
+  if (layout == null) {
+    return CommandResult.failed(
+      'No layout named ${context.args.text('layout')}',
+    );
+  }
+  final window = _exportWindow(context, layout);
+  if (window.$1 != null) return CommandResult.failed(window.$1!);
+  final png = await readPlotPng(
+    document: context.document,
+    layout: layout,
+    shxFonts: context.services.shxFonts,
+    window: window.$2,
+    layers: exportLayerFilter(context.args),
+  );
+  final scope = context.args.text('scope')?.trim() ?? '';
+  return CommandResult.ok(
+    data: {
+      'bytes': png.length,
+      'layout': layout.name,
+      if (scope.isNotEmpty) 'scope': scope,
+      'image': _pngImageField(png),
+    },
+  );
+}
+
+Map<String, Object?> _pngImageField(Uint8List png) => {
+  'mime': 'image/png',
+  'data': base64Encode(png),
+};
 
 (String?, Bounds2?) _selectionPlotWindow(CommandContext context) {
   final box = selectionPlotWindow(
@@ -327,18 +394,23 @@ Future<CommandResult> writePlot(
       );
     case 'png':
     case 'jpg':
-      final frame = Plotter.frame(document, layout: layout, window: window);
-      final png = await renderPlotPng(
+      final png = await readPlotPng(
         document: document,
-        frame: frame,
-        layers: layers ?? defaultPlotLayers(document),
+        layout: layout,
         shxFonts: context.services.shxFonts,
+        window: window,
+        layers: layers,
       );
       final bytes = format == 'jpg' ? _encodeJpg(png) : png;
       await File(path).writeAsBytes(bytes);
       return CommandResult.ok(
         message: exportedPlotMessage(context, path),
-        data: {'path': path, 'bytes': bytes.length, 'layout': layout.name},
+        data: {
+          'path': path,
+          'bytes': bytes.length,
+          'layout': layout.name,
+          if (format == 'png') 'image': _pngImageField(png),
+        },
       );
     default:
       return const CommandResult.failed('Unknown export format.');

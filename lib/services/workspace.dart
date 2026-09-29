@@ -1417,11 +1417,14 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     final right = _viewOcclusion.right;
     final box = view.visibleThrough(left: left, right: right);
     final width = math.max(0.0, view.size.width - left - right);
+    final frame = view.visibleBounds;
     return {
       'center': [view.center.x, view.center.y],
       'scale': view.scale,
       'size': [width, view.size.height],
       if (box.isNotEmpty) 'visible': [box.minX, box.minY, box.maxX, box.maxY],
+      if (!frame.isEmpty)
+        'frame': [frame.minX, frame.minY, frame.maxX, frame.maxY],
     };
   }
 

@@ -1,6 +1,49 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:fancad_core/fancad_core.dart';
 
 import 'operation.dart';
+
+/// PNG (or other raster) carried beside a command result, not in its text.
+class CommandImage {
+  const CommandImage({required this.mime, required this.bytes});
+
+  final String mime;
+  final Uint8List bytes;
+}
+
+/// Pulls `data.image` off [payload] so tool text stays a short JSON object.
+///
+/// [bytes] is null when the result has no picture. The returned payload is
+/// the same map with that field removed.
+({Map<String, Object?> payload, Uint8List? bytes, String? mime})
+takeCommandImage(Map<String, Object?> payload) {
+  final data = payload['data'];
+  if (data is! Map) return (payload: payload, bytes: null, mime: null);
+  final raw = data['image'];
+  if (raw is! Map) return (payload: payload, bytes: null, mime: null);
+  final encoded = raw['data'];
+  if (encoded is! String || encoded.isEmpty) {
+    return (payload: payload, bytes: null, mime: null);
+  }
+  Uint8List bytes;
+  try {
+    bytes = base64Decode(encoded);
+  } on FormatException {
+    return (payload: payload, bytes: null, mime: null);
+  }
+  final mime = '${raw['mime'] ?? 'image/png'}';
+  final nextData = <String, Object?>{
+    for (final entry in data.entries)
+      if (entry.key != 'image') '${entry.key}': entry.value,
+  };
+  return (
+    payload: {...payload, 'data': nextData},
+    bytes: bytes,
+    mime: mime.isEmpty ? 'image/png' : mime,
+  );
+}
 
 /// JSON a model or MCP client reads after `run`.
 ///
