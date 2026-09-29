@@ -5,8 +5,10 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_open_files
   file_selector_windows
+  irondash_engine_context
   quickjs_engine
   screen_retriever_windows
+  super_native_extensions
   window_manager
 )
 

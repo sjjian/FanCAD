@@ -2,15 +2,18 @@ import 'dart:async';
 
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:file_selector/file_selector.dart' as picker;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:super_clipboard/super_clipboard.dart';
 
 import '../../l10n/l10n.dart';
 import '../../models/assistant.dart';
 import '../../services/assistant.dart';
+import '../../services/settings.dart';
 import '../../services/workspace.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
@@ -185,9 +188,43 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     widget.controller.send(text);
   }
 
+  Future<void> _attachImage() async {
+    final file = await picker.openFile(
+      acceptedTypeGroups: const [
+        picker.XTypeGroup(
+          label: 'Images',
+          extensions: ['png', 'jpg', 'jpeg', 'webp'],
+        ),
+      ],
+    );
+    if (file == null) return;
+    final name = file.name.toLowerCase();
+    final mime = name.endsWith('.jpg') || name.endsWith('.jpeg')
+        ? 'image/jpeg'
+        : name.endsWith('.webp')
+        ? 'image/webp'
+        : 'image/png';
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+    await widget.controller.addUpload(bytes, mime: mime);
+  }
+
   Future<void> _onPaste() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (!mounted) return;
     if (data?.text?.trim().isNotEmpty == true) return;
+    final image = await _clipboardImage();
+    if (!mounted) return;
+    if (image != null) {
+      final vision = ref
+          .read(assistantAccountsNotifierProvider)
+          .activeProfile
+          .vision;
+      if (vision) {
+        await widget.controller.addUpload(image.bytes, mime: image.mime);
+      }
+      return;
+    }
     widget.controller.pinClipboard();
   }
 
@@ -213,6 +250,8 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         child: _UserBlock(
           key: isLast ? assistantUserBlockKey : null,
           text: message.text,
+          images: message.images,
+          readImage: controller.readChatImage,
           onCopy: () => _copy(message.text),
           onFlashPin: controller.flashPin,
           onHoverPin: controller.hoverPin,
@@ -263,6 +302,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         ),
       AssistantLogReceiptModel(:final receipt) => _ToolCard(
         receipt: receipt,
+        readImage: controller.readChatImage,
         onCopy: () => _copy(receipt.raw),
         onFlash: () =>
             controller.flashEntities(assistantReceiptEntityIds(receipt)),
@@ -284,10 +324,14 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           s.approval,
           s.question,
           s.pins,
+          s.images.length,
           s.error,
           [for (final chat in s.chats) chat.id].join('\u0001'),
         ),
       ),
+    );
+    final vision = ref.watch(
+      assistantAccountsNotifierProvider.select((s) => s.activeProfile.vision),
     );
     _syncDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -297,6 +341,11 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     final tokens = context.tokens;
     final controller = widget.controller;
     final model = ref.read(assistantNotifierProvider);
+    final imagesBlocked = assistantNeedsVision(
+      vision: vision,
+      conversationHasImages: model.activeChat.conversation.hasImages,
+      pendingImages: model.images.isNotEmpty,
+    );
     final messages = model.activeChat.conversation.visible;
     final entries = groupAssistantLog(messages);
     final busy = model.busy;
@@ -426,11 +475,16 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           controller: _input,
           enabled: controller.isConfigured,
           busy: busy,
-          hint: !controller.isConfigured
+          hint: imagesBlocked
+              ? context.l10n.assistant_images_need_vision
+              : !controller.isConfigured
               ? context.l10n.ask_assistant_unavailable
               : busy
               ? context.l10n.ask_follow_up
               : context.l10n.ask_assistant,
+          imagesBlocked: imagesBlocked,
+          images: model.images,
+          readImage: controller.readChatImage,
           tokens: tokens,
           usage: model.activeChat.usage,
           pins: model.pins,
@@ -450,6 +504,8 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           onSend: _send,
           onStop: controller.stop,
           onPaste: _onPaste,
+          onAttachImage: vision ? _attachImage : null,
+          onRemoveImage: controller.removeImage,
           onPinSelection: controller.pinSelection,
           onPinDrawing: (id) {
             final tab = controller.workspace.findDrawing(id);
@@ -694,12 +750,16 @@ class _UserBlock extends StatefulWidget {
     super.key,
     required this.text,
     required this.onCopy,
+    this.images = const [],
+    this.readImage,
     this.onFlashPin,
     this.onHoverPin,
     this.resolvePin,
   });
 
   final String text;
+  final List<LlmImage> images;
+  final Future<Uint8List?> Function(String id)? readImage;
   final VoidCallback onCopy;
   final ValueChanged<ComposerPinModel>? onFlashPin;
   final ValueChanged<ComposerPinModel?>? onHoverPin;
@@ -734,14 +794,28 @@ class _UserBlockState extends State<_UserBlock> {
               borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
               border: Border.all(color: tokens.borderStrong),
             ),
-            child: PinAwareText(
-              text: widget.text,
-              maxLines: _open ? null : 2,
-              overflow: _open ? null : TextOverflow.ellipsis,
-              style: tokens.bodyStyle.copyWith(height: 1.45),
-              onFlash: widget.onFlashPin,
-              onHover: widget.onHoverPin,
-              resolve: widget.resolvePin,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.images.isNotEmpty && widget.readImage != null)
+                  _ChatImageStrip(
+                    images: [
+                      for (final image in widget.images)
+                        (id: image.id, mime: image.mime),
+                    ],
+                    readImage: widget.readImage!,
+                  ),
+                if (widget.text.trim().isNotEmpty)
+                  PinAwareText(
+                    text: widget.text,
+                    maxLines: _open ? null : 2,
+                    overflow: _open ? null : TextOverflow.ellipsis,
+                    style: tokens.bodyStyle.copyWith(height: 1.45),
+                    onFlash: widget.onFlashPin,
+                    onHover: widget.onHoverPin,
+                    resolve: widget.resolvePin,
+                  ),
+              ],
             ),
           ),
         ),
@@ -775,15 +849,21 @@ class _ThinkingBlock extends StatefulWidget {
   State<_ThinkingBlock> createState() => _ThinkingBlockState();
 }
 
-class _ThinkingBlockState extends State<_ThinkingBlock> {
+class _ThinkingBlockState extends State<_ThinkingBlock>
+    with SingleTickerProviderStateMixin {
   late bool _open;
   final Stopwatch _elapsed = Stopwatch();
   Timer? _tick;
+  late final AnimationController _pulse;
 
   @override
   void initState() {
     super.initState();
     _open = false;
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
     if (widget.live) _armClock();
   }
 
@@ -794,6 +874,7 @@ class _ThinkingBlockState extends State<_ThinkingBlock> {
       _elapsed.stop();
       _tick?.cancel();
       _tick = null;
+      _pulse.stop();
     } else if (!oldWidget.live && widget.live) {
       _armClock();
     }
@@ -805,11 +886,14 @@ class _ThinkingBlockState extends State<_ThinkingBlock> {
     _tick = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
+    _pulse.value = 1;
+    _pulse.repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _tick?.cancel();
+    _pulse.dispose();
     super.dispose();
   }
 
@@ -817,6 +901,31 @@ class _ThinkingBlockState extends State<_ThinkingBlock> {
     final seconds = _elapsed.elapsed.inSeconds;
     if (seconds <= 0) return l10n.thinking;
     return l10n.thinking_for(seconds);
+  }
+
+  Widget _header(FanCadTokens tokens) {
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          _title(context.l10n),
+          style: tokens.bodyStyle.copyWith(color: tokens.textMuted),
+        ),
+        Icon(
+          _open ? Icons.expand_less : Icons.expand_more,
+          size: FanCadTokens.iconSmall,
+          color: tokens.textMuted,
+        ),
+      ],
+    );
+    if (!widget.live) return row;
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, child) {
+        return Opacity(opacity: 0.35 + 0.65 * _pulse.value, child: child);
+      },
+      child: row,
+    );
   }
 
   @override
@@ -833,24 +942,7 @@ class _ThinkingBlockState extends State<_ThinkingBlock> {
               key: const Key('assistant-thinking-card'),
               onTap: () => setState(() => _open = !_open),
               onSecondaryTap: widget.onCopy,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _title(context.l10n),
-                    style: tokens.bodyStyle.copyWith(color: tokens.textMuted),
-                  ),
-                  Icon(
-                    _open ? Icons.expand_less : Icons.expand_more,
-                    size: FanCadTokens.iconSmall,
-                    color: tokens.textMuted,
-                  ),
-                  if (widget.live) ...[
-                    const SizedBox(width: FanCadTokens.space2),
-                    const _StreamingCaret(),
-                  ],
-                ],
-              ),
+              child: _header(tokens),
             ),
           ),
           if (_open) ...[
@@ -868,6 +960,10 @@ class _ThinkingBlockState extends State<_ThinkingBlock> {
               onHoverPin: widget.onHoverPin,
               resolvePin: widget.resolvePin,
             ),
+            if (widget.live && widget.text.trim().isNotEmpty) ...[
+              const SizedBox(height: FanCadTokens.space2),
+              const _StreamingCaret(),
+            ],
           ],
         ],
       ),
@@ -899,7 +995,7 @@ class _AssistantBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: FanCadTokens.space4),
+      padding: const EdgeInsets.only(bottom: FanCadTokens.space3),
       child: GestureDetector(
         onSecondaryTap: onCopy,
         child: Column(
@@ -993,12 +1089,14 @@ class _StreamingCaretState extends State<_StreamingCaret>
 class _ToolCard extends StatefulWidget {
   const _ToolCard({
     required this.receipt,
+    required this.readImage,
     required this.onCopy,
     required this.onFlash,
     required this.onPin,
   });
 
   final AssistantReceiptModel receipt;
+  final Future<Uint8List?> Function(String id) readImage;
   final VoidCallback onCopy;
   final VoidCallback onFlash;
   final VoidCallback onPin;
@@ -1023,7 +1121,7 @@ class _ToolCardState extends State<_ToolCard> {
         ? '${receipt.verb} ×${receipt.count}'
         : receipt.verb;
     return Padding(
-      padding: const EdgeInsets.only(bottom: FanCadTokens.space2),
+      padding: const EdgeInsets.only(bottom: FanCadTokens.space3),
       child: Material(
         color: tokens.surfaceRaised,
         shape: RoundedRectangleBorder(
@@ -1090,7 +1188,24 @@ class _ToolCardState extends State<_ToolCard> {
                 ),
               ),
             ),
-            if (_open)
+            if (_open && receipt.images.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  FanCadTokens.space3,
+                  0,
+                  FanCadTokens.space3,
+                  FanCadTokens.space2,
+                ),
+                child: _ChatImageStrip(
+                  images: [
+                    for (final image in receipt.images)
+                      (id: image.id, mime: image.mime),
+                  ],
+                  readImage: widget.readImage,
+                  fitWidth: true,
+                ),
+              ),
+            if (_open && receipt.raw.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   FanCadTokens.space3,
@@ -1141,7 +1256,7 @@ class _ApprovalCard extends StatelessWidget {
           )
         : l10n.allow_n_changes(pending.calls.length);
     return Padding(
-      padding: const EdgeInsets.only(bottom: FanCadTokens.space2),
+      padding: const EdgeInsets.only(bottom: FanCadTokens.space3),
       child: Material(
         key: const Key('assistant-approval-card'),
         color: tokens.surfaceRaised,
@@ -1713,6 +1828,11 @@ class _Composer extends ConsumerStatefulWidget {
     required this.onPinDrawing,
     required this.onRemovePin,
     required this.onOpenSettings,
+    this.imagesBlocked = false,
+    this.images = const [],
+    this.readImage,
+    this.onAttachImage,
+    this.onRemoveImage,
     this.ask,
   });
 
@@ -1724,6 +1844,11 @@ class _Composer extends ConsumerStatefulWidget {
   final LlmUsage? usage;
   final List<ComposerPinModel> pins;
   final Workspace workspace;
+  final bool imagesBlocked;
+  final List<AssistantImageModel> images;
+  final Future<Uint8List?> Function(String id)? readImage;
+  final VoidCallback? onAttachImage;
+  final ValueChanged<String>? onRemoveImage;
   final Widget? ask;
   final ValueChanged<String> onChanged;
   final VoidCallback onSend;
@@ -1806,7 +1931,10 @@ class _ComposerState extends ConsumerState<_Composer> {
   }
 
   bool get _canSend =>
-      !widget.busy && widget.enabled && (_textReady || widget.pins.isNotEmpty);
+      !widget.busy &&
+      widget.enabled &&
+      !widget.imagesBlocked &&
+      (_textReady || widget.pins.isNotEmpty || widget.images.isNotEmpty);
 
   /// Empty to non-empty flips the send button. A chat switch writes the
   /// controller from the panel build, so that case waits until the frame ends.
@@ -2105,6 +2233,27 @@ class _ComposerState extends ConsumerState<_Composer> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (widget.imagesBlocked)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: FanCadTokens.space2),
+                    child: Text(
+                      widget.hint,
+                      key: const Key('assistant-images-need-vision'),
+                      style: tokens.bodyStyle.copyWith(color: tokens.warning),
+                    ),
+                  ),
+                if (widget.images.isNotEmpty && widget.readImage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: FanCadTokens.space2),
+                    child: _ChatImageStrip(
+                      images: [
+                        for (final image in widget.images)
+                          (id: image.id, mime: image.mime),
+                      ],
+                      readImage: widget.readImage!,
+                      onRemove: widget.onRemoveImage,
+                    ),
+                  ),
                 Focus(
                   onKeyEvent: _onKey,
                   child: TextField(
@@ -2141,6 +2290,16 @@ class _ComposerState extends ConsumerState<_Composer> {
                       size: 24,
                       onPressed: widget.onOpenSettings,
                     ),
+                    if (widget.onAttachImage != null) ...[
+                      const SizedBox(width: FanCadTokens.space1),
+                      FanCadIconButton(
+                        key: const Key('assistant-attach-image'),
+                        icon: Icons.image_outlined,
+                        tooltip: context.l10n.assistant_attach_image,
+                        size: 24,
+                        onPressed: widget.enabled ? widget.onAttachImage : null,
+                      ),
+                    ],
                     const SizedBox(width: FanCadTokens.space1),
                     FanCadIconButton(
                       key: const Key('assistant-mention-drawing'),
@@ -2480,5 +2639,226 @@ class _ContextRingPainter extends CustomPainter {
     return oldDelegate.fraction != fraction ||
         oldDelegate.track != track ||
         oldDelegate.fill != fill;
+  }
+}
+
+class _ChatImageStrip extends StatelessWidget {
+  const _ChatImageStrip({
+    required this.images,
+    required this.readImage,
+    this.onRemove,
+    this.fitWidth = false,
+  });
+
+  final List<({String id, String mime})> images;
+  final Future<Uint8List?> Function(String id) readImage;
+  final ValueChanged<String>? onRemove;
+
+  /// When set, a picture wider than the card shrinks to the inner width.
+  /// Height follows the aspect ratio and is not capped.
+  final bool fitWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: FanCadTokens.space2,
+      runSpacing: FanCadTokens.space2,
+      children: [
+        for (final image in images)
+          _ChatImageThumb(
+            id: image.id,
+            readImage: readImage,
+            onRemove: onRemove == null ? null : () => onRemove!(image.id),
+            fitWidth: fitWidth,
+          ),
+      ],
+    );
+  }
+}
+
+class _ChatImageThumb extends StatefulWidget {
+  const _ChatImageThumb({
+    required this.id,
+    required this.readImage,
+    this.onRemove,
+    this.fitWidth = false,
+  });
+
+  final String id;
+  final Future<Uint8List?> Function(String id) readImage;
+  final VoidCallback? onRemove;
+  final bool fitWidth;
+
+  @override
+  State<_ChatImageThumb> createState() => _ChatImageThumbState();
+}
+
+class _ChatImageThumbState extends State<_ChatImageThumb> {
+  static const _thumbSide = 48.0;
+
+  late final Future<Uint8List?> _bytes = widget.readImage(widget.id);
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(FanCadTokens.radius),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(color: tokens.border),
+              borderRadius: BorderRadius.circular(FanCadTokens.radius),
+            ),
+            child: FutureBuilder<Uint8List?>(
+              future: _bytes,
+              builder: (context, snapshot) {
+                final bytes = snapshot.data;
+                if (bytes == null) {
+                  return SizedBox(
+                    width: widget.fitWidth ? 72 : _thumbSide,
+                    height: widget.fitWidth ? 72 : _thumbSide,
+                    child: Icon(
+                      Icons.image_outlined,
+                      color: tokens.textFaint,
+                      size: FanCadTokens.iconSmall,
+                    ),
+                  );
+                }
+                final image = Image.memory(
+                  bytes,
+                  key: Key('assistant-image-${widget.id}'),
+                  fit: widget.fitWidth ? BoxFit.contain : BoxFit.cover,
+                );
+                return MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => _previewChatImage(context, bytes),
+                    child: widget.fitWidth
+                        ? image
+                        : SizedBox(
+                            width: _thumbSide,
+                            height: _thumbSide,
+                            child: image,
+                          ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        if (widget.onRemove != null)
+          Positioned(
+            top: 2,
+            right: 2,
+            child: FanCadIconButton(
+              key: Key('assistant-image-remove-${widget.id}'),
+              icon: Icons.close,
+              iconSize: FanCadTokens.iconSmall,
+              size: 18,
+              onPressed: widget.onRemove,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+const _clipboardImages = <(FileFormat, String)>[
+  (Formats.png, 'image/png'),
+  (Formats.jpeg, 'image/jpeg'),
+  (Formats.webp, 'image/webp'),
+  (Formats.gif, 'image/gif'),
+];
+
+/// First picture on the clipboard, or null when the paste is not an image.
+Future<({Uint8List bytes, String mime})?> _clipboardImage() async {
+  final clipboard = SystemClipboard.instance;
+  if (clipboard == null) return null;
+  final reader = await clipboard.read();
+  for (final (format, mime) in _clipboardImages) {
+    if (!reader.canProvide(format)) continue;
+    final done = Completer<DataReaderFile?>();
+    final progress = reader.getFile(
+      format,
+      (file) {
+        if (!done.isCompleted) done.complete(file);
+      },
+      onError: (error) {
+        if (!done.isCompleted) done.complete(null);
+      },
+    );
+    if (progress == null) continue;
+    final file = await done.future;
+    if (file == null) continue;
+    final bytes = await file.readAll();
+    if (bytes.isEmpty) continue;
+    return (bytes: bytes, mime: mime);
+  }
+  return null;
+}
+
+void _previewChatImage(BuildContext context, Uint8List bytes) {
+  showDialog<void>(
+    context: context,
+    useSafeArea: false,
+    barrierColor: Colors.black.withValues(alpha: 0.4),
+    builder: (context) => _ChatImagePreview(bytes: bytes),
+  );
+}
+
+class _ChatImagePreview extends StatelessWidget {
+  const _ChatImagePreview({required this.bytes});
+
+  final Uint8List bytes;
+
+  static const _size = Size(960, 720);
+  static const _maxSize = Size(1280, 960);
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bounds = Size(constraints.maxWidth, constraints.maxHeight);
+        if (!bounds.isFinite || bounds.isEmpty) return const SizedBox.shrink();
+        void close() {
+          final navigator = Navigator.maybeOf(context);
+          if (navigator != null && navigator.canPop()) navigator.pop();
+        }
+
+        return SizedBox.expand(
+          child: Stack(
+            children: [
+              FanCadCanvasWindow(
+                name: 'assistant-image',
+                title: context.l10n.assistant_image_preview,
+                origin: Offset(
+                  (bounds.width - _size.width) / 2,
+                  (bounds.height - _size.height) / 2,
+                ),
+                bounds: bounds,
+                initialSize: _size,
+                minSize: const Size(320, 240),
+                maxSize: _maxSize,
+                onClose: close,
+                onBarrierTap: close,
+                child: InteractiveViewer(
+                  minScale: 1,
+                  maxScale: 8,
+                  trackpadScrollCausesScale: true,
+                  child: SizedBox.expand(
+                    child: Image.memory(
+                      bytes,
+                      key: const Key('assistant-image-preview'),
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

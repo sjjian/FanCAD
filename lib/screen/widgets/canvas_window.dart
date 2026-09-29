@@ -25,6 +25,7 @@ class FanCadCanvasWindow extends StatefulWidget {
     this.closeTooltip,
     this.initialSize = const Size(300, 232),
     this.minSize = const Size(260, 200),
+    this.maxSize,
     this.margin = 8,
     this.name = 'canvas-window',
   });
@@ -51,6 +52,9 @@ class FanCadCanvasWindow extends StatefulWidget {
   final String? closeTooltip;
   final Size initialSize;
   final Size minSize;
+
+  /// Largest size the user can drag the window to. Null grows to [bounds].
+  final Size? maxSize;
   final double margin;
 
   /// Prefix for widget keys (`$name-card`, `$name-resize-se`, …).
@@ -79,8 +83,18 @@ class _FanCadCanvasWindowState extends State<FanCadCanvasWindow> {
   @override
   void initState() {
     super.initState();
-    _width = math.max(widget.initialSize.width, widget.minSize.width);
-    _height = math.max(widget.initialSize.height, widget.minSize.height);
+    _width = _fit(
+      widget.initialSize.width,
+      widget.minSize.width,
+      _roomWidth,
+      widget.maxSize?.width,
+    );
+    _height = _fit(
+      widget.initialSize.height,
+      widget.minSize.height,
+      _roomHeight,
+      widget.maxSize?.height,
+    );
     _parkNearOrigin();
     _registerName(widget.name);
   }
@@ -94,6 +108,7 @@ class _FanCadCanvasWindowState extends State<FanCadCanvasWindow> {
     }
     if (oldWidget.bounds != widget.bounds ||
         oldWidget.minSize != widget.minSize ||
+        oldWidget.maxSize != widget.maxSize ||
         oldWidget.margin != widget.margin) {
       _clampToBounds();
     }
@@ -142,14 +157,34 @@ class _FanCadCanvasWindowState extends State<FanCadCanvasWindow> {
     _clampToBounds();
   }
 
+  double get _roomWidth =>
+      math.max(widget.minSize.width, widget.bounds.width - 2 * widget.margin);
+
+  double get _roomHeight =>
+      math.max(widget.minSize.height, widget.bounds.height - 2 * widget.margin);
+
+  /// [room] is how far the canvas edge allows. [cap] can stop sooner.
+  double _fit(double value, double min, double room, double? cap) {
+    final limited = cap == null ? room : math.min(room, cap);
+    return value.clamp(min, math.max(min, limited));
+  }
+
   void _clampToBounds() {
     final bounds = widget.bounds;
     final margin = widget.margin;
     final origin = widget.origin;
-    final minW = widget.minSize.width;
-    final minH = widget.minSize.height;
-    _width = _width.clamp(minW, math.max(minW, bounds.width - 2 * margin));
-    _height = _height.clamp(minH, math.max(minH, bounds.height - 2 * margin));
+    _width = _fit(
+      _width,
+      widget.minSize.width,
+      _roomWidth,
+      widget.maxSize?.width,
+    );
+    _height = _fit(
+      _height,
+      widget.minSize.height,
+      _roomHeight,
+      widget.maxSize?.height,
+    );
     final left = (origin.dx + _offsetFromOrigin.dx).clamp(
       margin,
       math.max(margin, bounds.width - _width - margin),
@@ -175,23 +210,37 @@ class _FanCadCanvasWindowState extends State<FanCadCanvasWindow> {
     final minH = widget.minSize.height;
 
     if (side.right) {
-      width = (width + delta.dx).clamp(
+      width = _fit(
+        width + delta.dx,
         minW,
         math.max(minW, bounds.width - left - margin),
+        widget.maxSize?.width,
       );
     }
     if (side.bottom) {
-      height = (height + delta.dy).clamp(
+      height = _fit(
+        height + delta.dy,
         minH,
         math.max(minH, bounds.height - top - margin),
+        widget.maxSize?.height,
       );
     }
     if (side.left) {
-      width = (width - delta.dx).clamp(minW, math.max(minW, right - margin));
+      width = _fit(
+        width - delta.dx,
+        minW,
+        math.max(minW, right - margin),
+        widget.maxSize?.width,
+      );
       left = right - width;
     }
     if (side.top) {
-      height = (height - delta.dy).clamp(minH, math.max(minH, bottom - margin));
+      height = _fit(
+        height - delta.dy,
+        minH,
+        math.max(minH, bottom - margin),
+        widget.maxSize?.height,
+      );
       top = bottom - height;
     }
 

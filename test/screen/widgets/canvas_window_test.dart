@@ -9,6 +9,7 @@ Future<void> pumpWindow(
   Offset origin = const Offset(200, 160),
   Size bounds = const Size(800, 600),
   Size initialSize = const Size(300, 232),
+  Size? maxSize,
   Widget? child,
   Widget? footer,
   VoidCallback? onClose,
@@ -31,6 +32,7 @@ Future<void> pumpWindow(
               origin: origin,
               bounds: bounds,
               initialSize: initialSize,
+              maxSize: maxSize,
               onClose: onClose ?? () {},
               onBarrierTap: onBarrierTap,
               footer: footer,
@@ -71,6 +73,25 @@ void main() {
           .first,
     );
     expect(header.cursor, SystemMouseCursors.grab);
+  });
+
+  testWidgets('resize stops at the maximum size', (tester) async {
+    await pumpWindow(
+      tester,
+      initialSize: const Size(300, 232),
+      maxSize: const Size(340, 260),
+    );
+
+    final card = find.byKey(const Key('canvas-window-card'));
+    await tester.drag(
+      find.byKey(const Key('canvas-window-resize-se')),
+      const Offset(200, 200),
+    );
+    await tester.pump();
+
+    final size = tester.getSize(card);
+    expect(size.width, 340);
+    expect(size.height, 260);
   });
 
   testWidgets('edges and corners resize the window', (tester) async {
