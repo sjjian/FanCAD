@@ -327,6 +327,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get view_extensions_hint => '已安装扩展及其错误';
 
   @override
+  String get view_export_hint => '这一次导出的格式、范围和图层';
+
+  @override
   String get view_editor_hint => '查看扩展源码';
 
   @override
@@ -1656,10 +1659,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_layout_vpmin => '最小化视口';
 
   @override
-  String get command_print_export_svg => '导出 SVG';
-
-  @override
-  String get command_print_export_pdf => '导出 PDF';
+  String get command_print_export => '导出';
 
   @override
   String get export_menu => '导出';
@@ -1668,6 +1668,43 @@ class AppLocalizationsZh extends AppLocalizations {
   String exported_file(String name) {
     return '已导出 $name';
   }
+
+  @override
+  String get export_format => '格式';
+
+  @override
+  String get export_scope => '范围';
+
+  @override
+  String get export_scope_extents => '全图';
+
+  @override
+  String get export_scope_selection => '选区';
+
+  @override
+  String get export_scope_view => '可视窗口';
+
+  @override
+  String get export_scope_window => '指定区域';
+
+  @override
+  String get export_scope_window_hint => '在图纸上拖拽框选范围。';
+
+  @override
+  String export_status_detail(String format, String scope) {
+    return '$format、$scope';
+  }
+
+  @override
+  String get export_need_selection => '先选中对象，再导出选区。';
+
+  @override
+  String export_commit(String format) {
+    return '导出 $format';
+  }
+
+  @override
+  String get export_edit_layers => '编辑图层';
 
   @override
   String get command_xref_attach => '附着外部参照';
@@ -2245,12 +2282,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_layout_vpmin_desc => '返回 VPMAX 离开的图纸布局并框住该页。';
 
   @override
-  String get command_print_export_svg_desc =>
-      '将布局打印为 SVG 文件。省略布局名则打印当前标签页。路径为 .pdf 则改为矢量 PDF。传入 corner1 和 corner2 可打印窗口；否则使用布局存储的打印窗口或整张图纸。';
-
-  @override
-  String get command_print_export_pdf_desc =>
-      '将布局打印为矢量 PDF。省略布局名则打印当前标签页。图纸尺寸成为页面 MediaBox；视口被裁剪。传入 corner1 和 corner2 可打印窗口。';
+  String get command_print_export_desc =>
+      '打开导出页。传入 path 则立即写文件。可选 format（svg、pdf、png、jpg）、scope（extents、view、window 或 selection）和 layers。未指定 format 时按文件后缀决定格式。corner1 和 corner2 指定一次性窗口，并优先于范围。';
 
   @override
   String get command_xref_attach_desc =>

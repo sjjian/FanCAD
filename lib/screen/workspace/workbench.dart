@@ -30,6 +30,7 @@ import '../widgets/widgets.dart';
 import 'canvas_hud.dart';
 import 'document_view.dart';
 import 'empty_workspace.dart';
+import 'export_panel.dart';
 import 'layers_panel.dart';
 import 'layouts_panel.dart';
 import 'properties_panel.dart';
@@ -305,6 +306,19 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         ),
       ),
     );
+    final exporting = ref.watch(
+      workspaceNotifierProvider.select(
+        (s) => s.openExportOf(s.activeSessionId ?? '') != null,
+      ),
+    );
+    ref.listen(layoutNotifierProvider.select((s) => s.sidebarOpen), (
+      previous,
+      next,
+    ) {
+      if (previous == true && !next) {
+        ref.read(workspaceNotifierProvider.notifier).endExport();
+      }
+    });
     final paletteOpen = ref.watch(
       commandLineNotifierProvider.select((s) => s.paletteOpen),
     );
@@ -345,12 +359,12 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                     Row(
                       children: [
                         ActivityBar(
-                          activeViewId: layout.sidebarOpen
-                              ? layout.sidebarView
-                              : '',
-                          onSelect: ref
-                              .read(layoutNotifierProvider.notifier)
-                              .select,
+                          activeViewId: !layout.sidebarOpen
+                              ? ''
+                              : exporting
+                              ? 'export'
+                              : layout.sidebarView,
+                          onSelect: (id) => _selectSidebar(id),
                           onOpenSettings: () {
                             unawaited(showSettingsDialog(context));
                           },
@@ -378,6 +392,40 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     );
   }
 
+  /// Export is a per-drawing pane. It is not stored in [LayoutModel.sidebarView],
+  /// so the next launch still opens on the last real sidebar.
+  void _selectSidebar(String id) {
+    final workspace = ref.read(workspaceNotifierProvider.notifier);
+    final layout = ref.read(layoutNotifierProvider.notifier);
+    final state = ref.read(workspaceNotifierProvider);
+    final exporting = state.openExportOf(state.activeSessionId ?? '') != null;
+    if (id == 'export') {
+      final open = ref.read(layoutNotifierProvider).sidebarOpen;
+      if (exporting && open) {
+        workspace.endExport();
+        layout.setSidebarOpen(false);
+        return;
+      }
+      if (exporting) {
+        layout.setSidebarOpen(true);
+        return;
+      }
+      final tab = workspace.active;
+      if (tab == null || tab.isStartPage) return;
+      workspace.beginExport();
+      return;
+    }
+    if (exporting) {
+      workspace.suspendExport();
+      final current = ref.read(layoutNotifierProvider);
+      if (!current.sidebarOpen || current.sidebarView != id) {
+        layout.reveal(id);
+      }
+      return;
+    }
+    layout.select(id);
+  }
+
   /// Writes the live pane widths the camera does not follow.
   ///
   /// The controllers already notify the split. This only stores the crop, so
@@ -397,6 +445,11 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     Workspace workspace,
     ({String sidebarView, bool sidebarOpen, bool assistantOpen}) layout,
   ) {
+    final exporting = ref.watch(
+      workspaceNotifierProvider.select(
+        (state) => state.openExportOf(state.activeSessionId ?? '') != null,
+      ),
+    );
     final tooltip = context.l10n.resize_reset_width;
     _noteViewOcclusion();
     final showStart = workspace.active == null || workspace.active!.isStartPage;
@@ -457,7 +510,9 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         onDoubleTap: () => _sidebarSplit.extent = SidebarLayout.defaultWidth,
         first: ColoredBox(
           color: context.tokens.surface,
-          child: _sidebarBody(layout.sidebarView, workspace),
+          child: exporting
+              ? ExportPanel(workspace: workspace)
+              : _sidebarBody(layout.sidebarView, workspace),
         ),
         second: viewport,
       );

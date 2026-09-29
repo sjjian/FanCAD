@@ -13,11 +13,15 @@ class PromptKeywordChip extends StatefulWidget {
     required this.label,
     required this.onPressed,
     this.muted = false,
+    this.filled = false,
   });
 
   final String label;
   final VoidCallback onPressed;
   final bool muted;
+
+  /// Solid accent fill, for the one action a prompt is asking for.
+  final bool filled;
 
   @override
   State<PromptKeywordChip> createState() => _PromptKeywordChipState();
@@ -30,6 +34,14 @@ class _PromptKeywordChipState extends State<PromptKeywordChip> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final accent = widget.muted ? tokens.textMuted : tokens.accent;
+    final fill = widget.filled
+        ? (_hovered
+              ? Color.alphaBlend(
+                  Colors.white.withValues(alpha: 0.12),
+                  tokens.accent,
+                )
+              : tokens.accent)
+        : (_hovered ? tokens.selection : Colors.transparent);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -43,14 +55,20 @@ class _PromptKeywordChipState extends State<PromptKeywordChip> {
             vertical: 2,
           ),
           decoration: BoxDecoration(
-            color: _hovered ? tokens.selection : Colors.transparent,
-            border: Border.all(color: _hovered ? accent : tokens.borderStrong),
+            color: fill,
+            border: Border.all(
+              color: widget.filled
+                  ? tokens.accent
+                  : (_hovered ? accent : tokens.borderStrong),
+            ),
             borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
           ),
           child: Text(
             widget.label,
             style: tokens.labelStyle.copyWith(
-              color: _hovered ? accent : tokens.text,
+              color: widget.filled
+                  ? tokens.accentText
+                  : (_hovered ? accent : tokens.text),
             ),
           ),
         ),

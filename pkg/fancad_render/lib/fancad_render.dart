@@ -18,6 +18,8 @@ export 'src/dynamic_input.dart';
 export 'src/overlay.dart' show OverlayModel, OverlayTheme;
 export 'src/palette.dart';
 export 'src/picking.dart' show GripHit, LayoutSpace, PickHit, Picker;
+export 'src/plot_image.dart'
+    show plotImageLongEdge, plotPixelSize, renderPlotPng;
 export 'src/render_scene.dart' show RenderScene;
 export 'src/select_tool.dart';
 export 'src/snap.dart';

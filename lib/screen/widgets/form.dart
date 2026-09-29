@@ -68,13 +68,15 @@ class SettingsLabeledRow extends StatelessWidget {
     super.key,
     required this.label,
     required this.child,
+    this.labelWidth = defaultLabelWidth,
     this.crossAxisAlignment = CrossAxisAlignment.center,
   });
 
-  static const double labelWidth = 140;
+  static const double defaultLabelWidth = 140;
 
   final String label;
   final Widget child;
+  final double labelWidth;
   final CrossAxisAlignment crossAxisAlignment;
 
   @override
@@ -121,11 +123,15 @@ class SettingsDropdown<T> extends StatelessWidget {
     required this.value,
     required this.options,
     required this.onChanged,
+    this.tooltip,
+    this.height = 32,
   });
 
   final T value;
   final List<SettingsDropdownOption<T>> options;
   final ValueChanged<T> onChanged;
+  final String? tooltip;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +147,7 @@ class SettingsDropdown<T> extends StatelessWidget {
     return FanCadMenuButton<T>(
       placement: FanCadMenuPlacement.down,
       matchTriggerWidth: true,
+      tooltip: tooltip,
       onSelected: onChanged,
       itemBuilder: (context) => [
         for (final option in options)
@@ -157,7 +164,7 @@ class SettingsDropdown<T> extends StatelessWidget {
       ],
       child: Container(
         width: double.infinity,
-        height: 32,
+        height: height,
         padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space2),
         alignment: Alignment.centerLeft,
         decoration: BoxDecoration(

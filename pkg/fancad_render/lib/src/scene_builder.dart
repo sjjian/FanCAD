@@ -63,6 +63,10 @@ class SceneBuilder {
     CadViewport viewport, {
     Set<String>? onlyLayers,
     Set<int>? hiddenIds,
+
+    /// When set, [onlyLayers] decides the layers. Layer visibility on the
+    /// drawing is left as it is. Entity visibility still applies.
+    bool plotLayers = false,
   }) {
     if (!viewport.isUsable) return RenderScene.empty(viewport);
 
@@ -107,6 +111,7 @@ class SceneBuilder {
         context: space.context,
         query: space.query,
         onlyLayers: onlyLayers,
+        plotLayers: plotLayers,
         hiddenIds: hiddenIds,
         hiddenLayers: space.hiddenLayers.isEmpty ? null : space.hiddenLayers,
         bucket: bucket,
@@ -243,6 +248,7 @@ class SceneBuilder {
     required EmitContext context,
     required Bounds2 query,
     required Set<String>? onlyLayers,
+    bool plotLayers = false,
     Set<int>? hiddenIds,
     Set<String>? hiddenLayers,
     required int bucket,
@@ -256,9 +262,15 @@ class SceneBuilder {
     for (final id in index.search(query)) {
       final entity = document.entity(id);
       if (entity == null || !entity.props.visible) continue;
-      if (!document.isLayerVisible(entity.props.layer)) continue;
-      if (onlyLayers != null && !onlyLayers.contains(entity.props.layer)) {
-        continue;
+      if (plotLayers) {
+        if (onlyLayers != null && !onlyLayers.contains(entity.props.layer)) {
+          continue;
+        }
+      } else {
+        if (!document.isLayerVisible(entity.props.layer)) continue;
+        if (onlyLayers != null && !onlyLayers.contains(entity.props.layer)) {
+          continue;
+        }
       }
       if (hiddenIds != null && hiddenIds.contains(id)) continue;
       if (hiddenLayers != null &&

@@ -30,6 +30,45 @@ void main() {
     expect(svg, isNot(contains('M 0.0 0.0')));
   });
 
+  test('an allow-list draws only those layers', () {
+    final document = CadDocument()
+      ..putLayer(const LayerDef(name: 'A'))
+      ..putLayer(const LayerDef(name: 'B', plottable: false))
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(layer: 'A'),
+          start: Vec2.zero(),
+          end: Vec2(8, 0),
+        ),
+      )
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(layer: 'B'),
+          start: Vec2(0, 40),
+          end: Vec2(8, 40),
+        ),
+      );
+    final kept = const Plotter().toSvg(document, layers: {'B'});
+    expect('<path'.allMatches(kept).length, 1);
+    expect(kept, contains('d="M 0.0 -40.0 L 8.0 -40.0"'));
+    final dropped = const Plotter().toSvg(document, layers: {'A'});
+    expect('<path'.allMatches(dropped).length, 1);
+    expect(dropped, contains('d="M 0.0 -0.0 L 8.0 -0.0"'));
+    expect(dropped, isNot(contains('d="M 0.0 -40.0')));
+  });
+
+  test('a one-shot window frames the plot', () {
+    final document = CadDocument()
+      ..addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(100, 0)),
+      );
+    final framed = Plotter.frame(document, window: const Bounds2(0, 0, 10, 10));
+    expect(framed.width, greaterThan(10));
+    expect(framed.width, lessThan(20));
+  });
+
   test('a non-plottable layer is omitted from SVG', () {
     final document = CadDocument()
       ..putLayer(const LayerDef(name: 'VIEWPORT-FRAME', plottable: false))

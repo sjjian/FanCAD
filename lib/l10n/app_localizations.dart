@@ -674,6 +674,12 @@ abstract class AppLocalizations {
   /// **'Installed plugins and their errors'**
   String get view_extensions_hint;
 
+  /// view export hint
+  ///
+  /// In en, this message translates to:
+  /// **'Format, area and layers for this export'**
+  String get view_export_hint;
+
   /// view editor hint
   ///
   /// In en, this message translates to:
@@ -3200,19 +3206,13 @@ abstract class AppLocalizations {
   /// **'Minimize Viewport'**
   String get command_layout_vpmin;
 
-  /// command print export svg
+  /// command print export
   ///
   /// In en, this message translates to:
-  /// **'Export SVG'**
-  String get command_print_export_svg;
+  /// **'Export'**
+  String get command_print_export;
 
-  /// command print export pdf
-  ///
-  /// In en, this message translates to:
-  /// **'Export PDF'**
-  String get command_print_export_pdf;
-
-  /// Canvas menu row that opens SVG and PDF
+  /// Canvas menu row that opens export
   ///
   /// In en, this message translates to:
   /// **'Export'**
@@ -3223,6 +3223,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Exported {name}'**
   String exported_file(String name);
+
+  /// Export pane section for the file encoding
+  ///
+  /// In en, this message translates to:
+  /// **'Format'**
+  String get export_format;
+
+  /// Export pane section for the plot window
+  ///
+  /// In en, this message translates to:
+  /// **'Area'**
+  String get export_scope;
+
+  /// Export the whole sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Full drawing'**
+  String get export_scope_extents;
+
+  /// Export the selection bounds
+  ///
+  /// In en, this message translates to:
+  /// **'Selection'**
+  String get export_scope_selection;
+
+  /// Export the drawing area visible between the side panes
+  ///
+  /// In en, this message translates to:
+  /// **'Visible window'**
+  String get export_scope_view;
+
+  /// Export a rectangle dragged on the drawing
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get export_scope_window;
+
+  /// Shown until the export region has been dragged
+  ///
+  /// In en, this message translates to:
+  /// **'Drag on the drawing to mark the region.'**
+  String get export_scope_window_hint;
+
+  /// Canvas status while an export is open
+  ///
+  /// In en, this message translates to:
+  /// **'{format}, {scope}'**
+  String export_status_detail(String format, String scope);
+
+  /// Shown when selection export has nothing selected
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects before exporting that area.'**
+  String get export_need_selection;
+
+  /// Export pane button, including the chosen format
+  ///
+  /// In en, this message translates to:
+  /// **'Export {format}'**
+  String export_commit(String format);
+
+  /// Opens the layers panel from the export page
+  ///
+  /// In en, this message translates to:
+  /// **'Edit layers'**
+  String get export_edit_layers;
 
   /// command xref attach
   ///
@@ -4226,17 +4292,11 @@ abstract class AppLocalizations {
   /// **'Returns to the paper layout left by VPMAX and frames the sheet.'**
   String get command_layout_vpmin_desc;
 
-  /// command print export svg desc
+  /// command print export desc
   ///
   /// In en, this message translates to:
-  /// **'Plots a layout to an SVG file. Omit the layout name to plot the current tab. A .pdf path writes a vector PDF instead. Pass corner1 and corner2 to plot a window; otherwise the layout\'s stored plot window or the full sheet is used.'**
-  String get command_print_export_svg_desc;
-
-  /// command print export pdf desc
-  ///
-  /// In en, this message translates to:
-  /// **'Plots a layout to a vector PDF. Omit the layout name to plot the current tab. Paper size becomes the page MediaBox; viewports are clipped. Pass corner1 and corner2 to plot a window.'**
-  String get command_print_export_pdf_desc;
+  /// **'Opens the export pane. Pass path to write now. Optional format (svg, pdf, png, jpg), scope (extents, view, window, or selection), and layers. The file extension picks the format when format is omitted. corner1 and corner2 set a one-shot window and override scope.'**
+  String get command_print_export_desc;
 
   /// command xref attach desc
   ///

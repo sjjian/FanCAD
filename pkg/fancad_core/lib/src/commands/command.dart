@@ -286,6 +286,12 @@ abstract class CommandServices {
   /// Headless tests keep English.
   String get locale => 'en';
 
+  /// Opens the export pane on the active drawing.
+  ///
+  /// Omitted [format] and [scope] keep that drawing's last choice.
+  /// A headless host ignores the call.
+  void openExport({String? format, String? scope}) {}
+
   static const CommandServices none = _NullServices();
 }
 
@@ -326,6 +332,9 @@ class _NullServices implements CommandServices {
 
   @override
   String get locale => 'en';
+
+  @override
+  void openExport({String? format, String? scope}) {}
 
   @override
   Future<bool> requestApproval(String title, String details) async => false;

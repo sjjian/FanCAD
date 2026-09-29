@@ -133,6 +133,33 @@ void main() {
       );
     });
 
+    test('a raster plot uses the long edge', () {
+      expect(plotPixelSize(const Bounds2(0, 0, 20, 10), 2048).width, 2048);
+      expect(plotPixelSize(const Bounds2(0, 0, 20, 10), 2048).height, 1024);
+      expect(plotPixelSize(const Bounds2(0, 0, 10, 20), 2048).height, 2048);
+    });
+
+    test('a plot allow-list draws a hidden layer', () {
+      final document = CadDocument()
+        ..putLayer(const LayerDef(name: 'HIDDEN', visible: false))
+        ..addEntity(
+          const LineEntity(
+            id: 0,
+            props: EntityProps(layer: 'HIDDEN'),
+            start: Vec2.zero(),
+            end: Vec2(10, 0),
+          ),
+        );
+      final view = CadViewport.fit(const Bounds2(0, 0, 10, 10), size);
+      expect(newBuilder().build(document, view).entityCount, 0);
+      expect(
+        newBuilder()
+            .build(document, view, onlyLayers: {'HIDDEN'}, plotLayers: true)
+            .entityCount,
+        1,
+      );
+    });
+
     test('hidden ids skip a glyph', () {
       final document = CadDocument();
       final a = document.addEntity(

@@ -19,6 +19,7 @@ class Plotter {
     CadDocument document, {
     Layout? layout,
     Bounds2? window,
+    Set<String>? layers,
     double strokeWidth = 0.25,
     ShxFontTable shxFonts = const ShxFontTable(),
   }) {
@@ -29,6 +30,7 @@ class Plotter {
         sink,
         layout: layout,
         window: window,
+        layers: layers,
         shxFonts: shxFonts,
       ),
     );
@@ -40,6 +42,7 @@ class Plotter {
     CadDocument document, {
     Layout? layout,
     Bounds2? window,
+    Set<String>? layers,
     double strokeWidth = 0.25,
     ShxFontTable shxFonts = const ShxFontTable(),
   }) {
@@ -50,9 +53,31 @@ class Plotter {
         sink,
         layout: layout,
         window: window,
+        layers: layers,
         shxFonts: shxFonts,
       ),
     );
+  }
+
+  /// The sheet this plot will cover.
+  ///
+  /// [window] replaces the layout's stored plot window for this call. Model
+  /// space grows by a small margin; a paper tab stays on the sheet.
+  static Bounds2 frame(
+    CadDocument document, {
+    Layout? layout,
+    Bounds2? window,
+  }) {
+    final target = layout ?? document.activeLayout;
+    final box =
+        window ??
+        target.plotWindow ??
+        (target.isModelSpace
+            ? document.extents
+            : Bounds2(0, 0, target.paperWidth, target.paperHeight));
+    if (box.isEmpty) return const Bounds2(0, 0, 297, 210);
+    if (target.isModelSpace) return box.inflated(box.diagonal * 0.02);
+    return box;
   }
 
   Bounds2 _paint(
@@ -60,6 +85,7 @@ class Plotter {
     _PlotSink sink, {
     Layout? layout,
     Bounds2? window,
+    Set<String>? layers,
     ShxFontTable shxFonts = const ShxFontTable(),
   }) {
     final target = layout ?? document.activeLayout;
@@ -70,17 +96,7 @@ class Plotter {
       sink.plotOffsetX = target.plotOffsetX;
       sink.plotOffsetY = target.plotOffsetY;
     }
-    final box =
-        window ??
-        target.plotWindow ??
-        (target.isModelSpace
-            ? document.extents
-            : Bounds2(0, 0, target.paperWidth, target.paperHeight));
-    final padded = box.isEmpty
-        ? const Bounds2(0, 0, 297, 210)
-        : target.isModelSpace
-        ? box.inflated(box.diagonal * 0.02)
-        : box;
+    final padded = frame(document, layout: target, window: window);
     final context = document.emitContext(
       tolerance: padded.diagonal / 2000,
       clip: padded,
@@ -90,13 +106,13 @@ class Plotter {
     if (target.isModelSpace) {
       for (final entity in document.activeEntities) {
         if (!entity.props.visible) continue;
-        if (!document.isLayerPlottable(entity.props.layer)) continue;
+        if (!_plotLayer(document, entity.props.layer, layers)) continue;
         entity.emit(context, sink);
       }
     } else {
       for (final entity in document.entitiesOf(target.blockName)) {
         if (!entity.props.visible) continue;
-        if (!document.isLayerPlottable(entity.props.layer)) continue;
+        if (!_plotLayer(document, entity.props.layer, layers)) continue;
         entity.emit(context, sink);
       }
       for (final viewport in target.viewports) {
@@ -112,7 +128,7 @@ class Plotter {
                 .search(viewport.modelWindow)) {
           final entity = document.entity(id);
           if (entity == null || !entity.props.visible) continue;
-          if (!document.isLayerPlottable(entity.props.layer)) continue;
+          if (!_plotLayer(document, entity.props.layer, layers)) continue;
           if (viewport.hidesLayer(entity.props.layer)) continue;
           entity.emit(transformed, sink);
         }
@@ -133,6 +149,27 @@ class Plotter {
     }
     return padded;
   }
+}
+
+/// Union of the selected entities, in drawing units. Empty when none have a box.
+Bounds2? selectionPlotWindow(CadDocument document, Iterable<int> ids) {
+  var box = const Bounds2.empty();
+  for (final id in ids) {
+    final entity = document.entity(id);
+    if (entity == null || !entity.props.visible) continue;
+    final bounds = document.boundsOfEntity(entity);
+    if (!bounds.isFinite || bounds.isEmpty) continue;
+    box = box.union(bounds);
+  }
+  if (box.isEmpty || !box.isFinite) return null;
+  return box;
+}
+
+/// [layers] replaces the printable-layer test for this plot. A null set keeps
+/// that test. An entity's own visibility is unchanged either way.
+bool _plotLayer(CadDocument document, String layer, Set<String>? layers) {
+  if (layers != null) return layers.contains(layer);
+  return document.isLayerPlottable(layer);
 }
 
 abstract class _PlotSink implements GeometrySink {

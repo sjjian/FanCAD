@@ -465,6 +465,10 @@
   "@view_extensions_hint": {
     "description": "view extensions hint"
   },
+  "view_export_hint": "这一次导出的格式、范围和图层",
+  "@view_export_hint": {
+    "description": "view export hint"
+  },
   "view_editor_hint": "查看扩展源码",
   "@view_editor_hint": {
     "description": "view editor hint"
@@ -2298,17 +2302,13 @@
   "@command_layout_vpmin": {
     "description": "command layout vpmin"
   },
-  "command_print_export_svg": "导出 SVG",
-  "@command_print_export_svg": {
-    "description": "command print export svg"
-  },
-  "command_print_export_pdf": "导出 PDF",
-  "@command_print_export_pdf": {
-    "description": "command print export pdf"
+  "command_print_export": "导出",
+  "@command_print_export": {
+    "description": "command print export"
   },
   "export_menu": "导出",
   "@export_menu": {
-    "description": "Canvas menu row that opens SVG and PDF"
+    "description": "Canvas menu row that opens export"
   },
   "exported_file": "已导出 {name}",
   "@exported_file": {
@@ -2318,6 +2318,63 @@
         "type": "String"
       }
     }
+  },
+  "export_format": "格式",
+  "@export_format": {
+    "description": "Export pane section for the file encoding"
+  },
+  "export_scope": "范围",
+  "@export_scope": {
+    "description": "Export pane section for the plot window"
+  },
+  "export_scope_extents": "全图",
+  "@export_scope_extents": {
+    "description": "Export the whole sheet"
+  },
+  "export_scope_selection": "选区",
+  "@export_scope_selection": {
+    "description": "Export the selection bounds"
+  },
+  "export_scope_view": "可视窗口",
+  "@export_scope_view": {
+    "description": "Export the drawing area visible between the side panes"
+  },
+  "export_scope_window": "指定区域",
+  "@export_scope_window": {
+    "description": "Export a rectangle dragged on the drawing"
+  },
+  "export_scope_window_hint": "在图纸上拖拽框选范围。",
+  "@export_scope_window_hint": {
+    "description": "Shown until the export region has been dragged"
+  },
+  "export_status_detail": "{format}、{scope}",
+  "@export_status_detail": {
+    "description": "Canvas status while an export is open",
+    "placeholders": {
+      "format": {
+        "type": "String"
+      },
+      "scope": {
+        "type": "String"
+      }
+    }
+  },
+  "export_need_selection": "先选中对象，再导出选区。",
+  "@export_need_selection": {
+    "description": "Shown when selection export has nothing selected"
+  },
+  "export_commit": "导出 {format}",
+  "@export_commit": {
+    "description": "Export pane button, including the chosen format",
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "export_edit_layers": "编辑图层",
+  "@export_edit_layers": {
+    "description": "Opens the layers panel from the export page"
   },
   "command_xref_attach": "附着外部参照",
   "@command_xref_attach": {
@@ -2987,13 +3044,9 @@
   "@command_layout_vpmin_desc": {
     "description": "command layout vpmin desc"
   },
-  "command_print_export_svg_desc": "将布局打印为 SVG 文件。省略布局名则打印当前标签页。路径为 .pdf 则改为矢量 PDF。传入 corner1 和 corner2 可打印窗口；否则使用布局存储的打印窗口或整张图纸。",
-  "@command_print_export_svg_desc": {
-    "description": "command print export svg desc"
-  },
-  "command_print_export_pdf_desc": "将布局打印为矢量 PDF。省略布局名则打印当前标签页。图纸尺寸成为页面 MediaBox；视口被裁剪。传入 corner1 和 corner2 可打印窗口。",
-  "@command_print_export_pdf_desc": {
-    "description": "command print export pdf desc"
+  "command_print_export_desc": "打开导出页。传入 path 则立即写文件。可选 format（svg、pdf、png、jpg）、scope（extents、view、window 或 selection）和 layers。未指定 format 时按文件后缀决定格式。corner1 和 corner2 指定一次性窗口，并优先于范围。",
+  "@command_print_export_desc": {
+    "description": "command print export desc"
   },
   "command_xref_attach_desc": "将另一图纸作为外部参照加载并放到模型空间。再次附着同一路径即重新加载；已有插入保持位置。",
   "@command_xref_attach_desc": {

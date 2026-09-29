@@ -64,6 +64,7 @@ class CadCanvas extends StatefulWidget {
     this.onDoubleClick,
     this.showGrid = true,
     this.onlyLayers,
+    this.plotPreview = false,
     this.tessellation,
     this.shxFonts = const ShxFontTable(),
     super.key,
@@ -105,6 +106,10 @@ class CadCanvas extends StatefulWidget {
 
   /// When set, only these layers are drawn. Used by the layer isolation command.
   final Set<String>? onlyLayers;
+
+  /// Export preview: [onlyLayers] replaces layer visibility, and the host
+  /// paints a white sheet with the grid off.
+  final bool plotPreview;
 
   /// Shared with tools and overlay so hover/pick replay the drawing's flatten.
   /// The canvas creates its own when omitted.
@@ -211,7 +216,9 @@ class CadCanvasState extends State<CadCanvas> {
       _seenVersion = -1;
     }
     if (oldWidget.showGrid != widget.showGrid ||
-        oldWidget.onlyLayers != widget.onlyLayers) {
+        oldWidget.onlyLayers != widget.onlyLayers ||
+        oldWidget.plotPreview != widget.plotPreview) {
+      _cache.invalidate();
       _paintEpoch++;
     }
     if (oldWidget.shxFonts != widget.shxFonts) {
@@ -411,6 +418,7 @@ class CadCanvasState extends State<CadCanvas> {
                           quality: widget.controller.quality,
                           paintEpoch: _paintEpoch,
                           onlyLayers: widget.onlyLayers,
+                          plotPreview: widget.plotPreview,
                           hiddenIds: _overlay.hiddenIds,
                           onSceneBuilt: widget.onSceneBuilt,
                           grid: widget.showGrid
@@ -640,6 +648,7 @@ class _DrawingLayerPainter extends CustomPainter {
     required this.quality,
     required this.paintEpoch,
     required this.onlyLayers,
+    required this.plotPreview,
     required this.hiddenIds,
     required this.onSceneBuilt,
     required this.grid,
@@ -658,6 +667,7 @@ class _DrawingLayerPainter extends CustomPainter {
   final RenderQuality quality;
   final int paintEpoch;
   final Set<String>? onlyLayers;
+  final bool plotPreview;
   final List<int> hiddenIds;
   final void Function(RenderScene scene)? onSceneBuilt;
   final _GridStyle? grid;
@@ -689,6 +699,7 @@ class _DrawingLayerPainter extends CustomPainter {
       document,
       viewport,
       onlyLayers: onlyLayers,
+      plotLayers: plotPreview,
       hiddenIds: hiddenIds.isEmpty ? null : hiddenIds.toSet(),
     );
     final recorded = painter.record(scene);
@@ -775,6 +786,7 @@ class _DrawingLayerPainter extends CustomPainter {
       old.viewport != viewport ||
       old.quality != quality ||
       old.onlyLayers != onlyLayers ||
+      old.plotPreview != plotPreview ||
       !_sameIds(old.hiddenIds, hiddenIds) ||
       (old.grid == null) != (grid == null);
 }

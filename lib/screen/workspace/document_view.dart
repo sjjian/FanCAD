@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,11 +11,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../commands/edit/helpers.dart';
 import '../../commands/keybindings.dart';
 import '../../l10n/l10n.dart';
+import '../../models/workspace.dart';
 import '../../services/command_line.dart';
 import '../../services/workspace.dart';
 import '../command_line/dynamic_input_hud.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
+import 'export_panel.dart';
 import 'text_edit_overlay.dart';
 
 /// The drawing area for one tab.
@@ -56,8 +59,18 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
   CadEntity? _editingOriginal;
   CadEntity? _editingBlockLabel;
   bool _dynamicShown = false;
-  OverlayEntry? _exportFormats;
-  Timer? _exportFormatsClose;
+  late final _ExportWindowInput _windowInput = _ExportWindowInput(
+    onCommit: (minX, minY, maxX, maxY) {
+      widget.workspace.updateExport(
+        window: ExportWindowModel(
+          minX: minX,
+          minY: minY,
+          maxX: maxX,
+          maxY: maxY,
+        ),
+      );
+    },
+  );
 
   @override
   void initState() {
@@ -82,7 +95,7 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
 
   @override
   void dispose() {
-    _hideExportFormats();
+    _windowInput.dispose();
     _restoreEditingOriginal(notify: false);
     widget.tab.onGeometryInvalidated = null;
     widget.tab.tools.onHudTypeIn = null;
@@ -280,7 +293,6 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
             }();
       String? chord(String id) =>
           shortcutLabelForCommand(widget.workspace.commands, id);
-      final tokens = context.tokens;
       showFanCadMenu<String>(
         context: context,
         position: RelativeRect.fromLTRB(
@@ -417,15 +429,8 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
           fanCadMenuItem(
             context,
             key: const Key('canvas-export'),
-            value: '__export__',
+            value: 'print.export',
             label: l10n.export_menu,
-            trailing: Icon(
-              Icons.chevron_right,
-              size: FanCadTokens.iconSmall,
-              color: tokens.textMuted,
-            ),
-            onHover: _showExportFormats,
-            onHoverExit: _scheduleHideExportFormats,
           ),
           const PopupMenuDivider(),
           fanCadMenuItem(
@@ -448,7 +453,6 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
           ),
         ],
       ).then((id) {
-        _hideExportFormats();
         if (id == null || !mounted) return;
         if (id == '__cancel__') {
           widget.workspace.cancelActive();
@@ -462,126 +466,9 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
           widget.onAddSelectionToChat?.call();
           return;
         }
-        if (id == '__export__') return;
         widget.workspace.run(id);
       });
     });
-  }
-
-  void _hideExportFormats() {
-    _exportFormatsClose?.cancel();
-    _exportFormatsClose = null;
-    final entry = _exportFormats;
-    _exportFormats = null;
-    entry?.remove();
-  }
-
-  void _scheduleHideExportFormats() {
-    _exportFormatsClose?.cancel();
-    _exportFormatsClose = Timer(
-      const Duration(milliseconds: 150),
-      _hideExportFormats,
-    );
-  }
-
-  /// Opens beside the export row without a second menu route, so the parent
-  /// menu stays up while the pointer moves across.
-  void _showExportFormats(Rect anchor) {
-    _exportFormatsClose?.cancel();
-    _exportFormatsClose = null;
-    if (_exportFormats != null || !mounted) return;
-    final overlay = Overlay.maybeOf(context);
-    final overlayBox = overlay?.context.findRenderObject();
-    if (overlay == null || overlayBox is! RenderBox || !overlayBox.hasSize) {
-      return;
-    }
-    // Tuck into the parent, and lift by the submenu's own padding so the
-    // first row sits on the same line as the export row.
-    const overlap = 8.0;
-    const submenuPad = 8.0;
-    final origin = fanCadCursorMenuOrigin(
-      cursor: Offset(anchor.right - overlap, anchor.top - submenuPad),
-      menu: const Size(fanCadMenuMinWidth, fanCadMenuItemHeight * 2 + 16),
-      overlay: overlayBox.size,
-    );
-    final tokens = context.tokens;
-    final entry = OverlayEntry(
-      builder: (_) {
-        return Positioned(
-          left: origin.dx,
-          top: origin.dy,
-          child: MouseRegion(
-            onEnter: (_) {
-              _exportFormatsClose?.cancel();
-              _exportFormatsClose = null;
-            },
-            onExit: (_) => _scheduleHideExportFormats(),
-            child: Material(
-              color: tokens.surfaceOverlay,
-              elevation: 3,
-              shadowColor: tokens.shadow,
-              shape: fanCadOverlayShape(tokens),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: fanCadMenuMinWidth),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: submenuPad),
-                  child: IntrinsicWidth(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _exportFormatRow(
-                          key: const Key('canvas-export-svg'),
-                          label: 'SVG',
-                          command: 'print.exportSvg',
-                        ),
-                        _exportFormatRow(
-                          key: const Key('canvas-export-pdf'),
-                          label: 'PDF',
-                          command: 'print.exportPdf',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-    _exportFormats = entry;
-    overlay.insert(entry);
-  }
-
-  Widget _exportFormatRow({
-    required Key key,
-    required String label,
-    required String command,
-  }) {
-    final tokens = context.tokens;
-    return InkWell(
-      key: key,
-      onTap: () => _chooseExportFormat(command),
-      child: SizedBox(
-        height: fanCadMenuItemHeight,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              label,
-              style: tokens.bodyStyle.copyWith(color: tokens.text),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _chooseExportFormat(String command) {
-    _hideExportFormats();
-    Navigator.of(context).maybePop();
-    widget.workspace.run(command);
   }
 
   void _onCanvasInput() {
@@ -613,17 +500,26 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
         return (true, null as Set<String>?);
       }),
     );
+    final export = ref.watch(
+      workspaceNotifierProvider.select(
+        (state) => state.openExportOf(tab.session.id),
+      ),
+    );
     return _buildView(
       context,
       pending,
       assistantBusy,
       showGrid: chrome.$1,
       isolatedLayers: chrome.$2,
+      export: export,
     );
   }
 
-  OverlayModel _readOverlay(List<int> pending) {
+  OverlayModel _readOverlay(List<int> pending, ExportStateModel? export) {
     var overlay = widget.tab.tools.buildOverlay();
+    if (export?.scope == ExportScope.window) {
+      return OverlayModel(showCrosshair: overlay.showCrosshair);
+    }
     if (pending.isNotEmpty) {
       overlay = overlay.copyWith(
         highlightedIds: [...overlay.highlightedIds, ...pending],
@@ -632,14 +528,27 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
     return overlay;
   }
 
+  (Vec2, Vec2)? _exportFrame(ExportStateModel? export) {
+    if (export?.scope != ExportScope.window) return null;
+    final live = _windowInput.preview;
+    if (live != null) return live;
+    final box = export?.window;
+    if (box == null) return null;
+    return (Vec2(box.minX, box.minY), Vec2(box.maxX, box.maxY));
+  }
+
   Widget _buildView(
     BuildContext context,
     List<int> pending,
     bool assistantBusy, {
     required bool showGrid,
     required Set<String>? isolatedLayers,
+    required ExportStateModel? export,
   }) {
     final tokens = context.tokens;
+    final plotting = export != null;
+    final markingRegion = export?.scope == ExportScope.window;
+    if (!markingRegion) _windowInput.abandon();
     final tab = widget.tab;
     final editingEntity = _editingOriginal;
     return Focus(
@@ -679,22 +588,56 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
               key: _canvasKey,
               document: tab.document,
               controller: tab.viewport,
-              inputHandler: assistantBusy ? null : tab.tools,
-              readOverlay: () => _readOverlay(pending),
+              inputHandler: assistantBusy
+                  ? null
+                  : (markingRegion ? _windowInput : tab.tools),
+              readOverlay: () => _readOverlay(pending, export),
               onInput: _onCanvasInput,
-              background: tokens.canvas,
-              palette: tokens.isDark ? AciPalette.dark : AciPalette.light,
-              showGrid: showGrid,
+              background: plotting
+                  ? AciPalette.light.background
+                  : tokens.canvas,
+              palette: plotting
+                  ? AciPalette.light
+                  : (tokens.isDark ? AciPalette.dark : AciPalette.light),
+              showGrid: plotting ? false : showGrid,
               onSceneBuilt: tab.noteScene,
               onContextMenu: assistantBusy ? null : _openContextMenu,
               onDoubleClick: assistantBusy ? null : _onDoubleClick,
-              onlyLayers: isolatedLayers,
+              onlyLayers: export == null
+                  ? isolatedLayers
+                  : {
+                      for (final layer in tab.document.layers.values)
+                        if (tab.document.isLayerVisible(layer.name)) layer.name,
+                    },
+              plotPreview: plotting,
               tessellation: tab.tessellation,
               shxFonts: widget.workspace.shxFonts,
             ),
             Positioned.fill(
               child: Stack(
                 children: [
+                  if (markingRegion)
+                    IgnorePointer(
+                      child: ListenableBuilder(
+                        listenable: Listenable.merge([
+                          tab.viewport,
+                          _windowInput,
+                        ]),
+                        builder: (context, _) {
+                          final frame = _exportFrame(export);
+                          if (frame == null) return const SizedBox.shrink();
+                          final view = tab.viewport.viewport;
+                          return CustomPaint(
+                            painter: _ExportFramePainter(
+                              from: view.toScreen(frame.$1),
+                              to: view.toScreen(frame.$2),
+                              color: tokens.accent,
+                            ),
+                            child: const SizedBox.expand(),
+                          );
+                        },
+                      ),
+                    ),
                   if (_dynamicShown)
                     _DynamicInputPrompt(
                       tools: tab.tools,
@@ -1053,9 +996,17 @@ class _CanvasPromptHud extends ConsumerWidget {
     final running = ref.watch(
       workspaceNotifierProvider.select((s) => s.runningCommand),
     );
+    final export = ref.watch(
+      workspaceNotifierProvider.select((state) {
+        final session = state.active;
+        if (session == null || !session.export.open) return null;
+        return session.export;
+      }),
+    );
     final promptModel = promptState.$1;
     if (running == null && promptModel == null) {
-      return const SizedBox.shrink();
+      if (export == null) return const SizedBox.shrink();
+      return _exportStatus(context, export);
     }
     final prompt = promptModel?.message ?? promptState.$2;
     if (prompt.isEmpty) return const SizedBox.shrink();
@@ -1107,6 +1058,65 @@ class _CanvasPromptHud extends ConsumerWidget {
               label: context.l10n.cancel,
               muted: true,
               onPressed: onCancel,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _exportStatus(BuildContext context, ExportStateModel export) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    final scope = switch (export.scope) {
+      ExportScope.extents => l10n.export_scope_extents,
+      ExportScope.view => l10n.export_scope_view,
+      ExportScope.window => l10n.export_scope_window,
+      ExportScope.selection => l10n.export_scope_selection,
+    };
+    return _CanvasTopCard(
+      cardKey: const Key('canvas-export-status'),
+      borderColor: tokens.borderStrong,
+      child: Row(
+        children: [
+          Icon(
+            Icons.download_outlined,
+            size: FanCadTokens.iconMedium,
+            color: tokens.accent,
+          ),
+          const SizedBox(width: FanCadTokens.space2),
+          Text(
+            l10n.export_menu,
+            style: tokens.labelStyle.copyWith(
+              color: tokens.accent,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: FanCadTokens.space2),
+          Expanded(
+            child: Text(
+              l10n.export_status_detail(export.format.label, scope),
+              style: tokens.bodyStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: FanCadTokens.space1),
+            child: PromptKeywordChip(
+              key: const Key('export-commit'),
+              label: l10n.export_menu,
+              filled: true,
+              onPressed: () =>
+                  unawaited(commitExport(context, workspace, export)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: FanCadTokens.space1),
+            child: PromptKeywordChip(
+              label: l10n.cancel,
+              muted: true,
+              onPressed: workspace.endExport,
             ),
           ),
         ],
@@ -1210,4 +1220,98 @@ class _EmptyDrawingHint extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Records one dragged rectangle while the export scope is a marked region.
+class _ExportWindowInput extends ChangeNotifier implements CanvasInputHandler {
+  _ExportWindowInput({required this.onCommit});
+
+  final void Function(double minX, double minY, double maxX, double maxY)
+  onCommit;
+
+  Vec2? _start;
+  Vec2? _current;
+
+  (Vec2, Vec2)? get preview {
+    final start = _start;
+    final current = _current;
+    if (start == null || current == null) return null;
+    return (start, current);
+  }
+
+  void abandon() {
+    _start = null;
+    _current = null;
+  }
+
+  @override
+  void onPointerExit() {}
+
+  @override
+  bool get isPrompting => false;
+
+  @override
+  Vec2? get hoverPoint => null;
+
+  @override
+  bool onPointerDown(Vec2 world, PointerDownEvent event) {
+    if (event.buttons & kPrimaryMouseButton == 0) return false;
+    _start = world;
+    _current = world;
+    notifyListeners();
+    return true;
+  }
+
+  @override
+  bool onPointerMove(Vec2 world, PointerEvent event) {
+    if (_start == null) return false;
+    _current = world;
+    notifyListeners();
+    return true;
+  }
+
+  @override
+  bool onPointerUp(Vec2 world, PointerUpEvent event) {
+    final start = _start;
+    _start = null;
+    _current = null;
+    notifyListeners();
+    if (start == null) return false;
+    final minX = math.min(start.x, world.x);
+    final minY = math.min(start.y, world.y);
+    final maxX = math.max(start.x, world.x);
+    final maxY = math.max(start.y, world.y);
+    if (maxX - minX <= 1e-9 || maxY - minY <= 1e-9) return true;
+    onCommit(minX, minY, maxX, maxY);
+    return true;
+  }
+}
+
+class _ExportFramePainter extends CustomPainter {
+  const _ExportFramePainter({
+    required this.from,
+    required this.to,
+    required this.color,
+  });
+
+  final Offset from;
+  final Offset to;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Rect.fromPoints(from, to),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ExportFramePainter oldDelegate) =>
+      oldDelegate.from != from ||
+      oldDelegate.to != to ||
+      oldDelegate.color != color;
 }

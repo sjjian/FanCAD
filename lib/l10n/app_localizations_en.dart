@@ -331,6 +331,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get view_extensions_hint => 'Installed plugins and their errors';
 
   @override
+  String get view_export_hint => 'Format, area and layers for this export';
+
+  @override
   String get view_editor_hint => 'Review extension source';
 
   @override
@@ -1680,10 +1683,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get command_layout_vpmin => 'Minimize Viewport';
 
   @override
-  String get command_print_export_svg => 'Export SVG';
-
-  @override
-  String get command_print_export_pdf => 'Export PDF';
+  String get command_print_export => 'Export';
 
   @override
   String get export_menu => 'Export';
@@ -1692,6 +1692,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String exported_file(String name) {
     return 'Exported $name';
   }
+
+  @override
+  String get export_format => 'Format';
+
+  @override
+  String get export_scope => 'Area';
+
+  @override
+  String get export_scope_extents => 'Full drawing';
+
+  @override
+  String get export_scope_selection => 'Selection';
+
+  @override
+  String get export_scope_view => 'Visible window';
+
+  @override
+  String get export_scope_window => 'Region';
+
+  @override
+  String get export_scope_window_hint =>
+      'Drag on the drawing to mark the region.';
+
+  @override
+  String export_status_detail(String format, String scope) {
+    return '$format, $scope';
+  }
+
+  @override
+  String get export_need_selection =>
+      'Select objects before exporting that area.';
+
+  @override
+  String export_commit(String format) {
+    return 'Export $format';
+  }
+
+  @override
+  String get export_edit_layers => 'Edit layers';
 
   @override
   String get command_xref_attach => 'Attach Xref';
@@ -2331,12 +2370,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Returns to the paper layout left by VPMAX and frames the sheet.';
 
   @override
-  String get command_print_export_svg_desc =>
-      'Plots a layout to an SVG file. Omit the layout name to plot the current tab. A .pdf path writes a vector PDF instead. Pass corner1 and corner2 to plot a window; otherwise the layout\'s stored plot window or the full sheet is used.';
-
-  @override
-  String get command_print_export_pdf_desc =>
-      'Plots a layout to a vector PDF. Omit the layout name to plot the current tab. Paper size becomes the page MediaBox; viewports are clipped. Pass corner1 and corner2 to plot a window.';
+  String get command_print_export_desc =>
+      'Opens the export pane. Pass path to write now. Optional format (svg, pdf, png, jpg), scope (extents, view, window, or selection), and layers. The file extension picks the format when format is omitted. corner1 and corner2 set a one-shot window and override scope.';
 
   @override
   String get command_xref_attach_desc =>

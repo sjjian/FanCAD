@@ -6,8 +6,7 @@ import 'bind.dart';
 import 'copy.dart';
 import 'delete.dart';
 import 'detach.dart';
-import 'export_pdf.dart';
-import 'export_svg.dart';
+import 'export.dart';
 import 'list.dart';
 import 'mview.dart';
 import 'new.dart';
@@ -43,8 +42,7 @@ class ProCommands {
     LayoutVplayerCommand().toDescriptor(),
     LayoutVpmaxCommand().toDescriptor(),
     LayoutVpminCommand().toDescriptor(),
-    PrintExportSvgCommand().toDescriptor(),
-    PrintExportPdfCommand().toDescriptor(),
+    PrintExportCommand().toDescriptor(),
     XrefAttachCommand().toDescriptor(),
     XrefReloadCommand().toDescriptor(),
     XrefDetachCommand().toDescriptor(),

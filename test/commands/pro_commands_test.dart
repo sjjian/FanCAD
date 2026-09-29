@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:fancad/commands/pro/plot_helpers.dart';
+import 'package:fancad/commands/pro/export.dart';
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_test/fancad_test.dart';
@@ -622,7 +622,7 @@ void main() {
       final dir = tempDir(prefix: 'fancad_plot');
       final path = '${dir.path}/sheet.svg';
 
-      final result = await run('print.exportSvg', {
+      final result = await run('print.export', {
         'path': path,
         'layout': 'A3',
       });
@@ -640,7 +640,7 @@ void main() {
       final dir = tempDir(prefix: 'fancad_plot');
       final path = '${dir.path}/window.svg';
 
-      final result = await run('print.exportSvg', {
+      final result = await run('print.export', {
         'path': path,
         'layout': 'A3',
         'corner1': [10, 20],
@@ -654,7 +654,7 @@ void main() {
     });
 
     test('plot refuses an unknown layout', () async {
-      final result = await run('print.exportSvg', {
+      final result = await run('print.export', {
         'path': '/tmp/out.svg',
         'layout': 'Missing',
       });
@@ -814,7 +814,7 @@ void main() {
     test('export names the file instead of a byte count', () async {
       final dir = tempDir(prefix: 'fancad-print-');
       final path = '${dir.path}/sheet.svg';
-      final result = await run('print.exportSvg', {'path': path});
+      final result = await run('print.export', {'path': path});
       expect(result.status, CommandStatus.ok, reason: result.message);
       expect(result.message, 'Exported sheet.svg');
       expect(plotSuggestedName('小乌龟2.dwg', 'pdf'), '小乌龟2.pdf');
@@ -822,14 +822,61 @@ void main() {
     });
 
     test('export without a path fails when nobody can pick a file', () async {
-      final result = await run('print.exportPdf');
+      final result = await run('print.export');
       expect(result.status, CommandStatus.failed);
+    });
+
+    test('export can keep one layer and the selection window', () async {
+      document
+        ..putLayer(const LayerDef(name: 'A'))
+        ..putLayer(const LayerDef(name: 'B'));
+      final kept = await drawLine(0, 0, 8, 0);
+      await run('edit.changeLayer', {
+        'ids': [kept],
+        'layer': 'A',
+      });
+      final dropped = await drawLine(0, 40, 8, 40);
+      await run('edit.changeLayer', {
+        'ids': [dropped],
+        'layer': 'B',
+      });
+      workspace.active!.session.selection
+        ..clear()
+        ..add(kept);
+
+      final dir = tempDir(prefix: 'fancad-print-');
+      final path = '${dir.path}/layers.svg';
+      final result = await run('print.export', {
+        'path': path,
+        'layers': ['A'],
+        'scope': 'selection',
+      });
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      final svg = File(path).readAsStringSync();
+      expect('<path'.allMatches(svg).length, 1);
+      expect(svg, contains('d="M 0.0 -0.0 L 8.0 -0.0"'));
+      expect(svg, isNot(contains('-40')));
+    });
+
+    test('png and jpg write the same window', () async {
+      await drawLine(0, 0, 20, 0);
+      final dir = tempDir(prefix: 'fancad-print-');
+      final pngPath = '${dir.path}/sheet.png';
+      final jpgPath = '${dir.path}/sheet.jpg';
+      final png = await run('print.export', {'path': pngPath});
+      final jpg = await run('print.export', {'path': jpgPath});
+      expect(png.status, CommandStatus.ok, reason: png.message);
+      expect(jpg.status, CommandStatus.ok, reason: jpg.message);
+      final pngBytes = File(pngPath).readAsBytesSync();
+      final jpgBytes = File(jpgPath).readAsBytesSync();
+      expect(pngBytes.take(4), [0x89, 0x50, 0x4E, 0x47]);
+      expect(jpgBytes.take(2), [0xFF, 0xD8]);
     });
 
     test('exportPdf writes a vector PDF of the current layout', () async {
       final dir = tempDir(prefix: 'fancad-print-');
       final path = '${dir.path}/sheet.pdf';
-      final result = await run('print.exportPdf', {'path': path});
+      final result = await run('print.export', {'path': path});
       expect(result.status, CommandStatus.ok, reason: result.message);
       expect(result.data!['layout'], 'Model');
       expect(result.data!['path'], path);
@@ -840,10 +887,10 @@ void main() {
       );
     });
 
-    test('exportSvg with a .pdf path writes PDF instead of SVG', () async {
+    test('a .pdf path writes PDF when format is omitted', () async {
       final dir = tempDir(prefix: 'fancad-print-');
       final path = '${dir.path}/alias.pdf';
-      final result = await run('print.exportSvg', {'path': path});
+      final result = await run('print.export', {'path': path});
       expect(result.status, CommandStatus.ok, reason: result.message);
       expect(
         String.fromCharCodes(File(path).readAsBytesSync().take(5)),
@@ -854,14 +901,14 @@ void main() {
     test('a plot window needs both corners and a positive size', () async {
       final dir = tempDir(prefix: 'fancad-print-');
       expect(
-        (await run('print.exportPdf', {
+        (await run('print.export', {
           'path': '${dir.path}/half.pdf',
           'corner1': [0, 0],
         })).status,
         CommandStatus.failed,
       );
       expect(
-        (await run('print.exportSvg', {
+        (await run('print.export', {
           'path': '${dir.path}/flat.svg',
           'corner1': [0, 0],
           'corner2': [10, 0],
@@ -869,7 +916,7 @@ void main() {
         CommandStatus.failed,
       );
       expect(
-        (await run('print.exportPdf', {
+        (await run('print.export', {
           'path': '${dir.path}/missing.pdf',
           'layout': 'Ghost',
         })).status,

@@ -11,6 +11,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/workbench.dart';
 
+Tooltip _scopeTooltip(WidgetTester tester) => tester.widget<Tooltip>(
+  find.descendant(
+    of: find.byKey(const Key('export-scope')),
+    matching: find.byType(Tooltip),
+  ),
+);
+
 /// Workbench layout tests.
 ///
 /// These check the wiring rather than the geometry: that the workbench mounts,
@@ -304,9 +311,7 @@ void main() {
     expect(find.byKey(const Key('assistant-pin-0')), findsOneWidget);
   });
 
-  testWidgets('a right-click offers export as a format submenu', (
-    tester,
-  ) async {
+  testWidgets('a right-click on export opens the pane', (tester) async {
     await pumpWorkbench(tester, document: true);
     final canvas = tester.getRect(find.byType(CadCanvas));
     final viewport = tester.getRect(find.byKey(const Key('canvas-hud')));
@@ -332,36 +337,212 @@ void main() {
       tester.getRect(find.text('Export')).left,
       closeTo(tester.getRect(find.text('Select all')).left, 1),
     );
-    final undoRow = find.ancestor(
-      of: find.text('Undo'),
-      matching: find.byType(PopupMenuItem<String>),
-    );
-    final shortcut = find.descendant(of: undoRow, matching: find.byType(Text));
-    expect(
-      tester.getRect(find.byIcon(Icons.chevron_right)).right,
-      closeTo(tester.getRect(shortcut.last).right, 1),
-    );
-
-    final hover = TestPointer(2, PointerDeviceKind.mouse);
-    await tester.sendEventToBinding(hover.hover(exportRect.center));
-    await tester.pump();
-
-    expect(export, findsOneWidget);
-    expect(find.text('Undo'), findsOneWidget);
-    final svg = find.byKey(const Key('canvas-export-svg'));
-    expect(svg, findsOneWidget);
-    expect(find.byKey(const Key('canvas-export-pdf')), findsOneWidget);
-    final submenu = tester.getRect(
-      find.ancestor(of: svg, matching: find.byType(Material)).first,
-    );
-    expect(submenu.top, closeTo(exportRect.top - 8, 2));
-    expect(submenu.left, closeTo(exportRect.right - 8, 2));
-    expect(tester.getRect(svg).top, closeTo(exportRect.top, 2));
+    expect(find.byKey(const Key('canvas-export-svg')), findsNothing);
 
     await tester.tap(export);
     await tester.pump();
-    expect(export, findsOneWidget);
-    expect(svg, findsOneWidget);
+    await tester.pump();
+    expect(export, findsNothing);
+    expect(find.byKey(const Key('export-panel')), findsOneWidget);
+    expect(find.text('SVG, Full drawing'), findsOneWidget);
+  });
+
+  testWidgets('export opens the left pane and a canvas status', (tester) async {
+    await pumpWorkbench(tester, document: true);
+    final canvas = tester.getRect(find.byType(CadCanvas));
+    final viewport = tester.getRect(find.byKey(const Key('canvas-hud')));
+    final location = Offset(viewport.left + 40, canvas.top + 72);
+    final pointer = TestPointer(
+      1,
+      PointerDeviceKind.mouse,
+      null,
+      kSecondaryMouseButton,
+    );
+    await tester.sendEventToBinding(pointer.hover(location));
+    await tester.sendEventToBinding(pointer.down(location));
+    await tester.sendEventToBinding(pointer.up());
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('canvas-export')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('export-panel')), findsOneWidget);
+    expect(find.byKey(const Key('canvas-export-status')), findsOneWidget);
+    expect(find.text('SVG, Full drawing'), findsOneWidget);
+    expect(find.text('Export SVG'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-export-status')),
+        matching: find.byKey(const Key('export-commit')),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('export-scope')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.byKey(const Key('export-scope-extents')), findsOneWidget);
+    expect(
+      tester
+          .getRect(
+            find.descendant(
+              of: find.byKey(const Key('export-scope-extents')),
+              matching: find.text('Full drawing'),
+            ),
+          )
+          .left,
+      closeTo(
+        tester
+            .getRect(
+              find.descendant(
+                of: find.byKey(const Key('export-scope')),
+                matching: find.text('Full drawing'),
+              ),
+            )
+            .left,
+        1,
+      ),
+    );
+    expect(find.byKey(const Key('export-scope-view')), findsOneWidget);
+    expect(find.byKey(const Key('export-scope-window')), findsOneWidget);
+    expect(find.byKey(const Key('export-scope-selection')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('export-scope-view')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('SVG, Visible window'), findsOneWidget);
+    expect(_scopeTooltip(tester).message, contains(','));
+
+    await tester.tap(find.byKey(const Key('export-scope')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.byKey(const Key('export-scope-window')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('SVG, Region'), findsOneWidget);
+    expect(
+      _scopeTooltip(tester).message,
+      'Drag on the drawing to mark the region.',
+    );
+
+    final drawing = tester.getRect(find.byType(CadCanvas));
+    final gesture = await tester.startGesture(
+      drawing.center,
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveBy(const Offset(90, 60));
+    await gesture.up();
+    await tester.pump();
+    expect(
+      _scopeTooltip(tester).message,
+      isNot('Drag on the drawing to mark the region.'),
+    );
+    expect(_scopeTooltip(tester).message, contains(','));
+
+    expect(find.byKey(const Key('export-layer-0')), findsNothing);
+    expect(find.text('Edit layers'), findsNothing);
+    final count = tester.getRect(find.byKey(const Key('export-layer-count')));
+    expect(count.left, closeTo(tester.getRect(find.text('SVG')).left, 1));
+    expect(
+      tester.getRect(find.byKey(const Key('export-edit-layers'))).right,
+      closeTo(tester.getRect(find.byKey(const Key('export-format'))).right, 1),
+    );
+    final marked = _scopeTooltip(tester).message;
+    await tester.tap(find.byKey(const Key('export-edit-layers')));
+    await tester.pump();
+    expect(find.byKey(const Key('export-panel')), findsNothing);
+    expect(find.text('Filter layers'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('activity-export')));
+    await tester.pump();
+    expect(find.byKey(const Key('export-panel')), findsOneWidget);
+    expect(_scopeTooltip(tester).message, marked);
+    expect(marked, isNot('Drag on the drawing to mark the region.'));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.byKey(const Key('export-panel')), findsOneWidget);
+    expect(find.byKey(const Key('canvas-export-status')), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('canvas-export-status')),
+        matching: find.text('Cancel'),
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('export-panel')), findsNothing);
+    expect(find.byKey(const Key('canvas-export-status')), findsNothing);
+  });
+
+  testWidgets('the activity bar switches to export and back', (tester) async {
+    await pumpWorkbench(tester, document: true);
+
+    await tester.tap(find.byKey(const Key('activity-export')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('export-panel')), findsOneWidget);
+    expect(find.byKey(const Key('canvas-export-status')), findsOneWidget);
+    expect(find.text('SVG, Full drawing'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('activity-layers')));
+    await tester.pump();
+
+    expect(find.byKey(const Key('export-panel')), findsNothing);
+    expect(find.byKey(const Key('canvas-export-status')), findsNothing);
+    expect(find.text('Layers'), findsOneWidget);
+  });
+
+  testWidgets('each drawing keeps its own export choices', (tester) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+
+    await tester.tap(find.byKey(const Key('activity-export')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('export-format')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.byKey(const Key('export-format-pdf')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.byKey(const Key('export-scope')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.byKey(const Key('export-scope-view')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('PDF, Visible window'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('canvas-export-status')),
+        matching: find.text('Cancel'),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('activity-export')));
+    await tester.pump();
+    expect(find.text('PDF, Visible window'), findsOneWidget);
+
+    await workspace.run('file.new');
+    await tester.pump();
+    expect(find.byKey(const Key('export-panel')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('activity-export')));
+    await tester.pump();
+    expect(find.text('SVG, Full drawing'), findsOneWidget);
+
+    final sessions = container.read(workspaceNotifierProvider).sessions;
+    await tester.tap(find.byKey(Key('document-tab-${sessions.first.id}')));
+    await tester.pump();
+    expect(find.text('PDF, Visible window'), findsOneWidget);
+
+    await tester.tap(find.byKey(Key('document-tab-${sessions.last.id}')));
+    await tester.pump();
+    expect(find.text('SVG, Full drawing'), findsOneWidget);
   });
 
   testWidgets('an assistant turn banners the canvas as read-only', (

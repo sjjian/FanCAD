@@ -465,6 +465,10 @@
   "@view_extensions_hint": {
     "description": "view extensions hint"
   },
+  "view_export_hint": "Format, area and layers for this export",
+  "@view_export_hint": {
+    "description": "view export hint"
+  },
   "view_editor_hint": "Review extension source",
   "@view_editor_hint": {
     "description": "view editor hint"
@@ -2318,17 +2322,13 @@
   "@command_layout_vpmin": {
     "description": "command layout vpmin"
   },
-  "command_print_export_svg": "Export SVG",
-  "@command_print_export_svg": {
-    "description": "command print export svg"
-  },
-  "command_print_export_pdf": "Export PDF",
-  "@command_print_export_pdf": {
-    "description": "command print export pdf"
+  "command_print_export": "Export",
+  "@command_print_export": {
+    "description": "command print export"
   },
   "export_menu": "Export",
   "@export_menu": {
-    "description": "Canvas menu row that opens SVG and PDF"
+    "description": "Canvas menu row that opens export"
   },
   "exported_file": "Exported {name}",
   "@exported_file": {
@@ -2338,6 +2338,63 @@
         "type": "String"
       }
     }
+  },
+  "export_format": "Format",
+  "@export_format": {
+    "description": "Export pane section for the file encoding"
+  },
+  "export_scope": "Area",
+  "@export_scope": {
+    "description": "Export pane section for the plot window"
+  },
+  "export_scope_extents": "Full drawing",
+  "@export_scope_extents": {
+    "description": "Export the whole sheet"
+  },
+  "export_scope_selection": "Selection",
+  "@export_scope_selection": {
+    "description": "Export the selection bounds"
+  },
+  "export_scope_view": "Visible window",
+  "@export_scope_view": {
+    "description": "Export the drawing area visible between the side panes"
+  },
+  "export_scope_window": "Region",
+  "@export_scope_window": {
+    "description": "Export a rectangle dragged on the drawing"
+  },
+  "export_scope_window_hint": "Drag on the drawing to mark the region.",
+  "@export_scope_window_hint": {
+    "description": "Shown until the export region has been dragged"
+  },
+  "export_status_detail": "{format}, {scope}",
+  "@export_status_detail": {
+    "description": "Canvas status while an export is open",
+    "placeholders": {
+      "format": {
+        "type": "String"
+      },
+      "scope": {
+        "type": "String"
+      }
+    }
+  },
+  "export_need_selection": "Select objects before exporting that area.",
+  "@export_need_selection": {
+    "description": "Shown when selection export has nothing selected"
+  },
+  "export_commit": "Export {format}",
+  "@export_commit": {
+    "description": "Export pane button, including the chosen format",
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "export_edit_layers": "Edit layers",
+  "@export_edit_layers": {
+    "description": "Opens the layers panel from the export page"
   },
   "command_xref_attach": "Attach Xref",
   "@command_xref_attach": {
@@ -3007,13 +3064,9 @@
   "@command_layout_vpmin_desc": {
     "description": "command layout vpmin desc"
   },
-  "command_print_export_svg_desc": "Plots a layout to an SVG file. Omit the layout name to plot the current tab. A .pdf path writes a vector PDF instead. Pass corner1 and corner2 to plot a window; otherwise the layout's stored plot window or the full sheet is used.",
-  "@command_print_export_svg_desc": {
-    "description": "command print export svg desc"
-  },
-  "command_print_export_pdf_desc": "Plots a layout to a vector PDF. Omit the layout name to plot the current tab. Paper size becomes the page MediaBox; viewports are clipped. Pass corner1 and corner2 to plot a window.",
-  "@command_print_export_pdf_desc": {
-    "description": "command print export pdf desc"
+  "command_print_export_desc": "Opens the export pane. Pass path to write now. Optional format (svg, pdf, png, jpg), scope (extents, view, window, or selection), and layers. The file extension picks the format when format is omitted. corner1 and corner2 set a one-shot window and override scope.",
+  "@command_print_export_desc": {
+    "description": "command print export desc"
   },
   "command_xref_attach_desc": "Loads another drawing as an external reference and places it in model space. Reload by attaching the same path again; existing inserts keep their position.",
   "@command_xref_attach_desc": {

@@ -908,7 +908,8 @@ as int,
 /// @nodoc
 mixin _$WorkspaceSessionModel {
 
- String get id; bool get isStartPage; String get title; bool get isDirty; bool get showGrid; Set<String>? get isolatedLayers; List<String> get diagnostics; List<int> get heldIds; List<int> get flashIds; List<int> get hoverIds;
+ String get id; bool get isStartPage; String get title; bool get isDirty; bool get showGrid; Set<String>? get isolatedLayers; List<String> get diagnostics; List<int> get heldIds; List<int> get flashIds; List<int> get hoverIds;/// Format, scope, and region for this drawing. Not shared, not persisted.
+ ExportStateModel get export;
 /// Create a copy of WorkspaceSessionModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -919,16 +920,16 @@ $WorkspaceSessionModelCopyWith<WorkspaceSessionModel> get copyWith => _$Workspac
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is WorkspaceSessionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.isStartPage, isStartPage) || other.isStartPage == isStartPage)&&(identical(other.title, title) || other.title == title)&&(identical(other.isDirty, isDirty) || other.isDirty == isDirty)&&(identical(other.showGrid, showGrid) || other.showGrid == showGrid)&&const DeepCollectionEquality().equals(other.isolatedLayers, isolatedLayers)&&const DeepCollectionEquality().equals(other.diagnostics, diagnostics)&&const DeepCollectionEquality().equals(other.heldIds, heldIds)&&const DeepCollectionEquality().equals(other.flashIds, flashIds)&&const DeepCollectionEquality().equals(other.hoverIds, hoverIds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is WorkspaceSessionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.isStartPage, isStartPage) || other.isStartPage == isStartPage)&&(identical(other.title, title) || other.title == title)&&(identical(other.isDirty, isDirty) || other.isDirty == isDirty)&&(identical(other.showGrid, showGrid) || other.showGrid == showGrid)&&const DeepCollectionEquality().equals(other.isolatedLayers, isolatedLayers)&&const DeepCollectionEquality().equals(other.diagnostics, diagnostics)&&const DeepCollectionEquality().equals(other.heldIds, heldIds)&&const DeepCollectionEquality().equals(other.flashIds, flashIds)&&const DeepCollectionEquality().equals(other.hoverIds, hoverIds)&&(identical(other.export, export) || other.export == export));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,isStartPage,title,isDirty,showGrid,const DeepCollectionEquality().hash(isolatedLayers),const DeepCollectionEquality().hash(diagnostics),const DeepCollectionEquality().hash(heldIds),const DeepCollectionEquality().hash(flashIds),const DeepCollectionEquality().hash(hoverIds));
+int get hashCode => Object.hash(runtimeType,id,isStartPage,title,isDirty,showGrid,const DeepCollectionEquality().hash(isolatedLayers),const DeepCollectionEquality().hash(diagnostics),const DeepCollectionEquality().hash(heldIds),const DeepCollectionEquality().hash(flashIds),const DeepCollectionEquality().hash(hoverIds),export);
 
 @override
 String toString() {
-  return 'WorkspaceSessionModel(id: $id, isStartPage: $isStartPage, title: $title, isDirty: $isDirty, showGrid: $showGrid, isolatedLayers: $isolatedLayers, diagnostics: $diagnostics, heldIds: $heldIds, flashIds: $flashIds, hoverIds: $hoverIds)';
+  return 'WorkspaceSessionModel(id: $id, isStartPage: $isStartPage, title: $title, isDirty: $isDirty, showGrid: $showGrid, isolatedLayers: $isolatedLayers, diagnostics: $diagnostics, heldIds: $heldIds, flashIds: $flashIds, hoverIds: $hoverIds, export: $export)';
 }
 
 
@@ -939,11 +940,11 @@ abstract mixin class $WorkspaceSessionModelCopyWith<$Res>  {
   factory $WorkspaceSessionModelCopyWith(WorkspaceSessionModel value, $Res Function(WorkspaceSessionModel) _then) = _$WorkspaceSessionModelCopyWithImpl;
 @useResult
 $Res call({
- String id, bool isStartPage, String title, bool isDirty, bool showGrid, Set<String>? isolatedLayers, List<String> diagnostics, List<int> heldIds, List<int> flashIds, List<int> hoverIds
+ String id, bool isStartPage, String title, bool isDirty, bool showGrid, Set<String>? isolatedLayers, List<String> diagnostics, List<int> heldIds, List<int> flashIds, List<int> hoverIds, ExportStateModel export
 });
 
 
-
+$ExportStateModelCopyWith<$Res> get export;
 
 }
 /// @nodoc
@@ -956,7 +957,7 @@ class _$WorkspaceSessionModelCopyWithImpl<$Res>
 
 /// Create a copy of WorkspaceSessionModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? isStartPage = null,Object? title = null,Object? isDirty = null,Object? showGrid = null,Object? isolatedLayers = freezed,Object? diagnostics = null,Object? heldIds = null,Object? flashIds = null,Object? hoverIds = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? isStartPage = null,Object? title = null,Object? isDirty = null,Object? showGrid = null,Object? isolatedLayers = freezed,Object? diagnostics = null,Object? heldIds = null,Object? flashIds = null,Object? hoverIds = null,Object? export = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,isStartPage: null == isStartPage ? _self.isStartPage : isStartPage // ignore: cast_nullable_to_non_nullable
@@ -968,10 +969,20 @@ as Set<String>?,diagnostics: null == diagnostics ? _self.diagnostics : diagnosti
 as List<String>,heldIds: null == heldIds ? _self.heldIds : heldIds // ignore: cast_nullable_to_non_nullable
 as List<int>,flashIds: null == flashIds ? _self.flashIds : flashIds // ignore: cast_nullable_to_non_nullable
 as List<int>,hoverIds: null == hoverIds ? _self.hoverIds : hoverIds // ignore: cast_nullable_to_non_nullable
-as List<int>,
+as List<int>,export: null == export ? _self.export : export // ignore: cast_nullable_to_non_nullable
+as ExportStateModel,
   ));
 }
-
+/// Create a copy of WorkspaceSessionModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ExportStateModelCopyWith<$Res> get export {
+  
+  return $ExportStateModelCopyWith<$Res>(_self.export, (value) {
+    return _then(_self.copyWith(export: value));
+  });
+}
 }
 
 
@@ -1053,10 +1064,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds,  ExportStateModel export)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _WorkspaceSessionModel() when $default != null:
-return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds);case _:
+return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds,_that.export);case _:
   return orElse();
 
 }
@@ -1074,10 +1085,10 @@ return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showG
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds,  ExportStateModel export)  $default,) {final _that = this;
 switch (_that) {
 case _WorkspaceSessionModel():
-return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds);case _:
+return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds,_that.export);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1094,10 +1105,10 @@ return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showG
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds,  ExportStateModel export)?  $default,) {final _that = this;
 switch (_that) {
 case _WorkspaceSessionModel() when $default != null:
-return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds);case _:
+return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds,_that.export);case _:
   return null;
 
 }
@@ -1109,7 +1120,7 @@ return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showG
 
 
 class _WorkspaceSessionModel implements WorkspaceSessionModel {
-  const _WorkspaceSessionModel({required this.id, this.isStartPage = false, this.title = '', this.isDirty = false, this.showGrid = true, final  Set<String>? isolatedLayers, final  List<String> diagnostics = const [], final  List<int> heldIds = const [], final  List<int> flashIds = const [], final  List<int> hoverIds = const []}): _isolatedLayers = isolatedLayers,_diagnostics = diagnostics,_heldIds = heldIds,_flashIds = flashIds,_hoverIds = hoverIds;
+  const _WorkspaceSessionModel({required this.id, this.isStartPage = false, this.title = '', this.isDirty = false, this.showGrid = true, final  Set<String>? isolatedLayers, final  List<String> diagnostics = const [], final  List<int> heldIds = const [], final  List<int> flashIds = const [], final  List<int> hoverIds = const [], this.export = const ExportStateModel()}): _isolatedLayers = isolatedLayers,_diagnostics = diagnostics,_heldIds = heldIds,_flashIds = flashIds,_hoverIds = hoverIds;
   
 
 @override final  String id;
@@ -1154,6 +1165,8 @@ class _WorkspaceSessionModel implements WorkspaceSessionModel {
   return EqualUnmodifiableListView(_hoverIds);
 }
 
+/// Format, scope, and region for this drawing. Not shared, not persisted.
+@override@JsonKey() final  ExportStateModel export;
 
 /// Create a copy of WorkspaceSessionModel
 /// with the given fields replaced by the non-null parameter values.
@@ -1165,16 +1178,16 @@ _$WorkspaceSessionModelCopyWith<_WorkspaceSessionModel> get copyWith => __$Works
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _WorkspaceSessionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.isStartPage, isStartPage) || other.isStartPage == isStartPage)&&(identical(other.title, title) || other.title == title)&&(identical(other.isDirty, isDirty) || other.isDirty == isDirty)&&(identical(other.showGrid, showGrid) || other.showGrid == showGrid)&&const DeepCollectionEquality().equals(other._isolatedLayers, _isolatedLayers)&&const DeepCollectionEquality().equals(other._diagnostics, _diagnostics)&&const DeepCollectionEquality().equals(other._heldIds, _heldIds)&&const DeepCollectionEquality().equals(other._flashIds, _flashIds)&&const DeepCollectionEquality().equals(other._hoverIds, _hoverIds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _WorkspaceSessionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.isStartPage, isStartPage) || other.isStartPage == isStartPage)&&(identical(other.title, title) || other.title == title)&&(identical(other.isDirty, isDirty) || other.isDirty == isDirty)&&(identical(other.showGrid, showGrid) || other.showGrid == showGrid)&&const DeepCollectionEquality().equals(other._isolatedLayers, _isolatedLayers)&&const DeepCollectionEquality().equals(other._diagnostics, _diagnostics)&&const DeepCollectionEquality().equals(other._heldIds, _heldIds)&&const DeepCollectionEquality().equals(other._flashIds, _flashIds)&&const DeepCollectionEquality().equals(other._hoverIds, _hoverIds)&&(identical(other.export, export) || other.export == export));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,isStartPage,title,isDirty,showGrid,const DeepCollectionEquality().hash(_isolatedLayers),const DeepCollectionEquality().hash(_diagnostics),const DeepCollectionEquality().hash(_heldIds),const DeepCollectionEquality().hash(_flashIds),const DeepCollectionEquality().hash(_hoverIds));
+int get hashCode => Object.hash(runtimeType,id,isStartPage,title,isDirty,showGrid,const DeepCollectionEquality().hash(_isolatedLayers),const DeepCollectionEquality().hash(_diagnostics),const DeepCollectionEquality().hash(_heldIds),const DeepCollectionEquality().hash(_flashIds),const DeepCollectionEquality().hash(_hoverIds),export);
 
 @override
 String toString() {
-  return 'WorkspaceSessionModel(id: $id, isStartPage: $isStartPage, title: $title, isDirty: $isDirty, showGrid: $showGrid, isolatedLayers: $isolatedLayers, diagnostics: $diagnostics, heldIds: $heldIds, flashIds: $flashIds, hoverIds: $hoverIds)';
+  return 'WorkspaceSessionModel(id: $id, isStartPage: $isStartPage, title: $title, isDirty: $isDirty, showGrid: $showGrid, isolatedLayers: $isolatedLayers, diagnostics: $diagnostics, heldIds: $heldIds, flashIds: $flashIds, hoverIds: $hoverIds, export: $export)';
 }
 
 
@@ -1185,11 +1198,11 @@ abstract mixin class _$WorkspaceSessionModelCopyWith<$Res> implements $Workspace
   factory _$WorkspaceSessionModelCopyWith(_WorkspaceSessionModel value, $Res Function(_WorkspaceSessionModel) _then) = __$WorkspaceSessionModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, bool isStartPage, String title, bool isDirty, bool showGrid, Set<String>? isolatedLayers, List<String> diagnostics, List<int> heldIds, List<int> flashIds, List<int> hoverIds
+ String id, bool isStartPage, String title, bool isDirty, bool showGrid, Set<String>? isolatedLayers, List<String> diagnostics, List<int> heldIds, List<int> flashIds, List<int> hoverIds, ExportStateModel export
 });
 
 
-
+@override $ExportStateModelCopyWith<$Res> get export;
 
 }
 /// @nodoc
@@ -1202,7 +1215,7 @@ class __$WorkspaceSessionModelCopyWithImpl<$Res>
 
 /// Create a copy of WorkspaceSessionModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? isStartPage = null,Object? title = null,Object? isDirty = null,Object? showGrid = null,Object? isolatedLayers = freezed,Object? diagnostics = null,Object? heldIds = null,Object? flashIds = null,Object? hoverIds = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? isStartPage = null,Object? title = null,Object? isDirty = null,Object? showGrid = null,Object? isolatedLayers = freezed,Object? diagnostics = null,Object? heldIds = null,Object? flashIds = null,Object? hoverIds = null,Object? export = null,}) {
   return _then(_WorkspaceSessionModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,isStartPage: null == isStartPage ? _self.isStartPage : isStartPage // ignore: cast_nullable_to_non_nullable
@@ -1214,11 +1227,21 @@ as Set<String>?,diagnostics: null == diagnostics ? _self._diagnostics : diagnost
 as List<String>,heldIds: null == heldIds ? _self._heldIds : heldIds // ignore: cast_nullable_to_non_nullable
 as List<int>,flashIds: null == flashIds ? _self._flashIds : flashIds // ignore: cast_nullable_to_non_nullable
 as List<int>,hoverIds: null == hoverIds ? _self._hoverIds : hoverIds // ignore: cast_nullable_to_non_nullable
-as List<int>,
+as List<int>,export: null == export ? _self.export : export // ignore: cast_nullable_to_non_nullable
+as ExportStateModel,
   ));
 }
 
-
+/// Create a copy of WorkspaceSessionModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ExportStateModelCopyWith<$Res> get export {
+  
+  return $ExportStateModelCopyWith<$Res>(_self.export, (value) {
+    return _then(_self.copyWith(export: value));
+  });
+}
 }
 
 /// @nodoc
@@ -1482,6 +1505,565 @@ as DateTime,
 }
 
 
+}
+
+/// @nodoc
+mixin _$ExportWindowModel {
+
+ double get minX; double get minY; double get maxX; double get maxY;
+/// Create a copy of ExportWindowModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ExportWindowModelCopyWith<ExportWindowModel> get copyWith => _$ExportWindowModelCopyWithImpl<ExportWindowModel>(this as ExportWindowModel, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ExportWindowModel&&(identical(other.minX, minX) || other.minX == minX)&&(identical(other.minY, minY) || other.minY == minY)&&(identical(other.maxX, maxX) || other.maxX == maxX)&&(identical(other.maxY, maxY) || other.maxY == maxY));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,minX,minY,maxX,maxY);
+
+@override
+String toString() {
+  return 'ExportWindowModel(minX: $minX, minY: $minY, maxX: $maxX, maxY: $maxY)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ExportWindowModelCopyWith<$Res>  {
+  factory $ExportWindowModelCopyWith(ExportWindowModel value, $Res Function(ExportWindowModel) _then) = _$ExportWindowModelCopyWithImpl;
+@useResult
+$Res call({
+ double minX, double minY, double maxX, double maxY
+});
+
+
+
+
+}
+/// @nodoc
+class _$ExportWindowModelCopyWithImpl<$Res>
+    implements $ExportWindowModelCopyWith<$Res> {
+  _$ExportWindowModelCopyWithImpl(this._self, this._then);
+
+  final ExportWindowModel _self;
+  final $Res Function(ExportWindowModel) _then;
+
+/// Create a copy of ExportWindowModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? minX = null,Object? minY = null,Object? maxX = null,Object? maxY = null,}) {
+  return _then(_self.copyWith(
+minX: null == minX ? _self.minX : minX // ignore: cast_nullable_to_non_nullable
+as double,minY: null == minY ? _self.minY : minY // ignore: cast_nullable_to_non_nullable
+as double,maxX: null == maxX ? _self.maxX : maxX // ignore: cast_nullable_to_non_nullable
+as double,maxY: null == maxY ? _self.maxY : maxY // ignore: cast_nullable_to_non_nullable
+as double,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [ExportWindowModel].
+extension ExportWindowModelPatterns on ExportWindowModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ExportWindowModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ExportWindowModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ExportWindowModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _ExportWindowModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ExportWindowModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ExportWindowModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double minX,  double minY,  double maxX,  double maxY)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ExportWindowModel() when $default != null:
+return $default(_that.minX,_that.minY,_that.maxX,_that.maxY);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double minX,  double minY,  double maxX,  double maxY)  $default,) {final _that = this;
+switch (_that) {
+case _ExportWindowModel():
+return $default(_that.minX,_that.minY,_that.maxX,_that.maxY);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double minX,  double minY,  double maxX,  double maxY)?  $default,) {final _that = this;
+switch (_that) {
+case _ExportWindowModel() when $default != null:
+return $default(_that.minX,_that.minY,_that.maxX,_that.maxY);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _ExportWindowModel implements ExportWindowModel {
+  const _ExportWindowModel({required this.minX, required this.minY, required this.maxX, required this.maxY});
+  
+
+@override final  double minX;
+@override final  double minY;
+@override final  double maxX;
+@override final  double maxY;
+
+/// Create a copy of ExportWindowModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ExportWindowModelCopyWith<_ExportWindowModel> get copyWith => __$ExportWindowModelCopyWithImpl<_ExportWindowModel>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ExportWindowModel&&(identical(other.minX, minX) || other.minX == minX)&&(identical(other.minY, minY) || other.minY == minY)&&(identical(other.maxX, maxX) || other.maxX == maxX)&&(identical(other.maxY, maxY) || other.maxY == maxY));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,minX,minY,maxX,maxY);
+
+@override
+String toString() {
+  return 'ExportWindowModel(minX: $minX, minY: $minY, maxX: $maxX, maxY: $maxY)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ExportWindowModelCopyWith<$Res> implements $ExportWindowModelCopyWith<$Res> {
+  factory _$ExportWindowModelCopyWith(_ExportWindowModel value, $Res Function(_ExportWindowModel) _then) = __$ExportWindowModelCopyWithImpl;
+@override @useResult
+$Res call({
+ double minX, double minY, double maxX, double maxY
+});
+
+
+
+
+}
+/// @nodoc
+class __$ExportWindowModelCopyWithImpl<$Res>
+    implements _$ExportWindowModelCopyWith<$Res> {
+  __$ExportWindowModelCopyWithImpl(this._self, this._then);
+
+  final _ExportWindowModel _self;
+  final $Res Function(_ExportWindowModel) _then;
+
+/// Create a copy of ExportWindowModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? minX = null,Object? minY = null,Object? maxX = null,Object? maxY = null,}) {
+  return _then(_ExportWindowModel(
+minX: null == minX ? _self.minX : minX // ignore: cast_nullable_to_non_nullable
+as double,minY: null == minY ? _self.minY : minY // ignore: cast_nullable_to_non_nullable
+as double,maxX: null == maxX ? _self.maxX : maxX // ignore: cast_nullable_to_non_nullable
+as double,maxY: null == maxY ? _self.maxY : maxY // ignore: cast_nullable_to_non_nullable
+as double,
+  ));
+}
+
+
+}
+
+/// @nodoc
+mixin _$ExportStateModel {
+
+ ExportFormat get format; ExportScope get scope; ExportWindowModel? get window; bool get open; bool get sidebarWasOpen;
+/// Create a copy of ExportStateModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ExportStateModelCopyWith<ExportStateModel> get copyWith => _$ExportStateModelCopyWithImpl<ExportStateModel>(this as ExportStateModel, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ExportStateModel&&(identical(other.format, format) || other.format == format)&&(identical(other.scope, scope) || other.scope == scope)&&(identical(other.window, window) || other.window == window)&&(identical(other.open, open) || other.open == open)&&(identical(other.sidebarWasOpen, sidebarWasOpen) || other.sidebarWasOpen == sidebarWasOpen));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,format,scope,window,open,sidebarWasOpen);
+
+@override
+String toString() {
+  return 'ExportStateModel(format: $format, scope: $scope, window: $window, open: $open, sidebarWasOpen: $sidebarWasOpen)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ExportStateModelCopyWith<$Res>  {
+  factory $ExportStateModelCopyWith(ExportStateModel value, $Res Function(ExportStateModel) _then) = _$ExportStateModelCopyWithImpl;
+@useResult
+$Res call({
+ ExportFormat format, ExportScope scope, ExportWindowModel? window, bool open, bool sidebarWasOpen
+});
+
+
+$ExportWindowModelCopyWith<$Res>? get window;
+
+}
+/// @nodoc
+class _$ExportStateModelCopyWithImpl<$Res>
+    implements $ExportStateModelCopyWith<$Res> {
+  _$ExportStateModelCopyWithImpl(this._self, this._then);
+
+  final ExportStateModel _self;
+  final $Res Function(ExportStateModel) _then;
+
+/// Create a copy of ExportStateModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? format = null,Object? scope = null,Object? window = freezed,Object? open = null,Object? sidebarWasOpen = null,}) {
+  return _then(_self.copyWith(
+format: null == format ? _self.format : format // ignore: cast_nullable_to_non_nullable
+as ExportFormat,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
+as ExportScope,window: freezed == window ? _self.window : window // ignore: cast_nullable_to_non_nullable
+as ExportWindowModel?,open: null == open ? _self.open : open // ignore: cast_nullable_to_non_nullable
+as bool,sidebarWasOpen: null == sidebarWasOpen ? _self.sidebarWasOpen : sidebarWasOpen // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+/// Create a copy of ExportStateModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ExportWindowModelCopyWith<$Res>? get window {
+    if (_self.window == null) {
+    return null;
+  }
+
+  return $ExportWindowModelCopyWith<$Res>(_self.window!, (value) {
+    return _then(_self.copyWith(window: value));
+  });
+}
+}
+
+
+/// Adds pattern-matching-related methods to [ExportStateModel].
+extension ExportStateModelPatterns on ExportStateModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ExportStateModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ExportStateModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ExportStateModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _ExportStateModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ExportStateModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ExportStateModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( ExportFormat format,  ExportScope scope,  ExportWindowModel? window,  bool open,  bool sidebarWasOpen)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ExportStateModel() when $default != null:
+return $default(_that.format,_that.scope,_that.window,_that.open,_that.sidebarWasOpen);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( ExportFormat format,  ExportScope scope,  ExportWindowModel? window,  bool open,  bool sidebarWasOpen)  $default,) {final _that = this;
+switch (_that) {
+case _ExportStateModel():
+return $default(_that.format,_that.scope,_that.window,_that.open,_that.sidebarWasOpen);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( ExportFormat format,  ExportScope scope,  ExportWindowModel? window,  bool open,  bool sidebarWasOpen)?  $default,) {final _that = this;
+switch (_that) {
+case _ExportStateModel() when $default != null:
+return $default(_that.format,_that.scope,_that.window,_that.open,_that.sidebarWasOpen);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _ExportStateModel implements ExportStateModel {
+  const _ExportStateModel({this.format = ExportFormat.svg, this.scope = ExportScope.extents, this.window, this.open = false, this.sidebarWasOpen = true});
+  
+
+@override@JsonKey() final  ExportFormat format;
+@override@JsonKey() final  ExportScope scope;
+@override final  ExportWindowModel? window;
+@override@JsonKey() final  bool open;
+@override@JsonKey() final  bool sidebarWasOpen;
+
+/// Create a copy of ExportStateModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ExportStateModelCopyWith<_ExportStateModel> get copyWith => __$ExportStateModelCopyWithImpl<_ExportStateModel>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ExportStateModel&&(identical(other.format, format) || other.format == format)&&(identical(other.scope, scope) || other.scope == scope)&&(identical(other.window, window) || other.window == window)&&(identical(other.open, open) || other.open == open)&&(identical(other.sidebarWasOpen, sidebarWasOpen) || other.sidebarWasOpen == sidebarWasOpen));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,format,scope,window,open,sidebarWasOpen);
+
+@override
+String toString() {
+  return 'ExportStateModel(format: $format, scope: $scope, window: $window, open: $open, sidebarWasOpen: $sidebarWasOpen)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ExportStateModelCopyWith<$Res> implements $ExportStateModelCopyWith<$Res> {
+  factory _$ExportStateModelCopyWith(_ExportStateModel value, $Res Function(_ExportStateModel) _then) = __$ExportStateModelCopyWithImpl;
+@override @useResult
+$Res call({
+ ExportFormat format, ExportScope scope, ExportWindowModel? window, bool open, bool sidebarWasOpen
+});
+
+
+@override $ExportWindowModelCopyWith<$Res>? get window;
+
+}
+/// @nodoc
+class __$ExportStateModelCopyWithImpl<$Res>
+    implements _$ExportStateModelCopyWith<$Res> {
+  __$ExportStateModelCopyWithImpl(this._self, this._then);
+
+  final _ExportStateModel _self;
+  final $Res Function(_ExportStateModel) _then;
+
+/// Create a copy of ExportStateModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? format = null,Object? scope = null,Object? window = freezed,Object? open = null,Object? sidebarWasOpen = null,}) {
+  return _then(_ExportStateModel(
+format: null == format ? _self.format : format // ignore: cast_nullable_to_non_nullable
+as ExportFormat,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
+as ExportScope,window: freezed == window ? _self.window : window // ignore: cast_nullable_to_non_nullable
+as ExportWindowModel?,open: null == open ? _self.open : open // ignore: cast_nullable_to_non_nullable
+as bool,sidebarWasOpen: null == sidebarWasOpen ? _self.sidebarWasOpen : sidebarWasOpen // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+/// Create a copy of ExportStateModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ExportWindowModelCopyWith<$Res>? get window {
+    if (_self.window == null) {
+    return null;
+  }
+
+  return $ExportWindowModelCopyWith<$Res>(_self.window!, (value) {
+    return _then(_self.copyWith(window: value));
+  });
+}
 }
 
 /// @nodoc

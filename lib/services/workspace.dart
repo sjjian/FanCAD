@@ -17,6 +17,7 @@ import '../models/settings.dart';
 import '../models/workspace.dart';
 import '../storage/workspace.dart';
 import 'command_line.dart';
+import 'layout.dart';
 import 'providers.dart';
 
 part 'workspace.g.dart';
@@ -683,6 +684,9 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     final record = _store.sessions[index];
     final tab = _hosts[record.id];
     if (tab != null && tab.isDirty && !force) return false;
+    if (index == _store.activeIndex && record.export.open) {
+      endExport();
+    }
     _hosts.remove(record.id);
     if (tab != null) {
       _selectionReveals.remove(tab)?.cancel();
@@ -862,15 +866,18 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   /// command, an in-flight grip or window drag, or the selection — so it is
   /// one method rather than a behaviour each widget reimplements. The window
   /// itself is never part of that: Escape must not restore a maximised frame.
+  /// An open export stays up. Leave the pane from the status cancel or by
+  /// switching panels. Switching panels hides this drawing's pane and keeps
+  /// its format, scope, and region.
   void cancelActive() {
     final tab = active;
     if (tab != null && tab.viewport.revertInteraction()) return;
     if (tab != null && tab.tools.cancelGesture()) return;
     if (commandLine.isAwaitingInput) {
       commandLine.cancelPending();
-    } else {
-      tab?.tools.cancel();
+      return;
     }
+    tab?.tools.cancel();
   }
 
   /// Runs a command non-interactively from a supplied argument map.
@@ -1234,6 +1241,108 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   @override
   void revealPanel(String panelId) {
     if (!_panelReveals.isClosed) _panelReveals.add(panelId);
+  }
+
+  @override
+  void openExport({String? format, String? scope}) {
+    beginExport(
+      format: format == null ? null : ExportFormat.tryParse(format),
+      scope: scope == null ? null : ExportScope.tryParse(scope),
+    );
+  }
+
+  /// Opens this drawing's export pane.
+  ///
+  /// Omitted [format] and [scope] keep the choices already stored on the
+  /// drawing. A pane that is already open changes only the values passed in.
+  void beginExport({ExportFormat? format, ExportScope? scope}) {
+    final session = _activeDrawing;
+    if (session == null) return;
+    final export = session.export;
+    if (export.open) {
+      if (format == null && scope == null) return;
+      _setExport(
+        session.id,
+        export.copyWith(
+          format: format ?? export.format,
+          scope: scope ?? export.scope,
+        ),
+      );
+      return;
+    }
+    final layout = ref.read(layoutNotifierProvider);
+    if (!layout.sidebarOpen) {
+      ref.read(layoutNotifierProvider.notifier).setSidebarOpen(true);
+    }
+    // A suspended pane already recorded whether the sidebar was open.
+    // Sampling again would forget that the pane itself opened it.
+    final sidebarWasOpen = export.sidebarWasOpen ? layout.sidebarOpen : false;
+    _setExport(
+      session.id,
+      export.copyWith(
+        open: true,
+        format: format ?? export.format,
+        scope: scope ?? export.scope,
+        sidebarWasOpen: sidebarWasOpen,
+      ),
+    );
+  }
+
+  /// Hides the pane. Format, scope, and the region stay on this drawing.
+  void suspendExport() {
+    final session = _activeDrawing;
+    if (session == null || !session.export.open) return;
+    _setExport(session.id, session.export.copyWith(open: false));
+  }
+
+  void updateExport({
+    ExportFormat? format,
+    ExportScope? scope,
+    ExportWindowModel? window,
+  }) {
+    final session = _activeDrawing;
+    if (session == null) return;
+    var next = session.export;
+    if (format != null) next = next.copyWith(format: format);
+    if (scope != null) next = next.copyWith(scope: scope);
+    if (window != null) next = next.copyWith(window: window);
+    if (next == session.export) return;
+    _setExport(session.id, next);
+  }
+
+  /// A cleared selection cannot stay the export window.
+  void reframeExport() {
+    final session = _activeDrawing;
+    final tab = active;
+    if (session == null || tab == null || !session.export.open) return;
+    if (session.export.scope == ExportScope.selection &&
+        tab.session.selection.isEmpty) {
+      updateExport(scope: ExportScope.extents);
+    }
+  }
+
+  /// Closes the pane and drops the region. Format and scope stay.
+  void endExport() {
+    final session = _activeDrawing;
+    if (session == null || !session.export.open) return;
+    final sidebarWasOpen = session.export.sidebarWasOpen;
+    _setExport(
+      session.id,
+      session.export.copyWith(open: false, window: null, sidebarWasOpen: true),
+    );
+    if (!sidebarWasOpen) {
+      ref.read(layoutNotifierProvider.notifier).setSidebarOpen(false);
+    }
+  }
+
+  WorkspaceSessionModel? get _activeDrawing {
+    final session = _store.active;
+    if (session == null || session.isStartPage) return null;
+    return session;
+  }
+
+  void _setExport(String id, ExportStateModel export) {
+    _replaceSession(id, (session) => session.copyWith(export: export));
   }
 
   @override

@@ -68,6 +68,17 @@ abstract class WorkspaceModel with _$WorkspaceModel {
     ...?active?.flashIds,
     ...?active?.hoverIds,
   ];
+
+  /// Open export pane for [id]. A closed pane keeps its choices on the
+  /// session, and the canvas only follows a pane that is open.
+  ExportStateModel? openExportOf(String id) {
+    for (final session in sessions) {
+      if (session.id != id) continue;
+      final export = session.export;
+      return export.open ? export : null;
+    }
+    return null;
+  }
 }
 
 /// Tab-strip slice: which sessions are open and the chrome the strip paints.
@@ -112,6 +123,9 @@ abstract class WorkspaceSessionModel with _$WorkspaceSessionModel {
     @Default([]) List<int> heldIds,
     @Default([]) List<int> flashIds,
     @Default([]) List<int> hoverIds,
+
+    /// Format, scope, and region for this drawing. Not shared, not persisted.
+    @Default(ExportStateModel()) ExportStateModel export,
   }) = _WorkspaceSessionModel;
 }
 
@@ -123,6 +137,82 @@ abstract class NoticeModel with _$NoticeModel {
     @Default(false) bool isError,
     required DateTime at,
   }) = _NoticeModel;
+}
+
+/// File encoding for one export. The picture is the same for every value.
+enum ExportFormat {
+  svg,
+  pdf,
+  png,
+  jpg;
+
+  static ExportFormat? tryParse(String raw) =>
+      switch (raw.trim().toLowerCase()) {
+        'svg' => svg,
+        'pdf' => pdf,
+        'png' => png,
+        'jpg' || 'jpeg' => jpg,
+        _ => null,
+      };
+
+  String get extension => switch (this) {
+    svg => 'svg',
+    pdf => 'pdf',
+    png => 'png',
+    jpg => 'jpg',
+  };
+
+  String get label => switch (this) {
+    svg => 'SVG',
+    pdf => 'PDF',
+    png => 'PNG',
+    jpg => 'JPG',
+  };
+}
+
+/// What the export window covers. Selection never writes the layout's plot window.
+enum ExportScope {
+  extents,
+  selection,
+  view,
+  window;
+
+  static ExportScope? tryParse(String raw) =>
+      switch (raw.trim().toLowerCase()) {
+        'extents' => extents,
+        'selection' => selection,
+        'view' => view,
+        'window' => window,
+        _ => null,
+      };
+}
+
+/// A dragged export region, in drawing units. Not the layout plot window.
+@freezed
+abstract class ExportWindowModel with _$ExportWindowModel {
+  const factory ExportWindowModel({
+    required double minX,
+    required double minY,
+    required double maxX,
+    required double maxY,
+  }) = _ExportWindowModel;
+}
+
+/// One drawing's export choices. Not persisted, so a new process starts over.
+///
+/// [open] is the pane, the canvas status, and the region drag. Format, scope,
+/// and [window] stay when the pane hides, so the next entry on this drawing
+/// restores them. Cancel clears [window]. [sidebarWasOpen] is how the pane
+/// was found, so cancel can put the sidebar back.
+@freezed
+abstract class ExportStateModel with _$ExportStateModel {
+  const factory ExportStateModel({
+    @Default(ExportFormat.svg) ExportFormat format,
+    @Default(ExportScope.extents) ExportScope scope,
+    ExportWindowModel? window,
+    @Default(false) bool open,
+    @Default(true) bool sidebarWasOpen,
+  }) = _ExportStateModel;
 }
 
 /// A request for the user to approve a set of pending changes.

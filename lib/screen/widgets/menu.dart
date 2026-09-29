@@ -219,6 +219,7 @@ PopupMenuItem<T> fanCadMenuItem<T>(
   Widget? trailing,
   ValueChanged<Rect>? onHover,
   VoidCallback? onHoverExit,
+  VoidCallback? onTap,
 }) {
   final tokens = context.tokens;
   final leadingMark =
@@ -279,12 +280,15 @@ PopupMenuItem<T> fanCadMenuItem<T>(
     height: fanCadMenuItemHeight,
     onHover: hover,
     onHoverExit: onHoverExit ?? () {},
+    onTap: onTap,
     child: row,
   );
 }
 
 /// A menu row that opens a sibling submenu. A tap must not pop the parent
-/// menu, or the submenu is left on its own.
+/// menu, or the submenu is left on its own. The default tap only reports
+/// hover. [onTap] runs instead when a click should leave the menu; it has to
+/// remove the submenu before the parent route pops.
 class _FanCadHoverMenuItem<T> extends PopupMenuItem<T> {
   const _FanCadHoverMenuItem({
     super.key,
@@ -293,11 +297,13 @@ class _FanCadHoverMenuItem<T> extends PopupMenuItem<T> {
     super.height,
     required this.onHover,
     required this.onHoverExit,
+    this.onTap,
     required super.child,
   });
 
   final ValueChanged<Rect> onHover;
   final VoidCallback onHoverExit;
+  final VoidCallback? onTap;
 
   @override
   PopupMenuItemState<T, _FanCadHoverMenuItem<T>> createState() =>
@@ -308,6 +314,11 @@ class _FanCadHoverMenuItemState<T>
     extends PopupMenuItemState<T, _FanCadHoverMenuItem<T>> {
   @override
   void handleTap() {
+    final tap = widget.onTap;
+    if (tap != null) {
+      tap();
+      return;
+    }
     _reportHover();
   }
 
