@@ -14,6 +14,7 @@ _AssistantProfileModel _$AssistantProfileModelFromJson(
   model: json['model'] as String? ?? 'gpt-4o-mini',
   baseUrl: json['baseUrl'] as String? ?? 'https://api.openai.com/v1',
   apiKey: json['apiKey'] as String? ?? '',
+  vision: json['vision'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$AssistantProfileModelToJson(
@@ -24,4 +25,5 @@ Map<String, dynamic> _$AssistantProfileModelToJson(
   'model': instance.model,
   'baseUrl': instance.baseUrl,
   'apiKey': instance.apiKey,
+  'vision': instance.vision,
 };

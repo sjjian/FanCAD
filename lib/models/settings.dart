@@ -146,6 +146,7 @@ abstract class AssistantProfileModel with _$AssistantProfileModel {
     @Default('gpt-4o-mini') String model,
     @Default('https://api.openai.com/v1') String baseUrl,
     @Default('') String apiKey,
+    @Default(false) bool vision,
   }) = _AssistantProfileModel;
 
   static const String defaultId = 'default';
@@ -197,5 +198,6 @@ Map<String, dynamic> _assistantProfileWire(Map<Object?, Object?> raw) {
     'model': read('model', AssistantProfileModel.defaultModel),
     'baseUrl': read('baseUrl', AssistantProfileModel.defaultBaseUrl),
     'apiKey': read('apiKey'),
+    'vision': raw['vision'] == true,
   };
 }

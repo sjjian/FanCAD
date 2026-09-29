@@ -93,6 +93,12 @@ class AssistantAccountsNotifier extends _$AssistantAccountsNotifier {
     _writeActive((profile) => profile.copyWith(label: value));
   }
 
+  /// Text models stay text. Only a profile marked vision receives images.
+  void setVision(bool value) {
+    if (value == state.activeProfile.vision) return;
+    _writeActive((profile) => profile.copyWith(vision: value));
+  }
+
   void selectProfile(String id) {
     if (_turnRunning) return;
     if (id == state.activeProfile.id) return;
@@ -108,6 +114,7 @@ class AssistantAccountsNotifier extends _$AssistantAccountsNotifier {
       id: 'p${DateTime.now().microsecondsSinceEpoch}',
       model: profile.model,
       baseUrl: profile.baseUrl,
+      vision: profile.vision,
     );
     _persist([...state.profiles, created], activeId: created.id);
   }

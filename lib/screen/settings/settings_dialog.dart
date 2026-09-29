@@ -836,7 +836,7 @@ class _ModelProfileCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          _profileDescription(profile),
+                          _profileDescription(profile, l10n),
                           style: tokens.labelStyle.copyWith(
                             color: tokens.textMuted,
                           ),
@@ -928,6 +928,16 @@ class _ModelProfileCard extends StatelessWidget {
                         onSubmitted: (_) => onCommit(),
                       ),
                     ),
+                    const SizedBox(height: SettingsSection.itemGap),
+                    SettingsToggle(
+                      key: Key('settings-profile-vision-${profile.id}'),
+                      label: l10n.assistant_model_vision,
+                      value: profile.vision,
+                      onChanged: ai.setVision,
+                      description: profile.vision
+                          ? l10n.assistant_model_vision_on
+                          : l10n.assistant_model_text,
+                    ),
                   ],
                 ),
               ),
@@ -938,8 +948,14 @@ class _ModelProfileCard extends StatelessWidget {
   }
 }
 
-String _profileDescription(AssistantProfileModel profile) {
+String _profileDescription(
+  AssistantProfileModel profile,
+  AppLocalizations l10n,
+) {
   final host = Uri.tryParse(profile.baseUrl)?.host;
   final endpoint = (host != null && host.isNotEmpty) ? host : profile.baseUrl;
-  return '${profile.model} · $endpoint';
+  final kind = profile.vision
+      ? l10n.assistant_model_vision
+      : l10n.assistant_model_text;
+  return '${profile.model} · $endpoint · $kind';
 }

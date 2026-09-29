@@ -1856,6 +1856,42 @@ abstract class AppLocalizations {
   /// **'Display name'**
   String get assistant_profile_name;
 
+  /// profile can read images
+  ///
+  /// In en, this message translates to:
+  /// **'Multimodal'**
+  String get assistant_model_vision;
+
+  /// profile is text only
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get assistant_model_text;
+
+  /// vision profile description
+  ///
+  /// In en, this message translates to:
+  /// **'This model can read images.'**
+  String get assistant_model_vision_on;
+
+  /// composer blocked because the chat has images and the model is text only
+  ///
+  /// In en, this message translates to:
+  /// **'This chat has images. Switch to a multimodal model to continue.'**
+  String get assistant_images_need_vision;
+
+  /// upload an image into the chat
+  ///
+  /// In en, this message translates to:
+  /// **'Attach image'**
+  String get assistant_attach_image;
+
+  /// title of the chat image preview window
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get assistant_image_preview;
+
   /// ask follow up
   ///
   /// In en, this message translates to:

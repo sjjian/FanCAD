@@ -26,7 +26,7 @@ final appearanceNotifierProvider =
 
 typedef _$AppearanceNotifier = Notifier<AppearanceModel>;
 String _$assistantAccountsNotifierHash() =>
-    r'7f27027f8ff8c04651bc6696f028d3ff5e9d5d57';
+    r'2ce04318786254d5da9971cadc008cfc2ec98093';
 
 /// Saved assistant connections: model, endpoint, key, and auto-approve.
 ///

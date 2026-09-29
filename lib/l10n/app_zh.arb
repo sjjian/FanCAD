@@ -1374,6 +1374,30 @@
   "@assistant_profile_name": {
     "description": "assistant profile name"
   },
+  "assistant_model_vision": "多模态",
+  "@assistant_model_vision": {
+    "description": "profile can read images"
+  },
+  "assistant_model_text": "文本",
+  "@assistant_model_text": {
+    "description": "profile is text only"
+  },
+  "assistant_model_vision_on": "这个模型可以看图。",
+  "@assistant_model_vision_on": {
+    "description": "vision profile description"
+  },
+  "assistant_images_need_vision": "这段对话带有图片，需要换成多模态模型才能继续提问。",
+  "@assistant_images_need_vision": {
+    "description": "composer blocked because the chat has images and the model is text only"
+  },
+  "assistant_attach_image": "上传图片",
+  "@assistant_attach_image": {
+    "description": "upload an image into the chat"
+  },
+  "assistant_image_preview": "图片",
+  "@assistant_image_preview": {
+    "description": "title of the chat image preview window"
+  },
   "ask_follow_up": "继续提问",
   "@ask_follow_up": {
     "description": "ask follow up"

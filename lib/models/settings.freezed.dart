@@ -1374,7 +1374,7 @@ as String,
 /// @nodoc
 mixin _$AssistantProfileModel {
 
- String get id; String get label; String get model; String get baseUrl; String get apiKey;
+ String get id; String get label; String get model; String get baseUrl; String get apiKey; bool get vision;
 /// Create a copy of AssistantProfileModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1387,16 +1387,16 @@ $AssistantProfileModelCopyWith<AssistantProfileModel> get copyWith => _$Assistan
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantProfileModel&&(identical(other.id, id) || other.id == id)&&(identical(other.label, label) || other.label == label)&&(identical(other.model, model) || other.model == model)&&(identical(other.baseUrl, baseUrl) || other.baseUrl == baseUrl)&&(identical(other.apiKey, apiKey) || other.apiKey == apiKey));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantProfileModel&&(identical(other.id, id) || other.id == id)&&(identical(other.label, label) || other.label == label)&&(identical(other.model, model) || other.model == model)&&(identical(other.baseUrl, baseUrl) || other.baseUrl == baseUrl)&&(identical(other.apiKey, apiKey) || other.apiKey == apiKey)&&(identical(other.vision, vision) || other.vision == vision));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,label,model,baseUrl,apiKey);
+int get hashCode => Object.hash(runtimeType,id,label,model,baseUrl,apiKey,vision);
 
 @override
 String toString() {
-  return 'AssistantProfileModel(id: $id, label: $label, model: $model, baseUrl: $baseUrl, apiKey: $apiKey)';
+  return 'AssistantProfileModel(id: $id, label: $label, model: $model, baseUrl: $baseUrl, apiKey: $apiKey, vision: $vision)';
 }
 
 
@@ -1407,7 +1407,7 @@ abstract mixin class $AssistantProfileModelCopyWith<$Res>  {
   factory $AssistantProfileModelCopyWith(AssistantProfileModel value, $Res Function(AssistantProfileModel) _then) = _$AssistantProfileModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String label, String model, String baseUrl, String apiKey
+ String id, String label, String model, String baseUrl, String apiKey, bool vision
 });
 
 
@@ -1424,14 +1424,15 @@ class _$AssistantProfileModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantProfileModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? label = null,Object? model = null,Object? baseUrl = null,Object? apiKey = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? label = null,Object? model = null,Object? baseUrl = null,Object? apiKey = null,Object? vision = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,model: null == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String,baseUrl: null == baseUrl ? _self.baseUrl : baseUrl // ignore: cast_nullable_to_non_nullable
 as String,apiKey: null == apiKey ? _self.apiKey : apiKey // ignore: cast_nullable_to_non_nullable
-as String,
+as String,vision: null == vision ? _self.vision : vision // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -1516,10 +1517,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String label,  String model,  String baseUrl,  String apiKey)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String label,  String model,  String baseUrl,  String apiKey,  bool vision)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AssistantProfileModel() when $default != null:
-return $default(_that.id,_that.label,_that.model,_that.baseUrl,_that.apiKey);case _:
+return $default(_that.id,_that.label,_that.model,_that.baseUrl,_that.apiKey,_that.vision);case _:
   return orElse();
 
 }
@@ -1537,10 +1538,10 @@ return $default(_that.id,_that.label,_that.model,_that.baseUrl,_that.apiKey);cas
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String label,  String model,  String baseUrl,  String apiKey)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String label,  String model,  String baseUrl,  String apiKey,  bool vision)  $default,) {final _that = this;
 switch (_that) {
 case _AssistantProfileModel():
-return $default(_that.id,_that.label,_that.model,_that.baseUrl,_that.apiKey);case _:
+return $default(_that.id,_that.label,_that.model,_that.baseUrl,_that.apiKey,_that.vision);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1557,10 +1558,10 @@ return $default(_that.id,_that.label,_that.model,_that.baseUrl,_that.apiKey);cas
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String label,  String model,  String baseUrl,  String apiKey)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String label,  String model,  String baseUrl,  String apiKey,  bool vision)?  $default,) {final _that = this;
 switch (_that) {
 case _AssistantProfileModel() when $default != null:
-return $default(_that.id,_that.label,_that.model,_that.baseUrl,_that.apiKey);case _:
+return $default(_that.id,_that.label,_that.model,_that.baseUrl,_that.apiKey,_that.vision);case _:
   return null;
 
 }
@@ -1572,7 +1573,7 @@ return $default(_that.id,_that.label,_that.model,_that.baseUrl,_that.apiKey);cas
 
 @JsonSerializable()
 class _AssistantProfileModel extends AssistantProfileModel {
-  const _AssistantProfileModel({required this.id, this.label = '', this.model = 'gpt-4o-mini', this.baseUrl = 'https://api.openai.com/v1', this.apiKey = ''}): super._();
+  const _AssistantProfileModel({required this.id, this.label = '', this.model = 'gpt-4o-mini', this.baseUrl = 'https://api.openai.com/v1', this.apiKey = '', this.vision = false}): super._();
   factory _AssistantProfileModel.fromJson(Map<String, dynamic> json) => _$AssistantProfileModelFromJson(json);
 
 @override final  String id;
@@ -1580,6 +1581,7 @@ class _AssistantProfileModel extends AssistantProfileModel {
 @override@JsonKey() final  String model;
 @override@JsonKey() final  String baseUrl;
 @override@JsonKey() final  String apiKey;
+@override@JsonKey() final  bool vision;
 
 /// Create a copy of AssistantProfileModel
 /// with the given fields replaced by the non-null parameter values.
@@ -1594,16 +1596,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantProfileModel&&(identical(other.id, id) || other.id == id)&&(identical(other.label, label) || other.label == label)&&(identical(other.model, model) || other.model == model)&&(identical(other.baseUrl, baseUrl) || other.baseUrl == baseUrl)&&(identical(other.apiKey, apiKey) || other.apiKey == apiKey));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantProfileModel&&(identical(other.id, id) || other.id == id)&&(identical(other.label, label) || other.label == label)&&(identical(other.model, model) || other.model == model)&&(identical(other.baseUrl, baseUrl) || other.baseUrl == baseUrl)&&(identical(other.apiKey, apiKey) || other.apiKey == apiKey)&&(identical(other.vision, vision) || other.vision == vision));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,label,model,baseUrl,apiKey);
+int get hashCode => Object.hash(runtimeType,id,label,model,baseUrl,apiKey,vision);
 
 @override
 String toString() {
-  return 'AssistantProfileModel(id: $id, label: $label, model: $model, baseUrl: $baseUrl, apiKey: $apiKey)';
+  return 'AssistantProfileModel(id: $id, label: $label, model: $model, baseUrl: $baseUrl, apiKey: $apiKey, vision: $vision)';
 }
 
 
@@ -1614,7 +1616,7 @@ abstract mixin class _$AssistantProfileModelCopyWith<$Res> implements $Assistant
   factory _$AssistantProfileModelCopyWith(_AssistantProfileModel value, $Res Function(_AssistantProfileModel) _then) = __$AssistantProfileModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String label, String model, String baseUrl, String apiKey
+ String id, String label, String model, String baseUrl, String apiKey, bool vision
 });
 
 
@@ -1631,14 +1633,15 @@ class __$AssistantProfileModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantProfileModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? label = null,Object? model = null,Object? baseUrl = null,Object? apiKey = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? label = null,Object? model = null,Object? baseUrl = null,Object? apiKey = null,Object? vision = null,}) {
   return _then(_AssistantProfileModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,model: null == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String,baseUrl: null == baseUrl ? _self.baseUrl : baseUrl // ignore: cast_nullable_to_non_nullable
 as String,apiKey: null == apiKey ? _self.apiKey : apiKey // ignore: cast_nullable_to_non_nullable
-as String,
+as String,vision: null == vision ? _self.vision : vision // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

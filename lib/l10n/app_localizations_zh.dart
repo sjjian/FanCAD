@@ -964,6 +964,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get assistant_profile_name => '显示名';
 
   @override
+  String get assistant_model_vision => '多模态';
+
+  @override
+  String get assistant_model_text => '文本';
+
+  @override
+  String get assistant_model_vision_on => '这个模型可以看图。';
+
+  @override
+  String get assistant_images_need_vision => '这段对话带有图片，需要换成多模态模型才能继续提问。';
+
+  @override
+  String get assistant_attach_image => '上传图片';
+
+  @override
+  String get assistant_image_preview => '图片';
+
+  @override
   String get ask_follow_up => '继续提问';
 
   @override

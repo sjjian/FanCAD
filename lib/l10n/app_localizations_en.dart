@@ -982,6 +982,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assistant_profile_name => 'Display name';
 
   @override
+  String get assistant_model_vision => 'Multimodal';
+
+  @override
+  String get assistant_model_text => 'Text';
+
+  @override
+  String get assistant_model_vision_on => 'This model can read images.';
+
+  @override
+  String get assistant_images_need_vision =>
+      'This chat has images. Switch to a multimodal model to continue.';
+
+  @override
+  String get assistant_attach_image => 'Attach image';
+
+  @override
+  String get assistant_image_preview => 'Image';
+
+  @override
   String get ask_follow_up => 'Add a follow-up';
 
   @override

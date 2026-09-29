@@ -1374,6 +1374,30 @@
   "@assistant_profile_name": {
     "description": "assistant profile name"
   },
+  "assistant_model_vision": "Multimodal",
+  "@assistant_model_vision": {
+    "description": "profile can read images"
+  },
+  "assistant_model_text": "Text",
+  "@assistant_model_text": {
+    "description": "profile is text only"
+  },
+  "assistant_model_vision_on": "This model can read images.",
+  "@assistant_model_vision_on": {
+    "description": "vision profile description"
+  },
+  "assistant_images_need_vision": "This chat has images. Switch to a multimodal model to continue.",
+  "@assistant_images_need_vision": {
+    "description": "composer blocked because the chat has images and the model is text only"
+  },
+  "assistant_attach_image": "Attach image",
+  "@assistant_attach_image": {
+    "description": "upload an image into the chat"
+  },
+  "assistant_image_preview": "Image",
+  "@assistant_image_preview": {
+    "description": "title of the chat image preview window"
+  },
   "ask_follow_up": "Add a follow-up",
   "@ask_follow_up": {
     "description": "ask follow up"
