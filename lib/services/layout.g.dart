@@ -6,12 +6,12 @@ part of 'layout.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$layoutNotifierHash() => r'a08098199becfdbcb35ada5e4d476f10ff6f453e';
+String _$layoutNotifierHash() => r'96eb8bab2e73f787aabe286916beb58288cad7f6';
 
 /// Workbench chrome: open panes, the sidebar view, and the three sizes.
 ///
-/// Dragging a sash updates [state] only. The file is written when the drag
-/// ends, and when a pane is opened, closed, or switched.
+/// Every change stays in memory. The file is written once, when the process
+/// is about to exit, via [persist].
 ///
 /// Copied from [LayoutNotifier].
 @ProviderFor(LayoutNotifier)
