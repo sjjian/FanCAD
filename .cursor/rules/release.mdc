@@ -1,0 +1,30 @@
+---
+description: 发布 FanCAD Release。用户要求发版、打 tag 或发布新版本时使用。先询问版本号，确认后再改版本与 changelog，一次提交并在该 commit 上打 tag。
+alwaysApply: false
+---
+
+# 发布 Release
+
+按顺序做，不要跳步，不要并行改文件。
+
+1. 先询问版本号（例如 `0.2.0`），停下来等用户回答。未得到版本号之前不要改文件、不要提交、不要打 tag。
+2. 得到版本号之后：
+   - 只改根目录 `pubspec.yaml` 的 `version:`。不带 `v` 前缀，保留构建号，写成 `<version>+1`（例如 `0.2.0+1`）。不要改 `pkg/` 下各包的 pubspec。
+   - 用上一个 tag 到当前 `HEAD` 之间的提交，重写 `changelog_latest.md`。先看该文件的历史版本，沿用同样的英文格式。没有条目的小节整节省略。
+
+写 changelog：
+
+- 格式与历史版本一致：`##  Features ✨`、`## Improvements 🛠`，条目用 `*`。
+- 无关紧要的小变更不写，例如打包、CI、README、子模块同步、文案或样式微调。
+- 本版本新功能自己的缺陷修复不单独写，并进该功能即可。只记录已有功能上的修复。
+
+```markdown
+##  Features ✨
+* Added snap to grid.
+
+## Improvements 🛠
+* Fixed line selection so a click picks the nearest edge.
+```
+
+3. 只把这两个文件放进一次提交，说明用 `release <version>`。不要顺手提交其他改动。
+4. 在这个新 commit 上打 tag `v<version>`，例如版本 `0.2.0` 对应 `v0.2.0`。tag 必须指向刚才的提交。不要 push，除非用户明确要求。

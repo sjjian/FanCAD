@@ -163,6 +163,8 @@ jobs:
     needs: [version, build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -176,8 +178,16 @@ jobs:
           cp artifacts/fancad-linux/*.tar.gz release-assets/
           ls -la release-assets
 
+      - name: Require changelog
+        shell: bash
+        run: |
+          if [[ ! -s changelog_latest.md ]] || [[ -z "$(tr -d '[:space:]' < changelog_latest.md)" ]]; then
+            echo "changelog_latest.md is missing or empty" >&2
+            exit 1
+          fi
+
       - uses: softprops/action-gh-release@v2
         with:
+          body_path: changelog_latest.md
           files: release-assets/*
-          generate_release_notes: true
           fail_on_unmatched_files: true
