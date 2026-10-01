@@ -704,6 +704,19 @@
     "description": "open properties selection"
   },
   "objects_count": "{count} objects",
+  "bbox_other_drawing": "Not the current drawing",
+  "@bbox_other_drawing": {
+    "description": "Tooltip when a hovered region belongs to another drawing"
+  },
+  "bbox_other_drawing_named": "Not the current drawing: {name}",
+  "@bbox_other_drawing_named": {
+    "description": "Tooltip when a hovered region belongs to another named drawing",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "@objects_count": {
     "description": "objects count",
     "placeholders": {
@@ -1533,6 +1546,14 @@
   "ask_skip": "Skip",
   "@ask_skip": {
     "description": "dismiss an in-thread assistant question without answering"
+  },
+  "assistant_pick_bbox": "Add a region",
+  "@assistant_pick_bbox": {
+    "description": "composer button that drags a rectangle into the chat"
+  },
+  "assistant_pick_bbox_prompt": "Drag a rectangle to add it to the chat",
+  "@assistant_pick_bbox_prompt": {
+    "description": "canvas prompt while a chat region is being dragged"
   },
   "pin_selection": "Add selection to chat",
   "@pin_selection": {

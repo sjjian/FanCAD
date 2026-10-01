@@ -323,6 +323,46 @@ void main() {
     expect(ai.workspace.state.notices.last.message, contains('No API key'));
   });
 
+  test('a dragged region is a bbox pin and hover draws that box', () {
+    final ai = controller();
+    final tab = ai.workspace.newDocument();
+    ai.toggleBboxPick();
+    expect(ai.state.pickingBbox, isTrue);
+    ai.toggleBboxPick();
+    expect(ai.state.pickingBbox, isFalse);
+    ai.toggleBboxPick();
+    ai.pinBbox(40, 50, 10, 20);
+    expect(ai.state.pickingBbox, isFalse);
+    final pin = ai.state.pins.single;
+    expect(pin.kind, ComposerPinKind.bbox);
+    expect(pin.tabId, tab.session.id);
+    expect(pin.x1, 10);
+    expect(pin.y1, 20);
+    expect(pin.x2, 40);
+    expect(pin.y2, 50);
+    expect(
+      formatComposerPin(pin),
+      '@bbox[tab=${tab.session.id} x1=10 y1=20 x2=40 y2=50]',
+    );
+    ai.hoverPin(pin);
+    expect(ai.state.hoverFrame, [10, 20, 40, 50]);
+    expect(ai.state.hoverFrameTab, tab.session.id);
+    ai.hoverPin(null);
+    expect(ai.state.hoverFrame, isNull);
+
+    final other = ai.workspace.newDocument(title: 'Other');
+    final elsewhere = ComposerPinModel.bbox(
+      tabId: tab.session.id,
+      x1: 5,
+      y1: 6,
+      x2: 7,
+      y2: 8,
+    );
+    ai.hoverPin(elsewhere);
+    expect(ai.state.hoverFrame, isNull);
+    expect(ai.workspace.activeDrawing?.session.id, other.session.id);
+  });
+
   test('pinning the leftover pick records ids for the next send', () {
     final ai = controller();
     final tab = ai.workspace.newDocument();

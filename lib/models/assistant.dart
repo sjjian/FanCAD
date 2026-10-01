@@ -34,6 +34,16 @@ abstract class AssistantModel with _$AssistantModel {
     SessionQuestion? question,
     @Default(false) bool busy,
     @Default(0) int transcriptEpoch,
+
+    /// The canvas is waiting for one dragged region for the composer.
+    @Default(false) bool pickingBbox,
+
+    /// Drawing-unit rectangle shown while a bbox chip is hovered or flashed.
+    ///
+    /// Four numbers, minX minY maxX maxY. Null when nothing is showing.
+    /// [hoverFrameTab] is the drawing it belongs to.
+    List<double>? hoverFrame,
+    @Default('') String hoverFrameTab,
   }) = _AssistantModel;
 
   AssistantChatModel get activeChat {
@@ -363,7 +373,7 @@ void _collectReceiptIds(Object? value, Set<int> into) {
   }
 }
 
-enum ComposerPinKind { entity, drawing }
+enum ComposerPinKind { entity, drawing, bbox }
 
 /// A target the user pinned onto the next assistant message.
 @freezed
@@ -377,6 +387,10 @@ abstract class ComposerPinModel with _$ComposerPinModel {
     @Default('') String tabTitle,
     String? path,
     @Default('') String label,
+    @Default(0) double x1,
+    @Default(0) double y1,
+    @Default(0) double x2,
+    @Default(0) double y2,
   }) = _ComposerPinModel;
 
   factory ComposerPinModel.entities(
@@ -406,6 +420,25 @@ abstract class ComposerPinModel with _$ComposerPinModel {
     label: tabTitle,
   );
 
+  factory ComposerPinModel.bbox({
+    required String tabId,
+    required double x1,
+    required double y1,
+    required double x2,
+    required double y2,
+    String tabTitle = '',
+    String? path,
+  }) => ComposerPinModel(
+    kind: ComposerPinKind.bbox,
+    tabId: tabId,
+    tabTitle: tabTitle,
+    path: path,
+    x1: x1,
+    y1: y1,
+    x2: x2,
+    y2: y2,
+  );
+
   String get drawingName {
     final titled = tabTitle.trim();
     if (titled.isNotEmpty) return titled;
@@ -424,8 +457,24 @@ abstract class ComposerPinModel with _$ComposerPinModel {
         return '$objects on $drawingName (tab=$tabId)';
       case ComposerPinKind.drawing:
         return 'drawing $drawingName (tab=$tabId)';
+      case ComposerPinKind.bbox:
+        return 'region (${_formatPinCoord(x1)},${_formatPinCoord(y1)})-'
+            '(${_formatPinCoord(x2)},${_formatPinCoord(y2)}) '
+            'on $drawingName (tab=$tabId)';
     }
   }
+}
+
+/// Compact drawing-unit number for a bbox tag. Trims trailing zeros.
+String _formatPinCoord(double value) {
+  if (!value.isFinite) return '0';
+  var text = value.toStringAsFixed(6);
+  if (text.contains('.')) {
+    text = text.replaceFirst(RegExp(r'0+$'), '');
+    if (text.endsWith('.')) text = text.substring(0, text.length - 1);
+  }
+  if (text == '-0') return '0';
+  return text;
 }
 
 /// Object-replacement character: one slot in the composer text per pin.
@@ -508,10 +557,15 @@ String flattenComposerPins(List<ComposerPinModel> pins, String text) {
 
 /// Wire form the model copies in replies and ask options.
 ///
-/// `@objects[tab=<id> ids=1,2,3]` and `@drawing[tab=<id>]`.
+/// `@objects[tab=<id> ids=1,2,3]`, `@drawing[tab=<id>]`, and
+/// `@bbox[tab=<id> x1=<n> y1=<n> x2=<n> y2=<n>]`.
 final _composerPinTagPattern = RegExp(
   r'@objects\[tab=([^\s\]]+)\s+ids=(\d+(?:\s*,\s*\d+)*)\]'
-  r'|@drawing\[tab=([^\s\]]+)\]',
+  r'|@drawing\[tab=([^\s\]]+)\]'
+  r'|@bbox\[tab=([^\s\]]+)\s+x1=([+-]?(?:\d+(?:\.\d*)?|\.\d+))'
+  r'\s+y1=([+-]?(?:\d+(?:\.\d*)?|\.\d+))'
+  r'\s+x2=([+-]?(?:\d+(?:\.\d*)?|\.\d+))'
+  r'\s+y2=([+-]?(?:\d+(?:\.\d*)?|\.\d+))\]',
 );
 
 String formatComposerPin(ComposerPinModel pin) {
@@ -521,6 +575,10 @@ String formatComposerPin(ComposerPinModel pin) {
       return '@objects[tab=${pin.tabId} ids=$ids]';
     case ComposerPinKind.drawing:
       return '@drawing[tab=${pin.tabId}]';
+    case ComposerPinKind.bbox:
+      return '@bbox[tab=${pin.tabId} '
+          'x1=${_formatPinCoord(pin.x1)} y1=${_formatPinCoord(pin.y1)} '
+          'x2=${_formatPinCoord(pin.x2)} y2=${_formatPinCoord(pin.y2)}]';
   }
 }
 
@@ -579,8 +637,18 @@ ComposerPinModel? _pinFromMatch(Match match) {
     return ComposerPinModel.entities(ids, tabId: objectTab);
   }
   final drawingTab = match[3];
-  if (drawingTab == null || drawingTab.isEmpty) return null;
-  return ComposerPinModel.drawing(tabId: drawingTab);
+  if (drawingTab != null && drawingTab.isNotEmpty) {
+    return ComposerPinModel.drawing(tabId: drawingTab);
+  }
+  final bboxTab = match[4];
+  if (bboxTab == null || bboxTab.isEmpty) return null;
+  final x1 = double.tryParse(match[5] ?? '');
+  final y1 = double.tryParse(match[6] ?? '');
+  final x2 = double.tryParse(match[7] ?? '');
+  final y2 = double.tryParse(match[8] ?? '');
+  if (x1 == null || y1 == null || x2 == null || y2 == null) return null;
+  if ((x2 - x1).abs() <= 1e-9 || (y2 - y1).abs() <= 1e-9) return null;
+  return ComposerPinModel.bbox(tabId: bboxTab, x1: x1, y1: y1, x2: x2, y2: y2);
 }
 
 /// One run of prose or a pin chip inside composer / transcript text.
@@ -605,6 +673,13 @@ void _writePinLines(StringBuffer buffer, List<ComposerPinModel> pins) {
       final path = pin.path?.trim() ?? '';
       if (path.isNotEmpty) buffer.writeln('  path: $path');
     }
+    if (pin.kind == ComposerPinKind.bbox && pin.tabId.isNotEmpty) {
+      buffer.writeln(
+        '  box: ${_formatPinCoord(pin.x1)},${_formatPinCoord(pin.y1)} '
+        '${_formatPinCoord(pin.x2)},${_formatPinCoord(pin.y2)}',
+      );
+      buffer.writeln('  tab: ${pin.tabId}');
+    }
   }
 }
 
@@ -613,6 +688,7 @@ void _writePinNotes(StringBuffer buffer, List<ComposerPinModel> pins) {
   final hasEntities = pins.any(
     (pin) => pin.kind == ComposerPinKind.entity && pin.ids.isNotEmpty,
   );
+  final hasBoxes = pins.any((pin) => pin.kind == ComposerPinKind.bbox);
   if (hasDrawings) {
     buffer.writeln(
       'Query this drawing with tab=<id> on every fancad run. '
@@ -624,6 +700,14 @@ void _writePinNotes(StringBuffer buffer, List<ComposerPinModel> pins) {
       'These ids belong only to that tab. Pass tab=<id> on every '
       'fancad run that uses them. Do not apply them to another drawing '
       'or the leftover selection.',
+    );
+  }
+  if (hasBoxes) {
+    buffer.writeln(
+      'These boxes are drawing coordinates on that tab. '
+      'Keep the @bbox tag when a region is meant. '
+      'To export that picture, pass corner1 and corner2 from the box. '
+      'Do not treat the box as entity ids.',
     );
   }
 }

@@ -8,11 +8,11 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:super_clipboard/super_clipboard.dart';
 
 import '../../l10n/l10n.dart';
 import '../../models/assistant.dart';
 import '../../services/assistant.dart';
+import '../../services/assistant_images.dart';
 import '../../services/settings.dart';
 import '../../services/workspace.dart';
 import '../widgets/tokens.dart';
@@ -163,6 +163,18 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     widget.controller.setDraft(_input.text);
   }
 
+  void _insertPlainText(String text) {
+    final value = _input.value;
+    final selection = value.selection;
+    final start = selection.isValid ? selection.start : value.text.length;
+    final end = selection.isValid ? selection.end : value.text.length;
+    final next = value.text.replaceRange(start, end, text);
+    _input.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: start + text.length),
+    );
+  }
+
   /// Copies the stored draft into the field when the open chat changes.
   void _syncDraft({bool force = false}) {
     final chat = ref.read(assistantNotifierProvider).activeChat;
@@ -212,8 +224,14 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   Future<void> _onPaste() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (!mounted) return;
-    if (data?.text?.trim().isNotEmpty == true) return;
-    final image = await _clipboardImage();
+    final text = data?.text;
+    if (text != null && text.trim().isNotEmpty) {
+      // The field already declined this chord, and the key is consumed so the
+      // canvas paste command does not also run. Put the text in the field.
+      _insertPlainText(text);
+      return;
+    }
+    final image = await readClipboardPicture();
     if (!mounted) return;
     if (image != null) {
       final vision = ref
@@ -333,6 +351,9 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     final vision = ref.watch(
       assistantAccountsNotifierProvider.select((s) => s.activeProfile.vision),
     );
+    final drawingId = ref.watch(
+      workspaceNotifierProvider.select((s) => s.activeSessionId),
+    );
     _syncDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -359,163 +380,166 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     _input.pins = model.pins;
     _input.onFlashPin = controller.flashPin;
     _input.onHoverPin = controller.hoverPin;
-    return Column(
-      children: [
-        _ChatTabStrip(
-          chats: model.chats,
-          activeChatId: model.activeChat.id,
-          emptyTitle: context.l10n.new_chat,
-          onSelect: (id) {
-            _flushDraft();
-            controller.selectSession(id);
-          },
-          onClose: (id) {
-            if (id == model.activeChat.id) _flushDraft();
-            controller.deleteSession(id);
-          },
-          onNew: () {
-            _flushDraft();
-            controller.newSession();
-          },
-        ),
-        Expanded(
-          child:
-              messages.isEmpty && !busy && pending == null && question == null
-              ? _EmptyAssistant(
-                  configured: controller.isConfigured,
-                  onUsePrompt: (prompt) {
-                    controller.setDraft(prompt);
-                    _syncDraft(force: true);
-                  },
-                  onOpenSettings: () =>
-                      controller.workspace.revealPanel('preferences:models'),
-                )
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final turns = _assistantTurns(entries);
-                    final extras = <Widget>[
-                      if (showWorking)
-                        _WorkingLine(label: context.l10n.working),
-                      if (pending != null)
-                        _ApprovalCard(
-                          pending: pending,
-                          onAccept: controller.acceptPending,
-                          onReject: controller.rejectPending,
-                          onFlash: () =>
-                              controller.flashEntities(pending.highlightIds),
-                          onPin: () =>
-                              controller.pinReceiptIds(pending.highlightIds),
-                        ),
-                    ];
-                    return CustomScrollView(
-                      key: assistantTranscriptKey,
-                      controller: _scroll,
-                      slivers: [
-                        for (var i = 0; i < turns.length; i++)
-                          SliverMainAxisGroup(
-                            slivers: [
-                              if (turns[i].user != null)
-                                PinnedHeaderSliver(
-                                  child: _userHeader(
-                                    turns[i].user!,
-                                    isLast: i == turns.length - 1,
-                                  ),
-                                ),
-                              SliverList.list(
-                                children: [
-                                  for (final entry in turns[i].body)
-                                    _threadPad(
-                                      _entryTile(
-                                        entry,
-                                        live:
-                                            busy &&
-                                            i == turns.length - 1 &&
-                                            identical(
-                                              entry,
-                                              turns[i].body.last,
-                                            ),
-                                        showWorking: showWorking,
-                                        showCaret: showCaret,
-                                      ),
+    return AssistantDrawingScope(
+      drawingId: drawingId,
+      child: Column(
+        children: [
+          _ChatTabStrip(
+            chats: model.chats,
+            activeChatId: model.activeChat.id,
+            emptyTitle: context.l10n.new_chat,
+            onSelect: (id) {
+              _flushDraft();
+              controller.selectSession(id);
+            },
+            onClose: (id) {
+              if (id == model.activeChat.id) _flushDraft();
+              controller.deleteSession(id);
+            },
+            onNew: () {
+              _flushDraft();
+              controller.newSession();
+            },
+          ),
+          Expanded(
+            child:
+                messages.isEmpty && !busy && pending == null && question == null
+                ? _EmptyAssistant(
+                    configured: controller.isConfigured,
+                    onUsePrompt: (prompt) {
+                      controller.setDraft(prompt);
+                      _syncDraft(force: true);
+                    },
+                    onOpenSettings: () =>
+                        controller.workspace.revealPanel('preferences:models'),
+                  )
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final turns = _assistantTurns(entries);
+                      final extras = <Widget>[
+                        if (showWorking)
+                          _WorkingLine(label: context.l10n.working),
+                        if (pending != null)
+                          _ApprovalCard(
+                            pending: pending,
+                            onAccept: controller.acceptPending,
+                            onReject: controller.rejectPending,
+                            onFlash: () =>
+                                controller.flashEntities(pending.highlightIds),
+                            onPin: () =>
+                                controller.pinReceiptIds(pending.highlightIds),
+                          ),
+                      ];
+                      return CustomScrollView(
+                        key: assistantTranscriptKey,
+                        controller: _scroll,
+                        slivers: [
+                          for (var i = 0; i < turns.length; i++)
+                            SliverMainAxisGroup(
+                              slivers: [
+                                if (turns[i].user != null)
+                                  PinnedHeaderSliver(
+                                    child: _userHeader(
+                                      turns[i].user!,
+                                      isLast: i == turns.length - 1,
                                     ),
-                                  if (i == turns.length - 1)
-                                    for (final extra in extras)
-                                      _threadPad(extra),
-                                ],
+                                  ),
+                                SliverList.list(
+                                  children: [
+                                    for (final entry in turns[i].body)
+                                      _threadPad(
+                                        _entryTile(
+                                          entry,
+                                          live:
+                                              busy &&
+                                              i == turns.length - 1 &&
+                                              identical(
+                                                entry,
+                                                turns[i].body.last,
+                                              ),
+                                          showWorking: showWorking,
+                                          showCaret: showCaret,
+                                        ),
+                                      ),
+                                    if (i == turns.length - 1)
+                                      for (final extra in extras)
+                                        _threadPad(extra),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          if (turns.isEmpty)
+                            SliverList.list(
+                              children: [
+                                for (final extra in extras) _threadPad(extra),
+                              ],
+                            ),
+                          SliverToBoxAdapter(
+                            child: SizedBox(
+                              key: assistantTranscriptTailKey,
+                              height: assistantTranscriptTail(
+                                constraints.maxHeight,
                               ),
-                            ],
-                          ),
-                        if (turns.isEmpty)
-                          SliverList.list(
-                            children: [
-                              for (final extra in extras) _threadPad(extra),
-                            ],
-                          ),
-                        SliverToBoxAdapter(
-                          child: SizedBox(
-                            key: assistantTranscriptTailKey,
-                            height: assistantTranscriptTail(
-                              constraints.maxHeight,
                             ),
                           ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-        ),
-        if (model.error != null)
-          FanCadBanner(
-            tone: FanCadTone.danger,
-            inset: true,
-            message: model.error!,
-            onDismiss: controller.clearError,
+                        ],
+                      );
+                    },
+                  ),
           ),
-        _Composer(
-          controller: _input,
-          enabled: controller.isConfigured,
-          busy: busy,
-          hint: imagesBlocked
-              ? context.l10n.assistant_images_need_vision
-              : !controller.isConfigured
-              ? context.l10n.ask_assistant_unavailable
-              : busy
-              ? context.l10n.ask_follow_up
-              : context.l10n.ask_assistant,
-          imagesBlocked: imagesBlocked,
-          images: model.images,
-          readImage: controller.readChatImage,
-          tokens: tokens,
-          usage: model.activeChat.usage,
-          pins: model.pins,
-          workspace: controller.workspace,
-          ask: question == null
-              ? null
-              : _AskCard(
-                  question: question,
-                  onSubmit: controller.submitQuestion,
-                  onCancel: controller.cancelQuestion,
-                  onFlashPin: controller.flashPin,
-                  onHoverPin: controller.hoverPin,
-                  onHoverPins: controller.hoverPins,
-                  resolvePin: controller.resolvePin,
-                ),
-          onChanged: (_) {},
-          onSend: _send,
-          onStop: controller.stop,
-          onPaste: _onPaste,
-          onAttachImage: vision ? _attachImage : null,
-          onRemoveImage: controller.removeImage,
-          onPinSelection: controller.pinSelection,
-          onPinDrawing: (id) {
-            final tab = controller.workspace.findDrawing(id);
-            if (tab != null) controller.pinDrawing(tab);
-          },
-          onRemovePin: controller.removePin,
-          onOpenSettings: () =>
-              controller.workspace.revealPanel('preferences:assistant'),
-        ),
-      ],
+          if (model.error != null)
+            FanCadBanner(
+              tone: FanCadTone.danger,
+              inset: true,
+              message: model.error!,
+              onDismiss: controller.clearError,
+            ),
+          _Composer(
+            controller: _input,
+            enabled: controller.isConfigured,
+            busy: busy,
+            hint: imagesBlocked
+                ? context.l10n.assistant_images_need_vision
+                : !controller.isConfigured
+                ? context.l10n.ask_assistant_unavailable
+                : busy
+                ? context.l10n.ask_follow_up
+                : context.l10n.ask_assistant,
+            imagesBlocked: imagesBlocked,
+            images: model.images,
+            readImage: controller.readChatImage,
+            tokens: tokens,
+            usage: model.activeChat.usage,
+            pins: model.pins,
+            workspace: controller.workspace,
+            ask: question == null
+                ? null
+                : _AskCard(
+                    question: question,
+                    onSubmit: controller.submitQuestion,
+                    onCancel: controller.cancelQuestion,
+                    onFlashPin: controller.flashPin,
+                    onHoverPin: controller.hoverPin,
+                    onHoverPins: controller.hoverPins,
+                    resolvePin: controller.resolvePin,
+                  ),
+            onChanged: (_) {},
+            onSend: _send,
+            onStop: controller.stop,
+            onPaste: _onPaste,
+            onAttachImage: vision ? _attachImage : null,
+            onRemoveImage: controller.removeImage,
+            onPickBbox: controller.toggleBboxPick,
+            onPinDrawing: (id) {
+              final tab = controller.workspace.findDrawing(id);
+              if (tab != null) controller.pinDrawing(tab);
+            },
+            onRemovePin: controller.removePin,
+            onOpenSettings: () =>
+                controller.workspace.revealPanel('preferences:assistant'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1824,7 +1848,7 @@ class _Composer extends ConsumerStatefulWidget {
     required this.onSend,
     required this.onStop,
     required this.onPaste,
-    required this.onPinSelection,
+    required this.onPickBbox,
     required this.onPinDrawing,
     required this.onRemovePin,
     required this.onOpenSettings,
@@ -1854,7 +1878,7 @@ class _Composer extends ConsumerStatefulWidget {
   final VoidCallback onSend;
   final VoidCallback onStop;
   final VoidCallback onPaste;
-  final VoidCallback onPinSelection;
+  final VoidCallback onPickBbox;
   final ValueChanged<String> onPinDrawing;
   final ValueChanged<int> onRemovePin;
   final VoidCallback onOpenSettings;
@@ -2084,13 +2108,16 @@ class _ComposerState extends ConsumerState<_Composer> {
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final keys = HardwareKeyboard.instance;
     final paste =
         event.logicalKey == LogicalKeyboardKey.keyV &&
-        (HardwareKeyboard.instance.isMetaPressed ||
-            HardwareKeyboard.instance.isControlPressed);
+        (keys.isMetaPressed || keys.isControlPressed) &&
+        !keys.isAltPressed;
     if (paste) {
+      // Chat paste and canvas PASTECLIP are separate. Handling the key here
+      // keeps the drawing from also starting a paste preview.
       widget.onPaste();
-      return KeyEventResult.ignored;
+      return KeyEventResult.handled;
     }
     if (_pickerOpen) {
       final matches = _matches;
@@ -2310,12 +2337,11 @@ class _ComposerState extends ConsumerState<_Composer> {
                     ),
                     const SizedBox(width: FanCadTokens.space1),
                     FanCadIconButton(
-                      key: const Key('assistant-pin-selection'),
-                      icon: Icons.tag,
-                      tooltip:
-                          '${context.l10n.pin_selection}  ${fanCadShortcut('U', shift: true)}',
+                      key: const Key('assistant-pick-bbox'),
+                      icon: Icons.crop_free,
+                      tooltip: context.l10n.assistant_pick_bbox,
                       size: 24,
-                      onPressed: widget.enabled ? widget.onPinSelection : null,
+                      onPressed: widget.enabled ? widget.onPickBbox : null,
                     ),
                     const Spacer(),
                     AssistantContextMeter(usage: widget.usage),
@@ -2762,40 +2788,6 @@ class _ChatImageThumbState extends State<_ChatImageThumb> {
       ],
     );
   }
-}
-
-const _clipboardImages = <(FileFormat, String)>[
-  (Formats.png, 'image/png'),
-  (Formats.jpeg, 'image/jpeg'),
-  (Formats.webp, 'image/webp'),
-  (Formats.gif, 'image/gif'),
-];
-
-/// First picture on the clipboard, or null when the paste is not an image.
-Future<({Uint8List bytes, String mime})?> _clipboardImage() async {
-  final clipboard = SystemClipboard.instance;
-  if (clipboard == null) return null;
-  final reader = await clipboard.read();
-  for (final (format, mime) in _clipboardImages) {
-    if (!reader.canProvide(format)) continue;
-    final done = Completer<DataReaderFile?>();
-    final progress = reader.getFile(
-      format,
-      (file) {
-        if (!done.isCompleted) done.complete(file);
-      },
-      onError: (error) {
-        if (!done.isCompleted) done.complete(null);
-      },
-    );
-    if (progress == null) continue;
-    final file = await done.future;
-    if (file == null) continue;
-    final bytes = await file.readAll();
-    if (bytes.isEmpty) continue;
-    return (bytes: bytes, mime: mime);
-  }
-  return null;
 }
 
 void _previewChatImage(BuildContext context, Uint8List bytes) {

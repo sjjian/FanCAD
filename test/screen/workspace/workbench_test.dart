@@ -846,6 +846,37 @@ void main() {
     },
   );
 
+  testWidgets('ctrl+c with nothing selected does not start a command', (
+    tester,
+  ) async {
+    late Workspace workspace;
+    await pumpWorkbench(
+      tester,
+      prepare: (container) {
+        workspace = container.read(workspaceNotifierProvider.notifier)
+          ..newDocument();
+        workspace.active!.session.edit('LINE', (transaction) {
+          transaction.add(
+            const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+          );
+        });
+      },
+    );
+
+    await tester.tap(find.byType(CadCanvas));
+    await tester.pump();
+    workspace.active!.selection.clear();
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+    await tester.pump();
+
+    expect(workspace.clipboard.isEmpty, isTrue);
+    expect(workspace.state.runningCommand, isNull);
+    expect(workspace.state.notices, isEmpty);
+  });
+
   testWidgets(
     'ctrl+c then ctrl+v in another drawing starts paste with a preview',
     (tester) async {
@@ -873,10 +904,18 @@ void main() {
       await tester.tap(find.byType(CadCanvas));
       await tester.pump();
 
+      final tools = workspace.active!.tools;
+      var repaints = 0;
+      void onRepaint() => repaints++;
+      tools.addListener(onRepaint);
+      addTearDown(() => tools.removeListener(onRepaint));
+
       await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
       await tester.pump();
+      expect(repaints, greaterThan(0));
+      expect(tools.buildOverlay().selectedIds, isEmpty);
       expect(
         workspace.clipboard.isEmpty,
         isFalse,
@@ -884,6 +923,9 @@ void main() {
             .map((e) => e.text)
             .join(' | '),
       );
+      expect(workspace.state.runningCommand, isNull);
+      expect(workspace.active!.selection.ids, isEmpty);
+      expect(workspace.state.notices, isEmpty);
 
       workspace.newDocument();
       await tester.pump();
@@ -912,12 +954,15 @@ void main() {
   );
 
   testWidgets(
-    'canvas paste still starts when the assistant composer has focus',
+    'ctrl+v in the assistant composer does not paste on the canvas',
     (tester) async {
       late Workspace workspace;
       await pumpWorkbench(
         tester,
         prepare: (container) {
+          container
+              .read(assistantAccountsNotifierProvider.notifier)
+              .setApiKey('sk-test');
           workspace = container.read(workspaceNotifierProvider.notifier)
             ..newDocument();
           workspace.setSnapEnabled(false);
@@ -951,30 +996,58 @@ void main() {
         ),
       );
       await tester.pump();
-
-      workspace.newDocument();
-      await tester.pump();
-      await tester.tap(
-        find.descendant(
-          of: find.byKey(const Key('assistant-composer-card')),
-          matching: find.byType(TextField),
-        ),
+      expect(
+        _focusInside(const Key('assistant-composer-card')),
+        isTrue,
+        reason: 'the composer must have focus before paste',
       );
-      await tester.pump();
 
       await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
       await tester.pump();
-      expect(
-        workspace.state.runningCommand,
-        'edit.pasteClip',
-        reason: workspace.commandLine.state.lines
-            .map((e) => e.text)
-            .join(' | '),
-      );
+      expect(workspace.state.runningCommand, isNot('edit.pasteClip'));
     },
   );
+
+  testWidgets('hovering a bbox chip in a reply strokes that box', (
+    tester,
+  ) async {
+    late Workspace workspace;
+    late AssistantNotifier ai;
+    await pumpWorkbench(
+      tester,
+      prepare: (container) {
+        workspace = container.read(workspaceNotifierProvider.notifier)
+          ..newDocument();
+        ai = container.read(assistantNotifierProvider.notifier);
+      },
+    );
+    final tab = workspace.active!;
+    ai.state.activeChat.conversation.addAssistant(
+      '区域 @bbox[tab=${tab.session.id} x1=0 y1=0 x2=100 y2=50]',
+    );
+    workspace.revealPanel('ai');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final chip = find.byKey(const Key('assistant-pin-chip'));
+    expect(chip, findsOneWidget);
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(chip));
+    await tester.pump();
+
+    expect(ai.state.hoverFrame, [0, 0, 100, 50]);
+    expect(find.byKey(const Key('canvas-bbox-hover')), findsOneWidget);
+
+    await gesture.moveTo(Offset.zero);
+    await tester.pump();
+    expect(ai.state.hoverFrame, isNull);
+    expect(find.byKey(const Key('canvas-bbox-hover')), findsNothing);
+  });
 
   test('every registered command has a description for the model', () {
     final registry = workbenchContainer()
@@ -1011,6 +1084,20 @@ void main() {
       }
     }
   });
+}
+
+bool _focusInside(Key key) {
+  final context = FocusManager.instance.primaryFocus?.context;
+  if (context == null) return false;
+  var found = false;
+  context.visitAncestorElements((element) {
+    if (element.widget.key == key) {
+      found = true;
+      return false;
+    }
+    return true;
+  });
+  return found;
 }
 
 /// [key] sits in the center column. The canvas is wider, under the sidebar.

@@ -508,6 +508,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get bbox_other_drawing => 'Not the current drawing';
+
+  @override
+  String bbox_other_drawing_named(String name) {
+    return 'Not the current drawing: $name';
+  }
+
+  @override
   String get drawing_empty => 'The drawing is empty';
 
   @override
@@ -1092,6 +1100,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ask_skip => 'Skip';
+
+  @override
+  String get assistant_pick_bbox => 'Add a region';
+
+  @override
+  String get assistant_pick_bbox_prompt =>
+      'Drag a rectangle to add it to the chat';
 
   @override
   String get pin_selection => 'Add selection to chat';

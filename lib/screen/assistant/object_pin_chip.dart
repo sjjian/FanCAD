@@ -5,6 +5,27 @@ import '../../models/assistant.dart';
 import '../widgets/file_name.dart';
 import '../widgets/tokens.dart';
 
+/// The drawing on screen, so a region chip can say it belongs elsewhere.
+class AssistantDrawingScope extends InheritedWidget {
+  const AssistantDrawingScope({
+    super.key,
+    required this.drawingId,
+    required super.child,
+  });
+
+  final String? drawingId;
+
+  static String? idOf(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<AssistantDrawingScope>()
+        ?.drawingId;
+  }
+
+  @override
+  bool updateShouldNotify(AssistantDrawingScope oldWidget) =>
+      drawingId != oldWidget.drawingId;
+}
+
 /// Shared object/drawing pin chip: composer can delete, transcript only flashes.
 class ObjectPinChip extends StatefulWidget {
   const ObjectPinChip({
@@ -35,31 +56,40 @@ class _ObjectPinChipState extends State<ObjectPinChip> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final pin = widget.pin;
-    final isDrawing = pin != null && pin.kind != ComposerPinKind.entity;
     final labelStyle = tokens.labelStyle.copyWith(
       fontSize: 12,
       color: tokens.text,
     );
-    final label = isDrawing
-        ? Tooltip(
-            message: pin.drawingName,
-            child: FileName(
-              name: pin.drawingName,
-              maxWidth: double.infinity,
-              style: labelStyle,
-            ),
-          )
-        : Text(
-            pin == null ? '…' : context.l10n.objects_count(pin.ids.length),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: labelStyle,
-          );
-    final kindIcon = pin?.kind == ComposerPinKind.entity
-        ? Icons.category_outlined
-        : Icons.insert_drive_file_outlined;
+    final label = switch (pin?.kind) {
+      ComposerPinKind.drawing => Tooltip(
+        message: pin!.drawingName,
+        child: FileName(
+          name: pin.drawingName,
+          maxWidth: double.infinity,
+          style: labelStyle,
+        ),
+      ),
+      ComposerPinKind.bbox => Text(
+        _bboxSize(pin!),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: labelStyle,
+      ),
+      ComposerPinKind.entity || null => Text(
+        pin == null ? '…' : context.l10n.objects_count(pin.ids.length),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: labelStyle,
+      ),
+    };
+    final kindIcon = switch (pin?.kind) {
+      ComposerPinKind.drawing => Icons.insert_drive_file_outlined,
+      ComposerPinKind.bbox => Icons.crop_free,
+      ComposerPinKind.entity || null => Icons.category_outlined,
+    };
     final showRemove = widget.removable && _hovered;
-    return Padding(
+    final otherDrawing = _otherDrawingTooltip(context, pin);
+    final chip = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 1),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -114,10 +144,27 @@ class _ObjectPinChipState extends State<ObjectPinChip> {
         ),
       ),
     );
+    if (otherDrawing == null) return chip;
+    return Tooltip(
+      message: otherDrawing,
+      waitDuration: Duration.zero,
+      child: chip,
+    );
+  }
+
+  /// A region on another drawing stays off this canvas. The chip says so
+  /// while the pointer is over it.
+  String? _otherDrawingTooltip(BuildContext context, ComposerPinModel? pin) {
+    if (pin?.kind != ComposerPinKind.bbox) return null;
+    final activeId = AssistantDrawingScope.idOf(context);
+    if (activeId == null || pin!.tabId == activeId) return null;
+    final titled = pin.tabTitle.trim();
+    if (titled.isEmpty) return context.l10n.bbox_other_drawing;
+    return context.l10n.bbox_other_drawing_named(titled);
   }
 }
 
-/// Turns `@objects` / `@drawing` tags in a sentence into [ObjectPinChip]s.
+/// Turns `@objects` / `@drawing` / `@bbox` tags in a sentence into chips.
 class PinAwareText extends StatelessWidget {
   const PinAwareText({
     super.key,
@@ -170,4 +217,14 @@ class PinAwareText extends StatelessWidget {
       overflow: overflow,
     );
   }
+}
+
+String _bboxSize(ComposerPinModel pin) {
+  return '${_bboxMeasure((pin.x2 - pin.x1).abs())} × ${_bboxMeasure((pin.y2 - pin.y1).abs())}';
+}
+
+String _bboxMeasure(double value) {
+  final rounded = value.roundToDouble();
+  if ((value - rounded).abs() < 1e-6) return rounded.toInt().toString();
+  return value.toStringAsFixed(1);
 }

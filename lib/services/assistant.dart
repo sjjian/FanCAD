@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
@@ -10,6 +11,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../ai/authoring.dart';
 import '../ai/skills/bundled.dart';
 import '../models/assistant.dart';
+import '../models/workspace.dart';
 import '../storage/assistant.dart';
 import 'assistant_images.dart';
 import 'providers.dart';
@@ -37,6 +39,7 @@ class AssistantNotifier extends _$AssistantNotifier {
       _disposed = true;
       _settlePending(false);
       _settleAsk(const {'status': 'cancelled'});
+      _frameFlash?.cancel();
       _active?.cancel();
       if (pending) {
         _assistant.saveChats(state.chats, activeId: state.activeChatId);
@@ -62,6 +65,7 @@ class AssistantNotifier extends _$AssistantNotifier {
   bool _disposed = false;
   bool _persistScheduled = false;
   AgentLoop? _active;
+  Timer? _frameFlash;
   Completer<bool>? _pendingDecision;
   Completer<Map<String, Object?>>? _askDecision;
 
@@ -196,6 +200,11 @@ class AssistantNotifier extends _$AssistantNotifier {
       workspace.activateDrawing(pin.tabId);
       return;
     }
+    if (pin.kind == ComposerPinKind.bbox) {
+      workspace.activateDrawing(pin.tabId);
+      _showFrame(pin, flash: true);
+      return;
+    }
     flashEntities(pin.ids, tabId: pin.tabId);
   }
 
@@ -204,6 +213,18 @@ class AssistantNotifier extends _$AssistantNotifier {
   }
 
   void hoverPins(List<ComposerPinModel> pins) {
+    ComposerPinModel? box;
+    for (final pin in pins) {
+      if (pin.kind == ComposerPinKind.bbox) {
+        box = pin;
+        break;
+      }
+    }
+    if (box == null) {
+      _clearFrame();
+    } else {
+      _showFrame(box);
+    }
     final entityPins = [
       for (final pin in pins)
         if (pin.kind == ComposerPinKind.entity && pin.ids.isNotEmpty) pin,
@@ -218,15 +239,110 @@ class AssistantNotifier extends _$AssistantNotifier {
   }
 
   ComposerPinModel resolvePin(ComposerPinModel pin) {
-    if (pin.kind != ComposerPinKind.drawing) return pin;
+    if (pin.kind == ComposerPinKind.entity) return pin;
     if (pin.tabTitle.trim().isNotEmpty) return pin;
     final tab = workspace.findDrawing(pin.tabId);
     if (tab == null) return pin;
-    return ComposerPinModel.drawing(
+    if (pin.kind == ComposerPinKind.drawing) {
+      return ComposerPinModel.drawing(
+        tabId: pin.tabId,
+        tabTitle: tab.title,
+        path: tab.filePath,
+      );
+    }
+    return ComposerPinModel.bbox(
       tabId: pin.tabId,
       tabTitle: tab.title,
       path: tab.filePath,
+      x1: pin.x1,
+      y1: pin.y1,
+      x2: pin.x2,
+      y2: pin.y2,
     );
+  }
+
+  /// Enters or leaves the one-shot canvas drag that pins a region.
+  void toggleBboxPick() {
+    if (_store.pickingBbox) {
+      stopBboxPick();
+      return;
+    }
+    if (!_canStartBboxPick()) return;
+    _setStore(_store.copyWith(pickingBbox: true));
+  }
+
+  void stopBboxPick() {
+    if (!_store.pickingBbox) return;
+    _setStore(_store.copyWith(pickingBbox: false));
+  }
+
+  /// Pins the dragged rectangle on the active drawing and leaves pick mode.
+  void pinBbox(double x1, double y1, double x2, double y2) {
+    final tab = workspace.activeDrawing;
+    if (tab == null || tab.isStartPage) {
+      stopBboxPick();
+      return;
+    }
+    final minX = math.min(x1, x2);
+    final minY = math.min(y1, y2);
+    final maxX = math.max(x1, x2);
+    final maxY = math.max(y1, y2);
+    if (maxX - minX <= 1e-9 || maxY - minY <= 1e-9) return;
+    _setStore(
+      _store.copyWith(
+        pickingBbox: false,
+        pins: [
+          ..._store.pins,
+          ComposerPinModel.bbox(
+            tabId: tab.session.id,
+            tabTitle: tab.title,
+            path: tab.filePath,
+            x1: minX,
+            y1: minY,
+            x2: maxX,
+            y2: maxY,
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _canStartBboxPick() {
+    if (_store.busy) return false;
+    if (workspace.state.runningCommand != null) return false;
+    if (workspace.commandLine.isAwaitingInput) return false;
+    final tab = workspace.activeDrawing;
+    if (tab == null || tab.isStartPage) return false;
+    final export = workspace.state.openExportOf(tab.session.id);
+    if (export != null && export.scope == ExportScope.window) return false;
+    return true;
+  }
+
+  void _showFrame(ComposerPinModel pin, {bool flash = false}) {
+    _frameFlash?.cancel();
+    _frameFlash = null;
+    if (workspace.activeDrawing?.session.id != pin.tabId) {
+      _clearFrame();
+      return;
+    }
+    _setStore(
+      _store.copyWith(
+        hoverFrame: [pin.x1, pin.y1, pin.x2, pin.y2],
+        hoverFrameTab: pin.tabId,
+      ),
+    );
+    if (!flash) return;
+    _frameFlash = Timer(const Duration(milliseconds: 700), () {
+      _frameFlash = null;
+      _clearFrame();
+    });
+  }
+
+  void _clearFrame() {
+    _frameFlash?.cancel();
+    _frameFlash = null;
+    if (_store.hoverFrame == null && _store.hoverFrameTab.isEmpty) return;
+    _setStore(_store.copyWith(hoverFrame: null, hoverFrameTab: ''));
   }
 
   void pinSelection() {
@@ -342,6 +458,22 @@ class AssistantNotifier extends _$AssistantNotifier {
         );
         continue;
       }
+      if (pin.kind == ComposerPinKind.bbox) {
+        final tab = workspace.findDrawing(pin.tabId);
+        if (tab == null) continue;
+        live.add(
+          ComposerPinModel.bbox(
+            tabId: tab.session.id,
+            tabTitle: tab.title,
+            path: tab.filePath,
+            x1: pin.x1,
+            y1: pin.y1,
+            x2: pin.x2,
+            y2: pin.y2,
+          ),
+        );
+        continue;
+      }
       final tab = workspace.findDrawing(pin.tabId);
       if (tab == null) continue;
       final ids = entityIdsStillInDocument(tab.document, pin.ids);
@@ -366,6 +498,7 @@ class AssistantNotifier extends _$AssistantNotifier {
 
   /// Sends the draft, or [text] when supplied, and runs the agent loop.
   Future<void> send([String? text]) async {
+    stopBboxPick();
     final typed = (text ?? _chat.draft).trim();
     final pendingImages = [..._store.images];
     if ((_store.pins.isEmpty && typed.isEmpty && pendingImages.isEmpty) ||

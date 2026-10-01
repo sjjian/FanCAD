@@ -90,4 +90,52 @@ void main() {
     expect(tapped.single.tabId, '7');
     expect(tapped.single.ids, [1, 2, 3]);
   });
+
+  testWidgets('a bbox tag renders a chip like an object pin', (tester) async {
+    final tapped = <ComposerPinModel>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FanCadTheme.dark(),
+        home: Scaffold(
+          body: AssistantMarkdown(
+            text:
+                '先在 @bbox[tab=3 x1=1002784.846917 y1=91532.047826 '
+                'x2=1005015.517406 y2=94030.052043] 里量了这块板',
+            onPin: tapped.add,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('assistant-pin-chip')), findsOneWidget);
+    expect(find.textContaining('@bbox'), findsNothing);
+    expect(find.text('2230.7 × 2498.0'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('assistant-pin-chip')));
+    await tester.pump();
+    expect(tapped.single.kind, ComposerPinKind.bbox);
+    expect(tapped.single.tabId, '3');
+    expect(tapped.single.x1, closeTo(1002784.846917, 1e-6));
+    expect(tapped.single.y2, closeTo(94030.052043, 1e-6));
+  });
+
+  testWidgets(
+    'a bbox on another drawing says so instead of claiming this one',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: FanCadTheme.dark(),
+          home: const Scaffold(
+            body: AssistantDrawingScope(
+              drawingId: '1',
+              child: AssistantMarkdown(
+                text: '区域 @bbox[tab=3 x1=0 y1=0 x2=10 y2=20]',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byTooltip('Not the current drawing'), findsOneWidget);
+    },
+  );
 }

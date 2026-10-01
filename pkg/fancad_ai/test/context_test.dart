@@ -14,6 +14,7 @@ void main() {
     expect(prompt, isNot(contains('{{')));
     expect(prompt, contains('@objects[tab=<id> ids=1,2,3]'));
     expect(prompt, contains('@drawing[tab=<id>]'));
+    expect(prompt, contains('@bbox[tab=<id> x1=<n> y1=<n> x2=<n> y2=<n>]'));
     expect(prompt, contains('print.export'));
     expect(prompt, contains('corner1'));
     expect(prompt, contains('corner2'));

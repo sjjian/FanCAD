@@ -125,7 +125,11 @@ class _ComposerPinSyntax extends md.InlineSyntax {
   _ComposerPinSyntax()
     : super(
         r'@objects\[tab=[^\s\]]+\s+ids=\d+(?:\s*,\s*\d+)*\]'
-        r'|@drawing\[tab=[^\s\]]+\]',
+        r'|@drawing\[tab=[^\s\]]+\]'
+        r'|@bbox\[tab=[^\s\]]+\s+x1=[+-]?(?:\d+(?:\.\d*)?|\.\d+)'
+        r'\s+y1=[+-]?(?:\d+(?:\.\d*)?|\.\d+)'
+        r'\s+x2=[+-]?(?:\d+(?:\.\d*)?|\.\d+)'
+        r'\s+y2=[+-]?(?:\d+(?:\.\d*)?|\.\d+)\]',
       );
 
   @override

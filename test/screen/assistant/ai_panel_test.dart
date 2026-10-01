@@ -327,11 +327,11 @@ void main() {
     );
     await pumpAiPanel(tester, ai);
 
-    expect(find.byKey(const Key('assistant-pin-selection')), findsOneWidget);
-    expect(find.byIcon(Icons.tag), findsOneWidget);
+    expect(find.byKey(const Key('assistant-pick-bbox')), findsOneWidget);
+    expect(find.byIcon(Icons.crop_free), findsOneWidget);
     expect(find.byKey(const Key('assistant-mention-drawing')), findsOneWidget);
     final pin = tester.widget<FanCadIconButton>(
-      find.byKey(const Key('assistant-pin-selection')),
+      find.byKey(const Key('assistant-pick-bbox')),
     );
     expect(pin.size, 24);
     expect(pin.iconSize, FanCadTokens.iconMedium);

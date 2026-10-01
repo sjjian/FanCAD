@@ -13,9 +13,10 @@ const askLlmTool = LlmTool(
       'multiple=true when more than one answer may apply. The card always '
       'offers a custom-answer field. Do not use it to pick objects on a '
       'large drawing. This is a chat tool, not a fancad path. When a '
-      'question or option refers to objects or a drawing, write '
-      '`@objects[tab=<id> ids=1,2,3]` or `@drawing[tab=<id>]` instead of '
-      'listing ids in prose.',
+      'question or option refers to objects, a drawing, or a region, write '
+      '`@objects[tab=<id> ids=1,2,3]`, `@drawing[tab=<id>]`, or '
+      '`@bbox[tab=<id> x1=<n> y1=<n> x2=<n> y2=<n>]` instead of listing ids '
+      'or coordinates in prose.',
   parameters: {
     'type': 'object',
     'properties': {

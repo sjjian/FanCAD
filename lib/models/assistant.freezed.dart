@@ -14,7 +14,12 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AssistantModel {
 
- List<AssistantChatModel> get chats; String get activeChatId; List<ComposerPinModel> get pins; List<AssistantImageModel> get images; String? get error; PendingChangeSet? get approval; SessionQuestion? get question; bool get busy; int get transcriptEpoch;
+ List<AssistantChatModel> get chats; String get activeChatId; List<ComposerPinModel> get pins; List<AssistantImageModel> get images; String? get error; PendingChangeSet? get approval; SessionQuestion? get question; bool get busy; int get transcriptEpoch;/// The canvas is waiting for one dragged region for the composer.
+ bool get pickingBbox;/// Drawing-unit rectangle shown while a bbox chip is hovered or flashed.
+///
+/// Four numbers, minX minY maxX maxY. Null when nothing is showing.
+/// [hoverFrameTab] is the drawing it belongs to.
+ List<double>? get hoverFrame; String get hoverFrameTab;
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +30,16 @@ $AssistantModelCopyWith<AssistantModel> get copyWith => _$AssistantModelCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantModel&&const DeepCollectionEquality().equals(other.chats, chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other.pins, pins)&&const DeepCollectionEquality().equals(other.images, images)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantModel&&const DeepCollectionEquality().equals(other.chats, chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other.pins, pins)&&const DeepCollectionEquality().equals(other.images, images)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pickingBbox, pickingBbox) || other.pickingBbox == pickingBbox)&&const DeepCollectionEquality().equals(other.hoverFrame, hoverFrame)&&(identical(other.hoverFrameTab, hoverFrameTab) || other.hoverFrameTab == hoverFrameTab));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(chats),activeChatId,const DeepCollectionEquality().hash(pins),const DeepCollectionEquality().hash(images),error,approval,question,busy,transcriptEpoch);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(chats),activeChatId,const DeepCollectionEquality().hash(pins),const DeepCollectionEquality().hash(images),error,approval,question,busy,transcriptEpoch,pickingBbox,const DeepCollectionEquality().hash(hoverFrame),hoverFrameTab);
 
 @override
 String toString() {
-  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, images: $images, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch)';
+  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, images: $images, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch, pickingBbox: $pickingBbox, hoverFrame: $hoverFrame, hoverFrameTab: $hoverFrameTab)';
 }
 
 
@@ -45,7 +50,7 @@ abstract mixin class $AssistantModelCopyWith<$Res>  {
   factory $AssistantModelCopyWith(AssistantModel value, $Res Function(AssistantModel) _then) = _$AssistantModelCopyWithImpl;
 @useResult
 $Res call({
- List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, List<AssistantImageModel> images, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch
+ List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, List<AssistantImageModel> images, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch, bool pickingBbox, List<double>? hoverFrame, String hoverFrameTab
 });
 
 
@@ -62,7 +67,7 @@ class _$AssistantModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? images = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? images = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,Object? pickingBbox = null,Object? hoverFrame = freezed,Object? hoverFrameTab = null,}) {
   return _then(_self.copyWith(
 chats: null == chats ? _self.chats : chats // ignore: cast_nullable_to_non_nullable
 as List<AssistantChatModel>,activeChatId: null == activeChatId ? _self.activeChatId : activeChatId // ignore: cast_nullable_to_non_nullable
@@ -73,7 +78,10 @@ as String?,approval: freezed == approval ? _self.approval : approval // ignore: 
 as PendingChangeSet?,question: freezed == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
 as SessionQuestion?,busy: null == busy ? _self.busy : busy // ignore: cast_nullable_to_non_nullable
 as bool,transcriptEpoch: null == transcriptEpoch ? _self.transcriptEpoch : transcriptEpoch // ignore: cast_nullable_to_non_nullable
-as int,
+as int,pickingBbox: null == pickingBbox ? _self.pickingBbox : pickingBbox // ignore: cast_nullable_to_non_nullable
+as bool,hoverFrame: freezed == hoverFrame ? _self.hoverFrame : hoverFrame // ignore: cast_nullable_to_non_nullable
+as List<double>?,hoverFrameTab: null == hoverFrameTab ? _self.hoverFrameTab : hoverFrameTab // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -158,10 +166,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  bool pickingBbox,  List<double>? hoverFrame,  String hoverFrameTab)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AssistantModel() when $default != null:
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pickingBbox,_that.hoverFrame,_that.hoverFrameTab);case _:
   return orElse();
 
 }
@@ -179,10 +187,10 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.err
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  bool pickingBbox,  List<double>? hoverFrame,  String hoverFrameTab)  $default,) {final _that = this;
 switch (_that) {
 case _AssistantModel():
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pickingBbox,_that.hoverFrame,_that.hoverFrameTab);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +207,10 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.err
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  bool pickingBbox,  List<double>? hoverFrame,  String hoverFrameTab)?  $default,) {final _that = this;
 switch (_that) {
 case _AssistantModel() when $default != null:
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pickingBbox,_that.hoverFrame,_that.hoverFrameTab);case _:
   return null;
 
 }
@@ -214,7 +222,7 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.err
 
 
 class _AssistantModel extends AssistantModel {
-  const _AssistantModel({final  List<AssistantChatModel> chats = const [], this.activeChatId = AssistantChatModel.defaultId, final  List<ComposerPinModel> pins = const [], final  List<AssistantImageModel> images = const [], this.error, this.approval, this.question, this.busy = false, this.transcriptEpoch = 0}): _chats = chats,_pins = pins,_images = images,super._();
+  const _AssistantModel({final  List<AssistantChatModel> chats = const [], this.activeChatId = AssistantChatModel.defaultId, final  List<ComposerPinModel> pins = const [], final  List<AssistantImageModel> images = const [], this.error, this.approval, this.question, this.busy = false, this.transcriptEpoch = 0, this.pickingBbox = false, final  List<double>? hoverFrame, this.hoverFrameTab = ''}): _chats = chats,_pins = pins,_images = images,_hoverFrame = hoverFrame,super._();
   
 
  final  List<AssistantChatModel> _chats;
@@ -244,6 +252,26 @@ class _AssistantModel extends AssistantModel {
 @override final  SessionQuestion? question;
 @override@JsonKey() final  bool busy;
 @override@JsonKey() final  int transcriptEpoch;
+/// The canvas is waiting for one dragged region for the composer.
+@override@JsonKey() final  bool pickingBbox;
+/// Drawing-unit rectangle shown while a bbox chip is hovered or flashed.
+///
+/// Four numbers, minX minY maxX maxY. Null when nothing is showing.
+/// [hoverFrameTab] is the drawing it belongs to.
+ final  List<double>? _hoverFrame;
+/// Drawing-unit rectangle shown while a bbox chip is hovered or flashed.
+///
+/// Four numbers, minX minY maxX maxY. Null when nothing is showing.
+/// [hoverFrameTab] is the drawing it belongs to.
+@override List<double>? get hoverFrame {
+  final value = _hoverFrame;
+  if (value == null) return null;
+  if (_hoverFrame is EqualUnmodifiableListView) return _hoverFrame;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
+@override@JsonKey() final  String hoverFrameTab;
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
@@ -255,16 +283,16 @@ _$AssistantModelCopyWith<_AssistantModel> get copyWith => __$AssistantModelCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantModel&&const DeepCollectionEquality().equals(other._chats, _chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other._pins, _pins)&&const DeepCollectionEquality().equals(other._images, _images)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantModel&&const DeepCollectionEquality().equals(other._chats, _chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other._pins, _pins)&&const DeepCollectionEquality().equals(other._images, _images)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pickingBbox, pickingBbox) || other.pickingBbox == pickingBbox)&&const DeepCollectionEquality().equals(other._hoverFrame, _hoverFrame)&&(identical(other.hoverFrameTab, hoverFrameTab) || other.hoverFrameTab == hoverFrameTab));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_chats),activeChatId,const DeepCollectionEquality().hash(_pins),const DeepCollectionEquality().hash(_images),error,approval,question,busy,transcriptEpoch);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_chats),activeChatId,const DeepCollectionEquality().hash(_pins),const DeepCollectionEquality().hash(_images),error,approval,question,busy,transcriptEpoch,pickingBbox,const DeepCollectionEquality().hash(_hoverFrame),hoverFrameTab);
 
 @override
 String toString() {
-  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, images: $images, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch)';
+  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, images: $images, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch, pickingBbox: $pickingBbox, hoverFrame: $hoverFrame, hoverFrameTab: $hoverFrameTab)';
 }
 
 
@@ -275,7 +303,7 @@ abstract mixin class _$AssistantModelCopyWith<$Res> implements $AssistantModelCo
   factory _$AssistantModelCopyWith(_AssistantModel value, $Res Function(_AssistantModel) _then) = __$AssistantModelCopyWithImpl;
 @override @useResult
 $Res call({
- List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, List<AssistantImageModel> images, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch
+ List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, List<AssistantImageModel> images, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch, bool pickingBbox, List<double>? hoverFrame, String hoverFrameTab
 });
 
 
@@ -292,7 +320,7 @@ class __$AssistantModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? images = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? images = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,Object? pickingBbox = null,Object? hoverFrame = freezed,Object? hoverFrameTab = null,}) {
   return _then(_AssistantModel(
 chats: null == chats ? _self._chats : chats // ignore: cast_nullable_to_non_nullable
 as List<AssistantChatModel>,activeChatId: null == activeChatId ? _self.activeChatId : activeChatId // ignore: cast_nullable_to_non_nullable
@@ -303,7 +331,10 @@ as String?,approval: freezed == approval ? _self.approval : approval // ignore: 
 as PendingChangeSet?,question: freezed == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
 as SessionQuestion?,busy: null == busy ? _self.busy : busy // ignore: cast_nullable_to_non_nullable
 as bool,transcriptEpoch: null == transcriptEpoch ? _self.transcriptEpoch : transcriptEpoch // ignore: cast_nullable_to_non_nullable
-as int,
+as int,pickingBbox: null == pickingBbox ? _self.pickingBbox : pickingBbox // ignore: cast_nullable_to_non_nullable
+as bool,hoverFrame: freezed == hoverFrame ? _self._hoverFrame : hoverFrame // ignore: cast_nullable_to_non_nullable
+as List<double>?,hoverFrameTab: null == hoverFrameTab ? _self.hoverFrameTab : hoverFrameTab // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -1430,7 +1461,7 @@ $AssistantReceiptModelCopyWith<$Res> get receipt {
 /// @nodoc
 mixin _$ComposerPinModel {
 
- ComposerPinKind get kind; List<int> get ids; String get tabId; String get tabTitle; String? get path; String get label;
+ ComposerPinKind get kind; List<int> get ids; String get tabId; String get tabTitle; String? get path; String get label; double get x1; double get y1; double get x2; double get y2;
 /// Create a copy of ComposerPinModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1441,16 +1472,16 @@ $ComposerPinModelCopyWith<ComposerPinModel> get copyWith => _$ComposerPinModelCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ComposerPinModel&&(identical(other.kind, kind) || other.kind == kind)&&const DeepCollectionEquality().equals(other.ids, ids)&&(identical(other.tabId, tabId) || other.tabId == tabId)&&(identical(other.tabTitle, tabTitle) || other.tabTitle == tabTitle)&&(identical(other.path, path) || other.path == path)&&(identical(other.label, label) || other.label == label));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ComposerPinModel&&(identical(other.kind, kind) || other.kind == kind)&&const DeepCollectionEquality().equals(other.ids, ids)&&(identical(other.tabId, tabId) || other.tabId == tabId)&&(identical(other.tabTitle, tabTitle) || other.tabTitle == tabTitle)&&(identical(other.path, path) || other.path == path)&&(identical(other.label, label) || other.label == label)&&(identical(other.x1, x1) || other.x1 == x1)&&(identical(other.y1, y1) || other.y1 == y1)&&(identical(other.x2, x2) || other.x2 == x2)&&(identical(other.y2, y2) || other.y2 == y2));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,kind,const DeepCollectionEquality().hash(ids),tabId,tabTitle,path,label);
+int get hashCode => Object.hash(runtimeType,kind,const DeepCollectionEquality().hash(ids),tabId,tabTitle,path,label,x1,y1,x2,y2);
 
 @override
 String toString() {
-  return 'ComposerPinModel(kind: $kind, ids: $ids, tabId: $tabId, tabTitle: $tabTitle, path: $path, label: $label)';
+  return 'ComposerPinModel(kind: $kind, ids: $ids, tabId: $tabId, tabTitle: $tabTitle, path: $path, label: $label, x1: $x1, y1: $y1, x2: $x2, y2: $y2)';
 }
 
 
@@ -1461,7 +1492,7 @@ abstract mixin class $ComposerPinModelCopyWith<$Res>  {
   factory $ComposerPinModelCopyWith(ComposerPinModel value, $Res Function(ComposerPinModel) _then) = _$ComposerPinModelCopyWithImpl;
 @useResult
 $Res call({
- ComposerPinKind kind, List<int> ids, String tabId, String tabTitle, String? path, String label
+ ComposerPinKind kind, List<int> ids, String tabId, String tabTitle, String? path, String label, double x1, double y1, double x2, double y2
 });
 
 
@@ -1478,7 +1509,7 @@ class _$ComposerPinModelCopyWithImpl<$Res>
 
 /// Create a copy of ComposerPinModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? kind = null,Object? ids = null,Object? tabId = null,Object? tabTitle = null,Object? path = freezed,Object? label = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? kind = null,Object? ids = null,Object? tabId = null,Object? tabTitle = null,Object? path = freezed,Object? label = null,Object? x1 = null,Object? y1 = null,Object? x2 = null,Object? y2 = null,}) {
   return _then(_self.copyWith(
 kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as ComposerPinKind,ids: null == ids ? _self.ids : ids // ignore: cast_nullable_to_non_nullable
@@ -1486,7 +1517,11 @@ as List<int>,tabId: null == tabId ? _self.tabId : tabId // ignore: cast_nullable
 as String,tabTitle: null == tabTitle ? _self.tabTitle : tabTitle // ignore: cast_nullable_to_non_nullable
 as String,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String?,label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
-as String,
+as String,x1: null == x1 ? _self.x1 : x1 // ignore: cast_nullable_to_non_nullable
+as double,y1: null == y1 ? _self.y1 : y1 // ignore: cast_nullable_to_non_nullable
+as double,x2: null == x2 ? _self.x2 : x2 // ignore: cast_nullable_to_non_nullable
+as double,y2: null == y2 ? _self.y2 : y2 // ignore: cast_nullable_to_non_nullable
+as double,
   ));
 }
 
@@ -1571,10 +1606,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( ComposerPinKind kind,  List<int> ids,  String tabId,  String tabTitle,  String? path,  String label)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( ComposerPinKind kind,  List<int> ids,  String tabId,  String tabTitle,  String? path,  String label,  double x1,  double y1,  double x2,  double y2)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ComposerPinModel() when $default != null:
-return $default(_that.kind,_that.ids,_that.tabId,_that.tabTitle,_that.path,_that.label);case _:
+return $default(_that.kind,_that.ids,_that.tabId,_that.tabTitle,_that.path,_that.label,_that.x1,_that.y1,_that.x2,_that.y2);case _:
   return orElse();
 
 }
@@ -1592,10 +1627,10 @@ return $default(_that.kind,_that.ids,_that.tabId,_that.tabTitle,_that.path,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( ComposerPinKind kind,  List<int> ids,  String tabId,  String tabTitle,  String? path,  String label)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( ComposerPinKind kind,  List<int> ids,  String tabId,  String tabTitle,  String? path,  String label,  double x1,  double y1,  double x2,  double y2)  $default,) {final _that = this;
 switch (_that) {
 case _ComposerPinModel():
-return $default(_that.kind,_that.ids,_that.tabId,_that.tabTitle,_that.path,_that.label);case _:
+return $default(_that.kind,_that.ids,_that.tabId,_that.tabTitle,_that.path,_that.label,_that.x1,_that.y1,_that.x2,_that.y2);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1612,10 +1647,10 @@ return $default(_that.kind,_that.ids,_that.tabId,_that.tabTitle,_that.path,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( ComposerPinKind kind,  List<int> ids,  String tabId,  String tabTitle,  String? path,  String label)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( ComposerPinKind kind,  List<int> ids,  String tabId,  String tabTitle,  String? path,  String label,  double x1,  double y1,  double x2,  double y2)?  $default,) {final _that = this;
 switch (_that) {
 case _ComposerPinModel() when $default != null:
-return $default(_that.kind,_that.ids,_that.tabId,_that.tabTitle,_that.path,_that.label);case _:
+return $default(_that.kind,_that.ids,_that.tabId,_that.tabTitle,_that.path,_that.label,_that.x1,_that.y1,_that.x2,_that.y2);case _:
   return null;
 
 }
@@ -1627,7 +1662,7 @@ return $default(_that.kind,_that.ids,_that.tabId,_that.tabTitle,_that.path,_that
 
 
 class _ComposerPinModel extends ComposerPinModel {
-  const _ComposerPinModel({required this.kind, final  List<int> ids = const [], this.tabId = '', this.tabTitle = '', this.path, this.label = ''}): _ids = ids,super._();
+  const _ComposerPinModel({required this.kind, final  List<int> ids = const [], this.tabId = '', this.tabTitle = '', this.path, this.label = '', this.x1 = 0, this.y1 = 0, this.x2 = 0, this.y2 = 0}): _ids = ids,super._();
   
 
 @override final  ComposerPinKind kind;
@@ -1642,6 +1677,10 @@ class _ComposerPinModel extends ComposerPinModel {
 @override@JsonKey() final  String tabTitle;
 @override final  String? path;
 @override@JsonKey() final  String label;
+@override@JsonKey() final  double x1;
+@override@JsonKey() final  double y1;
+@override@JsonKey() final  double x2;
+@override@JsonKey() final  double y2;
 
 /// Create a copy of ComposerPinModel
 /// with the given fields replaced by the non-null parameter values.
@@ -1653,16 +1692,16 @@ _$ComposerPinModelCopyWith<_ComposerPinModel> get copyWith => __$ComposerPinMode
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ComposerPinModel&&(identical(other.kind, kind) || other.kind == kind)&&const DeepCollectionEquality().equals(other._ids, _ids)&&(identical(other.tabId, tabId) || other.tabId == tabId)&&(identical(other.tabTitle, tabTitle) || other.tabTitle == tabTitle)&&(identical(other.path, path) || other.path == path)&&(identical(other.label, label) || other.label == label));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ComposerPinModel&&(identical(other.kind, kind) || other.kind == kind)&&const DeepCollectionEquality().equals(other._ids, _ids)&&(identical(other.tabId, tabId) || other.tabId == tabId)&&(identical(other.tabTitle, tabTitle) || other.tabTitle == tabTitle)&&(identical(other.path, path) || other.path == path)&&(identical(other.label, label) || other.label == label)&&(identical(other.x1, x1) || other.x1 == x1)&&(identical(other.y1, y1) || other.y1 == y1)&&(identical(other.x2, x2) || other.x2 == x2)&&(identical(other.y2, y2) || other.y2 == y2));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,kind,const DeepCollectionEquality().hash(_ids),tabId,tabTitle,path,label);
+int get hashCode => Object.hash(runtimeType,kind,const DeepCollectionEquality().hash(_ids),tabId,tabTitle,path,label,x1,y1,x2,y2);
 
 @override
 String toString() {
-  return 'ComposerPinModel(kind: $kind, ids: $ids, tabId: $tabId, tabTitle: $tabTitle, path: $path, label: $label)';
+  return 'ComposerPinModel(kind: $kind, ids: $ids, tabId: $tabId, tabTitle: $tabTitle, path: $path, label: $label, x1: $x1, y1: $y1, x2: $x2, y2: $y2)';
 }
 
 
@@ -1673,7 +1712,7 @@ abstract mixin class _$ComposerPinModelCopyWith<$Res> implements $ComposerPinMod
   factory _$ComposerPinModelCopyWith(_ComposerPinModel value, $Res Function(_ComposerPinModel) _then) = __$ComposerPinModelCopyWithImpl;
 @override @useResult
 $Res call({
- ComposerPinKind kind, List<int> ids, String tabId, String tabTitle, String? path, String label
+ ComposerPinKind kind, List<int> ids, String tabId, String tabTitle, String? path, String label, double x1, double y1, double x2, double y2
 });
 
 
@@ -1690,7 +1729,7 @@ class __$ComposerPinModelCopyWithImpl<$Res>
 
 /// Create a copy of ComposerPinModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? kind = null,Object? ids = null,Object? tabId = null,Object? tabTitle = null,Object? path = freezed,Object? label = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? kind = null,Object? ids = null,Object? tabId = null,Object? tabTitle = null,Object? path = freezed,Object? label = null,Object? x1 = null,Object? y1 = null,Object? x2 = null,Object? y2 = null,}) {
   return _then(_ComposerPinModel(
 kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as ComposerPinKind,ids: null == ids ? _self._ids : ids // ignore: cast_nullable_to_non_nullable
@@ -1698,7 +1737,11 @@ as List<int>,tabId: null == tabId ? _self.tabId : tabId // ignore: cast_nullable
 as String,tabTitle: null == tabTitle ? _self.tabTitle : tabTitle // ignore: cast_nullable_to_non_nullable
 as String,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String?,label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
-as String,
+as String,x1: null == x1 ? _self.x1 : x1 // ignore: cast_nullable_to_non_nullable
+as double,y1: null == y1 ? _self.y1 : y1 // ignore: cast_nullable_to_non_nullable
+as double,x2: null == x2 ? _self.x2 : x2 // ignore: cast_nullable_to_non_nullable
+as double,y2: null == y2 ? _self.y2 : y2 // ignore: cast_nullable_to_non_nullable
+as double,
   ));
 }
 

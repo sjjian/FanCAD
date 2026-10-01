@@ -56,7 +56,6 @@ void main() {
         'edit.redo': ['ctrl+shift+z'],
         'select.all': ['ctrl+a'],
         'select.none': ['ctrl+shift+a'],
-        'edit.copyClip': ['ctrl+c'],
         'edit.copyBase': ['ctrl+shift+c'],
         'edit.pasteClip': ['ctrl+v'],
         'edit.pasteBlock': ['ctrl+shift+v'],

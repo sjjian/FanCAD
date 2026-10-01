@@ -704,6 +704,19 @@
     "description": "open properties selection"
   },
   "objects_count": "{count} 个对象",
+  "bbox_other_drawing": "不是当前图纸",
+  "@bbox_other_drawing": {
+    "description": "Tooltip when a hovered region belongs to another drawing"
+  },
+  "bbox_other_drawing_named": "不是当前图纸：{name}",
+  "@bbox_other_drawing_named": {
+    "description": "Tooltip when a hovered region belongs to another named drawing",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "@objects_count": {
     "description": "objects count",
     "placeholders": {
@@ -1518,6 +1531,14 @@
   "ask_skip": "跳过",
   "@ask_skip": {
     "description": "dismiss an in-thread assistant question without answering"
+  },
+  "assistant_pick_bbox": "框选区域",
+  "@assistant_pick_bbox": {
+    "description": "composer button that drags a rectangle into the chat"
+  },
+  "assistant_pick_bbox_prompt": "拖拽框选一个区域，将加入对话",
+  "@assistant_pick_bbox_prompt": {
+    "description": "canvas prompt while a chat region is being dragged"
   },
   "pin_selection": "将选择加入对话",
   "@pin_selection": {

@@ -12,6 +12,7 @@ import '../../commands/edit/helpers.dart';
 import '../../commands/keybindings.dart';
 import '../../l10n/l10n.dart';
 import '../../models/workspace.dart';
+import '../../services/assistant.dart';
 import '../../services/command_line.dart';
 import '../../services/workspace.dart';
 import '../command_line/dynamic_input_hud.dart';
@@ -69,6 +70,13 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
           maxY: maxY,
         ),
       );
+    },
+  );
+  late final _ExportWindowInput _bboxInput = _ExportWindowInput(
+    onCommit: (minX, minY, maxX, maxY) {
+      ref
+          .read(assistantNotifierProvider.notifier)
+          .pinBbox(minX, minY, maxX, maxY);
     },
   );
 
@@ -354,7 +362,7 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
               context,
               value: 'edit.copyClip',
               label: l10n.copy_to_clipboard,
-              shortcut: chord('edit.copyClip'),
+              shortcut: formatKeybinding('ctrl+c'),
             ),
             fanCadMenuItem(
               context,
@@ -505,6 +513,32 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
         (state) => state.openExportOf(tab.session.id),
       ),
     );
+    final bbox = ref.watch(
+      assistantNotifierProvider.select(
+        (state) => (state.pickingBbox, state.hoverFrameTab, state.hoverFrame),
+      ),
+    );
+    final activeId = ref.watch(
+      workspaceNotifierProvider.select((state) => state.activeSessionId),
+    );
+    ref.listen(
+      workspaceNotifierProvider.select((state) => state.runningCommand),
+      (previous, next) {
+        if (next != null) {
+          ref.read(assistantNotifierProvider.notifier).stopBboxPick();
+        }
+      },
+    );
+    ref.listen(
+      workspaceNotifierProvider.select(
+        (state) => state.openExportOf(state.activeSessionId ?? '')?.scope,
+      ),
+      (previous, next) {
+        if (next == ExportScope.window) {
+          ref.read(assistantNotifierProvider.notifier).stopBboxPick();
+        }
+      },
+    );
     return _buildView(
       context,
       pending,
@@ -512,6 +546,8 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
       showGrid: chrome.$1,
       isolatedLayers: chrome.$2,
       export: export,
+      pickingBbox: bbox.$1 && activeId == tab.session.id,
+      hoverFrame: bbox.$2 == tab.session.id ? bbox.$3 : null,
     );
   }
 
@@ -544,11 +580,15 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
     required bool showGrid,
     required Set<String>? isolatedLayers,
     required ExportStateModel? export,
+    required bool pickingBbox,
+    required List<double>? hoverFrame,
   }) {
     final tokens = context.tokens;
     final plotting = export != null;
     final markingRegion = export?.scope == ExportScope.window;
     if (!markingRegion) _windowInput.abandon();
+    final pickingRegion = pickingBbox && !markingRegion;
+    if (!pickingRegion) _bboxInput.abandon();
     final tab = widget.tab;
     final editingEntity = _editingOriginal;
     return Focus(
@@ -590,7 +630,11 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
               controller: tab.viewport,
               inputHandler: assistantBusy
                   ? null
-                  : (markingRegion ? _windowInput : tab.tools),
+                  : (markingRegion
+                        ? _windowInput
+                        : pickingRegion
+                        ? _bboxInput
+                        : tab.tools),
               readOverlay: () => _readOverlay(pending, export),
               onInput: _onCanvasInput,
               background: plotting
@@ -616,6 +660,51 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
             Positioned.fill(
               child: Stack(
                 children: [
+                  if (hoverFrame != null && hoverFrame.length == 4)
+                    IgnorePointer(
+                      key: const Key('canvas-bbox-hover'),
+                      child: ListenableBuilder(
+                        listenable: tab.viewport,
+                        builder: (context, _) {
+                          final view = tab.viewport.viewport;
+                          return CustomPaint(
+                            painter: _ExportFramePainter(
+                              from: view.toScreen(
+                                Vec2(hoverFrame[0], hoverFrame[1]),
+                              ),
+                              to: view.toScreen(
+                                Vec2(hoverFrame[2], hoverFrame[3]),
+                              ),
+                              color: tokens.accent,
+                              fill: true,
+                            ),
+                            child: const SizedBox.expand(),
+                          );
+                        },
+                      ),
+                    ),
+                  if (pickingRegion)
+                    IgnorePointer(
+                      child: ListenableBuilder(
+                        listenable: Listenable.merge([
+                          tab.viewport,
+                          _bboxInput,
+                        ]),
+                        builder: (context, _) {
+                          final frame = _bboxInput.preview;
+                          if (frame == null) return const SizedBox.shrink();
+                          final view = tab.viewport.viewport;
+                          return CustomPaint(
+                            painter: _ExportFramePainter(
+                              from: view.toScreen(frame.$1),
+                              to: view.toScreen(frame.$2),
+                              color: tokens.accent,
+                            ),
+                            child: const SizedBox.expand(),
+                          );
+                        },
+                      ),
+                    ),
                   if (markingRegion)
                     IgnorePointer(
                       child: ListenableBuilder(
@@ -1003,7 +1092,43 @@ class _CanvasPromptHud extends ConsumerWidget {
         return session.export;
       }),
     );
+    final pickingBbox = ref.watch(
+      assistantNotifierProvider.select((state) => state.pickingBbox),
+    );
     final promptModel = promptState.$1;
+    if (pickingBbox && running == null && promptModel == null) {
+      return _CanvasTopCard(
+        cardKey: const Key('canvas-bbox-prompt'),
+        borderColor: tokens.borderStrong,
+        child: Row(
+          children: [
+            Icon(
+              Icons.crop_free,
+              size: FanCadTokens.iconMedium,
+              color: tokens.accent,
+            ),
+            const SizedBox(width: FanCadTokens.space2),
+            Expanded(
+              child: Text(
+                context.l10n.assistant_pick_bbox_prompt,
+                style: tokens.bodyStyle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: FanCadTokens.space1),
+              child: PromptKeywordChip(
+                label: context.l10n.cancel,
+                muted: true,
+                onPressed: () =>
+                    ref.read(assistantNotifierProvider.notifier).stopBboxPick(),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     if (running == null && promptModel == null) {
       if (export == null) return const SizedBox.shrink();
       return _exportStatus(context, export);
@@ -1292,19 +1417,28 @@ class _ExportFramePainter extends CustomPainter {
     required this.from,
     required this.to,
     required this.color,
+    this.fill = false,
   });
 
   final Offset from;
   final Offset to;
   final Color color;
+  final bool fill;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromPoints(from, to);
+    if (fill) {
+      canvas.drawRect(
+        rect,
+        Paint()..color = color.withValues(alpha: 0.16),
+      );
+    }
     canvas.drawRect(
-      Rect.fromPoints(from, to),
+      rect,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
+        ..strokeWidth = fill ? 1.5 : 1
         ..color = color,
     );
   }
@@ -1313,5 +1447,6 @@ class _ExportFramePainter extends CustomPainter {
   bool shouldRepaint(covariant _ExportFramePainter oldDelegate) =>
       oldDelegate.from != from ||
       oldDelegate.to != to ||
-      oldDelegate.color != color;
+      oldDelegate.color != color ||
+      oldDelegate.fill != fill;
 }

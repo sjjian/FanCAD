@@ -16,6 +16,7 @@ import '../models/command_line.dart';
 import '../models/settings.dart';
 import '../models/workspace.dart';
 import '../storage/workspace.dart';
+import 'assistant_images.dart';
 import 'command_line.dart';
 import 'layout.dart';
 import 'providers.dart';
@@ -748,6 +749,27 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       if (!result.isOk) return false;
     }
     return true;
+  }
+
+  /// Copies the current selection into the drawing clipboard.
+  ///
+  /// The canvas shortcut uses this instead of [run], so an empty selection
+  /// does not open a pick prompt or leave a command running.
+  void copySelection() {
+    final tab = activeDrawing;
+    if (tab == null) return;
+    final ids = tab.selection.ids.toList();
+    if (ids.isEmpty) return;
+    final base = DrawingClip.lowerLeftOf(tab.document, ids);
+    final clip = DrawingClip.extract(tab.document, ids, basePoint: base);
+    if (clip == null) return;
+    clipboard.clip = clip;
+    unawaited(clearClipboardPicture());
+    tab.selection.clear();
+    // The properties pane hears selectionEpoch. The canvas selection stroke
+    // is painted from the tool overlay, which only rebuilds when the tool
+    // controller notifies.
+    tab.tools.requestRepaint();
   }
 
   // -------------------------------------------------------------------------

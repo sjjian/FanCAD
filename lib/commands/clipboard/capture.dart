@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:fancad_core/fancad_core.dart';
 
 import '../../l10n/l10n.dart';
+import '../../services/assistant_images.dart';
 
 Future<CommandResult> captureClipboard(
   CommandContext context,
@@ -25,6 +28,10 @@ Future<CommandResult> captureClipboard(
   final clip = DrawingClip.extract(context.document, ids, basePoint: base);
   if (clip == null) return const CommandResult.cancelled();
   store.clip = clip;
+  // The picture clear talks to the system pasteboard. Awaiting it keeps
+  // COPYCLIP as the running command, and the next Ctrl+C then cancels that
+  // command, which clears the selection and opens a pick prompt.
+  unawaited(clearClipboardPicture());
 
   if (!cut) {
     return CommandResult.ok(

@@ -992,6 +992,18 @@ abstract class AppLocalizations {
   /// **'{count} objects'**
   String objects_count(int count);
 
+  /// Tooltip when a hovered region belongs to another drawing
+  ///
+  /// In en, this message translates to:
+  /// **'Not the current drawing'**
+  String get bbox_other_drawing;
+
+  /// Tooltip when a hovered region belongs to another named drawing
+  ///
+  /// In en, this message translates to:
+  /// **'Not the current drawing: {name}'**
+  String bbox_other_drawing_named(String name);
+
   /// drawing empty
   ///
   /// In en, this message translates to:
@@ -2053,6 +2065,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skip'**
   String get ask_skip;
+
+  /// composer button that drags a rectangle into the chat
+  ///
+  /// In en, this message translates to:
+  /// **'Add a region'**
+  String get assistant_pick_bbox;
+
+  /// canvas prompt while a chat region is being dragged
+  ///
+  /// In en, this message translates to:
+  /// **'Drag a rectangle to add it to the chat'**
+  String get assistant_pick_bbox_prompt;
 
   /// add the current CAD selection to the next assistant message
   ///

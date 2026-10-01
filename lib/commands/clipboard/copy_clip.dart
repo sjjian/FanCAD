@@ -5,7 +5,7 @@ import 'capture.dart';
 
 const _category = 'Modify';
 
-class CopyClipCommand extends FanCadCommand implements CommandKeybindings {
+class CopyClipCommand extends FanCadCommand {
   const CopyClipCommand(this.store);
 
   final DrawingClipboard store;
@@ -20,8 +20,6 @@ class CopyClipCommand extends FanCadCommand implements CommandKeybindings {
   List<String> get aliases => const ['copyclip'];
   @override
   String? get icon => 'copy';
-  @override
-  List<String> get keybindings => const ['ctrl+c'];
   @override
   String get description =>
       'Copies the selected objects to the clipboard. The lower-left of '

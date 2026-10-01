@@ -79,6 +79,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     _assistantSplit.addListener(_noteViewOcclusion);
     _noteViewOcclusion();
     HardwareKeyboard.instance.addHandler(_onHardwareEscape);
+    HardwareKeyboard.instance.addHandler(_onHardwareCopy);
     _escapeChannel.setMethodCallHandler(_onNativeEscape);
     // Subscribed in initState rather than in build so a rebuild does not
     // register a second listener and pop two dialogs for one request.
@@ -113,6 +114,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onHardwareEscape);
+    HardwareKeyboard.instance.removeHandler(_onHardwareCopy);
     _escapeChannel.setMethodCallHandler(null);
     if (_listeningForWindowClose) {
       windowManager.removeListener(this);
@@ -129,6 +131,43 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
 
   Future<void> _startPlugins() async {
     await ref.read(pluginNotifierProvider.notifier).start();
+  }
+
+  /// Text fields on macOS swallow Ctrl+C before Focus.onKeyEvent. A collapsed
+  /// field, which is where a canvas click leaves focus, copies the drawing
+  /// selection here instead of starting COPYCLIP. The dynamic-input readout
+  /// stays fully selected so the next digit replaces it; that is not a text
+  /// selection the user asked to copy.
+  bool _onHardwareCopy(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (event.logicalKey != LogicalKeyboardKey.keyC) return false;
+    final keys = HardwareKeyboard.instance;
+    final primary = keys.isControlPressed || keys.isMetaPressed;
+    if (!primary || keys.isAltPressed || keys.isShiftPressed) return false;
+    if (_textFieldHasSelection()) return false;
+    ref.read(workspaceNotifierProvider.notifier).copySelection();
+    return true;
+  }
+
+  bool _textFieldHasSelection() {
+    final nodeContext = FocusManager.instance.primaryFocus?.context;
+    if (nodeContext == null || _insideDynamicInput(nodeContext)) return false;
+    final editor = nodeContext.findAncestorStateOfType<EditableTextState>();
+    if (editor == null) return false;
+    final selection = editor.textEditingValue.selection;
+    return selection.isValid && !selection.isCollapsed;
+  }
+
+  bool _insideDynamicInput(BuildContext context) {
+    var found = false;
+    context.visitAncestorElements((element) {
+      if (element.widget.key == const Key('dynamic-input-hud')) {
+        found = true;
+        return false;
+      }
+      return true;
+    });
+    return found;
   }
 
   /// Text fields on macOS swallow Escape before Focus.onKeyEvent. This runs
@@ -334,6 +373,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
           if (event.logicalKey != LogicalKeyboardKey.escape) {
             return KeyEventResult.ignored;
           }
+          ref.read(assistantNotifierProvider.notifier).stopBboxPick();
           workspace.cancelActive();
           return KeyEventResult.handled;
         },

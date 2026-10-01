@@ -500,6 +500,14 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get bbox_other_drawing => '不是当前图纸';
+
+  @override
+  String bbox_other_drawing_named(String name) {
+    return '不是当前图纸：$name';
+  }
+
+  @override
   String get drawing_empty => '图纸为空';
 
   @override
@@ -1072,6 +1080,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get ask_skip => '跳过';
+
+  @override
+  String get assistant_pick_bbox => '框选区域';
+
+  @override
+  String get assistant_pick_bbox_prompt => '拖拽框选一个区域，将加入对话';
 
   @override
   String get pin_selection => '将选择加入对话';

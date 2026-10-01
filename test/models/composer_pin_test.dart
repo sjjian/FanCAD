@@ -16,6 +16,23 @@ void main() {
     expect(parsedDrawing.kind, ComposerPinKind.drawing);
     expect(parsedDrawing.tabId, '9');
     expect(parsedDrawing.ids, isEmpty);
+
+    final box = ComposerPinModel.bbox(
+      tabId: '7',
+      x1: 10,
+      y1: -20,
+      x2: 100,
+      y2: 80.5,
+    );
+    expect(formatComposerPin(box), '@bbox[tab=7 x1=10 y1=-20 x2=100 y2=80.5]');
+    final parsedBox = parseComposerPin(formatComposerPin(box))!;
+    expect(parsedBox.kind, ComposerPinKind.bbox);
+    expect(parsedBox.tabId, '7');
+    expect(parsedBox.x1, 10);
+    expect(parsedBox.y1, -20);
+    expect(parsedBox.x2, 100);
+    expect(parsedBox.y2, 80.5);
+    expect(parseComposerPin('@bbox[tab=7 x1=1 y1=2 x2=1 y2=4]'), isNull);
   });
 
   test('flatten with mention tokens writes inline tags, not chip labels', () {
