@@ -953,62 +953,61 @@ void main() {
     },
   );
 
-  testWidgets(
-    'ctrl+v in the assistant composer does not paste on the canvas',
-    (tester) async {
-      late Workspace workspace;
-      await pumpWorkbench(
-        tester,
-        prepare: (container) {
-          container
-              .read(assistantAccountsNotifierProvider.notifier)
-              .setApiKey('sk-test');
-          workspace = container.read(workspaceNotifierProvider.notifier)
-            ..newDocument();
-          workspace.setSnapEnabled(false);
-          workspace.setShowGrid(false);
-          workspace.active!.session.edit('LINE', (transaction) {
-            transaction.add(
-              const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
-            );
-          });
-          workspace.active!.selection.replace([
-            workspace.active!.document.entities.single.id,
-          ]);
-        },
-      );
+  testWidgets('ctrl+v in the assistant composer does not paste on the canvas', (
+    tester,
+  ) async {
+    late Workspace workspace;
+    await pumpWorkbench(
+      tester,
+      prepare: (container) {
+        container
+            .read(assistantAccountsNotifierProvider.notifier)
+            .setApiKey('sk-test');
+        workspace = container.read(workspaceNotifierProvider.notifier)
+          ..newDocument();
+        workspace.setSnapEnabled(false);
+        workspace.setShowGrid(false);
+        workspace.active!.session.edit('LINE', (transaction) {
+          transaction.add(
+            const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+          );
+        });
+        workspace.active!.selection.replace([
+          workspace.active!.document.entities.single.id,
+        ]);
+      },
+    );
 
-      await tester.tap(find.byType(CadCanvas));
-      await tester.pump();
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
-      await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
-      await tester.pump();
-      expect(workspace.clipboard.isEmpty, isFalse);
+    await tester.tap(find.byType(CadCanvas));
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+    await tester.pump();
+    expect(workspace.clipboard.isEmpty, isFalse);
 
-      workspace.revealPanel('ai');
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.tap(
-        find.descendant(
-          of: find.byKey(const Key('assistant-composer-card')),
-          matching: find.byType(TextField),
-        ),
-      );
-      await tester.pump();
-      expect(
-        _focusInside(const Key('assistant-composer-card')),
-        isTrue,
-        reason: 'the composer must have focus before paste',
-      );
+    workspace.revealPanel('ai');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('assistant-composer-card')),
+        matching: find.byType(TextField),
+      ),
+    );
+    await tester.pump();
+    expect(
+      _focusInside(const Key('assistant-composer-card')),
+      isTrue,
+      reason: 'the composer must have focus before paste',
+    );
 
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
-      await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
-      await tester.pump();
-      expect(workspace.state.runningCommand, isNot('edit.pasteClip'));
-    },
-  );
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+    await tester.pump();
+    expect(workspace.state.runningCommand, isNot('edit.pasteClip'));
+  });
 
   testWidgets('hovering a bbox chip in a reply strokes that box', (
     tester,

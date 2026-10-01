@@ -1445,7 +1445,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       'scale': view.scale,
       'size': [width, view.size.height],
       if (box.isNotEmpty) 'visible': [box.minX, box.minY, box.maxX, box.maxY],
-      if (!frame.isEmpty)
+      if (frame.isNotEmpty)
         'frame': [frame.minX, frame.minY, frame.maxX, frame.maxY],
     };
   }

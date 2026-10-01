@@ -1429,10 +1429,7 @@ class _ExportFramePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromPoints(from, to);
     if (fill) {
-      canvas.drawRect(
-        rect,
-        Paint()..color = color.withValues(alpha: 0.16),
-      );
+      canvas.drawRect(rect, Paint()..color = color.withValues(alpha: 0.16));
     }
     canvas.drawRect(
       rect,

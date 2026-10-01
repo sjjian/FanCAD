@@ -297,13 +297,12 @@ class _FanCadHoverMenuItem<T> extends PopupMenuItem<T> {
     super.height,
     required this.onHover,
     required this.onHoverExit,
-    this.onTap,
+    super.onTap,
     required super.child,
   });
 
   final ValueChanged<Rect> onHover;
   final VoidCallback onHoverExit;
-  final VoidCallback? onTap;
 
   @override
   PopupMenuItemState<T, _FanCadHoverMenuItem<T>> createState() =>
