@@ -1,8 +1,6 @@
 ---
-description: 发布 FanCAD Release。用户要求发版、打 tag 或发布新版本时使用。先询问版本号，确认后再改版本与 changelog，一次提交并在该 commit 上打 tag。
 alwaysApply: false
 ---
-
 # 发布 Release
 
 按顺序做，不要跳步，不要并行改文件。
