@@ -600,6 +600,11 @@ class FcbWriter {
           entity.textPosition.y,
           entity.measurement,
           for (final point in entity.definitionPoints) ...[point.x, point.y],
+          entity.blockTranslation.x,
+          entity.blockTranslation.y,
+          entity.blockScale.x == 0 ? 1 : entity.blockScale.x,
+          entity.blockScale.y == 0 ? 1 : entity.blockScale.y,
+          entity.blockRotation,
         ];
         final (stringOffset, stringCount) = _strings.internRun([
           entity.blockName,

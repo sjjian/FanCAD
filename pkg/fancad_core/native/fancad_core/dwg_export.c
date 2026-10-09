@@ -855,12 +855,25 @@ static void *export_dimension(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
     d->act_measurement = g[2];
     d->text_midpt.x = g[0];
     d->text_midpt.y = g[1];
-    /* GstarCAD composites the *D block at ins_scale. LibreDWG's dwg_add_*
-     * leaves (0,0,0), so every tick vanishes in a host even though FanCAD
-     * still paints the block with an identity. FL25-1 stores (1,1,1). */
+    /* GstarCAD composites the *D block at ins_scale and clone_ins_pt.
+     * LibreDWG's dwg_add_* leaves the scale at (0,0,0), so every tick
+     * vanishes in a host even though FanCAD still paints the block.
+     * FL25-1 stores (1,1,1) and a zero clone. A tail of five doubles, when
+     * the importer wrote one, carries a non-identity placement. */
     d->ins_scale.x = 1.0;
     d->ins_scale.y = 1.0;
     d->ins_scale.z = 1.0;
+    d->ins_rotation = 0.0;
+    d->clone_ins_pt.x = 0.0;
+    d->clone_ins_pt.y = 0.0;
+    if (npts >= 0 && geom_count >= (uint32_t)(3 + npts * 2 + 5)) {
+      const double *placed = g + 3 + npts * 2;
+      d->clone_ins_pt.x = placed[0];
+      d->clone_ins_pt.y = placed[1];
+      d->ins_scale.x = placed[2] == 0.0 ? 1.0 : placed[2];
+      d->ins_scale.y = placed[3] == 0.0 ? 1.0 : placed[3];
+      d->ins_rotation = placed[4];
+    }
     if (d->attachment == 0) d->attachment = 5;
     if (d->lspace_factor <= 0.0) d->lspace_factor = 1.0;
     /* dwg_add_* takes the origins; write the DXF 13/14/10 fields too so

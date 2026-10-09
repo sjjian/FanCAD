@@ -865,6 +865,40 @@ void _nativeBackend() {
     );
   });
 
+  test('a dimension block translation round-trips through DWG', () async {
+    final directory = tempDir(prefix: 'fancad-dimplace');
+
+    final document = CadDocument()
+      ..putBlock(const BlockRecord(name: '*D1', isAnonymous: true))
+      ..addEntity(
+        const LineEntity(id: 1, start: Vec2(1000, -500), end: Vec2(1025, -500)),
+        blockName: '*D1',
+      )
+      ..addEntity(
+        const DimensionEntity(
+          id: 2,
+          blockName: '*D1',
+          definitionPoints: [Vec2(0, 0), Vec2(25, 0)],
+          textPosition: Vec2(12, 4),
+          measurement: 25,
+          blockTranslation: Vec2(-1000, 500),
+          blockScale: Vec2(2, 3),
+          blockRotation: 0.25,
+        ),
+      );
+
+    final dwgPath = '${directory.path}/placed.dwg';
+    await importer.save(dwgPath, document);
+
+    final opened = await importer.open(dwgPath);
+    final dim = opened.document.entities.whereType<DimensionEntity>().single;
+    expect(dim.blockTranslation.x, closeTo(-1000, 1e-6));
+    expect(dim.blockTranslation.y, closeTo(500, 1e-6));
+    expect(dim.blockScale.x, closeTo(2, 1e-9));
+    expect(dim.blockScale.y, closeTo(3, 1e-9));
+    expect(dim.blockRotation, closeTo(0.25, 1e-9));
+  });
+
   test('a *D TEXT that kept MTEXT font codes still paints the note', () async {
     final directory = tempDir(prefix: 'fancad-dimcjk');
 

@@ -40,7 +40,12 @@
 ///                    * patternLineCount]
 ///            strings [patternName]                        flag: solidFill
 /// dimension  ints [dimensionType, definitionPointCount, sourceId...]
-///            geom [textX, textY, measurement, defPoint(x, y)...]
+///            geom [textX, textY, measurement, defPoint(x, y)...,
+///                  cloneX, cloneY, scaleX, scaleY, insRotation]
+///            The last five are optional. Missing means an identity block
+///            transform: a model-space *D already sits on the definition
+///            points. clone/scale/rotation are DWG clone_ins_pt, ins_scale
+///            and ins_rotation, which place the *D into the dimension's space.
 ///            strings [blockName, overrideText, styleName]
 /// leader     geom [x, y] * n
 ///            strings [styleName]                          flag: arrowHead

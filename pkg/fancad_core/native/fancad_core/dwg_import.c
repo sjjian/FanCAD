@@ -3280,6 +3280,31 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
           e.int_offset = fcb_add_ints(s->b, dim_ints, 2);
           e.int_count = 2;
         }
+        /* clone_ins_pt / ins_scale / ins_rotation place the *D block into
+         * this dimension's space. A model-space dim stores an identity, so
+         * the extra five doubles are a no-op there. A zero scale is the
+         * LibreDWG default and means identity, not a collapsed block. */
+        {
+          BITCODE_2RD clone_pt;
+          BITCODE_3BD placed_scale;
+          double placed_rotation = 0.0;
+          memset(&clone_pt, 0, sizeof(clone_pt));
+          memset(&placed_scale, 0, sizeof(placed_scale));
+          placed_scale.x = 1.0;
+          placed_scale.y = 1.0;
+          placed_scale.z = 1.0;
+          dwg_dynapi_entity_value(o, dimension_name, "clone_ins_pt", &clone_pt,
+                                  NULL);
+          dwg_dynapi_entity_value(o, dimension_name, "ins_scale", &placed_scale,
+                                  NULL);
+          dwg_dynapi_entity_value(o, dimension_name, "ins_rotation",
+                                  &placed_rotation, NULL);
+          if (placed_scale.x == 0.0) placed_scale.x = 1.0;
+          if (placed_scale.y == 0.0) placed_scale.y = 1.0;
+          coords_push2(g, clone_pt.x, clone_pt.y);
+          coords_push2(g, placed_scale.x, placed_scale.y);
+          coords_push(g, placed_rotation);
+        }
         e.string_offset = fcb_append_string(s->b, block_name);
         fcb_append_string(s->b, user_text ? user_text : "");
         fcb_append_string(s->b, style_name ? style_name : "Standard");

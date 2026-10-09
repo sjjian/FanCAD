@@ -96,6 +96,11 @@ Map<String, dynamic> _$DimensionEntityToJson(
     'dimensionType': value,
   if (idListToJsonIfNotEmpty(instance.sourceIds) case final value?)
     'sourceIds': value,
+  if (vec2ToJsonIfNotOrigin(instance.blockTranslation) case final value?)
+    'blockTranslation': value,
+  if (scaleToJson(instance.blockScale) case final value?) 'blockScale': value,
+  if (omitZero(instance.blockRotation) case final value?)
+    'blockRotation': value,
 };
 
 Map<String, dynamic> _$LeaderEntityToJson(LeaderEntity instance) =>

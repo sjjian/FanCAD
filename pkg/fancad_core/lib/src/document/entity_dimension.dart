@@ -23,6 +23,9 @@ final class DimensionEntity extends CadEntity {
     this.styleName = 'Standard',
     this.dimensionType = 0,
     this.sourceIds = const [],
+    this.blockTranslation = const Vec2.zero(),
+    this.blockScale = const Vec2(1, 1),
+    this.blockRotation = 0,
   });
 
   static DimensionEntity fromGeometry(
@@ -40,6 +43,9 @@ final class DimensionEntity extends CadEntity {
     styleName: json['style'] as String? ?? 'Standard',
     dimensionType: (json['dimensionType'] as num?)?.toInt() ?? 0,
     sourceIds: _idList(json['sourceIds']),
+    blockTranslation: _point(json['blockTranslation']),
+    blockScale: _point(json['blockScale'], fallback: const Vec2(1, 1)),
+    blockRotation: (json['blockRotation'] as num?)?.toDouble() ?? 0,
   );
 
   /// The anonymous block holding the pre-rendered geometry.
@@ -67,7 +73,37 @@ final class DimensionEntity extends CadEntity {
   @JsonKey(toJson: idListToJsonIfNotEmpty)
   final List<int> sourceIds;
 
+  /// DWG `clone_ins_pt`. Moves the anonymous `*D` block into this dimension's
+  /// coordinate system. Zero means the block is already there.
+  @JsonKey(toJson: vec2ToJsonIfNotOrigin)
+  final Vec2 blockTranslation;
+
+  /// DWG `ins_scale`. A zero component is treated as 1: LibreDWG writes
+  /// (0,0,0) when the host stored an identity scale.
+  @JsonKey(toJson: scaleToJson)
+  final Vec2 blockScale;
+
+  /// DWG `ins_rotation`, radians, applied before [blockTranslation].
+  @JsonKey(toJson: omitZero)
+  final double blockRotation;
+
   bool get isAssociative => sourceIds.isNotEmpty;
+
+  /// `T * R * S` that places `*D` geometry onto [definitionPoints].
+  Mat3 get blockTransform {
+    final sx = blockScale.x == 0 ? 1.0 : blockScale.x;
+    final sy = blockScale.y == 0 ? 1.0 : blockScale.y;
+    if (blockTranslation == const Vec2.zero() &&
+        sx == 1 &&
+        sy == 1 &&
+        blockRotation == 0) {
+      return const Mat3.identity();
+    }
+    return Mat3.translation(
+      blockTranslation.x,
+      blockTranslation.y,
+    ).multiplied(Mat3.rotation(blockRotation)).multiplied(Mat3.scaling(sx, sy));
+  }
 
   /// Length shown on a linear or aligned dimension.
   ///
@@ -172,6 +208,9 @@ final class DimensionEntity extends CadEntity {
     String? styleName,
     int? dimensionType,
     List<int>? sourceIds,
+    Vec2? blockTranslation,
+    Vec2? blockScale,
+    double? blockRotation,
   }) => DimensionEntity(
     id: id ?? this.id,
     props: props ?? this.props,
@@ -183,6 +222,9 @@ final class DimensionEntity extends CadEntity {
     styleName: styleName ?? this.styleName,
     dimensionType: dimensionType ?? this.dimensionType,
     sourceIds: sourceIds ?? this.sourceIds,
+    blockTranslation: blockTranslation ?? this.blockTranslation,
+    blockScale: blockScale ?? this.blockScale,
+    blockRotation: blockRotation ?? this.blockRotation,
   );
 
   @override
@@ -201,7 +243,7 @@ final class DimensionEntity extends CadEntity {
         final probe = _TextAwareSink(sink);
         context.blocks.emitBlock(
           blockName,
-          context.descend(const Mat3.identity(), style),
+          context.descend(blockTransform, style),
           probe,
         );
         if (!probe.sawText) {
@@ -225,6 +267,9 @@ final class DimensionEntity extends CadEntity {
     styleName: styleName,
     dimensionType: dimensionType,
     sourceIds: sourceIds,
+    blockTranslation: blockTranslation,
+    blockScale: blockScale,
+    blockRotation: blockRotation,
   );
 
   @override
@@ -239,6 +284,9 @@ final class DimensionEntity extends CadEntity {
     styleName: styleName,
     dimensionType: dimensionType,
     sourceIds: sourceIds,
+    blockTranslation: blockTranslation,
+    blockScale: blockScale,
+    blockRotation: blockRotation,
   );
 
   @override
@@ -257,10 +305,12 @@ final class DimensionEntity extends CadEntity {
     return DimensionEntity(
       id: id,
       props: props,
-      // The cached *D block is in world coordinates. A pure [transformed]
-      // call cannot move those entities, so the name is dropped and
-      // [DimensionGraphics] rebuilds from the new points. [Transaction.transform]
-      // restores the name after it has moved the block contents.
+      // The cached *D block is in its own coordinates. [blockTransform]
+      // places it. A pure [transformed] call cannot move those entities, so
+      // the name is dropped and [DimensionGraphics] rebuilds from the new
+      // points. [Transaction.transform] restores the name after it has moved
+      // the block contents; the translation then takes only the linear part
+      // of [matrix], because the strokes already received the translation.
       blockName: matrix.isIdentity ? blockName : '',
       definitionPoints: points,
       textPosition: matrix.transform(textPosition),
@@ -269,6 +319,9 @@ final class DimensionEntity extends CadEntity {
       styleName: styleName,
       dimensionType: dimensionType,
       sourceIds: sourceIds,
+      blockTranslation: matrix.transformDirection(blockTranslation),
+      blockScale: blockScale,
+      blockRotation: blockRotation,
     );
   }
 
@@ -289,6 +342,9 @@ final class DimensionEntity extends CadEntity {
         styleName: styleName,
         dimensionType: dimensionType,
         sourceIds: sourceIds,
+        blockTranslation: blockTranslation,
+        blockScale: blockScale,
+        blockRotation: blockRotation,
       );
     }
     if (index < 0 || index >= definitionPoints.length) return this;
@@ -312,6 +368,9 @@ final class DimensionEntity extends CadEntity {
       styleName: styleName,
       dimensionType: dimensionType,
       sourceIds: sourceIds,
+      blockTranslation: blockTranslation,
+      blockScale: blockScale,
+      blockRotation: blockRotation,
     );
   }
 

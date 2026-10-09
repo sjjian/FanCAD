@@ -966,6 +966,10 @@ class FcbReader {
           if (at + 1 >= geom.length) break;
           definitionPoints.add(Vec2(geom[at], geom[at + 1]));
         }
+        final tail = 3 + definitionPoints.length * 2;
+        final hasBlock = geom.length >= tail + 5;
+        final scaleX = hasBlock ? geom[tail + 2] : 1.0;
+        final scaleY = hasBlock ? geom[tail + 3] : 1.0;
         return DimensionEntity(
           id: id,
           props: props,
@@ -977,6 +981,11 @@ class FcbReader {
           styleName: stringAt(2).isEmpty ? 'Standard' : stringAt(2),
           dimensionType: ints.isNotEmpty ? ints[0] : 0,
           sourceIds: [for (var i = 2; i < ints.length; i++) ints[i]],
+          blockTranslation: hasBlock
+              ? Vec2(geom[tail], geom[tail + 1])
+              : const Vec2.zero(),
+          blockScale: Vec2(scaleX == 0 ? 1 : scaleX, scaleY == 0 ? 1 : scaleY),
+          blockRotation: hasBlock ? geom[tail + 4] : 0,
         );
 
       case FcbType.leader:

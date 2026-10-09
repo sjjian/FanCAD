@@ -65,6 +65,71 @@ void main() {
     expect(sink.texts.single.text, '40');
   });
 
+  test('a *D block is placed by the dimension block translation', () {
+    final document = CadDocument()
+      ..putBlock(const BlockRecord(name: r'*D$1', isAnonymous: true))
+      ..addEntity(
+        const LineEntity(id: 1, start: Vec2(1000, -500), end: Vec2(1025, -500)),
+        blockName: r'*D$1',
+      );
+    final dim = DimensionEntity(
+      id: 2,
+      blockName: r'*D$1',
+      definitionPoints: const [Vec2(0, 0), Vec2(25, 0)],
+      textPosition: const Vec2(12, 4),
+      measurement: 25,
+      blockTranslation: const Vec2(-1000, 500),
+    );
+    final stored = document.addEntity(dim, blockName: 'PART');
+    final box = stored.computeBounds(blocks: document);
+    expect(box.minX, greaterThan(-1));
+    expect(box.maxX, lessThan(40));
+    expect(box.minY, greaterThan(-1));
+    expect(box.maxY, lessThan(40));
+
+    final insert = const InsertEntity(
+      id: 3,
+      blockName: 'PART',
+      position: Vec2(747112, -299675),
+      scale: Vec2(2, 2),
+    );
+    final placed = insert.computeBounds(blocks: document);
+    expect(placed.width, lessThan(200));
+    expect(placed.height, lessThan(200));
+
+    final sink = PolylineSink();
+    dim.emit(document.emitContext(tolerance: 0.1), sink);
+    expect(sink.polylines.single[0], closeTo(0, 1e-9));
+    expect(sink.polylines.single[1], closeTo(0, 1e-9));
+    expect(sink.polylines.single[2], closeTo(25, 1e-9));
+    expect(sink.polylines.single[3], closeTo(0, 1e-9));
+  });
+
+  test('a *D block rotation is applied before the translation', () {
+    final document = CadDocument()
+      ..putBlock(const BlockRecord(name: r'*D$1', isAnonymous: true))
+      ..addEntity(
+        const LineEntity(id: 1, start: Vec2(10, 0), end: Vec2(0, 0)),
+        blockName: r'*D$1',
+      );
+    final dim = DimensionEntity(
+      id: 2,
+      blockName: r'*D$1',
+      textPosition: const Vec2.zero(),
+      measurement: 10,
+      blockTranslation: const Vec2(3, 4),
+      blockRotation: math.pi / 2,
+    );
+    document.addEntity(dim);
+    final sink = PolylineSink();
+    dim.emit(document.emitContext(tolerance: 0.1), sink);
+    final xy = sink.polylines.single;
+    expect(xy[0], closeTo(3, 1e-9));
+    expect(xy[1], closeTo(14, 1e-9));
+    expect(xy[2], closeTo(3, 1e-9));
+    expect(xy[3], closeTo(4, 1e-9));
+  });
+
   test('a dimension override substitutes the measured value', () {
     const dim = DimensionEntity(
       id: 1,
