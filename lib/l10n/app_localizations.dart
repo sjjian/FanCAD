@@ -1868,6 +1868,30 @@ abstract class AppLocalizations {
   /// **'Block'**
   String get block;
 
+  /// Attribute definitions on a block, or the values on one insert
+  ///
+  /// In en, this message translates to:
+  /// **'Attributes'**
+  String get attributes;
+
+  /// Attribute definition tag
+  ///
+  /// In en, this message translates to:
+  /// **'Tag'**
+  String get attribute_tag;
+
+  /// Attribute definition prompt
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt'**
+  String get attribute_prompt;
+
+  /// Attribute definition default value
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get attribute_default;
+
   /// scale
   ///
   /// In en, this message translates to:

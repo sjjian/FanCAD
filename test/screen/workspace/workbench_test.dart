@@ -1219,6 +1219,106 @@ void main() {
     expect(find.text('*U9'), findsOneWidget);
     expect(find.byKey(const Key('property-edit-block')), findsNothing);
   });
+
+  testWidgets('properties show an attribute definition and its insert value', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(
+      tester,
+      document: true,
+      prepare: (container) {
+        final document = container
+            .read(workspaceNotifierProvider.notifier)
+            .active!
+            .document;
+        document.addEntity(
+          const AttdefEntity(
+            id: 0,
+            position: Vec2.zero(),
+            tag: 'DWGNO',
+            prompt: 'Drawing number',
+            defaultValue: 'JS.001',
+          ),
+          blockName: 'WIDGET',
+        );
+        document.addEntity(
+          const AttdefEntity(
+            id: 0,
+            position: Vec2(0, -10),
+            tag: 'TITLE',
+            prompt: 'Title',
+            defaultValue: 'SHEET',
+            constant: true,
+          ),
+          blockName: 'WIDGET',
+        );
+        document.addEntity(
+          const AttdefEntity(
+            id: 0,
+            position: Vec2(0, -20),
+            tag: 'NOTE',
+            prompt: 'Note',
+            defaultValue: '',
+          ),
+          blockName: 'WIDGET',
+        );
+        document.addEntity(
+          const InsertEntity(
+            id: 0,
+            blockName: 'WIDGET',
+            position: Vec2(20, 0),
+            attributes: {
+              'DWGNO': 'JS.014',
+              'NOTE': r'{\fSimSun|b0|i0|c134|p2;文A}',
+            },
+          ),
+        );
+      },
+    );
+    final tab = container.read(workspaceNotifierProvider.notifier).active!;
+    final definition = tab.document.entities
+        .whereType<AttdefEntity>()
+        .firstWhere((entity) => entity.tag == 'DWGNO');
+    tab.session.selection.replace([definition.id]);
+    await tester.pump();
+
+    expect(find.text('Attributes'), findsOneWidget);
+    expect(find.text('DWGNO'), findsOneWidget);
+    expect(find.text('Drawing number'), findsOneWidget);
+    expect(find.text('JS.001'), findsOneWidget);
+    expect(find.text('Contents'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('property-attdef-default')),
+        matching: find.byIcon(Icons.chevron_right),
+      ),
+      findsOneWidget,
+    );
+
+    final insert = tab.document.entities.whereType<InsertEntity>().single;
+    tab.session.selection.replace([insert.id]);
+    await tester.pump();
+
+    expect(find.text('JS.014'), findsOneWidget);
+    expect(find.text('JS.001'), findsNothing);
+    expect(find.text('SHEET'), findsOneWidget);
+    expect(find.text('文A'), findsOneWidget);
+    expect(find.textContaining('SimSun'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('property-insert-attr-DWGNO')),
+        matching: find.byIcon(Icons.chevron_right),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('property-insert-attr-TITLE')),
+        matching: find.byIcon(Icons.chevron_right),
+      ),
+      findsNothing,
+    );
+  });
 }
 
 bool _focusInside(Key key) {

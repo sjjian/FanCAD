@@ -1430,6 +1430,22 @@
   "@block": {
     "description": "block"
   },
+  "attributes": "Attributes",
+  "@attributes": {
+    "description": "Attribute definitions on a block, or the values on one insert"
+  },
+  "attribute_tag": "Tag",
+  "@attribute_tag": {
+    "description": "Attribute definition tag"
+  },
+  "attribute_prompt": "Prompt",
+  "@attribute_prompt": {
+    "description": "Attribute definition prompt"
+  },
+  "attribute_default": "Default",
+  "@attribute_default": {
+    "description": "Attribute definition default value"
+  },
   "scale": "Scale",
   "@scale": {
     "description": "scale"

@@ -1005,6 +1005,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get block => 'Block';
 
   @override
+  String get attributes => 'Attributes';
+
+  @override
+  String get attribute_tag => 'Tag';
+
+  @override
+  String get attribute_prompt => 'Prompt';
+
+  @override
+  String get attribute_default => 'Default';
+
+  @override
   String get scale => 'Scale';
 
   @override

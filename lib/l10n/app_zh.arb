@@ -1430,6 +1430,22 @@
   "@block": {
     "description": "block"
   },
+  "attributes": "属性",
+  "@attributes": {
+    "description": "Attribute definitions on a block, or the values on one insert"
+  },
+  "attribute_tag": "标签",
+  "@attribute_tag": {
+    "description": "Attribute definition tag"
+  },
+  "attribute_prompt": "提示",
+  "@attribute_prompt": {
+    "description": "Attribute definition prompt"
+  },
+  "attribute_default": "默认值",
+  "@attribute_default": {
+    "description": "Attribute definition default value"
+  },
   "scale": "比例",
   "@scale": {
     "description": "scale"

@@ -112,6 +112,15 @@ class PropertiesPanel extends ConsumerWidget {
                       title: _selectionTitle(entities),
                       children: _generalRows(context, tab, entities),
                     ),
+                    if (entities.length == 1 && entities.first is AttdefEntity)
+                      PanelSection(
+                        title: context.l10n.attributes,
+                        children: _attdefRows(
+                          context,
+                          tab,
+                          entities.first as AttdefEntity,
+                        ),
+                      ),
                     if (entities.length == 1)
                       PanelSection(
                         title: context.l10n.geometry,
@@ -226,7 +235,9 @@ class PropertiesPanel extends ConsumerWidget {
     String label,
     String text, {
     Widget? trailing,
+    String? key,
   }) => PropertyRow(
+    key: key == null ? null : Key(key),
     label: label,
     value: Text(text),
     copyText: text,
@@ -238,8 +249,10 @@ class PropertiesPanel extends ConsumerWidget {
     BuildContext context,
     String label,
     String text,
-    VoidCallback onTap,
-  ) => PropertyRow(
+    VoidCallback onTap, {
+    String? key,
+  }) => PropertyRow(
+    key: key == null ? null : Key(key),
     label: label,
     isEditable: true,
     copyText: text,
@@ -251,6 +264,76 @@ class PropertiesPanel extends ConsumerWidget {
   void _textObject(String field) =>
       workspace.run('edit.textObject', args: {'prompt': field});
 
+  /// Attribute tags and values often still carry MTEXT or `\U+` codes. The
+  /// row shows the glyphs, the same way text content does.
+  String _shownAttribute(String raw) =>
+      decodeMTextPlain(expandDxfTextCodes(raw));
+
+  List<Widget> _attdefRows(
+    BuildContext context,
+    DocumentTab tab,
+    AttdefEntity entity,
+  ) {
+    final l10n = context.l10n;
+    final value = textEditFieldValue(entity, document: tab.document);
+    return [
+      _read(
+        context,
+        l10n.attribute_tag,
+        _shownAttribute(entity.tag),
+        key: 'property-attdef-tag',
+      ),
+      _read(
+        context,
+        l10n.attribute_prompt,
+        _shownAttribute(entity.prompt),
+        key: 'property-attdef-prompt',
+      ),
+      _edit(
+        context,
+        l10n.attribute_default,
+        value,
+        () => workspace.run('edit.textContent'),
+        key: 'property-attdef-default',
+      ),
+    ];
+  }
+
+  List<Widget> _insertAttributeRows(
+    BuildContext context,
+    DocumentTab tab,
+    InsertEntity entity,
+  ) {
+    final defs = tab.document.attdefsOf(entity.blockName);
+    return [
+      for (final def in defs)
+        def.constant
+            ? _read(
+                context,
+                _shownAttribute(def.tag),
+                _shownAttribute(
+                  entity.attributeValue(def.tag, def.defaultValue),
+                ),
+                key: 'property-insert-attr-${def.tag}',
+              )
+            : _edit(
+                context,
+                _shownAttribute(def.tag),
+                _shownAttribute(
+                  entity.attributeValue(def.tag, def.defaultValue),
+                ),
+                () => workspace.run(
+                  'edit.attedit',
+                  args: {
+                    'ids': [entity.id],
+                    'tag': def.tag,
+                  },
+                ),
+                key: 'property-insert-attr-${def.tag}',
+              ),
+    ];
+  }
+
   List<Widget> _textGeometryRows(
     BuildContext context,
     DocumentTab tab,
@@ -259,6 +342,7 @@ class PropertiesPanel extends ConsumerWidget {
     bool columnWidth = false,
     bool widthFactor = false,
     bool oblique = false,
+    bool contents = true,
   }) {
     final l10n = context.l10n;
     final height = textHeightOf(entity);
@@ -266,12 +350,13 @@ class PropertiesPanel extends ConsumerWidget {
     final style = textStyleNameOf(entity);
     final justify = textJustifyKeyOf(entity);
     return [
-      _edit(
-        context,
-        l10n.contents,
-        textEditFieldValue(entity, document: tab.document),
-        () => workspace.run('edit.textContent'),
-      ),
+      if (contents)
+        _edit(
+          context,
+          l10n.contents,
+          textEditFieldValue(entity, document: tab.document),
+          () => workspace.run('edit.textContent'),
+        ),
       _read(context, l10n.position, position),
       if (height != null)
         _edit(
@@ -410,6 +495,7 @@ class PropertiesPanel extends ConsumerWidget {
           position: _point(position),
           widthFactor: true,
           oblique: true,
+          contents: false,
         );
       case MLeaderEntity(:final textPosition):
         return _textGeometryRows(
@@ -439,6 +525,7 @@ class PropertiesPanel extends ConsumerWidget {
                     ),
                   ),
           ),
+          ..._insertAttributeRows(context, tab, entity),
           _read(context, l10n.position, _point(position)),
           _read(
             context,

@@ -988,6 +988,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get block => '块';
 
   @override
+  String get attributes => '属性';
+
+  @override
+  String get attribute_tag => '标签';
+
+  @override
+  String get attribute_prompt => '提示';
+
+  @override
+  String get attribute_default => '默认值';
+
+  @override
   String get scale => '比例';
 
   @override
