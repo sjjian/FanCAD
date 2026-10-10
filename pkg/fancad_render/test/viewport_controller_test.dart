@@ -33,6 +33,33 @@ void main() {
     },
   );
 
+  test(
+    'a held view restores centre and scale, and keeps the new window size',
+    () {
+      final controller = ViewportController();
+      addTearDown(controller.dispose);
+      controller.setSize(size, 1);
+      controller.viewport = controller.viewport.copyWith(
+        center: const Vec2(40, -10),
+        scale: 3,
+      );
+      final held = controller.viewport;
+      controller.holdView();
+      controller.zoomTo(const Bounds2(0, 0, 1000, 500));
+      controller.holdView();
+      expect(controller.viewport.scale, isNot(closeTo(held.scale, 1e-9)));
+
+      controller.setSize(const Size(400, 300), 2);
+      expect(controller.restoreHeldView(), isTrue);
+      expect(controller.viewport.center.x, closeTo(held.center.x, 1e-6));
+      expect(controller.viewport.center.y, closeTo(held.center.y, 1e-6));
+      expect(controller.viewport.scale, closeTo(held.scale, 1e-9));
+      expect(controller.viewport.size, const Size(400, 300));
+      expect(controller.viewport.devicePixelRatio, 2);
+      expect(controller.restoreHeldView(), isFalse);
+    },
+  );
+
   test('revertInteraction puts the camera back and ends the gesture', () {
     final controller = ViewportController();
     addTearDown(controller.dispose);

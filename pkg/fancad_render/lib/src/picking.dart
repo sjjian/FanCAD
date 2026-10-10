@@ -234,6 +234,20 @@ class Picker {
     double Function(String text, double height)? measureWidth,
     ShxFontTable shxFonts = const ShxFontTable(),
   }) sync* {
+    if (document.isEditingBlock) {
+      yield LayoutSpace(
+        blockName: document.currentBlockName,
+        query: paperBox,
+        context: document.emitContext(
+          tolerance: tolerance,
+          clip: paperBox,
+          minExtent: minExtent,
+          measureWidth: measureWidth,
+          shxFonts: shxFonts,
+        ),
+      );
+      return;
+    }
     yield LayoutSpace(
       blockName: document.currentBlockName,
       query: paperBox,
@@ -358,6 +372,20 @@ class Picker {
       final entity = document.entity(id);
       if (entity == null || !entity.props.visible) continue;
       if (!document.isLayerVisible(entity.props.layer)) continue;
+      if (document.isEditingBlock) {
+        if (document.ownerOf(id) != document.currentBlockName) continue;
+        emitInto(
+          entity,
+          document.emitContext(
+            tolerance: tolerance,
+            clip: visible,
+            shxFonts: shxFonts,
+          ),
+          sink,
+          cache: cache,
+        );
+        continue;
+      }
       final owner = document.ownerOf(id) ?? document.modelSpaceBlockName;
       final onSheet = layout.isModelSpace || owner == layout.blockName;
       if (onSheet) {
@@ -407,7 +435,7 @@ class Picker {
     double radiusPixels = 6,
   }) {
     final layout = document.activeLayout;
-    if (layout.isModelSpace) return null;
+    if (layout.isModelSpace || document.isEditingBlock) return null;
     final radius = viewport.pixelsToWorld(radiusPixels);
     var best = radius;
     int? found;
@@ -428,7 +456,7 @@ class Picker {
     Iterable<int> viewportIndices,
   ) {
     final layout = document.activeLayout;
-    if (layout.isModelSpace) return const [];
+    if (layout.isModelSpace || document.isEditingBlock) return const [];
     final result = <GripHit>[];
     for (final index in viewportIndices) {
       if (index < 0 || index >= layout.viewports.length) continue;

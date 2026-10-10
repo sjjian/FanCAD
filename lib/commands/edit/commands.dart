@@ -4,6 +4,7 @@ import 'align.dart';
 import 'array.dart';
 import 'attedit.dart';
 import 'block.dart';
+import 'block_edit.dart';
 import 'break_entity.dart';
 import 'chamfer.dart';
 import 'change_color.dart';
@@ -78,6 +79,8 @@ class EditCommands {
     EditMinsertCommand().toDescriptor(),
     BlockPurgeCommand().toDescriptor(),
     BlockRenameCommand().toDescriptor(),
+    BlockEditCommand().toDescriptor(),
+    BlockCloseCommand().toDescriptor(),
     EditJoinCommand().toDescriptor(),
     EditCloseCommand().toDescriptor(),
     EditOpenCommand().toDescriptor(),

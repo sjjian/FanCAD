@@ -899,6 +899,7 @@ class _CanvasNoticeHost extends ConsumerWidget {
       if (!layer.visible) hiddenLayers += 1;
     }
     final currentLayer = tab.document.layer(tab.document.currentLayer);
+    final editedName = tab.document.editedBlockName;
     return _canvasNotice(
           context,
           workspace: workspace,
@@ -907,13 +908,18 @@ class _CanvasNoticeHost extends ConsumerWidget {
           hiddenCount: hiddenCount,
           hiddenLayers: hiddenLayers,
           currentLayer: currentLayer,
+          editedBlock: editedName,
+          editingXref:
+              editedName != null &&
+              (tab.document.blocks[editedName]?.isXref ?? false),
         ) ??
         const SizedBox.shrink();
   }
 }
 
-/// One floating strip: assistant first, then hidden objects, off layers,
-/// then a locked current layer. Overlay so it does not shift the drawing.
+/// One floating strip: assistant first, then block editing, then hidden
+/// objects, off layers, then a locked current layer. Overlay so it does not
+/// shift the drawing.
 Widget? _canvasNotice(
   BuildContext context, {
   required Workspace workspace,
@@ -922,6 +928,8 @@ Widget? _canvasNotice(
   required int hiddenCount,
   required int hiddenLayers,
   required LayerDef? currentLayer,
+  required String? editedBlock,
+  required bool editingXref,
 }) {
   final l10n = context.l10n;
   if (assistantBusy) {
@@ -931,6 +939,17 @@ Widget? _canvasNotice(
       message: l10n.assistant_canvas_locked,
       action: onStopAssistant == null ? null : l10n.stop,
       onAction: onStopAssistant,
+    );
+  }
+  if (editedBlock != null) {
+    return _CanvasNoticeBanner(
+      cardKey: const Key('canvas-block-edit'),
+      icon: Icons.widgets_outlined,
+      message: editingXref
+          ? l10n.editing_xref_block(editedBlock)
+          : l10n.editing_block(editedBlock),
+      action: l10n.close,
+      onAction: () => workspace.run('block.close'),
     );
   }
   if (hiddenCount > 0) {

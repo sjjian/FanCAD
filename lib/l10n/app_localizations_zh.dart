@@ -735,6 +735,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String editing_block(String name) {
+    return '正在编辑块 $name';
+  }
+
+  @override
+  String editing_xref_block(String name) {
+    return '正在编辑外部参照 $name。重载会覆盖这些修改。';
+  }
+
+  @override
   String get layers_empty_workspace => '打开图纸以查看图层。';
 
   @override
@@ -1467,6 +1477,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_block_rename => '重命名块';
 
   @override
+  String get command_block_edit => '编辑块';
+
+  @override
+  String get command_block_close => '关闭块';
+
+  @override
   String get command_edit_join => '合并';
 
   @override
@@ -2053,6 +2069,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get command_block_rename_desc =>
       '重命名块定义，并更新仍指向旧名的所有插入。布局块、匿名块和外部参照不能重命名。';
+
+  @override
+  String get command_block_edit_desc =>
+      '在画布上打开块定义。新画的和改过的对象都属于这个块，已有的插入会立刻换成新内容。布局块和匿名块不能打开。';
+
+  @override
+  String get command_block_close_desc => '退出块编辑，画布回到当前布局。';
 
   @override
   String get command_edit_join_desc =>

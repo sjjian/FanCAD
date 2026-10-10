@@ -533,4 +533,51 @@ void main() {
       expect(document.blocks.containsKey('DOOR'), isTrue);
     });
   });
+
+  group('block edit target', () {
+    test('a named block replaces the layout until the layout changes', () {
+      final document = CadDocument()
+        ..addLayout(
+          const Layout(
+            name: 'Sheet',
+            blockName: '*Paper_Space',
+            paperWidth: 297,
+            paperHeight: 210,
+          ),
+        )
+        ..setActiveLayout('Sheet')
+        ..addEntity(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+          blockName: 'PART',
+        )
+        ..putBlock(const BlockRecord(name: '*U1', isAnonymous: true));
+
+      expect(document.extents.width, greaterThan(200));
+      expect(document.setEditedBlock('*U1'), isFalse);
+      expect(document.setEditedBlock('*Paper_Space'), isFalse);
+      expect(document.setEditedBlock('missing'), isFalse);
+      expect(document.setEditedBlock('part'), isTrue);
+      expect(document.editedBlockName, 'PART');
+      expect(document.currentBlockName, 'PART');
+      expect(document.extents.maxX, lessThan(50));
+
+      expect(document.setActiveLayout('Model'), isTrue);
+      expect(document.isEditingBlock, isFalse);
+      expect(document.currentBlockName, document.modelSpaceBlockName);
+    });
+
+    test('renaming or deleting the open block keeps the target honest', () {
+      final document = CadDocument()
+        ..addEntity(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+          blockName: 'PART',
+        );
+      expect(document.setEditedBlock('PART'), isTrue);
+      expect(document.renameBlock('PART', 'LEAF'), isTrue);
+      expect(document.editedBlockName, 'LEAF');
+      expect(document.removeBlock('LEAF'), isNotNull);
+      expect(document.isEditingBlock, isFalse);
+      expect(document.currentBlockName, document.modelSpaceBlockName);
+    });
+  });
 }

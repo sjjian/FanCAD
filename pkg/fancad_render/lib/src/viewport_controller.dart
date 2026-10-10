@@ -59,6 +59,12 @@ class ViewportController extends ChangeNotifier {
   /// the camera back.
   CadViewport? _interactionOrigin;
 
+  /// Layout camera saved when block editing starts. Closing the block puts
+  /// this back, so the drawing keeps the zoom and position it had. A second
+  /// save is ignored: switching from one block to another must not replace
+  /// the layout view with the block view.
+  CadViewport? _heldView;
+
   /// Pending fit request, applied once the widget reports a real size.
   Bounds2? _pendingFit;
   double _pendingInsetLeft = 0;
@@ -327,6 +333,28 @@ class ViewportController extends ChangeNotifier {
 
   /// Centres on a drawing point without changing zoom.
   void centerOn(Vec2 point) => viewport = _viewport.copyWith(center: point);
+
+  /// Remembers the current camera once. See [_heldView].
+  void holdView() => _heldView ??= _viewport;
+
+  /// Forgets a held camera without moving the view.
+  void dropHeldView() => _heldView = null;
+
+  /// Puts the camera back to the one [holdView] saved.
+  ///
+  /// The widget size stays as it is now: the window may have been resized
+  /// while the block was open, and the saved size would fight the next layout.
+  /// Returns false when nothing was held.
+  bool restoreHeldView() {
+    final held = _heldView;
+    _heldView = null;
+    if (held == null) return false;
+    viewport = held.copyWith(
+      size: _viewport.size,
+      devicePixelRatio: _viewport.devicePixelRatio,
+    );
+    return true;
+  }
 
   @override
   void dispose() {

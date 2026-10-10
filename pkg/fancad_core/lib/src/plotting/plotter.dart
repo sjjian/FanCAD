@@ -104,7 +104,8 @@ class Plotter {
     );
 
     if (target.isModelSpace) {
-      for (final entity in document.activeEntities) {
+      // Plot the layout, not a block definition opened for editing.
+      for (final entity in document.entitiesOf(target.blockName)) {
         if (!entity.props.visible) continue;
         if (!_plotLayer(document, entity.props.layer, layers)) continue;
         entity.emit(context, sink);

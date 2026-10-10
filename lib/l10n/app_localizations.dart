@@ -1406,6 +1406,18 @@ abstract class AppLocalizations {
   /// **'Click to copy {label}'**
   String click_to_copy_label(String label);
 
+  /// editing block
+  ///
+  /// In en, this message translates to:
+  /// **'Editing block {name}'**
+  String editing_block(String name);
+
+  /// editing xref block
+  ///
+  /// In en, this message translates to:
+  /// **'Editing xref {name}. Reload replaces these changes.'**
+  String editing_xref_block(String name);
+
   /// layers empty workspace
   ///
   /// In en, this message translates to:
@@ -2822,6 +2834,18 @@ abstract class AppLocalizations {
   /// **'Rename Block'**
   String get command_block_rename;
 
+  /// command block edit
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Block'**
+  String get command_block_edit;
+
+  /// command block close
+  ///
+  /// In en, this message translates to:
+  /// **'Close Block'**
+  String get command_block_close;
+
   /// command edit join
   ///
   /// In en, this message translates to:
@@ -3901,6 +3925,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Renames a block definition and every insert that still points at the old name. Layout blocks, anonymous blocks and xrefs cannot be renamed.'**
   String get command_block_rename_desc;
+
+  /// command block edit desc
+  ///
+  /// In en, this message translates to:
+  /// **'Opens a block definition on the canvas. New and changed objects belong to that block, and existing inserts show the update. Layout blocks and anonymous blocks cannot be opened.'**
+  String get command_block_edit_desc;
+
+  /// command block close desc
+  ///
+  /// In en, this message translates to:
+  /// **'Leaves block editing and returns the canvas to the current layout.'**
+  String get command_block_close_desc;
 
   /// command edit join desc
   ///

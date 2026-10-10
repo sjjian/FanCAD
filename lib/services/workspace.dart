@@ -1258,6 +1258,15 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   void panTo(Vec2 center) => active?.viewport.centerOn(center);
 
   @override
+  void holdView() => active?.viewport.holdView();
+
+  @override
+  bool restoreHeldView() => active?.viewport.restoreHeldView() ?? false;
+
+  @override
+  void dropHeldView() => active?.viewport.dropHeldView();
+
+  @override
   void invalidate() => active?.invalidateAll();
 
   @override

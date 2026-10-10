@@ -208,6 +208,11 @@ class CadDocument implements BlockLookup, StyleResolver {
   final Map<int, String> _ownerOf = {};
 
   late String _activeLayoutName;
+
+  /// Block opened for editing. Not written to the file and not an undo step.
+  /// Null means the active layout is the current space.
+  String? _editedBlockName;
+
   int _nextId = 1;
   int _version = 0;
 
@@ -223,7 +228,41 @@ class CadDocument implements BlockLookup, StyleResolver {
   );
 
   /// The block that new entities are added to.
-  String get currentBlockName => activeLayout.blockName;
+  ///
+  /// This is the active layout, unless [setEditedBlock] has opened a block
+  /// definition. That target is not stored in the file.
+  String get currentBlockName => _editedBlockName ?? activeLayout.blockName;
+
+  /// The block definition open on the canvas, or null in normal layout editing.
+  String? get editedBlockName => _editedBlockName;
+
+  bool get isEditingBlock => _editedBlockName != null;
+
+  /// Opens [name] for editing, or leaves block edit when [name] is null.
+  ///
+  /// Layout blocks, anonymous blocks and unknown names are refused. The choice
+  /// is not an undo step.
+  bool setEditedBlock(String? name) {
+    if (name == null || name.isEmpty) {
+      if (_editedBlockName == null) return true;
+      _editedBlockName = null;
+      _version++;
+      return true;
+    }
+    final key = name.toUpperCase();
+    BlockRecord? block;
+    for (final candidate in _blocks.values) {
+      if (candidate.name.toUpperCase() == key) {
+        block = candidate;
+        break;
+      }
+    }
+    if (block == null || block.isLayoutBlock || block.isAnonymous) return false;
+    if (_editedBlockName == block.name) return true;
+    _editedBlockName = block.name;
+    _version++;
+    return true;
+  }
 
   /// Name of the layer that new entities are created on.
   String currentLayer = '0';
@@ -536,6 +575,7 @@ class CadDocument implements BlockLookup, StyleResolver {
     if (_blocks.containsKey(to)) return false;
     _blocks.remove(from);
     _blocks[to] = block.copyWith(name: to);
+    if (_editedBlockName == from) _editedBlockName = to;
     final index = _indexes.remove(from);
     if (index != null) _indexes[to] = index;
     _blockBounds.remove(from);
@@ -556,6 +596,7 @@ class CadDocument implements BlockLookup, StyleResolver {
     }
     _indexes.remove(name);
     _blockBounds.remove(name);
+    if (_editedBlockName == name) _editedBlockName = null;
     _version++;
     return removed;
   }
@@ -581,6 +622,7 @@ class CadDocument implements BlockLookup, StyleResolver {
     }
     _indexes.remove(name);
     _blockBounds.remove(name);
+    if (_editedBlockName == name) _editedBlockName = null;
     _version++;
     return removed;
   }
@@ -634,6 +676,7 @@ class CadDocument implements BlockLookup, StyleResolver {
 
   bool setActiveLayout(String name) {
     if (!_layouts.any((layout) => layout.name == name)) return false;
+    _editedBlockName = null;
     _activeLayoutName = name;
     _version++;
     return true;
@@ -748,6 +791,24 @@ class CadDocument implements BlockLookup, StyleResolver {
       boxes.add(box);
     }
     final drawn = Bounds2.robustUnion(boxes);
+    if (isEditingBlock) {
+      final block = _blocks[_editedBlockName];
+      var box = drawn;
+      if (block != null) {
+        box = box.expandToInclude(block.basePoint.x, block.basePoint.y);
+      }
+      // A point-sized definition would clamp the camera to maximum zoom.
+      if (box.isEmpty || (box.width < 1 && box.height < 1)) {
+        final origin = block?.basePoint ?? Vec2.zero();
+        return Bounds2(
+          origin.x - 100,
+          origin.y - 100,
+          origin.x + 100,
+          origin.y + 100,
+        );
+      }
+      return box;
+    }
     if (activeLayout.isModelSpace) return drawn;
     final sheet = Bounds2(
       0,

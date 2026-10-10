@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show Size;
 
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
@@ -1491,6 +1492,129 @@ void main() {
         'radius': -1,
       });
       expect(workspace.active!.history.canUndo, isFalse);
+    });
+  });
+
+  group('block edit', () {
+    test('new geometry belongs to the open block', () async {
+      final id = await drawLine(0, 0, 10, 0);
+      final defined = await run('edit.block', {
+        'ids': [id],
+        'name': 'WIDGET',
+        'base': [0, 0],
+      });
+      expect(defined.status, CommandStatus.ok, reason: defined.message);
+
+      final opened = await run('block.edit', {'name': 'widget'});
+      expect(opened.status, CommandStatus.ok, reason: opened.message);
+      expect(document.editedBlockName, 'WIDGET');
+      expect(document.currentBlockName, 'WIDGET');
+      expect(document.activeEntities.whereType<InsertEntity>(), isEmpty);
+      expect(
+        document
+            .entitiesOf(document.modelSpaceBlockName)
+            .whereType<InsertEntity>(),
+        isNotEmpty,
+      );
+
+      final drawn = await drawLine(2, 2, 6, 2);
+      expect(document.ownerOf(drawn), 'WIDGET');
+      expect(
+        document
+            .entitiesOf(document.modelSpaceBlockName)
+            .any((entity) => entity.id == drawn),
+        isFalse,
+      );
+
+      final closed = await run('block.close');
+      expect(closed.status, CommandStatus.ok, reason: closed.message);
+      expect(document.isEditingBlock, isFalse);
+      expect(document.currentBlockName, document.modelSpaceBlockName);
+      expect(
+        document
+            .entitiesOf(document.modelSpaceBlockName)
+            .any((entity) => entity.id == drawn),
+        isFalse,
+      );
+    });
+
+    test('switching layout leaves the block', () async {
+      final id = await drawLine(0, 0, 10, 0);
+      await run('edit.block', {
+        'ids': [id],
+        'name': 'WIDGET',
+        'base': [0, 0],
+      });
+      final sheet = await run('layout.new', {'name': 'Sheet'});
+      expect(sheet.status, CommandStatus.ok, reason: sheet.message);
+      final opened = await run('block.edit', {'name': 'WIDGET'});
+      expect(opened.status, CommandStatus.ok, reason: opened.message);
+      expect(document.activeLayoutName, 'Sheet');
+      expect(document.currentBlockName, 'WIDGET');
+
+      final back = await run('layout.set', {'name': 'Model'});
+      expect(back.status, CommandStatus.ok, reason: back.message);
+      expect(document.isEditingBlock, isFalse);
+      expect(document.activeLayoutName, 'Model');
+      expect(document.currentBlockName, document.modelSpaceBlockName);
+    });
+
+    test('closing block edit restores the layout camera', () async {
+      final first = await drawLine(0, 0, 10, 0);
+      final defined = await run('edit.block', {
+        'ids': [first],
+        'name': 'WIDGET',
+        'base': [0, 0],
+      });
+      expect(defined.status, CommandStatus.ok, reason: defined.message);
+      final second = await drawLine(1000, 1000, 1000, 1100);
+      final other = await run('edit.block', {
+        'ids': [second],
+        'name': 'OTHER',
+        'base': [1000, 1000],
+      });
+      expect(other.status, CommandStatus.ok, reason: other.message);
+
+      final camera = workspace.active!.viewport;
+      camera.setSize(const Size(800, 600), 1);
+      camera.viewport = camera.viewport.copyWith(
+        center: const Vec2(4000, -2500),
+        scale: 0.25,
+      );
+      final before = camera.viewport;
+
+      final opened = await run('block.edit', {'name': 'WIDGET'});
+      expect(opened.status, CommandStatus.ok, reason: opened.message);
+      expect(camera.viewport.center, isNot(before.center));
+
+      final switched = await run('block.edit', {'name': 'OTHER'});
+      expect(switched.status, CommandStatus.ok, reason: switched.message);
+
+      final closed = await run('block.close');
+      expect(closed.status, CommandStatus.ok, reason: closed.message);
+      expect(camera.viewport.center.x, closeTo(before.center.x, 1e-6));
+      expect(camera.viewport.center.y, closeTo(before.center.y, 1e-6));
+      expect(camera.viewport.scale, closeTo(before.scale, 1e-9));
+
+      camera.viewport = camera.viewport.copyWith(
+        center: const Vec2(12, 34),
+        scale: 2,
+      );
+      final next = camera.viewport;
+      final again = await run('block.edit', {'name': 'WIDGET'});
+      expect(again.status, CommandStatus.ok, reason: again.message);
+      final closedAgain = await run('block.close');
+      expect(closedAgain.status, CommandStatus.ok, reason: closedAgain.message);
+      expect(camera.viewport.center.x, closeTo(next.center.x, 1e-6));
+      expect(camera.viewport.center.y, closeTo(next.center.y, 1e-6));
+      expect(camera.viewport.scale, closeTo(next.scale, 1e-9));
+    });
+
+    test('anonymous blocks cannot be opened', () async {
+      document.putBlock(const BlockRecord(name: '*U9', isAnonymous: true));
+      final refused = await run('block.edit', {'name': '*U9'});
+      expect(refused.status, CommandStatus.failed);
+      expect(document.isEditingBlock, isFalse);
     });
   });
 }

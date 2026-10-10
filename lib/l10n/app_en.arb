@@ -1064,6 +1064,24 @@
       }
     }
   },
+  "editing_block": "Editing block {name}",
+  "@editing_block": {
+    "description": "editing block",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "editing_xref_block": "Editing xref {name}. Reload replaces these changes.",
+  "@editing_xref_block": {
+    "description": "editing xref block",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "layers_empty_workspace": "Open a drawing to see its layers.",
   "@layers_empty_workspace": {
     "description": "layers empty workspace"
@@ -2066,6 +2084,14 @@
   "@command_block_rename": {
     "description": "command block rename"
   },
+  "command_block_edit": "Edit Block",
+  "@command_block_edit": {
+    "description": "command block edit"
+  },
+  "command_block_close": "Close Block",
+  "@command_block_close": {
+    "description": "command block close"
+  },
   "command_edit_join": "Join",
   "@command_edit_join": {
     "description": "command edit join"
@@ -2808,6 +2834,14 @@
   "command_block_rename_desc": "Renames a block definition and every insert that still points at the old name. Layout blocks, anonymous blocks and xrefs cannot be renamed.",
   "@command_block_rename_desc": {
     "description": "command block rename desc"
+  },
+  "command_block_edit_desc": "Opens a block definition on the canvas. New and changed objects belong to that block, and existing inserts show the update. Layout blocks and anonymous blocks cannot be opened.",
+  "@command_block_edit_desc": {
+    "description": "command block edit desc"
+  },
+  "command_block_close_desc": "Leaves block editing and returns the canvas to the current layout.",
+  "@command_block_close_desc": {
+    "description": "command block close desc"
   },
   "command_edit_join_desc": "Joins selected lines, arcs and open polylines whose endpoints meet into a single polyline. A piece is reversed when that is how it touches the chain; a loop whose ends meet is stored closed.",
   "@command_edit_join_desc": {

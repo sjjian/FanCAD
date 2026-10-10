@@ -749,6 +749,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String editing_block(String name) {
+    return 'Editing block $name';
+  }
+
+  @override
+  String editing_xref_block(String name) {
+    return 'Editing xref $name. Reload replaces these changes.';
+  }
+
+  @override
   String get layers_empty_workspace => 'Open a drawing to see its layers.';
 
   @override
@@ -1493,6 +1503,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get command_block_rename => 'Rename Block';
 
   @override
+  String get command_block_edit => 'Edit Block';
+
+  @override
+  String get command_block_close => 'Close Block';
+
+  @override
   String get command_edit_join => 'Join';
 
   @override
@@ -2108,6 +2124,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get command_block_rename_desc =>
       'Renames a block definition and every insert that still points at the old name. Layout blocks, anonymous blocks and xrefs cannot be renamed.';
+
+  @override
+  String get command_block_edit_desc =>
+      'Opens a block definition on the canvas. New and changed objects belong to that block, and existing inserts show the update. Layout blocks and anonymous blocks cannot be opened.';
+
+  @override
+  String get command_block_close_desc =>
+      'Leaves block editing and returns the canvas to the current layout.';
 
   @override
   String get command_edit_join_desc =>

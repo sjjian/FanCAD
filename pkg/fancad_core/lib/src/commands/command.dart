@@ -251,6 +251,20 @@ abstract class CommandServices {
   /// Centres the view on a point without changing the zoom.
   void panTo(Vec2 center);
 
+  /// Remembers the current camera the first time it is called.
+  ///
+  /// Block editing saves the layout view here and restores it on close.
+  /// A later call keeps that first camera.
+  void holdView() {}
+
+  /// Restores the camera saved by [holdView] and forgets it.
+  ///
+  /// Returns false when nothing was saved, so the caller can fit the drawing.
+  bool restoreHeldView() => false;
+
+  /// Forgets a held camera without moving the view.
+  void dropHeldView() {}
+
   /// Requests a repaint, for commands that change render state only.
   void invalidate();
 
@@ -309,6 +323,15 @@ class _NullServices implements CommandServices {
 
   @override
   void panTo(Vec2 center) {}
+
+  @override
+  void holdView() {}
+
+  @override
+  bool restoreHeldView() => false;
+
+  @override
+  void dropHeldView() {}
 
   @override
   void invalidate() {}

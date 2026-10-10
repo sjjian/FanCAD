@@ -27,6 +27,7 @@ class BlockPurgeCommand extends FanCadCommand {
     if (_unusedBlockNames(context.document).isEmpty) {
       return const CommandResult.ok(message: 'No unused blocks to purge.');
     }
+    final editing = context.document.editedBlockName;
     final purged = <String>[];
     final committed = context.edit('Purge Blocks', (transaction) {
       while (true) {
@@ -39,6 +40,14 @@ class BlockPurgeCommand extends FanCadCommand {
     });
     if (committed == null || purged.isEmpty) {
       return const CommandResult.failed('Nothing was purged.');
+    }
+    if (editing != null &&
+        purged.any((name) => name.toUpperCase() == editing.toUpperCase())) {
+      context.selection.clear();
+      context.services.invalidate();
+      if (!context.services.restoreHeldView()) {
+        context.services.zoomTo(null);
+      }
     }
     return CommandResult(
       status: CommandStatus.ok,

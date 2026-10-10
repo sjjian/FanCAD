@@ -122,7 +122,7 @@ class SceneBuilder {
     }
 
     final layout = document.activeLayout;
-    if (!layout.isModelSpace) {
+    if (!document.isEditingBlock && !layout.isModelSpace) {
       for (final viewportWindow in layout.viewports) {
         if (!viewportWindow.paperBounds.intersects(visible)) continue;
         _emitViewportFrame(sink, viewportWindow.paperBounds);
