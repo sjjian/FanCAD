@@ -284,9 +284,10 @@ EllipseEntity _affineEllipse(EllipseEntity source, Mat3 matrix) {
       endParam: source.endParam,
     );
   }
-  final alpha = 0.5 * math.atan2(2 * uv, uu - vv);
-  var major = Vec2(math.cos(alpha), math.sin(alpha)) * majorLen;
-  if (major.dot(axisA) < 0) major = -major;
+  // The parameter where |A cos t + B sin t| peaks; the major axis is the
+  // point there, not a world direction at that angle.
+  final peak = 0.5 * math.atan2(2 * uv, uu - vv);
+  final major = axisA * math.cos(peak) + axisB * math.sin(peak);
   final ratio = (minorLen / majorLen).clamp(0.0, 1.0);
   if (source.isFullEllipse) {
     return EllipseEntity(

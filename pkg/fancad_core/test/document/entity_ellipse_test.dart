@@ -176,4 +176,26 @@ void main() {
     expect(same.majorAxis.x, closeTo(10, 1e-9));
     expect(same.ratio, closeTo(0.5, 1e-9));
   });
+
+  test('a tilted ellipse keeps its tilt when moved, rotated or scaled', () {
+    const tilted = EllipseEntity(
+      id: 1,
+      center: Vec2(1, 1),
+      majorAxis: Vec2(5, 2),
+      ratio: 0.4,
+    );
+    final moved = tilted.transformed(const Mat3.translation(7, -4));
+    expect(moved.center, const Vec2(8, -3));
+    expect((moved.majorAxis - tilted.majorAxis).length, lessThan(1e-9));
+    expect(moved.ratio, closeTo(0.4, 1e-9));
+
+    final turned = tilted.transformed(Mat3.rotation(0.5));
+    expect(
+      (turned.majorAxis - tilted.majorAxis.rotated(0.5)).length,
+      lessThan(1e-9),
+    );
+
+    final grown = tilted.transformed(const Mat3.scaling(2, 2));
+    expect((grown.majorAxis - tilted.majorAxis * 2).length, lessThan(1e-9));
+  });
 }
