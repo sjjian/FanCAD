@@ -80,13 +80,7 @@ class DrawDivideCommand extends FanCadCommand {
       );
     }
 
-    final points = switch (target) {
-      LineEntity() => Construct.divideLine(target, segments),
-      PolylineEntity() => Construct.dividePolyline(target, segments),
-      ArcEntity() => Construct.divideArc(target, segments),
-      CircleEntity() => Construct.divideCircle(target, segments),
-      _ => const <Vec2>[],
-    };
+    final points = Construct.divide(target as Curve, segments);
     if (points.isEmpty) {
       return const CommandResult.failed('Nothing to place.');
     }

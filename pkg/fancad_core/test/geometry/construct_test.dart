@@ -1519,7 +1519,7 @@ void main() {
       final cutter = line(-20, 0, 20, 0);
       final hits = Construct.crossingsAlong(cutter, oval);
       expect(hits.length, 2);
-      final trimmed = Construct.trimLine(cutter, hits, const Vec2(0, 0));
+      final trimmed = trimLine(cutter, hits, const Vec2(0, 0));
       expect(trimmed, isNotNull);
       expect(trimmed!.length, closeTo(10, 1e-6));
     });
@@ -1533,7 +1533,7 @@ void main() {
       final cutter = line(10, -5, 10, 5);
       final hits = Construct.crossingsAlong(spline, cutter);
       expect(hits, isNotEmpty);
-      final trimmed = Construct.trimSpline(spline, hits, const Vec2(2, 0));
+      final trimmed = trimSpline(spline, hits, const Vec2(2, 0));
       expect(trimmed, isNotNull);
       expect(
         Construct.lengthOf(trimmed!),
@@ -1546,7 +1546,7 @@ void main() {
         Vec2(6, 0),
       ])!;
       final wall = line(12, -4, 12, 4);
-      final grown = Construct.extendSpline(short, [wall]);
+      final grown = extendSpline(short, [wall]);
       expect(grown, isNotNull);
       expect(
         Construct.lengthOf(grown!),
@@ -1739,9 +1739,7 @@ void main() {
     test('removes the picked end back to the crossing', () {
       final source = line(0, 0, 10, 0);
 
-      final trimmed = Construct.trimLine(source, [
-        const Vec2(4, 0),
-      ], const Vec2(8, 0));
+      final trimmed = trimLine(source, [const Vec2(4, 0)], const Vec2(8, 0));
 
       expect(trimmed, isNotNull);
       expect(trimmed!.start.x, closeTo(0, 1e-9));
@@ -1749,7 +1747,7 @@ void main() {
     });
 
     test('removes the other end when the pick is on it', () {
-      final trimmed = Construct.trimLine(line(0, 0, 10, 0), [
+      final trimmed = trimLine(line(0, 0, 10, 0), [
         const Vec2(4, 0),
       ], const Vec2(1, 0));
 
@@ -1761,7 +1759,7 @@ void main() {
       // Two cuts with the pick between them would properly yield two lines.
       // Keeping the longer piece is the documented compromise; what matters is
       // that it is the longer one.
-      final trimmed = Construct.trimLine(line(0, 0, 10, 0), [
+      final trimmed = trimLine(line(0, 0, 10, 0), [
         const Vec2(2, 0),
         const Vec2(4, 0),
       ], const Vec2(3, 0));
@@ -1772,30 +1770,21 @@ void main() {
     });
 
     test('returns null when there is nothing to cut against', () {
-      expect(
-        Construct.trimLine(line(0, 0, 10, 0), const [], const Vec2(5, 0)),
-        isNull,
-      );
+      expect(trimLine(line(0, 0, 10, 0), const [], const Vec2(5, 0)), isNull);
     });
 
     test('a collapsed span cannot invent a remnant', () {
       const collapsed = LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero());
       expect(
-        Construct.trimLine(collapsed, const [Vec2.zero()], const Vec2.zero()),
+        trimLine(collapsed, const [Vec2.zero()], const Vec2.zero()),
         isNull,
       );
     });
 
     test('an endpoint-only crossing cannot invent a remnant', () {
       const source = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
-      expect(
-        Construct.trimLine(source, const [Vec2.zero()], const Vec2(5, 0)),
-        isNull,
-      );
-      expect(
-        Construct.trimLine(source, const [Vec2(10, 0)], const Vec2(5, 0)),
-        isNull,
-      );
+      expect(trimLine(source, const [Vec2.zero()], const Vec2(5, 0)), isNull);
+      expect(trimLine(source, const [Vec2(10, 0)], const Vec2(5, 0)), isNull);
     });
 
     test('cuts against a bulged polyline on the arc, not the chord', () {
@@ -1808,11 +1797,7 @@ void main() {
       expect(crossings, hasLength(1));
       expect(crossings.single.y, closeTo(10, 1e-9));
 
-      final trimmed = Construct.trimLine(
-        line(0, 0, 0, 20),
-        crossings,
-        const Vec2(0, 15),
-      );
+      final trimmed = trimLine(line(0, 0, 0, 20), crossings, const Vec2(0, 15));
       expect(trimmed, isNotNull);
       expect(trimmed!.end.y, closeTo(10, 1e-9));
     });
@@ -1825,9 +1810,7 @@ void main() {
     );
 
     test('removes the picked tail back to the crossing', () {
-      final trimmed = Construct.trimPolyline(elbow, const [
-        Vec2(5, 0),
-      ], const Vec2(8, 0));
+      final trimmed = trimPolyline(elbow, const [Vec2(5, 0)], const Vec2(8, 0));
 
       expect(trimmed, isNotNull);
       expect(trimmed!.vertexCount, 2);
@@ -1835,16 +1818,14 @@ void main() {
     });
 
     test('keeps the far side when the pick is on the start remnant', () {
-      final trimmed = Construct.trimPolyline(elbow, const [
-        Vec2(5, 0),
-      ], const Vec2(1, 0));
+      final trimmed = trimPolyline(elbow, const [Vec2(5, 0)], const Vec2(1, 0));
 
       expect(trimmed!.vertexAt(0).x, closeTo(5, 1e-9));
       expect(trimmed.vertexAt(trimmed.vertexCount - 1), const Vec2(10, 10));
     });
 
     test('trims past a corner to a crossing on the second segment', () {
-      final trimmed = Construct.trimPolyline(elbow, const [
+      final trimmed = trimPolyline(elbow, const [
         Vec2(10, 5),
       ], const Vec2(10, 8));
 
@@ -1866,7 +1847,7 @@ void main() {
       );
       final cut = Vec2(10 * math.cos(math.pi / 4), 10 * math.sin(math.pi / 4));
 
-      final trimmed = Construct.trimPolyline(quarter, [cut], const Vec2(0, 10));
+      final trimmed = trimPolyline(quarter, [cut], const Vec2(0, 10));
 
       expect(trimmed, isNotNull);
       expect(trimmed!.vertexAt(1).x, closeTo(cut.x, 1e-9));
@@ -1876,7 +1857,7 @@ void main() {
 
     test('opens a closed polyline by dropping the picked span', () {
       final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
-      final trimmed = Construct.trimPolyline(square, const [
+      final trimmed = trimPolyline(square, const [
         Vec2(5, 0),
         Vec2(5, 10),
       ], const Vec2(10, 5));
@@ -1892,14 +1873,14 @@ void main() {
     test('returns null when a closed polyline has only one crossing', () {
       final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
       expect(
-        Construct.trimPolyline(square, const [Vec2(5, 0)], const Vec2(10, 5)),
+        trimPolyline(square, const [Vec2(5, 0)], const Vec2(10, 5)),
         isNull,
       );
     });
 
     test('empty crossings cannot invent a remnant', () {
       expect(
-        Construct.trimPolyline(
+        trimPolyline(
           PolylineEntity.fromPoints(
             id: 2,
             points: const [Vec2.zero(), Vec2(10, 0), Vec2(10, 10)],
@@ -1913,7 +1894,7 @@ void main() {
 
     test('a lone vertex cannot invent a remnant', () {
       expect(
-        Construct.trimPolyline(
+        trimPolyline(
           PolylineEntity.fromPoints(id: 3, points: const [Vec2.zero()]),
           const [Vec2.zero()],
           const Vec2.zero(),
@@ -1933,7 +1914,7 @@ void main() {
     );
 
     test('removes the picked end back to the crossing', () {
-      final trimmed = Construct.trimArc(semicircle, const [
+      final trimmed = trimArc(semicircle, const [
         Vec2(0, 10),
       ], const Vec2(8, 6));
 
@@ -1943,7 +1924,7 @@ void main() {
     });
 
     test('removes the other end when the pick is on it', () {
-      final trimmed = Construct.trimArc(semicircle, const [
+      final trimmed = trimArc(semicircle, const [
         Vec2(0, 10),
       ], const Vec2(-8, 6));
 
@@ -1952,10 +1933,7 @@ void main() {
     });
 
     test('returns null when there is nothing to cut against', () {
-      expect(
-        Construct.trimArc(semicircle, const [], const Vec2(0, 10)),
-        isNull,
-      );
+      expect(trimArc(semicircle, const [], const Vec2(0, 10)), isNull);
     });
 
     test('a zero-radius arc cannot invent a remnant', () {
@@ -1967,7 +1945,7 @@ void main() {
         endAngle: 1,
       );
       expect(
-        Construct.trimArc(zeroRadius, const [Vec2.zero()], const Vec2(1, 0)),
+        trimArc(zeroRadius, const [Vec2.zero()], const Vec2(1, 0)),
         isNull,
       );
     });
@@ -1975,9 +1953,7 @@ void main() {
 
   group('extendLine', () {
     test('lengthens forward to meet a boundary segment', () {
-      final extended = Construct.extendLine(line(0, 0, 5, 0), [
-        line(10, -5, 10, 5),
-      ]);
+      final extended = extendLine(line(0, 0, 5, 0), [line(10, -5, 10, 5)]);
 
       expect(extended, isNotNull);
       expect(extended!.start.x, closeTo(0, 1e-9));
@@ -1985,9 +1961,7 @@ void main() {
     });
 
     test('lengthens backwards when the boundary is behind the start', () {
-      final extended = Construct.extendLine(line(5, 0, 10, 0), [
-        line(0, -5, 0, 5),
-      ]);
+      final extended = extendLine(line(5, 0, 10, 0), [line(0, -5, 0, 5)]);
 
       expect(extended!.start.x, closeTo(0, 1e-9));
       expect(extended.end.x, closeTo(10, 1e-9));
@@ -1995,15 +1969,12 @@ void main() {
 
     test('ignores a boundary the extension would miss', () {
       // The infinite line crosses x = 10, but not within the edge's extent.
-      expect(
-        Construct.extendLine(line(0, 0, 5, 0), [line(10, 20, 10, 30)]),
-        isNull,
-      );
+      expect(extendLine(line(0, 0, 5, 0), [line(10, 20, 10, 30)]), isNull);
     });
 
     test('empty edges cannot invent an extension', () {
       expect(
-        Construct.extendLine(
+        extendLine(
           const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
           const [],
         ),
@@ -2014,7 +1985,7 @@ void main() {
     test('a collapsed span cannot invent an extension', () {
       const collapsed = LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero());
       expect(
-        Construct.extendLine(collapsed, [
+        extendLine(collapsed, [
           const LineEntity(id: 2, start: Vec2(10, -5), end: Vec2(10, 5)),
         ]),
         isNull,
@@ -2022,7 +1993,7 @@ void main() {
     });
 
     test('stops at the nearest of several boundaries', () {
-      final extended = Construct.extendLine(line(0, 0, 1, 0), [
+      final extended = extendLine(line(0, 0, 1, 0), [
         line(20, -5, 20, 5),
         line(8, -5, 8, 5),
       ]);
@@ -2031,7 +2002,7 @@ void main() {
     });
 
     test('extends to a circle', () {
-      final extended = Construct.extendLine(line(0, 0, 1, 0), [
+      final extended = extendLine(line(0, 0, 1, 0), [
         const CircleEntity(id: 2, center: Vec2(0, 0), radius: 6),
       ]);
 
@@ -2043,7 +2014,7 @@ void main() {
         id: 2,
         points: const [Vec2(10, -5), Vec2(10, 5)],
       );
-      final extended = Construct.extendLine(line(0, 0, 5, 0), [wall]);
+      final extended = extendLine(line(0, 0, 5, 0), [wall]);
 
       expect(extended!.end.x, closeTo(10, 1e-9));
     });
@@ -2053,7 +2024,7 @@ void main() {
         id: 2,
         vertices: Float64List.fromList([10, 0, 1, -10, 0, 0]),
       );
-      final extended = Construct.extendLine(line(0, 0, 0, 5), [wall]);
+      final extended = extendLine(line(0, 0, 0, 5), [wall]);
 
       expect(extended, isNotNull);
       expect(extended!.end.y, closeTo(10, 1e-9));
@@ -2067,7 +2038,7 @@ void main() {
         id: 1,
         points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 5)],
       );
-      final extended = Construct.extendPolyline(elbow, [line(5, 10, 15, 10)]);
+      final extended = extendPolyline(elbow, [line(5, 10, 15, 10)]);
 
       expect(extended, isNotNull);
       expect(extended!.vertexAt(2).y, closeTo(10, 1e-9));
@@ -2079,7 +2050,7 @@ void main() {
         id: 1,
         points: const [Vec2(5, 0), Vec2(10, 0), Vec2(10, 10)],
       );
-      final extended = Construct.extendPolyline(elbow, [
+      final extended = extendPolyline(elbow, [
         line(0, -5, 0, 5),
       ], const Vec2(5, 0));
 
@@ -2089,7 +2060,7 @@ void main() {
 
     test('refuses a closed polyline', () {
       expect(
-        Construct.extendPolyline(
+        extendPolyline(
           Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!,
           [line(20, -5, 20, 5)],
         ),
@@ -2099,7 +2070,7 @@ void main() {
 
     test('empty edges cannot invent an extension', () {
       expect(
-        Construct.extendPolyline(
+        extendPolyline(
           PolylineEntity.fromPoints(
             id: 2,
             points: const [Vec2.zero(), Vec2(10, 0)],
@@ -2112,7 +2083,7 @@ void main() {
 
     test('a lone vertex cannot invent an extension', () {
       expect(
-        Construct.extendPolyline(
+        extendPolyline(
           PolylineEntity.fromPoints(id: 1, points: const [Vec2.zero()]),
           [const LineEntity(id: 2, start: Vec2(10, -5), end: Vec2(10, 5))],
         ),
@@ -2133,7 +2104,7 @@ void main() {
         ]),
       );
 
-      final extended = Construct.extendPolyline(quarter, [line(-15, 0, -5, 0)]);
+      final extended = extendPolyline(quarter, [line(-15, 0, -5, 0)]);
 
       expect(extended, isNotNull);
       expect(extended!.vertexAt(1).x, closeTo(-10, 1e-9));
@@ -2152,7 +2123,7 @@ void main() {
     );
 
     test('grows the end until it meets a boundary', () {
-      final extended = Construct.extendArc(quarter, [line(-15, 0, -5, 0)]);
+      final extended = extendArc(quarter, [line(-15, 0, -5, 0)]);
 
       expect(extended, isNotNull);
       expect(extended!.startAngle, closeTo(0, 1e-9));
@@ -2160,7 +2131,7 @@ void main() {
     });
 
     test('grows the start when that end is nearer the pick', () {
-      final extended = Construct.extendArc(quarter, [
+      final extended = extendArc(quarter, [
         line(-5, -10, 5, -10),
       ], const Vec2(10, 0));
 
@@ -2169,7 +2140,7 @@ void main() {
     });
 
     test('stops at the nearest boundary in that direction', () {
-      final extended = Construct.extendArc(quarter, [
+      final extended = extendArc(quarter, [
         line(-15, 0, -5, 0),
         line(-8, 20, -8, 5),
       ]);
@@ -2179,7 +2150,7 @@ void main() {
     });
 
     test('ignores a boundary the circle would miss', () {
-      expect(Construct.extendArc(quarter, [line(-10, 20, -10, 15)]), isNull);
+      expect(extendArc(quarter, [line(-10, 20, -10, 15)]), isNull);
     });
 
     test('a zero-radius arc cannot invent an extension', () {
@@ -2191,7 +2162,7 @@ void main() {
         endAngle: math.pi / 2,
       );
       expect(
-        Construct.extendArc(zeroRadius, [
+        extendArc(zeroRadius, [
           const LineEntity(id: 4, start: Vec2(-15, 0), end: Vec2(-5, 0)),
         ]),
         isNull,
@@ -2207,7 +2178,7 @@ void main() {
         endAngle: math.pi * 2,
       );
       expect(
-        Construct.extendArc(fullCircle, [
+        extendArc(fullCircle, [
           const LineEntity(id: 4, start: Vec2(-15, 0), end: Vec2(-5, 0)),
         ]),
         isNull,
@@ -2610,7 +2581,7 @@ void main() {
 
   group('breakLine', () {
     test('splits a line at one interior point', () {
-      final pieces = Construct.breakLine(line(0, 0, 10, 0), const Vec2(4, 0));
+      final pieces = breakLine(line(0, 0, 10, 0), const Vec2(4, 0));
 
       expect(pieces, isNotNull);
       expect(pieces, hasLength(2));
@@ -2620,7 +2591,7 @@ void main() {
     });
 
     test('removes the span between two points', () {
-      final pieces = Construct.breakLine(
+      final pieces = breakLine(
         line(0, 0, 10, 0),
         const Vec2(2, 0),
         const Vec2(8, 0),
@@ -2632,7 +2603,7 @@ void main() {
     });
 
     test('erases the line when both ends are the break points', () {
-      final pieces = Construct.breakLine(
+      final pieces = breakLine(
         line(0, 0, 10, 0),
         const Vec2(0, 0),
         const Vec2(10, 0),
@@ -2642,12 +2613,12 @@ void main() {
     });
 
     test('returns null when a single point is an endpoint', () {
-      expect(Construct.breakLine(line(0, 0, 10, 0), const Vec2(0, 0)), isNull);
+      expect(breakLine(line(0, 0, 10, 0), const Vec2(0, 0)), isNull);
     });
 
     test('a collapsed span cannot invent a break', () {
       const collapsed = LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero());
-      expect(Construct.breakLine(collapsed, const Vec2.zero()), isNull);
+      expect(breakLine(collapsed, const Vec2.zero()), isNull);
     });
   });
 
@@ -2658,7 +2629,7 @@ void main() {
         points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10)],
       );
 
-      final pieces = Construct.breakPolyline(polyline, const Vec2(10, 0));
+      final pieces = breakPolyline(polyline, const Vec2(10, 0));
 
       expect(pieces, hasLength(2));
       expect(pieces![0].vertexAt(0), const Vec2(0, 0));
@@ -2669,7 +2640,7 @@ void main() {
 
     test('opens a closed polyline at one point', () {
       final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
-      final pieces = Construct.breakPolyline(square, const Vec2(5, 0));
+      final pieces = breakPolyline(square, const Vec2(5, 0));
 
       expect(pieces, hasLength(1));
       expect(pieces!.first.closed, isFalse);
@@ -2694,7 +2665,7 @@ void main() {
         ]),
       );
 
-      final pieces = Construct.breakPolyline(
+      final pieces = breakPolyline(
         quarter,
         Vec2(10 * math.cos(math.pi / 4), 10 * math.sin(math.pi / 4)),
       );
@@ -2716,7 +2687,7 @@ void main() {
         points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10), Vec2(20, 10)],
       );
 
-      final pieces = Construct.breakPolyline(
+      final pieces = breakPolyline(
         polyline,
         const Vec2(10, 0),
         const Vec2(10, 10),
@@ -2730,7 +2701,7 @@ void main() {
 
     test('a lone vertex cannot invent a remnant', () {
       expect(
-        Construct.breakPolyline(
+        breakPolyline(
           PolylineEntity.fromPoints(id: 1, points: const [Vec2.zero()]),
           const Vec2.zero(),
         ),
@@ -2749,7 +2720,7 @@ void main() {
     );
 
     test('splits an arc at an interior point', () {
-      final pieces = Construct.breakArc(semicircle, const Vec2(0, 10));
+      final pieces = breakArc(semicircle, const Vec2(0, 10));
 
       expect(pieces, hasLength(2));
       expect(pieces![0].endAngle, closeTo(math.pi / 2, 1e-9));
@@ -2758,11 +2729,11 @@ void main() {
     });
 
     test('returns null when the point is an endpoint', () {
-      expect(Construct.breakArc(semicircle, const Vec2(10, 0)), isNull);
+      expect(breakArc(semicircle, const Vec2(10, 0)), isNull);
     });
 
     test('drops the span between two points', () {
-      final pieces = Construct.breakArc(
+      final pieces = breakArc(
         semicircle,
         const Vec2(0, 10),
         const Vec2(-10, 0),
@@ -2780,18 +2751,14 @@ void main() {
         startAngle: 0,
         endAngle: math.pi,
       );
-      expect(Construct.breakArc(zeroRadius, const Vec2.zero()), isNull);
+      expect(breakArc(zeroRadius, const Vec2.zero()), isNull);
     });
   });
 
   group('breakCircle', () {
     test('keeps the counter-clockwise remnant between two points', () {
       const circle = CircleEntity(id: 1, center: Vec2(0, 0), radius: 10);
-      final pieces = Construct.breakCircle(
-        circle,
-        const Vec2(10, 0),
-        const Vec2(0, 10),
-      );
+      final pieces = breakCircle(circle, const Vec2(10, 0), const Vec2(0, 10));
 
       expect(pieces, hasLength(1));
       expect(pieces!.first.startAngle, closeTo(math.pi / 2, 1e-9));
@@ -2800,7 +2767,7 @@ void main() {
 
     test('refuses a single point', () {
       expect(
-        Construct.breakCircle(
+        breakCircle(
           const CircleEntity(id: 1, center: Vec2(0, 0), radius: 10),
           const Vec2(10, 0),
         ),
@@ -2810,7 +2777,7 @@ void main() {
 
     test('a zero-radius or coincident pair cannot invent a remnant', () {
       expect(
-        Construct.breakCircle(
+        breakCircle(
           const CircleEntity(id: 2, center: Vec2.zero(), radius: 0),
           const Vec2(1, 0),
           const Vec2(0, 1),
@@ -2818,7 +2785,7 @@ void main() {
         isNull,
       );
       expect(
-        Construct.breakCircle(
+        breakCircle(
           const CircleEntity(id: 3, center: Vec2.zero(), radius: 10),
           const Vec2(10, 0),
           const Vec2(10, 0),
@@ -3049,7 +3016,7 @@ void main() {
 
   group('divideLine', () {
     test('places interior points only', () {
-      final points = Construct.divideLine(line(0, 0, 12, 0), 3);
+      final points = divideLine(line(0, 0, 12, 0), 3);
 
       expect(points, hasLength(2));
       expect(points[0].x, closeTo(4, 1e-9));
@@ -3057,8 +3024,8 @@ void main() {
     });
 
     test('returns nothing for fewer than two segments', () {
-      expect(Construct.divideLine(line(0, 0, 10, 0), 1), isEmpty);
-      expect(Construct.divideLine(line(0, 0, 10, 0), 0), isEmpty);
+      expect(divideLine(line(0, 0, 10, 0), 1), isEmpty);
+      expect(divideLine(line(0, 0, 10, 0), 0), isEmpty);
     });
   });
 
@@ -3069,7 +3036,7 @@ void main() {
         points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10)],
       );
 
-      final points = Construct.dividePolyline(polyline, 4);
+      final points = dividePolyline(polyline, 4);
 
       expect(points, hasLength(3));
       expect(points[0].x, closeTo(5, 1e-9));
@@ -3080,7 +3047,7 @@ void main() {
     test('walks a closed polyline around the loop', () {
       final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
 
-      final points = Construct.dividePolyline(square, 8);
+      final points = dividePolyline(square, 8);
 
       expect(points, hasLength(8));
       expect(points[0], const Vec2(0, 0));
@@ -3102,7 +3069,7 @@ void main() {
         ]),
       );
 
-      final points = Construct.dividePolyline(quarter, 2);
+      final points = dividePolyline(quarter, 2);
 
       expect(points, hasLength(1));
       expect(points.first.x, closeTo(10 * math.cos(math.pi / 4), 1e-9));
@@ -3137,7 +3104,7 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.dividePolyline(c.polyline, c.segments), isEmpty);
+        expect(dividePolyline(c.polyline, c.segments), isEmpty);
       },
     );
   });
@@ -3152,7 +3119,7 @@ void main() {
         endAngle: math.pi / 2,
       );
 
-      final points = Construct.divideArc(arc, 2);
+      final points = divideArc(arc, 2);
 
       expect(points, hasLength(1));
       expect(points.first.x, closeTo(10 * math.cos(math.pi / 4), 1e-9));
@@ -3196,7 +3163,7 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.divideArc(c.arc, c.segments), isEmpty);
+        expect(divideArc(c.arc, c.segments), isEmpty);
       },
     );
   });
@@ -3204,7 +3171,7 @@ void main() {
   group('divideCircle', () {
     test('places a point at every equal angle', () {
       const circle = CircleEntity(id: 1, center: Vec2(0, 0), radius: 5);
-      final points = Construct.divideCircle(circle, 4);
+      final points = divideCircle(circle, 4);
 
       expect(points, hasLength(4));
       expect(points[0], const Vec2(5, 0));
@@ -3227,7 +3194,7 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.divideCircle(c.circle, c.segments), isEmpty);
+        expect(divideCircle(c.circle, c.segments), isEmpty);
       },
     );
   });
@@ -3522,7 +3489,7 @@ void main() {
 
   group('lengthenLine', () {
     test('sets a new total length on the picked end', () {
-      final longer = Construct.lengthenLine(
+      final longer = lengthenLine(
         line(0, 0, 10, 0),
         const Vec2(10, 0),
         total: 15,
@@ -3534,7 +3501,7 @@ void main() {
     });
 
     test('a negative delta shortens the nearer end', () {
-      final shorter = Construct.lengthenLine(
+      final shorter = lengthenLine(
         line(0, 0, 10, 0),
         const Vec2(0, 0),
         delta: -3,
@@ -3546,39 +3513,28 @@ void main() {
 
     test('refuses a non-positive result', () {
       expect(
-        Construct.lengthenLine(line(0, 0, 10, 0), const Vec2(10, 0), total: 0),
+        lengthenLine(line(0, 0, 10, 0), const Vec2(10, 0), total: 0),
         isNull,
       );
       expect(
-        Construct.lengthenLine(
-          line(0, 0, 10, 0),
-          const Vec2(10, 0),
-          delta: -10,
-        ),
+        lengthenLine(line(0, 0, 10, 0), const Vec2(10, 0), delta: -10),
         isNull,
       );
     });
 
     test('a collapsed span cannot invent a lengthened remnant', () {
       const collapsed = LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero());
-      expect(
-        Construct.lengthenLine(collapsed, const Vec2.zero(), total: 10),
-        isNull,
-      );
+      expect(lengthenLine(collapsed, const Vec2.zero(), total: 10), isNull);
     });
 
     test('a non-finite total cannot invent a length change', () {
       const source = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
       expect(
-        Construct.lengthenLine(source, const Vec2(10, 0), total: double.nan),
+        lengthenLine(source, const Vec2(10, 0), total: double.nan),
         isNull,
       );
       expect(
-        Construct.lengthenLine(
-          source,
-          const Vec2(10, 0),
-          total: double.infinity,
-        ),
+        lengthenLine(source, const Vec2(10, 0), total: double.infinity),
         isNull,
       );
     });
@@ -3591,11 +3547,7 @@ void main() {
     );
 
     test('extends the last segment when the pick is at the free end', () {
-      final longer = Construct.lengthenPolyline(
-        elbow,
-        const Vec2(10, 10),
-        total: 25,
-      );
+      final longer = lengthenPolyline(elbow, const Vec2(10, 10), total: 25);
 
       expect(longer, isNotNull);
       expect(longer!.vertexCount, 3);
@@ -3604,32 +3556,20 @@ void main() {
     });
 
     test('shortens the last segment without dropping vertices', () {
-      final shorter = Construct.lengthenPolyline(
-        elbow,
-        const Vec2(10, 10),
-        total: 15,
-      );
+      final shorter = lengthenPolyline(elbow, const Vec2(10, 10), total: 15);
 
       expect(shorter!.vertexAt(2).y, closeTo(5, 1e-9));
     });
 
     test('drops vertices when shortening past a corner', () {
-      final shorter = Construct.lengthenPolyline(
-        elbow,
-        const Vec2(10, 10),
-        total: 8,
-      );
+      final shorter = lengthenPolyline(elbow, const Vec2(10, 10), total: 8);
 
       expect(shorter!.vertexCount, 2);
       expect(shorter.vertexAt(1).x, closeTo(8, 1e-9));
     });
 
     test('a negative delta shortens the nearer end', () {
-      final shorter = Construct.lengthenPolyline(
-        elbow,
-        const Vec2(0, 0),
-        delta: -3,
-      );
+      final shorter = lengthenPolyline(elbow, const Vec2(0, 0), delta: -3);
 
       expect(shorter!.vertexAt(0).x, closeTo(3, 1e-9));
       expect(shorter.vertexAt(2), const Vec2(10, 10));
@@ -3637,7 +3577,7 @@ void main() {
 
     test('refuses a closed polyline', () {
       expect(
-        Construct.lengthenPolyline(
+        lengthenPolyline(
           Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!,
           const Vec2(0, 0),
           total: 50,
@@ -3648,7 +3588,7 @@ void main() {
 
     test('a lone or collapsed vertex cannot invent a lengthened remnant', () {
       expect(
-        Construct.lengthenPolyline(
+        lengthenPolyline(
           PolylineEntity.fromPoints(id: 2, points: const [Vec2.zero()]),
           const Vec2.zero(),
           total: 10,
@@ -3656,7 +3596,7 @@ void main() {
         isNull,
       );
       expect(
-        Construct.lengthenPolyline(
+        lengthenPolyline(
           PolylineEntity.fromPoints(
             id: 3,
             points: const [Vec2.zero(), Vec2.zero()],
@@ -3670,11 +3610,7 @@ void main() {
 
     test('a non-finite total cannot invent a length change', () {
       expect(
-        Construct.lengthenPolyline(
-          elbow,
-          const Vec2(10, 10),
-          total: double.nan,
-        ),
+        lengthenPolyline(elbow, const Vec2(10, 10), total: double.nan),
         isNull,
       );
     });
@@ -3692,7 +3628,7 @@ void main() {
         ]),
       );
 
-      final longer = Construct.lengthenPolyline(
+      final longer = lengthenPolyline(
         quarter,
         const Vec2(0, 10),
         total: 10 * math.pi * 0.75,
@@ -3717,7 +3653,7 @@ void main() {
         ]),
       );
 
-      final shorter = Construct.lengthenPolyline(
+      final shorter = lengthenPolyline(
         quarter,
         const Vec2(0, 10),
         total: 10 * math.pi / 4,
@@ -3739,7 +3675,7 @@ void main() {
     );
 
     test('extends the free end to a new total length', () {
-      final longer = Construct.lengthenArc(
+      final longer = lengthenArc(
         quarter,
         const Vec2(0, 10),
         total: 10 * math.pi,
@@ -3751,11 +3687,7 @@ void main() {
     });
 
     test('a negative delta shortens the nearer end', () {
-      final shorter = Construct.lengthenArc(
-        quarter,
-        const Vec2(10, 0),
-        delta: -5,
-      );
+      final shorter = lengthenArc(quarter, const Vec2(10, 0), delta: -5);
 
       expect(shorter!.endAngle, closeTo(math.pi / 2, 1e-9));
       expect(shorter.sweep, closeTo((5 * math.pi - 5) / 10, 1e-9));
@@ -3763,7 +3695,7 @@ void main() {
 
     test('refuses a sweep that would close the circle', () {
       expect(
-        Construct.lengthenArc(quarter, const Vec2(0, 10), total: 20 * math.pi),
+        lengthenArc(quarter, const Vec2(0, 10), total: 20 * math.pi),
         isNull,
       );
     });
@@ -3776,20 +3708,13 @@ void main() {
         startAngle: 0,
         endAngle: math.pi / 2,
       );
+      expect(lengthenArc(zeroArc, const Vec2.zero(), total: 10), isNull);
       expect(
-        Construct.lengthenArc(zeroArc, const Vec2.zero(), total: 10),
+        lengthenArc(quarter, const Vec2(0, 10), total: double.infinity),
         isNull,
       );
       expect(
-        Construct.lengthenArc(
-          quarter,
-          const Vec2(0, 10),
-          total: double.infinity,
-        ),
-        isNull,
-      );
-      expect(
-        Construct.lengthenArc(
+        lengthenArc(
           const ArcEntity(
             id: 4,
             center: Vec2.zero(),
@@ -4458,3 +4383,89 @@ void main() {
     );
   });
 }
+
+LineEntity? trimLine(LineEntity line, List<Vec2> crossings, Vec2 pick) =>
+    Construct.trim(line, crossings, pick) as LineEntity?;
+
+PolylineEntity? trimPolyline(
+  PolylineEntity polyline,
+  List<Vec2> crossings,
+  Vec2 pick,
+) => Construct.trim(polyline, crossings, pick) as PolylineEntity?;
+
+ArcEntity? trimArc(ArcEntity arc, List<Vec2> crossings, Vec2 pick) =>
+    Construct.trim(arc, crossings, pick) as ArcEntity?;
+
+PolylineEntity? trimSpline(
+  SplineEntity spline,
+  List<Vec2> crossings,
+  Vec2 pick,
+) => Construct.trim(spline, crossings, pick) as PolylineEntity?;
+
+LineEntity? extendLine(LineEntity line, List<CadEntity> edges) =>
+    Construct.extend(line, edges) as LineEntity?;
+
+PolylineEntity? extendPolyline(
+  PolylineEntity polyline,
+  List<CadEntity> edges, [
+  Vec2? pick,
+]) => Construct.extend(polyline, edges, pick) as PolylineEntity?;
+
+ArcEntity? extendArc(ArcEntity arc, List<CadEntity> edges, [Vec2? pick]) =>
+    Construct.extend(arc, edges, pick) as ArcEntity?;
+
+PolylineEntity? extendSpline(
+  SplineEntity spline,
+  List<CadEntity> edges, [
+  Vec2? pick,
+]) => Construct.extend(spline, edges, pick) as PolylineEntity?;
+
+LineEntity? lengthenLine(
+  LineEntity line,
+  Vec2 pick, {
+  double? delta,
+  double? total,
+}) => Construct.lengthen(line, pick, delta: delta, total: total) as LineEntity?;
+
+PolylineEntity? lengthenPolyline(
+  PolylineEntity polyline,
+  Vec2 pick, {
+  double? delta,
+  double? total,
+}) =>
+    Construct.lengthen(polyline, pick, delta: delta, total: total)
+        as PolylineEntity?;
+
+ArcEntity? lengthenArc(
+  ArcEntity arc,
+  Vec2 pick, {
+  double? delta,
+  double? total,
+}) => Construct.lengthen(arc, pick, delta: delta, total: total) as ArcEntity?;
+
+List<LineEntity>? breakLine(LineEntity line, Vec2 first, [Vec2? second]) =>
+    Construct.breakCurve(line, first, second)?.cast<LineEntity>();
+
+List<PolylineEntity>? breakPolyline(
+  PolylineEntity polyline,
+  Vec2 first, [
+  Vec2? second,
+]) => Construct.breakCurve(polyline, first, second)?.cast<PolylineEntity>();
+
+List<ArcEntity>? breakArc(ArcEntity arc, Vec2 first, [Vec2? second]) =>
+    Construct.breakCurve(arc, first, second)?.cast<ArcEntity>();
+
+List<ArcEntity>? breakCircle(CircleEntity circle, Vec2 first, [Vec2? second]) =>
+    Construct.breakCurve(circle, first, second)?.cast<ArcEntity>();
+
+List<Vec2> divideLine(LineEntity line, int segments) =>
+    Construct.divide(line, segments);
+
+List<Vec2> dividePolyline(PolylineEntity polyline, int segments) =>
+    Construct.divide(polyline, segments);
+
+List<Vec2> divideArc(ArcEntity arc, int segments) =>
+    Construct.divide(arc, segments);
+
+List<Vec2> divideCircle(CircleEntity circle, int segments) =>
+    Construct.divide(circle, segments);

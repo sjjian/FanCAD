@@ -1348,435 +1348,115 @@ class Construct {
     return entity.offsetBy(distance, towards);
   }
 
-  /// Trims [line] by discarding the piece that contains [pick].
+  /// Shortens [curve] by discarding the piece that contains [pick].
   ///
-  /// [crossings] are the points where the cutting edges meet the line. Returns
-  /// null when the pick is not in a removable interval.
-  static LineEntity? trimLine(
-    LineEntity line,
-    List<Vec2> crossings,
-    Vec2 pick,
-  ) {
-    if (crossings.isEmpty) return null;
-    final direction = line.end - line.start;
-    final lengthSquared = direction.lengthSquared;
-    if (lengthSquared < 1e-18) return null;
-
-    double parameterOf(Vec2 p) =>
-        (p - line.start).dot(direction) / lengthSquared;
-
-    // Parameterise the line, sort the cuts along it, and find which interval
-    // the pick falls in. That interval is the piece to discard.
-    final cuts = <double>[
+  /// [crossings] are the points where the cutting edges meet the curve.
+  /// Trimming a middle span of an open curve would correctly produce two
+  /// pieces, but silently doubling the entity count surprises users more
+  /// than it helps, so the longer remnant is kept. A loop needs two
+  /// crossings; the picked span is dropped and the rest is left open.
+  /// Returns null when the pick is not in a removable interval.
+  static CadEntity? trim(Curve curve, List<Vec2> crossings, Vec2 pick) {
+    if (crossings.isEmpty || curve.pathLength < 1e-12) return null;
+    final pickT = curve.paramNear(pick);
+    if (curve.isLoop) return _trimLoop(curve, crossings, pickT);
+    final cuts = _uniqueParams([
       0,
       for (final crossing in crossings)
-        if (parameterOf(crossing) > 1e-9 && parameterOf(crossing) < 1 - 1e-9)
-          parameterOf(crossing),
+        if (curve.paramNear(crossing) case final t
+            when t > 1e-9 && t < 1 - 1e-9)
+          t,
       1,
-    ]..sort();
+    ]);
     if (cuts.length <= 2) return null;
-
-    final pickParameter = parameterOf(pick).clamp(0.0, 1.0);
     for (var i = 0; i + 1 < cuts.length; i++) {
-      if (pickParameter < cuts[i] || pickParameter > cuts[i + 1]) continue;
+      if (pickT < cuts[i] || pickT > cuts[i + 1]) continue;
       final keepBefore = cuts[i] > 0;
       final keepAfter = cuts[i + 1] < 1;
       if (!keepBefore && !keepAfter) return null;
-      if (keepBefore && keepAfter) {
-        // Trimming out of the middle would correctly produce two lines, but
-        // silently doubling the entity count surprises users more than it
-        // helps, so the longer remnant is kept.
-        return cuts[i] >= 1 - cuts[i + 1]
-            ? resizedLine(line, 0, cuts[i])
-            : resizedLine(line, cuts[i + 1], 1);
-      }
-      return keepBefore
-          ? resizedLine(line, 0, cuts[i])
-          : resizedLine(line, cuts[i + 1], 1);
+      final before = keepBefore && (!keepAfter || cuts[i] >= 1 - cuts[i + 1]);
+      return before ? curve.span(0, cuts[i]) : curve.span(cuts[i + 1], 1);
     }
     return null;
   }
 
-  /// Shortens [polyline] back to where it meets [crossings].
-  ///
-  /// Same contract as [trimLine]: the interval containing [pick] is discarded.
-  /// Trimming a middle span of an open polyline keeps the longer remnant
-  /// rather than splitting it in two. A closed polyline needs two crossings;
-  /// the picked span is dropped and the rest is left open. A bulge is cut on
-  /// the arc, not the chord.
-  static PolylineEntity? trimPolyline(
-    PolylineEntity polyline,
-    List<Vec2> crossings,
-    Vec2 pick,
-  ) {
-    if (crossings.isEmpty || polyline.vertexCount < 2) {
-      return null;
-    }
-    if (polyline.closed) {
-      return _trimClosedPolyline(polyline, crossings, pick);
-    }
-    final length = _polylineLength(polyline);
-    if (length < 1e-12) return null;
-    final pickHit = _polylineHit(polyline, pick);
-    if (pickHit == null) return null;
-    final pickDistance = _polylineChainDistance(polyline, pickHit);
-
-    final cuts = <double>[0];
-    for (final crossing in crossings) {
-      final hit = _polylineHit(polyline, crossing);
-      if (hit == null) continue;
-      final distance = _polylineChainDistance(polyline, hit);
-      if (distance > 1e-9 && distance < length - 1e-9) {
-        cuts.add(distance);
-      }
-    }
-    cuts.add(length);
-    cuts.sort();
-    final unique = <double>[];
-    for (final cut in cuts) {
-      if (unique.isEmpty || (cut - unique.last).abs() > 1e-9) {
-        unique.add(cut);
-      }
-    }
-    if (unique.length <= 2) return null;
-
-    for (var i = 0; i + 1 < unique.length; i++) {
-      if (pickDistance < unique[i] || pickDistance > unique[i + 1]) continue;
-      final keepBefore = unique[i] > 1e-9;
-      final keepAfter = unique[i + 1] < length - 1e-9;
-      if (!keepBefore && !keepAfter) return null;
-      if (keepBefore && keepAfter) {
-        return unique[i] >= length - unique[i + 1]
-            ? _polylinePrefix(polyline, unique[i])
-            : _polylineSuffix(polyline, unique[i + 1]);
-      }
-      return keepBefore
-          ? _polylinePrefix(polyline, unique[i])
-          : _polylineSuffix(polyline, unique[i + 1]);
-    }
-    return null;
-  }
-
-  /// Drops the circular span that contains [pick] and opens the loop.
-  static PolylineEntity? _trimClosedPolyline(
-    PolylineEntity polyline,
-    List<Vec2> crossings,
-    Vec2 pick,
-  ) {
-    final length = _polylineLength(polyline);
-    if (length < 1e-12) return null;
-    final pickHit = _polylineHit(polyline, pick);
-    if (pickHit == null) return null;
-    var pickDistance = _polylineChainDistance(polyline, pickHit);
-    if (pickDistance >= length - 1e-9) pickDistance = 0;
-
-    final cuts = <({double distance, Vec2 point})>[];
-    for (final crossing in crossings) {
-      final hit = _polylineHit(polyline, crossing);
-      if (hit == null) continue;
-      var distance = _polylineChainDistance(polyline, hit);
-      if (distance >= length - 1e-9) distance = 0;
-      if (cuts.any((cut) => (cut.distance - distance).abs() < 1e-9)) {
-        continue;
-      }
-      cuts.add((distance: distance, point: hit.point));
+  static CadEntity? _trimLoop(Curve curve, List<Vec2> crossings, double pickT) {
+    final cuts = _uniqueParams([
+      for (final crossing in crossings) curve.paramNear(crossing),
+    ]);
+    if (cuts.length > 1 && cuts.last - cuts.first > 1 - 1e-9) {
+      cuts.removeLast();
     }
     if (cuts.length < 2) return null;
-    cuts.sort((a, b) => a.distance.compareTo(b.distance));
-    if (cuts.any((cut) => (pickDistance - cut.distance).abs() < 1e-9)) {
-      return null;
+    if (cuts.any((cut) => (pickT - cut).abs() < 1e-9)) return null;
+    // A pick before the first cut or after the last sits in the span that
+    // runs across the seam.
+    var from = cuts.last;
+    var to = cuts.first;
+    for (var i = 0; i + 1 < cuts.length; i++) {
+      if (pickT > cuts[i] && pickT < cuts[i + 1]) {
+        from = cuts[i];
+        to = cuts[i + 1];
+        break;
+      }
     }
+    return curve.span(to, from);
+  }
 
-    final ({double distance, Vec2 point}) from;
-    final ({double distance, Vec2 point}) to;
-    if (pickDistance < cuts.first.distance ||
-        pickDistance > cuts.last.distance) {
-      from = cuts.last;
-      to = cuts.first;
-    } else {
-      var found = false;
-      late final ({double distance, Vec2 point}) chosenFrom;
-      late final ({double distance, Vec2 point}) chosenTo;
-      for (var i = 0; i + 1 < cuts.length; i++) {
-        if (pickDistance > cuts[i].distance &&
-            pickDistance < cuts[i + 1].distance) {
-          chosenFrom = cuts[i];
-          chosenTo = cuts[i + 1];
-          found = true;
-          break;
+  static List<double> _uniqueParams(List<double> params) {
+    params.sort();
+    final unique = <double>[];
+    for (final t in params) {
+      if (unique.isEmpty || (t - unique.last).abs() > 1e-9) unique.add(t);
+    }
+    return unique;
+  }
+
+  /// Grows an open [curve] until an end meets one of [edges].
+  ///
+  /// Each end continues the way it heads: a straight end along its line, a
+  /// round end around its circle or ellipse without closing it. The
+  /// boundaries are not extended: a hit must land on the edge itself.
+  /// [pick] chooses the end nearer it; omitted, the end is tried first and
+  /// the start is the fallback. A spline grows as its flattened polyline.
+  static CadEntity? extend(Curve curve, List<CadEntity> edges, [Vec2? pick]) {
+    final length = curve.pathLength;
+    if (curve.isLoop || edges.isEmpty || length < 1e-12) return null;
+    // A straight end that travels this far has passed every edge.
+    var box = Bounds2.fromPoints([curve.along(0), curve.along(1)]);
+    for (final edge in edges) {
+      box = box.union(edge.computeBounds());
+    }
+    final reach = (box.diagonal * 2 + 1) / length;
+
+    CadEntity? grow({required bool atStart}) {
+      final extent = math.min(reach, curve.maxGrowth(atStart: atStart));
+      if (extent <= 1e-12) return null;
+      final tail = atStart ? curve.span(-extent, 0) : curve.span(1, 1 + extent);
+      if (tail is! Curve) return null;
+      double? nearest;
+      for (final edge in edges) {
+        for (final hit in crossingsAlong(tail, edge)) {
+          final t = tail.paramNear(hit);
+          final away = atStart ? 1 - t : t;
+          if (away <= 1e-9 || away >= 1 - 1e-9) continue;
+          if (nearest == null || away < nearest) nearest = away;
         }
       }
-      if (!found) return null;
-      from = chosenFrom;
-      to = chosenTo;
+      if (nearest == null) return null;
+      final growth = extent * nearest;
+      return atStart ? curve.span(-growth, 1) : curve.span(0, 1 + growth);
     }
 
-    final pieces = breakPolyline(polyline, from.point, to.point);
-    if (pieces == null || pieces.isEmpty) return null;
-    return pieces.first;
+    if (pick != null) return grow(atStart: nearerStart(curve, pick));
+    return grow(atStart: false) ?? grow(atStart: true);
   }
 
-  static double _polylineChainDistance(PolylineEntity polyline, _PolyHit hit) {
-    var distance = 0.0;
-    for (var i = 0; i < hit.segment; i++) {
-      distance += _segmentLength(
-        polyline.vertexAt(i),
-        polyline.vertexAt(i + 1),
-        polyline.bulgeAt(i),
-      );
-    }
-    final start = polyline.vertexAt(hit.segment);
-    final end = polyline.vertexAt((hit.segment + 1) % polyline.vertexCount);
-    return distance +
-        _segmentLength(start, end, polyline.bulgeAt(hit.segment)) * hit.t;
-  }
-
-  static PolylineEntity? _polylinePrefix(
-    PolylineEntity polyline,
-    double distance,
-  ) {
-    final trimmed = _trimChainToLengthVerts(_polyVertsOf(polyline), distance);
-    if (trimmed == null || trimmed.length < 2) return null;
-    return _openPolyVerts(polyline, trimmed, polyline.id);
-  }
-
-  static PolylineEntity? _polylineSuffix(
-    PolylineEntity polyline,
-    double distance,
-  ) {
-    final length = _polylineLength(polyline);
-    final trimmed = _trimChainToLengthVerts(
-      _reversedPolyVerts(_polyVertsOf(polyline)),
-      length - distance,
-    );
-    if (trimmed == null || trimmed.length < 2) return null;
-    return _openPolyVerts(polyline, _reversedPolyVerts(trimmed), polyline.id);
-  }
-
-  /// Shortens [arc] back to where it meets [crossings].
-  ///
-  /// Same contract as [trimLine]: the interval containing [pick] is discarded,
-  /// and a middle cut keeps the longer remnant.
-  static ArcEntity? trimArc(ArcEntity arc, List<Vec2> crossings, Vec2 pick) {
-    if (crossings.isEmpty || arc.radius <= 0 || arc.sweep < 1e-12) {
-      return null;
-    }
-    final cuts = <double>[0];
-    for (final crossing in crossings) {
-      if ((crossing.distanceTo(arc.center) - arc.radius).abs() > 1e-3) {
-        continue;
-      }
-      final t = _arcParam(arc, crossing);
-      if (t > 1e-9 && t < 1 - 1e-9) cuts.add(t);
-    }
-    cuts.add(1);
-    cuts.sort();
-    final unique = <double>[];
-    for (final cut in cuts) {
-      if (unique.isEmpty || (cut - unique.last).abs() > 1e-9) {
-        unique.add(cut);
-      }
-    }
-    if (unique.length <= 2) return null;
-
-    final pickT = _arcParam(arc, pick);
-    for (var i = 0; i + 1 < unique.length; i++) {
-      if (pickT < unique[i] || pickT > unique[i + 1]) continue;
-      final keepBefore = unique[i] > 1e-9;
-      final keepAfter = unique[i + 1] < 1 - 1e-9;
-      if (!keepBefore && !keepAfter) return null;
-      if (keepBefore && keepAfter) {
-        return unique[i] >= 1 - unique[i + 1]
-            ? _arcSpan(arc, 0, unique[i], arc.id)
-            : _arcSpan(arc, unique[i + 1], 1, arc.id);
-      }
-      return keepBefore
-          ? _arcSpan(arc, 0, unique[i], arc.id)
-          : _arcSpan(arc, unique[i + 1], 1, arc.id);
-    }
-    return null;
-  }
-
-  /// Shortens [ellipse] the same way [trimArc] shortens an arc: the
-  /// parameter interval that contains [pick] is discarded.
-  static EllipseEntity? trimEllipse(
-    EllipseEntity ellipse,
-    List<Vec2> crossings,
-    Vec2 pick,
-  ) {
-    if (crossings.isEmpty || ellipse.majorLength < 1e-12) return null;
-    final sweep = ellipse.sweep;
-    if (sweep < 1e-12) return null;
-    final cuts = <double>[0];
-    for (final crossing in crossings) {
-      if (!ellipse.containsParam(ellipse.paramOf(crossing))) continue;
-      final t = _ellipseParam(ellipse, crossing);
-      if (t > 1e-9 && t < 1 - 1e-9) cuts.add(t);
-    }
-    cuts.add(1);
-    cuts.sort();
-    final unique = <double>[];
-    for (final cut in cuts) {
-      if (unique.isEmpty || (cut - unique.last).abs() > 1e-9) {
-        unique.add(cut);
-      }
-    }
-    if (unique.length <= 2) return null;
-
-    final pickT = _ellipseParam(ellipse, pick);
-    for (var i = 0; i + 1 < unique.length; i++) {
-      if (pickT < unique[i] || pickT > unique[i + 1]) continue;
-      final keepBefore = unique[i] > 1e-9;
-      final keepAfter = unique[i + 1] < 1 - 1e-9;
-      if (!keepBefore && !keepAfter) return null;
-      if (keepBefore && keepAfter) {
-        return unique[i] >= 1 - unique[i + 1]
-            ? _ellipseSpan(ellipse, 0, unique[i])
-            : _ellipseSpan(ellipse, unique[i + 1], 1);
-      }
-      return keepBefore
-          ? _ellipseSpan(ellipse, 0, unique[i])
-          : _ellipseSpan(ellipse, unique[i + 1], 1);
-    }
-    return null;
-  }
-
-  static double _ellipseParam(EllipseEntity ellipse, Vec2 pick) {
-    final along = angularSweep(ellipse.startParam, ellipse.paramOf(pick));
-    return (along / ellipse.sweep).clamp(0.0, 1.0);
-  }
-
-  static EllipseEntity _ellipseSpan(
-    EllipseEntity ellipse,
-    double from,
-    double to,
-  ) {
-    final start = ellipse.startParam + ellipse.sweep * from;
-    final end = ellipse.startParam + ellipse.sweep * to;
-    return EllipseEntity(
-      id: ellipse.id,
-      props: ellipse.props,
-      center: ellipse.center,
-      majorAxis: ellipse.majorAxis,
-      ratio: ellipse.ratio,
-      startParam: start,
-      endParam: end,
-    );
-  }
-
-  /// Grows an elliptical arc until it meets [edges]. A full ellipse has
-  /// nowhere to grow.
-  static EllipseEntity? extendEllipse(
-    EllipseEntity ellipse,
-    List<CadEntity> edges, [
-    Vec2? pick,
-  ]) {
-    if (ellipse.isFullEllipse || ellipse.majorLength < 1e-12) return null;
-    final room = math.pi * 2 - ellipse.sweep;
-    if (room <= 1e-9) return null;
-
-    double? bestAfter;
-    double? bestBefore;
-
-    void consider(Vec2 hit) {
-      final param = ellipse.paramOf(hit);
-      if (ellipse.containsParam(param)) return;
-      final after = angularSweep(ellipse.endParam, param);
-      final before = angularSweep(param, ellipse.startParam);
-      if (after > 1e-9 && after < room - 1e-9) {
-        if (bestAfter == null || after < bestAfter!) bestAfter = after;
-      }
-      if (before > 1e-9 && before < room - 1e-9) {
-        if (bestBefore == null || before < bestBefore!) bestBefore = before;
-      }
-    }
-
-    for (final edge in edges) {
-      for (final hit in _crossingsOnEllipse(
-        EllipseEntity(
-          id: 0,
-          center: ellipse.center,
-          majorAxis: ellipse.majorAxis,
-          ratio: ellipse.ratio,
-        ),
-        edge,
-      )) {
-        consider(hit);
-      }
-    }
-
-    EllipseEntity? growEnd() {
-      if (bestAfter == null) return null;
-      return EllipseEntity(
-        id: ellipse.id,
-        props: ellipse.props,
-        center: ellipse.center,
-        majorAxis: ellipse.majorAxis,
-        ratio: ellipse.ratio,
-        startParam: ellipse.startParam,
-        endParam: ellipse.endParam + bestAfter!,
-      );
-    }
-
-    EllipseEntity? growStart() {
-      if (bestBefore == null) return null;
-      return EllipseEntity(
-        id: ellipse.id,
-        props: ellipse.props,
-        center: ellipse.center,
-        majorAxis: ellipse.majorAxis,
-        ratio: ellipse.ratio,
-        startParam: ellipse.startParam - bestBefore!,
-        endParam: ellipse.endParam,
-      );
-    }
-
-    if (pick != null) {
-      return _ellipseParam(ellipse, pick) <= 0.5 ? growStart() : growEnd();
-    }
-    return growEnd() ?? growStart();
-  }
-
-  /// Flattens [spline] so TRIM / EXTEND / OFFSET share one centreline.
-  static PolylineEntity? _splineAsPolyline(SplineEntity spline) {
-    final xy = _flattenSpline(spline);
-    final points = <Vec2>[
-      for (var i = 0; i + 1 < xy.length; i += 2) Vec2(xy[i], xy[i + 1]),
-    ];
-    if (points.length < 2) return null;
-    return PolylineEntity.fromPoints(
-      id: spline.id,
-      props: spline.props,
-      points: points,
-      closed: spline.closed,
-    );
-  }
-
-  /// Shortens [spline] at [crossings]. A NURBS split is not a NURBS of the
-  /// same knots, so the kept span is a polyline — the same bargain OFFSET
-  /// already makes.
-  static PolylineEntity? trimSpline(
-    SplineEntity spline,
-    List<Vec2> crossings,
-    Vec2 pick,
-  ) {
-    final polyline = _splineAsPolyline(spline);
-    if (polyline == null) return null;
-    return trimPolyline(polyline, crossings, pick);
-  }
-
-  /// Grows an open [spline] until an end meets [edges]. Closed loops have
-  /// nowhere to grow. The result is a polyline, same as [trimSpline].
-  static PolylineEntity? extendSpline(
-    SplineEntity spline,
-    List<CadEntity> edges, [
-    Vec2? pick,
-  ]) {
-    if (spline.closed) return null;
-    final polyline = _splineAsPolyline(spline);
-    if (polyline == null) return null;
-    return extendPolyline(polyline, edges, pick);
-  }
+  /// Whether [pick] is at least as close to the start of [curve] as to its
+  /// end — the end EXTEND and LENGTHEN move.
+  static bool nearerStart(Curve curve, Vec2 pick) =>
+      pick.distanceSquaredTo(curve.along(0)) <=
+      pick.distanceSquaredTo(curve.along(1));
 
   /// Every crossing of [target] with [edge], for TRIM.
   static List<Vec2> crossingsAlong(CadEntity target, CadEntity edge) {
@@ -2053,336 +1733,6 @@ class Construct {
     tolerance: tolerance,
     closed: spline.closed,
   );
-
-  /// Lengthens [line] until it meets one of [edges].
-  static LineEntity? extendLine(LineEntity line, List<CadEntity> edges) {
-    final direction = line.end - line.start;
-    final lengthSquared = direction.lengthSquared;
-    if (lengthSquared < 1e-18) return null;
-
-    double? bestBefore;
-    double? bestAfter;
-
-    void consider(Vec2 hit) {
-      final t = (hit - line.start).dot(direction) / lengthSquared;
-      if (t < -1e-9) {
-        if (bestBefore == null || t > bestBefore!) bestBefore = t;
-      } else if (t > 1 + 1e-9) {
-        if (bestAfter == null || t < bestAfter!) bestAfter = t;
-      }
-    }
-
-    for (final edge in edges) {
-      switch (edge) {
-        case LineEntity(:final start, :final end):
-          // The line is treated as infinite (extension happens beyond its
-          // endpoints) but the boundary is not: the hit must land on the edge.
-          final hit = Intersect.lineLine(line.start, line.end, start, end);
-          if (hit == null) continue;
-          if (Intersect.distanceToSegment(hit, start, end) > 1e-6) continue;
-          consider(hit);
-        case CircleEntity(:final center, :final radius):
-          for (final hit in Intersect.lineCircle(
-            line.start,
-            line.end,
-            center,
-            radius,
-          )) {
-            consider(hit);
-          }
-        case ArcEntity(:final center, :final radius):
-          for (final hit in Intersect.lineCircle(
-            line.start,
-            line.end,
-            center,
-            radius,
-          )) {
-            final angle = (hit - center).angle;
-            if (angularSweep(edge.startAngle, angle) <= edge.sweep) {
-              consider(hit);
-            }
-          }
-        case PolylineEntity():
-          for (final arm in _polylineArms(edge)) {
-            switch (arm) {
-              case LineEntity(:final start, :final end):
-                final hit = Intersect.lineLine(
-                  line.start,
-                  line.end,
-                  start,
-                  end,
-                );
-                if (hit == null) continue;
-                if (Intersect.distanceToSegment(hit, start, end) > 1e-6) {
-                  continue;
-                }
-                consider(hit);
-              case ArcEntity(:final center, :final radius):
-                for (final hit in Intersect.lineCircle(
-                  line.start,
-                  line.end,
-                  center,
-                  radius,
-                )) {
-                  final angle = (hit - center).angle;
-                  if (angularSweep(arm.startAngle, angle) <= arm.sweep) {
-                    consider(hit);
-                  }
-                }
-              default:
-                continue;
-            }
-          }
-        case EllipseEntity():
-          for (final hit in Intersect.lineEllipse(
-            line.start,
-            line.end,
-            edge.center,
-            edge.majorAxis,
-            edge.ratio,
-          )) {
-            if (edge.containsParam(edge.paramOf(hit))) consider(hit);
-          }
-        case SplineEntity():
-          for (final hit in Intersect.lineSpline(
-            line.start,
-            line.end,
-            edge.controlPoints,
-            knots: edge.knots,
-            degree: edge.degree,
-            weights: edge.weights,
-            closed: edge.closed,
-            infinite: true,
-          )) {
-            consider(hit);
-          }
-        default:
-          continue;
-      }
-    }
-
-    // Prefer extending forward, which is the end the user is usually reaching
-    // towards; fall back to the start.
-    if (bestAfter != null) return resizedLine(line, 0, bestAfter!);
-    if (bestBefore != null) return resizedLine(line, bestBefore!, 1);
-    return null;
-  }
-
-  /// Lengthens an open [polyline] until an end meets one of [edges].
-  ///
-  /// [pick] chooses which end moves; omitted, the last vertex is tried first
-  /// and the first vertex is the fallback. Only the free end travels — the
-  /// inward vertex of that last segment stays put. A bulge grows along its
-  /// supporting circle without closing into a full loop.
-  static PolylineEntity? extendPolyline(
-    PolylineEntity polyline,
-    List<CadEntity> edges, [
-    Vec2? pick,
-  ]) {
-    if (polyline.closed || polyline.vertexCount < 2) return null;
-    final count = polyline.vertexCount;
-    final start = polyline.vertexAt(0);
-    final end = polyline.vertexAt(count - 1);
-    final fromStart =
-        pick != null &&
-        pick.distanceSquaredTo(start) <= pick.distanceSquaredTo(end);
-
-    PolylineEntity? tryEnd({required bool moveStart}) {
-      final inward = moveStart
-          ? polyline.vertexAt(1)
-          : polyline.vertexAt(count - 2);
-      final free = moveStart ? start : end;
-      final bulge = polyline.bulgeAt(moveStart ? 0 : count - 2);
-      if (bulge.abs() < 1e-12) {
-        final arm = LineEntity(id: 0, start: inward, end: free);
-        final extended = extendLine(arm, edges);
-        if (extended == null) return null;
-        if (extended.start.distanceTo(inward) > 1e-6) return null;
-        if (extended.end.distanceTo(free) < 1e-9) return null;
-        return polyline.withGrip(moveStart ? 0 : count - 1, extended.end);
-      }
-      final segStart = moveStart ? free : inward;
-      final segEnd = moveStart ? inward : free;
-      final def = Flatten.bulgeArc(segStart, segEnd, bulge);
-      if (def == null) return null;
-      final grown = extendArc(
-        ArcEntity(
-          id: 0,
-          center: def.center,
-          radius: def.radius,
-          startAngle: def.startAngle,
-          endAngle: def.endAngle,
-        ),
-        edges,
-        free,
-      );
-      if (grown == null) return null;
-      // The inward end of the segment stays. When both arc ends are the same
-      // distance from the old free point, that tie is the unmoved end.
-      final newFree =
-          grown.startPoint.distanceSquaredTo(inward) >=
-              grown.endPoint.distanceSquaredTo(inward)
-          ? grown.startPoint
-          : grown.endPoint;
-      if (newFree.distanceTo(free) < 1e-9) return null;
-      final newBulge = (bulge >= 0 ? 1.0 : -1.0) * math.tan(grown.sweep / 4);
-      return _polylineWithMovedEnd(polyline, moveStart, newFree, newBulge);
-    }
-
-    if (pick != null) {
-      return tryEnd(moveStart: fromStart);
-    }
-    return tryEnd(moveStart: false) ?? tryEnd(moveStart: true);
-  }
-
-  static PolylineEntity _polylineWithMovedEnd(
-    PolylineEntity source,
-    bool moveStart,
-    Vec2 newFree,
-    double newBulge,
-  ) {
-    final count = source.vertexCount;
-    final vertices = Float64List(count * 3);
-    for (var i = 0; i < count; i++) {
-      final point = (moveStart && i == 0) || (!moveStart && i == count - 1)
-          ? newFree
-          : source.vertexAt(i);
-      vertices[i * 3] = point.x;
-      vertices[i * 3 + 1] = point.y;
-      final bulgeIndex = moveStart ? 0 : count - 2;
-      vertices[i * 3 + 2] = i == bulgeIndex
-          ? newBulge
-          : (i < count - 1 ? source.bulgeAt(i) : 0);
-    }
-    return PolylineEntity(
-      id: source.id,
-      props: source.props,
-      vertices: vertices,
-      constantWidth: source.constantWidth,
-    );
-  }
-
-  /// Lengthens [arc] along the circle until an end meets one of [edges].
-  ///
-  /// The supporting circle is treated as infinite (the sweep may grow) but
-  /// each boundary is not: the hit must land on that edge. [pick] chooses
-  /// which end moves; omitted, the end angle is tried first and the start
-  /// is the fallback. A sweep that would close the circle is refused.
-  static ArcEntity? extendArc(
-    ArcEntity arc,
-    List<CadEntity> edges, [
-    Vec2? pick,
-  ]) {
-    if (arc.radius <= 0 || arc.sweep < 1e-12) return null;
-    if (arc.sweep >= math.pi * 2 - 1e-9) return null;
-
-    double? bestAfter;
-    double? bestBefore;
-    final room = math.pi * 2 - arc.sweep;
-
-    void consider(Vec2 hit) {
-      if ((hit.distanceTo(arc.center) - arc.radius).abs() > 1e-6) return;
-      final angle = (hit - arc.center).angle;
-      if (angularSweep(arc.startAngle, angle) <= arc.sweep + 1e-9) return;
-      final after = angularSweep(arc.endAngle, angle);
-      final before = angularSweep(angle, arc.startAngle);
-      if (after > 1e-9 && after < room - 1e-9) {
-        if (bestAfter == null || after < bestAfter!) bestAfter = after;
-      }
-      if (before > 1e-9 && before < room - 1e-9) {
-        if (bestBefore == null || before < bestBefore!) bestBefore = before;
-      }
-    }
-
-    for (final edge in edges) {
-      for (final hit in _circleHitsOnEdge(arc.center, arc.radius, edge)) {
-        consider(hit);
-      }
-    }
-
-    ArcEntity? growEnd() {
-      if (bestAfter == null) return null;
-      return ArcEntity(
-        id: arc.id,
-        props: arc.props,
-        center: arc.center,
-        radius: arc.radius,
-        startAngle: arc.startAngle,
-        endAngle: arc.endAngle + bestAfter!,
-      );
-    }
-
-    ArcEntity? growStart() {
-      if (bestBefore == null) return null;
-      return ArcEntity(
-        id: arc.id,
-        props: arc.props,
-        center: arc.center,
-        radius: arc.radius,
-        startAngle: arc.startAngle - bestBefore!,
-        endAngle: arc.endAngle,
-      );
-    }
-
-    if (pick != null) {
-      return _arcParam(arc, pick) <= 0.5 ? growStart() : growEnd();
-    }
-    return growEnd() ?? growStart();
-  }
-
-  /// Hits of the circle [center]/[radius] with [edge], for EXTEND.
-  static List<Vec2> _circleHitsOnEdge(
-    Vec2 center,
-    double radius,
-    CadEntity edge,
-  ) {
-    switch (edge) {
-      case LineEntity(:final start, :final end):
-        return [
-          for (final hit in Intersect.lineCircle(start, end, center, radius))
-            if (Intersect.distanceToSegment(hit, start, end) < 1e-6) hit,
-        ];
-      case CircleEntity():
-        return Intersect.circleCircle(center, radius, edge.center, edge.radius);
-      case ArcEntity():
-        return [
-          for (final hit in Intersect.circleCircle(
-            center,
-            radius,
-            edge.center,
-            edge.radius,
-          ))
-            if (angularSweep(edge.startAngle, (hit - edge.center).angle) <=
-                edge.sweep + 1e-9)
-              hit,
-        ];
-      case PolylineEntity():
-        return [
-          for (final arm in _polylineArms(edge))
-            ..._circleHitsOnEdge(center, radius, arm),
-        ];
-      case EllipseEntity():
-        return [
-          for (final hit in Intersect.circleEllipse(
-            center,
-            radius,
-            edge.center,
-            edge.majorAxis,
-            edge.ratio,
-          ))
-            if (edge.containsParam(edge.paramOf(hit))) hit,
-        ];
-      case SplineEntity():
-        return Intersect.circlePolyline(
-          center,
-          radius,
-          _flattenSpline(edge),
-          closed: edge.closed,
-        );
-      default:
-        return const [];
-    }
-  }
 
   /// Each segment of [edge] as a line or the arc its bulge expands to.
   static Iterable<CadEntity> _polylineArms(PolylineEntity edge) sync* {
@@ -2786,375 +2136,38 @@ class Construct {
     return changed ? current : null;
   }
 
-  /// Breaks [line] at [first], or removes the span between [first] and [second].
+  /// Breaks [curve] at [first], or drops the span between [first] and
+  /// [second].
   ///
-  /// One point splits the line in two. Two points drop the middle and leave
-  /// the outer remnants (either of which may vanish if a point is an endpoint).
-  /// Returns null when the break would not change the line; an empty list when
-  /// the whole line is removed.
-  static List<LineEntity>? breakLine(
-    LineEntity line,
-    Vec2 first, [
-    Vec2? second,
-  ]) {
-    final along = line.end - line.start;
-    final lengthSquared = along.lengthSquared;
-    if (lengthSquared < 1e-20) return null;
-
-    double param(Vec2 point) =>
-        ((point - line.start).dot(along) / lengthSquared).clamp(0.0, 1.0);
-
-    var t1 = param(first);
-    var t2 = second == null ? t1 : param(second);
-    if (t1 > t2) {
-      final swap = t1;
-      t1 = t2;
-      t2 = swap;
-    }
-
-    final pieces = <LineEntity>[];
-    if (t1 > 1e-9) {
-      pieces.add(
-        LineEntity(
-          id: line.id,
-          props: line.props,
-          start: line.start,
-          end: line.start + along * t1,
-        ),
-      );
-    }
-    if (t2 < 1 - 1e-9) {
-      pieces.add(
-        LineEntity(
-          id: pieces.isEmpty ? line.id : 0,
-          props: line.props,
-          start: line.start + along * t2,
-          end: line.end,
-        ),
-      );
-    }
-    if (pieces.length == 1 &&
-        pieces.first.start.distanceTo(line.start) < 1e-12 &&
-        pieces.first.end.distanceTo(line.end) < 1e-12) {
-      return null;
-    }
-    return pieces;
-  }
-
-  /// Breaks [polyline] at [first], or drops the span from [first] to [second].
-  ///
-  /// A bulge is split into two smaller bulges at the pick. One point on an
-  /// open polyline splits it in two; on a closed polyline it opens the loop
-  /// there. Two points remove the part that runs from the first pick toward
-  /// the second, which is how AutoCAD chooses which side of a closed shape
-  /// disappears.
+  /// One point splits an open curve in two and opens a loop there; a circle
+  /// or full ellipse cannot open at one point. Two points on an open curve
+  /// drop the interior and leave the outer remnants, either of which may
+  /// vanish when a point is an end. On a loop they remove the part that runs
+  /// forward from [first] to [second], which is how AutoCAD chooses which
+  /// side of a closed shape disappears. A bulge is split onto its arc.
   ///
   /// Returns null when nothing would change; an empty list when the whole
-  /// polyline is removed.
-  static List<PolylineEntity>? breakPolyline(
-    PolylineEntity polyline,
-    Vec2 first, [
-    Vec2? second,
-  ]) {
-    if (polyline.vertexCount < 2) return null;
-    final hit1 = _polylineHit(polyline, first);
-    if (hit1 == null) return null;
-    if (second == null) return _breakPolylineAt(polyline, [hit1]);
-    final hit2 = _polylineHit(polyline, second);
-    if (hit2 == null) return null;
-    return _breakPolylineAt(polyline, [hit1, hit2]);
-  }
-
-  static _PolyHit? _polylineHit(PolylineEntity polyline, Vec2 pick) {
-    final count = polyline.vertexCount;
-    final segments = polyline.closed ? count : count - 1;
-    if (segments <= 0) return null;
-    var bestDistance = double.infinity;
-    var bestSegment = 0;
-    var bestT = 0.0;
-    var bestPoint = polyline.vertexAt(0);
-    for (var i = 0; i < segments; i++) {
-      final start = polyline.vertexAt(i);
-      final end = polyline.vertexAt((i + 1) % count);
-      final closest = _closestOnSegment(start, end, polyline.bulgeAt(i), pick);
-      if (closest == null) continue;
-      if (closest.dist2 < bestDistance) {
-        bestDistance = closest.dist2;
-        bestSegment = i;
-        bestT = closest.t;
-        bestPoint = closest.point;
-      }
+  /// curve is removed. The first piece keeps the curve's id; the second
+  /// gets 0.
+  static List<CadEntity>? breakCurve(Curve curve, Vec2 first, [Vec2? second]) {
+    if (curve.pathLength < 1e-12) return null;
+    final t1 = curve.paramNear(first);
+    final t2 = second == null ? t1 : curve.paramNear(second);
+    if (curve.isLoop) {
+      final remnant = (t1 - t2).abs() < 1e-9
+          ? curve.span(t1, t1)
+          : curve.span(t2, t1);
+      return remnant == null ? null : [remnant];
     }
-    return _PolyHit(bestSegment, bestT, bestPoint);
-  }
-
-  static ({Vec2 point, double t, double dist2})? _closestOnSegment(
-    Vec2 start,
-    Vec2 end,
-    double bulge,
-    Vec2 pick,
-  ) {
-    if (bulge.abs() < 1e-12) {
-      final delta = end - start;
-      final lengthSquared = delta.lengthSquared;
-      if (lengthSquared < 1e-20) return null;
-      final t = ((pick - start).dot(delta) / lengthSquared).clamp(0.0, 1.0);
-      final point = start + delta * t;
-      return (point: point, t: t, dist2: pick.distanceSquaredTo(point));
-    }
-    final def = Flatten.bulgeArc(start, end, bulge);
-    if (def == null) return _closestOnSegment(start, end, 0, pick);
-    final startAngle = (start - def.center).angle;
-    final signedSweep = 4 * math.atan(bulge);
-    final t = _clampToSweep(startAngle, signedSweep, (pick - def.center).angle);
-    final point =
-        def.center + Vec2.polar(startAngle + signedSweep * t, def.radius);
-    return (point: point, t: t, dist2: pick.distanceSquaredTo(point));
-  }
-
-  static double _clampToSweep(
-    double startAngle,
-    double signedSweep,
-    double pickAngle,
-  ) {
-    if (signedSweep.abs() < 1e-12) return 0;
-    if (signedSweep > 0) {
-      final along = angularSweep(startAngle, pickAngle);
-      if (along <= signedSweep + 1e-9) {
-        return (along / signedSweep).clamp(0.0, 1.0);
-      }
-      return along - signedSweep < 2 * math.pi - along ? 1.0 : 0.0;
-    }
-    final along = angularSweep(pickAngle, startAngle);
-    final mag = -signedSweep;
-    if (along <= mag + 1e-9) {
-      return (along / mag).clamp(0.0, 1.0);
-    }
-    return along - mag < 2 * math.pi - along ? 1.0 : 0.0;
-  }
-
-  static List<PolylineEntity>? _breakPolylineAt(
-    PolylineEntity polyline,
-    List<_PolyHit> hits,
-  ) {
-    final verts = _polylineVertsWithBreaks(polyline, hits);
-    final indices = [
-      for (final hit in hits) _nearestPolyVertIndex(verts, hit.point),
-    ];
-    if (hits.length == 1) {
-      final index = indices.first;
-      if (!polyline.closed) {
-        if (index <= 0 || index >= verts.length - 1) return null;
-        final left = verts.sublist(0, index + 1);
-        final right = verts.sublist(index);
-        return [
-          _openPolyVerts(polyline, left, polyline.id),
-          _openPolyVerts(polyline, right, 0),
-        ];
-      }
-      final opened = [
-        ...verts.sublist(index),
-        ...verts.sublist(0, index),
-        verts[index],
-      ];
-      if (opened.length < 3) return const [];
-      return [_openPolyVerts(polyline, opened, polyline.id)];
-    }
-
-    final first = indices[0];
-    final second = indices[1];
-    if (first == second) {
-      return _breakPolylineAt(polyline, [hits.first]);
-    }
-    if (!polyline.closed) {
-      final lo = first < second ? first : second;
-      final hi = first < second ? second : first;
-      final pieces = <PolylineEntity>[];
-      final left = verts.sublist(0, lo + 1);
-      final right = verts.sublist(hi);
-      if (left.length >= 2) {
-        pieces.add(_openPolyVerts(polyline, left, polyline.id));
-      }
-      if (right.length >= 2) {
-        pieces.add(
-          _openPolyVerts(polyline, right, pieces.isEmpty ? polyline.id : 0),
-        );
-      }
-      if (pieces.isEmpty) return const [];
-      if (pieces.length == 1 &&
-          pieces.first.vertexCount == polyline.vertexCount &&
-          !polyline.closed) {
-        return null;
-      }
-      return pieces;
-    }
-
-    final remaining = first < second
-        ? [...verts.sublist(second), ...verts.sublist(0, first + 1)]
-        : verts.sublist(second, first + 1);
-    if (remaining.length < 2) return const [];
-    return [_openPolyVerts(polyline, remaining, polyline.id)];
-  }
-
-  static List<_PolyVert> _polylineVertsWithBreaks(
-    PolylineEntity polyline,
-    List<_PolyHit> hits,
-  ) {
-    final count = polyline.vertexCount;
-    final segments = polyline.closed ? count : count - 1;
-    final out = <_PolyVert>[];
-    for (var i = 0; i < count; i++) {
-      final bulge = i < segments ? polyline.bulgeAt(i) : 0.0;
-      out.add(_PolyVert(polyline.vertexAt(i), bulge));
-      if (i >= segments) continue;
-      final extras = [
-        for (final hit in hits)
-          if (hit.segment == i && hit.t > 1e-9 && hit.t < 1 - 1e-9) hit,
-      ]..sort((a, b) => a.t.compareTo(b.t));
-      if (extras.isEmpty) continue;
-      final ts = [0.0, for (final hit in extras) hit.t, 1.0];
-      out.last.bulge = _partialBulge(bulge, ts[0], ts[1]);
-      for (var k = 0; k < extras.length; k++) {
-        out.add(
-          _PolyVert(
-            extras[k].point,
-            _partialBulge(bulge, ts[k + 1], ts[k + 2]),
-          ),
-        );
-      }
-    }
-    return out;
-  }
-
-  static double _partialBulge(double bulge, double fromT, double toT) {
-    if (bulge.abs() < 1e-12) return 0;
-    return math.tan(math.atan(bulge) * (toT - fromT));
-  }
-
-  static int _nearestPolyVertIndex(List<_PolyVert> verts, Vec2 target) {
-    var best = 0;
-    var bestDistance = verts.first.point.distanceSquaredTo(target);
-    for (var i = 1; i < verts.length; i++) {
-      final distance = verts[i].point.distanceSquaredTo(target);
-      if (distance < bestDistance) {
-        best = i;
-        bestDistance = distance;
-      }
-    }
-    return best;
-  }
-
-  static List<_PolyVert> _polyVertsOf(PolylineEntity polyline) {
-    final count = polyline.vertexCount;
+    final lo = math.min(t1, t2);
+    final hi = math.max(t1, t2);
+    if (hi <= 1e-9 || lo >= 1 - 1e-9) return null;
+    final before = lo > 1e-9 ? curve.span(0, lo) : null;
+    final after = hi < 1 - 1e-9 ? curve.span(hi, 1) : null;
     return [
-      for (var i = 0; i < count; i++)
-        _PolyVert(
-          polyline.vertexAt(i),
-          i < count - 1 ? polyline.bulgeAt(i) : 0,
-        ),
+      ?before,
+      if (after != null) before == null ? after : after.withId(0),
     ];
-  }
-
-  static List<_PolyVert> _reversedPolyVerts(List<_PolyVert> verts) {
-    final count = verts.length;
-    return [
-      for (var i = 0; i < count; i++)
-        _PolyVert(
-          verts[count - 1 - i].point,
-          i < count - 1 ? -verts[count - 2 - i].bulge : 0,
-        ),
-    ];
-  }
-
-  static PolylineEntity _openPolyVerts(
-    PolylineEntity source,
-    List<_PolyVert> verts,
-    int id,
-  ) {
-    final vertices = Float64List(verts.length * 3);
-    for (var i = 0; i < verts.length; i++) {
-      vertices[i * 3] = verts[i].point.x;
-      vertices[i * 3 + 1] = verts[i].point.y;
-      vertices[i * 3 + 2] = i < verts.length - 1 ? verts[i].bulge : 0;
-    }
-    return PolylineEntity(
-      id: id,
-      props: source.props,
-      vertices: vertices,
-      constantWidth: source.constantWidth,
-    );
-  }
-
-  /// Breaks [arc] at [first], or drops the span between [first] and [second].
-  ///
-  /// One point splits the arc in two. Two points drop the interior along the
-  /// sweep (the earlier parameter first) and leave the outer remnants.
-  /// Returns null when nothing would change; an empty list when the whole
-  /// arc is removed.
-  static List<ArcEntity>? breakArc(ArcEntity arc, Vec2 first, [Vec2? second]) {
-    if (arc.radius <= 0 || arc.sweep < 1e-12) return null;
-    var t1 = _arcParam(arc, first);
-    var t2 = second == null ? t1 : _arcParam(arc, second);
-    if (t1 > t2) {
-      final swap = t1;
-      t1 = t2;
-      t2 = swap;
-    }
-    final pieces = <ArcEntity>[];
-    if (t1 > 1e-9) {
-      pieces.add(_arcSpan(arc, 0, t1, arc.id));
-    }
-    if (t2 < 1 - 1e-9) {
-      pieces.add(_arcSpan(arc, t2, 1, pieces.isEmpty ? arc.id : 0));
-    }
-    if (pieces.isEmpty) return const [];
-    if (pieces.length == 1 &&
-        (pieces.first.startAngle - arc.startAngle).abs() < 1e-9 &&
-        angularSweep(pieces.first.startAngle, pieces.first.endAngle) >
-            arc.sweep - 1e-9) {
-      return null;
-    }
-    return pieces;
-  }
-
-  /// Breaks [circle] between two points, leaving the CCW remnant from the
-  /// second pick back to the first. One point cannot open a circle.
-  static List<ArcEntity>? breakCircle(
-    CircleEntity circle,
-    Vec2 first, [
-    Vec2? second,
-  ]) {
-    if (second == null || circle.radius <= 0) return null;
-    final start = (second - circle.center).angle;
-    final end = (first - circle.center).angle;
-    final sweep = angularSweep(start, end);
-    if (sweep < 1e-9 || sweep > math.pi * 2 - 1e-9) return null;
-    return [
-      ArcEntity(
-        id: circle.id,
-        props: circle.props,
-        center: circle.center,
-        radius: circle.radius,
-        startAngle: start,
-        endAngle: end,
-      ),
-    ];
-  }
-
-  static double _arcParam(ArcEntity arc, Vec2 pick) {
-    final angle = (pick - arc.center).angle;
-    return (angularSweep(arc.startAngle, angle) / arc.sweep).clamp(0.0, 1.0);
-  }
-
-  static ArcEntity _arcSpan(ArcEntity arc, double from, double to, int id) {
-    return ArcEntity(
-      id: id,
-      props: arc.props,
-      center: arc.center,
-      radius: arc.radius,
-      startAngle: arc.startAngle + arc.sweep * from,
-      endAngle: arc.startAngle + arc.sweep * to,
-    );
   }
 
   /// Direction from the corner along the side of [line] that [pick] sits on.
@@ -3274,114 +2287,19 @@ class Construct {
     );
   }
 
-  /// Interior points that split [line] into [segments] equal pieces.
+  /// Points that split [curve] into [segments] equal pieces by parameter.
   ///
   /// DIVIDE places markers between the ends, not on them: 4 segments means
   /// three points. Endpoints are already geometry; repeating them as nodes
-  /// just clutters the drawing.
-  static List<Vec2> divideLine(LineEntity line, int segments) {
-    if (segments < 2) return const [];
-    return [
-      for (var i = 1; i < segments; i++)
-        line.start.lerp(line.end, i / segments),
-    ];
-  }
-
-  /// Interior points that split [polyline] into [segments] equal pieces.
-  ///
-  /// Open polylines match [divideLine]: the endpoints stay unmarked. A closed
-  /// loop has no leftover end, so it places [segments] points equally around
-  /// the perimeter, including the start vertex. A bulge is measured along
+  /// just clutters the drawing. A loop has no leftover end, so it gets
+  /// [segments] points starting at its start. A bulge is measured along
   /// its arc, not the chord.
-  static List<Vec2> dividePolyline(PolylineEntity polyline, int segments) {
-    if (segments < 2 || polyline.vertexCount < 2) {
-      return const [];
-    }
-    final length = _polylineLength(polyline);
-    if (length < 1e-12) return const [];
-    if (polyline.closed) {
-      return [
-        for (var i = 0; i < segments; i++)
-          _pointAlongPolyline(polyline, length * i / segments),
-      ];
-    }
+  static List<Vec2> divide(Curve curve, int segments) {
+    if (segments < 2 || curve.pathLength < 1e-12) return const [];
     return [
-      for (var i = 1; i < segments; i++)
-        _pointAlongPolyline(polyline, length * i / segments),
+      for (var i = curve.isLoop ? 0 : 1; i < segments; i++)
+        curve.along(i / segments),
     ];
-  }
-
-  /// Interior points that split [arc] into [segments] equal pieces.
-  ///
-  /// The ends stay unmarked, same as [divideLine]: they are already the
-  /// arc's start and end.
-  static List<Vec2> divideArc(ArcEntity arc, int segments) {
-    if (segments < 2 || arc.radius <= 0 || arc.sweep < 1e-12) {
-      return const [];
-    }
-    return [
-      for (var i = 1; i < segments; i++)
-        arc.center +
-            Vec2.polar(arc.startAngle + arc.sweep * i / segments, arc.radius),
-    ];
-  }
-
-  /// Points equally spaced around [circle], starting at angle zero.
-  ///
-  /// A circle has no leftover end, so [segments] markers are placed, matching
-  /// a closed polyline.
-  static List<Vec2> divideCircle(CircleEntity circle, int segments) {
-    if (segments < 2 || circle.radius <= 0) return const [];
-    return [
-      for (var i = 0; i < segments; i++)
-        circle.center + Vec2.polar(2 * math.pi * i / segments, circle.radius),
-    ];
-  }
-
-  /// Walks [polyline] from its start by [distance] along each segment.
-  ///
-  /// A bulge is followed as its circular arc, not the chord.
-  static Vec2 _pointAlongPolyline(PolylineEntity polyline, double distance) {
-    if (distance <= 1e-12) return polyline.vertexAt(0);
-    final count = polyline.vertexCount;
-    final segments = polyline.closed ? count : count - 1;
-    var remaining = distance;
-    for (var i = 0; i < segments; i++) {
-      final from = polyline.vertexAt(i);
-      final to = polyline.vertexAt((i + 1) % count);
-      final bulge = polyline.bulgeAt(i);
-      final segment = _segmentLength(from, to, bulge);
-      if (segment < 1e-12) continue;
-      if (remaining <= segment + 1e-12) {
-        return _pointAlongSegment(from, to, bulge, remaining);
-      }
-      remaining -= segment;
-    }
-    return polyline.vertexAt(polyline.closed ? 0 : count - 1);
-  }
-
-  static double _segmentLength(Vec2 from, Vec2 to, double bulge) {
-    if (bulge.abs() < 1e-12) return from.distanceTo(to);
-    final def = Flatten.bulgeArc(from, to, bulge);
-    if (def == null) return from.distanceTo(to);
-    return def.radius * (4 * math.atan(bulge)).abs();
-  }
-
-  static Vec2 _pointAlongSegment(
-    Vec2 from,
-    Vec2 to,
-    double bulge,
-    double distance,
-  ) {
-    final length = _segmentLength(from, to, bulge);
-    if (length < 1e-12) return from;
-    final t = (distance / length).clamp(0.0, 1.0);
-    if (bulge.abs() < 1e-12) return from.lerp(to, t);
-    final def = Flatten.bulgeArc(from, to, bulge);
-    if (def == null) return from.lerp(to, t);
-    final startAngle = (from - def.center).angle;
-    return def.center +
-        Vec2.polar(startAngle + 4 * math.atan(bulge) * t, def.radius);
   }
 
   /// Points spaced [spacing] apart along [line], starting from the end nearer [pick].
@@ -3416,17 +2334,13 @@ class Construct {
     if (spacing <= 0 || !spacing.isFinite || polyline.vertexCount < 2) {
       return const [];
     }
-    final length = _polylineLength(polyline);
+    final length = polyline.pathLength;
     if (length <= spacing) return const [];
-    final fromStart =
-        polyline.closed ||
-        pick.distanceSquaredTo(polyline.vertexAt(0)) <=
-            pick.distanceSquaredTo(polyline.vertexAt(polyline.vertexCount - 1));
+    final fromStart = polyline.closed || nearerStart(polyline, pick);
     return [
       for (var i = 1; i * spacing < length - 1e-12; i++)
-        _pointAlongPolyline(
-          polyline,
-          fromStart ? i * spacing : length - i * spacing,
+        polyline.along(
+          fromStart ? i * spacing / length : 1 - i * spacing / length,
         ),
     ];
   }
@@ -3481,147 +2395,29 @@ class Construct {
     ];
   }
 
-  /// Lengthens or shortens [line] by moving the endpoint nearer [pick].
+  /// Lengthens or shortens an open [curve] by moving the end nearer [pick].
   ///
   /// [total] sets the finished length. [delta] is added to the current length
   /// when [total] is omitted. The far end stays put, which is how LENGTHEN
-  /// feels when you click the end you want to drag.
-  static LineEntity? lengthenLine(
-    LineEntity line,
+  /// feels when you click the end you want to drag. Growing continues the
+  /// moving end the way it heads — a straight end keeps its direction, a
+  /// round one grows its sweep but may not close its circle. Shortening a
+  /// polyline drops the vertices that fall past the new length. Loops and
+  /// non-positive lengths return null.
+  static CadEntity? lengthen(
+    Curve curve,
     Vec2 pick, {
     double? delta,
     double? total,
   }) {
-    final current = line.length;
-    if (current < 1e-12) return null;
+    final current = curve.pathLength;
+    if (curve.isLoop || current < 1e-12) return null;
     final target = total ?? (current + (delta ?? 0));
     if (target <= 1e-12 || !target.isFinite) return null;
     final scale = target / current;
-    final moveStart =
-        pick.distanceSquaredTo(line.start) <= pick.distanceSquaredTo(line.end);
-    return moveStart
-        ? resizedLine(line, 1 - scale, 1)
-        : resizedLine(line, 0, scale);
-  }
-
-  /// Changes the length of an open [polyline] from the nearer end.
-  ///
-  /// The opposite end stays put. Extending grows the last (or first) segment
-  /// along its own path — a straight arm keeps its direction, a bulge grows
-  /// its sweep without closing the circle. Shortening walks back through
-  /// vertices and drops those that fall past the new total. Closed polylines
-  /// return null.
-  static PolylineEntity? lengthenPolyline(
-    PolylineEntity polyline,
-    Vec2 pick, {
-    double? delta,
-    double? total,
-  }) {
-    if (polyline.closed || polyline.vertexCount < 2) return null;
-    final current = _polylineLength(polyline);
-    if (current < 1e-12) return null;
-    final target = total ?? (current + (delta ?? 0));
-    if (target <= 1e-12 || !target.isFinite) return null;
-
-    final start = polyline.vertexAt(0);
-    final end = polyline.vertexAt(polyline.vertexCount - 1);
-    final fromStart =
-        pick.distanceSquaredTo(start) <= pick.distanceSquaredTo(end);
-    var chain = _polyVertsOf(polyline);
-    if (fromStart) chain = _reversedPolyVerts(chain);
-    final trimmed = _trimChainToLengthVerts(chain, target);
-    if (trimmed == null) return null;
-    return _openPolyVerts(
-      polyline,
-      fromStart ? _reversedPolyVerts(trimmed) : trimmed,
-      polyline.id,
-    );
-  }
-
-  /// Changes the included length of [arc] from the nearer end.
-  ///
-  /// The far end stays put. The result must stay a proper open arc: a
-  /// non-positive length, or a sweep that would close the circle, is refused.
-  static ArcEntity? lengthenArc(
-    ArcEntity arc,
-    Vec2 pick, {
-    double? delta,
-    double? total,
-  }) {
-    if (arc.radius <= 0 || arc.sweep < 1e-12) return null;
-    final current = arc.radius * arc.sweep;
-    final target = total ?? (current + (delta ?? 0));
-    if (target <= 1e-12 || !target.isFinite) return null;
-    final newSweep = target / arc.radius;
-    if (newSweep >= math.pi * 2 - 1e-9) return null;
-    final fromStart =
-        pick.distanceSquaredTo(arc.startPoint) <=
-        pick.distanceSquaredTo(arc.endPoint);
-    return ArcEntity(
-      id: arc.id,
-      props: arc.props,
-      center: arc.center,
-      radius: arc.radius,
-      startAngle: fromStart ? arc.endAngle - newSweep : arc.startAngle,
-      endAngle: fromStart ? arc.endAngle : arc.startAngle + newSweep,
-    );
-  }
-
-  /// [verts] run from the fixed end toward the moving end.
-  static List<_PolyVert>? _trimChainToLengthVerts(
-    List<_PolyVert> verts,
-    double target,
-  ) {
-    if (verts.length < 2) return null;
-    final out = <_PolyVert>[_PolyVert(verts.first.point, 0)];
-    var accumulated = 0.0;
-    for (var i = 0; i < verts.length - 1; i++) {
-      final from = verts[i].point;
-      final to = verts[i + 1].point;
-      final bulge = verts[i].bulge;
-      final segment = _segmentLength(from, to, bulge);
-      if (segment < 1e-12) continue;
-      if (accumulated + segment >= target - 1e-12) {
-        final remain = (target - accumulated).clamp(0.0, segment);
-        final end = _pointAlongSegment(from, to, bulge, remain);
-        out.last.bulge = _partialBulge(bulge, 0, remain / segment);
-        if (end.distanceSquaredTo(out.last.point) > 1e-20) {
-          out.add(_PolyVert(end, 0));
-        }
-        return out.length >= 2 ? out : null;
-      }
-      accumulated += segment;
-      out.last.bulge = bulge;
-      out.add(_PolyVert(to, 0));
-    }
-    final extra = target - accumulated;
-    if (extra <= 1e-12) return out.length >= 2 ? out : null;
-    if (out.length < 2) return null;
-    final from = out[out.length - 2];
-    final to = out.last;
-    if (from.bulge.abs() < 1e-12) {
-      final direction = to.point - from.point;
-      if (direction.lengthSquared < 1e-20) return null;
-      out[out.length - 1] = _PolyVert(
-        to.point + direction.normalized() * extra,
-        0,
-      );
-      return out;
-    }
-    final def = Flatten.bulgeArc(from.point, to.point, from.bulge);
-    if (def == null) return null;
-    final signedSweep = 4 * math.atan(from.bulge);
-    final newLen = def.radius * signedSweep.abs() + extra;
-    final newSweepAbs = newLen / def.radius;
-    if (newSweepAbs >= math.pi * 2 - 1e-9) return null;
-    final newSweep = signedSweep >= 0 ? newSweepAbs : -newSweepAbs;
-    final startAngle = (from.point - def.center).angle;
-    from.bulge = math.tan(newSweep / 4);
-    out[out.length - 1] = _PolyVert(
-      def.center + Vec2.polar(startAngle + newSweep, def.radius),
-      0,
-    );
-    return out;
+    return nearerStart(curve, pick)
+        ? curve.span(1 - scale, 1)
+        : curve.span(0, scale);
   }
 
   /// Moves the vertices of [entity] that sit inside [window] by [delta].
@@ -3718,8 +2514,6 @@ class Construct {
 
   /// The total length of an entity, for the measurement tools.
   static double lengthOf(CadEntity entity) => entity.pathLength;
-
-  static double _polylineLength(PolylineEntity polyline) => polyline.pathLength;
 
   /// The signed area enclosed by a closed entity. Positive is counter-clockwise.
   static double areaOf(CadEntity entity) => entity.signedArea;
@@ -4197,21 +2991,6 @@ class _OverlapSpan {
 
   Vec2 get entityStart => Construct._lineLikeEnds(entity)!.$1;
   Vec2 get entityEnd => Construct._lineLikeEnds(entity)!.$2;
-}
-
-class _PolyVert {
-  _PolyVert(this.point, this.bulge);
-
-  final Vec2 point;
-  double bulge;
-}
-
-class _PolyHit {
-  const _PolyHit(this.segment, this.t, this.point);
-
-  final int segment;
-  final double t;
-  final Vec2 point;
 }
 
 /// A directed open chain used by [Construct.joinEntities].

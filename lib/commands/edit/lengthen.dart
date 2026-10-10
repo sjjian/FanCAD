@@ -78,12 +78,12 @@ class EditLengthenCommand extends FanCadCommand {
         'Lengthen supports lines, open polylines and arcs.',
       );
     }
-    if (target is PolylineEntity && target.closed) {
+    final entity = target as Curve;
+    if (entity.isLoop) {
       return const CommandResult.failed(
         'Lengthen cannot change a closed polyline.',
       );
     }
-    final entity = target as CadEntity;
 
     final pick =
         context.args.point('pick') ??
@@ -101,7 +101,7 @@ class EditLengthenCommand extends FanCadCommand {
       context.input
         ..setMarkers([_lengthenAnchor(entity, pick)])
         ..setPreview((cursor) {
-          final preview = _lengthenEntity(
+          final preview = Construct.lengthen(
             entity,
             pick,
             total: _lengthenPreviewTotal(entity, pick, cursor),
@@ -120,7 +120,7 @@ class EditLengthenCommand extends FanCadCommand {
         ..setMarkers(const []);
     }
 
-    final result = _lengthenEntity(entity, pick, total: total, delta: delta);
+    final result = Construct.lengthen(entity, pick, total: total, delta: delta);
     if (result == null) {
       return const CommandResult.failed(
         'The resulting length must be positive.',
@@ -147,54 +147,9 @@ class EditLengthenCommand extends FanCadCommand {
   }
 }
 
-/// The pieces an entity breaks into. Empty when it cannot be exploded.
-CadEntity? _lengthenEntity(
-  CadEntity target,
-  Vec2 pick, {
-  double? total,
-  double? delta,
-}) {
-  return switch (target) {
-    LineEntity() => Construct.lengthenLine(
-      target,
-      pick,
-      total: total,
-      delta: delta,
-    ),
-    PolylineEntity() => Construct.lengthenPolyline(
-      target,
-      pick,
-      total: total,
-      delta: delta,
-    ),
-    ArcEntity() => Construct.lengthenArc(
-      target,
-      pick,
-      total: total,
-      delta: delta,
-    ),
-    _ => null,
-  };
-}
-
-Vec2 _lengthenAnchor(CadEntity target, Vec2 pick) {
-  return switch (target) {
-    LineEntity(:final start, :final end) =>
-      pick.distanceSquaredTo(start) <= pick.distanceSquaredTo(end)
-          ? end
-          : start,
-    PolylineEntity() =>
-      pick.distanceSquaredTo(target.vertexAt(0)) <=
-              pick.distanceSquaredTo(target.vertexAt(target.vertexCount - 1))
-          ? target.vertexAt(target.vertexCount - 1)
-          : target.vertexAt(0),
-    ArcEntity(:final startPoint, :final endPoint) =>
-      pick.distanceSquaredTo(startPoint) <= pick.distanceSquaredTo(endPoint)
-          ? endPoint
-          : startPoint,
-    _ => pick,
-  };
-}
+/// The end LENGTHEN leaves in place.
+Vec2 _lengthenAnchor(Curve target, Vec2 pick) =>
+    target.along(Construct.nearerStart(target, pick) ? 1 : 0);
 
 /// Total length implied by dragging the moving end toward [cursor].
 double _lengthenPreviewTotal(CadEntity target, Vec2 pick, Vec2 cursor) {

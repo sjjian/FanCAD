@@ -53,8 +53,8 @@ class EditExtendCommand extends FanCadCommand {
   @override
   String get description =>
       'Lengthens a line, open polyline or arc until it meets the '
-      'selected boundary edges. A bulge grows along its circle. On a '
-      'polyline or arc the pick chooses which end moves.';
+      'selected boundary edges. A bulge grows along its circle. The pick '
+      'chooses which end moves.';
   @override
   List<ParamSpec> get params => const [
     ParamSpec.selection('edges', description: 'Boundary edges'),
@@ -69,21 +69,6 @@ class EditExtendCommand extends FanCadCommand {
   @override
   Future<CommandResult> run(CommandContext context) =>
       _trimOrExtend(context, extend: true);
-}
-
-Vec2 _splinePick(SplineEntity spline) {
-  final xy = Flatten.bspline(
-    controlPoints: spline.controlPoints,
-    knots: spline.knots,
-    degree: spline.degree,
-    weights: spline.weights,
-    tolerance: 1e-3,
-    closed: spline.closed,
-  );
-  if (xy.length < 2) return const Vec2.zero();
-  final index = (xy.length ~/ 4) * 2;
-  final clamped = index.clamp(0, xy.length - 2);
-  return Vec2(xy[clamped], xy[clamped + 1]);
 }
 
 Future<CommandResult> _trimOrExtend(
@@ -159,9 +144,8 @@ Future<CommandResult> _trimOrExtend(
       }
       continue;
     }
-    if (extend &&
-        ((target is PolylineEntity && target.closed) ||
-            (target is SplineEntity && target.closed))) {
+    final curve = target as Curve;
+    if (extend && curve.isLoop) {
       context.input.write('EXTEND cannot change a closed curve.');
       if (suppliedTarget != null) {
         return const CommandResult.failed(
@@ -170,49 +154,20 @@ Future<CommandResult> _trimOrExtend(
       }
       continue;
     }
-    final entity = target as CadEntity;
     final CadEntity? result;
     if (extend) {
-      result = switch (entity) {
-        LineEntity() => Construct.extendLine(entity, edges),
-        PolylineEntity() => Construct.extendPolyline(
-          entity,
-          edges,
-          suppliedPick,
-        ),
-        ArcEntity() => Construct.extendArc(entity, edges, suppliedPick),
-        EllipseEntity() => Construct.extendEllipse(entity, edges, suppliedPick),
-        SplineEntity() => Construct.extendSpline(entity, edges, suppliedPick),
-        _ => null,
-      };
+      result = Construct.extend(curve, edges, suppliedPick);
     } else {
       final crossings = <Vec2>[
-        for (final edge in edges) ...Construct.crossingsAlong(entity, edge),
+        for (final edge in edges) ...Construct.crossingsAlong(curve, edge),
       ];
       // Without a pick point there is no way to know which side to discard,
       // so the middle of the object is the least surprising guess.
-      final pick =
-          suppliedPick ??
-          switch (entity) {
-            LineEntity(:final midpoint) => midpoint,
-            ArcEntity(:final midPoint) => midPoint,
-            EllipseEntity() => entity.pointAt(
-              entity.startParam + entity.sweep / 2,
-            ),
-            PolylineEntity() =>
-              Construct.dividePolyline(entity, 2).firstOrNull ??
-                  entity.vertexAt(0),
-            SplineEntity() => _splinePick(entity),
-            _ => const Vec2(0, 0),
-          };
-      result = switch (entity) {
-        LineEntity() => Construct.trimLine(entity, crossings, pick),
-        PolylineEntity() => Construct.trimPolyline(entity, crossings, pick),
-        ArcEntity() => Construct.trimArc(entity, crossings, pick),
-        EllipseEntity() => Construct.trimEllipse(entity, crossings, pick),
-        SplineEntity() => Construct.trimSpline(entity, crossings, pick),
-        _ => null,
-      };
+      result = Construct.trim(
+        curve,
+        crossings,
+        suppliedPick ?? curve.along(0.5),
+      );
     }
     if (result == null) {
       context.input.write(

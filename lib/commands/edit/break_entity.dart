@@ -93,13 +93,7 @@ class EditBreakCommand extends FanCadCommand {
       return const CommandResult.failed('A circle needs two break points.');
     }
 
-    final pieces = switch (target) {
-      LineEntity() => Construct.breakLine(target, first, second),
-      PolylineEntity() => Construct.breakPolyline(target, first, second),
-      ArcEntity() => Construct.breakArc(target, first, second),
-      CircleEntity() => Construct.breakCircle(target, first, second),
-      _ => null,
-    };
+    final pieces = Construct.breakCurve(target as Curve, first, second);
     if (pieces == null) {
       return const CommandResult.failed(
         'The break point is at an end of the object, so nothing changed.',
