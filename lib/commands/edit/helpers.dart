@@ -35,21 +35,12 @@ Future<Map<String, String>> attributeValues(
 
 /// TEXT / MTEXT / dim / attrib / mleader that DDEDIT and the canvas overlay edit.
 bool isTextEditTarget(CadEntity entity) =>
-    entity is TextEntity ||
-    entity is MTextEntity ||
-    entity is DimensionEntity ||
-    entity is AttribEntity ||
-    entity is AttdefEntity ||
-    entity is MLeaderEntity;
+    entity is TextLike || entity is DimensionEntity;
 
 /// Stored content. For a dimension this is the override, not the measured value.
 String editableTextOf(CadEntity entity) => switch (entity) {
-  TextEntity(:final content) => content,
-  MTextEntity(:final content) => content,
+  TextLike(:final content) => content,
   DimensionEntity(:final overrideText) => overrideText,
-  AttdefEntity(:final defaultValue) => defaultValue,
-  AttribEntity(:final value) => value,
-  MLeaderEntity(:final content) => content,
   _ => '',
 };
 
@@ -136,149 +127,32 @@ bool textEditRequiresContent(CadEntity entity) =>
 CadEntity? entityWithEditedText(CadEntity entity, String text) {
   if (editableTextOf(entity) == text) return null;
   return switch (entity) {
-    TextEntity() => entity.withContent(text),
-    MTextEntity() => entity.withContent(text),
-    AttribEntity() => entity.withValue(text),
+    TextLike() => entity.withContent(text),
     DimensionEntity() => entity.copyWith(overrideText: text),
-    AttdefEntity() => AttdefEntity(
-      id: entity.id,
-      props: entity.props,
-      position: entity.position,
-      tag: entity.tag,
-      prompt: entity.prompt,
-      defaultValue: text,
-      height: entity.height,
-      rotation: entity.rotation,
-      styleName: entity.styleName,
-      widthFactor: entity.widthFactor,
-      obliqueAngle: entity.obliqueAngle,
-      hAlign: entity.hAlign,
-      vAlign: entity.vAlign,
-      invisible: entity.invisible,
-      constant: entity.constant,
-      verify: entity.verify,
-      preset: entity.preset,
-    ),
-    MLeaderEntity() => MLeaderEntity(
-      id: entity.id,
-      props: entity.props,
-      vertices: entity.vertices,
-      pathLengths: entity.pathLengths,
-      hasArrowHead: entity.hasArrowHead,
-      content: text,
-      textPosition: entity.textPosition,
-      textHeight: entity.textHeight,
-      textRotation: entity.textRotation,
-      styleName: entity.styleName,
-      attachment: entity.attachment,
-    ),
     _ => null,
   };
 }
 
 /// Object height in drawing units. Dimensions have none (DIMSTYLE owns it).
-double? textHeightOf(CadEntity entity) => switch (entity) {
-  TextEntity(:final height) => height,
-  MTextEntity(:final height) => height,
-  AttribEntity(:final height) => height,
-  AttdefEntity(:final height) => height,
-  MLeaderEntity(:final textHeight) => textHeight,
-  _ => null,
-};
+double? textHeightOf(CadEntity entity) =>
+    entity is TextLike ? entity.height : null;
 
 CadEntity? entityWithHeight(CadEntity entity, double height) {
-  final current = textHeightOf(entity);
-  if (current == null || height <= 0 || current == height) return null;
-  return switch (entity) {
-    TextEntity() => TextEntity(
-      id: entity.id,
-      props: entity.props,
-      position: entity.position,
-      content: entity.content,
-      height: height,
-      rotation: entity.rotation,
-      styleName: entity.styleName,
-      widthFactor: entity.widthFactor,
-      obliqueAngle: entity.obliqueAngle,
-      hAlign: entity.hAlign,
-      vAlign: entity.vAlign,
-    ),
-    MTextEntity() => MTextEntity(
-      id: entity.id,
-      props: entity.props,
-      position: entity.position,
-      content: entity.content,
-      height: height,
-      rotation: entity.rotation,
-      styleName: entity.styleName,
-      rectangleWidth: entity.rectangleWidth,
-      attachment: entity.attachment,
-    ),
-    AttribEntity() => AttribEntity(
-      id: entity.id,
-      props: entity.props,
-      position: entity.position,
-      tag: entity.tag,
-      value: entity.value,
-      height: height,
-      rotation: entity.rotation,
-      styleName: entity.styleName,
-      widthFactor: entity.widthFactor,
-      obliqueAngle: entity.obliqueAngle,
-      hAlign: entity.hAlign,
-      vAlign: entity.vAlign,
-      invisible: entity.invisible,
-    ),
-    AttdefEntity() => AttdefEntity(
-      id: entity.id,
-      props: entity.props,
-      position: entity.position,
-      tag: entity.tag,
-      prompt: entity.prompt,
-      defaultValue: entity.defaultValue,
-      height: height,
-      rotation: entity.rotation,
-      styleName: entity.styleName,
-      widthFactor: entity.widthFactor,
-      obliqueAngle: entity.obliqueAngle,
-      hAlign: entity.hAlign,
-      vAlign: entity.vAlign,
-      invisible: entity.invisible,
-      constant: entity.constant,
-      verify: entity.verify,
-      preset: entity.preset,
-    ),
-    MLeaderEntity() => MLeaderEntity(
-      id: entity.id,
-      props: entity.props,
-      vertices: entity.vertices,
-      pathLengths: entity.pathLengths,
-      hasArrowHead: entity.hasArrowHead,
-      content: entity.content,
-      textPosition: entity.textPosition,
-      textHeight: height,
-      textRotation: entity.textRotation,
-      styleName: entity.styleName,
-      attachment: entity.attachment,
-    ),
-    _ => null,
-  };
+  if (entity is! TextLike || height <= 0 || entity.height == height) {
+    return null;
+  }
+  return entity.withHeight(height);
 }
 
 /// Note rotation in radians. A dimension uses the `*D` label when [document]
 /// can see that block.
 double? textRotationOf(CadEntity entity, {CadDocument? document}) =>
     switch (entity) {
-      TextEntity(:final rotation) => rotation,
-      MTextEntity(:final rotation) => rotation,
-      AttribEntity(:final rotation) => rotation,
-      AttdefEntity(:final rotation) => rotation,
-      MLeaderEntity(:final textRotation) => textRotation,
+      TextLike(:final rotation) => rotation,
       DimensionEntity() => switch (document == null
           ? null
           : dimensionBlockLabel(document, entity)) {
-        TextEntity(:final rotation) => rotation,
-        MTextEntity(:final rotation) => rotation,
+        TextLike(:final rotation) => rotation,
         _ => null,
       },
       _ => null,
@@ -286,285 +160,58 @@ double? textRotationOf(CadEntity entity, {CadDocument? document}) =>
 
 /// Sets the note angle around the insertion point. Leader vertices stay put.
 CadEntity? entityWithRotation(CadEntity entity, double radians) {
-  final current = textRotationOf(entity);
-  if (current == null || (current - radians).abs() < 1e-12) return null;
-  return switch (entity) {
-    TextEntity() => entity.transformed(
-      Mat3.rotationAbout(radians - current, entity.position),
-    ),
-    MTextEntity() => entity.transformed(
-      Mat3.rotationAbout(radians - current, entity.position),
-    ),
-    AttribEntity() => entity.transformed(
-      Mat3.rotationAbout(radians - current, entity.position),
-    ),
-    AttdefEntity() => entity.transformed(
-      Mat3.rotationAbout(radians - current, entity.position),
-    ),
-    MLeaderEntity() => MLeaderEntity(
-      id: entity.id,
-      props: entity.props,
-      vertices: entity.vertices,
-      pathLengths: entity.pathLengths,
-      hasArrowHead: entity.hasArrowHead,
-      content: entity.content,
-      textPosition: entity.textPosition,
-      textHeight: entity.textHeight,
-      textRotation: radians,
-      styleName: entity.styleName,
-      attachment: entity.attachment,
-    ),
-    _ => null,
-  };
+  if (entity is! TextLike || (entity.rotation - radians).abs() < 1e-12) {
+    return null;
+  }
+  return entity.withRotation(radians);
 }
 
-String? textStyleNameOf(CadEntity entity) => switch (entity) {
-  TextEntity(:final styleName) => styleName,
-  MTextEntity(:final styleName) => styleName,
-  AttribEntity(:final styleName) => styleName,
-  AttdefEntity(:final styleName) => styleName,
-  MLeaderEntity(:final styleName) => styleName,
-  _ => null,
-};
+String? textStyleNameOf(CadEntity entity) =>
+    entity is TextLike ? entity.styleName : null;
 
 CadEntity? entityWithStyle(
   CadEntity entity,
   String styleName, {
   double? fixedHeight,
 }) {
-  final current = textStyleNameOf(entity);
-  if (current == null) return null;
-  var next = current == styleName ? entity : _withStyleName(entity, styleName);
-  if (next == null) return null;
+  if (entity is! TextLike) return null;
+  CadEntity next = entity.styleName == styleName
+      ? entity
+      : entity.withStyleName(styleName);
   if (fixedHeight != null && fixedHeight > 0) {
     next = entityWithHeight(next, fixedHeight) ?? next;
   }
   return identical(next, entity) ? null : next;
 }
 
-CadEntity? _withStyleName(CadEntity entity, String styleName) =>
-    switch (entity) {
-      TextEntity() => TextEntity(
-        id: entity.id,
-        props: entity.props,
-        position: entity.position,
-        content: entity.content,
-        height: entity.height,
-        rotation: entity.rotation,
-        styleName: styleName,
-        widthFactor: entity.widthFactor,
-        obliqueAngle: entity.obliqueAngle,
-        hAlign: entity.hAlign,
-        vAlign: entity.vAlign,
-      ),
-      MTextEntity() => MTextEntity(
-        id: entity.id,
-        props: entity.props,
-        position: entity.position,
-        content: entity.content,
-        height: entity.height,
-        rotation: entity.rotation,
-        styleName: styleName,
-        rectangleWidth: entity.rectangleWidth,
-        attachment: entity.attachment,
-      ),
-      AttribEntity() => AttribEntity(
-        id: entity.id,
-        props: entity.props,
-        position: entity.position,
-        tag: entity.tag,
-        value: entity.value,
-        height: entity.height,
-        rotation: entity.rotation,
-        styleName: styleName,
-        widthFactor: entity.widthFactor,
-        obliqueAngle: entity.obliqueAngle,
-        hAlign: entity.hAlign,
-        vAlign: entity.vAlign,
-        invisible: entity.invisible,
-      ),
-      AttdefEntity() => AttdefEntity(
-        id: entity.id,
-        props: entity.props,
-        position: entity.position,
-        tag: entity.tag,
-        prompt: entity.prompt,
-        defaultValue: entity.defaultValue,
-        height: entity.height,
-        rotation: entity.rotation,
-        styleName: styleName,
-        widthFactor: entity.widthFactor,
-        obliqueAngle: entity.obliqueAngle,
-        hAlign: entity.hAlign,
-        vAlign: entity.vAlign,
-        invisible: entity.invisible,
-        constant: entity.constant,
-        verify: entity.verify,
-        preset: entity.preset,
-      ),
-      MLeaderEntity() => MLeaderEntity(
-        id: entity.id,
-        props: entity.props,
-        vertices: entity.vertices,
-        pathLengths: entity.pathLengths,
-        hasArrowHead: entity.hasArrowHead,
-        content: entity.content,
-        textPosition: entity.textPosition,
-        textHeight: entity.textHeight,
-        textRotation: entity.textRotation,
-        styleName: styleName,
-        attachment: entity.attachment,
-      ),
-      _ => null,
-    };
-
-double? textColumnWidthOf(CadEntity entity) => switch (entity) {
-  MTextEntity(:final rectangleWidth) => rectangleWidth,
-  _ => null,
-};
+double? textColumnWidthOf(CadEntity entity) =>
+    entity is TextLike ? entity.columnWidth : null;
 
 CadEntity? entityWithColumnWidth(CadEntity entity, double width) {
-  if (entity is! MTextEntity || width < 0) return null;
-  if ((entity.rectangleWidth - width).abs() < 1e-12) return null;
-  return MTextEntity(
-    id: entity.id,
-    props: entity.props,
-    position: entity.position,
-    content: entity.content,
-    height: entity.height,
-    rotation: entity.rotation,
-    styleName: entity.styleName,
-    rectangleWidth: width,
-    attachment: entity.attachment,
-  );
+  if (entity is! TextLike || width < 0) return null;
+  final current = entity.columnWidth;
+  if (current == null || (current - width).abs() < 1e-12) return null;
+  return entity.withColumnWidth(width);
 }
 
-double? textWidthFactorOf(CadEntity entity) => switch (entity) {
-  TextEntity(:final widthFactor) => widthFactor,
-  AttribEntity(:final widthFactor) => widthFactor,
-  AttdefEntity(:final widthFactor) => widthFactor,
-  _ => null,
-};
+double? textWidthFactorOf(CadEntity entity) =>
+    entity is TextLike ? entity.widthFactor : null;
 
 CadEntity? entityWithWidthFactor(CadEntity entity, double widthFactor) {
-  final current = textWidthFactorOf(entity);
-  if (current == null ||
-      widthFactor <= 0 ||
-      (current - widthFactor).abs() < 1e-12) {
-    return null;
-  }
-  return switch (entity) {
-    TextEntity() => TextEntity(
-      id: entity.id,
-      props: entity.props,
-      position: entity.position,
-      content: entity.content,
-      height: entity.height,
-      rotation: entity.rotation,
-      styleName: entity.styleName,
-      widthFactor: widthFactor,
-      obliqueAngle: entity.obliqueAngle,
-      hAlign: entity.hAlign,
-      vAlign: entity.vAlign,
-    ),
-    AttribEntity() => AttribEntity(
-      id: entity.id,
-      props: entity.props,
-      position: entity.position,
-      tag: entity.tag,
-      value: entity.value,
-      height: entity.height,
-      rotation: entity.rotation,
-      styleName: entity.styleName,
-      widthFactor: widthFactor,
-      obliqueAngle: entity.obliqueAngle,
-      hAlign: entity.hAlign,
-      vAlign: entity.vAlign,
-      invisible: entity.invisible,
-    ),
-    AttdefEntity() => AttdefEntity(
-      id: entity.id,
-      props: entity.props,
-      position: entity.position,
-      tag: entity.tag,
-      prompt: entity.prompt,
-      defaultValue: entity.defaultValue,
-      height: entity.height,
-      rotation: entity.rotation,
-      styleName: entity.styleName,
-      widthFactor: widthFactor,
-      obliqueAngle: entity.obliqueAngle,
-      hAlign: entity.hAlign,
-      vAlign: entity.vAlign,
-      invisible: entity.invisible,
-      constant: entity.constant,
-      verify: entity.verify,
-      preset: entity.preset,
-    ),
-    _ => null,
-  };
+  if (entity is! TextLike || widthFactor <= 0) return null;
+  final current = entity.widthFactor;
+  if (current == null || (current - widthFactor).abs() < 1e-12) return null;
+  return entity.withWidthFactor(widthFactor);
 }
 
-double? textObliqueOf(CadEntity entity) => switch (entity) {
-  TextEntity(:final obliqueAngle) => obliqueAngle,
-  AttribEntity(:final obliqueAngle) => obliqueAngle,
-  AttdefEntity(:final obliqueAngle) => obliqueAngle,
-  _ => null,
-};
+double? textObliqueOf(CadEntity entity) =>
+    entity is TextLike ? entity.obliqueAngle : null;
 
 CadEntity? entityWithOblique(CadEntity entity, double radians) {
-  final current = textObliqueOf(entity);
+  if (entity is! TextLike) return null;
+  final current = entity.obliqueAngle;
   if (current == null || (current - radians).abs() < 1e-12) return null;
-  return switch (entity) {
-    TextEntity() => TextEntity(
-      id: entity.id,
-      props: entity.props,
-      position: entity.position,
-      content: entity.content,
-      height: entity.height,
-      rotation: entity.rotation,
-      styleName: entity.styleName,
-      widthFactor: entity.widthFactor,
-      obliqueAngle: radians,
-      hAlign: entity.hAlign,
-      vAlign: entity.vAlign,
-    ),
-    AttribEntity() => AttribEntity(
-      id: entity.id,
-      props: entity.props,
-      position: entity.position,
-      tag: entity.tag,
-      value: entity.value,
-      height: entity.height,
-      rotation: entity.rotation,
-      styleName: entity.styleName,
-      widthFactor: entity.widthFactor,
-      obliqueAngle: radians,
-      hAlign: entity.hAlign,
-      vAlign: entity.vAlign,
-      invisible: entity.invisible,
-    ),
-    AttdefEntity() => AttdefEntity(
-      id: entity.id,
-      props: entity.props,
-      position: entity.position,
-      tag: entity.tag,
-      prompt: entity.prompt,
-      defaultValue: entity.defaultValue,
-      height: entity.height,
-      rotation: entity.rotation,
-      styleName: entity.styleName,
-      widthFactor: entity.widthFactor,
-      obliqueAngle: radians,
-      hAlign: entity.hAlign,
-      vAlign: entity.vAlign,
-      invisible: entity.invisible,
-      constant: entity.constant,
-      verify: entity.verify,
-      preset: entity.preset,
-    ),
-    _ => null,
-  };
+  return entity.withObliqueAngle(radians);
 }
 
 ({TextHAlign h, TextVAlign v})? textAlignOf(CadEntity entity) =>
@@ -717,19 +364,12 @@ class TextEditPlacement {
 }
 
 TextEditPlacement? textEditPlacementOf(CadEntity entity) => switch (entity) {
-  TextEntity(:final position) => TextEditPlacement(origin: position),
-  MTextEntity(:final position) => TextEditPlacement(
+  TextLike(:final position) => TextEditPlacement(
     origin: position,
-    multiline: true,
+    multiline: entity is MTextEntity || entity is MLeaderEntity,
   ),
   DimensionEntity(:final textPosition) => TextEditPlacement(
     origin: textPosition,
-  ),
-  AttribEntity(:final position) => TextEditPlacement(origin: position),
-  AttdefEntity(:final position) => TextEditPlacement(origin: position),
-  MLeaderEntity(:final textPosition) => TextEditPlacement(
-    origin: textPosition,
-    multiline: true,
   ),
   _ => null,
 };

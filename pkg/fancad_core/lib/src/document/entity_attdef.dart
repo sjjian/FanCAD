@@ -5,7 +5,7 @@ part of 'entity.dart';
 /// Title blocks and schedules are blocks whose variable fields are these
 /// definitions. Inserting the block copies each tag's current value onto the
 /// reference; editing the definition itself still shows the default.
-final class AttdefEntity extends CadEntity {
+final class AttdefEntity extends CadEntity implements TextLike {
   const AttdefEntity({
     required super.id,
     super.props = EntityProps.defaults,
@@ -50,14 +50,20 @@ final class AttdefEntity extends CadEntity {
     preset: json['preset'] as bool? ?? false,
   );
 
+  @override
   final Vec2 position;
   final String tag;
   final String prompt;
   final String defaultValue;
+  @override
   final double height;
+  @override
   final double rotation;
+  @override
   final String styleName;
+  @override
   final double widthFactor;
+  @override
   final double obliqueAngle;
   final TextHAlign hAlign;
   final TextVAlign vAlign;
@@ -122,47 +128,79 @@ final class AttdefEntity extends CadEntity {
   @override
   void emitObjectSnaps(ObjectSnapSink sink) => sink.node(position);
 
-  @override
-  AttdefEntity withId(int id) => AttdefEntity(
-    id: id,
-    props: props,
-    position: position,
-    tag: tag,
-    prompt: prompt,
-    defaultValue: defaultValue,
-    height: height,
-    rotation: rotation,
-    styleName: styleName,
-    widthFactor: widthFactor,
-    obliqueAngle: obliqueAngle,
-    hAlign: hAlign,
-    vAlign: vAlign,
-    invisible: invisible,
-    constant: constant,
-    verify: verify,
-    preset: preset,
+  AttdefEntity copyWith({
+    int? id,
+    EntityProps? props,
+    Vec2? position,
+    String? tag,
+    String? prompt,
+    String? defaultValue,
+    double? height,
+    double? rotation,
+    String? styleName,
+    double? widthFactor,
+    double? obliqueAngle,
+    TextHAlign? hAlign,
+    TextVAlign? vAlign,
+    bool? invisible,
+    bool? constant,
+    bool? verify,
+    bool? preset,
+  }) => AttdefEntity(
+    id: id ?? this.id,
+    props: props ?? this.props,
+    position: position ?? this.position,
+    tag: tag ?? this.tag,
+    prompt: prompt ?? this.prompt,
+    defaultValue: defaultValue ?? this.defaultValue,
+    height: height ?? this.height,
+    rotation: rotation ?? this.rotation,
+    styleName: styleName ?? this.styleName,
+    widthFactor: widthFactor ?? this.widthFactor,
+    obliqueAngle: obliqueAngle ?? this.obliqueAngle,
+    hAlign: hAlign ?? this.hAlign,
+    vAlign: vAlign ?? this.vAlign,
+    invisible: invisible ?? this.invisible,
+    constant: constant ?? this.constant,
+    verify: verify ?? this.verify,
+    preset: preset ?? this.preset,
   );
 
   @override
-  AttdefEntity withProps(EntityProps props) => AttdefEntity(
-    id: id,
-    props: props,
-    position: position,
-    tag: tag,
-    prompt: prompt,
-    defaultValue: defaultValue,
-    height: height,
-    rotation: rotation,
-    styleName: styleName,
-    widthFactor: widthFactor,
-    obliqueAngle: obliqueAngle,
-    hAlign: hAlign,
-    vAlign: vAlign,
-    invisible: invisible,
-    constant: constant,
-    verify: verify,
-    preset: preset,
-  );
+  AttdefEntity withId(int id) => copyWith(id: id);
+
+  @override
+  AttdefEntity withProps(EntityProps props) => copyWith(props: props);
+
+  @override
+  String get content => defaultValue;
+
+  @override
+  AttdefEntity withContent(String content) => copyWith(defaultValue: content);
+
+  @override
+  AttdefEntity withHeight(double height) => copyWith(height: height);
+
+  @override
+  AttdefEntity withRotation(double radians) => copyWith(rotation: radians);
+
+  @override
+  AttdefEntity withStyleName(String styleName) =>
+      copyWith(styleName: styleName);
+
+  @override
+  AttdefEntity withWidthFactor(double widthFactor) =>
+      copyWith(widthFactor: widthFactor);
+
+  @override
+  AttdefEntity withObliqueAngle(double radians) =>
+      copyWith(obliqueAngle: radians);
+
+  @override
+  double? get columnWidth => null;
+
+  @override
+  AttdefEntity? withColumnWidth(double width) => null;
 
   @override
   AttdefEntity transformed(Mat3 matrix) => AttdefEntity(
@@ -189,25 +227,7 @@ final class AttdefEntity extends CadEntity {
   List<Vec2> grips() => [position];
 
   @override
-  AttdefEntity withGrip(int index, Vec2 target) => AttdefEntity(
-    id: id,
-    props: props,
-    position: target,
-    tag: tag,
-    prompt: prompt,
-    defaultValue: defaultValue,
-    height: height,
-    rotation: rotation,
-    styleName: styleName,
-    widthFactor: widthFactor,
-    obliqueAngle: obliqueAngle,
-    hAlign: hAlign,
-    vAlign: vAlign,
-    invisible: invisible,
-    constant: constant,
-    verify: verify,
-    preset: preset,
-  );
+  AttdefEntity withGrip(int index, Vec2 target) => copyWith(position: target);
 
   @override
   Map<String, Object?> geometryToJson() => {

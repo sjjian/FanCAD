@@ -337,50 +337,40 @@ class PropertiesPanel extends ConsumerWidget {
   List<Widget> _textGeometryRows(
     BuildContext context,
     DocumentTab tab,
-    CadEntity entity, {
-    required String position,
-    bool columnWidth = false,
-    bool widthFactor = false,
-    bool oblique = false,
-    bool contents = true,
-  }) {
+    TextLike entity,
+  ) {
     final l10n = context.l10n;
-    final height = textHeightOf(entity);
-    final rotation = textRotationOf(entity);
-    final style = textStyleNameOf(entity);
     final justify = textJustifyKeyOf(entity);
     return [
-      if (contents)
+      // An ATTDEF's default is edited in its own Attributes section.
+      if (entity is! AttdefEntity)
         _edit(
           context,
           l10n.contents,
           textEditFieldValue(entity, document: tab.document),
           () => workspace.run('edit.textContent'),
         ),
-      _read(context, l10n.position, position),
-      if (height != null)
-        _edit(
-          context,
-          l10n.height,
-          _number(height),
-          () => _textObject('height'),
-        ),
-      if (columnWidth && entity is MTextEntity)
+      _read(context, l10n.position, _point(entity.position)),
+      _edit(
+        context,
+        l10n.height,
+        _number(entity.height),
+        () => _textObject('height'),
+      ),
+      if (entity.columnWidth case final width?)
         _edit(
           context,
           l10n.column_width,
-          _number(entity.rectangleWidth),
+          _number(width),
           () => _textObject('width'),
         ),
-      if (rotation != null)
-        _edit(
-          context,
-          l10n.rotation,
-          '${_number(rotation * 180 / math.pi)}°',
-          () => _textObject('rotation'),
-        ),
-      if (style != null)
-        _edit(context, l10n.style, style, () => _textObject('style')),
+      _edit(
+        context,
+        l10n.rotation,
+        '${_number(entity.rotation * 180 / math.pi)}°',
+        () => _textObject('rotation'),
+      ),
+      _edit(context, l10n.style, entity.styleName, () => _textObject('style')),
       if (justify != null)
         _edit(
           context,
@@ -388,24 +378,20 @@ class PropertiesPanel extends ConsumerWidget {
           justify.toUpperCase(),
           () => _textObject('justify'),
         ),
-      if (widthFactor) ...[
-        if (textWidthFactorOf(entity) case final factor?)
-          _edit(
-            context,
-            l10n.width_factor,
-            _number(factor),
-            () => _textObject('widthFactor'),
-          ),
-      ],
-      if (oblique) ...[
-        if (textObliqueOf(entity) case final angle?)
-          _edit(
-            context,
-            l10n.oblique,
-            '${_number(angle * 180 / math.pi)}°',
-            () => _textObject('oblique'),
-          ),
-      ],
+      if (entity.widthFactor case final factor?)
+        _edit(
+          context,
+          l10n.width_factor,
+          _number(factor),
+          () => _textObject('widthFactor'),
+        ),
+      if (entity.obliqueAngle case final angle?)
+        _edit(
+          context,
+          l10n.oblique,
+          '${_number(angle * 180 / math.pi)}°',
+          () => _textObject('oblique'),
+        ),
     ];
   }
 
@@ -461,49 +447,8 @@ class PropertiesPanel extends ConsumerWidget {
           _read(context, l10n.closed, entity.closed ? l10n.yes : l10n.no),
           _read(context, l10n.length, _number(Construct.lengthOf(entity))),
         ];
-      case TextEntity(:final position):
-        return _textGeometryRows(
-          context,
-          tab,
-          entity,
-          position: _point(position),
-          widthFactor: true,
-          oblique: true,
-        );
-      case MTextEntity(:final position):
-        return _textGeometryRows(
-          context,
-          tab,
-          entity,
-          position: _point(position),
-          columnWidth: true,
-        );
-      case AttribEntity(:final position):
-        return _textGeometryRows(
-          context,
-          tab,
-          entity,
-          position: _point(position),
-          widthFactor: true,
-          oblique: true,
-        );
-      case AttdefEntity(:final position):
-        return _textGeometryRows(
-          context,
-          tab,
-          entity,
-          position: _point(position),
-          widthFactor: true,
-          oblique: true,
-          contents: false,
-        );
-      case MLeaderEntity(:final textPosition):
-        return _textGeometryRows(
-          context,
-          tab,
-          entity,
-          position: _point(textPosition),
-        );
+      case TextLike():
+        return _textGeometryRows(context, tab, entity);
       case InsertEntity(:final blockName, :final position):
         final definition = insertableBlock(tab.document, blockName);
         return [

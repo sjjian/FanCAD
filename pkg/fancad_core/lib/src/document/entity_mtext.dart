@@ -6,7 +6,7 @@ part of 'entity.dart';
   includeIfNull: false,
   ignoreUnannotated: true,
 )
-final class MTextEntity extends CadEntity {
+final class MTextEntity extends CadEntity implements TextLike {
   const MTextEntity({
     required super.id,
     super.props = EntityProps.defaults,
@@ -36,17 +36,22 @@ final class MTextEntity extends CadEntity {
   );
 
   @JsonKey(toJson: vec2ToJson)
+  @override
   final Vec2 position;
 
   /// Raw MTEXT content, which may still contain formatting codes such as
   /// `\P` and `{\fArial|b1;...}`.
   @JsonKey(name: 'text')
+  @override
   final String content;
   @JsonKey()
+  @override
   final double height;
   @JsonKey(toJson: omitZero)
+  @override
   final double rotation;
   @JsonKey(name: 'style')
+  @override
   final String styleName;
   @JsonKey(toJson: omitZero)
   final double rectangleWidth;
@@ -81,43 +86,63 @@ final class MTextEntity extends CadEntity {
   @override
   void emitObjectSnaps(ObjectSnapSink sink) => sink.node(position);
 
-  @override
-  MTextEntity withId(int id) => MTextEntity(
-    id: id,
-    props: props,
-    position: position,
-    content: content,
-    height: height,
-    rotation: rotation,
-    styleName: styleName,
-    rectangleWidth: rectangleWidth,
-    attachment: attachment,
+  MTextEntity copyWith({
+    int? id,
+    EntityProps? props,
+    Vec2? position,
+    String? content,
+    double? height,
+    double? rotation,
+    String? styleName,
+    double? rectangleWidth,
+    int? attachment,
+  }) => MTextEntity(
+    id: id ?? this.id,
+    props: props ?? this.props,
+    position: position ?? this.position,
+    content: content ?? this.content,
+    height: height ?? this.height,
+    rotation: rotation ?? this.rotation,
+    styleName: styleName ?? this.styleName,
+    rectangleWidth: rectangleWidth ?? this.rectangleWidth,
+    attachment: attachment ?? this.attachment,
   );
 
   @override
-  MTextEntity withProps(EntityProps props) => MTextEntity(
-    id: id,
-    props: props,
-    position: position,
-    content: content,
-    height: height,
-    rotation: rotation,
-    styleName: styleName,
-    rectangleWidth: rectangleWidth,
-    attachment: attachment,
-  );
+  MTextEntity withId(int id) => copyWith(id: id);
 
-  MTextEntity withContent(String value) => MTextEntity(
-    id: id,
-    props: props,
-    position: position,
-    content: value,
-    height: height,
-    rotation: rotation,
-    styleName: styleName,
-    rectangleWidth: rectangleWidth,
-    attachment: attachment,
-  );
+  @override
+  MTextEntity withProps(EntityProps props) => copyWith(props: props);
+
+  @override
+  MTextEntity withContent(String content) => copyWith(content: content);
+
+  @override
+  MTextEntity withHeight(double height) => copyWith(height: height);
+
+  @override
+  MTextEntity withRotation(double radians) => copyWith(rotation: radians);
+
+  @override
+  MTextEntity withStyleName(String styleName) => copyWith(styleName: styleName);
+
+  @override
+  double? get widthFactor => null;
+
+  @override
+  MTextEntity? withWidthFactor(double widthFactor) => null;
+
+  @override
+  double? get obliqueAngle => null;
+
+  @override
+  MTextEntity? withObliqueAngle(double radians) => null;
+
+  @override
+  double get columnWidth => rectangleWidth;
+
+  @override
+  MTextEntity withColumnWidth(double width) => copyWith(rectangleWidth: width);
 
   @override
   MTextEntity transformed(Mat3 matrix) => MTextEntity(
@@ -164,19 +189,7 @@ final class MTextEntity extends CadEntity {
 
   @override
   MTextEntity withGrip(int index, Vec2 target) {
-    if (index == 0) {
-      return MTextEntity(
-        id: id,
-        props: props,
-        position: target,
-        content: content,
-        height: height,
-        rotation: rotation,
-        styleName: styleName,
-        rectangleWidth: rectangleWidth,
-        attachment: attachment,
-      );
-    }
+    if (index == 0) return copyWith(position: target);
     if (index != 1 && index != 2) return this;
     if (index == 2 &&
         hAlign != TextHAlign.center &&
@@ -189,18 +202,7 @@ final class MTextEntity extends CadEntity {
       TextHAlign.right => -localX,
       _ => localX,
     };
-    final next = width < 1e-9 ? 1e-9 : width;
-    return MTextEntity(
-      id: id,
-      props: props,
-      position: position,
-      content: content,
-      height: height,
-      rotation: rotation,
-      styleName: styleName,
-      rectangleWidth: next,
-      attachment: attachment,
-    );
+    return copyWith(rectangleWidth: width < 1e-9 ? 1e-9 : width);
   }
 
   @override

@@ -46,34 +46,19 @@ Map<String, Object?> describeEntity(CadDocument document, CadEntity entity) {
             [entity.vertexAt(i).x, entity.vertexAt(i).y],
         ];
       }
-    case TextEntity(:final content, :final position, :final height):
-      record
-        ..['text'] = content
-        ..['position'] = [position.x, position.y]
-        ..['height'] = height;
-    case MTextEntity(:final content, :final position):
+    case TextLike(:final content, :final position):
+      if (entity case AttribEntity(:final tag) || AttdefEntity(:final tag)) {
+        record['tag'] = tag;
+      }
       record
         ..['text'] = content
         ..['position'] = [position.x, position.y];
-    case MLeaderEntity(:final content, :final textPosition):
-      record
-        ..['text'] = content
-        ..['position'] = [textPosition.x, textPosition.y];
+      if (entity is TextEntity) record['height'] = entity.height;
     case InsertEntity(:final blockName, :final position, :final attributes):
       record
         ..['block'] = blockName
         ..['position'] = [position.x, position.y];
       if (attributes.isNotEmpty) record['attributes'] = attributes;
-    case AttdefEntity(:final tag, :final defaultValue, :final position):
-      record
-        ..['tag'] = tag
-        ..['text'] = defaultValue
-        ..['position'] = [position.x, position.y];
-    case AttribEntity(:final tag, :final value, :final position):
-      record
-        ..['tag'] = tag
-        ..['text'] = value
-        ..['position'] = [position.x, position.y];
     case PointEntity(:final position):
       record['position'] = [position.x, position.y];
     case HatchEntity(:final patternName):

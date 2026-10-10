@@ -10,7 +10,7 @@ part of 'entity.dart';
   includeIfNull: false,
   ignoreUnannotated: true,
 )
-final class MLeaderEntity extends CadEntity {
+final class MLeaderEntity extends CadEntity implements TextLike {
   const MLeaderEntity({
     required super.id,
     super.props = EntityProps.defaults,
@@ -53,6 +53,7 @@ final class MLeaderEntity extends CadEntity {
   @JsonKey(name: 'arrowHead')
   final bool hasArrowHead;
   @JsonKey(name: 'text', toJson: omitEmptyString)
+  @override
   final String content;
   @JsonKey(toJson: vec2ToJson)
   final Vec2 textPosition;
@@ -61,6 +62,7 @@ final class MLeaderEntity extends CadEntity {
   @JsonKey(name: 'rotation', toJson: omitZero)
   final double textRotation;
   @JsonKey(name: 'style')
+  @override
   final String styleName;
 
   /// MTEXT attachment (1 = top-left … 9 = bottom-right). MULTILEADER stores
@@ -136,35 +138,77 @@ final class MLeaderEntity extends CadEntity {
     return box;
   }
 
-  @override
-  MLeaderEntity withId(int id) => MLeaderEntity(
-    id: id,
-    props: props,
-    vertices: vertices,
-    pathLengths: pathLengths,
-    hasArrowHead: hasArrowHead,
-    content: content,
-    textPosition: textPosition,
-    textHeight: textHeight,
-    textRotation: textRotation,
-    styleName: styleName,
-    attachment: attachment,
+  MLeaderEntity copyWith({
+    int? id,
+    EntityProps? props,
+    Float64List? vertices,
+    List<int>? pathLengths,
+    bool? hasArrowHead,
+    String? content,
+    Vec2? textPosition,
+    double? textHeight,
+    double? textRotation,
+    String? styleName,
+    int? attachment,
+  }) => MLeaderEntity(
+    id: id ?? this.id,
+    props: props ?? this.props,
+    vertices: vertices ?? this.vertices,
+    pathLengths: pathLengths ?? this.pathLengths,
+    hasArrowHead: hasArrowHead ?? this.hasArrowHead,
+    content: content ?? this.content,
+    textPosition: textPosition ?? this.textPosition,
+    textHeight: textHeight ?? this.textHeight,
+    textRotation: textRotation ?? this.textRotation,
+    styleName: styleName ?? this.styleName,
+    attachment: attachment ?? this.attachment,
   );
 
   @override
-  MLeaderEntity withProps(EntityProps props) => MLeaderEntity(
-    id: id,
-    props: props,
-    vertices: vertices,
-    pathLengths: pathLengths,
-    hasArrowHead: hasArrowHead,
-    content: content,
-    textPosition: textPosition,
-    textHeight: textHeight,
-    textRotation: textRotation,
-    styleName: styleName,
-    attachment: attachment,
-  );
+  MLeaderEntity withId(int id) => copyWith(id: id);
+
+  @override
+  MLeaderEntity withProps(EntityProps props) => copyWith(props: props);
+
+  @override
+  Vec2 get position => textPosition;
+
+  @override
+  double get height => textHeight;
+
+  @override
+  double get rotation => textRotation;
+
+  @override
+  MLeaderEntity withContent(String content) => copyWith(content: content);
+
+  @override
+  MLeaderEntity withHeight(double height) => copyWith(textHeight: height);
+
+  @override
+  MLeaderEntity withRotation(double radians) => copyWith(textRotation: radians);
+
+  @override
+  MLeaderEntity withStyleName(String styleName) =>
+      copyWith(styleName: styleName);
+
+  @override
+  double? get widthFactor => null;
+
+  @override
+  MLeaderEntity? withWidthFactor(double widthFactor) => null;
+
+  @override
+  double? get obliqueAngle => null;
+
+  @override
+  MLeaderEntity? withObliqueAngle(double radians) => null;
+
+  @override
+  double? get columnWidth => null;
+
+  @override
+  MLeaderEntity? withColumnWidth(double width) => null;
 
   @override
   MLeaderEntity transformed(Mat3 matrix) => MLeaderEntity(
@@ -191,38 +235,12 @@ final class MLeaderEntity extends CadEntity {
   @override
   MLeaderEntity withGrip(int index, Vec2 target) {
     final vertexCount = vertices.length ~/ 2;
-    if (index == vertexCount) {
-      return MLeaderEntity(
-        id: id,
-        props: props,
-        vertices: vertices,
-        pathLengths: pathLengths,
-        hasArrowHead: hasArrowHead,
-        content: content,
-        textPosition: target,
-        textHeight: textHeight,
-        textRotation: textRotation,
-        styleName: styleName,
-        attachment: attachment,
-      );
-    }
+    if (index == vertexCount) return copyWith(textPosition: target);
     if (index < 0 || index >= vertexCount) return this;
     final out = Float64List.fromList(vertices);
     out[index * 2] = target.x;
     out[index * 2 + 1] = target.y;
-    return MLeaderEntity(
-      id: id,
-      props: props,
-      vertices: out,
-      pathLengths: pathLengths,
-      hasArrowHead: hasArrowHead,
-      content: content,
-      textPosition: textPosition,
-      textHeight: textHeight,
-      textRotation: textRotation,
-      styleName: styleName,
-      attachment: attachment,
-    );
+    return copyWith(vertices: out);
   }
 
   @override

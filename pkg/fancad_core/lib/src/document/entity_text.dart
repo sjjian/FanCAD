@@ -6,7 +6,7 @@ part of 'entity.dart';
   includeIfNull: false,
   ignoreUnannotated: true,
 )
-final class TextEntity extends CadEntity {
+final class TextEntity extends CadEntity implements TextLike {
   const TextEntity({
     required super.id,
     super.props = EntityProps.defaults,
@@ -40,18 +40,25 @@ final class TextEntity extends CadEntity {
   );
 
   @JsonKey(toJson: vec2ToJson)
+  @override
   final Vec2 position;
   @JsonKey(name: 'text')
+  @override
   final String content;
   @JsonKey()
+  @override
   final double height;
   @JsonKey(toJson: omitZero)
+  @override
   final double rotation;
   @JsonKey(name: 'style')
+  @override
   final String styleName;
   @JsonKey(toJson: omitOne)
+  @override
   final double widthFactor;
   @JsonKey(name: 'oblique', toJson: omitZero)
+  @override
   final double obliqueAngle;
   @JsonKey(toJson: _omitHAlign)
   final TextHAlign hAlign;
@@ -96,49 +103,63 @@ final class TextEntity extends CadEntity {
   @override
   void emitObjectSnaps(ObjectSnapSink sink) => sink.node(position);
 
-  @override
-  TextEntity withId(int id) => TextEntity(
-    id: id,
-    props: props,
-    position: position,
-    content: content,
-    height: height,
-    rotation: rotation,
-    styleName: styleName,
-    widthFactor: widthFactor,
-    obliqueAngle: obliqueAngle,
-    hAlign: hAlign,
-    vAlign: vAlign,
+  TextEntity copyWith({
+    int? id,
+    EntityProps? props,
+    Vec2? position,
+    String? content,
+    double? height,
+    double? rotation,
+    String? styleName,
+    double? widthFactor,
+    double? obliqueAngle,
+    TextHAlign? hAlign,
+    TextVAlign? vAlign,
+  }) => TextEntity(
+    id: id ?? this.id,
+    props: props ?? this.props,
+    position: position ?? this.position,
+    content: content ?? this.content,
+    height: height ?? this.height,
+    rotation: rotation ?? this.rotation,
+    styleName: styleName ?? this.styleName,
+    widthFactor: widthFactor ?? this.widthFactor,
+    obliqueAngle: obliqueAngle ?? this.obliqueAngle,
+    hAlign: hAlign ?? this.hAlign,
+    vAlign: vAlign ?? this.vAlign,
   );
 
   @override
-  TextEntity withProps(EntityProps props) => TextEntity(
-    id: id,
-    props: props,
-    position: position,
-    content: content,
-    height: height,
-    rotation: rotation,
-    styleName: styleName,
-    widthFactor: widthFactor,
-    obliqueAngle: obliqueAngle,
-    hAlign: hAlign,
-    vAlign: vAlign,
-  );
+  TextEntity withId(int id) => copyWith(id: id);
 
-  TextEntity withContent(String value) => TextEntity(
-    id: id,
-    props: props,
-    position: position,
-    content: value,
-    height: height,
-    rotation: rotation,
-    styleName: styleName,
-    widthFactor: widthFactor,
-    obliqueAngle: obliqueAngle,
-    hAlign: hAlign,
-    vAlign: vAlign,
-  );
+  @override
+  TextEntity withProps(EntityProps props) => copyWith(props: props);
+
+  @override
+  TextEntity withContent(String content) => copyWith(content: content);
+
+  @override
+  TextEntity withHeight(double height) => copyWith(height: height);
+
+  @override
+  TextEntity withRotation(double radians) => copyWith(rotation: radians);
+
+  @override
+  TextEntity withStyleName(String styleName) => copyWith(styleName: styleName);
+
+  @override
+  TextEntity withWidthFactor(double widthFactor) =>
+      copyWith(widthFactor: widthFactor);
+
+  @override
+  TextEntity withObliqueAngle(double radians) =>
+      copyWith(obliqueAngle: radians);
+
+  @override
+  double? get columnWidth => null;
+
+  @override
+  TextEntity? withColumnWidth(double width) => null;
 
   @override
   TextEntity transformed(Mat3 matrix) => TextEntity(
@@ -159,22 +180,8 @@ final class TextEntity extends CadEntity {
   List<Vec2> grips() => [position];
 
   @override
-  TextEntity withGrip(int index, Vec2 target) {
-    if (index != 0) return this;
-    return TextEntity(
-      id: id,
-      props: props,
-      position: target,
-      content: content,
-      height: height,
-      rotation: rotation,
-      styleName: styleName,
-      widthFactor: widthFactor,
-      obliqueAngle: obliqueAngle,
-      hAlign: hAlign,
-      vAlign: vAlign,
-    );
-  }
+  TextEntity withGrip(int index, Vec2 target) =>
+      index == 0 ? copyWith(position: target) : this;
 
   @override
   CadEntity? stretchBy(Bounds2 window, Vec2 delta) {
