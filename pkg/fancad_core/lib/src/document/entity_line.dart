@@ -2,7 +2,7 @@ part of 'entity.dart';
 
 /// A straight segment between two points.
 @JsonSerializable(createFactory: false, ignoreUnannotated: true)
-final class LineEntity extends CadEntity {
+final class LineEntity extends CadEntity implements Curve {
   const LineEntity({
     required super.id,
     super.props = EntityProps.defaults,
@@ -128,6 +128,29 @@ final class LineEntity extends CadEntity {
 
   @override
   double get pathLength => length;
+
+  @override
+  bool get isLoop => false;
+
+  @override
+  Vec2 along(double t) => start + (end - start) * t;
+
+  @override
+  double paramNear(Vec2 point) {
+    final direction = end - start;
+    final lengthSquared = direction.lengthSquared;
+    if (lengthSquared < 1e-20) return 0;
+    return ((point - start).dot(direction) / lengthSquared).clamp(0.0, 1.0);
+  }
+
+  @override
+  LineEntity? span(double from, double to) {
+    if (to - from <= _paramEps || length < 1e-12) return null;
+    return LineEntity(id: id, props: props, start: along(from), end: along(to));
+  }
+
+  @override
+  double maxGrowth({required bool atStart}) => double.infinity;
 
   @override
   Map<String, Object?> geometryToJson() => _$LineEntityToJson(this);

@@ -2,7 +2,7 @@ part of 'entity.dart';
 
 /// An ellipse or elliptical arc. Angles are ellipse parameters, as in DWG.
 @JsonSerializable(createFactory: false, ignoreUnannotated: true)
-final class EllipseEntity extends CadEntity {
+final class EllipseEntity extends CadEntity implements Curve {
   const EllipseEntity({
     required super.id,
     super.props = EntityProps.defaults,
@@ -307,6 +307,59 @@ final class EllipseEntity extends CadEntity {
   @override
   double get signedArea =>
       isFullEllipse ? math.pi * majorLength * majorLength * ratio : 0;
+
+  @override
+  bool get isLoop => isFullEllipse;
+
+  @override
+  Vec2 along(double t) => pointAt(startParam + sweep * t);
+
+  @override
+  double paramNear(Vec2 point) {
+    if (isFullEllipse) {
+      final t = angularSweep(startParam, paramOf(point)) / (math.pi * 2);
+      return t >= 1 ? 0 : t;
+    }
+    return _fractionOfSweep(startParam, sweep, paramOf(point));
+  }
+
+  /// Same rule as [ArcEntity.span]: a kept end keeps its stored parameter.
+  @override
+  EllipseEntity? span(double from, double to) {
+    if (majorLength < 1e-12) return null;
+    final double start;
+    final double end;
+    if (isFullEllipse) {
+      start = startParam + math.pi * 2 * from;
+      end = startParam + math.pi * 2 * to;
+      final piece = angularSweep(start, end);
+      if (piece < 1e-9 || piece > math.pi * 2 - 1e-9) return null;
+    } else {
+      if (to - from <= _paramEps || sweep < 1e-12) return null;
+      if (sweep * (to - from) >= math.pi * 2 - 1e-9) return null;
+      final keepsStart = from.abs() <= _paramEps;
+      final keepsEnd = (to - 1).abs() <= _paramEps;
+      start = keepsStart
+          ? startParam
+          : keepsEnd
+          ? endParam - sweep * (1 - from)
+          : startParam + sweep * from;
+      end = keepsEnd ? endParam : startParam + sweep * to;
+    }
+    return EllipseEntity(
+      id: id,
+      props: props,
+      center: center,
+      majorAxis: majorAxis,
+      ratio: ratio,
+      startParam: start,
+      endParam: end,
+    );
+  }
+
+  @override
+  double maxGrowth({required bool atStart}) =>
+      isFullEllipse ? 0 : _roomBeforeClosing(sweep);
 
   @override
   Map<String, Object?> geometryToJson() => _$EllipseEntityToJson(this);

@@ -21,6 +21,8 @@ import 'style.dart';
 
 part 'entity.g.dart';
 
+part 'curve.dart';
+
 part 'entity_line.dart';
 part 'entity_polyline.dart';
 part 'entity_circle.dart';

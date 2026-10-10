@@ -2,7 +2,7 @@ part of 'entity.dart';
 
 /// A full circle.
 @JsonSerializable(createFactory: false, ignoreUnannotated: true)
-final class CircleEntity extends CadEntity {
+final class CircleEntity extends CadEntity implements Curve {
   const CircleEntity({
     required super.id,
     super.props = EntityProps.defaults,
@@ -147,6 +147,40 @@ final class CircleEntity extends CadEntity {
 
   @override
   double get pathLength => 2 * math.pi * radius;
+
+  @override
+  bool get isLoop => true;
+
+  /// Starts at angle zero and runs counter-clockwise.
+  @override
+  Vec2 along(double t) => center + Vec2.polar(math.pi * 2 * t, radius);
+
+  @override
+  double paramNear(Vec2 point) {
+    final t = normalizeAngle((point - center).angle) / (math.pi * 2);
+    return t >= 1 ? 0 : t;
+  }
+
+  @override
+  ArcEntity? span(double from, double to) {
+    final start = math.pi * 2 * from;
+    final end = math.pi * 2 * to;
+    final sweep = angularSweep(start, end);
+    if (radius <= 0 || sweep < 1e-9 || sweep > math.pi * 2 - 1e-9) {
+      return null;
+    }
+    return ArcEntity(
+      id: id,
+      props: props,
+      center: center,
+      radius: radius,
+      startAngle: start,
+      endAngle: end,
+    );
+  }
+
+  @override
+  double maxGrowth({required bool atStart}) => 0;
 
   @override
   double get signedArea => math.pi * radius * radius;

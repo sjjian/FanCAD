@@ -9,7 +9,7 @@ part of 'entity.dart';
   includeIfNull: false,
   ignoreUnannotated: true,
 )
-final class PolylineEntity extends CadEntity {
+final class PolylineEntity extends CadEntity implements Curve {
   const PolylineEntity({
     required super.id,
     super.props = EntityProps.defaults,
@@ -423,6 +423,96 @@ final class PolylineEntity extends CadEntity {
       );
     }
     return total;
+  }
+
+  @override
+  bool get isLoop => closed;
+
+  /// A bulge is walked along its arc, not the chord.
+  @override
+  Vec2 along(double t) {
+    final segments = _segments;
+    if (segments.isEmpty) return vertexCount == 0 ? Vec2.zero() : vertexAt(0);
+    final length = pathLength;
+    var remaining =
+        (closed ? t - t.floorToDouble() : t.clamp(0.0, 1.0)) * length;
+    for (final segment in segments) {
+      if (segment.length < 1e-12) continue;
+      if (remaining <= segment.length + 1e-12) {
+        return segment.pointAt(remaining);
+      }
+      remaining -= segment.length;
+    }
+    return segments.last.to;
+  }
+
+  @override
+  double paramNear(Vec2 point) {
+    final length = pathLength;
+    if (length < 1e-12) return 0;
+    var before = 0.0;
+    var best = 0.0;
+    var bestGap = double.infinity;
+    for (final segment in _segments) {
+      if (segment.length >= 1e-12) {
+        final gap = segment.gapTo(point);
+        if (gap < bestGap) {
+          bestGap = gap;
+          best = before + segment.distanceNear(point);
+        }
+      }
+      before += segment.length;
+    }
+    final t = (best / length).clamp(0.0, 1.0);
+    return closed && t >= 1 - 1e-12 ? 0 : t;
+  }
+
+  /// Always an open polyline: a span of a closed one runs across its seam.
+  @override
+  PolylineEntity? span(double from, double to) {
+    final length = pathLength;
+    if (length < 1e-12) return null;
+    var segments = _segments;
+    if (closed) {
+      final start = from * length;
+      var end = to * length;
+      if (end <= start + 1e-12) end += length;
+      return _walk([...segments, ...segments], start, end);
+    }
+    if (to - from <= _paramEps) return null;
+    segments = [
+      for (final segment in segments)
+        if (segment.length >= 1e-12) segment,
+    ];
+    var start = from * length;
+    var end = to * length;
+    if (start < 0) {
+      final grown = segments.first.grown(before: -start);
+      if (grown == null) return null;
+      segments = [grown, ...segments.skip(1)];
+      end -= start;
+      start = 0;
+    }
+    final total = segments.fold(0.0, (sum, s) => sum + s.length);
+    if (end > total) {
+      final grown = segments.last.grown(after: end - total);
+      if (grown == null) return null;
+      segments = [...segments.take(segments.length - 1), grown];
+    }
+    return _walk(segments, start, end);
+  }
+
+  @override
+  double maxGrowth({required bool atStart}) {
+    if (closed) return 0;
+    final length = pathLength;
+    if (length < 1e-12) return 0;
+    final segments = _segments.where((s) => s.length >= 1e-12);
+    if (segments.isEmpty) return 0;
+    final end = atStart ? segments.first : segments.last;
+    if (end.isStraight) return double.infinity;
+    final sweep = (4 * math.atan(end.bulge)).abs();
+    return end.length * _roomBeforeClosing(sweep) / length;
   }
 
   @override

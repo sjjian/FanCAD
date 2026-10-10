@@ -2,7 +2,7 @@ part of 'entity.dart';
 
 /// A circular arc, swept counter-clockwise from [startAngle] to [endAngle].
 @JsonSerializable(createFactory: false, ignoreUnannotated: true)
-final class ArcEntity extends CadEntity {
+final class ArcEntity extends CadEntity implements Curve {
   const ArcEntity({
     required super.id,
     super.props = EntityProps.defaults,
@@ -239,6 +239,41 @@ final class ArcEntity extends CadEntity {
 
   @override
   double get pathLength => radius * sweep;
+
+  @override
+  bool get isLoop => false;
+
+  @override
+  Vec2 along(double t) => center + Vec2.polar(startAngle + sweep * t, radius);
+
+  @override
+  double paramNear(Vec2 point) =>
+      _fractionOfSweep(startAngle, sweep, (point - center).angle);
+
+  /// A kept end keeps its stored angle, so a trim or lengthen that leaves
+  /// one end alone does not rewrite it by a turn.
+  @override
+  ArcEntity? span(double from, double to) {
+    if (to - from <= _paramEps || radius <= 0 || sweep < 1e-12) return null;
+    if (sweep * (to - from) >= math.pi * 2 - 1e-9) return null;
+    final keepsStart = from.abs() <= _paramEps;
+    final keepsEnd = (to - 1).abs() <= _paramEps;
+    return ArcEntity(
+      id: id,
+      props: props,
+      center: center,
+      radius: radius,
+      startAngle: keepsStart
+          ? startAngle
+          : keepsEnd
+          ? endAngle - sweep * (1 - from)
+          : startAngle + sweep * from,
+      endAngle: keepsEnd ? endAngle : startAngle + sweep * to,
+    );
+  }
+
+  @override
+  double maxGrowth({required bool atStart}) => _roomBeforeClosing(sweep);
 
   @override
   Map<String, Object?> geometryToJson() => _$ArcEntityToJson(this);

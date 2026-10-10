@@ -6,7 +6,7 @@ part of 'entity.dart';
   includeIfNull: false,
   ignoreUnannotated: true,
 )
-final class SplineEntity extends CadEntity {
+final class SplineEntity extends CadEntity implements Curve {
   const SplineEntity({
     required super.id,
     super.props = EntityProps.defaults,
@@ -284,6 +284,23 @@ final class SplineEntity extends CadEntity {
     }
     return total;
   }
+
+  @override
+  bool get isLoop => closed;
+
+  @override
+  Vec2 along(double t) => _asPolyline.along(t);
+
+  @override
+  double paramNear(Vec2 point) => _asPolyline.paramNear(point);
+
+  /// A polyline: the kept piece of the flattened centreline.
+  @override
+  PolylineEntity? span(double from, double to) => _asPolyline.span(from, to);
+
+  @override
+  double maxGrowth({required bool atStart}) =>
+      _asPolyline.maxGrowth(atStart: atStart);
 
   @override
   Map<String, Object?> geometryToJson() => _$SplineEntityToJson(this);
