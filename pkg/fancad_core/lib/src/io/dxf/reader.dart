@@ -9,9 +9,9 @@ import '../../document/geometry_sink.dart';
 import '../../document/paper_viewport.dart';
 import '../../document/style.dart';
 import '../../geometry/bounds.dart';
-import '../../geometry/matrix.dart';
 import '../../geometry/vector.dart';
 import '../../hatch/pattern.dart';
+import '../ocs.dart';
 
 /// Reads ASCII DXF into a [CadDocument].
 ///
@@ -374,7 +374,6 @@ class DxfReader {
     EntityProps props,
     List<(int, String)> pairs,
     Map<int, String> v,
-    Mat3 ocs,
   ) {
     final loops = <HatchLoop>[];
     var isOuter = true;
@@ -391,9 +390,8 @@ class DxfReader {
       }
       final vertices = Float64List(xs.length * 2);
       for (var i = 0; i < xs.length; i++) {
-        final world = ocs.transform(Vec2(xs[i], i < ys.length ? ys[i] : 0));
-        vertices[i * 2] = world.x;
-        vertices[i * 2 + 1] = world.y;
+        vertices[i * 2] = xs[i];
+        vertices[i * 2 + 1] = i < ys.length ? ys[i] : 0;
       }
       loops.add(HatchLoop(vertices: vertices, isOuter: isOuter));
       xs.clear();
@@ -426,19 +424,14 @@ class DxfReader {
       patternName: v[2] ?? 'SOLID',
       solid: (int.tryParse(v[70] ?? '0') ?? 0) != 0,
       patternScale: n(41, 1) <= 0 ? 1 : n(41, 1),
-      patternAngle: ocs
-          .transformDirection(Vec2.polar(n(52) * math.pi / 180, 1))
-          .angle,
-      patternLines: _patternLines(pairs, ocs),
+      patternAngle: n(52) * math.pi / 180,
+      patternLines: _patternLines(pairs),
     );
   }
 
   /// The resolved definition lines that follow group 78, which is what a DXF
   /// writer puts on the entity once the pattern has been rotated and scaled.
-  static List<HatchPatternLine> _patternLines(
-    List<(int, String)> pairs,
-    Mat3 ocs,
-  ) {
+  static List<HatchPatternLine> _patternLines(List<(int, String)> pairs) {
     final lines = <HatchPatternLine>[];
     var reading = false;
     double angle = 0;
@@ -451,12 +444,11 @@ class DxfReader {
 
     void flush() {
       if (!started) return;
-      final origin = ocs.transform(Vec2(originX, originY));
       lines.add(
         HatchPatternLine(
-          angle: ocs.transformDirection(Vec2.polar(angle, 1)).angle,
-          originX: origin.x,
-          originY: origin.y,
+          angle: angle,
+          originX: originX,
+          originY: originY,
           deltaX: deltaX,
           deltaY: deltaY,
           dashes: List<double>.of(dashes),
@@ -499,6 +491,19 @@ class DxfReader {
   }
 
   static CadEntity? _decode(String type, List<(int, String)> pairs, int id) {
+    final entity = _decodeInOcs(type, pairs, id);
+    if (entity == null) return null;
+    // 3DFACE shares SolidEntity with SOLID but its corners are WCS.
+    if (type == '3DFACE') return entity;
+    return bakeOcs(entity, _extrusion({for (final (c, v) in pairs) c: v}));
+  }
+
+  /// The entity as the file wrote it, still in its OCS.
+  static CadEntity? _decodeInOcs(
+    String type,
+    List<(int, String)> pairs,
+    int id,
+  ) {
     final v = <int, String>{};
     final xs = <double>[];
     final ys = <double>[];
@@ -531,11 +536,7 @@ class DxfReader {
     );
     double n(int code, [double fallback = 0]) =>
         double.tryParse(v[code] ?? '') ?? fallback;
-    final ocs = Mat3.ocs(_extrusion(v));
-    Vec2 xy(int xCode, int yCode, [double fx = 0, double fy = 0]) =>
-        ocs.transform(Vec2(n(xCode, fx), n(yCode, fy)));
-    double ang(double radians) =>
-        ocs.transformDirection(Vec2.polar(radians, 1)).angle;
+    Vec2 xy(int xCode, int yCode) => Vec2(n(xCode), n(yCode));
 
     switch (type) {
       case 'LINE':
@@ -558,21 +559,18 @@ class DxfReader {
           props: props,
           center: xy(10, 20),
           radius: n(40),
-          startAngle: ang(n(50) * math.pi / 180),
-          endAngle: ang(n(51) * math.pi / 180),
+          startAngle: n(50) * math.pi / 180,
+          endAngle: n(51) * math.pi / 180,
         );
       case 'POINT':
         return PointEntity(id: id, props: props, position: Vec2(n(10), n(20)));
       case 'LWPOLYLINE':
         if (xs.isEmpty) return null;
         final vertices = Float64List(xs.length * 3);
-        final flip = ocs.determinant < 0;
         for (var i = 0; i < xs.length; i++) {
-          final world = ocs.transform(Vec2(xs[i], i < ys.length ? ys[i] : 0));
-          vertices[i * 3] = world.x;
-          vertices[i * 3 + 1] = world.y;
-          final bulge = i < bulges.length ? bulges[i] : 0.0;
-          vertices[i * 3 + 2] = flip ? -bulge : bulge;
+          vertices[i * 3] = xs[i];
+          vertices[i * 3 + 1] = i < ys.length ? ys[i] : 0;
+          vertices[i * 3 + 2] = i < bulges.length ? bulges[i] : 0.0;
         }
         return PolylineEntity(
           id: id,
@@ -588,15 +586,13 @@ class DxfReader {
         return TextEntity(
           id: id,
           props: props,
-          position: ocs.transform(
-            Vec2(
-              justified ? n(11, n(10)) : n(10),
-              justified ? n(21, n(20)) : n(20),
-            ),
+          position: Vec2(
+            justified ? n(11, n(10)) : n(10),
+            justified ? n(21, n(20)) : n(20),
           ),
           content: v[1] ?? '',
           height: n(40, 2.5),
-          rotation: ang(n(50) * math.pi / 180),
+          rotation: n(50) * math.pi / 180,
           styleName: v[7] ?? 'Standard',
           widthFactor: n(41, 1) == 0 ? 1 : n(41, 1),
           obliqueAngle: n(51) * math.pi / 180,
@@ -608,7 +604,7 @@ class DxfReader {
               : TextVAlign.baseline,
         );
       case 'HATCH':
-        return _hatch(id, props, pairs, v, ocs);
+        return _hatch(id, props, pairs, v);
       case 'MTEXT':
         return MTextEntity(
           id: id,
@@ -628,17 +624,15 @@ class DxfReader {
         return AttdefEntity(
           id: id,
           props: props,
-          position: ocs.transform(
-            Vec2(
-              attdefJustified ? n(11, n(10)) : n(10),
-              attdefJustified ? n(21, n(20)) : n(20),
-            ),
+          position: Vec2(
+            attdefJustified ? n(11, n(10)) : n(10),
+            attdefJustified ? n(21, n(20)) : n(20),
           ),
           defaultValue: v[1] ?? '',
           tag: v[2] ?? '',
           prompt: v[3] ?? '',
           height: n(40, 2.5),
-          rotation: ang(n(50) * math.pi / 180),
+          rotation: n(50) * math.pi / 180,
           styleName: v[7] ?? 'Standard',
           widthFactor: n(41, 1) == 0 ? 1 : n(41, 1),
           obliqueAngle: n(51) * math.pi / 180,
@@ -660,16 +654,14 @@ class DxfReader {
         return AttribEntity(
           id: id,
           props: props,
-          position: ocs.transform(
-            Vec2(
-              attribJustified ? n(11, n(10)) : n(10),
-              attribJustified ? n(21, n(20)) : n(20),
-            ),
+          position: Vec2(
+            attribJustified ? n(11, n(10)) : n(10),
+            attribJustified ? n(21, n(20)) : n(20),
           ),
           value: v[1] ?? '',
           tag: v[2] ?? '',
           height: n(40, 2.5),
-          rotation: ang(n(50) * math.pi / 180),
+          rotation: n(50) * math.pi / 180,
           styleName: v[7] ?? 'Standard',
           widthFactor: n(41, 1) == 0 ? 1 : n(41, 1),
           obliqueAngle: n(51) * math.pi / 180,
@@ -683,40 +675,27 @@ class DxfReader {
         );
       case 'INSERT':
       case 'MINSERT':
-        final parts = Mat3.ocsInsert(
-          Vec2(n(10), n(20)),
-          Vec2(n(41, 1), n(42, 1)),
-          n(50) * math.pi / 180,
-          _extrusion(v),
-        ).insertParts;
         return InsertEntity(
           id: id,
           props: props,
           blockName: v[2] ?? '',
-          position: parts.position,
-          scale: parts.scale,
-          rotation: parts.rotation,
+          position: xy(10, 20),
+          scale: Vec2(n(41, 1), n(42, 1)),
+          rotation: n(50) * math.pi / 180,
           columnCount: type == 'MINSERT' ? int.tryParse(v[70] ?? '1') ?? 1 : 1,
           rowCount: type == 'MINSERT' ? int.tryParse(v[71] ?? '1') ?? 1 : 1,
           columnSpacing: type == 'MINSERT' ? n(44) : 0,
           rowSpacing: type == 'MINSERT' ? n(45) : 0,
         );
       case 'ELLIPSE':
-        final majorAxis = Vec2(n(11), n(21));
-        final params = EllipseEntity.paramsForExtrusion(
-          majorAxis,
-          _extrusion(v),
-          n(41),
-          n(42, math.pi * 2),
-        );
         return EllipseEntity(
           id: id,
           props: props,
           center: Vec2(n(10), n(20)),
-          majorAxis: majorAxis,
+          majorAxis: Vec2(n(11), n(21)),
           ratio: n(40, 1),
-          startParam: params.$1,
-          endParam: params.$2,
+          startParam: n(41),
+          endParam: n(42, math.pi * 2),
         );
       case 'SOLID':
       case '3DFACE':

@@ -723,6 +723,117 @@ EOF
       expect(ellipse.endPoint.x, greaterThan(4328.3061));
     });
 
+    test('a -Z ARC draws the reflected sweep, not its complement', () {
+      final document = parse('''
+  0
+SECTION
+  2
+ENTITIES
+  0
+ARC
+ 10
+10
+ 20
+5
+ 40
+2
+ 50
+30
+ 51
+90
+210
+0
+220
+0
+230
+-1
+  0
+ENDSEC
+  0
+EOF
+''');
+      final arc = document.entities.whereType<ArcEntity>().single;
+      expect(arc.center, const Vec2(-10, 5));
+      expect(arc.startAngle, closeTo(math.pi / 2, 1e-9));
+      expect(arc.endAngle, closeTo(5 * math.pi / 6, 1e-9));
+      expect(arc.startPoint.distanceTo(const Vec2(-10, 7)), lessThan(1e-9));
+    });
+
+    test('a -Z TEXT mirrors its point and baseline; MTEXT stays WCS', () {
+      final document = parse('''
+  0
+SECTION
+  2
+ENTITIES
+  0
+TEXT
+ 10
+10
+ 20
+5
+ 40
+2.5
+  1
+A
+ 50
+30
+210
+0
+220
+0
+230
+-1
+  0
+MTEXT
+ 10
+10
+ 20
+5
+ 40
+2.5
+  1
+B
+210
+0
+220
+0
+230
+-1
+  0
+LWPOLYLINE
+ 90
+2
+ 10
+1
+ 20
+0
+ 42
+0.5
+ 10
+3
+ 20
+0
+210
+0
+220
+0
+230
+-1
+  0
+ENDSEC
+  0
+EOF
+''');
+      final text = document.entities.whereType<TextEntity>().single;
+      expect(text.position, const Vec2(-10, 5));
+      expect(text.rotation, closeTo(5 * math.pi / 6, 1e-9));
+      final mtext = document.entities.whereType<MTextEntity>().single;
+      expect(mtext.position, const Vec2(10, 5));
+      final polyline = document.entities.whereType<PolylineEntity>().single;
+      expect(polyline.vertexAt(0), const Vec2(-1, 0));
+      expect(polyline.bulgeAt(0), -0.5);
+    });
+
     test(
       'a two-vertex hatch is dropped rather than stored as an empty loop',
       () {
