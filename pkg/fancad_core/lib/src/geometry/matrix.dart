@@ -91,7 +91,7 @@ class Mat3 {
 
   /// OCS→WCS for a planar entity. [extrusion] is DXF group 210 / DWG
   /// `extrusion`. Stored document coordinates stay in WCS; importers bake
-  /// this at the boundary.
+  /// this at the boundary through `bakeOcs`.
   ///
   /// AutoCAD arbitrary axis: if |Nx| and |Ny| are both below 1/64, Ax is
   /// Wy × N, otherwise Wz × N. Ay is N × Ax. The 2D map is
@@ -136,19 +136,6 @@ class Mat3 {
     final ayY = nz * axX - nx * axZ;
     return Mat3(axX, axY, ayX, ayY, 0, 0);
   }
-
-  /// INSERT in OCS: `ocs * T(ins) * R(θ) * S`. Importers decompose
-  /// [insertParts] into WCS position / scale / rotation.
-  factory Mat3.ocsInsert(
-    Vec2 insertion,
-    Vec2 scale,
-    double rotation,
-    Vec3 extrusion,
-  ) => Mat3.ocs(extrusion).multiplied(
-    Mat3.translation(insertion.x, insertion.y)
-        .multiplied(Mat3.rotation(rotation))
-        .multiplied(Mat3.scaling(scale.x, scale.y)),
-  );
 
   /// Mirror across the line through [origin] with direction [direction].
   factory Mat3.mirror(Vec2 origin, Vec2 direction) {
