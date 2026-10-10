@@ -10,6 +10,7 @@ import '../../document/style.dart';
 import '../../geometry/bounds.dart';
 import '../../geometry/vector.dart';
 import '../../hatch/pattern.dart';
+import '../ocs.dart';
 import 'format.dart';
 
 /// The outcome of decoding an FCB buffer.
@@ -632,6 +633,24 @@ class FcbReader {
   }
 
   CadEntity? _decodeEntity(
+    int at,
+    List<String> layerNames,
+    List<String> lineTypeNames,
+  ) {
+    final entity = _decodeEntityInOcs(at, layerNames, lineTypeNames);
+    final flags = _view.getUint16(at + FcbEntity.flags, Endian.little);
+    if (entity == null || flags & FcbFlags.hasExtrusion == 0) return entity;
+    final propsOffset = _view.getUint32(
+      at + FcbEntity.propsOffset,
+      Endian.little,
+    );
+    final normal = _slice(propsOffset + 3, 3);
+    if (normal.length < 3) return entity;
+    return bakeOcs(entity, Vec3(normal[0], normal[1], normal[2]));
+  }
+
+  /// The entity as the importer wrote it, still in its OCS.
+  CadEntity? _decodeEntityInOcs(
     int at,
     List<String> layerNames,
     List<String> lineTypeNames,

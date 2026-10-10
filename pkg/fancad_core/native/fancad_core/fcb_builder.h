@@ -15,7 +15,7 @@
 #include <stdint.h>
 
 #define FCB_MAGIC 0x31424346u /* 'F','C','B','1' little-endian */
-#define FCB_VERSION 1
+#define FCB_VERSION 2
 #define FCB_HEADER_SIZE 16
 #define FCB_TOC_ENTRY_SIZE 24
 
@@ -76,6 +76,10 @@
 #define FCB_FLAG_INVISIBLE (1u << 3)
 #define FCB_FLAG_HAS_EXTENDED_PROPS (1u << 4)
 #define FCB_FLAG_PAPER_SPACE (1u << 5)
+/* Geometry is still in the entity's OCS. Set together with
+ * FCB_FLAG_HAS_EXTENDED_PROPS; the props run grows from
+ * [elevation, ltscale, transparency] to [..., nx, ny, nz]. */
+#define FCB_FLAG_HAS_EXTRUSION (1u << 6)
 
 /* Layer flags. */
 #define FCB_LAYER_HIDDEN (1u << 0)

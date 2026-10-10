@@ -1687,10 +1687,46 @@ static uint64_t uniquify_entity_id(import_state *s, uint64_t handle) {
   }
 }
 
+/* The DXF 210 normal of a type whose 2D values are in its OCS. Returns 0
+ * for WCS types and for the default (0,0,1), so only a real OCS is
+ * written. Dart's bakeOcs owns the OCS→WCS math. */
+static int entity_extrusion(const Dwg_Object *obj, BITCODE_BE *out) {
+  const Dwg_Object_Entity *ent = obj->tio.entity;
+  BITCODE_BE n;
+  switch (obj->fixedtype) {
+#define EXTRUSION_OF(TYPE)                       \
+  case DWG_TYPE_##TYPE:                          \
+    if (!ent->tio.TYPE) return 0;                \
+    n = ent->tio.TYPE->extrusion;                \
+    break;
+    EXTRUSION_OF(ARC)
+    EXTRUSION_OF(CIRCLE)
+    EXTRUSION_OF(ELLIPSE)
+    EXTRUSION_OF(LWPOLYLINE)
+    EXTRUSION_OF(POLYLINE_2D)
+    EXTRUSION_OF(TEXT)
+    EXTRUSION_OF(ATTDEF)
+    EXTRUSION_OF(INSERT)
+    EXTRUSION_OF(MINSERT)
+    EXTRUSION_OF(HATCH)
+    EXTRUSION_OF(SOLID)
+    EXTRUSION_OF(TRACE)
+#undef EXTRUSION_OF
+    default:
+      return 0;
+  }
+  if (fabs(n.x) < 1e-12 && fabs(n.y) < 1e-12 && n.z > 0.0) return 0;
+  if (n.x == 0.0 && n.y == 0.0 && n.z == 0.0) return 0;
+  *out = n;
+  return 1;
+}
+
 /* Fills the common part of an entity record. */
 static void fill_common(import_state *s, const Dwg_Object *obj,
                         fcb_entity *out) {
   const Dwg_Object_Entity *ent = obj->tio.entity;
+  BITCODE_BE extrusion;
+  int has_extrusion = entity_extrusion(obj, &extrusion);
   memset(out, 0, sizeof(*out));
   out->handle = uniquify_entity_id(s, (uint64_t)obj->handle.value);
   out->layer_index = hmap_get(&s->layer_index, ref_handle(ent->layer), 0);
@@ -1704,12 +1740,19 @@ static void fill_common(import_state *s, const Dwg_Object *obj,
   out->line_weight = fancad_line_weight((int)(int8_t)ent->linewt);
   if (ent->invisible) out->flags |= FCB_FLAG_INVISIBLE;
 
-  if (ent->ltype_scale != 1.0) {
-    double props[3];
+  if (ent->ltype_scale != 1.0 || has_extrusion) {
+    double props[6];
     props[0] = 0.0;              /* elevation, filled per type below */
     props[1] = ent->ltype_scale;
     props[2] = -1.0;             /* transparency inherits from the layer */
-    out->props_offset = (uint32_t)fcb_add_doubles(s->b, props, 3);
+    if (has_extrusion) {
+      props[3] = extrusion.x;
+      props[4] = extrusion.y;
+      props[5] = extrusion.z;
+      out->flags |= FCB_FLAG_HAS_EXTRUSION;
+    }
+    out->props_offset =
+        (uint32_t)fcb_add_doubles(s->b, props, has_extrusion ? 6 : 3);
     out->flags |= FCB_FLAG_HAS_EXTENDED_PROPS;
   }
 }
@@ -2481,131 +2524,6 @@ static void append_insert_attribs(import_state *s, Dwg_Object_Ref **refs,
   }
 }
 
-/* AutoCAD's minor axis is extrusion × major. FanCAD's is 2D CCW of major.
- * When those disagree (typical extrusion (0,0,-1)) the same parameters
- * draw the opposite quadrant. Negate-and-swap so a WCS bake still traces
- * AutoCAD's arc. Export writes +Z with these baked params. */
-static void ellipse_bake_wcs_params(double mx, double my, double nx, double ny,
-                                    double nz, double *start, double *end) {
-  double nlen, acad_x, acad_y, fan_x, fan_y, tmp;
-  const double tau = 6.28318530717958647692;
-  nlen = sqrt(nx * nx + ny * ny + nz * nz);
-  if (nlen < 1e-20) return;
-  nz /= nlen;
-  acad_x = -nz * my;
-  acad_y = nz * mx;
-  fan_x = -my;
-  fan_y = mx;
-  if (acad_x * fan_x + acad_y * fan_y >= 0.0) return;
-  tmp = *start;
-  *start = -(*end);
-  *end = -tmp;
-  *start = fmod(*start, tau);
-  if (*start < 0.0) *start += tau;
-  *end = fmod(*end, tau);
-  if (*end < 0.0) *end += tau;
-}
-
-/* Same arbitrary axis as Dart `Mat3.ocs`: WCS = (m[0]·x + m[2]·y,
- * m[1]·x + m[3]·y). Returns 0 when the map is the identity. */
-static int ocs_axes(double nx, double ny, double nz, double m[4]) {
-  double len, inv, axx, axy, axz, ax_x, ax_y, ax_z;
-  len = sqrt(nx * nx + ny * ny + nz * nz);
-  if (len < 1e-20) {
-    nx = 0.0;
-    ny = 0.0;
-    nz = 1.0;
-  } else {
-    nx /= len;
-    ny /= len;
-    nz /= len;
-  }
-  if (fabs(nx) < (1.0 / 64.0) && fabs(ny) < (1.0 / 64.0)) {
-    axx = nz;
-    axy = 0.0;
-    axz = -nx;
-  } else {
-    axx = -ny;
-    axy = nx;
-    axz = 0.0;
-  }
-  len = sqrt(axx * axx + axy * axy + axz * axz);
-  inv = len < 1e-20 ? 1.0 : 1.0 / len;
-  ax_x = axx * inv;
-  ax_y = axy * inv;
-  ax_z = axz * inv;
-  m[0] = ax_x;
-  m[1] = ax_y;
-  m[2] = ny * ax_z - nz * ax_y;
-  m[3] = nz * ax_x - nx * ax_z;
-  return !(m[0] == 1.0 && m[1] == 0.0 && m[2] == 0.0 && m[3] == 1.0);
-}
-
-static void ocs_point(const double m[4], double *x, double *y) {
-  double ox = *x;
-  double oy = *y;
-  *x = m[0] * ox + m[2] * oy;
-  *y = m[1] * ox + m[3] * oy;
-}
-
-static double ocs_angle(const double m[4], double radians) {
-  const double tau = 6.28318530717958647692;
-  double dx = cos(radians);
-  double dy = sin(radians);
-  double a;
-  ocs_point(m, &dx, &dy);
-  a = atan2(dy, dx);
-  return a < 0.0 ? a + tau : a;
-}
-
-/* Matches Dart `Mat3.ocsInsert`. Document coordinates stay WCS; this bakes
- * OCS at the import boundary. */
-static void apply_ocs_insert(double nx, double ny, double nz, double *ins_x,
-                             double *ins_y, double *scale_x, double *scale_y,
-                             double *rotation) {
-  double m[4];
-  double oa, ob, oc, od;
-  double ca, sa, a, b, c, d, e, f;
-  double rot, cr, sr;
-  if (!ocs_axes(nx, ny, nz, m)) return;
-  oa = m[0];
-  ob = m[1];
-  oc = m[2];
-  od = m[3];
-
-  ca = cos(*rotation);
-  sa = sin(*rotation);
-  /* T * R * S, then ocs * that. */
-  a = ca * *scale_x;
-  b = sa * *scale_x;
-  c = -sa * *scale_y;
-  d = ca * *scale_y;
-  e = *ins_x;
-  f = *ins_y;
-  {
-    double a2 = oa * a + oc * b;
-    double b2 = ob * a + od * b;
-    double c2 = oa * c + oc * d;
-    double d2 = ob * c + od * d;
-    double e2 = oa * e + oc * f;
-    double f2 = ob * e + od * f;
-    a = a2;
-    b = b2;
-    c = c2;
-    d = d2;
-    e = e2;
-    f = f2;
-  }
-  rot = atan2(b, a);
-  cr = cos(rot);
-  sr = sin(rot);
-  *ins_x = e;
-  *ins_y = f;
-  *scale_x = a * cr + b * sr;
-  *scale_y = -c * sr + d * cr;
-  *rotation = rot;
-}
-
 /* Translates one entity. Returns non-zero when a record was written. */
 static int import_entity(import_state *s, const Dwg_Object *obj,
                          uint32_t owner_block) {
@@ -2643,17 +2561,11 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
 
     case DWG_TYPE_CIRCLE: {
       Dwg_Entity_CIRCLE *o = ent->tio.CIRCLE;
-      double m[4];
-      double cx, cy;
       if (!o) return 0;
-      cx = o->center.x;
-      cy = o->center.y;
-      if (ocs_axes(o->extrusion.x, o->extrusion.y, o->extrusion.z, m))
-        ocs_point(m, &cx, &cy);
-      coords_push2(g, cx, cy);
+      coords_push2(g, o->center.x, o->center.y);
       coords_push(g, o->radius);
-      box_add(&bounds, cx - o->radius, cy - o->radius);
-      box_add(&bounds, cx + o->radius, cy + o->radius);
+      box_add(&bounds, o->center.x - o->radius, o->center.y - o->radius);
+      box_add(&bounds, o->center.x + o->radius, o->center.y + o->radius);
       attach_geometry(s, &e);
       commit(s, &e, &bounds, owner_block, FCB_TYPE_CIRCLE);
       return 1;
@@ -2661,31 +2573,14 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
 
     case DWG_TYPE_ARC: {
       Dwg_Entity_ARC *o = ent->tio.ARC;
-      double m[4];
-      double cx, cy, start, end;
       if (!o) return 0;
-      cx = o->center.x;
-      cy = o->center.y;
-      start = o->start_angle;
-      end = o->end_angle;
-      if (ocs_axes(o->extrusion.x, o->extrusion.y, o->extrusion.z, m)) {
-        ocs_point(m, &cx, &cy);
-        start = ocs_angle(m, o->start_angle);
-        end = ocs_angle(m, o->end_angle);
-        /* A mirrored OCS runs the arc clockwise in WCS; swap to stay CCW. */
-        if (m[0] * m[3] - m[1] * m[2] < 0.0) {
-          double tmp = start;
-          start = end;
-          end = tmp;
-        }
-      }
-      coords_push2(g, cx, cy);
+      coords_push2(g, o->center.x, o->center.y);
       coords_push(g, o->radius);
-      coords_push(g, start);
-      coords_push(g, end);
+      coords_push(g, o->start_angle);
+      coords_push(g, o->end_angle);
       /* A conservative box; Dart recomputes the exact one when indexing. */
-      box_add(&bounds, cx - o->radius, cy - o->radius);
-      box_add(&bounds, cx + o->radius, cy + o->radius);
+      box_add(&bounds, o->center.x - o->radius, o->center.y - o->radius);
+      box_add(&bounds, o->center.x + o->radius, o->center.y + o->radius);
       attach_geometry(s, &e);
       commit(s, &e, &bounds, owner_block, FCB_TYPE_ARC);
       return 1;
@@ -2694,18 +2589,12 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
     case DWG_TYPE_ELLIPSE: {
       Dwg_Entity_ELLIPSE *o = ent->tio.ELLIPSE;
       double reach;
-      double start;
-      double end;
       if (!o) return 0;
-      start = o->start_angle;
-      end = o->end_angle;
-      ellipse_bake_wcs_params(o->sm_axis.x, o->sm_axis.y, o->extrusion.x,
-                              o->extrusion.y, o->extrusion.z, &start, &end);
       coords_push2(g, o->center.x, o->center.y);
       coords_push2(g, o->sm_axis.x, o->sm_axis.y);
       coords_push(g, o->axis_ratio);
-      coords_push(g, start);
-      coords_push(g, end);
+      coords_push(g, o->start_angle);
+      coords_push(g, o->end_angle);
       reach = sqrt(o->sm_axis.x * o->sm_axis.x + o->sm_axis.y * o->sm_axis.y);
       box_add(&bounds, o->center.x - reach, o->center.y - reach);
       box_add(&bounds, o->center.x + reach, o->center.y + reach);
@@ -2716,21 +2605,12 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
 
     case DWG_TYPE_LWPOLYLINE: {
       Dwg_Entity_LWPOLYLINE *o = ent->tio.LWPOLYLINE;
-      double m[4];
-      int baked, flip;
       uint32_t i;
       if (!o || !o->points) return 0;
-      baked = ocs_axes(o->extrusion.x, o->extrusion.y, o->extrusion.z, m);
-      flip = baked && m[0] * m[3] - m[1] * m[2] < 0.0;
       for (i = 0; i < o->num_points; i++) {
-        double x = o->points[i].x;
-        double y = o->points[i].y;
-        double bulge =
-            (o->bulges && i < o->num_bulges) ? o->bulges[i] : 0.0;
-        if (baked) ocs_point(m, &x, &y);
-        coords_push2(g, x, y);
-        coords_push(g, flip ? -bulge : bulge);
-        box_add(&bounds, x, y);
+        coords_push2(g, o->points[i].x, o->points[i].y);
+        coords_push(g, (o->bulges && i < o->num_bulges) ? o->bulges[i] : 0.0);
+        box_add(&bounds, o->points[i].x, o->points[i].y);
       }
       if (o->flag & 512) e.flags |= FCB_FLAG_CLOSED;
       if (o->const_width != 0.0) coords_push(g, o->const_width);
@@ -2968,8 +2848,6 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
         scale_x = m->scale.x == 0.0 ? 1.0 : m->scale.x;
         scale_y = m->scale.y == 0.0 ? 1.0 : m->scale.y;
         rotation = m->rotation;
-        apply_ocs_insert(m->extrusion.x, m->extrusion.y, m->extrusion.z,
-                         &ins_x, &ins_y, &scale_x, &scale_y, &rotation);
         ints[0] = (int64_t)(m->num_cols ? m->num_cols : 1);
         ints[1] = (int64_t)(m->num_rows ? m->num_rows : 1);
         coords_push2(g, ins_x, ins_y);
@@ -2984,8 +2862,6 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
         scale_x = m->scale.x == 0.0 ? 1.0 : m->scale.x;
         scale_y = m->scale.y == 0.0 ? 1.0 : m->scale.y;
         rotation = m->rotation;
-        apply_ocs_insert(m->extrusion.x, m->extrusion.y, m->extrusion.z,
-                         &ins_x, &ins_y, &scale_x, &scale_y, &rotation);
         ints[0] = 1;
         ints[1] = 1;
         coords_push2(g, ins_x, ins_y);

@@ -33,7 +33,7 @@ const int fcbMagic = 0x31424346;
 
 /// Bumped on any incompatible layout change. Readers reject unknown versions
 /// rather than guessing.
-const int fcbVersion = 1;
+const int fcbVersion = 2;
 
 /// Size of the fixed file header, in bytes.
 const int fcbHeaderSize = 16;
@@ -114,7 +114,8 @@ class FcbEntity {
   static const int stringCount = 84;
 
   /// Index into the double pool of `[elevation, lineTypeScale, transparency]`,
-  /// valid only when [FcbFlags.hasExtendedProps] is set.
+  /// valid only when [FcbFlags.hasExtendedProps] is set. [FcbFlags
+  /// .hasExtrusion] appends the OCS normal `nx, ny, nz`.
   static const int propsOffset = 88;
   static const int lineWeight = 92;
   static const int type = 96;
@@ -300,6 +301,11 @@ class FcbFlags {
 
   /// The entity lives in a paper space layout.
   static const int paperSpace = 1 << 5;
+
+  /// The geometry is still in the entity's OCS. Set with [hasExtendedProps];
+  /// the props run is then `[elevation, lineTypeScale, transparency, nx, ny,
+  /// nz]`, and the reader bakes the entity into WCS.
+  static const int hasExtrusion = 1 << 6;
 }
 
 /// Layer flag bits.
