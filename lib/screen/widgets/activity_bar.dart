@@ -21,6 +21,7 @@ class ActivityBar extends StatelessWidget {
   static const List<({String id, IconData icon, IconData activeIcon})>
   _views = [
     (id: 'layers', icon: Icons.layers_outlined, activeIcon: Icons.layers),
+    (id: 'blocks', icon: Icons.widgets_outlined, activeIcon: Icons.widgets),
     (id: 'properties', icon: Icons.tune_outlined, activeIcon: Icons.tune),
     (
       id: 'layouts',
@@ -36,6 +37,7 @@ class ActivityBar extends StatelessWidget {
   ({String label, String hint}) _copy(AppLocalizations l10n, String id) {
     return switch (id) {
       'layers' => (label: l10n.layers, hint: l10n.view_layers_hint),
+      'blocks' => (label: l10n.blocks, hint: l10n.view_blocks_hint),
       'properties' => (label: l10n.properties, hint: l10n.view_properties_hint),
       'layouts' => (label: l10n.layouts, hint: l10n.view_layouts_hint),
       'history' => (label: l10n.command_history, hint: l10n.view_history_hint),

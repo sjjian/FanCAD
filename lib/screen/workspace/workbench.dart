@@ -27,6 +27,7 @@ import '../widgets/activity_bar.dart';
 import '../widgets/title_bar.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
+import 'blocks_panel.dart';
 import 'canvas_hud.dart';
 import 'document_view.dart';
 import 'empty_workspace.dart';
@@ -623,6 +624,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
 
   Widget _sidebarBody(String viewId, Workspace workspace) => switch (viewId) {
     'layers' => LayersPanel(workspace: workspace),
+    'blocks' => BlocksPanel(workspace: workspace),
     'properties' => PropertiesPanel(workspace: workspace),
     'layouts' => LayoutsPanel(workspace: workspace),
     'history' => CommandLogPanel(workspace: workspace),

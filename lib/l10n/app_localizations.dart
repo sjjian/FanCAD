@@ -656,6 +656,18 @@ abstract class AppLocalizations {
   /// **'Model and paper space tabs'**
   String get view_layouts_hint;
 
+  /// blocks
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks'**
+  String get blocks;
+
+  /// view blocks hint
+  ///
+  /// In en, this message translates to:
+  /// **'Block definitions in this drawing'**
+  String get view_blocks_hint;
+
   /// view commands hint
   ///
   /// In en, this message translates to:
@@ -1405,6 +1417,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Click to copy {label}'**
   String click_to_copy_label(String label);
+
+  /// blocks empty workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Open a drawing to see its blocks.'**
+  String get blocks_empty_workspace;
+
+  /// no blocks
+  ///
+  /// In en, this message translates to:
+  /// **'This drawing has no blocks.'**
+  String get no_blocks;
+
+  /// no blocks match
+  ///
+  /// In en, this message translates to:
+  /// **'No blocks match \"{filter}\".'**
+  String no_blocks_match(String filter);
+
+  /// filter blocks
+  ///
+  /// In en, this message translates to:
+  /// **'Filter blocks'**
+  String get filter_blocks;
+
+  /// block insert
+  ///
+  /// In en, this message translates to:
+  /// **'Insert'**
+  String get block_insert;
+
+  /// block select references one
+  ///
+  /// In en, this message translates to:
+  /// **'Select 1 reference'**
+  String get block_select_references_one;
+
+  /// block select references many
+  ///
+  /// In en, this message translates to:
+  /// **'Select {count} references'**
+  String block_select_references_many(int count);
+
+  /// block no references
+  ///
+  /// In en, this message translates to:
+  /// **'No references in this space'**
+  String get block_no_references;
+
+  /// block menu rename
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get block_menu_rename;
+
+  /// block xref
+  ///
+  /// In en, this message translates to:
+  /// **'External reference'**
+  String get block_xref;
+
+  /// block purge unused
+  ///
+  /// In en, this message translates to:
+  /// **'Purge unused blocks'**
+  String get block_purge_unused;
+
+  /// block purge none
+  ///
+  /// In en, this message translates to:
+  /// **'No unused blocks'**
+  String get block_purge_none;
+
+  /// blocks count one
+  ///
+  /// In en, this message translates to:
+  /// **'1 block'**
+  String get blocks_count_one;
+
+  /// blocks count many
+  ///
+  /// In en, this message translates to:
+  /// **'{count} blocks'**
+  String blocks_count_many(int count);
+
+  /// blocks shown of
+  ///
+  /// In en, this message translates to:
+  /// **'{shown} of {total}'**
+  String blocks_shown_of(int shown, int total);
+
+  /// blocks unused one
+  ///
+  /// In en, this message translates to:
+  /// **'1 unused'**
+  String get blocks_unused_one;
+
+  /// blocks unused many
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unused'**
+  String blocks_unused_many(int count);
+
+  /// blocks xref one
+  ///
+  /// In en, this message translates to:
+  /// **'1 xref'**
+  String get blocks_xref_one;
+
+  /// blocks xref many
+  ///
+  /// In en, this message translates to:
+  /// **'{count} xrefs'**
+  String blocks_xref_many(int count);
+
+  /// edit block row hint
+  ///
+  /// In en, this message translates to:
+  /// **'Edit this block'**
+  String get edit_block_row_hint;
+
+  /// editing block row hint
+  ///
+  /// In en, this message translates to:
+  /// **'Editing this block'**
+  String get editing_block_row_hint;
 
   /// editing block
   ///

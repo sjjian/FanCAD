@@ -318,6 +318,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get view_layouts_hint => '模型空间与图纸空间';
 
   @override
+  String get blocks => '块';
+
+  @override
+  String get view_blocks_hint => '当前图纸里的块';
+
+  @override
   String get view_commands_hint => '应用可执行的全部命令';
 
   @override
@@ -733,6 +739,81 @@ class AppLocalizationsZh extends AppLocalizations {
   String click_to_copy_label(String label) {
     return '点击复制$label';
   }
+
+  @override
+  String get blocks_empty_workspace => '打开图纸以查看块。';
+
+  @override
+  String get no_blocks => '这张图没有块。';
+
+  @override
+  String no_blocks_match(String filter) {
+    return '没有匹配「$filter」的块。';
+  }
+
+  @override
+  String get filter_blocks => '过滤块';
+
+  @override
+  String get block_insert => '插入';
+
+  @override
+  String get block_select_references_one => '选中 1 个引用';
+
+  @override
+  String block_select_references_many(int count) {
+    return '选中 $count 个引用';
+  }
+
+  @override
+  String get block_no_references => '当前空间没有引用';
+
+  @override
+  String get block_menu_rename => '重命名';
+
+  @override
+  String get block_xref => '外部参照';
+
+  @override
+  String get block_purge_unused => '清理未使用的块';
+
+  @override
+  String get block_purge_none => '没有未使用的块';
+
+  @override
+  String get blocks_count_one => '1 个块';
+
+  @override
+  String blocks_count_many(int count) {
+    return '$count 个块';
+  }
+
+  @override
+  String blocks_shown_of(int shown, int total) {
+    return '显示 $shown / $total';
+  }
+
+  @override
+  String get blocks_unused_one => '1 个未使用';
+
+  @override
+  String blocks_unused_many(int count) {
+    return '$count 个未使用';
+  }
+
+  @override
+  String get blocks_xref_one => '1 个外部参照';
+
+  @override
+  String blocks_xref_many(int count) {
+    return '$count 个外部参照';
+  }
+
+  @override
+  String get edit_block_row_hint => '编辑此块';
+
+  @override
+  String get editing_block_row_hint => '正在编辑此块';
 
   @override
   String editing_block(String name) {

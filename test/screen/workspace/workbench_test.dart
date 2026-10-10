@@ -1083,6 +1083,142 @@ void main() {
       }
     }
   });
+
+  testWidgets('the blocks panel lists insertable blocks and opens one', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(
+      tester,
+      document: true,
+      prepare: (container) {
+        final document = container
+            .read(workspaceNotifierProvider.notifier)
+            .active!
+            .document;
+        document.addEntity(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+          blockName: 'WIDGET',
+        );
+        document.addEntity(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(1, 0)),
+          blockName: '*U22',
+        );
+        document.putBlock(document.blocks['*U22']!.copyWith(isAnonymous: true));
+        document.putBlock(
+          const BlockRecord(name: 'XREF1', xrefPath: 'other.dwg'),
+        );
+      },
+    );
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+
+    await tester.tap(find.byKey(const Key('activity-blocks')));
+    await tester.pump();
+
+    expect(find.byKey(const Key('blocks-panel')), findsOneWidget);
+    expect(find.text('WIDGET'), findsOneWidget);
+    expect(find.text('XREF1'), findsOneWidget);
+    expect(find.byKey(const Key('block-xref-XREF1')), findsOneWidget);
+    expect(find.text('*U22'), findsNothing);
+    expect(find.text('*Model_Space'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('block-row-WIDGET')));
+    await tester.pump();
+    await tester.pump();
+
+    final document = workspace.active!.document;
+    expect(document.editedBlockName, 'WIDGET');
+    expect(find.byKey(const Key('canvas-block-edit')), findsOneWidget);
+    expect(find.text('Editing block WIDGET'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('canvas-block-edit')),
+        matching: find.text('Close'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(document.isEditingBlock, isFalse);
+    expect(document.currentBlockName, document.modelSpaceBlockName);
+    expect(find.byKey(const Key('canvas-block-edit')), findsNothing);
+  });
+
+  testWidgets('the properties block row opens that block', (tester) async {
+    final container = await pumpWorkbench(
+      tester,
+      document: true,
+      prepare: (container) {
+        final document = container
+            .read(workspaceNotifierProvider.notifier)
+            .active!
+            .document;
+        document.addEntity(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(10, 0)),
+          blockName: 'WIDGET',
+        );
+        document.addEntity(
+          const InsertEntity(id: 0, blockName: 'WIDGET', position: Vec2(20, 0)),
+        );
+        document.addEntity(
+          const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(1, 0)),
+          blockName: '*U9',
+        );
+        document.putBlock(document.blocks['*U9']!.copyWith(isAnonymous: true));
+        document.addEntity(
+          const InsertEntity(id: 0, blockName: '*U9', position: Vec2(1, 1)),
+        );
+      },
+    );
+    final tab = container.read(workspaceNotifierProvider.notifier).active!;
+    final widgetInsert = tab.document.entities
+        .whereType<InsertEntity>()
+        .firstWhere((entity) => entity.blockName == 'WIDGET');
+    tab.session.selection.replace([widgetInsert.id]);
+    await tester.pump();
+
+    final editButton = find.byKey(const Key('property-edit-block'));
+    expect(editButton, findsOneWidget);
+    expect(
+      tester.widget<FanCadIconButton>(editButton).size,
+      PropertyRow.accessorySlot,
+    );
+    final buttonRect = tester.getRect(editButton);
+    final chevronRect = tester.getRect(
+      find
+          .descendant(
+            of: find.byType(PropertiesPanel),
+            matching: find.byIcon(Icons.chevron_right),
+          )
+          .first,
+    );
+    expect(buttonRect.center.dx, closeTo(chevronRect.center.dx, 0.5));
+    final panelRect = tester.getRect(find.byType(PropertiesPanel));
+    expect(panelRect.right - buttonRect.right, closeTo(FanCadTokens.space1, 1));
+    await tester.tap(editButton);
+    await tester.pump();
+    await tester.pump();
+
+    expect(tab.document.editedBlockName, 'WIDGET');
+    expect(find.byKey(const Key('canvas-block-edit')), findsOneWidget);
+    expect(find.text('Editing block WIDGET'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('canvas-block-edit')),
+        matching: find.text('Close'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final anonymous = tab.document.entities
+        .whereType<InsertEntity>()
+        .firstWhere((entity) => entity.blockName == '*U9');
+    tab.session.selection.replace([anonymous.id]);
+    await tester.pump();
+    expect(find.text('*U9'), findsOneWidget);
+    expect(find.byKey(const Key('property-edit-block')), findsNothing);
+  });
 }
 
 bool _focusInside(Key key) {

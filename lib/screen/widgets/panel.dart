@@ -89,6 +89,7 @@ class PropertyRow extends StatelessWidget {
     this.isEditable = false,
     this.copyText,
     this.onCopied,
+    this.trailing,
   });
 
   final String label;
@@ -99,6 +100,15 @@ class PropertyRow extends StatelessWidget {
   /// Copied on right-click, or on a left-click when the row is not editable.
   final String? copyText;
   final ValueChanged<String>? onCopied;
+
+  /// Sits after the value, outside the row tap, so its own press is not a copy.
+  ///
+  /// Laid out in the same column as the edit chevron: an 18px slot, then
+  /// [FanCadTokens.space1] before the panel edge.
+  final Widget? trailing;
+
+  /// Width of the column shared by the chevron and [trailing].
+  static const double accessorySlot = 18;
 
   void _copy(BuildContext context) {
     final text = copyText;
@@ -119,7 +129,10 @@ class PropertyRow extends StatelessWidget {
       onTap: onTap ?? (copyText == null ? null : () => _copy(context)),
       onSecondaryTap: copyText == null ? null : () => _copy(context),
       height: FanCadTokens.rowHeight,
-      padding: const EdgeInsets.only(left: FanCadTokens.space3, right: 4),
+      padding: EdgeInsets.only(
+        left: FanCadTokens.space3,
+        right: trailing == null ? FanCadTokens.space1 : 0,
+      ),
       child: Row(
         children: [
           SizedBox(
@@ -141,19 +154,40 @@ class PropertyRow extends StatelessWidget {
             ),
           ),
           if (isEditable)
-            Icon(
-              Icons.chevron_right,
-              size: FanCadTokens.iconSmall,
-              color: tokens.textFaint,
+            SizedBox(
+              width: accessorySlot,
+              child: Center(
+                child: Icon(
+                  Icons.chevron_right,
+                  size: FanCadTokens.iconSmall,
+                  color: tokens.textFaint,
+                ),
+              ),
             ),
         ],
       ),
     );
-    if (tooltip == null) return row;
-    return Tooltip(
-      message: tooltip,
-      waitDuration: const Duration(milliseconds: 600),
-      child: row,
+    final labeled = tooltip == null
+        ? row
+        : Tooltip(
+            message: tooltip,
+            waitDuration: const Duration(milliseconds: 600),
+            child: row,
+          );
+    final extra = trailing;
+    if (extra == null) return labeled;
+    return Row(
+      children: [
+        Expanded(child: labeled),
+        Padding(
+          padding: const EdgeInsets.only(right: FanCadTokens.space1),
+          child: SizedBox(
+            width: accessorySlot,
+            height: FanCadTokens.rowHeight,
+            child: Center(child: extra),
+          ),
+        ),
+      ],
     );
   }
 }

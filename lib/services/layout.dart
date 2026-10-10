@@ -19,6 +19,7 @@ class LayoutNotifier extends _$LayoutNotifier {
 
   static const _leftViews = {
     'layers',
+    'blocks',
     'properties',
     'layouts',
     'history',

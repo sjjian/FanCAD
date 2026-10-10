@@ -453,6 +453,14 @@
   "@view_layouts_hint": {
     "description": "view layouts hint"
   },
+  "blocks": "块",
+  "@blocks": {
+    "description": "blocks"
+  },
+  "view_blocks_hint": "当前图纸里的块",
+  "@view_blocks_hint": {
+    "description": "view blocks hint"
+  },
   "view_commands_hint": "应用可执行的全部命令",
   "@view_commands_hint": {
     "description": "view commands hint"
@@ -1063,6 +1071,123 @@
         "type": "String"
       }
     }
+  },
+  "blocks_empty_workspace": "打开图纸以查看块。",
+  "@blocks_empty_workspace": {
+    "description": "blocks empty workspace"
+  },
+  "no_blocks": "这张图没有块。",
+  "@no_blocks": {
+    "description": "no blocks"
+  },
+  "no_blocks_match": "没有匹配「{filter}」的块。",
+  "@no_blocks_match": {
+    "description": "no blocks match",
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
+  "filter_blocks": "过滤块",
+  "@filter_blocks": {
+    "description": "filter blocks"
+  },
+  "block_insert": "插入",
+  "@block_insert": {
+    "description": "block insert"
+  },
+  "block_select_references_one": "选中 1 个引用",
+  "@block_select_references_one": {
+    "description": "block select references one"
+  },
+  "block_select_references_many": "选中 {count} 个引用",
+  "@block_select_references_many": {
+    "description": "block select references many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "block_no_references": "当前空间没有引用",
+  "@block_no_references": {
+    "description": "block no references"
+  },
+  "block_menu_rename": "重命名",
+  "@block_menu_rename": {
+    "description": "block menu rename"
+  },
+  "block_xref": "外部参照",
+  "@block_xref": {
+    "description": "block xref"
+  },
+  "block_purge_unused": "清理未使用的块",
+  "@block_purge_unused": {
+    "description": "block purge unused"
+  },
+  "block_purge_none": "没有未使用的块",
+  "@block_purge_none": {
+    "description": "block purge none"
+  },
+  "blocks_count_one": "1 个块",
+  "@blocks_count_one": {
+    "description": "blocks count one"
+  },
+  "blocks_count_many": "{count} 个块",
+  "@blocks_count_many": {
+    "description": "blocks count many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "blocks_shown_of": "显示 {shown} / {total}",
+  "@blocks_shown_of": {
+    "description": "blocks shown of",
+    "placeholders": {
+      "shown": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "blocks_unused_one": "1 个未使用",
+  "@blocks_unused_one": {
+    "description": "blocks unused one"
+  },
+  "blocks_unused_many": "{count} 个未使用",
+  "@blocks_unused_many": {
+    "description": "blocks unused many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "blocks_xref_one": "1 个外部参照",
+  "@blocks_xref_one": {
+    "description": "blocks xref one"
+  },
+  "blocks_xref_many": "{count} 个外部参照",
+  "@blocks_xref_many": {
+    "description": "blocks xref many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "edit_block_row_hint": "编辑此块",
+  "@edit_block_row_hint": {
+    "description": "edit block row hint"
+  },
+  "editing_block_row_hint": "正在编辑此块",
+  "@editing_block_row_hint": {
+    "description": "editing block row hint"
   },
   "editing_block": "正在编辑块 {name}",
   "@editing_block": {

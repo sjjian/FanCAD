@@ -453,6 +453,14 @@
   "@view_layouts_hint": {
     "description": "view layouts hint"
   },
+  "blocks": "Blocks",
+  "@blocks": {
+    "description": "blocks"
+  },
+  "view_blocks_hint": "Block definitions in this drawing",
+  "@view_blocks_hint": {
+    "description": "view blocks hint"
+  },
   "view_commands_hint": "Everything the application can run",
   "@view_commands_hint": {
     "description": "view commands hint"
@@ -1063,6 +1071,123 @@
         "type": "String"
       }
     }
+  },
+  "blocks_empty_workspace": "Open a drawing to see its blocks.",
+  "@blocks_empty_workspace": {
+    "description": "blocks empty workspace"
+  },
+  "no_blocks": "This drawing has no blocks.",
+  "@no_blocks": {
+    "description": "no blocks"
+  },
+  "no_blocks_match": "No blocks match \"{filter}\".",
+  "@no_blocks_match": {
+    "description": "no blocks match",
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
+  "filter_blocks": "Filter blocks",
+  "@filter_blocks": {
+    "description": "filter blocks"
+  },
+  "block_insert": "Insert",
+  "@block_insert": {
+    "description": "block insert"
+  },
+  "block_select_references_one": "Select 1 reference",
+  "@block_select_references_one": {
+    "description": "block select references one"
+  },
+  "block_select_references_many": "Select {count} references",
+  "@block_select_references_many": {
+    "description": "block select references many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "block_no_references": "No references in this space",
+  "@block_no_references": {
+    "description": "block no references"
+  },
+  "block_menu_rename": "Rename",
+  "@block_menu_rename": {
+    "description": "block menu rename"
+  },
+  "block_xref": "External reference",
+  "@block_xref": {
+    "description": "block xref"
+  },
+  "block_purge_unused": "Purge unused blocks",
+  "@block_purge_unused": {
+    "description": "block purge unused"
+  },
+  "block_purge_none": "No unused blocks",
+  "@block_purge_none": {
+    "description": "block purge none"
+  },
+  "blocks_count_one": "1 block",
+  "@blocks_count_one": {
+    "description": "blocks count one"
+  },
+  "blocks_count_many": "{count} blocks",
+  "@blocks_count_many": {
+    "description": "blocks count many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "blocks_shown_of": "{shown} of {total}",
+  "@blocks_shown_of": {
+    "description": "blocks shown of",
+    "placeholders": {
+      "shown": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "blocks_unused_one": "1 unused",
+  "@blocks_unused_one": {
+    "description": "blocks unused one"
+  },
+  "blocks_unused_many": "{count} unused",
+  "@blocks_unused_many": {
+    "description": "blocks unused many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "blocks_xref_one": "1 xref",
+  "@blocks_xref_one": {
+    "description": "blocks xref one"
+  },
+  "blocks_xref_many": "{count} xrefs",
+  "@blocks_xref_many": {
+    "description": "blocks xref many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "edit_block_row_hint": "Edit this block",
+  "@edit_block_row_hint": {
+    "description": "edit block row hint"
+  },
+  "editing_block_row_hint": "Editing this block",
+  "@editing_block_row_hint": {
+    "description": "editing block row hint"
   },
   "editing_block": "Editing block {name}",
   "@editing_block": {

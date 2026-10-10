@@ -322,6 +322,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get view_layouts_hint => 'Model and paper space tabs';
 
   @override
+  String get blocks => 'Blocks';
+
+  @override
+  String get view_blocks_hint => 'Block definitions in this drawing';
+
+  @override
   String get view_commands_hint => 'Everything the application can run';
 
   @override
@@ -747,6 +753,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String click_to_copy_label(String label) {
     return 'Click to copy $label';
   }
+
+  @override
+  String get blocks_empty_workspace => 'Open a drawing to see its blocks.';
+
+  @override
+  String get no_blocks => 'This drawing has no blocks.';
+
+  @override
+  String no_blocks_match(String filter) {
+    return 'No blocks match \"$filter\".';
+  }
+
+  @override
+  String get filter_blocks => 'Filter blocks';
+
+  @override
+  String get block_insert => 'Insert';
+
+  @override
+  String get block_select_references_one => 'Select 1 reference';
+
+  @override
+  String block_select_references_many(int count) {
+    return 'Select $count references';
+  }
+
+  @override
+  String get block_no_references => 'No references in this space';
+
+  @override
+  String get block_menu_rename => 'Rename';
+
+  @override
+  String get block_xref => 'External reference';
+
+  @override
+  String get block_purge_unused => 'Purge unused blocks';
+
+  @override
+  String get block_purge_none => 'No unused blocks';
+
+  @override
+  String get blocks_count_one => '1 block';
+
+  @override
+  String blocks_count_many(int count) {
+    return '$count blocks';
+  }
+
+  @override
+  String blocks_shown_of(int shown, int total) {
+    return '$shown of $total';
+  }
+
+  @override
+  String get blocks_unused_one => '1 unused';
+
+  @override
+  String blocks_unused_many(int count) {
+    return '$count unused';
+  }
+
+  @override
+  String get blocks_xref_one => '1 xref';
+
+  @override
+  String blocks_xref_many(int count) {
+    return '$count xrefs';
+  }
+
+  @override
+  String get edit_block_row_hint => 'Edit this block';
+
+  @override
+  String get editing_block_row_hint => 'Editing this block';
 
   @override
   String editing_block(String name) {

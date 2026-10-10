@@ -221,13 +221,18 @@ class PropertiesPanel extends ConsumerWidget {
     ];
   }
 
-  PropertyRow _read(BuildContext context, String label, String text) =>
-      PropertyRow(
-        label: label,
-        value: Text(text),
-        copyText: text,
-        onCopied: (value) => _copied(context, value),
-      );
+  PropertyRow _read(
+    BuildContext context,
+    String label,
+    String text, {
+    Widget? trailing,
+  }) => PropertyRow(
+    label: label,
+    value: Text(text),
+    copyText: text,
+    onCopied: (value) => _copied(context, value),
+    trailing: trailing,
+  );
 
   PropertyRow _edit(
     BuildContext context,
@@ -414,8 +419,26 @@ class PropertiesPanel extends ConsumerWidget {
           position: _point(textPosition),
         );
       case InsertEntity(:final blockName, :final position):
+        final definition = insertableBlock(tab.document, blockName);
         return [
-          _read(context, l10n.block, blockName),
+          _read(
+            context,
+            l10n.block,
+            blockName,
+            trailing: definition == null
+                ? null
+                : FanCadIconButton(
+                    key: const Key('property-edit-block'),
+                    icon: Icons.edit_outlined,
+                    tooltip: l10n.edit_block_row_hint,
+                    size: PropertyRow.accessorySlot,
+                    iconSize: FanCadTokens.iconSmall,
+                    onPressed: () => workspace.run(
+                      'block.edit',
+                      args: {'name': definition.name},
+                    ),
+                  ),
+          ),
           _read(context, l10n.position, _point(position)),
           _read(
             context,
