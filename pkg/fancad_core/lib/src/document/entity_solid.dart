@@ -71,6 +71,20 @@ final class SolidEntity extends CadEntity {
   CadEntity? stretchBy(Bounds2 window, Vec2 delta) =>
       stretchIndependentGrips(window, delta);
 
+  /// The outline as a closed polyline.
+  @override
+  List<CadEntity> explode(ExplodeSource drawing) {
+    if (corners.length < 3) return const [];
+    return [
+      PolylineEntity.fromPoints(
+        id: 0,
+        props: props,
+        points: corners,
+        closed: true,
+      ),
+    ];
+  }
+
   @override
   Map<String, Object?> geometryToJson() => _$SolidEntityToJson(this);
 }

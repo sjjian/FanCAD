@@ -76,6 +76,14 @@ enum EntityKind {
   );
 }
 
+/// What [CadEntity.explode] reads from the drawing: the members of a block
+/// and the dimension style that draws a dimension without one.
+abstract interface class ExplodeSource {
+  List<int>? entityIdsOf(String blockName);
+  CadEntity? entity(int id);
+  DimStyleDef dimStyle(String name);
+}
+
 /// Base class for everything that can live in a block or layout.
 ///
 /// Entities are immutable value objects. Editing produces new instances, which
@@ -207,6 +215,10 @@ sealed class CadEntity {
   /// an arc becomes a two-vertex polyline so the curve can run clockwise
   /// without a clockwise flag. Circles and ellipses return null.
   CadEntity? reversed() => null;
+
+  /// The pieces EXPLODE replaces this entity with; empty when it does not
+  /// come apart. Pieces carry id 0 so the command can assign new handles.
+  List<CadEntity> explode(ExplodeSource drawing) => const [];
 
   /// Path length for the measurement tools. Zero when the type has no length.
   double get pathLength => 0;

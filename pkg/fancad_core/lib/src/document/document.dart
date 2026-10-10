@@ -156,7 +156,7 @@ abstract class DocumentChange with _$DocumentChange {
 /// than from snapshots. All mutation funnels through the patch application
 /// methods so that no code path can change the drawing without producing a
 /// [DocumentChange] and an undo record.
-class CadDocument implements BlockLookup, StyleResolver {
+class CadDocument implements BlockLookup, StyleResolver, ExplodeSource {
   CadDocument({
     String? modelSpaceBlockName,
     Map<String, LayerDef>? layers,
@@ -317,6 +317,7 @@ class CadDocument implements BlockLookup, StyleResolver {
     if (id >= _nextId) _nextId = id + 1;
   }
 
+  @override
   CadEntity? entity(int id) => _entities[id];
 
   /// The block that owns [id], or null when the entity is not in the document.

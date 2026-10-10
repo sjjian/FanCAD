@@ -410,6 +410,32 @@ final class PolylineEntity extends CadEntity implements Curve {
     );
   }
 
+  /// Each segment as a line, or the arc its bulge encodes, so the pieces
+  /// draw exactly what the polyline did. A bulge on a zero-length chord has
+  /// no arc and is dropped.
+  @override
+  List<CadEntity> explode(ExplodeSource drawing) {
+    if (vertexCount < 2) return const [];
+    return [
+      for (final (i, segment) in _segments.indexed)
+        if (segment.center case final center?)
+          ArcEntity(
+            id: 0,
+            props: props,
+            center: center,
+            radius: segment.radius,
+            startAngle: segment.sweep > 0
+                ? segment.startAngle
+                : (segment.to - center).angle,
+            endAngle: segment.sweep > 0
+                ? (segment.to - center).angle
+                : segment.startAngle,
+          )
+        else if (bulgeAt(i).abs() < 1e-12)
+          LineEntity(id: 0, props: props, start: segment.from, end: segment.to),
+    ];
+  }
+
   @override
   double get pathLength {
     var total = 0.0;

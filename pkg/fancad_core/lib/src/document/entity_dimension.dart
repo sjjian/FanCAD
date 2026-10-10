@@ -388,6 +388,186 @@ final class DimensionEntity extends CadEntity {
 
   @override
   Map<String, Object?> geometryToJson() => _$DimensionEntityToJson(this);
+
+  /// The members of its block, or the lines, arrows and text the dimension
+  /// style draws when the block is missing.
+  @override
+  List<CadEntity> explode(ExplodeSource drawing) {
+    if (blockName.isNotEmpty) {
+      final ids = drawing.entityIdsOf(blockName);
+      if (ids != null && ids.isNotEmpty) {
+        return [
+          for (final id in ids)
+            if (drawing.entity(id) case final member?) member.withId(0),
+        ];
+      }
+    }
+    return explodeAsDrawn(style: drawing.dimStyle(styleName));
+  }
+
+  /// The lines, arrows and text this dimension draws without its block, as
+  /// editable entities.
+  ///
+  /// It matches the fallback renderer, so a dimension that never had an
+  /// anonymous block still comes apart into geometry a user can move.
+  List<CadEntity> explodeAsDrawn({DimStyleDef? style}) =>
+      _explodeDimension(this, style ?? DimStyleDef.standard);
+}
+
+List<CadEntity> _explodeDimension(DimensionEntity entity, DimStyleDef dim) {
+  final props = entity.props;
+  final pieces = <CadEntity>[];
+  final points = entity.definitionPoints;
+  if (points.length >= 2) {
+    switch (entity.dimensionType & 0x0F) {
+      case 2:
+        pieces.addAll(_explodeAngularDim(entity, props, dim));
+      case 3:
+        pieces.addAll(_explodeRadialDim(entity, props, dim, diameter: true));
+      case 4:
+        pieces.addAll(_explodeRadialDim(entity, props, dim, diameter: false));
+      default:
+        pieces.addAll(_explodeLinearDim(entity, props, dim));
+    }
+  }
+  if (entity.overrideText != ' ') {
+    pieces.add(
+      TextEntity(
+        id: 0,
+        props: props,
+        position: entity.textPosition,
+        content: entity.displayTextFor(dim),
+        height: dim.scaledTextHeight,
+        styleName: dim.textStyle,
+        hAlign: TextHAlign.center,
+        vAlign: TextVAlign.middle,
+      ),
+    );
+  }
+  return pieces;
+}
+
+List<CadEntity> _explodeLinearDim(
+  DimensionEntity entity,
+  EntityProps props,
+  DimStyleDef dim,
+) {
+  final points = entity.definitionPoints;
+  final p1 = points[0];
+  final p2 = points[1];
+  final dimLine = points.length > 2 ? points[2] : entity.textPosition;
+  late final Vec2 a;
+  late final Vec2 b;
+  late final Vec2 unit;
+  if ((entity.dimensionType & 0x0F) == 0 && points.length >= 3) {
+    final mid = p1.lerp(p2, 0.5);
+    final horizontal = (dimLine - mid).y.abs() >= (dimLine - mid).x.abs();
+    a = horizontal ? Vec2(p1.x, dimLine.y) : Vec2(dimLine.x, p1.y);
+    b = horizontal ? Vec2(p2.x, dimLine.y) : Vec2(dimLine.x, p2.y);
+    if (a.distanceTo(b) < 1e-9) return const [];
+    unit = (b - a).normalized();
+  } else {
+    final direction = p2 - p1;
+    if (direction.length < 1e-9) return const [];
+    unit = direction.normalized();
+    final normal = unit.perpendicular;
+    var offset = (dimLine - p1).dot(normal);
+    if (offset.abs() < 1e-6) offset = direction.length * 0.15;
+    a = p1 + normal * offset;
+    b = p2 + normal * offset;
+  }
+  return [
+    ..._extensionLine(p1, a, props, dim),
+    ..._extensionLine(p2, b, props, dim),
+    LineEntity(id: 0, props: props, start: a, end: b),
+    ..._dimArrows(a, unit, props, dim.scaledArrowSize),
+    ..._dimArrows(b, -unit, props, dim.scaledArrowSize),
+  ];
+}
+
+List<CadEntity> _explodeRadialDim(
+  DimensionEntity entity,
+  EntityProps props,
+  DimStyleDef dim, {
+  required bool diameter,
+}) {
+  final center = entity.definitionPoints[0];
+  final chord = entity.definitionPoints[1];
+  final delta = chord - center;
+  if (delta.length < 1e-9) return const [];
+  final unit = delta.normalized();
+  return [
+    LineEntity(id: 0, props: props, start: center, end: chord),
+    if (diameter)
+      LineEntity(id: 0, props: props, start: center, end: center - delta),
+    ..._dimArrows(chord, -unit, props, dim.scaledArrowSize),
+  ];
+}
+
+List<CadEntity> _explodeAngularDim(
+  DimensionEntity entity,
+  EntityProps props,
+  DimStyleDef dim,
+) {
+  final points = entity.definitionPoints;
+  if (points.length < 3) return _explodeLinearDim(entity, props, dim);
+  final vertex = points[0];
+  final a = points[1];
+  final b = points[2];
+  final radius = vertex.distanceTo(entity.textPosition);
+  final start = (a - vertex).angle;
+  final end = (b - vertex).angle;
+  return [
+    LineEntity(id: 0, props: props, start: vertex, end: a),
+    LineEntity(id: 0, props: props, start: vertex, end: b),
+    if (radius > 1e-9)
+      ArcEntity(
+        id: 0,
+        props: props,
+        center: vertex,
+        radius: radius,
+        startAngle: start,
+        endAngle: start + angularSweep(start, end),
+      ),
+  ];
+}
+
+List<CadEntity> _extensionLine(
+  Vec2 origin,
+  Vec2 dimEnd,
+  EntityProps props,
+  DimStyleDef dim,
+) {
+  final span = dimEnd - origin;
+  final length = span.length;
+  if (length < 1e-9) return const [];
+  final unit = span / length;
+  final exo = dim.scaledExtensionOffset;
+  final start = exo >= length ? dimEnd : origin + unit * exo;
+  final end = dimEnd + unit * dim.scaledExtensionExtend;
+  if (start.distanceTo(end) < 1e-9) return const [];
+  return [LineEntity(id: 0, props: props, start: start, end: end)];
+}
+
+List<CadEntity> _dimArrows(
+  Vec2 tip,
+  Vec2 direction,
+  EntityProps props,
+  double size,
+) {
+  if (direction.length < 1e-9 || size <= 1e-9) return const [];
+  final unit = direction.normalized();
+  return [
+    SolidEntity(
+      id: 0,
+      props: props,
+      corners: [
+        tip,
+        tip - unit * size + unit.perpendicular * (size * 0.35),
+        tip - unit * size - unit.perpendicular * (size * 0.35),
+      ],
+    ),
+  ];
 }
 
 /// Forwards primitives and notes whether a non-empty text run arrived.

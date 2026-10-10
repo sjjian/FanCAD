@@ -305,8 +305,7 @@ void main() {
         const Vec2(10, 0),
         const Vec2(5, 4),
       )!;
-      final pieces = Construct.explodeDimension(
-        dim,
+      final pieces = dim.explodeAsDrawn(
         style: const DimStyleDef(name: 'ARCH', textHeight: 5, decimalPlaces: 0),
       );
 

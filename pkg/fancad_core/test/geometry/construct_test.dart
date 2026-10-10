@@ -860,7 +860,7 @@ void main() {
         const Vec2(10, 0),
         const Vec2(5, 4),
       )!;
-      final pieces = Construct.explodeDimension(dim);
+      final pieces = dim.explodeAsDrawn();
 
       expect(pieces.whereType<LineEntity>(), hasLength(3));
       expect(pieces.whereType<SolidEntity>(), hasLength(2));
@@ -884,7 +884,7 @@ void main() {
         overrideText: ' ',
         dimensionType: dim.dimensionType,
       );
-      final pieces = Construct.explodeDimension(hidden);
+      final pieces = hidden.explodeAsDrawn();
       expect(pieces.whereType<TextEntity>(), isEmpty);
     });
 
@@ -894,7 +894,7 @@ void main() {
         const Vec2(6, 8),
         const Vec2(-2, 2),
       )!;
-      final pieces = Construct.explodeDimension(dim);
+      final pieces = dim.explodeAsDrawn();
       final lines = pieces.whereType<LineEntity>().toList();
 
       expect(lines, isNotEmpty);
@@ -905,7 +905,7 @@ void main() {
     test('a radius dimension explodes to a spoke, not extension lines', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
       final dim = Construct.radiusDimension(circle, const Vec2(8, 0))!;
-      final pieces = Construct.explodeDimension(dim);
+      final pieces = dim.explodeAsDrawn();
 
       final lines = pieces.whereType<LineEntity>().toList();
       expect(lines, isNotEmpty);
@@ -918,7 +918,7 @@ void main() {
     test('a diameter explodes to opposite spokes, not a single radius', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
       final dim = Construct.diameterDimension(circle, const Vec2(8, 0))!;
-      final pieces = Construct.explodeDimension(dim);
+      final pieces = dim.explodeAsDrawn();
 
       final lines = pieces.whereType<LineEntity>().toList();
       expect(lines, hasLength(2));
@@ -937,7 +937,7 @@ void main() {
         measurement: 5,
         overrideText: ' ',
       );
-      expect(Construct.explodeDimension(dim), isEmpty);
+      expect(dim.explodeAsDrawn(), isEmpty);
     });
 
     test('a collapsed chord cannot invent a diameter', () {
@@ -949,10 +949,7 @@ void main() {
         overrideText: ' ',
         dimensionType: 3,
       );
-      expect(
-        Construct.explodeDimension(collapsed).whereType<LineEntity>(),
-        isEmpty,
-      );
+      expect(collapsed.explodeAsDrawn().whereType<LineEntity>(), isEmpty);
     });
 
     test('a collapsed radial chord cannot invent a dim line', () {
@@ -964,7 +961,7 @@ void main() {
         overrideText: ' ',
         dimensionType: 4,
       );
-      final pieces = Construct.explodeDimension(dim);
+      final pieces = dim.explodeAsDrawn();
       expect(pieces.whereType<LineEntity>(), isEmpty);
       expect(pieces.whereType<TextEntity>(), isEmpty);
     });
@@ -976,7 +973,7 @@ void main() {
         const Vec2(0, 10),
         const Vec2(4, 4),
       )!;
-      final pieces = Construct.explodeDimension(dim);
+      final pieces = dim.explodeAsDrawn();
 
       expect(pieces.whereType<LineEntity>(), hasLength(2));
       expect(
@@ -995,7 +992,7 @@ void main() {
         overrideText: ' ',
         dimensionType: 2,
       );
-      final pieces = Construct.explodeDimension(dim);
+      final pieces = dim.explodeAsDrawn();
       expect(pieces.whereType<ArcEntity>(), isEmpty);
       expect(pieces.whereType<LineEntity>(), hasLength(2));
       expect(pieces.whereType<TextEntity>(), isEmpty);

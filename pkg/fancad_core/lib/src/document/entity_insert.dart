@@ -251,6 +251,27 @@ final class InsertEntity extends CadEntity {
         : null;
   }
 
+  /// A copy of the block's contents at every array cell. An ATTDEF becomes
+  /// the ATTRIB this reference shows, carrying its value.
+  @override
+  List<CadEntity> explode(ExplodeSource drawing) {
+    final ids = drawing.entityIdsOf(blockName);
+    if (ids == null || ids.isEmpty) return const [];
+    return [
+      for (var row = 0; row < rowCount; row++)
+        for (var column = 0; column < columnCount; column++)
+          for (final id in ids)
+            if (drawing.entity(id) case final member?)
+              (member is AttdefEntity
+                      ? member.toAttrib(
+                          attributeValue(member.tag, member.defaultValue),
+                        )
+                      : member)
+                  .transformed(transformFor(column, row))
+                  .withId(0),
+    ];
+  }
+
   @override
   Map<String, Object?> geometryToJson() => {
     ..._$InsertEntityToJson(this),
