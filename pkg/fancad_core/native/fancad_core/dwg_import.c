@@ -2506,15 +2506,10 @@ static void ellipse_bake_wcs_params(double mx, double my, double nx, double ny,
   if (*end < 0.0) *end += tau;
 }
 
-/* Same arbitrary axis as Dart `Mat3.ocs` / `Mat3.ocsInsert`. Document
- * coordinates stay WCS; this bakes OCS at the import boundary. */
-static void apply_ocs_insert(double nx, double ny, double nz, double *ins_x,
-                             double *ins_y, double *scale_x, double *scale_y,
-                             double *rotation) {
-  double len, inv, axx, axy, axz, ax_x, ax_y, ax_z, ay_x, ay_y;
-  double oa, ob, oc, od;
-  double ca, sa, a, b, c, d, e, f;
-  double rot, cr, sr;
+/* Same arbitrary axis as Dart `Mat3.ocs`: WCS = (m[0]·x + m[2]·y,
+ * m[1]·x + m[3]·y). Returns 0 when the map is the identity. */
+static int ocs_axes(double nx, double ny, double nz, double m[4]) {
+  double len, inv, axx, axy, axz, ax_x, ax_y, ax_z;
   len = sqrt(nx * nx + ny * ny + nz * nz);
   if (len < 1e-20) {
     nx = 0.0;
@@ -2539,13 +2534,44 @@ static void apply_ocs_insert(double nx, double ny, double nz, double *ins_x,
   ax_x = axx * inv;
   ax_y = axy * inv;
   ax_z = axz * inv;
-  ay_x = ny * ax_z - nz * ax_y;
-  ay_y = nz * ax_x - nx * ax_z;
-  oa = ax_x;
-  ob = ax_y;
-  oc = ay_x;
-  od = ay_y;
-  if (oa == 1.0 && ob == 0.0 && oc == 0.0 && od == 1.0) return;
+  m[0] = ax_x;
+  m[1] = ax_y;
+  m[2] = ny * ax_z - nz * ax_y;
+  m[3] = nz * ax_x - nx * ax_z;
+  return !(m[0] == 1.0 && m[1] == 0.0 && m[2] == 0.0 && m[3] == 1.0);
+}
+
+static void ocs_point(const double m[4], double *x, double *y) {
+  double ox = *x;
+  double oy = *y;
+  *x = m[0] * ox + m[2] * oy;
+  *y = m[1] * ox + m[3] * oy;
+}
+
+static double ocs_angle(const double m[4], double radians) {
+  const double tau = 6.28318530717958647692;
+  double dx = cos(radians);
+  double dy = sin(radians);
+  double a;
+  ocs_point(m, &dx, &dy);
+  a = atan2(dy, dx);
+  return a < 0.0 ? a + tau : a;
+}
+
+/* Matches Dart `Mat3.ocsInsert`. Document coordinates stay WCS; this bakes
+ * OCS at the import boundary. */
+static void apply_ocs_insert(double nx, double ny, double nz, double *ins_x,
+                             double *ins_y, double *scale_x, double *scale_y,
+                             double *rotation) {
+  double m[4];
+  double oa, ob, oc, od;
+  double ca, sa, a, b, c, d, e, f;
+  double rot, cr, sr;
+  if (!ocs_axes(nx, ny, nz, m)) return;
+  oa = m[0];
+  ob = m[1];
+  oc = m[2];
+  od = m[3];
 
   ca = cos(*rotation);
   sa = sin(*rotation);
@@ -2617,11 +2643,17 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
 
     case DWG_TYPE_CIRCLE: {
       Dwg_Entity_CIRCLE *o = ent->tio.CIRCLE;
+      double m[4];
+      double cx, cy;
       if (!o) return 0;
-      coords_push2(g, o->center.x, o->center.y);
+      cx = o->center.x;
+      cy = o->center.y;
+      if (ocs_axes(o->extrusion.x, o->extrusion.y, o->extrusion.z, m))
+        ocs_point(m, &cx, &cy);
+      coords_push2(g, cx, cy);
       coords_push(g, o->radius);
-      box_add(&bounds, o->center.x - o->radius, o->center.y - o->radius);
-      box_add(&bounds, o->center.x + o->radius, o->center.y + o->radius);
+      box_add(&bounds, cx - o->radius, cy - o->radius);
+      box_add(&bounds, cx + o->radius, cy + o->radius);
       attach_geometry(s, &e);
       commit(s, &e, &bounds, owner_block, FCB_TYPE_CIRCLE);
       return 1;
@@ -2629,14 +2661,31 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
 
     case DWG_TYPE_ARC: {
       Dwg_Entity_ARC *o = ent->tio.ARC;
+      double m[4];
+      double cx, cy, start, end;
       if (!o) return 0;
-      coords_push2(g, o->center.x, o->center.y);
+      cx = o->center.x;
+      cy = o->center.y;
+      start = o->start_angle;
+      end = o->end_angle;
+      if (ocs_axes(o->extrusion.x, o->extrusion.y, o->extrusion.z, m)) {
+        ocs_point(m, &cx, &cy);
+        start = ocs_angle(m, o->start_angle);
+        end = ocs_angle(m, o->end_angle);
+        /* A mirrored OCS runs the arc clockwise in WCS; swap to stay CCW. */
+        if (m[0] * m[3] - m[1] * m[2] < 0.0) {
+          double tmp = start;
+          start = end;
+          end = tmp;
+        }
+      }
+      coords_push2(g, cx, cy);
       coords_push(g, o->radius);
-      coords_push(g, o->start_angle);
-      coords_push(g, o->end_angle);
+      coords_push(g, start);
+      coords_push(g, end);
       /* A conservative box; Dart recomputes the exact one when indexing. */
-      box_add(&bounds, o->center.x - o->radius, o->center.y - o->radius);
-      box_add(&bounds, o->center.x + o->radius, o->center.y + o->radius);
+      box_add(&bounds, cx - o->radius, cy - o->radius);
+      box_add(&bounds, cx + o->radius, cy + o->radius);
       attach_geometry(s, &e);
       commit(s, &e, &bounds, owner_block, FCB_TYPE_ARC);
       return 1;
@@ -2667,12 +2716,21 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
 
     case DWG_TYPE_LWPOLYLINE: {
       Dwg_Entity_LWPOLYLINE *o = ent->tio.LWPOLYLINE;
+      double m[4];
+      int baked, flip;
       uint32_t i;
       if (!o || !o->points) return 0;
+      baked = ocs_axes(o->extrusion.x, o->extrusion.y, o->extrusion.z, m);
+      flip = baked && m[0] * m[3] - m[1] * m[2] < 0.0;
       for (i = 0; i < o->num_points; i++) {
-        coords_push2(g, o->points[i].x, o->points[i].y);
-        coords_push(g, (o->bulges && i < o->num_bulges) ? o->bulges[i] : 0.0);
-        box_add(&bounds, o->points[i].x, o->points[i].y);
+        double x = o->points[i].x;
+        double y = o->points[i].y;
+        double bulge =
+            (o->bulges && i < o->num_bulges) ? o->bulges[i] : 0.0;
+        if (baked) ocs_point(m, &x, &y);
+        coords_push2(g, x, y);
+        coords_push(g, flip ? -bulge : bulge);
+        box_add(&bounds, x, y);
       }
       if (o->flag & 512) e.flags |= FCB_FLAG_CLOSED;
       if (o->const_width != 0.0) coords_push(g, o->const_width);
