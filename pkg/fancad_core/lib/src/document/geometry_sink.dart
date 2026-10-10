@@ -269,7 +269,7 @@ TextGeometry composeEmittedText({
     text: text,
     origin: context.apply(origin),
     height: styleHeight * scale,
-    rotation: rotation + context.transform.rotation,
+    rotation: context.transform.transformAngle(rotation),
     styleName: styleName,
     fontFamily: fontOverride ?? style.fontFamily,
     bigFontFamily: style.bigFontFamily,

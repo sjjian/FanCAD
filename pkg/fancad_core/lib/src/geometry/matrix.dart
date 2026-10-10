@@ -196,6 +196,14 @@ class Mat3 {
     return (xx - yy).abs() <= eps && xy.abs() <= eps;
   }
 
+  /// [angle] carried through the linear part, so a mirror reflects a
+  /// direction instead of adding its own rotation to it. A plain rotation
+  /// keeps adding, so MOVE leaves the stored angle exactly as it was.
+  double transformAngle(double angle) {
+    if (determinant > 0 && isConformal) return angle + rotation;
+    return transformDirection(Vec2(math.cos(angle), math.sin(angle))).angle;
+  }
+
   /// `T * R * S` parameters so an INSERT transform reconstructs this.
   ({Vec2 position, Vec2 scale, double rotation}) get insertParts {
     final angle = rotation;

@@ -126,7 +126,7 @@ final class MTextEntity extends CadEntity {
     position: matrix.transform(position),
     content: content,
     height: height * matrix.meanScale,
-    rotation: rotation + matrix.rotation,
+    rotation: matrix.transformAngle(rotation),
     styleName: styleName,
     rectangleWidth: rectangleWidth * matrix.meanScale,
     attachment: attachment,

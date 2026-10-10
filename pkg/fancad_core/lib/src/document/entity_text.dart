@@ -147,7 +147,7 @@ final class TextEntity extends CadEntity {
     position: matrix.transform(position),
     content: content,
     height: height * matrix.meanScale,
-    rotation: rotation + matrix.rotation,
+    rotation: matrix.transformAngle(rotation),
     styleName: styleName,
     widthFactor: widthFactor,
     obliqueAngle: obliqueAngle,

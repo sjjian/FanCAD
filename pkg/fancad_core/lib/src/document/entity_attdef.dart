@@ -173,7 +173,7 @@ final class AttdefEntity extends CadEntity {
     prompt: prompt,
     defaultValue: defaultValue,
     height: height * matrix.meanScale,
-    rotation: rotation + matrix.rotation,
+    rotation: matrix.transformAngle(rotation),
     styleName: styleName,
     widthFactor: widthFactor,
     obliqueAngle: obliqueAngle,

@@ -176,7 +176,7 @@ final class MLeaderEntity extends CadEntity {
     content: content,
     textPosition: matrix.transform(textPosition),
     textHeight: textHeight * matrix.meanScale,
-    textRotation: textRotation + matrix.rotation,
+    textRotation: matrix.transformAngle(textRotation),
     styleName: styleName,
     attachment: attachment,
   );

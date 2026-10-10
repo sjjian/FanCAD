@@ -172,23 +172,54 @@ final class InsertEntity extends CadEntity {
     attributes: attributes,
   );
 
+  /// Decomposes `matrix · T · R · S` back into an insertion, so a mirror
+  /// lands on the sign of the Y scale instead of turning into 180°. Shear
+  /// (a non-uniform insert under a skew rotation) has no INSERT form.
   @override
-  InsertEntity transformed(Mat3 matrix) => InsertEntity(
-    id: id,
-    props: props,
-    blockName: blockName,
-    position: matrix.transform(position),
-    scale: Vec2(
-      scale.x * math.sqrt(matrix.a * matrix.a + matrix.b * matrix.b),
-      scale.y * math.sqrt(matrix.c * matrix.c + matrix.d * matrix.d),
-    ),
-    rotation: rotation + matrix.rotation,
-    columnCount: columnCount,
-    rowCount: rowCount,
-    columnSpacing: columnSpacing * matrix.meanScale,
-    rowSpacing: rowSpacing * matrix.meanScale,
-    attributes: attributes,
-  );
+  InsertEntity transformed(Mat3 matrix) {
+    if (matrix.isConformal && matrix.determinant > 0) {
+      final factor = matrix.meanScale;
+      return InsertEntity(
+        id: id,
+        props: props,
+        blockName: blockName,
+        position: matrix.transform(position),
+        scale: scale * factor,
+        rotation: rotation + matrix.rotation,
+        columnCount: columnCount,
+        rowCount: rowCount,
+        columnSpacing: columnSpacing * factor,
+        rowSpacing: rowSpacing * factor,
+        attributes: attributes,
+      );
+    }
+    var parts = matrix.multiplied(transformFor(0, 0)).insertParts;
+    // R(θ + π) · S(−sx, −sy) is the same map; keep the X sign the user set.
+    if (parts.scale.x * scale.x < 0) {
+      parts = (
+        position: parts.position,
+        scale: -parts.scale,
+        rotation: parts.rotation + math.pi,
+      );
+    }
+    // Cell offsets live in the rotated, unscaled frame; the new frame
+    // stretches them by the same factor as the block axes.
+    double stretch(double before, double after) =>
+        before.abs() < 1e-12 ? matrix.meanScale : after / before;
+    return InsertEntity(
+      id: id,
+      props: props,
+      blockName: blockName,
+      position: parts.position,
+      scale: parts.scale,
+      rotation: parts.rotation,
+      columnCount: columnCount,
+      rowCount: rowCount,
+      columnSpacing: columnSpacing * stretch(scale.x, parts.scale.x),
+      rowSpacing: rowSpacing * stretch(scale.y, parts.scale.y),
+      attributes: attributes,
+    );
+  }
 
   @override
   List<Vec2> grips() => [position];
