@@ -186,6 +186,16 @@ class Mat3 {
   /// The rotation angle of the transform's X axis.
   double get rotation => math.atan2(b, a);
 
+  /// Whether circles stay circles: rotation, uniform scale, mirror and
+  /// translation. A tilted OCS projected onto XY is not.
+  bool get isConformal {
+    final xx = a * a + b * b;
+    final yy = c * c + d * d;
+    final xy = a * c + b * d;
+    final eps = 1e-9 * math.max(xx, yy);
+    return (xx - yy).abs() <= eps && xy.abs() <= eps;
+  }
+
   /// `T * R * S` parameters so an INSERT transform reconstructs this.
   ({Vec2 position, Vec2 scale, double rotation}) get insertParts {
     final angle = rotation;

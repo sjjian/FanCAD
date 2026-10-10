@@ -83,7 +83,7 @@ void main() {
     expect(arc.withGrip(1, const Vec2(20, 0)).radius, closeTo(20, 1e-9));
     expect(arc.withGrip(3, const Vec2(1, 2)).center, const Vec2(1, 2));
 
-    final rotated = arc.transformed(Mat3.rotation(math.pi / 2));
+    final rotated = arc.transformed(Mat3.rotation(math.pi / 2)) as ArcEntity;
     expect(rotated.center, const Vec2.zero());
     expect(rotated.startAngle, closeTo(math.pi / 2, 1e-9));
     expect(rotated.endAngle, closeTo(math.pi, 1e-9));
@@ -102,5 +102,41 @@ void main() {
     expect(bounds.minY, closeTo(0, 1e-9));
     expect(bounds.maxX, closeTo(10, 1e-9));
     expect(bounds.maxY, closeTo(10, 1e-9));
+  });
+
+  test('a mirrored arc keeps the reflected half, not the opposite one', () {
+    const arc = ArcEntity(
+      id: 1,
+      center: Vec2(3, 4),
+      radius: 5,
+      startAngle: 0.3,
+      endAngle: 2.1,
+    );
+    final acrossX = arc.transformed(const Mat3.scaling(1, -1)) as ArcEntity;
+    expect(acrossX.center, const Vec2(3, -4));
+    final end = arc.endPoint;
+    expect(acrossX.startPoint.distanceTo(Vec2(end.x, -end.y)), lessThan(1e-9));
+    expect(acrossX.startAngle, closeTo(-2.1, 1e-9));
+    expect(acrossX.endAngle, closeTo(-0.3, 1e-9));
+
+    final minusZ = arc.transformed(Mat3.ocs(const Vec3(0, 0, -1))) as ArcEntity;
+    expect(minusZ.center, const Vec2(-3, 4));
+    expect(minusZ.startAngle, closeTo(math.pi - 2.1, 1e-9));
+    expect(minusZ.endAngle, closeTo(math.pi - 0.3, 1e-9));
+  });
+
+  test('a tilted plane projects an arc to an elliptical arc', () {
+    const arc = ArcEntity(
+      id: 1,
+      center: Vec2.zero(),
+      radius: 4,
+      startAngle: 0,
+      endAngle: math.pi / 2,
+    );
+    final projected = arc.transformed(const Mat3.scaling(1, 0.5));
+    expect(projected, isA<EllipseEntity>());
+    final ellipse = projected as EllipseEntity;
+    expect(ellipse.startPoint.distanceTo(const Vec2(4, 0)), lessThan(1e-9));
+    expect(ellipse.endPoint.distanceTo(const Vec2(0, 2)), lessThan(1e-9));
   });
 }

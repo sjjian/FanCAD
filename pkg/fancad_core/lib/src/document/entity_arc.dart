@@ -113,23 +113,33 @@ final class ArcEntity extends CadEntity {
   );
 
   @override
-  ArcEntity transformed(Mat3 matrix) {
-    final scale = matrix.meanScale;
+  CadEntity transformed(Mat3 matrix) {
+    if (!matrix.isConformal) {
+      return _affineEllipse(
+        EllipseEntity(
+          id: id,
+          props: props,
+          center: center,
+          majorAxis: Vec2(radius, 0),
+          ratio: 1,
+          startParam: startAngle,
+          endParam: endAngle,
+        ),
+        matrix,
+      );
+    }
+    // A reflection maps angle θ to rotation − θ and reverses the sweep, so
+    // the new CCW arc runs from the image of the end to the image of the
+    // start.
     final mirrored = matrix.determinant < 0;
     final rotation = matrix.rotation;
-    final start = mirrored
-        ? math.pi - endAngle + rotation
-        : startAngle + rotation;
-    final end = mirrored
-        ? math.pi - startAngle + rotation
-        : endAngle + rotation;
     return ArcEntity(
       id: id,
       props: props,
       center: matrix.transform(center),
-      radius: radius * scale,
-      startAngle: start,
-      endAngle: end,
+      radius: radius * matrix.meanScale,
+      startAngle: mirrored ? rotation - endAngle : startAngle + rotation,
+      endAngle: mirrored ? rotation - startAngle : endAngle + rotation,
     );
   }
 

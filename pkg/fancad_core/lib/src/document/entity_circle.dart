@@ -87,14 +87,12 @@ final class CircleEntity extends CadEntity {
 
   @override
   CadEntity transformed(Mat3 matrix) {
-    final scaleX = math.sqrt(matrix.a * matrix.a + matrix.b * matrix.b);
-    final scaleY = math.sqrt(matrix.c * matrix.c + matrix.d * matrix.d);
-    if ((scaleX - scaleY).abs() < 1e-9) {
+    if (matrix.isConformal) {
       return CircleEntity(
         id: id,
         props: props,
         center: matrix.transform(center),
-        radius: radius * scaleX,
+        radius: radius * matrix.meanScale,
       );
     }
     // A non-uniform scale turns a circle into an ellipse. Recover principal
