@@ -196,7 +196,7 @@ final class HatchEntity extends CadEntity {
     loops: [for (final loop in loops) loop.transformed(matrix)],
     patternName: patternName,
     solid: solid,
-    patternAngle: patternAngle + matrix.rotation,
+    patternAngle: matrix.transformAngle(patternAngle),
     patternScale: patternScale * matrix.meanScale,
     patternLines: [for (final line in patternLines) line.transformed(matrix)],
   );

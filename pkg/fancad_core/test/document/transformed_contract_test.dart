@@ -119,6 +119,23 @@ void main() {
         ),
       ],
     ),
+    'pattern hatch': HatchEntity(
+      id: 1,
+      loops: [
+        HatchLoop(vertices: Float64List.fromList([0, 0, 8, 0, 8, 6, 0, 6])),
+      ],
+      patternName: 'USER',
+      solid: false,
+      patternLines: const [
+        HatchPatternLine(angle: 0.5, originX: 1, deltaX: 0.7, deltaY: 1.3),
+        HatchPatternLine(
+          angle: -0.9,
+          deltaX: 0.4,
+          deltaY: 1.1,
+          dashes: [1.2, -0.5],
+        ),
+      ],
+    ),
     'solid': const SolidEntity(
       id: 1,
       corners: [Vec2(0, 0), Vec2(5, 0), Vec2(0, 3), Vec2(5, 4)],
@@ -283,6 +300,9 @@ bool _noCommonAnswer(String entity, String matrix) {
     // A bulge is a circular arc; a tilted plane projects it to an
     // elliptical one, which a bulge cannot hold.
     'bulged polyline' => matrix == 'tilted OCS',
+    // A tilted plane spaces a line family differently from its dashes; a
+    // pattern line has one scale for both.
+    'pattern hatch' => matrix == 'tilted OCS',
     // Arrowheads keep their drawing size under SCALE, as with DIMSCALE.
     'leader' => scaling.contains(matrix),
     // The note is laid out again on the new baseline; FanCAD has no
