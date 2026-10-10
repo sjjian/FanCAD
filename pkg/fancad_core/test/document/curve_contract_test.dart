@@ -185,6 +185,16 @@ void main() {
     expect(half.closed, isFalse);
   });
 
+  test('a bulge grown almost to a full turn stays on its circle', () {
+    final quarter = PolylineEntity(
+      id: 1,
+      vertices: Float64List.fromList([10, 0, math.tan(math.pi / 8), 0, 10, 0]),
+    );
+    final tail = quarter.span(1, 1 + quarter.maxGrowth(atStart: false))!;
+    expect(tail.vertexAt(0).distanceTo(const Vec2(0, 10)), lessThan(1e-12));
+    expect(tail.vertexAt(1).distanceTo(Vec2.zero()), closeTo(10, 1e-12));
+  });
+
   test('a circle span is the counter-clockwise arc between the params', () {
     final circle = curves['circle']! as CircleEntity;
     final arc = circle.span(0.75, 0.25)!;

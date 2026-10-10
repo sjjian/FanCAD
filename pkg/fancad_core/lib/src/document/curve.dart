@@ -53,34 +53,63 @@ double _fractionOfSweep(double start, double sweep, double angle) {
 
 /// One straight or bulged polyline segment, as [Curve] on a polyline
 /// walks it by distance.
+///
+/// A round segment keeps its circle rather than re-deriving it from the
+/// chord: a segment grown close to a full turn has a chord too short to
+/// recover the centre from.
 class _PolySeg {
-  _PolySeg(this.from, this.to, this.bulge)
-    : length = _bulgeSegmentLength(from, to, bulge);
+  factory _PolySeg(Vec2 from, Vec2 to, double bulge) {
+    final def = bulge.abs() < 1e-12 ? null : Flatten.bulgeArc(from, to, bulge);
+    if (def == null) return _PolySeg._line(from, to);
+    return _PolySeg._arc(
+      def.center,
+      def.radius,
+      (from - def.center).angle,
+      4 * math.atan(bulge),
+    );
+  }
+
+  _PolySeg._line(this.from, this.to)
+    : center = null,
+      radius = 0,
+      startAngle = 0,
+      sweep = 0,
+      length = from.distanceTo(to);
+
+  _PolySeg._arc(Vec2 this.center, this.radius, this.startAngle, this.sweep)
+    : from = center + Vec2.polar(startAngle, radius),
+      to = center + Vec2.polar(startAngle + sweep, radius),
+      length = radius * sweep.abs();
 
   final Vec2 from;
   final Vec2 to;
-  final double bulge;
   final double length;
+  final Vec2? center;
+  final double radius;
+  final double startAngle;
 
-  bool get isStraight =>
-      bulge.abs() < 1e-12 || Flatten.bulgeArc(from, to, bulge) == null;
+  /// Signed: positive runs counter-clockwise.
+  final double sweep;
+
+  bool get isStraight => center == null;
+
+  double get bulge => isStraight ? 0 : math.tan(sweep / 4);
 
   /// The point [distance] from [from] along this segment's line or circle;
   /// [distance] may be negative or past [length].
   Vec2 pointAt(double distance) {
     if (length < 1e-12) return from;
     final t = distance / length;
-    final def = bulge.abs() < 1e-12 ? null : Flatten.bulgeArc(from, to, bulge);
-    if (def == null) return from + (to - from) * t;
-    final startAngle = (from - def.center).angle;
-    return def.center +
-        Vec2.polar(startAngle + 4 * math.atan(bulge) * t, def.radius);
+    if (center case final c?) {
+      return c + Vec2.polar(startAngle + sweep * t, radius);
+    }
+    return from + (to - from) * t;
   }
 
   /// The bulge of the piece from [a] to [b], both distances from [from].
   double bulgeBetween(double a, double b) {
-    if (bulge.abs() < 1e-12 || length < 1e-12) return 0;
-    return math.tan(math.atan(bulge) * (b - a) / length);
+    if (isStraight || length < 1e-12) return 0;
+    return math.tan(sweep * (b - a) / length / 4);
   }
 
   /// This segment continued [before] back past [from] and [after] on past
@@ -88,28 +117,26 @@ class _PolySeg {
   _PolySeg? grown({double before = 0, double after = 0}) {
     if (before <= 0 && after <= 0) return this;
     if (length < 1e-12) return null;
-    final newLength = length + before + after;
-    final sweep = 4 * math.atan(bulge) * newLength / length;
-    if (!isStraight && sweep.abs() >= math.pi * 2 - 1e-9) return null;
-    return _PolySeg(
-      pointAt(-before),
-      pointAt(length + after),
-      isStraight ? 0 : math.tan(sweep / 4),
-    );
+    final c = center;
+    if (c == null) {
+      return _PolySeg._line(pointAt(-before), pointAt(length + after));
+    }
+    final perLength = sweep / length;
+    final newSweep = sweep + perLength * (before + after);
+    if (newSweep.abs() >= math.pi * 2 - 1e-9) return null;
+    return _PolySeg._arc(c, radius, startAngle - perLength * before, newSweep);
   }
 
   /// Distance from [from] to the point of this segment nearest [point].
   double distanceNear(Vec2 point) {
     if (length < 1e-12) return 0;
-    final def = bulge.abs() < 1e-12 ? null : Flatten.bulgeArc(from, to, bulge);
-    if (def == null) {
+    final c = center;
+    if (c == null) {
       final delta = to - from;
       return ((point - from).dot(delta) / delta.lengthSquared).clamp(0.0, 1.0) *
           length;
     }
-    final startAngle = (from - def.center).angle;
-    final sweep = 4 * math.atan(bulge);
-    final angle = (point - def.center).angle;
+    final angle = (point - c).angle;
     final fraction = sweep >= 0
         ? _fractionOfSweep(startAngle, sweep, angle)
         : _fractionOfSweep(-startAngle, -sweep, -angle);
