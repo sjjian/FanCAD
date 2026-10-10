@@ -301,6 +301,41 @@ void _nativeBackend() {
     );
   });
 
+  test('CJK attribute text survives the drawing codepage', () async {
+    final directory = tempDir(prefix: 'fancad-attrib-cjk');
+
+    final document = CadDocument()
+      ..putBlock(const BlockRecord(name: 'TITLE'))
+      ..addEntity(
+        const AttdefEntity(
+          id: 1,
+          position: Vec2.zero(),
+          tag: 'DRAWING',
+          prompt: '文B',
+          defaultValue: '文C',
+        ),
+        blockName: 'TITLE',
+      )
+      ..addEntity(
+        const InsertEntity(
+          id: 2,
+          blockName: 'TITLE',
+          position: Vec2(10, 10),
+          attributes: {'DRAWING': '文A'},
+        ),
+      );
+
+    final dwgPath = '${directory.path}/attrib-cjk.dwg';
+    await importer.save(dwgPath, document);
+
+    final opened = (await importer.open(dwgPath)).document;
+    final def = opened.entitiesOf('TITLE').whereType<AttdefEntity>().single;
+    expect(def.prompt, '文B');
+    expect(def.defaultValue, '文C');
+    final insert = opened.entities.whereType<InsertEntity>().single;
+    expect(insert.attributes['DRAWING'], '文A');
+  });
+
   test('block members come back inside their block', () async {
     final directory = tempDir(prefix: 'fancad-owned');
 

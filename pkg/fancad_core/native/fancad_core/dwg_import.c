@@ -561,6 +561,17 @@ static char *dyn_text(void *entity, const char *type, const char *field,
   if (!dwg_dynapi_entity_utf8text(entity, type, field, &value, &is_new, NULL)) {
     return NULL;
   }
+  if (!value) return NULL;
+  /* Pre-R2007 dynapi copies codepage bytes and still sets is_new. Convert
+   * those before `\U+` expansion. The escapes are ASCII, so a GBK conversion
+   * leaves them intact; expanding first mixes UTF-8 with GBK and Dart
+   * replaces the leftover bytes with U+FFFD. */
+  converted = tv_to_utf8(value, entity_codepage(entity));
+  if (converted) {
+    if (is_new) free(value);
+    value = converted;
+    is_new = 1;
+  }
   converted = mif_to_utf8(value);
   if (converted) {
     if (is_new) free(value);
@@ -570,11 +581,6 @@ static char *dyn_text(void *entity, const char *type, const char *field,
   if (is_new) {
     *needs_free = 1;
     return value;
-  }
-  converted = tv_to_utf8(value, entity_codepage(entity));
-  if (converted) {
-    *needs_free = 1;
-    return converted;
   }
   return value;
 }
