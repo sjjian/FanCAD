@@ -259,6 +259,25 @@ void main() {
     expect(insert.transformed(move).rotation, 5);
     expect(insert.transformed(move).scale, const Vec2(-1, 1));
   });
+
+  test('a mirrored INSERT turns as little as it can', () {
+    const insert = InsertEntity(
+      id: 1,
+      blockName: 'CELL',
+      position: Vec2(2, 0),
+      rotation: 0.3,
+    );
+    final acrossY = insert.transformed(const Mat3.scaling(-1, 1));
+    expect(acrossY.position, const Vec2(-2, 0));
+    expect(acrossY.scale.x, closeTo(-1, 1e-12));
+    expect(acrossY.scale.y, closeTo(1, 1e-12));
+    expect(acrossY.rotation, closeTo(-0.3, 1e-12));
+
+    final acrossX = insert.transformed(const Mat3.scaling(1, -1));
+    expect(acrossX.scale.x, closeTo(1, 1e-12));
+    expect(acrossX.scale.y, closeTo(-1, 1e-12));
+    expect(acrossX.rotation, closeTo(-0.3, 1e-12));
+  });
 }
 
 ({Vec2 origin, double angle})? _baseline(CadEntity entity) => switch (entity) {

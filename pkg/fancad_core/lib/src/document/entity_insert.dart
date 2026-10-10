@@ -193,15 +193,19 @@ final class InsertEntity extends CadEntity {
         attributes: attributes,
       );
     }
-    var parts = matrix.multiplied(transformFor(0, 0)).insertParts;
-    // R(θ + π) · S(−sx, −sy) is the same map; keep the X sign the user set.
-    if (parts.scale.x * scale.x < 0) {
-      parts = (
-        position: parts.position,
-        scale: -parts.scale,
-        rotation: parts.rotation + math.pi,
-      );
+    final parts = matrix.multiplied(transformFor(0, 0)).insertParts;
+    // R(θ + π) · S(−sx, −sy) is the same map. Keep whichever turns less from
+    // the old rotation, so a mirror across Y reads as X scale −1, not 180°.
+    double turn(double angle) {
+      final d = (angle - rotation) % (2 * math.pi);
+      return d > math.pi ? d - 2 * math.pi : d;
     }
+
+    final keep = turn(parts.rotation);
+    final flip = turn(parts.rotation + math.pi);
+    final flipped = flip.abs() < keep.abs() - 1e-12;
+    final newScale = flipped ? -parts.scale : parts.scale;
+    final newRotation = rotation + (flipped ? flip : keep);
     // Cell offsets live in the rotated, unscaled frame; the new frame
     // stretches them by the same factor as the block axes.
     double stretch(double before, double after) =>
@@ -211,12 +215,12 @@ final class InsertEntity extends CadEntity {
       props: props,
       blockName: blockName,
       position: parts.position,
-      scale: parts.scale,
-      rotation: parts.rotation,
+      scale: newScale,
+      rotation: newRotation,
       columnCount: columnCount,
       rowCount: rowCount,
-      columnSpacing: columnSpacing * stretch(scale.x, parts.scale.x),
-      rowSpacing: rowSpacing * stretch(scale.y, parts.scale.y),
+      columnSpacing: columnSpacing * stretch(scale.x, newScale.x),
+      rowSpacing: rowSpacing * stretch(scale.y, newScale.y),
       attributes: attributes,
     );
   }
