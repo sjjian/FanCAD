@@ -387,6 +387,26 @@ CadEntity? canvasTextEditTarget({
   return entity;
 }
 
+/// A block reference whose attributes a double-click can edit.
+///
+/// Constant-only definitions, a locked layer, and a command already running
+/// leave the click for VPMAX / VPMIN.
+InsertEntity? canvasAttributeEditTarget({
+  required CadDocument document,
+  required int? entityId,
+  required bool commandRunning,
+}) {
+  if (commandRunning || entityId == null) return null;
+  final entity = document.entity(entityId);
+  if (entity is! InsertEntity) return null;
+  if (!document.isLayerEditable(entity.props.layer)) return null;
+  final editable = document
+      .attdefsOf(entity.blockName)
+      .any((def) => !def.constant);
+  if (!editable) return null;
+  return entity;
+}
+
 BlockRecord? insertableBlock(CadDocument document, String name) {
   final key = name.toUpperCase();
   for (final block in document.insertableBlocks) {

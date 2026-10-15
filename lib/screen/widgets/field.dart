@@ -15,6 +15,7 @@ class FanCadTextField extends StatelessWidget {
     this.onChanged,
     this.style,
     this.obscureText = false,
+    this.readOnly = false,
     this.autofocus = false,
     this.prefix,
     this.suffix,
@@ -28,6 +29,7 @@ class FanCadTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final TextStyle? style;
   final bool obscureText;
+  final bool readOnly;
   final bool autofocus;
   final Widget? prefix;
   final Widget? suffix;
@@ -45,6 +47,7 @@ class FanCadTextField extends StatelessWidget {
             controller: controller,
             focusNode: focusNode,
             autofocus: autofocus,
+            readOnly: readOnly,
             obscureText: obscureText,
             style: effective,
             cursorColor: tokens.accent,
@@ -80,6 +83,7 @@ class SettingsTextField extends StatefulWidget {
     this.onSubmitted,
     this.onFocusLost,
     this.obscureText = false,
+    this.readOnly = false,
     this.style,
   });
 
@@ -89,6 +93,7 @@ class SettingsTextField extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onFocusLost;
   final bool obscureText;
+  final bool readOnly;
   final TextStyle? style;
 
   @override
@@ -148,6 +153,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
               focusNode: _focus,
               hintText: widget.hintText,
               obscureText: _obscured,
+              readOnly: widget.readOnly,
               style: widget.style ?? tokens.bodyStyle,
               onChanged: widget.onChanged,
               onSubmitted: widget.onSubmitted,

@@ -1050,6 +1050,87 @@ void main() {
       );
     });
 
+    test('attedit without a value does not write the tag', () async {
+      final created = await run('draw.attdef', {
+        'tag': 'NO',
+        'prompt': 'Drawing number',
+        'value': 'A-00',
+        'at': [2, 3],
+        'height': 2.5,
+      });
+      expect(created.status, CommandStatus.ok, reason: created.message);
+      final defId = (created.data!['ids']! as List).first as int;
+      await run('edit.block', {
+        'ids': [defId],
+        'name': 'TITLE',
+        'base': [0, 0],
+      });
+      final inserted = await run('edit.insert', {
+        'name': 'TITLE',
+        'at': [10, 0],
+        'NO': 'A-01',
+      });
+      final insertId = (inserted.data!['ids']! as List).first as int;
+
+      final edited = await run('edit.attedit', {
+        'ids': [insertId],
+        'tag': 'NO',
+      });
+
+      expect(edited.status, CommandStatus.failed, reason: edited.message);
+      expect(
+        (document.entity(insertId)! as InsertEntity).attributes['NO'],
+        'A-01',
+      );
+    });
+
+    test('attedit applies several tags in one undo', () async {
+      final number = await run('draw.attdef', {
+        'tag': 'NO',
+        'prompt': 'Drawing number',
+        'value': 'A-00',
+        'at': [2, 3],
+        'height': 2.5,
+      });
+      final revision = await run('draw.attdef', {
+        'tag': 'REV',
+        'prompt': 'Revision',
+        'value': '0',
+        'at': [2, 8],
+        'height': 2.5,
+      });
+      expect(number.status, CommandStatus.ok, reason: number.message);
+      expect(revision.status, CommandStatus.ok, reason: revision.message);
+      await run('edit.block', {
+        'ids': [
+          (number.data!['ids']! as List).first as int,
+          (revision.data!['ids']! as List).first as int,
+        ],
+        'name': 'TITLE',
+        'base': [0, 0],
+      });
+      final inserted = await run('edit.insert', {
+        'name': 'TITLE',
+        'at': [10, 0],
+        'NO': 'A-01',
+        'REV': '1',
+      });
+      final insertId = (inserted.data!['ids']! as List).first as int;
+
+      final edited = await run('edit.attedit', {
+        'ids': [insertId],
+        'values': {'no': 'A-02', 'REV': '2', 'MISSING': 'x'},
+      });
+
+      expect(edited.status, CommandStatus.ok, reason: edited.message);
+      final attributes =
+          (document.entity(insertId)! as InsertEntity).attributes;
+      expect(attributes['NO'], 'A-02');
+      expect(attributes['REV'], '2');
+      expect(attributes.containsKey('MISSING'), isFalse);
+      expect(edited.transaction!.change.modified, [insertId]);
+    });
+
     test('insert stamps a block at several points', () async {
       final a = await drawLine(0, 0, 2, 0);
       await run('edit.block', {

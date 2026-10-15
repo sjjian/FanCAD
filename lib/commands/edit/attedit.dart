@@ -22,6 +22,15 @@ class EditAtteditCommand extends FanCadCommand {
   @override
   List<ParamSpec> get params => const [
     ParamSpec.selection('ids'),
+    // `value` stays the first text parameter. A prompt takes the next unused
+    // text argument, so a supplied `tag` would otherwise become the new value
+    // and the command line would never ask.
+    ParamSpec(
+      name: 'value',
+      type: ParamType.text,
+      description: 'New value for that tag',
+      required: false,
+    ),
     ParamSpec(
       name: 'tag',
       type: ParamType.text,
@@ -29,9 +38,9 @@ class EditAtteditCommand extends FanCadCommand {
       required: false,
     ),
     ParamSpec(
-      name: 'value',
-      type: ParamType.text,
-      description: 'New value for that tag',
+      name: 'values',
+      type: ParamType.json,
+      description: 'Tag to new value, applied in one undo',
       required: false,
     ),
   ];
@@ -53,48 +62,51 @@ class EditAtteditCommand extends FanCadCommand {
     if (inserts.isEmpty) {
       return const CommandResult.failed('ATTEDIT needs a block reference.');
     }
+    final supplied = _stringMap(context.args['values']);
     final tag = context.args.text('tag')?.trim();
+    final hasValue = context.args.has('value');
     final value = context.args.text('value');
     final updates = <InsertEntity>[];
+    var sawEditable = false;
     for (final insert in inserts) {
-      final defs = context.document.attdefsOf(insert.blockName);
-      if (defs.isEmpty) continue;
+      final editable = [
+        for (final def in context.document.attdefsOf(insert.blockName))
+          if (!def.constant) def,
+      ];
+      if (editable.isEmpty) continue;
+      sawEditable = true;
       final next = Map<String, String>.from(insert.attributes);
-      if (tag != null && tag.isNotEmpty) {
-        AttdefEntity? def;
-        for (final each in defs) {
-          if (each.tag.toUpperCase() == tag.toUpperCase()) def = each;
+      if (supplied != null) {
+        for (final entry in supplied.entries) {
+          final def = _definitionFor(editable, entry.key);
+          if (def == null) continue;
+          next[def.tag] = entry.value;
         }
-        if (def == null || def.constant) continue;
-        next[def.tag] =
-            value ??
-            await context.input.text(
-              'ATTEDIT  ${def.prompt.isEmpty ? def.tag : def.prompt}:',
-              defaultValue: insert.attributeValue(def.tag, def.defaultValue),
-            );
+      } else if (tag != null && tag.isNotEmpty) {
+        final def = _definitionFor(editable, tag);
+        if (def == null) continue;
+        next[def.tag] = hasValue
+            ? (value ?? '')
+            : await context.resolveText(
+                'value',
+                _prompt(def),
+                defaultValue: insert.attributeValue(def.tag, def.defaultValue),
+              );
       } else {
-        for (final def in defs) {
-          if (def.constant) continue;
+        for (final def in editable) {
           next[def.tag] = await context.input.text(
-            'ATTEDIT  ${def.prompt.isEmpty ? def.tag : def.prompt}:',
+            _prompt(def),
             defaultValue: insert.attributeValue(def.tag, def.defaultValue),
           );
         }
       }
-      var changed = next.length != insert.attributes.length;
-      if (!changed) {
-        for (final entry in next.entries) {
-          if (insert.attributes[entry.key] != entry.value) {
-            changed = true;
-            break;
-          }
-        }
+      if (_attributesChanged(insert.attributes, next)) {
+        updates.add(insert.withAttributes(next));
       }
-      if (changed) updates.add(insert.withAttributes(next));
     }
     if (updates.isEmpty) {
-      return const CommandResult.failed(
-        'Nothing changed, or that block has no attributes.',
+      return CommandResult.failed(
+        sawEditable ? 'Nothing changed.' : 'That block has no attributes.',
       );
     }
     final written = context.edit('Attedit', (transaction) {
@@ -114,4 +126,32 @@ class EditAtteditCommand extends FanCadCommand {
       transaction: written,
     );
   }
+}
+
+String _prompt(AttdefEntity def) =>
+    'ATTEDIT  ${def.prompt.isEmpty ? def.tag : def.prompt}:';
+
+AttdefEntity? _definitionFor(List<AttdefEntity> defs, String tag) {
+  final key = tag.toUpperCase();
+  for (final def in defs) {
+    if (def.tag.toUpperCase() == key) return def;
+  }
+  return null;
+}
+
+/// `CommandArgs.object` rejects `Map<String, String>`, so read the raw map.
+Map<String, String>? _stringMap(Object? raw) {
+  if (raw is! Map) return null;
+  return {
+    for (final entry in raw.entries)
+      if (entry.value != null) entry.key.toString(): entry.value.toString(),
+  };
+}
+
+bool _attributesChanged(Map<String, String> before, Map<String, String> after) {
+  if (before.length != after.length) return true;
+  for (final entry in after.entries) {
+    if (before[entry.key] != entry.value) return true;
+  }
+  return false;
 }

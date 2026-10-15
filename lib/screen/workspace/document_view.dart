@@ -18,6 +18,7 @@ import '../../services/workspace.dart';
 import '../command_line/dynamic_input_hud.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
+import 'attribute_edit_dialog.dart';
 import 'export_panel.dart';
 import 'text_edit_overlay.dart';
 
@@ -136,7 +137,8 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
 
   /// Paper viewport interiors run VPMAX; a maximized model view runs VPMIN.
   /// Empty space does not zoom. A double-click on text opens a form card
-  /// parked at the click.
+  /// parked at the click. A double-click on a block reference with editable
+  /// attributes opens the attribute dialog.
   void _onDoubleClick(Offset local) {
     final tab = widget.tab;
     final world = tab.viewport.viewport.toWorld(local);
@@ -144,11 +146,12 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
       cache: tab.tessellation,
       shxFonts: widget.workspace.shxFonts,
     ).pickTopmost(tab.document, tab.viewport.viewport, world);
+    final commandRunning =
+        ref.read(workspaceNotifierProvider).runningCommand != null;
     final target = canvasTextEditTarget(
       document: tab.document,
       entityId: hit?.entityId,
-      commandRunning:
-          ref.read(workspaceNotifierProvider).runningCommand != null,
+      commandRunning: commandRunning,
     );
     if (target != null) {
       tab.selection.replace([target.id]);
@@ -162,6 +165,16 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
       });
       return;
     }
+    final insert = canvasAttributeEditTarget(
+      document: tab.document,
+      entityId: hit?.entityId,
+      commandRunning: commandRunning,
+    );
+    if (insert != null) {
+      tab.selection.replace([insert.id]);
+      unawaited(_editBlockAttributes(insert));
+      return;
+    }
     final action = canvasDoubleClick(
       layout: tab.document.activeLayout,
       point: world,
@@ -170,6 +183,22 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
     if (action != null) {
       widget.workspace.run(action.id, args: action.args);
     }
+  }
+
+  Future<void> _editBlockAttributes(InsertEntity insert) async {
+    final changed = await showAttributeEditDialog(
+      context,
+      blockName: insert.blockName,
+      fields: attributeEditFields(widget.tab.document, insert),
+    );
+    if (!mounted || changed == null || changed.isEmpty) return;
+    await widget.workspace.run(
+      'edit.attedit',
+      args: {
+        'ids': [insert.id],
+        'values': changed,
+      },
+    );
   }
 
   void _restoreEditingOriginal({DocumentTab? tab, required bool notify}) {

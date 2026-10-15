@@ -765,4 +765,95 @@ void main() {
             as TextEntity;
     expect(twice.rotation, once.rotation);
   });
+
+  test('a block reference with an attribute is a double-click target', () {
+    final document = CadDocument();
+    document.addEntity(
+      const AttdefEntity(
+        id: 1,
+        position: Vec2.zero(),
+        tag: 'NO',
+        prompt: 'Number',
+        defaultValue: 'A',
+      ),
+      blockName: 'TITLE',
+    );
+    final insert = document.addEntity(
+      const InsertEntity(id: 2, blockName: 'TITLE', position: Vec2(10, 0)),
+    );
+    expect(
+      canvasAttributeEditTarget(
+        document: document,
+        entityId: insert.id,
+        commandRunning: false,
+      ),
+      insert,
+    );
+    expect(
+      canvasAttributeEditTarget(
+        document: document,
+        entityId: insert.id,
+        commandRunning: true,
+      ),
+      isNull,
+    );
+    expect(
+      canvasAttributeEditTarget(
+        document: document,
+        entityId: 1,
+        commandRunning: false,
+      ),
+      isNull,
+    );
+  });
+
+  test('a constant-only block is not an attribute edit target', () {
+    final document = CadDocument();
+    document.addEntity(
+      const AttdefEntity(
+        id: 1,
+        position: Vec2.zero(),
+        tag: 'NO',
+        defaultValue: 'A',
+        constant: true,
+      ),
+      blockName: 'TITLE',
+    );
+    final insert = document.addEntity(
+      const InsertEntity(id: 2, blockName: 'TITLE', position: Vec2.zero()),
+    );
+    expect(
+      canvasAttributeEditTarget(
+        document: document,
+        entityId: insert.id,
+        commandRunning: false,
+      ),
+      isNull,
+    );
+  });
+
+  test('a locked block reference is not an attribute edit target', () {
+    final document = CadDocument()
+      ..putLayer(const LayerDef(name: 'LOCK', locked: true));
+    document.addEntity(
+      const AttdefEntity(id: 1, position: Vec2.zero(), tag: 'NO'),
+      blockName: 'TITLE',
+    );
+    final insert = document.addEntity(
+      const InsertEntity(
+        id: 2,
+        props: EntityProps(layer: 'LOCK'),
+        blockName: 'TITLE',
+        position: Vec2.zero(),
+      ),
+    );
+    expect(
+      canvasAttributeEditTarget(
+        document: document,
+        entityId: insert.id,
+        commandRunning: false,
+      ),
+      isNull,
+    );
+  });
 }
