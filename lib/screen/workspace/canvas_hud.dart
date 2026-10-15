@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
@@ -109,6 +110,16 @@ const canvasHudDockBottom =
 @visibleForTesting
 const canvasHudRadius = FanCadTokens.radiusLarge;
 
+/// Fill of the floating card. Open enough that the drawing shows through,
+/// still solid enough to read the prompt.
+@visibleForTesting
+const canvasHudFillAlpha = 0.82;
+
+/// Frost on geometry behind the card so it stays a hint, not a second
+/// layer of linework through the prompt.
+@visibleForTesting
+const canvasHudBlurSigma = 12.0;
+
 /// Inset so tools and mode chips sit inside the rounded corners.
 @visibleForTesting
 const canvasHudPadding = EdgeInsets.symmetric(horizontal: FanCadTokens.space2);
@@ -187,20 +198,32 @@ class _HudCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final radius = BorderRadius.circular(canvasHudRadius);
     return Material(
-      color: tokens.surfaceOverlay,
+      color: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       elevation: 3,
       shadowColor: tokens.shadow,
-      borderRadius: BorderRadius.circular(canvasHudRadius),
-      child: Container(
-        key: const Key('canvas-bottom-card'),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(canvasHudRadius),
-          border: Border.all(color: tokens.borderStrong),
+      borderRadius: radius,
+      child: ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: canvasHudBlurSigma,
+            sigmaY: canvasHudBlurSigma,
+          ),
+          child: DecoratedBox(
+            key: const Key('canvas-bottom-card'),
+            decoration: BoxDecoration(
+              color: tokens.surfaceOverlay.withValues(
+                alpha: canvasHudFillAlpha,
+              ),
+              borderRadius: radius,
+              border: Border.all(color: tokens.borderStrong),
+            ),
+            child: Padding(padding: canvasHudPadding, child: child),
+          ),
         ),
-        clipBehavior: Clip.antiAlias,
-        padding: canvasHudPadding,
-        child: child,
       ),
     );
   }
