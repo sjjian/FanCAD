@@ -70,6 +70,27 @@ abstract class HistoryLineModel with _$HistoryLineModel {
   }) = _HistoryLineModel;
 }
 
+/// How the command line should tell the user to answer.
+enum CommandPromptKind {
+  /// Click the drawing or type a coordinate.
+  point,
+
+  /// Click the drawing or type a number. Distance and angle.
+  measure,
+
+  /// Type text and press Enter. Names, tags, prompts.
+  text,
+
+  /// Type a number. The drawing is not an answer.
+  number,
+
+  /// Select objects, or type All / Last.
+  selection,
+
+  /// Pick one of the offered keywords, or type it.
+  choice,
+}
+
 /// What the command line shows while a verb waits for a typed value.
 @freezed
 abstract class CommandPromptModel with _$CommandPromptModel {
@@ -77,5 +98,6 @@ abstract class CommandPromptModel with _$CommandPromptModel {
     required String message,
     @Default([]) List<String> keywords,
     @Default(false) bool allowEmpty,
+    @Default(CommandPromptKind.point) CommandPromptKind kind,
   }) = _CommandPromptModel;
 }

@@ -356,6 +356,9 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
       prompt: promptState.$1?.message ?? promptState.$2,
       keywords: promptState.$1?.keywords ?? const [],
       awaiting: promptState.$1 != null,
+      hint: promptState.$1 == null
+          ? null
+          : commandLineHint(context.l10n, promptState.$1!.kind),
       running: running != null,
     );
   }
@@ -365,6 +368,7 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
     required String prompt,
     required List<String> keywords,
     required bool awaiting,
+    required String? hint,
     required bool running,
   }) {
     return Container(
@@ -444,7 +448,7 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                         controller: _input,
                         focusNode: widget.focusNode,
                         hintText: awaiting
-                            ? context.l10n.hint_click_or_type
+                            ? hint
                             : prompt.isEmpty
                             ? context.l10n.hint_type_command
                             : null,
@@ -827,6 +831,17 @@ class _CommandLogPanelState extends ConsumerState<CommandLogPanel> {
     );
   }
 }
+
+/// Placeholder for a prompt, matched to the kind of answer it accepts.
+String commandLineHint(AppLocalizations l10n, CommandPromptKind kind) =>
+    switch (kind) {
+      CommandPromptKind.point => l10n.hint_click_or_type,
+      CommandPromptKind.measure => l10n.hint_click_or_number,
+      CommandPromptKind.text => l10n.hint_type_text,
+      CommandPromptKind.number => l10n.hint_type_number,
+      CommandPromptKind.selection => l10n.hint_select_objects,
+      CommandPromptKind.choice => l10n.hint_choose_option,
+    };
 
 /// Window footer. Drawing telemetry lives on the canvas so this row can
 /// stay a thin chrome strip.

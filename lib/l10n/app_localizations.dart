@@ -902,11 +902,41 @@ abstract class AppLocalizations {
   /// **'Copied command history'**
   String get copied_history;
 
-  /// hint click or type
+  /// hint click or type a coordinate
   ///
   /// In en, this message translates to:
-  /// **'Click in the drawing, or type a value'**
+  /// **'Click in the drawing, or type a coordinate'**
   String get hint_click_or_type;
+
+  /// hint click or type a number
+  ///
+  /// In en, this message translates to:
+  /// **'Click in the drawing, or type a number'**
+  String get hint_click_or_number;
+
+  /// hint type text
+  ///
+  /// In en, this message translates to:
+  /// **'Type text, then press Enter'**
+  String get hint_type_text;
+
+  /// hint type a number
+  ///
+  /// In en, this message translates to:
+  /// **'Type a number'**
+  String get hint_type_number;
+
+  /// hint select objects
+  ///
+  /// In en, this message translates to:
+  /// **'Select objects in the drawing'**
+  String get hint_select_objects;
+
+  /// hint choose an option
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an option, or type it'**
+  String get hint_choose_option;
 
   /// hint type command
   ///

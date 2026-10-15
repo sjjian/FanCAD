@@ -26,10 +26,12 @@ class PendingEntry {
     required this.accept,
     List<String> keywords = const [],
     bool allowEmpty = false,
+    CommandPromptKind kind = CommandPromptKind.point,
   }) : prompt = CommandPromptModel(
          message: message,
          keywords: keywords,
          allowEmpty: allowEmpty,
+         kind: kind,
        );
 
   /// What the command line shows for this prompt.

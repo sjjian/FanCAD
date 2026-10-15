@@ -865,7 +865,7 @@ as HistoryLevel,
 /// @nodoc
 mixin _$CommandPromptModel {
 
- String get message; List<String> get keywords; bool get allowEmpty;
+ String get message; List<String> get keywords; bool get allowEmpty; CommandPromptKind get kind;
 /// Create a copy of CommandPromptModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -876,16 +876,16 @@ $CommandPromptModelCopyWith<CommandPromptModel> get copyWith => _$CommandPromptM
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommandPromptModel&&(identical(other.message, message) || other.message == message)&&const DeepCollectionEquality().equals(other.keywords, keywords)&&(identical(other.allowEmpty, allowEmpty) || other.allowEmpty == allowEmpty));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommandPromptModel&&(identical(other.message, message) || other.message == message)&&const DeepCollectionEquality().equals(other.keywords, keywords)&&(identical(other.allowEmpty, allowEmpty) || other.allowEmpty == allowEmpty)&&(identical(other.kind, kind) || other.kind == kind));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message,const DeepCollectionEquality().hash(keywords),allowEmpty);
+int get hashCode => Object.hash(runtimeType,message,const DeepCollectionEquality().hash(keywords),allowEmpty,kind);
 
 @override
 String toString() {
-  return 'CommandPromptModel(message: $message, keywords: $keywords, allowEmpty: $allowEmpty)';
+  return 'CommandPromptModel(message: $message, keywords: $keywords, allowEmpty: $allowEmpty, kind: $kind)';
 }
 
 
@@ -896,7 +896,7 @@ abstract mixin class $CommandPromptModelCopyWith<$Res>  {
   factory $CommandPromptModelCopyWith(CommandPromptModel value, $Res Function(CommandPromptModel) _then) = _$CommandPromptModelCopyWithImpl;
 @useResult
 $Res call({
- String message, List<String> keywords, bool allowEmpty
+ String message, List<String> keywords, bool allowEmpty, CommandPromptKind kind
 });
 
 
@@ -913,12 +913,13 @@ class _$CommandPromptModelCopyWithImpl<$Res>
 
 /// Create a copy of CommandPromptModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? message = null,Object? keywords = null,Object? allowEmpty = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? message = null,Object? keywords = null,Object? allowEmpty = null,Object? kind = null,}) {
   return _then(_self.copyWith(
 message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String,keywords: null == keywords ? _self.keywords : keywords // ignore: cast_nullable_to_non_nullable
 as List<String>,allowEmpty: null == allowEmpty ? _self.allowEmpty : allowEmpty // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as CommandPromptKind,
   ));
 }
 
@@ -1003,10 +1004,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String message,  List<String> keywords,  bool allowEmpty)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String message,  List<String> keywords,  bool allowEmpty,  CommandPromptKind kind)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CommandPromptModel() when $default != null:
-return $default(_that.message,_that.keywords,_that.allowEmpty);case _:
+return $default(_that.message,_that.keywords,_that.allowEmpty,_that.kind);case _:
   return orElse();
 
 }
@@ -1024,10 +1025,10 @@ return $default(_that.message,_that.keywords,_that.allowEmpty);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String message,  List<String> keywords,  bool allowEmpty)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String message,  List<String> keywords,  bool allowEmpty,  CommandPromptKind kind)  $default,) {final _that = this;
 switch (_that) {
 case _CommandPromptModel():
-return $default(_that.message,_that.keywords,_that.allowEmpty);case _:
+return $default(_that.message,_that.keywords,_that.allowEmpty,_that.kind);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1044,10 +1045,10 @@ return $default(_that.message,_that.keywords,_that.allowEmpty);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String message,  List<String> keywords,  bool allowEmpty)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String message,  List<String> keywords,  bool allowEmpty,  CommandPromptKind kind)?  $default,) {final _that = this;
 switch (_that) {
 case _CommandPromptModel() when $default != null:
-return $default(_that.message,_that.keywords,_that.allowEmpty);case _:
+return $default(_that.message,_that.keywords,_that.allowEmpty,_that.kind);case _:
   return null;
 
 }
@@ -1059,7 +1060,7 @@ return $default(_that.message,_that.keywords,_that.allowEmpty);case _:
 
 
 class _CommandPromptModel implements CommandPromptModel {
-  const _CommandPromptModel({required this.message, final  List<String> keywords = const [], this.allowEmpty = false}): _keywords = keywords;
+  const _CommandPromptModel({required this.message, final  List<String> keywords = const [], this.allowEmpty = false, this.kind = CommandPromptKind.point}): _keywords = keywords;
   
 
 @override final  String message;
@@ -1071,6 +1072,7 @@ class _CommandPromptModel implements CommandPromptModel {
 }
 
 @override@JsonKey() final  bool allowEmpty;
+@override@JsonKey() final  CommandPromptKind kind;
 
 /// Create a copy of CommandPromptModel
 /// with the given fields replaced by the non-null parameter values.
@@ -1082,16 +1084,16 @@ _$CommandPromptModelCopyWith<_CommandPromptModel> get copyWith => __$CommandProm
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommandPromptModel&&(identical(other.message, message) || other.message == message)&&const DeepCollectionEquality().equals(other._keywords, _keywords)&&(identical(other.allowEmpty, allowEmpty) || other.allowEmpty == allowEmpty));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommandPromptModel&&(identical(other.message, message) || other.message == message)&&const DeepCollectionEquality().equals(other._keywords, _keywords)&&(identical(other.allowEmpty, allowEmpty) || other.allowEmpty == allowEmpty)&&(identical(other.kind, kind) || other.kind == kind));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message,const DeepCollectionEquality().hash(_keywords),allowEmpty);
+int get hashCode => Object.hash(runtimeType,message,const DeepCollectionEquality().hash(_keywords),allowEmpty,kind);
 
 @override
 String toString() {
-  return 'CommandPromptModel(message: $message, keywords: $keywords, allowEmpty: $allowEmpty)';
+  return 'CommandPromptModel(message: $message, keywords: $keywords, allowEmpty: $allowEmpty, kind: $kind)';
 }
 
 
@@ -1102,7 +1104,7 @@ abstract mixin class _$CommandPromptModelCopyWith<$Res> implements $CommandPromp
   factory _$CommandPromptModelCopyWith(_CommandPromptModel value, $Res Function(_CommandPromptModel) _then) = __$CommandPromptModelCopyWithImpl;
 @override @useResult
 $Res call({
- String message, List<String> keywords, bool allowEmpty
+ String message, List<String> keywords, bool allowEmpty, CommandPromptKind kind
 });
 
 
@@ -1119,12 +1121,13 @@ class __$CommandPromptModelCopyWithImpl<$Res>
 
 /// Create a copy of CommandPromptModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? message = null,Object? keywords = null,Object? allowEmpty = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? message = null,Object? keywords = null,Object? allowEmpty = null,Object? kind = null,}) {
   return _then(_CommandPromptModel(
 message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String,keywords: null == keywords ? _self._keywords : keywords // ignore: cast_nullable_to_non_nullable
 as List<String>,allowEmpty: null == allowEmpty ? _self.allowEmpty : allowEmpty // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as CommandPromptKind,
   ));
 }
 

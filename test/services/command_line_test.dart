@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fancad/fancad.dart';
+import 'package:fancad/models/command_line.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -178,5 +180,13 @@ void main() {
       await expectLater(pending, throwsA(isA<CommandCancelled>()));
       expect(line.isAwaitingInput, isFalse);
     });
+  });
+
+  test('a text prompt does not ask for a drawing pick', () {
+    final l10n = lookupAppLocalizations(const Locale('zh'));
+    expect(commandLineHint(l10n, CommandPromptKind.text), '输入文字后回车');
+    expect(commandLineHint(l10n, CommandPromptKind.point), '在图纸中拾取，或输入坐标');
+    expect(commandLineHint(l10n, CommandPromptKind.number), '输入数值');
+    expect(commandLineHint(l10n, CommandPromptKind.measure), '在图纸中拾取，或输入数值');
   });
 }

@@ -456,7 +456,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get copied_history => 'Copied command history';
 
   @override
-  String get hint_click_or_type => 'Click in the drawing, or type a value';
+  String get hint_click_or_type => 'Click in the drawing, or type a coordinate';
+
+  @override
+  String get hint_click_or_number => 'Click in the drawing, or type a number';
+
+  @override
+  String get hint_type_text => 'Type text, then press Enter';
+
+  @override
+  String get hint_type_number => 'Type a number';
+
+  @override
+  String get hint_select_objects => 'Select objects in the drawing';
+
+  @override
+  String get hint_choose_option => 'Choose an option, or type it';
 
   @override
   String get hint_type_command => 'Type a command';

@@ -637,9 +637,29 @@
   "@copied_history": {
     "description": "copied history"
   },
-  "hint_click_or_type": "在图纸中拾取，或输入数值",
+  "hint_click_or_type": "在图纸中拾取，或输入坐标",
   "@hint_click_or_type": {
-    "description": "hint click or type"
+    "description": "hint click or type a coordinate"
+  },
+  "hint_click_or_number": "在图纸中拾取，或输入数值",
+  "@hint_click_or_number": {
+    "description": "hint click or type a number"
+  },
+  "hint_type_text": "输入文字后回车",
+  "@hint_type_text": {
+    "description": "hint type text"
+  },
+  "hint_type_number": "输入数值",
+  "@hint_type_number": {
+    "description": "hint type a number"
+  },
+  "hint_select_objects": "在图纸中选择对象",
+  "@hint_select_objects": {
+    "description": "hint select objects"
+  },
+  "hint_choose_option": "选择一项，或输入",
+  "@hint_choose_option": {
+    "description": "hint choose an option"
   },
   "hint_type_command": "输入命令",
   "@hint_type_command": {

@@ -449,7 +449,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get copied_history => '已复制命令历史';
 
   @override
-  String get hint_click_or_type => '在图纸中拾取，或输入数值';
+  String get hint_click_or_type => '在图纸中拾取，或输入坐标';
+
+  @override
+  String get hint_click_or_number => '在图纸中拾取，或输入数值';
+
+  @override
+  String get hint_type_text => '输入文字后回车';
+
+  @override
+  String get hint_type_number => '输入数值';
+
+  @override
+  String get hint_select_objects => '在图纸中选择对象';
+
+  @override
+  String get hint_choose_option => '选择一项，或输入';
 
   @override
   String get hint_type_command => '输入命令';

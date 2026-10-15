@@ -1966,6 +1966,7 @@ class InteractiveCommandInput implements CommandInput {
     final typed = commandLine.request(
       PendingEntry(
         message: message,
+        kind: CommandPromptKind.measure,
         completer: Completer<Object?>(),
         accept: (raw) {
           final direct = CoordinateParser.parseDistance(raw);
@@ -2012,6 +2013,7 @@ class InteractiveCommandInput implements CommandInput {
     final typed = commandLine.request(
       PendingEntry(
         message: message,
+        kind: CommandPromptKind.measure,
         completer: Completer<Object?>(),
         accept: CoordinateParser.parseAngle,
       ),
@@ -2045,6 +2047,7 @@ class InteractiveCommandInput implements CommandInput {
     final value = await commandLine.request(
       PendingEntry(
         message: label,
+        kind: CommandPromptKind.number,
         completer: Completer<Object?>(),
         allowEmpty: defaultValue != null,
         accept: (raw) =>
@@ -2066,6 +2069,7 @@ class InteractiveCommandInput implements CommandInput {
     final value = await commandLine.request(
       PendingEntry(
         message: label,
+        kind: CommandPromptKind.number,
         completer: Completer<Object?>(),
         allowEmpty: defaultValue != null,
         accept: (raw) => raw.isEmpty ? defaultValue : int.tryParse(raw.trim()),
@@ -2093,6 +2097,7 @@ class InteractiveCommandInput implements CommandInput {
     final value = await commandLine.request(
       PendingEntry(
         message: label,
+        kind: CommandPromptKind.text,
         completer: Completer<Object?>(),
         allowEmpty: defaultValue != null,
         accept: (raw) => raw.isEmpty ? defaultValue : raw,
@@ -2132,6 +2137,7 @@ class InteractiveCommandInput implements CommandInput {
       final value = await commandLine.request(
         PendingEntry(
           message: label,
+          kind: CommandPromptKind.choice,
           completer: Completer<Object?>(),
           keywords: options,
           allowEmpty: defaultOption != null,
@@ -2188,6 +2194,7 @@ class InteractiveCommandInput implements CommandInput {
     final typed = commandLine.request(
       PendingEntry(
         message: message,
+        kind: CommandPromptKind.selection,
         completer: Completer<Object?>(),
         keywords: const ['All', 'Last'],
         accept: (raw) {
