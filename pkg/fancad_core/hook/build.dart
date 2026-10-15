@@ -167,6 +167,7 @@ bool _looksLikeSource(String root) {
 const _libredwgPatches = [
   'libredwg-r2004-preview.patch',
   'libredwg-layer-plotflag.patch',
+  'libredwg-sat-block-cursor.patch',
 ];
 
 /// Configures and builds the submodule as a static PIC library.

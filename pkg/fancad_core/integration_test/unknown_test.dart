@@ -42,11 +42,41 @@ void main() {
       },
       timeout: Roundtrip.timeout,
     );
+
+    test(
+      'a REGION outline longer than two SAT blocks survives a save',
+      () async {
+        // 90 vertices is past 8KB of SAT, which used to repeat the second
+        // 4096-byte block and drop the rest of the profile.
+        final outer = _ring(746360, -298570, 30, 23, count: 90);
+        final inner = _ring(746360, -298570, 12, 8, count: 16);
+        final source = drawingOf(
+          UnknownEntity(
+            id: 1,
+            originalType: 'REGION',
+            strokes: Float64List.fromList([...inner, ...outer]),
+            strokeCounts: [inner.length ~/ 2, outer.length ~/ 2],
+          ),
+        );
+
+        final opened = await rt.dwg(source, name: 'region-long');
+        final region = opened.entities.whereType<UnknownEntity>().single;
+        expect(region.originalType, 'REGION');
+        expect(region.strokeCounts, [inner.length ~/ 2, outer.length ~/ 2]);
+      },
+      timeout: Roundtrip.timeout,
+    );
   });
 }
 
-Float64List _ring(double cx, double cy, double rx, double ry) {
-  const n = 8;
+Float64List _ring(
+  double cx,
+  double cy,
+  double rx,
+  double ry, {
+  int count = 8,
+}) {
+  final n = count;
   final xy = <double>[];
   for (var i = 0; i < n; i++) {
     final angle = i / n * math.pi * 2;

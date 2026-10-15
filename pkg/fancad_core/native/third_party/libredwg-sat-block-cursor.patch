@@ -1,0 +1,86 @@
+--- a/src/dwg_api.c
++++ b/src/dwg_api.c
+@@ -24430,13 +24430,16 @@
+   BITCODE_RC *encr_sat_data = (BITCODE_RC *)calloc (blocksize + 1, 1);
+-  int i;
++  int off = *acis_data_idx;
++  int i;
+   for (i = 0; i < (int)blocksize; i++)
+     {
+-      if (acis_data[i] <= 32)
+-        encr_sat_data[i] = acis_data[i];
++      /* FANCAD: callers pass the whole SAT and a cursor. Reading acis_data[i]
++         and assigning the cursor to this block's size repeats block 2 for
++         every later 4096-byte chunk, so a REGION outline past 8KB is lost. */
++      BITCODE_RC c = acis_data[off + i];
++      if (c <= 32)
++        encr_sat_data[i] = c;
+       else
+-        encr_sat_data[i] = 159 - acis_data[i];
++        encr_sat_data[i] = 159 - c;
+     }
+-  *acis_data_idx = i;
++  *acis_data_idx = off + i;
+   return (char *)encr_sat_data;
+ }
+@@ -27379,11 +27382,14 @@
+   for (unsigned i = 0; i < _obj->num_blocks; i++)
+     {
+-      if (i == j - 1)
+-        _obj->block_size[i] = len % 4096;
++      /* A multiple of 4096 still fills the last block. len % 4096 == 0
++         would store a zero size and drop those bytes. */
++      if (i + 1 == j && (len % 4096) != 0)
++        _obj->block_size[i] = (BITCODE_BL)(len % 4096);
+       else
+         _obj->block_size[i] = 4096;
+       _obj->encr_sat_data[i]
+-          = dwg_encrypt_SAT1 (_obj->block_size[i],
+-                              &_obj->acis_data[acis_data_idx], &acis_data_idx);
++          = dwg_encrypt_SAT1 (_obj->block_size[i], _obj->acis_data,
++                              &acis_data_idx);
+     }
+   return _obj;
+ }
+ 
+ EXPORT Dwg_Entity__3DSOLID *
+@@ -27415,15 +27421,17 @@
+   for (unsigned i = 0; i < j; i++)
+     {
+-      if (i == j - 1)
+-        _obj->block_size[i] = len % 4096;
++      if (i + 1 == j && (len % 4096) != 0)
++        _obj->block_size[i] = (BITCODE_BL)(len % 4096);
+       else
+         _obj->block_size[i] = 4096;
+       _obj->encr_sat_data[i]
+-          = dwg_encrypt_SAT1 (_obj->block_size[i],
+-                              &_obj->acis_data[acis_data_idx], &acis_data_idx);
++          = dwg_encrypt_SAT1 (_obj->block_size[i], _obj->acis_data,
++                              &acis_data_idx);
+     }
+   //_obj->encr_sat_data[j] = NULL;
+   //_obj->block_size[j] = 0;
+   return _obj;
+ }
+ 
+ EXPORT Dwg_Entity_BODY *
+@@ -27452,16 +27460,18 @@
+   for (unsigned i = 0; i < _obj->num_blocks; i++)
+     {
+-      if (i == j - 1)
+-        _obj->block_size[i] = len % 4096;
++      if (i + 1 == j && (len % 4096) != 0)
++        _obj->block_size[i] = (BITCODE_BL)(len % 4096);
+       else
+         _obj->block_size[i] = 4096;
+       _obj->encr_sat_data[i]
+-          = dwg_encrypt_SAT1 (_obj->block_size[i],
+-                              &_obj->acis_data[acis_data_idx], &acis_data_idx);
++          = dwg_encrypt_SAT1 (_obj->block_size[i], _obj->acis_data,
++                              &acis_data_idx);
+     }
+   return _obj;
+ }
+ 
+ EXPORT Dwg_Entity_RAY *
