@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fancad/fancad.dart';
-import 'package:fancad/models/command_line.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
