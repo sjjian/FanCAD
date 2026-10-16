@@ -69,13 +69,7 @@ void main() {
   });
 }
 
-Float64List _ring(
-  double cx,
-  double cy,
-  double rx,
-  double ry, {
-  int count = 8,
-}) {
+Float64List _ring(double cx, double cy, double rx, double ry, {int count = 8}) {
   final n = count;
   final xy = <double>[];
   for (var i = 0; i < n; i++) {
