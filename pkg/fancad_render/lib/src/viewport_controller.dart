@@ -334,6 +334,25 @@ class ViewportController extends ChangeNotifier {
   /// Centres on a drawing point without changing zoom.
   void centerOn(Vec2 point) => viewport = _viewport.copyWith(center: point);
 
+  /// Moves [point] to the middle of the unobstructed canvas. Zoom stays put.
+  ///
+  /// [insetLeft] and [insetRight] are the side panes covering the drawing, so
+  /// the point lands in the hole between them rather than under a panel.
+  void centerInHole(Vec2 point, {double insetLeft = 0, double insetRight = 0}) {
+    final size = _viewport.size;
+    final scale = _viewport.scale;
+    if (size.isEmpty || scale.abs() <= 1e-12) {
+      centerOn(point);
+      return;
+    }
+    final left = insetLeft.clamp(0, size.width).toDouble();
+    final right = insetRight
+        .clamp(0, math.max(0.0, size.width - left))
+        .toDouble();
+    final shift = (left - right) / (2 * scale);
+    centerOn(Vec2(point.x - shift, point.y));
+  }
+
   /// Remembers the current camera once. See [_heldView].
   void holdView() => _heldView ??= _viewport;
 

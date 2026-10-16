@@ -360,6 +360,13 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
               value: 'view.zoomSelected',
               label: l10n.zoom_to_selection,
             ),
+            fanCadMenuItem(
+              context,
+              key: const Key('canvas-find-text'),
+              value: '__find__',
+              label: l10n.find_text,
+              shortcut: formatKeybinding('ctrl+f'),
+            ),
             if (widget.onAddSelectionToChat != null)
               fanCadMenuItem(
                 context,
@@ -434,6 +441,13 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
               value: 'view.zoomWindow',
               label: l10n.zoom_window,
             ),
+            fanCadMenuItem(
+              context,
+              key: const Key('canvas-find-text'),
+              value: '__find__',
+              label: l10n.find_text,
+              shortcut: formatKeybinding('ctrl+f'),
+            ),
           ],
           fanCadMenuItem(
             context,
@@ -497,6 +511,11 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
         }
         if (id == '__properties__') {
           widget.workspace.revealPanel('properties');
+          return;
+        }
+        if (id == '__find__') {
+          ref.read(commandLineNotifierProvider.notifier).setPaletteOpen(false);
+          tab.textSearch.request();
           return;
         }
         if (id == '__add_to_chat__') {

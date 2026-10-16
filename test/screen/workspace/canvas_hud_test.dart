@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fancad/fancad.dart';
+import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -298,7 +299,7 @@ void main() {
       findsNothing,
     );
 
-    await tester.tap(find.byKey(const Key('command-open-history')));
+    await tester.tap(find.byKey(const Key('activity-history')));
     await tester.pump();
     expect(find.byKey(const Key('command-log-panel')), findsOneWidget);
     expect(
@@ -364,11 +365,19 @@ void main() {
     );
     await tester.pump();
 
-    final cancel = tester.getRect(
-      find.byKey(const Key('command-prompt-cancel')),
+    final icon = tester.getRect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-hud-mode-switch')),
+        matching: find.byIcon(Icons.swap_horiz),
+      ),
     );
-    final grid = tester.getRect(find.byKey(const Key('canvas-mode-grid')));
-    expect(cancel.right, closeTo(grid.right, 1));
+    final gridLabel = tester.getRect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-mode-grid')),
+        matching: find.byType(Text),
+      ),
+    );
+    expect(gridLabel.right, closeTo(icon.right, 1));
   });
 
   testWidgets(
@@ -406,7 +415,6 @@ void main() {
                   child: CommandLinePane(
                     workspace: workspace,
                     focusNode: focus,
-                    onOpenHistory: () {},
                   ),
                 ),
               ),
@@ -518,6 +526,300 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('canvas-command-suggest')), findsNothing);
   });
+
+  testWidgets('search mode lists drawing text instead of commands', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+    final document = workspace.active!.document;
+    document.addEntity(
+      TextEntity(
+        id: document.allocateId(),
+        position: const Vec2.zero(),
+        content: 'LobbyLabel',
+      ),
+    );
+
+    expect(find.text('Type a command'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-hud-mode')),
+        matching: find.byIcon(Icons.terminal_outlined),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('canvas-hud-mode-switch')));
+    await tester.pump();
+
+    expect(find.text('Type text'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-hud-mode')),
+        matching: find.byIcon(Icons.search),
+      ),
+      findsOneWidget,
+    );
+    expect(workspace.active!.textSearch.open, isTrue);
+    expect(find.byKey(const Key('canvas-command-suggest')), findsNothing);
+
+    await tester.enterText(_commandField, 'Lobby');
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('canvas-command-suggest')), findsOneWidget);
+    expect(find.textContaining('LobbyLabel'), findsOneWidget);
+    expect(
+      find.byKey(const Key('canvas-command-suggest-row-draw.line')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const Key('canvas-hud-mode-switch')));
+    await tester.pump();
+
+    expect(workspace.active!.textSearch.open, isFalse);
+    expect(find.text('Type a command'), findsOneWidget);
+    expect(find.byKey(const Key('canvas-command-suggest')), findsNothing);
+  });
+
+  testWidgets('text search keeps eight rows visible and scrolls the rest', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final document = container
+        .read(workspaceNotifierProvider.notifier)
+        .active!
+        .document;
+    final ids = <int>[];
+    for (var i = 0; i < 9; i++) {
+      final id = document.allocateId();
+      ids.add(id);
+      document.addEntity(
+        TextEntity(id: id, position: Vec2(0, (8 - i) * 10), content: 'Hit$i'),
+      );
+    }
+
+    await tester.tap(find.byKey(const Key('canvas-hud-mode-switch')));
+    await tester.pump();
+    await tester.enterText(_commandField, 'Hit');
+    await tester.pump();
+    await tester.pump();
+
+    final list = find.byKey(const Key('canvas-text-suggest-list'));
+    expect(
+      tester.getSize(list).height,
+      FanCadTokens.rowHeight * CommandSuggest.limit,
+    );
+    final hidden = find.byKey(Key('canvas-text-suggest-row-${ids.last}-8'));
+    if (hidden.evaluate().isNotEmpty) {
+      expect(
+        tester.getRect(hidden).top,
+        greaterThan(tester.getRect(list).bottom - 1),
+      );
+    }
+
+    for (var i = 0; i < 8; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+    }
+    await tester.pump();
+
+    final row = find.byKey(Key('canvas-text-suggest-row-${ids.last}-8'));
+    expect(row, findsOneWidget);
+    expect(
+      tester.getRect(row).bottom,
+      lessThanOrEqualTo(tester.getRect(list).bottom + 1),
+    );
+    expect(
+      tester.getRect(row).top,
+      greaterThanOrEqualTo(tester.getRect(list).top - 1),
+    );
+  });
+
+  testWidgets('ctrl+v in the command field pastes text, not the drawing', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+    var clipboard = 'Lobby\n';
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        switch (call.method) {
+          case 'Clipboard.setData':
+            clipboard = (call.arguments as Map)['text'] as String? ?? '';
+            return null;
+          case 'Clipboard.getData':
+            return <String, dynamic>{'text': clipboard};
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('canvas-hud-mode-switch')));
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+    await tester.pump();
+
+    expect(_commandText(tester), 'Lobby');
+    expect(workspace.active!.textSearch.open, isTrue);
+    expect(workspace.active!.textSearch.query, 'Lobby');
+    expect(workspace.state.runningCommand, isNot('edit.pasteClip'));
+
+    await tester.tap(find.byKey(const Key('canvas-hud-mode-switch')));
+    await tester.pump();
+    await tester.enterText(_commandField, 'LI');
+    await tester.pump();
+    clipboard = 'NE';
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+    await tester.pump();
+
+    expect(_commandText(tester), 'LINE');
+    expect(workspace.state.runningCommand, isNot('edit.pasteClip'));
+  });
+
+  testWidgets('FIND opens search instead of a command the letters match', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+
+    await tester.enterText(_commandField, 'F');
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('canvas-command-suggest')), findsOneWidget);
+
+    await tester.enterText(_commandField, 'FIND');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(workspace.active!.textSearch.open, isTrue);
+    expect(workspace.state.runningCommand, isNull);
+    expect(find.byKey(const Key('canvas-command-suggest')), findsNothing);
+  });
+
+  testWidgets('switching drawings keeps a typed command', (tester) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+    final first = workspace.active!;
+    final second = workspace.newDocument(title: 'Beta');
+    await tester.pump();
+    workspace.activateTab(first);
+    await tester.pump();
+
+    await tester.enterText(_commandField, 'LINE');
+    await tester.pump();
+    workspace.activateTab(second);
+    await tester.pump();
+
+    expect(_commandText(tester), 'LINE');
+
+    first.textSearch.request(query: 'Lobby');
+    workspace.activateTab(first);
+    await tester.pump();
+    expect(first.textSearch.open, isTrue);
+    expect(_commandText(tester), 'Lobby');
+
+    workspace.activateTab(second);
+    await tester.pump();
+    expect(_commandText(tester), isEmpty);
+    expect(second.textSearch.open, isFalse);
+  });
+
+  testWidgets('two texts in one insert each get a row', (tester) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final document = container
+        .read(workspaceNotifierProvider.notifier)
+        .active!
+        .document;
+    document
+      ..addEntity(
+        TextEntity(
+          id: document.allocateId(),
+          position: Vec2.zero(),
+          content: 'AlphaRoom',
+        ),
+        blockName: 'TAG',
+      )
+      ..addEntity(
+        TextEntity(
+          id: document.allocateId(),
+          position: const Vec2(0, 10),
+          content: 'BetaRoom',
+        ),
+        blockName: 'TAG',
+      )
+      ..addEntity(
+        InsertEntity(
+          id: document.allocateId(),
+          blockName: 'TAG',
+          position: Vec2.zero(),
+        ),
+      );
+
+    await tester.tap(find.byKey(const Key('canvas-hud-mode-switch')));
+    await tester.pump();
+    await tester.enterText(_commandField, 'Room');
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.textContaining('AlphaRoom'), findsOneWidget);
+    expect(find.textContaining('BetaRoom'), findsOneWidget);
+  });
+
+  testWidgets('escape leaves search and a later channel keeps the command', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+    final pending = workspace.commandLine.request(
+      PendingEntry(
+        message: 'Specify next point:',
+        completer: Completer<Object?>(),
+        accept: (raw) => raw,
+      ),
+    );
+    unawaited(pending.catchError((Object _) => null));
+    await tester.pump();
+    workspace.active!.textSearch.request();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(workspace.active!.textSearch.open, isFalse);
+    expect(workspace.commandLine.isAwaitingInput, isTrue);
+
+    const codec = StandardMethodCodec();
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+      'fancad/escape',
+      codec.encodeMethodCall(const MethodCall('escape')),
+      (_) {},
+    );
+    await tester.pump();
+    expect(workspace.commandLine.isAwaitingInput, isTrue);
+
+    await tester.pump(Duration.zero);
+    await tester.pump(Duration.zero);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(workspace.commandLine.isAwaitingInput, isFalse);
+  });
+}
+
+String _commandText(WidgetTester tester) {
+  return tester.widget<TextField>(_commandField).controller!.text;
 }
 
 Finder get _commandField => find.descendant(

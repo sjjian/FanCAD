@@ -81,6 +81,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     _noteViewOcclusion();
     HardwareKeyboard.instance.addHandler(_onHardwareEscape);
     HardwareKeyboard.instance.addHandler(_onHardwareCopy);
+    HardwareKeyboard.instance.addHandler(_onHardwareFind);
     _escapeChannel.setMethodCallHandler(_onNativeEscape);
     // Subscribed in initState rather than in build so a rebuild does not
     // register a second listener and pop two dialogs for one request.
@@ -116,6 +117,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onHardwareEscape);
     HardwareKeyboard.instance.removeHandler(_onHardwareCopy);
+    HardwareKeyboard.instance.removeHandler(_onHardwareFind);
     _escapeChannel.setMethodCallHandler(null);
     if (_listeningForWindowClose) {
       windowManager.removeListener(this);
@@ -177,13 +179,54 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     if (event is! KeyDownEvent) return false;
     if (event.logicalKey != LogicalKeyboardKey.escape) return false;
     if (ref.read(commandLineNotifierProvider).paletteOpen) return false;
-    ref.read(workspaceNotifierProvider.notifier).cancelActive();
+    final workspace = ref.read(workspaceNotifierProvider.notifier);
+    final tab = workspace.active;
+    if (tab != null && !tab.isStartPage && tab.textSearch.handleEscape()) {
+      return true;
+    }
+    workspace.cancelActive();
     return true;
+  }
+
+  /// Ctrl/Cmd+F opens drawing search on the command dock. In-place edit and
+  /// the attribute dialog keep the chord. The command field is the search
+  /// field, so the chord still switches it.
+  bool _onHardwareFind(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (event.logicalKey != LogicalKeyboardKey.keyF) return false;
+    final keys = HardwareKeyboard.instance;
+    final primary = keys.isControlPressed || keys.isMetaPressed;
+    if (!primary || keys.isAltPressed || keys.isShiftPressed) return false;
+    // The command field stays focused so a verb can be typed without a click.
+    // That field is the search field too, so the chord still switches mode.
+    if (_focusInEditableText() &&
+        FocusManager.instance.primaryFocus != _commandFocus) {
+      return false;
+    }
+    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    final workspace = ref.read(workspaceNotifierProvider.notifier);
+    final tab = workspace.active;
+    if (tab == null || tab.isStartPage) return false;
+    ref.read(commandLineNotifierProvider.notifier).setPaletteOpen(false);
+    tab.textSearch.request();
+    _commandFocus.requestFocus();
+    return true;
+  }
+
+  bool _focusInEditableText() {
+    final nodeContext = FocusManager.instance.primaryFocus?.context;
+    if (nodeContext == null) return false;
+    return nodeContext.findAncestorStateOfType<EditableTextState>() != null;
   }
 
   Future<void> _onNativeEscape(MethodCall call) async {
     if (call.method != 'escape') return;
-    ref.read(workspaceNotifierProvider.notifier).cancelActive();
+    final workspace = ref.read(workspaceNotifierProvider.notifier);
+    final tab = workspace.active;
+    if (tab != null && !tab.isStartPage && tab.textSearch.handleEscape()) {
+      return;
+    }
+    workspace.cancelActive();
   }
 
   Future<void> _bindWindowClose() async {
@@ -375,6 +418,12 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
             return KeyEventResult.ignored;
           }
           ref.read(assistantNotifierProvider.notifier).stopBboxPick();
+          final tab = workspace.active;
+          if (tab != null &&
+              !tab.isStartPage &&
+              tab.textSearch.handleEscape()) {
+            return KeyEventResult.handled;
+          }
           workspace.cancelActive();
           return KeyEventResult.handled;
         },
@@ -494,7 +543,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     final tooltip = context.l10n.resize_reset_width;
     _noteViewOcclusion();
     final showStart = workspace.active == null || workspace.active!.isStartPage;
-    final historyOpen = layout.sidebarOpen && layout.sidebarView == 'history';
     // The document tabs share this row with the sidebar header and the
     // assistant tabs. The drawing itself stays full-bleed under the side
     // panes, starting just below that row.
@@ -519,12 +567,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                       .setPaletteOpen(true),
                 )
               else ...[
-                CanvasHud(
-                  workspace: workspace,
-                  commandFocus: _commandFocus,
-                  historyOpen: historyOpen,
-                  onOpenHistory: () => workspace.revealPanel('history'),
-                ),
+                CanvasHud(workspace: workspace, commandFocus: _commandFocus),
                 CanvasViewportChrome(
                   workspace: workspace,
                   onStopAssistant: () =>
@@ -666,11 +709,10 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       SingleActivator(key, meta: true, shift: shift): run,
     };
     return {
-      ...chord(
-        LogicalKeyboardKey.keyP,
-        () => ref.read(commandLineNotifierProvider.notifier).togglePalette(),
-        shift: true,
-      ),
+      ...chord(LogicalKeyboardKey.keyP, () {
+        workspace.active?.textSearch.close();
+        ref.read(commandLineNotifierProvider.notifier).togglePalette();
+      }, shift: true),
       ...chord(
         LogicalKeyboardKey.keyB,
         ref.read(layoutNotifierProvider.notifier).toggleSidebar,

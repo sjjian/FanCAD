@@ -944,6 +944,36 @@ abstract class AppLocalizations {
   /// **'Type a command'**
   String get hint_type_command;
 
+  /// command dock hint while searching drawn text
+  ///
+  /// In en, this message translates to:
+  /// **'Type text'**
+  String get hint_search_text;
+
+  /// canvas dock mode: type a command
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get hud_mode_command;
+
+  /// canvas dock mode: search drawn text
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get hud_mode_search;
+
+  /// canvas dock: leave text search
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to command'**
+  String get hud_switch_to_command;
+
+  /// canvas dock: search drawn text
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to search'**
+  String get hud_switch_to_search;
+
   /// command history
   ///
   /// In en, this message translates to:
@@ -1261,6 +1291,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Zoom to selection'**
   String get zoom_to_selection;
+
+  /// canvas context menu: search drawn text
+  ///
+  /// In en, this message translates to:
+  /// **'Find text'**
+  String get find_text;
+
+  /// text search has no hits
+  ///
+  /// In en, this message translates to:
+  /// **'No matching text'**
+  String get find_text_empty;
+
+  /// text search kind: single-line text
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get text_kind_text;
+
+  /// text search kind: multiline text
+  ///
+  /// In en, this message translates to:
+  /// **'Multiline text'**
+  String get text_kind_mtext;
+
+  /// text search kind: block attribute
+  ///
+  /// In en, this message translates to:
+  /// **'Attribute'**
+  String get text_kind_attribute;
+
+  /// text search kind: multileader note
+  ///
+  /// In en, this message translates to:
+  /// **'Multileader'**
+  String get text_kind_mleader;
+
+  /// text search kind: dimension label
+  ///
+  /// In en, this message translates to:
+  /// **'Dimension'**
+  String get text_kind_dimension;
 
   /// show hidden objects
   ///

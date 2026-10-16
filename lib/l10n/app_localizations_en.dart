@@ -477,6 +477,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hint_type_command => 'Type a command';
 
   @override
+  String get hint_search_text => 'Type text';
+
+  @override
+  String get hud_mode_command => 'Command';
+
+  @override
+  String get hud_mode_search => 'Search';
+
+  @override
+  String get hud_switch_to_command => 'Switch to command';
+
+  @override
+  String get hud_switch_to_search => 'Switch to search';
+
+  @override
   String get command_history => 'Command history';
 
   @override
@@ -658,6 +673,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get zoom_to_selection => 'Zoom to selection';
+
+  @override
+  String get find_text => 'Find text';
+
+  @override
+  String get find_text_empty => 'No matching text';
+
+  @override
+  String get text_kind_text => 'Text';
+
+  @override
+  String get text_kind_mtext => 'Multiline text';
+
+  @override
+  String get text_kind_attribute => 'Attribute';
+
+  @override
+  String get text_kind_mleader => 'Multileader';
+
+  @override
+  String get text_kind_dimension => 'Dimension';
 
   @override
   String get show_hidden_objects => 'Show hidden objects';

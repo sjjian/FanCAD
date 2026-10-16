@@ -25,14 +25,10 @@ class CanvasHud extends StatelessWidget {
     super.key,
     required this.workspace,
     required this.commandFocus,
-    required this.onOpenHistory,
-    this.historyOpen = false,
   });
 
   final Workspace workspace;
   final FocusNode commandFocus;
-  final VoidCallback onOpenHistory;
-  final bool historyOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -49,12 +45,7 @@ class CanvasHud extends StatelessWidget {
             alignment: Alignment.bottomCenter,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: canvasHudMaxWidth),
-              child: _HudDock(
-                workspace: workspace,
-                commandFocus: commandFocus,
-                historyOpen: historyOpen,
-                onOpenHistory: onOpenHistory,
-              ),
+              child: _HudDock(workspace: workspace, commandFocus: commandFocus),
             ),
           ),
         ),
@@ -127,17 +118,10 @@ const canvasHudPadding = EdgeInsets.symmetric(horizontal: FanCadTokens.space2);
 /// The bottom card plus the command-suggest popup stacked above it so both
 /// share the same max width and stretch to the same left and right edges.
 class _HudDock extends StatefulWidget {
-  const _HudDock({
-    required this.workspace,
-    required this.commandFocus,
-    required this.onOpenHistory,
-    required this.historyOpen,
-  });
+  const _HudDock({required this.workspace, required this.commandFocus});
 
   final Workspace workspace;
   final FocusNode commandFocus;
-  final VoidCallback onOpenHistory;
-  final bool historyOpen;
 
   @override
   State<_HudDock> createState() => _HudDockState();
@@ -177,8 +161,6 @@ class _HudDockState extends State<_HudDock> {
               _CommandBar(
                 workspace: widget.workspace,
                 commandFocus: widget.commandFocus,
-                historyOpen: widget.historyOpen,
-                onOpenHistory: widget.onOpenHistory,
                 input: _input,
                 suggestKey: _suggestKey,
               ),
@@ -363,16 +345,12 @@ class _CommandBar extends StatelessWidget {
   const _CommandBar({
     required this.workspace,
     required this.commandFocus,
-    required this.historyOpen,
-    required this.onOpenHistory,
     required this.input,
     required this.suggestKey,
   });
 
   final Workspace workspace;
   final FocusNode commandFocus;
-  final bool historyOpen;
-  final VoidCallback onOpenHistory;
   final TextEditingController input;
   final GlobalKey<CommandSuggestState> suggestKey;
 
@@ -384,8 +362,6 @@ class _CommandBar extends StatelessWidget {
       child: CommandLinePane(
         workspace: workspace,
         focusNode: commandFocus,
-        historyOpen: historyOpen,
-        onOpenHistory: onOpenHistory,
         input: input,
         suggestKey: suggestKey,
       ),

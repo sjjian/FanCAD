@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,10 +14,10 @@ import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
 import 'dynamic_input_hud.dart';
 
-/// Ranked command matches shown above the canvas HUD while a verb is typed.
+/// Matches shown above the canvas HUD.
 ///
-/// Listens to the command field's [TextEditingController]. The search runs
-/// once on the next frame.
+/// Command mode lists verbs. Search mode lists drawn text in the current
+/// layout. Both listen to the command field and run once on the next frame.
 class CommandSuggest extends ConsumerStatefulWidget {
   const CommandSuggest({
     super.key,
@@ -36,16 +39,32 @@ class CommandSuggest extends ConsumerStatefulWidget {
 
 class CommandSuggestState extends ConsumerState<CommandSuggest> {
   List<CommandDescriptor> _matches = const [];
+  List<TextSearchHit> _textHits = const [];
+  bool _textMode = false;
+  bool _textEmpty = false;
   int _highlighted = 0;
   bool _scheduled = false;
+  TextSearchSignal? _signal;
+  final ScrollController _textScroll = ScrollController();
 
-  bool get isOpen => _matches.isNotEmpty;
-  CommandDescriptor? get current => isOpen ? _matches[_highlighted] : null;
+  bool get isOpen =>
+      _textMode ? _textHits.isNotEmpty || _textEmpty : _matches.isNotEmpty;
+
+  CommandDescriptor? get current =>
+      !_textMode && _matches.isNotEmpty ? _matches[_highlighted] : null;
+
+  TextSearchHit? get currentText {
+    if (!_textMode || _textHits.isEmpty) return null;
+    return _textHits[_highlighted.clamp(0, _textHits.length - 1)];
+  }
+
+  int get _rowCount => _textMode ? _textHits.length : _matches.length;
 
   @override
   void initState() {
     super.initState();
     widget.input.addListener(_schedule);
+    _bind(widget.workspace.active);
   }
 
   @override
@@ -59,8 +78,28 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
 
   @override
   void dispose() {
+    _signal?.removeListener(_onSignal);
     widget.input.removeListener(_schedule);
+    _textScroll.dispose();
     super.dispose();
+  }
+
+  TextSearchSignal? _signalOf(DocumentTab? tab) {
+    if (tab == null || tab.isStartPage) return null;
+    return tab.textSearch;
+  }
+
+  void _bind(DocumentTab? tab) {
+    final signal = _signalOf(tab);
+    if (_signal == signal) return;
+    _signal?.removeListener(_onSignal);
+    _signal = signal;
+    _signal?.addListener(_onSignal);
+  }
+
+  void _onSignal() {
+    if (!mounted) return;
+    _schedule();
   }
 
   void _schedule() {
@@ -78,22 +117,32 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
   }
 
   void _clear() {
-    if (_matches.isEmpty) return;
+    final searching = _signal?.open == true;
+    if (_matches.isEmpty &&
+        _textHits.isEmpty &&
+        !_textEmpty &&
+        _textMode == searching) {
+      return;
+    }
     setState(() {
       _matches = const [];
+      _textHits = const [];
+      _textEmpty = false;
+      _textMode = searching;
       _highlighted = 0;
     });
   }
 
   void _search() {
+    final tab = widget.workspace.active;
+    if (tab != null && !tab.isStartPage && tab.textSearch.open) {
+      _searchText(tab);
+      return;
+    }
     final awaiting = ref.read(commandLineNotifierProvider).prompt != null;
     final query = widget.input.text;
-    if (awaiting || query.trim().isEmpty) {
-      if (_matches.isEmpty) return;
-      setState(() {
-        _matches = const [];
-        _highlighted = 0;
-      });
+    if (awaiting || query.trim().isEmpty || textSearchCommand(query) != null) {
+      _clear();
       return;
     }
     final matches = searchCommandsLocalized(
@@ -103,26 +152,67 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
       limit: CommandSuggest.limit,
     );
     setState(() {
+      _textMode = false;
+      _textHits = const [];
+      _textEmpty = false;
       _matches = matches;
       _highlighted = 0;
     });
   }
 
-  void move(int delta) {
-    if (_matches.isEmpty) return;
+  void _searchText(DocumentTab tab) {
+    final query = widget.input.text;
+    if (query.trim().isEmpty) {
+      _clear();
+      return;
+    }
+    final filtered = filterTextSearchHits(textSearchHits(tab.document), query);
     setState(() {
-      _highlighted = (_highlighted + delta).clamp(0, _matches.length - 1);
+      _textMode = true;
+      _matches = const [];
+      _textHits = filtered;
+      _textEmpty = filtered.isEmpty;
+      _highlighted = 0;
+    });
+    _reveal(0);
+  }
+
+  void move(int delta) {
+    if (_rowCount == 0) return;
+    final next = (_highlighted + delta).clamp(0, _rowCount - 1);
+    setState(() => _highlighted = next);
+    if (_textMode) _reveal(next);
+  }
+
+  /// Keeps the highlighted text row inside the eight-row window.
+  void _reveal(int index) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_textScroll.hasClients) return;
+      final target = index * FanCadTokens.rowHeight;
+      final start = _textScroll.offset;
+      final view = _textScroll.position.viewportDimension;
+      if (target < start) {
+        _textScroll.jumpTo(target);
+      } else if (target + FanCadTokens.rowHeight > start + view) {
+        _textScroll.jumpTo(target + FanCadTokens.rowHeight - view);
+      }
     });
   }
 
   void highlight(int index) {
-    if (_matches.isEmpty) return;
-    final next = index.clamp(0, _matches.length - 1);
+    if (_rowCount == 0) return;
+    final next = index.clamp(0, _rowCount - 1);
     if (next == _highlighted) return;
     setState(() => _highlighted = next);
   }
 
   void accept() {
+    if (_textMode) {
+      final hit = currentText;
+      if (hit == null) return;
+      _jumpToTextHit(ref, widget.workspace, hit);
+      return;
+    }
     final descriptor = current;
     if (descriptor == null) return;
     widget.onAccept(descriptor);
@@ -130,12 +220,30 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
 
   @override
   Widget build(BuildContext context) {
+    final sessionId = ref.watch(
+      workspaceNotifierProvider.select((s) => s.activeSessionId),
+    );
+    ref.listen(workspaceNotifierProvider.select((s) => s.activeSessionId), (
+      _,
+      _,
+    ) {
+      _bind(widget.workspace.active);
+      _search();
+    });
     ref.listen(commandLineNotifierProvider.select((s) => s.prompt != null), (
       _,
       _,
     ) {
       _schedule();
     });
+    if (sessionId != null) {
+      ref.listen(
+        documentTabNotifierProvider(sessionId).select((s) => s.contentEpoch),
+        (_, _) {
+          if (_signal?.open == true) _schedule();
+        },
+      );
+    }
     if (!isOpen) return const SizedBox.shrink();
     final tokens = context.tokens;
     final l10n = context.l10n;
@@ -156,18 +264,68 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
             clipBehavior: Clip.antiAlias,
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (var i = 0; i < _matches.length; i++)
-                  _CommandSuggestRow(
-                    descriptor: _matches[i],
-                    isHighlighted: i == _highlighted,
-                    title: l10n.commandTitle(_matches[i].id, _matches[i].title),
-                    onHover: () => highlight(i),
-                    onTap: () {
-                      highlight(i);
-                      accept();
-                    },
-                  ),
+                if (_textMode) ...[
+                  if (_textEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: FanCadTokens.space3,
+                        vertical: FanCadTokens.space2,
+                      ),
+                      child: Text(
+                        l10n.find_text_empty,
+                        key: const Key('canvas-text-suggest-empty'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tokens.labelStyle.copyWith(
+                          fontSize: 12,
+                          color: tokens.textMuted,
+                        ),
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      key: const Key('canvas-text-suggest-list'),
+                      height:
+                          math.min(_textHits.length, CommandSuggest.limit) *
+                          FanCadTokens.rowHeight,
+                      child: Scrollbar(
+                        controller: _textScroll,
+                        child: ListView.builder(
+                          controller: _textScroll,
+                          itemExtent: FanCadTokens.rowHeight,
+                          itemCount: _textHits.length,
+                          itemBuilder: (context, i) => _TextSuggestRow(
+                            hit: _textHits[i],
+                            index: i,
+                            query: widget.input.text,
+                            selected: i == _highlighted,
+                            kindLabel: _textKindLabel(l10n, _textHits[i].kind),
+                            onHover: () => highlight(i),
+                            onTap: () {
+                              highlight(i);
+                              accept();
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                ] else
+                  for (var i = 0; i < _matches.length; i++)
+                    _CommandSuggestRow(
+                      descriptor: _matches[i],
+                      isHighlighted: i == _highlighted,
+                      title: l10n.commandTitle(
+                        _matches[i].id,
+                        _matches[i].title,
+                      ),
+                      onHover: () => highlight(i),
+                      onTap: () {
+                        highlight(i);
+                        accept();
+                      },
+                    ),
               ],
             ),
           ),
@@ -178,26 +336,165 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
   }
 }
 
+void _jumpToTextHit(WidgetRef ref, Workspace workspace, TextSearchHit hit) {
+  workspace.frameText(hit.bounds);
+  final tab = workspace.active;
+  if (tab == null) return;
+  if (ref.read(workspaceNotifierProvider).runningCommand != null) {
+    workspace.flashHighlights([hit.selectId]);
+    return;
+  }
+  tab.selection.replace([hit.selectId]);
+}
+
+String _textKindLabel(AppLocalizations l10n, TextSearchKind kind) =>
+    switch (kind) {
+      TextSearchKind.text => l10n.text_kind_text,
+      TextSearchKind.mtext => l10n.text_kind_mtext,
+      TextSearchKind.attribute => l10n.text_kind_attribute,
+      TextSearchKind.mleader => l10n.text_kind_mleader,
+      TextSearchKind.dimension => l10n.text_kind_dimension,
+    };
+
+class _TextSuggestRow extends StatelessWidget {
+  const _TextSuggestRow({
+    required this.hit,
+    required this.index,
+    required this.query,
+    required this.selected,
+    required this.kindLabel,
+    required this.onHover,
+    required this.onTap,
+  });
+
+  final TextSearchHit hit;
+  final int index;
+  final String query;
+  final bool selected;
+  final String kindLabel;
+  final VoidCallback onHover;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final meta = [kindLabel, if (hit.layer.isNotEmpty) hit.layer].join(' · ');
+    final tag = hit.tag;
+    return MouseRegion(
+      onEnter: (_) => onHover(),
+      child: FanCadRow(
+        key: Key('canvas-text-suggest-row-${hit.selectId}-$index'),
+        isSelected: selected,
+        onTap: onTap,
+        height: FanCadTokens.rowHeight,
+        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  Flexible(child: _textSnippet(hit.text, query, tokens)),
+                  if (meta.isNotEmpty) ...[
+                    const SizedBox(width: FanCadTokens.space2),
+                    Expanded(
+                      child: Text(
+                        meta,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tokens.labelStyle.copyWith(fontSize: 10.5),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: FanCadTokens.space3),
+            Expanded(
+              child: tag == null || tag.isEmpty
+                  ? const SizedBox.shrink()
+                  : Text(
+                      tag,
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tokens.monoStyle.copyWith(
+                        fontSize: 10.5,
+                        color: tokens.textFaint,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Widget _textSnippet(String text, String query, FanCadTokens tokens) {
+  final display = text.replaceAll('\n', ' ');
+  final needle = query.trim().toLowerCase();
+  final at = needle.isEmpty ? -1 : display.toLowerCase().indexOf(needle);
+  final style = tokens.bodyStyle.copyWith(fontSize: 12);
+  if (at < 0) {
+    return Text(
+      display,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: style,
+    );
+  }
+  const wing = 28;
+  var from = 0;
+  var to = display.length;
+  if (display.length > 64) {
+    from = math.max(0, at - wing);
+    to = math.min(display.length, at + needle.length + wing);
+  }
+  final pad = from > 0 ? 1 : 0;
+  final slice = display.substring(from, to);
+  final shownStart = at - from + pad;
+  final prefix = from > 0 ? '…' : '';
+  final suffix = to < display.length ? '…' : '';
+  final body = '$prefix$slice$suffix';
+  final end = shownStart + needle.length;
+  return Text.rich(
+    TextSpan(
+      style: style,
+      children: [
+        TextSpan(text: body.substring(0, shownStart)),
+        TextSpan(
+          text: body.substring(shownStart, end),
+          style: style.copyWith(
+            color: tokens.accent,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        TextSpan(text: body.substring(end)),
+      ],
+    ),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+  );
+}
+
 /// The command line on the canvas dock.
 ///
 /// This is the component that decides whether the application feels like CAD.
-/// The input keeps focus so typing a verb always works without clicking first,
-/// and Escape always cancels whatever is running. The log lives in the left
-/// sidebar, not stacked above this row.
+/// The input keeps focus so typing a verb always works without clicking first.
+/// Escape cancels whatever is running, except in search mode, where it only
+/// leaves the search. The log lives in the left sidebar, not stacked above
+/// this row.
 class CommandLinePane extends ConsumerStatefulWidget {
   const CommandLinePane({
     super.key,
     required this.workspace,
     required this.focusNode,
-    required this.onOpenHistory,
-    this.historyOpen = false,
     this.input,
     this.suggestKey,
   });
 
   final Workspace workspace;
-  final VoidCallback onOpenHistory;
-  final bool historyOpen;
 
   /// Owned by the workbench so that the canvas can hand focus back here after
   /// a click, which is what keeps typed input working mid-command.
@@ -214,12 +511,16 @@ class CommandLinePane extends ConsumerStatefulWidget {
 
 class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
   TextEditingController? _ownedInput;
+  TextSearchSignal? _signal;
+  String? _seenSession;
 
   TextEditingController get _input => widget.input ?? _ownedInput!;
 
   CommandSuggestState? get _suggest => widget.suggestKey?.currentState;
 
   CommandLineNotifier get _model => widget.workspace.commandLine;
+
+  bool get _searching => _signal?.open == true;
 
   @override
   void initState() {
@@ -228,6 +529,8 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
     // The canvas focuses this node, not the wrapping Focus widget, so Escape
     // has to be handled on the node that actually owns focus.
     widget.focusNode.onKeyEvent = _onKey;
+    _input.addListener(_onInput);
+    _retarget(ref.read(workspaceNotifierProvider).activeSessionId);
   }
 
   @override
@@ -240,17 +543,101 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
     if (widget.input == null && _ownedInput == null) {
       _ownedInput = TextEditingController();
     }
+    if (oldWidget.input != widget.input) {
+      (oldWidget.input ?? _ownedInput)?.removeListener(_onInput);
+      _input.addListener(_onInput);
+    }
   }
 
   @override
   void dispose() {
     widget.focusNode.onKeyEvent = null;
+    _signal?.removeListener(_onSearch);
+    _input.removeListener(_onInput);
     _ownedInput?.dispose();
     super.dispose();
   }
 
-  void _onModelChanged() {
+  TextSearchSignal? _signalOf(DocumentTab? tab) {
+    if (tab == null || tab.isStartPage) return null;
+    return tab.textSearch;
+  }
+
+  void _retarget(String? sessionId) {
+    final signal = _signalOf(widget.workspace.active);
+    if (signal == _signal && sessionId == _seenSession) return;
+    final leftSearch = _signal?.open == true;
+    _signal?.removeListener(_onSearch);
+    _signal = signal;
+    _signal?.addListener(_onSearch);
+    final sessionChanged = sessionId != _seenSession;
+    _seenSession = sessionId;
+    if (!sessionChanged) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _followTab(leftSearch: leftSearch);
+    });
+  }
+
+  void _onSearch() {
     if (!mounted) return;
+    final signal = _signal;
+    if (signal == null || !signal.open) {
+      if (_input.text.isNotEmpty) _input.clear();
+      setState(() {});
+      return;
+    }
+    _showQuery(signal.query, selectAll: true);
+  }
+
+  void _followTab({required bool leftSearch}) {
+    final signal = _signal;
+    if (signal != null && signal.open) {
+      _showQuery(signal.query, selectAll: false);
+      return;
+    }
+    // The field is shared. A search query must not stay behind as a command,
+    // and a command typed on the previous drawing must not be wiped.
+    if (leftSearch && _input.text.isNotEmpty) _input.clear();
+    setState(() {});
+  }
+
+  void _showQuery(String query, {required bool selectAll}) {
+    _input.value = TextEditingValue(
+      text: query,
+      selection: selectAll
+          ? TextSelection(baseOffset: 0, extentOffset: query.length)
+          : TextSelection.collapsed(offset: query.length),
+    );
+    widget.focusNode.requestFocus();
+    setState(() {});
+  }
+
+  void _onInput() {
+    final signal = _signal;
+    if (signal == null || !signal.open) return;
+    if (signal.query == _input.text) return;
+    signal.rememberQuery(_input.text);
+  }
+
+  void _leaveSearch() {
+    final tab = widget.workspace.active;
+    if (tab != null && !tab.isStartPage) tab.textSearch.close();
+    if (_input.text.isNotEmpty) _input.clear();
+  }
+
+  void _onEscape() {
+    final tab = widget.workspace.active;
+    if (tab != null && !tab.isStartPage && tab.textSearch.handleEscape()) {
+      if (_input.text.isNotEmpty) _input.clear();
+      return;
+    }
+    widget.workspace.cancelActive();
+    _input.clear();
+  }
+
+  void _onModelChanged() {
+    if (!mounted || _searching) return;
     final offered = _model.takeOfferedInput();
     if (offered != null) {
       _setText(offered);
@@ -270,16 +657,98 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
   }
 
   void _acceptSuggest() {
+    if (_searching) {
+      _suggest?.accept();
+      return;
+    }
+    final typed = _input.text;
+    if (textSearchCommand(typed) != null) {
+      _submit(typed);
+      return;
+    }
     final descriptor = _suggest?.current;
     _input.clear();
     if (descriptor == null) return;
     widget.workspace.run(descriptor.id);
   }
 
+  KeyEventResult _onSearchKey(KeyEvent event) {
+    switch (event.logicalKey) {
+      case LogicalKeyboardKey.arrowUp:
+      case LogicalKeyboardKey.arrowDown:
+        if (_suggest?.isOpen == true) {
+          final delta = event.logicalKey == LogicalKeyboardKey.arrowUp ? -1 : 1;
+          _suggest!.move(delta);
+          final hit = _suggest!.currentText;
+          if (hit != null) _jumpToTextHit(ref, widget.workspace, hit);
+        }
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.enter:
+      case LogicalKeyboardKey.numpadEnter:
+        if (event is KeyDownEvent) {
+          final hit = _suggest?.currentText;
+          if (hit != null) _jumpToTextHit(ref, widget.workspace, hit);
+        }
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.escape:
+        if (event is KeyDownEvent) _onEscape();
+        return KeyEventResult.handled;
+      default:
+        return KeyEventResult.ignored;
+    }
+  }
+
+  /// Search, a waiting prompt, or text already in the field wants the
+  /// clipboard as characters. An empty idle line leaves Ctrl/Cmd+V for the
+  /// drawing paste. The command field stays focused after a canvas click, so
+  /// that empty line is how a drawing paste still starts.
+  bool _fieldWantsTextPaste() {
+    if (FocusManager.instance.primaryFocus != widget.focusNode) return false;
+    if (_searching || _model.isAwaitingInput) return true;
+    return _input.text.isNotEmpty;
+  }
+
+  bool _isPlainPaste(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (event.logicalKey != LogicalKeyboardKey.keyV) return false;
+    final keys = HardwareKeyboard.instance;
+    final primary = keys.isControlPressed || keys.isMetaPressed;
+    return primary && !keys.isAltPressed && !keys.isShiftPressed;
+  }
+
+  Future<void> _pasteText() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (!mounted) return;
+    final raw = data?.text;
+    if (raw == null || raw.isEmpty) return;
+    final text = raw
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .replaceAll('\n', ' ')
+        .trimRight();
+    if (text.isEmpty) return;
+    final value = _input.value;
+    final selection = value.selection;
+    final start = selection.isValid ? selection.start : value.text.length;
+    final end = selection.isValid ? selection.end : value.text.length;
+    final next = value.text.replaceRange(start, end, text);
+    _input.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: start + text.length),
+    );
+  }
+
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
+    // The window binds this chord to the drawing paste. Handling it on the
+    // focused field inserts the clipboard before that shortcut runs.
+    if (_isPlainPaste(event) && _fieldWantsTextPaste()) {
+      unawaited(_pasteText());
+      return KeyEventResult.handled;
+    }
+    if (_searching) return _onSearchKey(event);
     final suggestOpen = _suggest?.isOpen == true;
     if (suggestOpen) {
       switch (event.logicalKey) {
@@ -298,8 +767,7 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     switch (event.logicalKey) {
       case LogicalKeyboardKey.escape:
-        widget.workspace.cancelActive();
-        _input.clear();
+        _onEscape();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowUp:
         final recalled = _model.recallPrevious();
@@ -338,6 +806,10 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(
+      workspaceNotifierProvider.select((s) => s.activeSessionId),
+      (_, next) => _retarget(next),
+    );
     ref.listen(commandLineNotifierProvider.select((s) => s.offeredInput), (
       previous,
       next,
@@ -351,20 +823,23 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
     final running = ref.watch(
       workspaceNotifierProvider.select((s) => s.runningCommand),
     );
+    final searching = _searching;
     return _buildInput(
       context.tokens,
-      prompt: promptState.$1?.message ?? promptState.$2,
-      keywords: promptState.$1?.keywords ?? const [],
-      awaiting: promptState.$1 != null,
+      searching: searching,
+      prompt: searching ? '' : promptState.$1?.message ?? promptState.$2,
+      keywords: searching ? const [] : promptState.$1?.keywords ?? const [],
+      awaiting: searching ? false : promptState.$1 != null,
       hint: promptState.$1 == null
           ? null
           : commandLineHint(context.l10n, promptState.$1!.kind),
-      running: running != null,
+      running: searching ? false : running != null,
     );
   }
 
   Widget _buildInput(
     FanCadTokens tokens, {
+    required bool searching,
     required String prompt,
     required List<String> keywords,
     required bool awaiting,
@@ -383,25 +858,21 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
       ),
       child: Row(
         children: [
-          FanCadIconButton(
-            key: const Key('command-open-history'),
-            icon: Icons.history,
-            tooltip: context.l10n.command_history,
-            size: 20,
-            iconSize: FanCadTokens.iconMedium,
-            isActive: widget.historyOpen,
-            onPressed: widget.onOpenHistory,
-          ),
-          _HistoryOverflow(
-            onCopy: () {
-              final text = [
-                for (final line in ref.read(commandLineNotifierProvider).lines)
-                  line.text,
-              ].join('\n');
-              Clipboard.setData(ClipboardData(text: text));
-              widget.workspace.notify(context.l10n.copied_history);
-            },
-            onClear: _model.clear,
+          Tooltip(
+            message: searching
+                ? context.l10n.hud_mode_search
+                : context.l10n.hud_mode_command,
+            waitDuration: const Duration(milliseconds: 500),
+            child: SizedBox(
+              key: const Key('canvas-hud-mode'),
+              width: 24,
+              height: 24,
+              child: Icon(
+                searching ? Icons.search : Icons.terminal_outlined,
+                size: FanCadTokens.iconMedium,
+                color: tokens.textMuted,
+              ),
+            ),
           ),
           const SizedBox(width: FanCadTokens.space1),
           Expanded(
@@ -435,10 +906,8 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                 Expanded(
                   child: CallbackShortcuts(
                     bindings: {
-                      const SingleActivator(LogicalKeyboardKey.escape): () {
-                        widget.workspace.cancelActive();
-                        _input.clear();
-                      },
+                      const SingleActivator(LogicalKeyboardKey.escape):
+                          _onEscape,
                     },
                     child: Focus(
                       canRequestFocus: false,
@@ -447,12 +916,21 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                       child: FanCadTextField(
                         controller: _input,
                         focusNode: widget.focusNode,
-                        hintText: awaiting
+                        hintText: searching
+                            ? context.l10n.hint_search_text
+                            : awaiting
                             ? hint
                             : prompt.isEmpty
                             ? context.l10n.hint_type_command
                             : null,
                         onSubmitted: (raw) {
+                          if (_searching) {
+                            final hit = _suggest?.currentText;
+                            if (hit != null) {
+                              _jumpToTextHit(ref, widget.workspace, hit);
+                            }
+                            return;
+                          }
                           if (_suggest?.isOpen == true) {
                             _acceptSuggest();
                             return;
@@ -511,6 +989,28 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                 ),
               ),
             ),
+          FanCadIconButton(
+            key: const Key('canvas-hud-mode-switch'),
+            icon: Icons.swap_horiz,
+            tooltip: searching
+                ? context.l10n.hud_switch_to_command
+                : context.l10n.hud_switch_to_search,
+            size: 24,
+            iconSize: FanCadTokens.iconMedium,
+            onPressed: () {
+              if (searching) {
+                _leaveSearch();
+                widget.focusNode.requestFocus();
+                return;
+              }
+              final tab = widget.workspace.active;
+              if (tab == null || tab.isStartPage) return;
+              ref
+                  .read(commandLineNotifierProvider.notifier)
+                  .setPaletteOpen(false);
+              tab.textSearch.request();
+            },
+          ),
         ],
       ),
     );

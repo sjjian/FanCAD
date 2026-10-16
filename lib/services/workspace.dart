@@ -1075,6 +1075,15 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       if (last == null) return null;
       return run(last);
     }
+    final find = textSearchCommand(text);
+    if (find != null) {
+      final tab = active;
+      if (tab != null && !tab.isStartPage) {
+        commandLine.setPaletteOpen(false);
+        tab.textSearch.request(query: find.isEmpty ? null : find);
+      }
+      return null;
+    }
     final parsed = commands.parseCommandLine(text);
     if (parsed == null) return null;
     if (!parsed.isResolved) {
@@ -1249,6 +1258,17 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       return;
     }
     tab.viewport.zoomTo(bounds, insetLeft: left, insetRight: right);
+  }
+
+  /// Pans a text hit to the middle of the visible canvas. Zoom stays put.
+  void frameText(Bounds2 bounds) {
+    final tab = active;
+    if (tab == null || bounds.isEmpty || !bounds.isFinite) return;
+    tab.viewport.centerInHole(
+      bounds.center,
+      insetLeft: _viewOcclusion.left,
+      insetRight: _viewOcclusion.right,
+    );
   }
 
   @override
@@ -1565,6 +1585,9 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
   final TessellationCache tessellation = TessellationCache();
   final _TabTicks _ticks = _TabTicks();
 
+  /// Canvas text search for this tab. Not written to settings.
+  final TextSearchSignal textSearch = TextSearchSignal();
+
   WorkspaceSessionModel _unbound = const WorkspaceSessionModel(id: '');
   WorkspaceSessionModel Function()? _readRecord;
   void Function(WorkspaceSessionModel Function(WorkspaceSessionModel))?
@@ -1751,8 +1774,81 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
     _tools?.dispose();
     _viewport?.dispose();
     _session?.dispose();
+    textSearch.dispose();
     _ticks.dispose();
   }
+}
+
+/// Open state and query for canvas text search on the command dock.
+///
+/// Kept off Riverpod so a keystroke does not rebuild the drawing, and off the
+/// settings file. Each tab has its own.
+class TextSearchSignal extends ChangeNotifier {
+  bool open = false;
+  String query = '';
+
+  /// Opens search on the command dock. [query] replaces the field when the
+  /// caller typed one.
+  void request({String? query}) {
+    open = true;
+    if (query != null) this.query = query;
+    notifyListeners();
+  }
+
+  void close() {
+    if (!open) return;
+    open = false;
+    notifyListeners();
+  }
+
+  bool _suppressCancel = false;
+  bool _clearSuppress = false;
+
+  /// Leaves search mode for Escape.
+  ///
+  /// The hardware handler, the command field, and the macOS escape channel
+  /// can each see this key. The channel arrives on a later turn. The first
+  /// call closes search; later calls in that window still return true, so
+  /// they do not cancel the command that was waiting.
+  bool handleEscape() {
+    if (open) {
+      open = false;
+      _suppressCancel = true;
+      notifyListeners();
+      _scheduleSuppressClear();
+      return true;
+    }
+    return _suppressCancel;
+  }
+
+  void _scheduleSuppressClear() {
+    if (_clearSuppress) return;
+    _clearSuppress = true;
+    // A microtask is still this key. Hold across the following event so the
+    // AppKit channel, queued beside it, still counts as the same Escape.
+    Future<void>(() {
+      Future<void>(() {
+        _clearSuppress = false;
+        _suppressCancel = false;
+      });
+    });
+  }
+
+  /// Remembers what the field shows without notifying. The dock already rebuilt.
+  void rememberQuery(String value) {
+    query = value;
+  }
+}
+
+/// `FIND` opens canvas text search. A following word seeds the query.
+///
+/// Null means the line is some other command. An empty string means open
+/// without replacing the current query.
+String? textSearchCommand(String text) {
+  final parts = text.trim().split(RegExp(r'\s+'));
+  if (parts.isEmpty || parts.first.toLowerCase() != 'find') return null;
+  if (parts.length == 1) return '';
+  return parts.sublist(1).join(' ');
 }
 
 class _TabTicks extends ChangeNotifier {

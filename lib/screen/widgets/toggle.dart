@@ -45,7 +45,7 @@ class _StatusToggleState extends State<StatusToggle> {
             : (details) => widget.onContextMenu!(details.globalPosition),
         child: Container(
           height: FanCadTokens.statusBarHeight,
-          padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space2),
+          padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
           decoration: BoxDecoration(
             color: widget.isOn
                 ? tokens.pressed

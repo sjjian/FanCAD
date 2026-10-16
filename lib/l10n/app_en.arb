@@ -665,6 +665,26 @@
   "@hint_type_command": {
     "description": "hint type command"
   },
+  "hint_search_text": "Type text",
+  "@hint_search_text": {
+    "description": "command dock hint while searching drawn text"
+  },
+  "hud_mode_command": "Command",
+  "@hud_mode_command": {
+    "description": "canvas dock mode: type a command"
+  },
+  "hud_mode_search": "Search",
+  "@hud_mode_search": {
+    "description": "canvas dock mode: search drawn text"
+  },
+  "hud_switch_to_command": "Switch to command",
+  "@hud_switch_to_command": {
+    "description": "canvas dock: leave text search"
+  },
+  "hud_switch_to_search": "Switch to search",
+  "@hud_switch_to_search": {
+    "description": "canvas dock: search drawn text"
+  },
   "command_history": "Command history",
   "@command_history": {
     "description": "command history"
@@ -929,6 +949,34 @@
   "zoom_to_selection": "Zoom to selection",
   "@zoom_to_selection": {
     "description": "zoom to selection"
+  },
+  "find_text": "Find text",
+  "@find_text": {
+    "description": "canvas context menu: search drawn text"
+  },
+  "find_text_empty": "No matching text",
+  "@find_text_empty": {
+    "description": "text search has no hits"
+  },
+  "text_kind_text": "Text",
+  "@text_kind_text": {
+    "description": "text search kind: single-line text"
+  },
+  "text_kind_mtext": "Multiline text",
+  "@text_kind_mtext": {
+    "description": "text search kind: multiline text"
+  },
+  "text_kind_attribute": "Attribute",
+  "@text_kind_attribute": {
+    "description": "text search kind: block attribute"
+  },
+  "text_kind_mleader": "Multileader",
+  "@text_kind_mleader": {
+    "description": "text search kind: multileader note"
+  },
+  "text_kind_dimension": "Dimension",
+  "@text_kind_dimension": {
+    "description": "text search kind: dimension label"
   },
   "show_hidden_objects": "Show hidden objects",
   "@show_hidden_objects": {

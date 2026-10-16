@@ -18,6 +18,42 @@ void main() {
     return Headless(settings: settings, document: false).workspace;
   }
 
+  test('FIND opens text search on the drawing and seeds the query', () async {
+    final ws = workspace();
+    final tab = ws.newDocument(title: 'A');
+    expect(await ws.submitCommandLine('FIND 客厅'), isNull);
+    expect(tab.textSearch.open, isTrue);
+    expect(tab.textSearch.query, '客厅');
+
+    expect(await ws.submitCommandLine('find'), isNull);
+    expect(tab.textSearch.open, isTrue);
+    expect(tab.textSearch.query, '客厅');
+
+    final start = ws.openStartTab();
+    expect(await ws.submitCommandLine('FIND'), isNull);
+    expect(start.textSearch.open, isFalse);
+  });
+
+  test('escape that closed search still blocks a later cancel', () async {
+    final signal = TextSearchSignal();
+    addTearDown(signal.dispose);
+    signal.request();
+    expect(signal.handleEscape(), isTrue);
+    expect(signal.open, isFalse);
+    expect(signal.handleEscape(), isTrue);
+
+    var duringMicrotask = false;
+    scheduleMicrotask(() {
+      duringMicrotask = signal.handleEscape();
+    });
+    await Future<void>.delayed(Duration.zero);
+    expect(duringMicrotask, isTrue);
+    expect(signal.handleEscape(), isTrue);
+
+    await Future<void>.delayed(Duration.zero);
+    expect(signal.handleEscape(), isFalse);
+  });
+
   test('tabs activate, refuse a dirty close, and force-close the last one', () {
     final ws = workspace();
     final first = ws.newDocument(title: 'A');

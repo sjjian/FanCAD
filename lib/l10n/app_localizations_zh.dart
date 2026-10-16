@@ -470,6 +470,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hint_type_command => '输入命令';
 
   @override
+  String get hint_search_text => '输入文字';
+
+  @override
+  String get hud_mode_command => '命令';
+
+  @override
+  String get hud_mode_search => '搜索';
+
+  @override
+  String get hud_switch_to_command => '切换到命令';
+
+  @override
+  String get hud_switch_to_search => '切换到搜索';
+
+  @override
   String get command_history => '命令历史';
 
   @override
@@ -647,6 +662,27 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get zoom_to_selection => '缩放到选择集';
+
+  @override
+  String get find_text => '查找文字';
+
+  @override
+  String get find_text_empty => '没有匹配的文字';
+
+  @override
+  String get text_kind_text => '文字';
+
+  @override
+  String get text_kind_mtext => '多行文字';
+
+  @override
+  String get text_kind_attribute => '属性';
+
+  @override
+  String get text_kind_mleader => '多重引线';
+
+  @override
+  String get text_kind_dimension => '标注';
 
   @override
   String get show_hidden_objects => '显示隐藏对象';

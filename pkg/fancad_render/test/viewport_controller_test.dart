@@ -225,4 +225,19 @@ void main() {
     controller.panBy(Offset.zero);
     expect(notifications, 2);
   });
+
+  test('centering in the hole keeps the zoom and clears the side panes', () {
+    final controller = ViewportController();
+    addTearDown(controller.dispose);
+    controller.setSize(size, 1);
+    controller.zoomAtCenter(4);
+    final scale = controller.viewport.scale;
+    const point = Vec2(40, 10);
+    controller.centerInHole(point, insetLeft: 100);
+
+    expect(controller.viewport.scale, closeTo(scale, 1e-9));
+    final shift = 100 / (2 * scale);
+    expect(controller.viewport.center.x, closeTo(point.x - shift, 0.2));
+    expect(controller.viewport.center.y, closeTo(point.y, 0.2));
+  });
 }

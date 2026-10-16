@@ -11,6 +11,7 @@ export 'document/paper_viewport.dart';
 export 'document/preview.dart';
 export 'document/spatial_index.dart';
 export 'document/style.dart';
+export 'document/text_search.dart';
 export 'document/units.dart';
 export 'editing/boundary.dart';
 export 'editing/clip.dart';
