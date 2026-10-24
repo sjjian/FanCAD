@@ -1,6 +1,6 @@
 import 'assistant.dart';
+import 'extension.dart';
 import 'layout.dart';
-import 'plugin.dart';
 import 'settings.dart';
 import 'workspace.dart';
 
@@ -11,13 +11,13 @@ class AppSettings {
       assistant = AssistantSettings(store),
       layout = LayoutSettings(store),
       appearance = AppearanceSettings(store),
-      plugins = PluginSettings(store),
+      extensions = ExtensionSettings(store),
       mcp = McpSettings(store);
 
   final WorkspaceStore workspace;
   final AssistantStore assistant;
   final LayoutStore layout;
   final AppearanceStore appearance;
-  final PluginStore plugins;
+  final ExtensionStore extensions;
   final McpStore mcp;
 }

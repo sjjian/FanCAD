@@ -56,7 +56,7 @@ WorkspaceFileCommandsFactory? workspaceFileCommandsOverride(Ref ref) => null;
 /// that lets a command reach the UI.
 ///
 /// This is the object that owns the "one write path" guarantee. Every mutation —
-/// from a toolbar button, a typed command, a plugin, or the model — is a
+/// from a toolbar button, a typed command, an extension, or the model — is a
 /// [CommandRegistry.run] call routed through here, so there is exactly one place
 /// where a change can be observed, logged, undone or refused.
 @Riverpod(keepAlive: true)
@@ -1037,17 +1037,17 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   /// Runs a command non-interactively from a supplied argument map.
   ///
-  /// This is the path plugins and AI tool calls take: identical command
+  /// This is the path extensions and AI tool calls take: identical command
   /// implementations, but every prompt is answered from [args] and an
   /// unanswerable prompt is an error instead of a hang. Headless runs never
   /// fall back to the current selection. An AI write while a person is in a
   /// command is refused; a missing point on an AI run hands off to the
-  /// crosshair instead of cancelling. A saved script is refused; chat and MCP
-  /// use [runSavedScript], and the command line uses [run].
+  /// crosshair instead of cancelling. A saved extension is refused; chat and MCP
+  /// use [runExtension], and the command line uses [run].
   Future<CommandResult> runHeadless(
     String idOrAlias, {
     Map<String, Object?> args = const {},
-    ChangeSource source = ChangeSource.plugin,
+    ChangeSource source = ChangeSource.extension,
     DocumentSession? session,
     String? tab,
     void Function(String message)? log,
@@ -1058,17 +1058,17 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     session: session,
     tab: tab,
     log: log,
-    savedScript: false,
+    isExtension: false,
   );
 
   /// Runs one saved script, `extension.<name>`, from supplied arguments.
   ///
   /// Chat and MCP run a saved script here. The command line uses [run].
   /// [runHeadless] refuses the same id, and a snippet cannot `commands.execute` it.
-  Future<CommandResult> runSavedScript(
+  Future<CommandResult> runExtension(
     String idOrAlias, {
     Map<String, Object?> args = const {},
-    ChangeSource source = ChangeSource.plugin,
+    ChangeSource source = ChangeSource.extension,
     DocumentSession? session,
     String? tab,
     void Function(String message)? log,
@@ -1079,26 +1079,26 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     session: session,
     tab: tab,
     log: log,
-    savedScript: true,
+    isExtension: true,
   );
 
   Future<CommandResult> _runWithArguments(
     String idOrAlias, {
     Map<String, Object?> args = const {},
-    ChangeSource source = ChangeSource.plugin,
+    ChangeSource source = ChangeSource.extension,
     DocumentSession? session,
     String? tab,
     void Function(String message)? log,
-    required bool savedScript,
+    required bool isExtension,
   }) async {
     final descriptor = commands.find(idOrAlias);
     if (descriptor == null) {
       return CommandResult.failed('Unknown command: $idOrAlias');
     }
-    final isScript = descriptor.id.startsWith('extension.');
-    if (isScript != savedScript) {
+    final isExtensionCommand = descriptor.id.startsWith('extension.');
+    if (isExtensionCommand != isExtension) {
       return CommandResult.failed(
-        isScript
+        isExtensionCommand
             ? '${descriptor.id} cannot be called through runHeadless.'
             : 'Not a saved extension: $idOrAlias',
       );

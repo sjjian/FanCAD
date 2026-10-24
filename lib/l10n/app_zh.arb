@@ -429,10 +429,6 @@
   "@commands": {
     "description": "commands"
   },
-  "extensions": "扩展",
-  "@extensions": {
-    "description": "extensions"
-  },
   "re_editor": "扩展编辑器",
   "@re_editor": {
     "description": "re editor"
@@ -468,10 +464,6 @@
   "view_history_hint": "已经执行过的命令",
   "@view_history_hint": {
     "description": "view history hint"
-  },
-  "view_extensions_hint": "已安装扩展及其错误",
-  "@view_extensions_hint": {
-    "description": "view extensions hint"
   },
   "view_export_hint": "这一次导出的格式、范围和图层",
   "@view_export_hint": {
@@ -4054,129 +4046,125 @@
   "@use": {
     "description": "use"
   },
-  "scripts": "扩展",
-  "@scripts": {
-    "description": "scripts sidebar"
+  "extensions": "扩展",
+  "@extensions": {
+    "description": "extensions"
   },
-  "view_scripts_hint": "可以再次运行的已保存扩展",
-  "@view_scripts_hint": {
-    "description": "scripts sidebar hint"
+  "view_extensions_hint": "可以再次运行的已保存扩展",
+  "@view_extensions_hint": {
+    "description": "view extensions hint"
   },
-  "new_script": "新建扩展",
-  "@new_script": {
-    "description": "create a script"
+  "new_extension": "新建扩展",
+  "@new_extension": {
+    "description": "new extension"
   },
-  "run_script": "运行",
-  "@run_script": {
-    "description": "run a script"
+  "run_extension": "运行",
+  "@run_extension": {
+    "description": "run extension"
   },
-  "edit_script": "编辑",
-  "@edit_script": {
-    "description": "edit a script"
+  "edit_extension": "编辑",
+  "@edit_extension": {
+    "description": "edit extension"
   },
-  "configure_script": "配置",
-  "@configure_script": {
-    "description": "open the script configure menu"
+  "configure_extension": "配置",
+  "@configure_extension": {
+    "description": "configure extension"
   },
-  "enable_script": "启用",
-  "@enable_script": {
-    "description": "enable a script"
+  "enable_extension": "启用",
+  "@enable_extension": {
+    "description": "enable extension"
   },
-  "disable_script": "禁用",
-  "@disable_script": {
-    "description": "disable a script"
+  "disable_extension": "禁用",
+  "@disable_extension": {
+    "description": "disable extension"
   },
-  "script_disabled": "已禁用",
-  "@script_disabled": {
-    "description": "script is switched off"
+  "extension_disabled": "已禁用",
+  "@extension_disabled": {
+    "description": "extension disabled"
   },
-  "delete_script": "删除扩展",
-  "@delete_script": {
-    "description": "delete a script"
+  "delete_extension": "删除扩展",
+  "@delete_extension": {
+    "description": "delete extension"
   },
-  "script_usage": "用法",
-  "@script_usage": {
-    "description": "label before how to run a script"
+  "extension_usage": "用法",
+  "@extension_usage": {
+    "description": "extension usage"
   },
-  "no_scripts": "还没有扩展",
-  "@no_scripts": {
-    "description": "empty script list"
+  "no_extensions": "还没有扩展",
+  "@no_extensions": {
+    "description": "no extensions"
   },
-  "scripts_unavailable": "扩展不可用：这次会话没有配置扩展文件夹。",
-  "@scripts_unavailable": {
-    "description": "scripts folder missing"
+  "extensions_unavailable": "扩展不可用：这次会话没有配置扩展文件夹。",
+  "@extensions_unavailable": {
+    "description": "extensions unavailable"
   },
-  "open_scripts_folder": "打开扩展文件夹",
-  "@open_scripts_folder": {
-    "description": "reveal the scripts folder"
+  "open_extensions_folder": "打开扩展文件夹",
+  "@open_extensions_folder": {
+    "description": "open extensions folder"
   },
-  "prompt_script_name": "扩展名称",
-  "@prompt_script_name": {
-    "description": "prompt for a script name"
+  "prompt_extension_name": "扩展名称",
+  "@prompt_extension_name": {
+    "description": "prompt extension name"
   },
-  "hint_type_script": "扩展名或 JavaScript",
-  "@hint_type_script": {
-    "description": "command dock hint in script mode"
+  "hint_type_extension": "扩展名或 JavaScript",
+  "@hint_type_extension": {
+    "description": "hint type extension"
   },
-  "hud_mode_script": "扩展",
-  "@hud_mode_script": {
-    "description": "canvas dock mode: run a script"
+  "hud_mode_extension": "扩展",
+  "@hud_mode_extension": {
+    "description": "hud mode extension"
   },
-  "hud_switch_to_script": "切换到扩展",
-  "@hud_switch_to_script": {
-    "description": "canvas dock: run a script"
+  "hud_switch_to_extension": "切换到扩展",
+  "@hud_switch_to_extension": {
+    "description": "hud switch to extension"
   },
-  "category_scripts": "扩展",
-  "@category_scripts": {
-    "description": "category scripts"
+  "command_extensions_doc": "扩展开发文档",
+  "@command_extensions_doc": {
+    "description": "command extensions doc"
   },
-  "command_scripts_doc": "扩展开发文档",
-  "@command_scripts_doc": {
-    "description": "command scripts doc"
+  "command_extensions_list": "列出扩展",
+  "@command_extensions_list": {
+    "description": "command extensions list"
   },
-  "command_scripts_list": "列出扩展",
-  "@command_scripts_list": {
-    "description": "command scripts list"
+  "command_extensions_read": "读取扩展",
+  "@command_extensions_read": {
+    "description": "command extensions read"
   },
-  "command_scripts_read": "读取扩展",
-  "@command_scripts_read": {
-    "description": "command scripts read"
+  "command_extensions_write": "写入扩展",
+  "@command_extensions_write": {
+    "description": "command extensions write"
   },
-  "command_scripts_write": "写入扩展",
-  "@command_scripts_write": {
-    "description": "command scripts write"
+  "command_extensions_delete": "删除扩展",
+  "@command_extensions_delete": {
+    "description": "command extensions delete"
   },
-  "command_scripts_delete": "删除扩展",
-  "@command_scripts_delete": {
-    "description": "command scripts delete"
+  "command_extensions_run": "运行扩展",
+  "@command_extensions_run": {
+    "description": "command extensions run"
   },
-  "command_scripts_run": "运行扩展",
-  "@command_scripts_run": {
-    "description": "command scripts run"
+  "command_extensions_doc_desc": "返回如何编写一个已保存的扩展。",
+  "@command_extensions_doc_desc": {
+    "description": "command extensions doc desc"
   },
-  "command_scripts_doc_desc": "返回如何编写一个已保存的扩展。",
-  "@command_scripts_doc_desc": {
-    "description": "command scripts doc desc"
+  "command_extensions_list_desc": "列出每个已保存的扩展，包括描述、用法、参数和上次的错误。",
+  "@command_extensions_list_desc": {
+    "description": "command extensions list desc"
   },
-  "command_scripts_list_desc": "列出每个已保存的扩展，包括描述、用法、参数和上次的错误。",
-  "@command_scripts_list_desc": {
-    "description": "command scripts list desc"
+  "command_extensions_read_desc": "读取一个已保存的扩展，包括它的描述、用法和参数。",
+  "@command_extensions_read_desc": {
+    "description": "command extensions read desc"
   },
-  "command_scripts_read_desc": "读取一个已保存的扩展，包括它的描述、用法和参数。",
-  "@command_scripts_read_desc": {
-    "description": "command scripts read desc"
+  "command_extensions_write_desc": "新建或覆盖一个已保存的扩展。描述、用法和参数写在开头的注释里。",
+  "@command_extensions_write_desc": {
+    "description": "command extensions write desc"
   },
-  "command_scripts_write_desc": "新建或覆盖一个已保存的扩展。描述、用法和参数写在开头的注释里。",
-  "@command_scripts_write_desc": {
-    "description": "command scripts write desc"
+  "command_extensions_delete_desc": "删除一个已保存的扩展。",
+  "@command_extensions_delete_desc": {
+    "description": "command extensions delete desc"
   },
-  "command_scripts_delete_desc": "删除一个已保存的扩展。",
-  "@command_scripts_delete_desc": {
-    "description": "command scripts delete desc"
-  },
-  "command_scripts_run_desc": "运行 source 里的一段临时 JavaScript。已保存的扩展是命令 extension.<name>。",
-  "@command_scripts_run_desc": {
-    "description": "command scripts run desc"
+  "command_extensions_run_desc": "运行 source 里的一段临时 JavaScript。已保存的扩展是命令 extension.<name>。",
+  "@command_extensions_run_desc": {
+    "description": "command extensions run desc"
   },
   "command_exec": "执行",
   "@command_exec": {

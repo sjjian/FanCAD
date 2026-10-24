@@ -9,11 +9,11 @@ import 'paths.dart';
 
 const _category = 'Extensions';
 
-/// Saved extensions: one `.js` file each, run through the disposable sandbox.
-class ScriptCommands {
-  ScriptCommands({
+/// Saved extensions: one `.js` file each, run on the script worker.
+class ExtensionCommands {
+  ExtensionCommands({
     required this.directory,
-    required this.runScript,
+    required this.runSource,
     this.onChanged,
     this.onEnabled,
     Set<String>? disabled,
@@ -29,35 +29,35 @@ class ScriptCommands {
     String source, {
     required Map<String, Object?> args,
   })
-  runScript;
+  runSource;
 
   /// Fires after a file or its last error changes, so the sidebar can reload.
   final void Function()? onChanged;
 
-  /// Fires when the user enables or disables one script, so the choice can be
+  /// Fires when the user enables or disables one extension, so the choice can be
   /// written down. [enabled] is the new state.
   final void Function(String name, bool enabled)? onEnabled;
 
-  /// Names the user switched off. A disabled script stays on disk and stays
+  /// Names the user switched off. A disabled extension stays on disk and stays
   /// out of the command line until it is enabled again.
   final Set<String> disabled;
 
   final Map<String, String> errors = {};
 
-  /// Registry the saved-script commands are installed into.
+  /// Registry the saved-extension commands are installed into.
   CommandRegistry? _registry;
   Disposable? _bound;
 
   List<CommandDescriptor> descriptors() => [
-    ScriptsDocCommand().toDescriptor(),
-    ScriptsListCommand(this).toDescriptor(),
-    ScriptsReadCommand(this).toDescriptor(),
-    ScriptsWriteCommand(this).toDescriptor(),
-    ScriptsDeleteCommand(this).toDescriptor(),
-    ScriptsRunCommand(this).toDescriptor(),
+    ExtensionsDocCommand().toDescriptor(),
+    ExtensionsListCommand(this).toDescriptor(),
+    ExtensionsReadCommand(this).toDescriptor(),
+    ExtensionsWriteCommand(this).toDescriptor(),
+    ExtensionsDeleteCommand(this).toDescriptor(),
+    ExtensionsRunCommand(this).toDescriptor(),
   ];
 
-  List<ScriptEntry> list() {
+  List<ExtensionEntry> list() {
     final root = Directory(directory);
     if (directory.isEmpty || !root.existsSync()) return const [];
     final files = <String, File>{};
@@ -65,16 +65,16 @@ class ScriptCommands {
       if (entity is! File) continue;
       if (p.extension(entity.path).toLowerCase() != '.js') continue;
       final name = p.basenameWithoutExtension(entity.path);
-      if (!_isScriptName(name)) continue;
+      if (!_isExtensionName(name)) continue;
       files[name] = entity;
     }
     final names = files.keys.toList()..sort();
     return [for (final name in names) _entry(name, files[name]!)];
   }
 
-  ScriptEntry _entry(String name, File file) {
+  ExtensionEntry _entry(String name, File file) {
     final note = _noteOf(file);
-    return ScriptEntry(
+    return ExtensionEntry(
       name,
       description: note.description,
       usage: note.usage,
@@ -84,10 +84,10 @@ class ScriptCommands {
     );
   }
 
-  /// Turns one saved script on or off. The file stays; the command does not
+  /// Turns one saved extension on or off. The file stays; the command does not
   /// while it is off.
   void setEnabled(String name, bool enabled) {
-    final stem = scriptStem(name);
+    final stem = extensionStem(name);
     if (stem == null) return;
     final changed = enabled ? disabled.remove(stem) : disabled.add(stem);
     if (!changed) return;
@@ -121,7 +121,7 @@ class ScriptCommands {
       final taken = registry.find(entry.name) != null;
       bag.add(
         registry.register(
-          ScriptInvokeCommand(
+          ExtensionInvokeCommand(
             this,
             entry,
             alias: taken ? null : entry.name,
@@ -132,16 +132,16 @@ class ScriptCommands {
     _bound = bag;
   }
 
-  ScriptNote _noteOf(File file) {
+  ExtensionNote _noteOf(File file) {
     try {
-      return scriptNote(file.readAsStringSync());
+      return extensionNote(file.readAsStringSync());
     } on FileSystemException {
-      return const ScriptNote();
+      return const ExtensionNote();
     }
   }
 
   File? fileFor(String name) {
-    final stem = scriptStem(name);
+    final stem = extensionStem(name);
     if (stem == null || directory.isEmpty) return null;
     return resolveInside(directory, '$stem.js');
   }
@@ -152,8 +152,8 @@ class ScriptCommands {
   }
 }
 
-class ScriptEntry {
-  const ScriptEntry(
+class ExtensionEntry {
+  const ExtensionEntry(
     this.name, {
     this.description,
     this.usage,
@@ -170,18 +170,18 @@ class ScriptEntry {
   final bool enabled;
 }
 
-/// What a script says about itself. Taken from the comment at the top of the
-/// file, so the sidebar and `scripts.list` can show it without a second file.
-class ScriptNote {
-  const ScriptNote({this.description, this.usage, this.params = const []});
+/// What an extension says about itself. Taken from the comment at the top of the
+/// file, so the sidebar and `extensions.list` can show it without a second file.
+class ExtensionNote {
+  const ExtensionNote({this.description, this.usage, this.params = const []});
 
   final String? description;
   final String? usage;
   final List<ParamSpec> params;
 }
 
-/// A new script. The header is the description and usage a person edits.
-const scriptTemplate = '''
+/// A new extension. The header is the description and usage a person edits.
+const extensionTemplate = '''
 /**
  * description: 
  * usage: 
@@ -193,9 +193,9 @@ const scriptTemplate = '''
 ///
 /// A block comment or a run of `//` lines counts. A comment later in the file
 /// does not. Blank values are left out.
-ScriptNote scriptNote(String source) {
+ExtensionNote extensionNote(String source) {
   final header = _leadingComment(source);
-  if (header == null) return const ScriptNote();
+  if (header == null) return const ExtensionNote();
   String? description;
   String? usage;
   String? current;
@@ -223,7 +223,7 @@ ScriptNote scriptNote(String source) {
       }
     }
   }
-  return ScriptNote(
+  return ExtensionNote(
     description: _present(description),
     usage: _present(usage),
     params: params,
@@ -346,20 +346,20 @@ String? _present(String? value) {
   return text;
 }
 
-/// `polar.js` and `polar` are the same script. Anything else is refused.
-String? scriptStem(String raw) {
+/// `polar.js` and `polar` are the same extension. Anything else is refused.
+String? extensionStem(String raw) {
   var stem = raw.trim();
   if (stem.toLowerCase().endsWith('.js')) {
     stem = stem.substring(0, stem.length - 3);
   }
-  if (!_isScriptName(stem)) return null;
+  if (!_isExtensionName(stem)) return null;
   return stem;
 }
 
-bool _isScriptName(String value) =>
+bool _isExtensionName(String value) =>
     isSafeSegment(value) && !value.contains('/') && !value.contains('\\');
 
-/// How to write a saved extension. Returned by [ScriptsDocCommand].
+/// How to write a saved extension. Returned by [ExtensionsDocCommand].
 const extensionGuide = r'''
 A saved extension is one JavaScript file. Try the snippet with the exec tool first. Save it with extensions.write args={name, content}. Run the saved file as extension.<name>.
 
@@ -385,8 +385,8 @@ Call a command with await fancad.commands.execute(path, args). path and args mat
 fancad.document.summary(), fancad.document.query(filter), fancad.document.entity(id), and fancad.selection.get() read the drawing. fancad.document.edit(label, operations) is edit.apply. Return the value the caller should see.
 ''';
 
-class ScriptsDocCommand extends FanCadCommand {
-  const ScriptsDocCommand();
+class ExtensionsDocCommand extends FanCadCommand {
+  const ExtensionsDocCommand();
 
   @override
   String get id => 'extensions.doc';
@@ -408,10 +408,10 @@ class ScriptsDocCommand extends FanCadCommand {
   }
 }
 
-class ScriptsListCommand extends FanCadCommand {
-  ScriptsListCommand(this.scripts);
+class ExtensionsListCommand extends FanCadCommand {
+  ExtensionsListCommand(this.extensions);
 
-  final ScriptCommands scripts;
+  final ExtensionCommands extensions;
 
   @override
   String get id => 'extensions.list';
@@ -427,7 +427,7 @@ class ScriptsListCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final entries = scripts.list();
+    final entries = extensions.list();
     return CommandResult.ok(
       message: '${entries.length} extension(s)',
       data: {
@@ -448,10 +448,10 @@ class ScriptsListCommand extends FanCadCommand {
   }
 }
 
-class ScriptsReadCommand extends FanCadCommand {
-  ScriptsReadCommand(this.scripts);
+class ExtensionsReadCommand extends FanCadCommand {
+  ExtensionsReadCommand(this.extensions);
 
-  final ScriptCommands scripts;
+  final ExtensionCommands extensions;
 
   @override
   String get id => 'extensions.read';
@@ -473,9 +473,9 @@ class ScriptsReadCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final name = await context.resolveText(
       'name',
-      context.l10n.prompt_script_name,
+      context.l10n.prompt_extension_name,
     );
-    final file = scripts.fileFor(name);
+    final file = extensions.fileFor(name);
     if (file == null) {
       return CommandResult.failed('"$name" is not an extension name');
     }
@@ -483,10 +483,10 @@ class ScriptsReadCommand extends FanCadCommand {
       return CommandResult.failed('No such extension: $name');
     }
     final content = file.readAsStringSync();
-    final note = scriptNote(content);
+    final note = extensionNote(content);
     return CommandResult.ok(
       data: {
-        'name': scriptStem(name),
+        'name': extensionStem(name),
         if (note.description != null) 'description': note.description,
         if (note.usage != null) 'usage': note.usage,
         if (note.params.isNotEmpty)
@@ -497,10 +497,10 @@ class ScriptsReadCommand extends FanCadCommand {
   }
 }
 
-class ScriptsWriteCommand extends FanCadCommand {
-  ScriptsWriteCommand(this.scripts);
+class ExtensionsWriteCommand extends FanCadCommand {
+  ExtensionsWriteCommand(this.extensions);
 
-  final ScriptCommands scripts;
+  final ExtensionCommands extensions;
 
   @override
   String get id => 'extensions.write';
@@ -525,28 +525,28 @@ class ScriptsWriteCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final name = await context.resolveText(
       'name',
-      context.l10n.prompt_script_name,
+      context.l10n.prompt_extension_name,
     );
     final content = context.args.text('content') ?? '';
-    final file = scripts.fileFor(name);
+    final file = extensions.fileFor(name);
     if (file == null) {
       return CommandResult.failed('"$name" is not an extension name');
     }
-    if (scripts.directory.isEmpty) {
+    if (extensions.directory.isEmpty) {
       return const CommandResult.failed('extensions are unavailable');
     }
-    await Directory(scripts.directory).create(recursive: true);
+    await Directory(extensions.directory).create(recursive: true);
     await file.writeAsString(content);
-    final stem = scriptStem(name)!;
-    scripts.changed();
+    final stem = extensionStem(name)!;
+    extensions.changed();
     return CommandResult.ok(message: 'Wrote $stem', data: {'name': stem});
   }
 }
 
-class ScriptsDeleteCommand extends FanCadCommand {
-  ScriptsDeleteCommand(this.scripts);
+class ExtensionsDeleteCommand extends FanCadCommand {
+  ExtensionsDeleteCommand(this.extensions);
 
-  final ScriptCommands scripts;
+  final ExtensionCommands extensions;
 
   @override
   String get id => 'extensions.delete';
@@ -569,25 +569,25 @@ class ScriptsDeleteCommand extends FanCadCommand {
   Future<CommandResult> run(CommandContext context) async {
     final name = await context.resolveText(
       'name',
-      context.l10n.prompt_script_name,
+      context.l10n.prompt_extension_name,
     );
-    final file = scripts.fileFor(name);
+    final file = extensions.fileFor(name);
     if (file == null) {
       return CommandResult.failed('"$name" is not an extension name');
     }
     if (file.existsSync()) await file.delete();
-    final stem = scriptStem(name)!;
-    scripts.errors.remove(stem);
-    scripts.setEnabled(stem, true);
-    scripts.changed();
+    final stem = extensionStem(name)!;
+    extensions.errors.remove(stem);
+    extensions.setEnabled(stem, true);
+    extensions.changed();
     return CommandResult.ok(message: 'Deleted $stem', data: {'name': stem});
   }
 }
 
-class ScriptsRunCommand extends FanCadCommand {
-  ScriptsRunCommand(this.scripts);
+class ExtensionsRunCommand extends FanCadCommand {
+  ExtensionsRunCommand(this.extensions);
 
-  final ScriptCommands scripts;
+  final ExtensionCommands extensions;
 
   @override
   String get id => 'extensions.run';
@@ -602,7 +602,7 @@ class ScriptsRunCommand extends FanCadCommand {
   @override
   CommandRisk get risk => CommandRisk.destructive;
 
-  /// Unsaved source is the in-app chat sandbox, not this command. Chat and
+  /// Unsaved source from chat goes through its own `exec` tool, not this command. Chat and
   /// MCP run a saved file through `extension.<name>`. The command line uses the same id.
   @override
   AiExposure get aiExposure => AiExposure.hostOnly;
@@ -623,7 +623,7 @@ class ScriptsRunCommand extends FanCadCommand {
         'source is required. A saved extension runs as extension.<name>',
       );
     }
-    final result = await scripts.runScript(inline, args: const {});
+    final result = await extensions.runSource(inline, args: const {});
     if (!result.isOk) return result;
     final value = result.data?['value'];
     return CommandResult.ok(
@@ -633,12 +633,12 @@ class ScriptsRunCommand extends FanCadCommand {
   }
 }
 
-/// One saved script, addressed as `extension.<name>` and, when free, by its name.
-class ScriptInvokeCommand extends FanCadCommand {
-  ScriptInvokeCommand(this.scripts, this.entry, {this.alias});
+/// One saved extension, addressed as `extension.<name>` and, when free, by its name.
+class ExtensionInvokeCommand extends FanCadCommand {
+  ExtensionInvokeCommand(this.extensions, this.entry, {this.alias});
 
-  final ScriptCommands scripts;
-  final ScriptEntry entry;
+  final ExtensionCommands extensions;
+  final ExtensionEntry entry;
   final String? alias;
 
   @override
@@ -661,7 +661,7 @@ class ScriptInvokeCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final file = scripts.fileFor(entry.name);
+    final file = extensions.fileFor(entry.name);
     if (file == null || !file.existsSync()) {
       return CommandResult.failed('No such extension: ${entry.name}');
     }
@@ -681,16 +681,16 @@ class ScriptInvokeCommand extends FanCadCommand {
     for (final param in params) {
       values[param.name] = await _ask(context, param);
     }
-    final result = await scripts.runScript(
+    final result = await extensions.runSource(
       file.readAsStringSync(),
       args: values,
     );
     if (result.isFailed) {
-      scripts.errors[entry.name] = result.message;
+      extensions.errors[entry.name] = result.message;
     } else {
-      scripts.errors.remove(entry.name);
+      extensions.errors.remove(entry.name);
     }
-    scripts.changed();
+    extensions.changed();
     if (!result.isOk) return result;
     final value = result.data?['value'];
     return CommandResult.ok(

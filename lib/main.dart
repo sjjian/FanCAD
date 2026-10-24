@@ -23,7 +23,7 @@ Future<void> main(List<String> arguments) async {
 
   final supportDirectory = await _resolveSupportDirectory();
   final settings = await SettingsStore.open(supportDirectory);
-  final pluginsDirectory = await _extensionsDirectory(supportDirectory);
+  final extensionsDirectory = await _extensionsDirectory(supportDirectory);
 
   await _configureWindow();
 
@@ -31,7 +31,7 @@ Future<void> main(List<String> arguments) async {
     ProviderScope(
       overrides: [
         settingsProvider.overrideWithValue(settings),
-        pluginsDirectoryProvider.overrideWithValue(pluginsDirectory),
+        extensionsDirectoryProvider.overrideWithValue(extensionsDirectory),
       ],
       child: FanCadApp(
         // argv on Windows / Linux; macOS Finder arrives through the plugin.

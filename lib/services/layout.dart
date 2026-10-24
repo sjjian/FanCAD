@@ -24,8 +24,11 @@ class LayoutNotifier extends _$LayoutNotifier {
     'layouts',
     'history',
     'commands',
-    'plugins',
+    'extensions',
   };
+
+  /// Sidebar ids from older builds that now open another view.
+  static const _renamedViews = {'plugins': 'extensions'};
 
   @override
   LayoutModel build() {
@@ -33,7 +36,7 @@ class LayoutNotifier extends _$LayoutNotifier {
     // A leftover assistant or preferences id must not open an empty left
     // pane.
     return stored.copyWith(
-      sidebarView: _known(stored.sidebarView) ? stored.sidebarView : 'layers',
+      sidebarView: _leftViewId(stored.sidebarView),
       sidebarWidth: stored.sidebarWidth.clamp(
         SidebarLayout.minWidth,
         SidebarLayout.maxWidth,
@@ -53,7 +56,10 @@ class LayoutNotifier extends _$LayoutNotifier {
 
   /// Assistant used to live here; a leftover setting must not open an empty
   /// left pane after the chat moved to the right.
-  String _leftViewId(String viewId) => _known(viewId) ? viewId : 'layers';
+  String _leftViewId(String viewId) {
+    final current = _renamedViews[viewId] ?? viewId;
+    return _known(current) ? current : 'layers';
+  }
 
   /// Clicking the active icon collapses the sidebar, as VS Code does.
   void select(String viewId) {

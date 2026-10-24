@@ -9,22 +9,22 @@ import 'script_runtime.dart';
 /// Serves a request a running script made of the application.
 ///
 /// [scope] names the run that asked.
-typedef PluginCallHandler =
+typedef ExtensionCallHandler =
     Future<Object?> Function(
       String scope,
       String method,
       Map<String, Object?> params,
     );
 
-/// A channel to a place where plugins run.
+/// A channel to the worker scripts run on.
 ///
 /// Two implementations, and the difference matters. [IsolateTransport] is what
-/// ships: plugin code on another thread, so a badly behaved extension cannot
+/// ships: script code on another thread, so a badly behaved extension cannot
 /// stall a frame. [LocalTransport] runs everything inline, which is how the
-/// load, invoke and error paths get tested without spawning anything.
-abstract class PluginTransport {
+/// open, eval and error paths get tested without spawning anything.
+abstract class ExtensionTransport {
   /// Brings the transport up and installs the handler for `fancad.*` calls.
-  Future<void> start(PluginCallHandler onPluginCall);
+  Future<void> start(ExtensionCallHandler onExtensionCall);
 
   Future<Object?> request(
     String method, {
@@ -45,18 +45,15 @@ abstract class PluginTransport {
   Future<void> dispose({bool immediate = false});
 }
 
-/// Runs the plugin runtime on the calling isolate.
-class LocalTransport implements PluginTransport {
+/// Runs the script runtime on the calling isolate.
+class LocalTransport implements ExtensionTransport {
   LocalTransport({JsEngineFactory? engineFactory, this.hostVersion = '0.1.0'})
     : engineFactory =
           engineFactory ??
           (({required int memoryLimit, required int stackSize}) =>
               ScriptedJsEngine());
 
-  /// The factory this in-process transport builds plugins with.
-  ///
-  /// Exposed so a scratch worker can be a second [LocalTransport] with the
-  /// same stand-in engine, instead of spawning QuickJS in a test.
+  /// The factory this in-process transport builds engines with.
   final JsEngineFactory engineFactory;
   final String hostVersion;
 
@@ -71,10 +68,10 @@ class LocalTransport implements PluginTransport {
   bool get isAlive => _alive;
 
   @override
-  Future<void> start(PluginCallHandler onPluginCall) async {
+  Future<void> start(ExtensionCallHandler onExtensionCall) async {
     runtime = ScriptRuntime(
       createEngine: engineFactory,
-      callHost: onPluginCall,
+      callHost: onExtensionCall,
       hostVersion: hostVersion,
     );
     _alive = true;
@@ -117,23 +114,22 @@ class LocalTransport implements PluginTransport {
   }
 }
 
-/// Runs plugins on a dedicated isolate.
+/// Runs scripts on a dedicated isolate.
 ///
-/// One isolate for all plugins, following the same reasoning as an editor
-/// extension host: per-plugin isolates would multiply the FFI runtime and the
-/// port bookkeeping without buying isolation the per-plugin JavaScript runtimes
+/// One isolate for every run, following the same reasoning as an editor
+/// extension host: per-run isolates would multiply the FFI runtime and the
+/// port bookkeeping without buying isolation the per-run JavaScript engines
 /// do not already provide.
-class IsolateTransport implements PluginTransport {
+class IsolateTransport implements ExtensionTransport {
   IsolateTransport({
     this.hostVersion = '0.1.0',
     this.runtime = EngineRuntimes.defaultRuntime,
-    this.debugName = 'fancad.plugins',
+    this.debugName = 'fancad.extensions',
   });
 
   final String hostVersion;
 
-  /// Default runtime name handed to the worker. A manifest can still name
-  /// another engine the worker's registry knows.
+  /// Runtime name handed to the worker, looked up in its [EngineRegistry].
   final String runtime;
   final String debugName;
 
@@ -141,7 +137,7 @@ class IsolateTransport implements PluginTransport {
   SendPort? _toWorker;
   ReceivePort? _fromWorker;
   RpcPeer? _peer;
-  PluginCallHandler? _onPluginCall;
+  ExtensionCallHandler? _onExtensionCall;
   final StreamController<String> _died = StreamController<String>.broadcast();
   bool _alive = false;
 
@@ -152,8 +148,8 @@ class IsolateTransport implements PluginTransport {
   bool get isAlive => _alive;
 
   @override
-  Future<void> start(PluginCallHandler onPluginCall) async {
-    _onPluginCall = onPluginCall;
+  Future<void> start(ExtensionCallHandler onExtensionCall) async {
+    _onExtensionCall = onExtensionCall;
     final ready = Completer<SendPort>();
     final receive = ReceivePort();
     _fromWorker = receive;
@@ -162,9 +158,9 @@ class IsolateTransport implements PluginTransport {
     // a silent hang: every pending request needs failing.
     final onExit = ReceivePort();
     final onError = ReceivePort();
-    onExit.listen((_) => _handleDeath('the plugin worker exited'));
+    onExit.listen((_) => _handleDeath('the script worker exited'));
     onError.listen(
-      (error) => _handleDeath('the plugin worker crashed: $error'),
+      (error) => _handleDeath('the script worker crashed: $error'),
     );
 
     receive.listen((message) {
@@ -178,7 +174,7 @@ class IsolateTransport implements PluginTransport {
     });
 
     _isolate = await Isolate.spawn(
-      pluginWorkerMain,
+      extensionWorkerMain,
       _WorkerBootstrap(receive.sendPort, hostVersion, runtime),
       debugName: debugName,
       onExit: onExit.sendPort,
@@ -195,7 +191,7 @@ class IsolateTransport implements PluginTransport {
   }
 
   Future<Object?> _serveWorkerRequest(RpcRequest request) async {
-    final handler = _onPluginCall;
+    final handler = _onExtensionCall;
     if (handler == null) {
       throw const RpcException(
         RpcErrorCode.internalError,
@@ -224,7 +220,7 @@ class IsolateTransport implements PluginTransport {
     if (!_alive || peer == null) {
       throw const RpcException(
         RpcErrorCode.workerDead,
-        'the plugin worker is not running',
+        'the script worker is not running',
       );
     }
     return peer.request(method, params: params, timeout: timeout);
@@ -269,8 +265,8 @@ class _WorkerBootstrap {
   final SendPort hostPort;
   final String hostVersion;
 
-  /// Default engine name. The worker resolves it, and each manifest's
-  /// `runtime`, through [EngineRegistry] inside the isolate.
+  /// Engine name. The worker resolves it through [EngineRegistry] inside the
+  /// isolate.
   final String runtime;
 }
 
@@ -278,7 +274,7 @@ class _WorkerBootstrap {
 ///
 /// Top-level and public because [Isolate.spawn] can only take a top-level or
 /// static function.
-void pluginWorkerMain(Object? bootstrap) {
+void extensionWorkerMain(Object? bootstrap) {
   if (bootstrap is! _WorkerBootstrap) return;
   final fromHost = ReceivePort();
   late final RpcPeer peer;

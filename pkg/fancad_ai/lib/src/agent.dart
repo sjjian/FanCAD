@@ -451,7 +451,7 @@ class AgentLoop {
     )
     ..addProvider(HostOperationProvider(_hostTools()));
 
-  OperationCatalog _scriptCatalog() => OperationCatalog()
+  OperationCatalog _extensionCatalog() => OperationCatalog()
     ..addProvider(
       CommandOperationProvider(
         registry: registry,
@@ -462,7 +462,7 @@ class AgentLoop {
 
   Future<void> _runCalls(List<LlmToolCall> calls, Conversation convo) async {
     final drawing = OpsDispatcher(_opsCatalog());
-    final scripts = OpsDispatcher(_scriptCatalog());
+    final scripts = OpsDispatcher(_extensionCatalog());
     final images = <ToolImage>[];
     var answeredAll = true;
     for (final call in calls) {

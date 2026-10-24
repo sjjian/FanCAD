@@ -13,14 +13,14 @@ void main() {
 
   late Headless app;
   late Directory root;
-  late ScriptCommands scripts;
+  late ExtensionCommands scripts;
 
   setUp(() {
     root = tempDir(prefix: 'fancad-scripts');
     app = Headless();
-    scripts = ScriptCommands(
+    scripts = ExtensionCommands(
       directory: root.path,
-      runScript: (source, {required args}) async {
+      runSource: (source, {required args}) async {
         if (source.contains('throw')) {
           return const CommandResult.failed('boom');
         }
@@ -41,7 +41,7 @@ void main() {
   Future<CommandResult> invoke(
     String id, [
     Map<String, Object?> args = const {},
-  ]) => app.workspace.runSavedScript(id, args: args);
+  ]) => app.workspace.runExtension(id, args: args);
 
   test('extensions.doc returns the writing guide', () async {
     final result = await run('extensions.doc');
@@ -156,23 +156,28 @@ void main() {
 
   test('only the opening comment supplies description and usage', () {
     expect(
-      scriptNote(
+      extensionNote(
         '// description: Line form.\n// usage: Just run.\n1\n',
       ).description,
       'Line form.',
     );
     expect(
-      scriptNote('// description: Line form.\n// usage: Just run.\n1\n').usage,
+      extensionNote(
+        '// description: Line form.\n// usage: Just run.\n1\n',
+      ).usage,
       'Just run.',
     );
     expect(
-      scriptNote(
+      extensionNote(
         'const x = 1;\n/**\n * description: hidden\n */\n',
       ).description,
       isNull,
     );
-    expect(scriptNote('/**\n * description: \n * usage:\n */\n').usage, isNull);
-    final noted = scriptNote('''
+    expect(
+      extensionNote('/**\n * description: \n * usage:\n */\n').usage,
+      isNull,
+    );
+    final noted = extensionNote('''
 /**
  * description: Circles.
  * param center: point Centre

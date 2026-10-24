@@ -13,8 +13,8 @@ enum ChangeSource {
   /// A command invoked from the command line or command palette.
   command,
 
-  /// Code running inside a plugin.
-  plugin,
+  /// A saved extension or an unsaved snippet running on the script worker.
+  extension,
 
   /// An AI agent turn.
   ai,
@@ -29,7 +29,7 @@ enum ChangeSource {
 /// The smallest unit of document mutation.
 ///
 /// Every patch knows how to apply itself and how to build its own inverse.
-/// This is what makes undo, AI change previews and plugin sandboxing share one
+/// This is what makes undo, AI change previews and extension runs share one
 /// mechanism: a preview is a patch list that has not been applied yet, and undo
 /// is the inverted list.
 @immutable

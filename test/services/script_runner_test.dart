@@ -9,7 +9,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   ScriptRunner quickJsRunner({
-    PluginCallHandler? onCall,
+    ExtensionCallHandler? onCall,
     Duration timeout = const Duration(seconds: 30),
   }) {
     _linkQuickJsForTests();

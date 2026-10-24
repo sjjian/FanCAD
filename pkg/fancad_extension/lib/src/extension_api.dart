@@ -8,7 +8,7 @@ import 'protocol.dart';
 ///
 /// The runner depends on this rather than on the Flutter workspace, which
 /// keeps the script pipeline testable without the widget tree.
-abstract class PluginDelegate {
+abstract class ExtensionHost {
   /// The drawing named by a script `tab` argument. Null selector is the
   /// active drawing.
   DocumentSession? sessionFor(String? selector);
@@ -36,10 +36,10 @@ abstract class PluginDelegate {
 }
 
 /// Serves the `fancad.*` calls a script makes.
-class PluginApi {
-  PluginApi({required this.delegate});
+class ExtensionApi {
+  ExtensionApi({required this.delegate});
 
-  final PluginDelegate delegate;
+  final ExtensionHost delegate;
 
   Future<Object?> call(
     String scope,

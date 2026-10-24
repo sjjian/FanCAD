@@ -20,12 +20,12 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         settingsProvider.overrideWithValue(SettingsStore.inMemory()),
-        pluginsDirectoryProvider.overrideWithValue(''),
+        extensionsDirectoryProvider.overrideWithValue(''),
       ],
     );
     addTearDown(container.dispose);
 
-    expect(container.read(pluginNotifierProvider.notifier).runner, isNull);
+    expect(container.read(extensionNotifierProvider.notifier).runner, isNull);
   });
 
   test('an extensions folder wires a runner without starting a worker', () {
@@ -35,8 +35,8 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         settingsProvider.overrideWithValue(SettingsStore.inMemory()),
-        pluginsDirectoryProvider.overrideWithValue(root.path),
-        pluginTransportProvider.overrideWithValue(() {
+        extensionsDirectoryProvider.overrideWithValue(root.path),
+        extensionTransportProvider.overrideWithValue(() {
           opened += 1;
           return LocalTransport();
         }),
@@ -44,7 +44,10 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    expect(container.read(pluginNotifierProvider.notifier).runner, isNotNull);
+    expect(
+      container.read(extensionNotifierProvider.notifier).runner,
+      isNotNull,
+    );
     expect(opened, 0);
     final registry = container.read(commandRegistryProvider);
     expect(registry.find('extensions.list'), isNotNull);
@@ -102,6 +105,25 @@ void main() {
       settings.getDouble(SettingsKeys.sidebarWidth),
       SidebarLayout.maxWidth,
     );
+  });
+
+  test('a stored plugins view opens the extensions view', () {
+    final sidebar = containerOf(
+      SettingsStore.inMemory({SettingsKeys.sidebarView: 'plugins'}),
+    ).read(layoutNotifierProvider.notifier);
+    expect(sidebar.state.sidebarView, 'extensions');
+  });
+
+  test('extensions switched off before the rename stay off', () {
+    final settings = SettingsStore.inMemory({
+      'scripts.disabled': ['rings'],
+    });
+    final store = ExtensionSettings(settings);
+    expect(store.disabledIds(), {'rings'});
+
+    store.setDisabled('polar', true);
+    expect(settings.values['extensions.disabled'], ['polar', 'rings']);
+    expect(settings.values.containsKey('scripts.disabled'), isFalse);
   });
 
   test('a leftover assistant view does not occupy the left sidebar', () {

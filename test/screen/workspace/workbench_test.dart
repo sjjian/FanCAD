@@ -96,7 +96,7 @@ void main() {
     expect(find.byIcon(Icons.auto_awesome_outlined), findsOneWidget);
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
     expect(find.byKey(const Key('activity-preferences')), findsOneWidget);
-    expect(find.byKey(const Key('activity-plugins')), findsOneWidget);
+    expect(find.byKey(const Key('activity-extensions')), findsOneWidget);
     expect(find.byKey(const Key('activity-editor')), findsNothing);
   });
 

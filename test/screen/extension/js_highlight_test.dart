@@ -1,4 +1,4 @@
-import 'package:fancad/screen/plugin/js_highlight.dart';
+import 'package:fancad/screen/extension/js_highlight.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

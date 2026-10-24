@@ -304,9 +304,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commands => 'Commands';
 
   @override
-  String get extensions => 'Extensions';
-
-  @override
   String get re_editor => 'Re-Editor';
 
   @override
@@ -332,9 +329,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get view_history_hint => 'Commands that have already run';
-
-  @override
-  String get view_extensions_hint => 'Installed plugins and their errors';
 
   @override
   String get view_export_hint => 'Format, area and layers for this export';
@@ -3141,102 +3135,99 @@ class AppLocalizationsEn extends AppLocalizations {
   String get use => 'Use';
 
   @override
-  String get scripts => 'Extensions';
+  String get extensions => 'Extensions';
 
   @override
-  String get view_scripts_hint => 'Saved extensions you can run again';
+  String get view_extensions_hint => 'Saved extensions you can run again';
 
   @override
-  String get new_script => 'New extension';
+  String get new_extension => 'New extension';
 
   @override
-  String get run_script => 'Run';
+  String get run_extension => 'Run';
 
   @override
-  String get edit_script => 'Edit';
+  String get edit_extension => 'Edit';
 
   @override
-  String get configure_script => 'Configure';
+  String get configure_extension => 'Configure';
 
   @override
-  String get enable_script => 'Enable';
+  String get enable_extension => 'Enable';
 
   @override
-  String get disable_script => 'Disable';
+  String get disable_extension => 'Disable';
 
   @override
-  String get script_disabled => 'Disabled';
+  String get extension_disabled => 'Disabled';
 
   @override
-  String get delete_script => 'Delete extension';
+  String get delete_extension => 'Delete extension';
 
   @override
-  String get script_usage => 'Usage';
+  String get extension_usage => 'Usage';
 
   @override
-  String get no_scripts => 'No extensions yet';
+  String get no_extensions => 'No extensions yet';
 
   @override
-  String get scripts_unavailable =>
+  String get extensions_unavailable =>
       'Extensions are unavailable: no extensions folder was configured for this session.';
 
   @override
-  String get open_scripts_folder => 'Open extensions folder';
+  String get open_extensions_folder => 'Open extensions folder';
 
   @override
-  String get prompt_script_name => 'Extension name';
+  String get prompt_extension_name => 'Extension name';
 
   @override
-  String get hint_type_script => 'Extension name or JavaScript';
+  String get hint_type_extension => 'Extension name or JavaScript';
 
   @override
-  String get hud_mode_script => 'Extension';
+  String get hud_mode_extension => 'Extension';
 
   @override
-  String get hud_switch_to_script => 'Switch to extension';
+  String get hud_switch_to_extension => 'Switch to extension';
 
   @override
-  String get category_scripts => 'Extensions';
+  String get command_extensions_doc => 'Extension Guide';
 
   @override
-  String get command_scripts_doc => 'Extension Guide';
+  String get command_extensions_list => 'List Extensions';
 
   @override
-  String get command_scripts_list => 'List Extensions';
+  String get command_extensions_read => 'Read Extension';
 
   @override
-  String get command_scripts_read => 'Read Extension';
+  String get command_extensions_write => 'Write Extension';
 
   @override
-  String get command_scripts_write => 'Write Extension';
+  String get command_extensions_delete => 'Delete Extension';
 
   @override
-  String get command_scripts_delete => 'Delete Extension';
+  String get command_extensions_run => 'Run Extension';
 
   @override
-  String get command_scripts_run => 'Run Extension';
-
-  @override
-  String get command_scripts_doc_desc =>
+  String get command_extensions_doc_desc =>
       'Returns how to write a saved extension.';
 
   @override
-  String get command_scripts_list_desc =>
+  String get command_extensions_list_desc =>
       'Lists each saved extension with its description, usage, parameters, and last error.';
 
   @override
-  String get command_scripts_read_desc =>
+  String get command_extensions_read_desc =>
       'Reads one saved extension, including its description, usage, and parameters.';
 
   @override
-  String get command_scripts_write_desc =>
+  String get command_extensions_write_desc =>
       'Creates or overwrites one saved extension. Put description, usage, and params in the opening comment.';
 
   @override
-  String get command_scripts_delete_desc => 'Deletes one saved extension.';
+  String get command_extensions_delete_desc => 'Deletes one saved extension.';
 
   @override
-  String get command_scripts_run_desc =>
+  String get command_extensions_run_desc =>
       'Runs JavaScript passed as source. A saved extension is the command extension.<name>.';
 
   @override

@@ -37,10 +37,10 @@ CommandRegistry commandRegistry(Ref ref) {
 /// a real path, and left empty in tests so a test run never reads the user's
 /// files.
 @Riverpod(keepAlive: true)
-String pluginsDirectory(Ref ref) => '';
+String extensionsDirectory(Ref ref) => '';
 
 /// Builds the worker extensions run on. Called again when a wedged worker is
 /// dropped. Overridden in tests with [LocalTransport].
 @Riverpod(keepAlive: true)
-PluginTransport Function() pluginTransport(Ref ref) =>
+ExtensionTransport Function() extensionTransport(Ref ref) =>
     () => IsolateTransport(debugName: 'fancad.extensions');

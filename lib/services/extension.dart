@@ -5,20 +5,20 @@ import 'package:fancad_extension/fancad_extension.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../commands/extension/commands.dart';
-import '../models/plugin.dart';
+import '../models/extension.dart';
 import 'providers.dart';
 import 'workspace.dart';
 
-part 'plugin.g.dart';
+part 'extension.g.dart';
 
-/// Connects running scripts to the application.
+/// Connects running commands to the application.
 ///
 /// Everything a script can reach passes through here, and every method routes
 /// into machinery the user already drives: commands run through
 /// [Workspace.runHeadless], so a script cannot reach a code path the command
 /// line cannot, and every edit lands in the same undo stack.
-class AppPluginDelegate implements PluginDelegate {
-  AppPluginDelegate({required Workspace Function() workspace})
+class ExtensionDelegate implements ExtensionHost {
+  ExtensionDelegate({required Workspace Function() workspace})
     : _workspace = workspace;
 
   /// Resolved on demand rather than injected.
@@ -68,7 +68,7 @@ class AppPluginDelegate implements PluginDelegate {
     if (found != null && found.id.startsWith('extension.')) {
       return Future.value(
         const CommandResult.failed(
-          'script cannot be called from inside a script.',
+          'an extension cannot be called from inside a script.',
         ),
       );
     }
@@ -78,7 +78,7 @@ class AppPluginDelegate implements PluginDelegate {
     return workspace.runHeadless(
       commandId,
       args: args,
-      source: ChangeSource.plugin,
+      source: ChangeSource.extension,
       tab: tab,
       log: (message) => log(scope, 'info', message),
     );
@@ -102,42 +102,42 @@ class AppPluginDelegate implements PluginDelegate {
 
 /// Saved extensions and the runner that evaluates them.
 @Riverpod(keepAlive: true)
-class PluginNotifier extends _$PluginNotifier {
-  late AppPluginDelegate delegate;
+class ExtensionNotifier extends _$ExtensionNotifier {
+  late ExtensionDelegate delegate;
   ScriptRunner? _runner;
-  ScriptCommands? _scripts;
+  ExtensionCommands? _commands;
   DisposableBag? _commandScope;
 
   /// The runner, or null when this session has no extensions folder.
   ScriptRunner? get runner => _runner;
 
   @override
-  PluginModel build() {
+  ExtensionModel build() {
     _disposeRuntime();
-    final directory = ref.watch(pluginsDirectoryProvider);
-    delegate = AppPluginDelegate(
+    final directory = ref.watch(extensionsDirectoryProvider);
+    delegate = ExtensionDelegate(
       workspace: () => ref.read(workspaceNotifierProvider.notifier),
     );
     ref.onDispose(_disposeRuntime);
     if (directory.isEmpty) {
-      return PluginModel(directory: directory);
+      return ExtensionModel(directory: directory);
     }
     // No worker yet: it starts on the first run, so nothing third-party sits
     // between launch and the first frame.
     _runner = ScriptRunner(
-      openTransport: ref.watch(pluginTransportProvider),
-      onCall: PluginApi(delegate: delegate).call,
+      openTransport: ref.watch(extensionTransportProvider),
+      onCall: ExtensionApi(delegate: delegate).call,
     );
     _registerCommands(directory);
-    return PluginModel(directory: directory);
+    return ExtensionModel(directory: directory);
   }
 
   void _registerCommands(String directory) {
-    final settings = ref.read(appSettingsProvider).plugins;
-    final scripts = ScriptCommands(
+    final settings = ref.read(appSettingsProvider).extensions;
+    final commands = ExtensionCommands(
       directory: directory,
-      disabled: settings.disabledScriptIds(),
-      runScript: (source, {required args}) async {
+      disabled: settings.disabledIds(),
+      runSource: (source, {required args}) async {
         final runner = _runner;
         if (runner == null) {
           return const CommandResult.failed('extensions are unavailable');
@@ -148,29 +148,29 @@ class PluginNotifier extends _$PluginNotifier {
         state = state.copyWith(epoch: state.epoch + 1);
       },
       onEnabled: (name, enabled) {
-        ref.read(appSettingsProvider).plugins.setScriptDisabled(name, !enabled);
+        ref.read(appSettingsProvider).extensions.setDisabled(name, !enabled);
       },
     );
-    _scripts = scripts;
+    _commands = commands;
     final registry = ref.read(commandRegistryProvider);
     final scope = DisposableBag(debugLabel: 'extension-commands');
-    for (final descriptor in scripts.descriptors()) {
+    for (final descriptor in commands.descriptors()) {
       scope.add(registry.register(descriptor));
     }
-    scripts.watch(registry);
+    commands.watch(registry);
     _commandScope = scope;
   }
 
   /// Turns one saved extension on or off. A disabled extension stays in the
   /// list and leaves the command line until it is enabled again.
-  void setScriptEnabled(String name, bool enabled) {
-    _scripts?.setEnabled(name, enabled);
+  void setEnabled(String name, bool enabled) {
+    _commands?.setEnabled(name, enabled);
   }
 
   /// Evaluates [source] on the script worker. Chat calls this directly. It is
   /// not a [CommandRegistry] entry, so a script cannot `commands.execute` it
   /// back into another run.
-  Future<Map<String, Object?>> execScript(String source) async {
+  Future<Map<String, Object?>> exec(String source) async {
     final runner = _runner;
     if (runner == null) {
       return {'status': 'failed', 'message': 'extensions are unavailable'};
@@ -183,8 +183,8 @@ class PluginNotifier extends _$PluginNotifier {
   }
 
   void _disposeRuntime() {
-    _scripts?.release();
-    _scripts = null;
+    _commands?.release();
+    _commands = null;
     _commandScope?.dispose();
     _commandScope = null;
     unawaited(_runner?.dispose());

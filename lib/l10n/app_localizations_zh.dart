@@ -300,9 +300,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commands => '命令';
 
   @override
-  String get extensions => '扩展';
-
-  @override
   String get re_editor => '扩展编辑器';
 
   @override
@@ -328,9 +325,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get view_history_hint => '已经执行过的命令';
-
-  @override
-  String get view_extensions_hint => '已安装扩展及其错误';
 
   @override
   String get view_export_hint => '这一次导出的格式、范围和图层';
@@ -3009,97 +3003,94 @@ class AppLocalizationsZh extends AppLocalizations {
   String get use => '使用';
 
   @override
-  String get scripts => '扩展';
+  String get extensions => '扩展';
 
   @override
-  String get view_scripts_hint => '可以再次运行的已保存扩展';
+  String get view_extensions_hint => '可以再次运行的已保存扩展';
 
   @override
-  String get new_script => '新建扩展';
+  String get new_extension => '新建扩展';
 
   @override
-  String get run_script => '运行';
+  String get run_extension => '运行';
 
   @override
-  String get edit_script => '编辑';
+  String get edit_extension => '编辑';
 
   @override
-  String get configure_script => '配置';
+  String get configure_extension => '配置';
 
   @override
-  String get enable_script => '启用';
+  String get enable_extension => '启用';
 
   @override
-  String get disable_script => '禁用';
+  String get disable_extension => '禁用';
 
   @override
-  String get script_disabled => '已禁用';
+  String get extension_disabled => '已禁用';
 
   @override
-  String get delete_script => '删除扩展';
+  String get delete_extension => '删除扩展';
 
   @override
-  String get script_usage => '用法';
+  String get extension_usage => '用法';
 
   @override
-  String get no_scripts => '还没有扩展';
+  String get no_extensions => '还没有扩展';
 
   @override
-  String get scripts_unavailable => '扩展不可用：这次会话没有配置扩展文件夹。';
+  String get extensions_unavailable => '扩展不可用：这次会话没有配置扩展文件夹。';
 
   @override
-  String get open_scripts_folder => '打开扩展文件夹';
+  String get open_extensions_folder => '打开扩展文件夹';
 
   @override
-  String get prompt_script_name => '扩展名称';
+  String get prompt_extension_name => '扩展名称';
 
   @override
-  String get hint_type_script => '扩展名或 JavaScript';
+  String get hint_type_extension => '扩展名或 JavaScript';
 
   @override
-  String get hud_mode_script => '扩展';
+  String get hud_mode_extension => '扩展';
 
   @override
-  String get hud_switch_to_script => '切换到扩展';
+  String get hud_switch_to_extension => '切换到扩展';
 
   @override
-  String get category_scripts => '扩展';
+  String get command_extensions_doc => '扩展开发文档';
 
   @override
-  String get command_scripts_doc => '扩展开发文档';
+  String get command_extensions_list => '列出扩展';
 
   @override
-  String get command_scripts_list => '列出扩展';
+  String get command_extensions_read => '读取扩展';
 
   @override
-  String get command_scripts_read => '读取扩展';
+  String get command_extensions_write => '写入扩展';
 
   @override
-  String get command_scripts_write => '写入扩展';
+  String get command_extensions_delete => '删除扩展';
 
   @override
-  String get command_scripts_delete => '删除扩展';
+  String get command_extensions_run => '运行扩展';
 
   @override
-  String get command_scripts_run => '运行扩展';
+  String get command_extensions_doc_desc => '返回如何编写一个已保存的扩展。';
 
   @override
-  String get command_scripts_doc_desc => '返回如何编写一个已保存的扩展。';
+  String get command_extensions_list_desc => '列出每个已保存的扩展，包括描述、用法、参数和上次的错误。';
 
   @override
-  String get command_scripts_list_desc => '列出每个已保存的扩展，包括描述、用法、参数和上次的错误。';
+  String get command_extensions_read_desc => '读取一个已保存的扩展，包括它的描述、用法和参数。';
 
   @override
-  String get command_scripts_read_desc => '读取一个已保存的扩展，包括它的描述、用法和参数。';
+  String get command_extensions_write_desc => '新建或覆盖一个已保存的扩展。描述、用法和参数写在开头的注释里。';
 
   @override
-  String get command_scripts_write_desc => '新建或覆盖一个已保存的扩展。描述、用法和参数写在开头的注释里。';
+  String get command_extensions_delete_desc => '删除一个已保存的扩展。';
 
   @override
-  String get command_scripts_delete_desc => '删除一个已保存的扩展。';
-
-  @override
-  String get command_scripts_run_desc =>
+  String get command_extensions_run_desc =>
       '运行 source 里的一段临时 JavaScript。已保存的扩展是命令 extension.<name>。';
 
   @override

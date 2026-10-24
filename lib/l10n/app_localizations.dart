@@ -620,12 +620,6 @@ abstract class AppLocalizations {
   /// **'Commands'**
   String get commands;
 
-  /// extensions
-  ///
-  /// In en, this message translates to:
-  /// **'Extensions'**
-  String get extensions;
-
   /// re editor
   ///
   /// In en, this message translates to:
@@ -679,12 +673,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Commands that have already run'**
   String get view_history_hint;
-
-  /// view extensions hint
-  ///
-  /// In en, this message translates to:
-  /// **'Installed plugins and their errors'**
-  String get view_extensions_hint;
 
   /// view export hint
   ///
@@ -5672,191 +5660,185 @@ abstract class AppLocalizations {
   /// **'Use'**
   String get use;
 
-  /// scripts sidebar
+  /// extensions
   ///
   /// In en, this message translates to:
   /// **'Extensions'**
-  String get scripts;
+  String get extensions;
 
-  /// scripts sidebar hint
+  /// view extensions hint
   ///
   /// In en, this message translates to:
   /// **'Saved extensions you can run again'**
-  String get view_scripts_hint;
+  String get view_extensions_hint;
 
-  /// create a script
+  /// new extension
   ///
   /// In en, this message translates to:
   /// **'New extension'**
-  String get new_script;
+  String get new_extension;
 
-  /// run a script
+  /// run extension
   ///
   /// In en, this message translates to:
   /// **'Run'**
-  String get run_script;
+  String get run_extension;
 
-  /// edit a script
+  /// edit extension
   ///
   /// In en, this message translates to:
   /// **'Edit'**
-  String get edit_script;
+  String get edit_extension;
 
-  /// open the script configure menu
+  /// configure extension
   ///
   /// In en, this message translates to:
   /// **'Configure'**
-  String get configure_script;
+  String get configure_extension;
 
-  /// enable a script
+  /// enable extension
   ///
   /// In en, this message translates to:
   /// **'Enable'**
-  String get enable_script;
+  String get enable_extension;
 
-  /// disable a script
+  /// disable extension
   ///
   /// In en, this message translates to:
   /// **'Disable'**
-  String get disable_script;
+  String get disable_extension;
 
-  /// script is switched off
+  /// extension disabled
   ///
   /// In en, this message translates to:
   /// **'Disabled'**
-  String get script_disabled;
+  String get extension_disabled;
 
-  /// delete a script
+  /// delete extension
   ///
   /// In en, this message translates to:
   /// **'Delete extension'**
-  String get delete_script;
+  String get delete_extension;
 
-  /// label before how to run a script
+  /// extension usage
   ///
   /// In en, this message translates to:
   /// **'Usage'**
-  String get script_usage;
+  String get extension_usage;
 
-  /// empty script list
+  /// no extensions
   ///
   /// In en, this message translates to:
   /// **'No extensions yet'**
-  String get no_scripts;
+  String get no_extensions;
 
-  /// scripts folder missing
+  /// extensions unavailable
   ///
   /// In en, this message translates to:
   /// **'Extensions are unavailable: no extensions folder was configured for this session.'**
-  String get scripts_unavailable;
+  String get extensions_unavailable;
 
-  /// reveal the scripts folder
+  /// open extensions folder
   ///
   /// In en, this message translates to:
   /// **'Open extensions folder'**
-  String get open_scripts_folder;
+  String get open_extensions_folder;
 
-  /// prompt for a script name
+  /// prompt extension name
   ///
   /// In en, this message translates to:
   /// **'Extension name'**
-  String get prompt_script_name;
+  String get prompt_extension_name;
 
-  /// command dock hint in script mode
+  /// hint type extension
   ///
   /// In en, this message translates to:
   /// **'Extension name or JavaScript'**
-  String get hint_type_script;
+  String get hint_type_extension;
 
-  /// canvas dock mode: run a script
+  /// hud mode extension
   ///
   /// In en, this message translates to:
   /// **'Extension'**
-  String get hud_mode_script;
+  String get hud_mode_extension;
 
-  /// canvas dock: run a script
+  /// hud switch to extension
   ///
   /// In en, this message translates to:
   /// **'Switch to extension'**
-  String get hud_switch_to_script;
+  String get hud_switch_to_extension;
 
-  /// category scripts
-  ///
-  /// In en, this message translates to:
-  /// **'Extensions'**
-  String get category_scripts;
-
-  /// command scripts doc
+  /// command extensions doc
   ///
   /// In en, this message translates to:
   /// **'Extension Guide'**
-  String get command_scripts_doc;
+  String get command_extensions_doc;
 
-  /// command scripts list
+  /// command extensions list
   ///
   /// In en, this message translates to:
   /// **'List Extensions'**
-  String get command_scripts_list;
+  String get command_extensions_list;
 
-  /// command scripts read
+  /// command extensions read
   ///
   /// In en, this message translates to:
   /// **'Read Extension'**
-  String get command_scripts_read;
+  String get command_extensions_read;
 
-  /// command scripts write
+  /// command extensions write
   ///
   /// In en, this message translates to:
   /// **'Write Extension'**
-  String get command_scripts_write;
+  String get command_extensions_write;
 
-  /// command scripts delete
+  /// command extensions delete
   ///
   /// In en, this message translates to:
   /// **'Delete Extension'**
-  String get command_scripts_delete;
+  String get command_extensions_delete;
 
-  /// command scripts run
+  /// command extensions run
   ///
   /// In en, this message translates to:
   /// **'Run Extension'**
-  String get command_scripts_run;
+  String get command_extensions_run;
 
-  /// command scripts doc desc
+  /// command extensions doc desc
   ///
   /// In en, this message translates to:
   /// **'Returns how to write a saved extension.'**
-  String get command_scripts_doc_desc;
+  String get command_extensions_doc_desc;
 
-  /// command scripts list desc
+  /// command extensions list desc
   ///
   /// In en, this message translates to:
   /// **'Lists each saved extension with its description, usage, parameters, and last error.'**
-  String get command_scripts_list_desc;
+  String get command_extensions_list_desc;
 
-  /// command scripts read desc
+  /// command extensions read desc
   ///
   /// In en, this message translates to:
   /// **'Reads one saved extension, including its description, usage, and parameters.'**
-  String get command_scripts_read_desc;
+  String get command_extensions_read_desc;
 
-  /// command scripts write desc
+  /// command extensions write desc
   ///
   /// In en, this message translates to:
   /// **'Creates or overwrites one saved extension. Put description, usage, and params in the opening comment.'**
-  String get command_scripts_write_desc;
+  String get command_extensions_write_desc;
 
-  /// command scripts delete desc
+  /// command extensions delete desc
   ///
   /// In en, this message translates to:
   /// **'Deletes one saved extension.'**
-  String get command_scripts_delete_desc;
+  String get command_extensions_delete_desc;
 
-  /// command scripts run desc
+  /// command extensions run desc
   ///
   /// In en, this message translates to:
   /// **'Runs JavaScript passed as source. A saved extension is the command extension.<name>.'**
-  String get command_scripts_run_desc;
+  String get command_extensions_run_desc;
 
   /// command exec
   ///

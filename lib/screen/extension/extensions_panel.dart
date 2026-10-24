@@ -8,28 +8,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../commands/extension/commands.dart';
 import '../../l10n/l10n.dart';
-import '../../services/plugin.dart';
+import '../../services/extension.dart';
 import '../../services/workspace.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
 import 'js_highlight.dart';
 
-/// Saved scripts. One row is one `.js` file. Tapping the row opens it. The
-/// configure menu enables, disables, or deletes it. A disabled script stays in
+/// Saved extensions. One row is one `.js` file. Tapping the row opens it. The
+/// configure menu enables, disables, or deletes it. A disabled extension stays in
 /// the list and leaves the command line. The last failure stays on the row
 /// until the next run.
-class ScriptsPanel extends ConsumerStatefulWidget {
-  const ScriptsPanel({super.key, required this.workspace});
+class ExtensionsPanel extends ConsumerStatefulWidget {
+  const ExtensionsPanel({super.key, required this.workspace});
 
   final Workspace workspace;
 
   @override
-  ConsumerState<ScriptsPanel> createState() => _ScriptsPanelState();
+  ConsumerState<ExtensionsPanel> createState() => _ExtensionsPanelState();
 }
 
-class _ScriptsPanelState extends ConsumerState<ScriptsPanel> {
+class _ExtensionsPanelState extends ConsumerState<ExtensionsPanel> {
   List<({String name, String? description, String? error, bool enabled})>
-  _scripts = const [];
+  _entries = const [];
 
   @override
   void initState() {
@@ -58,7 +58,7 @@ class _ScriptsPanelState extends ConsumerState<ScriptsPanel> {
         ));
       }
     }
-    setState(() => _scripts = scripts);
+    setState(() => _entries = scripts);
   }
 
   String? _text(Object? value) {
@@ -68,56 +68,59 @@ class _ScriptsPanelState extends ConsumerState<ScriptsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(pluginNotifierProvider.select((model) => model.epoch), (_, _) {
+    ref.listen(extensionNotifierProvider.select((model) => model.epoch), (
+      _,
+      _,
+    ) {
       unawaited(_reload());
     });
     final directory = ref.watch(
-      pluginNotifierProvider.select((model) => model.directory),
+      extensionNotifierProvider.select((model) => model.directory),
     );
     final available = directory.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PanelHeader(
-          title: context.l10n.scripts,
+          title: context.l10n.extensions,
           actions: [
             if (available)
               FanCadIconButton(
                 icon: Icons.folder_open_outlined,
-                tooltip: context.l10n.open_scripts_folder,
+                tooltip: context.l10n.open_extensions_folder,
                 onPressed: () =>
-                    _openScriptsFolder(widget.workspace, directory),
+                    _openExtensionsFolder(widget.workspace, directory),
               ),
             if (available)
               FanCadIconButton(
                 icon: Icons.add,
-                tooltip: context.l10n.new_script,
+                tooltip: context.l10n.new_extension,
                 onPressed: () => unawaited(_create()),
               ),
           ],
         ),
         Expanded(
           child: !available
-              ? FanCadEmpty(message: context.l10n.scripts_unavailable)
-              : _scripts.isEmpty
+              ? FanCadEmpty(message: context.l10n.extensions_unavailable)
+              : _entries.isEmpty
               ? FanCadEmpty(
-                  message: context.l10n.no_scripts,
-                  actionLabel: context.l10n.new_script,
+                  message: context.l10n.no_extensions,
+                  actionLabel: context.l10n.new_extension,
                   onAction: () => unawaited(_create()),
                 )
               : ListView.builder(
-                  itemCount: _scripts.length,
+                  itemCount: _entries.length,
                   itemBuilder: (context, index) {
-                    final script = _scripts[index];
-                    return _ScriptRow(
+                    final script = _entries[index];
+                    return _ExtensionRow(
                       name: script.name,
                       description: script.description,
                       error: script.error,
                       enabled: script.enabled,
                       onOpen: () => unawaited(_edit(script.name)),
                       onEnable: (enabled) => ref
-                          .read(pluginNotifierProvider.notifier)
-                          .setScriptEnabled(script.name, enabled),
+                          .read(extensionNotifierProvider.notifier)
+                          .setEnabled(script.name, enabled),
                       onDelete: () => unawaited(_delete(script.name)),
                     );
                   },
@@ -132,7 +135,7 @@ class _ScriptsPanelState extends ConsumerState<ScriptsPanel> {
     if (name == null || name.trim().isEmpty || !mounted) return;
     await widget.workspace.run(
       'extensions.write',
-      args: {'name': name.trim(), 'content': scriptTemplate},
+      args: {'name': name.trim(), 'content': extensionTemplate},
     );
     if (!mounted) return;
     await _edit(name.trim());
@@ -143,17 +146,17 @@ class _ScriptsPanelState extends ConsumerState<ScriptsPanel> {
   }
 
   Future<void> _edit(String name) async {
-    await _showScriptDialog(
+    await _showExtensionDialog(
       context,
-      _ScriptEditor(name: name, workspace: widget.workspace),
+      _ExtensionEditor(name: name, workspace: widget.workspace),
     );
   }
 }
 
-enum _ScriptMenuAction { enable, disable, delete }
+enum _ExtensionMenuAction { enable, disable, delete }
 
-class _ScriptRow extends StatefulWidget {
-  const _ScriptRow({
+class _ExtensionRow extends StatefulWidget {
+  const _ExtensionRow({
     required this.name,
     required this.description,
     required this.error,
@@ -172,10 +175,10 @@ class _ScriptRow extends StatefulWidget {
   final VoidCallback onDelete;
 
   @override
-  State<_ScriptRow> createState() => _ScriptRowState();
+  State<_ExtensionRow> createState() => _ExtensionRowState();
 }
 
-class _ScriptRowState extends State<_ScriptRow> {
+class _ExtensionRowState extends State<_ExtensionRow> {
   bool _hovered = false;
 
   @override
@@ -219,7 +222,7 @@ class _ScriptRowState extends State<_ScriptRow> {
                     ),
                     if (!widget.enabled) ...[
                       const SizedBox(height: FanCadTokens.space1),
-                      Text(l10n.script_disabled, style: tokens.labelStyle),
+                      Text(l10n.extension_disabled, style: tokens.labelStyle),
                     ],
                     if (widget.description != null) ...[
                       const SizedBox(height: FanCadTokens.space1),
@@ -242,17 +245,17 @@ class _ScriptRowState extends State<_ScriptRow> {
                   ],
                 ),
               ),
-              FanCadMenuButton<_ScriptMenuAction>(
-                key: Key('script-configure-${widget.name}'),
-                tooltip: l10n.configure_script,
+              FanCadMenuButton<_ExtensionMenuAction>(
+                key: Key('extension-configure-${widget.name}'),
+                tooltip: l10n.configure_extension,
                 placement: FanCadMenuPlacement.auto,
                 onSelected: (action) {
                   switch (action) {
-                    case _ScriptMenuAction.enable:
+                    case _ExtensionMenuAction.enable:
                       widget.onEnable(true);
-                    case _ScriptMenuAction.disable:
+                    case _ExtensionMenuAction.disable:
                       widget.onEnable(false);
-                    case _ScriptMenuAction.delete:
+                    case _ExtensionMenuAction.delete:
                       widget.onDelete();
                   }
                 },
@@ -260,25 +263,25 @@ class _ScriptRowState extends State<_ScriptRow> {
                   if (!widget.enabled)
                     fanCadMenuItem(
                       context,
-                      value: _ScriptMenuAction.enable,
-                      label: l10n.enable_script,
+                      value: _ExtensionMenuAction.enable,
+                      label: l10n.enable_extension,
                       icon: Icons.play_arrow_outlined,
                     ),
                   if (widget.enabled)
                     fanCadMenuItem(
                       context,
-                      value: _ScriptMenuAction.disable,
-                      label: l10n.disable_script,
+                      value: _ExtensionMenuAction.disable,
+                      label: l10n.disable_extension,
                       icon: Icons.pause_outlined,
                     ),
                   fanCadMenuItem(
                     context,
-                    value: _ScriptMenuAction.delete,
-                    label: l10n.delete_script,
+                    value: _ExtensionMenuAction.delete,
+                    label: l10n.delete_extension,
                     icon: Icons.delete_outline,
                   ),
                 ],
-                child: const _ScriptGear(),
+                child: const _ExtensionGear(),
               ),
             ],
           ),
@@ -288,14 +291,14 @@ class _ScriptRowState extends State<_ScriptRow> {
   }
 }
 
-class _ScriptGear extends StatefulWidget {
-  const _ScriptGear();
+class _ExtensionGear extends StatefulWidget {
+  const _ExtensionGear();
 
   @override
-  State<_ScriptGear> createState() => _ScriptGearState();
+  State<_ExtensionGear> createState() => _ExtensionGearState();
 }
 
-class _ScriptGearState extends State<_ScriptGear> {
+class _ExtensionGearState extends State<_ExtensionGear> {
   bool _hovered = false;
 
   @override
@@ -322,17 +325,17 @@ class _ScriptGearState extends State<_ScriptGear> {
   }
 }
 
-class _ScriptEditor extends ConsumerStatefulWidget {
-  const _ScriptEditor({required this.name, required this.workspace});
+class _ExtensionEditor extends ConsumerStatefulWidget {
+  const _ExtensionEditor({required this.name, required this.workspace});
 
   final String name;
   final Workspace workspace;
 
   @override
-  ConsumerState<_ScriptEditor> createState() => _ScriptEditorState();
+  ConsumerState<_ExtensionEditor> createState() => _ExtensionEditorState();
 }
 
-class _ScriptEditorState extends ConsumerState<_ScriptEditor> {
+class _ExtensionEditorState extends ConsumerState<_ExtensionEditor> {
   final _JsSourceController _body = _JsSourceController();
   final ScrollController _scroll = ScrollController();
   String? _error;
@@ -433,9 +436,9 @@ class _ScriptEditorState extends ConsumerState<_ScriptEditor> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return _ScriptWindow(
-      name: 'script-${widget.name}',
-      title: '${context.l10n.edit_script} · ${widget.name}',
+    return _ExtensionWindow(
+      name: 'extension-${widget.name}',
+      title: '${context.l10n.edit_extension} · ${widget.name}',
       onClose: () => unawaited(_requestClose()),
       child: CallbackShortcuts(
         bindings: {
@@ -456,7 +459,7 @@ class _ScriptEditorState extends ConsumerState<_ScriptEditor> {
                   child: Row(
                     children: [
                       FanCadIconButton(
-                        key: const Key('script-editor-save'),
+                        key: const Key('extension-editor-save'),
                         icon: Icons.save_outlined,
                         tooltip: context.l10n.save,
                         size: 24,
@@ -484,10 +487,10 @@ class _ScriptEditorState extends ConsumerState<_ScriptEditor> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _ScriptLineGutter(
+                  _LineGutter(
                     controller: _body,
                     scroll: _scroll,
-                    style: _scriptStyle(tokens),
+                    style: _editorStyle(tokens),
                   ),
                   Expanded(
                     child: TextField(
@@ -496,8 +499,8 @@ class _ScriptEditorState extends ConsumerState<_ScriptEditor> {
                       maxLines: null,
                       expands: true,
                       textAlignVertical: TextAlignVertical.top,
-                      style: _scriptStyle(tokens),
-                      strutStyle: _scriptStrut,
+                      style: _editorStyle(tokens),
+                      strutStyle: _editorStrut,
                       cursorColor: tokens.text,
                       decoration: const InputDecoration(
                         isCollapsed: true,
@@ -531,8 +534,8 @@ class _ScriptEditorState extends ConsumerState<_ScriptEditor> {
   }
 }
 
-class _ScriptWindow extends StatelessWidget {
-  const _ScriptWindow({
+class _ExtensionWindow extends StatelessWidget {
+  const _ExtensionWindow({
     required this.name,
     required this.title,
     required this.child,
@@ -550,7 +553,7 @@ class _ScriptWindow extends StatelessWidget {
       builder: (context, constraints) {
         final bounds = Size(constraints.maxWidth, constraints.maxHeight);
         if (!bounds.isFinite || bounds.isEmpty) return const SizedBox.shrink();
-        final size = _scriptWindowSize(bounds);
+        final size = _editorWindowSize(bounds);
         return SizedBox.expand(
           child: Stack(
             children: [
@@ -577,7 +580,7 @@ class _ScriptWindow extends StatelessWidget {
   }
 }
 
-Future<void> _showScriptDialog(BuildContext context, Widget child) {
+Future<void> _showExtensionDialog(BuildContext context, Widget child) {
   return showDialog<void>(
     context: context,
     useSafeArea: false,
@@ -594,12 +597,12 @@ Future<String?> _askName(BuildContext context) {
     builder: (context) {
       return AlertDialog(
         backgroundColor: context.tokens.surfaceOverlay,
-        title: Text(context.l10n.new_script),
+        title: Text(context.l10n.new_extension),
         content: TextField(
           controller: controller,
           autofocus: true,
           decoration: InputDecoration(
-            hintText: context.l10n.prompt_script_name,
+            hintText: context.l10n.prompt_extension_name,
           ),
           onSubmitted: (value) => Navigator.of(context).pop(value),
         ),
@@ -619,7 +622,7 @@ Future<String?> _askName(BuildContext context) {
 }
 
 /// Most of the canvas, and at least a readable editor when the window is wide.
-Size _scriptWindowSize(Size bounds) {
+Size _editorWindowSize(Size bounds) {
   const margin = 24.0;
   final maxWidth = math.max(0.0, bounds.width - margin * 2);
   final maxHeight = math.max(0.0, bounds.height - margin * 2);
@@ -628,31 +631,31 @@ Size _scriptWindowSize(Size bounds) {
   return Size(width, height);
 }
 
-const _scriptFontSize = 13.0;
-const _scriptLineHeightFactor = 1.45;
+const _editorFontSize = 13.0;
+const _editorLineHeightFactor = 1.45;
 
 /// One source line, forced so the gutter and the field stay on the same grid.
-const _scriptLineHeight = _scriptFontSize * _scriptLineHeightFactor;
+const _editorLineHeight = _editorFontSize * _editorLineHeightFactor;
 
-const _scriptStrut = StrutStyle(
-  fontSize: _scriptFontSize,
-  height: _scriptLineHeightFactor,
+const _editorStrut = StrutStyle(
+  fontSize: _editorFontSize,
+  height: _editorLineHeightFactor,
   leading: 0,
   forceStrutHeight: true,
   fontFamily: FanCadTokens.monoFontFamily,
 );
 
-TextStyle _scriptStyle(FanCadTokens tokens) {
+TextStyle _editorStyle(FanCadTokens tokens) {
   return tokens.monoStyle.copyWith(
-    fontSize: _scriptFontSize,
-    height: _scriptLineHeightFactor,
+    fontSize: _editorFontSize,
+    height: _editorLineHeightFactor,
   );
 }
 
-/// Line numbers for the script source. They share the field's scroll offset
+/// Line numbers for the extension source. They share the field's scroll offset
 /// and the same strut, so a number stays beside its line.
-class _ScriptLineGutter extends StatelessWidget {
-  const _ScriptLineGutter({
+class _LineGutter extends StatelessWidget {
+  const _LineGutter({
     required this.controller,
     required this.scroll,
     required this.style,
@@ -685,7 +688,7 @@ class _ScriptLineGutter extends StatelessWidget {
             FanCadTokens.space3 +
             Theme.of(context).visualDensity.baseSizeAdjustment.dy / 2;
         return DecoratedBox(
-          key: const Key('script-editor-lines'),
+          key: const Key('extension-editor-lines'),
           decoration: BoxDecoration(
             border: Border(right: BorderSide(color: tokens.border)),
           ),
@@ -706,7 +709,7 @@ class _ScriptLineGutter extends StatelessWidget {
                       children: [
                         for (var line = 1; line <= count; line++)
                           SizedBox(
-                            height: _scriptLineHeight,
+                            height: _editorLineHeight,
                             child: Padding(
                               padding: const EdgeInsets.only(
                                 right: FanCadTokens.space2,
@@ -717,7 +720,7 @@ class _ScriptLineGutter extends StatelessWidget {
                                 style: line == active
                                     ? style.copyWith(color: tokens.text)
                                     : style.copyWith(color: tokens.textMuted),
-                                strutStyle: _scriptStrut,
+                                strutStyle: _editorStrut,
                               ),
                             ),
                           ),
@@ -802,7 +805,7 @@ class _JsSourceController extends TextEditingController {
   }
 }
 
-Future<void> _openScriptsFolder(Workspace workspace, String path) async {
+Future<void> _openExtensionsFolder(Workspace workspace, String path) async {
   try {
     await Directory(path).create(recursive: true);
     if (Platform.isMacOS) {

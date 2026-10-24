@@ -21,16 +21,16 @@ class ScriptRunner {
   });
 
   /// Builds a fresh worker. Called again after a reset.
-  final PluginTransport Function() openTransport;
+  final ExtensionTransport Function() openTransport;
 
   /// Serves the `fancad.*` calls a running script makes.
-  final PluginCallHandler onCall;
+  final ExtensionCallHandler onCall;
 
   /// Deadline for one evaluation.
   final Duration timeout;
 
-  PluginTransport? _transport;
-  Future<PluginTransport>? _starting;
+  ExtensionTransport? _transport;
+  Future<ExtensionTransport>? _starting;
   final Set<String> _live = {};
   int _nextScope = 0;
 
@@ -45,7 +45,7 @@ class ScriptRunner {
     String source, {
     Map<String, Object?> args = const {},
   }) async {
-    final PluginTransport transport;
+    final ExtensionTransport transport;
     try {
       transport = await _ensure();
     } on RpcException catch (error) {
@@ -95,7 +95,7 @@ class ScriptRunner {
   }
 
   Future<Object?> _evaluate(
-    PluginTransport transport,
+    ExtensionTransport transport,
     String scope,
     String source,
   ) async {
@@ -123,13 +123,13 @@ class ScriptRunner {
     return onCall(scope, method, params);
   }
 
-  Future<PluginTransport> _ensure() {
+  Future<ExtensionTransport> _ensure() {
     final current = _transport;
     if (current != null && current.isAlive) return Future.value(current);
     return _starting ??= _start().whenComplete(() => _starting = null);
   }
 
-  Future<PluginTransport> _start() async {
+  Future<ExtensionTransport> _start() async {
     final previous = _transport;
     _transport = null;
     if (previous != null) await previous.dispose(immediate: true);

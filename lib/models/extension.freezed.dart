@@ -3,7 +3,7 @@
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'plugin.dart';
+part of 'extension.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -12,20 +12,20 @@ part of 'plugin.dart';
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
-mixin _$PluginModel {
+mixin _$ExtensionModel {
 
  String get directory; int get epoch;
-/// Create a copy of PluginModel
+/// Create a copy of ExtensionModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$PluginModelCopyWith<PluginModel> get copyWith => _$PluginModelCopyWithImpl<PluginModel>(this as PluginModel, _$identity);
+$ExtensionModelCopyWith<ExtensionModel> get copyWith => _$ExtensionModelCopyWithImpl<ExtensionModel>(this as ExtensionModel, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginModel&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.epoch, epoch) || other.epoch == epoch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ExtensionModel&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.epoch, epoch) || other.epoch == epoch));
 }
 
 
@@ -34,15 +34,15 @@ int get hashCode => Object.hash(runtimeType,directory,epoch);
 
 @override
 String toString() {
-  return 'PluginModel(directory: $directory, epoch: $epoch)';
+  return 'ExtensionModel(directory: $directory, epoch: $epoch)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $PluginModelCopyWith<$Res>  {
-  factory $PluginModelCopyWith(PluginModel value, $Res Function(PluginModel) _then) = _$PluginModelCopyWithImpl;
+abstract mixin class $ExtensionModelCopyWith<$Res>  {
+  factory $ExtensionModelCopyWith(ExtensionModel value, $Res Function(ExtensionModel) _then) = _$ExtensionModelCopyWithImpl;
 @useResult
 $Res call({
  String directory, int epoch
@@ -53,14 +53,14 @@ $Res call({
 
 }
 /// @nodoc
-class _$PluginModelCopyWithImpl<$Res>
-    implements $PluginModelCopyWith<$Res> {
-  _$PluginModelCopyWithImpl(this._self, this._then);
+class _$ExtensionModelCopyWithImpl<$Res>
+    implements $ExtensionModelCopyWith<$Res> {
+  _$ExtensionModelCopyWithImpl(this._self, this._then);
 
-  final PluginModel _self;
-  final $Res Function(PluginModel) _then;
+  final ExtensionModel _self;
+  final $Res Function(ExtensionModel) _then;
 
-/// Create a copy of PluginModel
+/// Create a copy of ExtensionModel
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? directory = null,Object? epoch = null,}) {
   return _then(_self.copyWith(
@@ -73,8 +73,8 @@ as int,
 }
 
 
-/// Adds pattern-matching-related methods to [PluginModel].
-extension PluginModelPatterns on PluginModel {
+/// Adds pattern-matching-related methods to [ExtensionModel].
+extension ExtensionModelPatterns on ExtensionModel {
 /// A variant of `map` that fallback to returning `orElse`.
 ///
 /// It is equivalent to doing:
@@ -87,10 +87,10 @@ extension PluginModelPatterns on PluginModel {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _PluginModel value)?  $default,{required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ExtensionModel value)?  $default,{required TResult orElse(),}){
 final _that = this;
 switch (_that) {
-case _PluginModel() when $default != null:
+case _ExtensionModel() when $default != null:
 return $default(_that);case _:
   return orElse();
 
@@ -109,10 +109,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _PluginModel value)  $default,){
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ExtensionModel value)  $default,){
 final _that = this;
 switch (_that) {
-case _PluginModel():
+case _ExtensionModel():
 return $default(_that);case _:
   throw StateError('Unexpected subclass');
 
@@ -130,10 +130,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _PluginModel value)?  $default,){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ExtensionModel value)?  $default,){
 final _that = this;
 switch (_that) {
-case _PluginModel() when $default != null:
+case _ExtensionModel() when $default != null:
 return $default(_that);case _:
   return null;
 
@@ -153,7 +153,7 @@ return $default(_that);case _:
 
 @optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String directory,  int epoch)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
-case _PluginModel() when $default != null:
+case _ExtensionModel() when $default != null:
 return $default(_that.directory,_that.epoch);case _:
   return orElse();
 
@@ -174,7 +174,7 @@ return $default(_that.directory,_that.epoch);case _:
 
 @optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String directory,  int epoch)  $default,) {final _that = this;
 switch (_that) {
-case _PluginModel():
+case _ExtensionModel():
 return $default(_that.directory,_that.epoch);case _:
   throw StateError('Unexpected subclass');
 
@@ -194,7 +194,7 @@ return $default(_that.directory,_that.epoch);case _:
 
 @optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String directory,  int epoch)?  $default,) {final _that = this;
 switch (_that) {
-case _PluginModel() when $default != null:
+case _ExtensionModel() when $default != null:
 return $default(_that.directory,_that.epoch);case _:
   return null;
 
@@ -206,24 +206,24 @@ return $default(_that.directory,_that.epoch);case _:
 /// @nodoc
 
 
-class _PluginModel implements PluginModel {
-  const _PluginModel({this.directory = '', this.epoch = 0});
+class _ExtensionModel implements ExtensionModel {
+  const _ExtensionModel({this.directory = '', this.epoch = 0});
   
 
 @override@JsonKey() final  String directory;
 @override@JsonKey() final  int epoch;
 
-/// Create a copy of PluginModel
+/// Create a copy of ExtensionModel
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$PluginModelCopyWith<_PluginModel> get copyWith => __$PluginModelCopyWithImpl<_PluginModel>(this, _$identity);
+_$ExtensionModelCopyWith<_ExtensionModel> get copyWith => __$ExtensionModelCopyWithImpl<_ExtensionModel>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginModel&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.epoch, epoch) || other.epoch == epoch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ExtensionModel&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.epoch, epoch) || other.epoch == epoch));
 }
 
 
@@ -232,15 +232,15 @@ int get hashCode => Object.hash(runtimeType,directory,epoch);
 
 @override
 String toString() {
-  return 'PluginModel(directory: $directory, epoch: $epoch)';
+  return 'ExtensionModel(directory: $directory, epoch: $epoch)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$PluginModelCopyWith<$Res> implements $PluginModelCopyWith<$Res> {
-  factory _$PluginModelCopyWith(_PluginModel value, $Res Function(_PluginModel) _then) = __$PluginModelCopyWithImpl;
+abstract mixin class _$ExtensionModelCopyWith<$Res> implements $ExtensionModelCopyWith<$Res> {
+  factory _$ExtensionModelCopyWith(_ExtensionModel value, $Res Function(_ExtensionModel) _then) = __$ExtensionModelCopyWithImpl;
 @override @useResult
 $Res call({
  String directory, int epoch
@@ -251,17 +251,17 @@ $Res call({
 
 }
 /// @nodoc
-class __$PluginModelCopyWithImpl<$Res>
-    implements _$PluginModelCopyWith<$Res> {
-  __$PluginModelCopyWithImpl(this._self, this._then);
+class __$ExtensionModelCopyWithImpl<$Res>
+    implements _$ExtensionModelCopyWith<$Res> {
+  __$ExtensionModelCopyWithImpl(this._self, this._then);
 
-  final _PluginModel _self;
-  final $Res Function(_PluginModel) _then;
+  final _ExtensionModel _self;
+  final $Res Function(_ExtensionModel) _then;
 
-/// Create a copy of PluginModel
+/// Create a copy of ExtensionModel
 /// with the given fields replaced by the non-null parameter values.
 @override @pragma('vm:prefer-inline') $Res call({Object? directory = null,Object? epoch = null,}) {
-  return _then(_PluginModel(
+  return _then(_ExtensionModel(
 directory: null == directory ? _self.directory : directory // ignore: cast_nullable_to_non_nullable
 as String,epoch: null == epoch ? _self.epoch : epoch // ignore: cast_nullable_to_non_nullable
 as int,

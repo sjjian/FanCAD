@@ -55,10 +55,10 @@ abstract final class RpcErrorCode {
   /// The request exceeded its deadline.
   static const int timeout = -32801;
 
-  /// The plugin's JavaScript threw.
-  static const int pluginError = -32000;
+  /// The script's JavaScript threw.
+  static const int scriptError = -32000;
 
-  /// The plugin asked for something its manifest does not permit.
+  /// The script asked for something the host does not allow from a script.
   static const int permissionDenied = -32001;
 
   /// The worker died, so no answer is coming.
@@ -68,7 +68,7 @@ abstract final class RpcErrorCode {
 /// A JSON-RPC request or notification.
 ///
 /// A null [id] marks a notification: fire and forget, no reply expected. This
-/// is what lets events flow to plugins without the host waiting on every one.
+/// is what lets a script log without waiting on the host.
 @immutable
 @JsonSerializable(
   createFactory: false,
@@ -195,8 +195,8 @@ typedef RpcHandler = Future<Object?> Function(RpcRequest request);
 /// A bidirectional JSON-RPC endpoint over an abstract message sink.
 ///
 /// Both the host and the worker own one of these. Keeping the peer symmetric is
-/// what allows a plugin's `await fancad.commands.execute(...)` to be the same
-/// machinery, in the opposite direction, as the host's `plugin/invoke`.
+/// what allows a script's `await fancad.commands.execute(...)` to be the same
+/// machinery, in the opposite direction, as the host's `script/eval`.
 class RpcPeer {
   RpcPeer({required this.send, required this.handle});
 
@@ -225,7 +225,7 @@ class RpcPeer {
     if (_closed) {
       throw const RpcException(
         RpcErrorCode.workerDead,
-        'the plugin worker is not running',
+        'the script worker is not running',
       );
     }
     final id = _nextId++;

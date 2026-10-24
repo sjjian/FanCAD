@@ -29,8 +29,8 @@ class CommandOperationProvider implements OperationProvider {
   @override
   Iterable<Operation> operations() sync* {
     for (final command in registry.all) {
-      // `hidden` stays callable (`file.open`). `hostOnly` is the in-app
-      // editor and the sandbox, which this catalog does not offer.
+      // `hidden` stays callable (`file.open`). `hostOnly` is unsaved source
+      // (`extensions.run`), which this catalog does not offer.
       if (command.aiExposure == AiExposure.hostOnly) continue;
       final filter = include;
       if (filter != null && !filter(command)) continue;

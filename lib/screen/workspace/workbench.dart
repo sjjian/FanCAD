@@ -19,7 +19,7 @@ import '../../services/workspace.dart';
 import '../assistant/ai_panel.dart';
 import '../command_line/command_line.dart';
 import '../command_line/command_palette.dart';
-import '../plugin/scripts_panel.dart';
+import '../extension/extensions_panel.dart';
 import '../settings/settings_dialog.dart';
 import '../widgets/activity_bar.dart';
 import '../widgets/title_bar.dart';
@@ -733,7 +733,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       onOpenPalette: () =>
           ref.read(commandLineNotifierProvider.notifier).setPaletteOpen(true),
     ),
-    'plugins' => ScriptsPanel(workspace: workspace),
+    'extensions' => ExtensionsPanel(workspace: workspace),
     _ => LayersPanel(workspace: workspace),
   };
 

@@ -10,7 +10,7 @@ library;
 export 'src/bootstrap.dart' show BootstrapGlobals, buildBootstrapScript;
 export 'src/engine_registry.dart';
 export 'src/js_engine.dart';
-export 'src/plugin_api.dart';
+export 'src/extension_api.dart';
 export 'src/programs.dart';
 export 'src/protocol.dart';
 export 'src/script_runner.dart';

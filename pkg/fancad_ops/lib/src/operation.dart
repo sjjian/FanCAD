@@ -87,7 +87,7 @@ String _oneLine(String text) {
   return line.length <= 140 ? line : '${line.substring(0, 137)}...';
 }
 
-/// Supplies operations that can appear and disappear (plugins, host tools).
+/// Supplies operations that can appear and disappear (saved extensions, host tools).
 abstract class OperationProvider {
   Iterable<Operation> operations();
 }

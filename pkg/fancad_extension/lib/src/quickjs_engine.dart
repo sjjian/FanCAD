@@ -7,12 +7,12 @@ import 'js_engine.dart';
 
 /// A [JsEngine] backed by QuickJS-NG.
 ///
-/// One instance per plugin. Separate runtimes cost a few tens of kilobytes each
-/// and buy two things worth far more: a plugin cannot reach another plugin's
-/// globals, and the memory ceiling below applies per plugin instead of to the
-/// whole extension surface.
+/// One instance per run. Separate runtimes cost a few tens of kilobytes each
+/// and buy two things worth far more: a run cannot reach another run's
+/// globals, and the memory ceiling below applies per run instead of to the
+/// whole worker.
 ///
-/// Note on runaway scripts: the engine exposes no interrupt hook, so a plugin
+/// Note on runaway scripts: the engine exposes no interrupt hook, so a script
 /// that enters `while (true) {}` cannot be stopped from Dart — an isolate
 /// blocked inside a native call does not reach a safepoint, so even
 /// `Isolate.kill` will not land. [memoryLimit] and [stackSize] catch the
@@ -28,13 +28,13 @@ class QuickJsEngine implements JsEngine {
          hostPromiseRejectionHandler: _reportUnhandledRejection,
        ) {
     // The native side signals "there may be jobs to run" on this port. Draining
-    // it here is what lets a plugin's `await` resume without the host having to
+    // it here is what lets a script's `await` resume without the host having to
     // guess when to pump.
     _portSubscription = _runtime.port.listen((_) => _drain());
   }
 
   /// 64 MB. Generous for drawing automation, small enough that a leak surfaces
-  /// as a plugin error rather than as an out-of-memory process.
+  /// as a script error rather than as an out-of-memory process.
   static const int defaultMemoryLimit = 64 * 1024 * 1024;
 
   static const int defaultStackSize = 1024 * 1024;
@@ -50,8 +50,8 @@ class QuickJsEngine implements JsEngine {
   bool _disposed = false;
 
   static void _reportUnhandledRejection(dynamic reason) {
-    // Swallowing this would turn a plugin bug into silence. The worker turns it
-    // into a log line the extensions panel can show.
+    // Swallowing this would turn a script bug into silence. The worker turns
+    // it into a log line.
     Zone.current.handleUncaughtError(
       JsException('unhandled promise rejection: $reason'),
       StackTrace.current,
@@ -59,7 +59,7 @@ class QuickJsEngine implements JsEngine {
   }
 
   @override
-  Object? evaluate(String source, {String name = '<plugin>'}) {
+  Object? evaluate(String source, {String name = '<script>'}) {
     _assertAlive();
     final JsEvalResult result;
     try {
@@ -153,7 +153,7 @@ class QuickJsEngine implements JsEngine {
 
   void _assertAlive() {
     if (_disposed) {
-      throw const JsException('the plugin runtime has been disposed');
+      throw const JsException('the script engine has been disposed');
     }
   }
 }

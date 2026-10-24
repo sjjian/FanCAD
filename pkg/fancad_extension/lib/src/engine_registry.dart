@@ -5,17 +5,17 @@ import 'quickjs_engine.dart';
 ///
 /// [Isolate.spawn] cannot carry a factory closure, and a spawned isolate does
 /// not see factories the host registered on its own copy of this library. The
-/// worker therefore looks the manifest's `runtime` string up in a table that
+/// worker therefore looks the `runtime` string up in a table that
 /// is compiled into the isolate. Adding an engine is a registration here, not
 /// a change to the bridge or the shell.
 abstract final class EngineRuntimes {
   static const String quickjs = 'quickjs';
 
-  /// Used when a manifest omits `runtime`.
+  /// Used when the host names no runtime.
   static const String defaultRuntime = quickjs;
 }
 
-/// Builds one [JsEngine] per plugin from a runtime name.
+/// Builds one [JsEngine] per run from a runtime name.
 class EngineRegistry {
   EngineRegistry(Map<String, JsEngineFactory> factories)
     : _factories = Map.unmodifiable(factories);

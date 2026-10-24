@@ -2,7 +2,7 @@ import 'operation.dart';
 
 /// Live union of [OperationProvider]s plus any extra registrations.
 ///
-/// Providers are queried on each lookup so a plugin unload is visible on the
+/// Providers are queried on each lookup so a deleted extension is gone on the
 /// next `list` without a rebuild.
 class OperationCatalog {
   final List<OperationProvider> _providers = [];

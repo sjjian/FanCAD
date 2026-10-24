@@ -30,8 +30,8 @@ void main() {
         overrides: [
           settingsProvider.overrideWithValue(SettingsStore.inMemory()),
           drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
-          pluginsDirectoryProvider.overrideWithValue(root.path),
-          pluginTransportProvider.overrideWithValue(LocalTransport.new),
+          extensionsDirectoryProvider.overrideWithValue(root.path),
+          extensionTransportProvider.overrideWithValue(LocalTransport.new),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),
@@ -43,7 +43,7 @@ void main() {
               width: 280,
               height: 640,
               child: Consumer(
-                builder: (context, ref, _) => ScriptsPanel(
+                builder: (context, ref, _) => ExtensionsPanel(
                   workspace: ref.read(workspaceNotifierProvider.notifier),
                 ),
               ),
@@ -69,11 +69,13 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final card = tester.getSize(find.byKey(const Key('script-polar-card')));
+    final card = tester.getSize(find.byKey(const Key('extension-polar-card')));
     expect(card.width, greaterThan(1000));
     expect(card.height, greaterThan(700));
-    final cardBox = tester.getRect(find.byKey(const Key('script-polar-card')));
-    final save = tester.getRect(find.byKey(const Key('script-editor-save')));
+    final cardBox = tester.getRect(
+      find.byKey(const Key('extension-polar-card')),
+    );
+    final save = tester.getRect(find.byKey(const Key('extension-editor-save')));
     expect(save.left - cardBox.left, lessThan(24));
 
     await tester.pump();
@@ -101,13 +103,13 @@ void main() {
 
     final line1 = tester.getRect(
       find.descendant(
-        of: find.byKey(const Key('script-editor-lines')),
+        of: find.byKey(const Key('extension-editor-lines')),
         matching: find.text('1'),
       ),
     );
     final line2 = tester.getRect(
       find.descendant(
-        of: find.byKey(const Key('script-editor-lines')),
+        of: find.byKey(const Key('extension-editor-lines')),
         matching: find.text('2'),
       ),
     );
@@ -133,8 +135,8 @@ void main() {
         overrides: [
           settingsProvider.overrideWithValue(SettingsStore.inMemory()),
           drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
-          pluginsDirectoryProvider.overrideWithValue(root.path),
-          pluginTransportProvider.overrideWithValue(LocalTransport.new),
+          extensionsDirectoryProvider.overrideWithValue(root.path),
+          extensionTransportProvider.overrideWithValue(LocalTransport.new),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),
@@ -146,7 +148,7 @@ void main() {
               width: 280,
               height: 640,
               child: Consumer(
-                builder: (context, ref, _) => ScriptsPanel(
+                builder: (context, ref, _) => ExtensionsPanel(
                   workspace: ref.read(workspaceNotifierProvider.notifier),
                 ),
               ),
@@ -163,13 +165,13 @@ void main() {
 
     expect(find.text('Disable'), findsOneWidget);
     expect(find.text('Delete extension'), findsOneWidget);
-    expect(find.byKey(const Key('script-polar-card')), findsNothing);
+    expect(find.byKey(const Key('extension-polar-card')), findsNothing);
 
     await tester.tap(find.text('Disable'));
     await tester.pumpAndSettle();
 
     expect(find.text('Disabled'), findsOneWidget);
-    expect(find.byKey(const Key('script-polar-card')), findsNothing);
+    expect(find.byKey(const Key('extension-polar-card')), findsNothing);
 
     await tester.tap(find.byTooltip('Configure'));
     await tester.pumpAndSettle();

@@ -11,7 +11,7 @@ void main() {
 
   test('sessionFor follows the active tab and is null with no drawing', () {
     final ws = workspace();
-    final delegate = AppPluginDelegate(workspace: () => ws);
+    final delegate = ExtensionDelegate(workspace: () => ws);
     expect(delegate.sessionFor(null), isNull);
 
     final tab = ws.newDocument(title: 'A');
@@ -35,7 +35,7 @@ void main() {
         ),
       );
       ws.newDocument();
-      final delegate = AppPluginDelegate(workspace: () => ws);
+      final delegate = ExtensionDelegate(workspace: () => ws);
 
       final result = await delegate.runCommand(
         'test.mark',
@@ -43,7 +43,7 @@ void main() {
         scope: 'run-1',
       );
       expect(result.isOk, isTrue);
-      expect(seen, ChangeSource.plugin);
+      expect(seen, ChangeSource.extension);
     },
   );
 
@@ -62,7 +62,7 @@ void main() {
         ),
       );
     }
-    final delegate = AppPluginDelegate(workspace: () => ws);
+    final delegate = ExtensionDelegate(workspace: () => ws);
 
     final result = await delegate.runCommand('exec', const {
       'source': '1 + 1',
@@ -87,7 +87,7 @@ void main() {
           },
         ),
       );
-      final delegate = AppPluginDelegate(workspace: () => ws);
+      final delegate = ExtensionDelegate(workspace: () => ws);
 
       final result = await delegate.runCommand(
         'extension.rings',
@@ -102,7 +102,7 @@ void main() {
 
   test('showMessage notifies the workspace', () {
     final ws = workspace();
-    final delegate = AppPluginDelegate(workspace: () => ws);
+    final delegate = ExtensionDelegate(workspace: () => ws);
 
     delegate.showMessage('run-1', 'hello');
     delegate.showMessage('run-1', 'broken', isError: true);
@@ -116,7 +116,7 @@ void main() {
 
   test('console lines land on the command line', () {
     final ws = workspace();
-    final delegate = AppPluginDelegate(workspace: () => ws);
+    final delegate = ExtensionDelegate(workspace: () => ws);
 
     delegate.log('run-1', 'info', 'counted 3');
     delegate.log('run-1', 'error', 'bad input');

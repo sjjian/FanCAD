@@ -31,7 +31,7 @@ class ActivityBar extends StatelessWidget {
     (id: 'history', icon: Icons.history_outlined, activeIcon: Icons.history),
     (id: 'commands', icon: Icons.terminal_outlined, activeIcon: Icons.terminal),
     (
-      id: 'plugins',
+      id: 'extensions',
       icon: Icons.extension_outlined,
       activeIcon: Icons.extension,
     ),
@@ -47,7 +47,7 @@ class ActivityBar extends StatelessWidget {
       'history' => (label: l10n.command_history, hint: l10n.view_history_hint),
       'commands' => (label: l10n.commands, hint: l10n.view_commands_hint),
       'export' => (label: l10n.export_menu, hint: l10n.view_export_hint),
-      'plugins' => (label: l10n.scripts, hint: l10n.view_scripts_hint),
+      'extensions' => (label: l10n.extensions, hint: l10n.view_extensions_hint),
       _ => (label: l10n.re_editor, hint: l10n.view_editor_hint),
     };
   }

@@ -84,46 +84,49 @@ final commandRegistryProvider = Provider<CommandRegistry>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef CommandRegistryRef = ProviderRef<CommandRegistry>;
-String _$pluginsDirectoryHash() => r'883437af0aa766aa7633a91eeef02ee5dec57ab0';
+String _$extensionsDirectoryHash() =>
+    r'2ef63181acbd0412c316f2df1c3aa5731f5eb434';
 
 /// Where saved extensions live (`extensions/*.js`). Overridden at startup with
 /// a real path, and left empty in tests so a test run never reads the user's
 /// files.
 ///
-/// Copied from [pluginsDirectory].
-@ProviderFor(pluginsDirectory)
-final pluginsDirectoryProvider = Provider<String>.internal(
-  pluginsDirectory,
-  name: r'pluginsDirectoryProvider',
+/// Copied from [extensionsDirectory].
+@ProviderFor(extensionsDirectory)
+final extensionsDirectoryProvider = Provider<String>.internal(
+  extensionsDirectory,
+  name: r'extensionsDirectoryProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$pluginsDirectoryHash,
+      : _$extensionsDirectoryHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef PluginsDirectoryRef = ProviderRef<String>;
-String _$pluginTransportHash() => r'4c07ff261d1c2b30a0ef2ed1a310cf2feaa318ae';
+typedef ExtensionsDirectoryRef = ProviderRef<String>;
+String _$extensionTransportHash() =>
+    r'55325f208410b9698be73557a290b3c2003cdc24';
 
 /// Builds the worker extensions run on. Called again when a wedged worker is
 /// dropped. Overridden in tests with [LocalTransport].
 ///
-/// Copied from [pluginTransport].
-@ProviderFor(pluginTransport)
-final pluginTransportProvider = Provider<PluginTransport Function()>.internal(
-  pluginTransport,
-  name: r'pluginTransportProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$pluginTransportHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// Copied from [extensionTransport].
+@ProviderFor(extensionTransport)
+final extensionTransportProvider =
+    Provider<ExtensionTransport Function()>.internal(
+      extensionTransport,
+      name: r'extensionTransportProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$extensionTransportHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef PluginTransportRef = ProviderRef<PluginTransport Function()>;
+typedef ExtensionTransportRef = ProviderRef<ExtensionTransport Function()>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

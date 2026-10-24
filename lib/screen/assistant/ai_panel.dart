@@ -16,7 +16,7 @@ import '../../services/assistant.dart';
 import '../../services/assistant_images.dart';
 import '../../services/settings.dart';
 import '../../services/workspace.dart';
-import '../plugin/js_highlight.dart';
+import '../extension/js_highlight.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
 import 'assistant_markdown.dart';

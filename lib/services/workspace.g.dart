@@ -28,13 +28,13 @@ final workspaceFileCommandsOverrideProvider =
 // ignore: unused_element
 typedef WorkspaceFileCommandsOverrideRef =
     ProviderRef<WorkspaceFileCommandsFactory?>;
-String _$workspaceNotifierHash() => r'64c5433bcc782614929ef460aec61de874982af0';
+String _$workspaceNotifierHash() => r'686630a3a8459c382303e956dbe4744b7df21e5c';
 
 /// The application state: open documents, the command registry, and the wiring
 /// that lets a command reach the UI.
 ///
 /// This is the object that owns the "one write path" guarantee. Every mutation —
-/// from a toolbar button, a typed command, a plugin, or the model — is a
+/// from a toolbar button, a typed command, an extension, or the model — is a
 /// [CommandRegistry.run] call routed through here, so there is exactly one place
 /// where a change can be observed, logged, undone or refused.
 ///

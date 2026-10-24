@@ -429,10 +429,6 @@
   "@commands": {
     "description": "commands"
   },
-  "extensions": "Extensions",
-  "@extensions": {
-    "description": "extensions"
-  },
   "re_editor": "Re-Editor",
   "@re_editor": {
     "description": "re editor"
@@ -468,10 +464,6 @@
   "view_history_hint": "Commands that have already run",
   "@view_history_hint": {
     "description": "view history hint"
-  },
-  "view_extensions_hint": "Installed plugins and their errors",
-  "@view_extensions_hint": {
-    "description": "view extensions hint"
   },
   "view_export_hint": "Format, area and layers for this export",
   "@view_export_hint": {
@@ -4074,129 +4066,125 @@
   "@use": {
     "description": "use"
   },
-  "scripts": "Extensions",
-  "@scripts": {
-    "description": "scripts sidebar"
+  "extensions": "Extensions",
+  "@extensions": {
+    "description": "extensions"
   },
-  "view_scripts_hint": "Saved extensions you can run again",
-  "@view_scripts_hint": {
-    "description": "scripts sidebar hint"
+  "view_extensions_hint": "Saved extensions you can run again",
+  "@view_extensions_hint": {
+    "description": "view extensions hint"
   },
-  "new_script": "New extension",
-  "@new_script": {
-    "description": "create a script"
+  "new_extension": "New extension",
+  "@new_extension": {
+    "description": "new extension"
   },
-  "run_script": "Run",
-  "@run_script": {
-    "description": "run a script"
+  "run_extension": "Run",
+  "@run_extension": {
+    "description": "run extension"
   },
-  "edit_script": "Edit",
-  "@edit_script": {
-    "description": "edit a script"
+  "edit_extension": "Edit",
+  "@edit_extension": {
+    "description": "edit extension"
   },
-  "configure_script": "Configure",
-  "@configure_script": {
-    "description": "open the script configure menu"
+  "configure_extension": "Configure",
+  "@configure_extension": {
+    "description": "configure extension"
   },
-  "enable_script": "Enable",
-  "@enable_script": {
-    "description": "enable a script"
+  "enable_extension": "Enable",
+  "@enable_extension": {
+    "description": "enable extension"
   },
-  "disable_script": "Disable",
-  "@disable_script": {
-    "description": "disable a script"
+  "disable_extension": "Disable",
+  "@disable_extension": {
+    "description": "disable extension"
   },
-  "script_disabled": "Disabled",
-  "@script_disabled": {
-    "description": "script is switched off"
+  "extension_disabled": "Disabled",
+  "@extension_disabled": {
+    "description": "extension disabled"
   },
-  "delete_script": "Delete extension",
-  "@delete_script": {
-    "description": "delete a script"
+  "delete_extension": "Delete extension",
+  "@delete_extension": {
+    "description": "delete extension"
   },
-  "script_usage": "Usage",
-  "@script_usage": {
-    "description": "label before how to run a script"
+  "extension_usage": "Usage",
+  "@extension_usage": {
+    "description": "extension usage"
   },
-  "no_scripts": "No extensions yet",
-  "@no_scripts": {
-    "description": "empty script list"
+  "no_extensions": "No extensions yet",
+  "@no_extensions": {
+    "description": "no extensions"
   },
-  "scripts_unavailable": "Extensions are unavailable: no extensions folder was configured for this session.",
-  "@scripts_unavailable": {
-    "description": "scripts folder missing"
+  "extensions_unavailable": "Extensions are unavailable: no extensions folder was configured for this session.",
+  "@extensions_unavailable": {
+    "description": "extensions unavailable"
   },
-  "open_scripts_folder": "Open extensions folder",
-  "@open_scripts_folder": {
-    "description": "reveal the scripts folder"
+  "open_extensions_folder": "Open extensions folder",
+  "@open_extensions_folder": {
+    "description": "open extensions folder"
   },
-  "prompt_script_name": "Extension name",
-  "@prompt_script_name": {
-    "description": "prompt for a script name"
+  "prompt_extension_name": "Extension name",
+  "@prompt_extension_name": {
+    "description": "prompt extension name"
   },
-  "hint_type_script": "Extension name or JavaScript",
-  "@hint_type_script": {
-    "description": "command dock hint in script mode"
+  "hint_type_extension": "Extension name or JavaScript",
+  "@hint_type_extension": {
+    "description": "hint type extension"
   },
-  "hud_mode_script": "Extension",
-  "@hud_mode_script": {
-    "description": "canvas dock mode: run a script"
+  "hud_mode_extension": "Extension",
+  "@hud_mode_extension": {
+    "description": "hud mode extension"
   },
-  "hud_switch_to_script": "Switch to extension",
-  "@hud_switch_to_script": {
-    "description": "canvas dock: run a script"
+  "hud_switch_to_extension": "Switch to extension",
+  "@hud_switch_to_extension": {
+    "description": "hud switch to extension"
   },
-  "category_scripts": "Extensions",
-  "@category_scripts": {
-    "description": "category scripts"
+  "command_extensions_doc": "Extension Guide",
+  "@command_extensions_doc": {
+    "description": "command extensions doc"
   },
-  "command_scripts_doc": "Extension Guide",
-  "@command_scripts_doc": {
-    "description": "command scripts doc"
+  "command_extensions_list": "List Extensions",
+  "@command_extensions_list": {
+    "description": "command extensions list"
   },
-  "command_scripts_list": "List Extensions",
-  "@command_scripts_list": {
-    "description": "command scripts list"
+  "command_extensions_read": "Read Extension",
+  "@command_extensions_read": {
+    "description": "command extensions read"
   },
-  "command_scripts_read": "Read Extension",
-  "@command_scripts_read": {
-    "description": "command scripts read"
+  "command_extensions_write": "Write Extension",
+  "@command_extensions_write": {
+    "description": "command extensions write"
   },
-  "command_scripts_write": "Write Extension",
-  "@command_scripts_write": {
-    "description": "command scripts write"
+  "command_extensions_delete": "Delete Extension",
+  "@command_extensions_delete": {
+    "description": "command extensions delete"
   },
-  "command_scripts_delete": "Delete Extension",
-  "@command_scripts_delete": {
-    "description": "command scripts delete"
+  "command_extensions_run": "Run Extension",
+  "@command_extensions_run": {
+    "description": "command extensions run"
   },
-  "command_scripts_run": "Run Extension",
-  "@command_scripts_run": {
-    "description": "command scripts run"
+  "command_extensions_doc_desc": "Returns how to write a saved extension.",
+  "@command_extensions_doc_desc": {
+    "description": "command extensions doc desc"
   },
-  "command_scripts_doc_desc": "Returns how to write a saved extension.",
-  "@command_scripts_doc_desc": {
-    "description": "command scripts doc desc"
+  "command_extensions_list_desc": "Lists each saved extension with its description, usage, parameters, and last error.",
+  "@command_extensions_list_desc": {
+    "description": "command extensions list desc"
   },
-  "command_scripts_list_desc": "Lists each saved extension with its description, usage, parameters, and last error.",
-  "@command_scripts_list_desc": {
-    "description": "command scripts list desc"
+  "command_extensions_read_desc": "Reads one saved extension, including its description, usage, and parameters.",
+  "@command_extensions_read_desc": {
+    "description": "command extensions read desc"
   },
-  "command_scripts_read_desc": "Reads one saved extension, including its description, usage, and parameters.",
-  "@command_scripts_read_desc": {
-    "description": "command scripts read desc"
+  "command_extensions_write_desc": "Creates or overwrites one saved extension. Put description, usage, and params in the opening comment.",
+  "@command_extensions_write_desc": {
+    "description": "command extensions write desc"
   },
-  "command_scripts_write_desc": "Creates or overwrites one saved extension. Put description, usage, and params in the opening comment.",
-  "@command_scripts_write_desc": {
-    "description": "command scripts write desc"
+  "command_extensions_delete_desc": "Deletes one saved extension.",
+  "@command_extensions_delete_desc": {
+    "description": "command extensions delete desc"
   },
-  "command_scripts_delete_desc": "Deletes one saved extension.",
-  "@command_scripts_delete_desc": {
-    "description": "command scripts delete desc"
-  },
-  "command_scripts_run_desc": "Runs JavaScript passed as source. A saved extension is the command extension.<name>.",
-  "@command_scripts_run_desc": {
-    "description": "command scripts run desc"
+  "command_extensions_run_desc": "Runs JavaScript passed as source. A saved extension is the command extension.<name>.",
+  "@command_extensions_run_desc": {
+    "description": "command extensions run desc"
   },
   "command_exec": "Exec",
   "@command_exec": {

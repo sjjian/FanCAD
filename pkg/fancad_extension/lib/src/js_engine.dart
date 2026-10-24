@@ -11,10 +11,10 @@ class JsException implements Exception {
   String toString() => stack.isEmpty ? message : '$message\n$stack';
 }
 
-/// The slice of a JavaScript engine the plugin runtime actually needs.
+/// The slice of a JavaScript engine the script runtime actually needs.
 ///
 /// Narrow on purpose. QuickJS is the only production implementation, but the
-/// runtime is written against this interface so the load/activate/invoke logic
+/// runtime is written against this interface so the open/eval/close logic
 /// can be tested without a native library — and so replacing the engine later
 /// is a one-file change rather than a rewrite.
 abstract class JsEngine {
@@ -27,7 +27,7 @@ abstract class JsEngine {
   /// Installs [callback] as a global function.
   ///
   /// A callback returning a [Future] surfaces in JavaScript as a promise, which
-  /// is what makes the whole host API awaitable from plugin code.
+  /// is what makes the whole host API awaitable from script code.
   void defineFunction(String name, Function callback);
 
   /// Calls the global function [name] with [args].
@@ -39,7 +39,7 @@ abstract class JsEngine {
   /// Runs queued microtasks and resolved promise callbacks.
   ///
   /// Must be called after anything that could settle a promise, otherwise
-  /// `await` in plugin code never resumes.
+  /// `await` in script code never resumes.
   void pumpEventLoop();
 
   /// Bytes currently allocated, when the engine can report it.
@@ -60,9 +60,9 @@ abstract class JsEngine {
   void dispose();
 }
 
-/// Creates an engine for one plugin.
+/// Creates an engine for one run.
 ///
-/// [memoryLimit] and [stackSize] are per-plugin, which is the only resource
+/// [memoryLimit] and [stackSize] are per run, which is the only resource
 /// ceiling the engine can actually enforce for us.
 typedef JsEngineFactory =
     JsEngine Function({required int memoryLimit, required int stackSize});
@@ -71,9 +71,9 @@ typedef JsEngineFactory =
 /// library.
 ///
 /// It does not parse JavaScript. It recognises the small set of calls the
-/// runtime makes during load and invoke, which is enough to exercise manifest
-/// handling, contribution registration, RPC plumbing and error propagation
-/// without shipping a JIT into the test process.
+/// runtime makes while opening and evaluating, which is enough to exercise
+/// RPC plumbing and error propagation without shipping a JIT into the test
+/// process.
 class ScriptedJsEngine implements JsEngine {
   ScriptedJsEngine({this.onEvaluate});
 
@@ -100,7 +100,7 @@ class ScriptedJsEngine implements JsEngine {
 
   /// Functions the fake script "declared", which [callGlobal] can reach.
   ///
-  /// A test populates this to stand in for what a plugin's `main.js` would have
+  /// A test populates this to stand in for what a script would have
   /// installed.
   final Map<String, Function> globals = {};
 

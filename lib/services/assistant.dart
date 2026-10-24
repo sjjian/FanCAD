@@ -12,7 +12,7 @@ import '../models/assistant.dart';
 import '../models/workspace.dart';
 import '../storage/assistant.dart';
 import 'assistant_images.dart';
-import 'plugin.dart';
+import 'extension.dart';
 import 'providers.dart';
 import 'settings.dart';
 import 'workspace.dart';
@@ -572,7 +572,7 @@ class AssistantNotifier extends _$AssistantNotifier {
       execute: (id, args, {tab}) {
         final found = workspace.commands.find(id);
         if (found != null && found.id.startsWith('extension.')) {
-          return workspace.runSavedScript(
+          return workspace.runExtension(
             id,
             args: args,
             source: ChangeSource.ai,
@@ -599,7 +599,7 @@ class AssistantNotifier extends _$AssistantNotifier {
       askQuestion: _askQuestion,
       askCompact: _askCompact,
       execCode: (source) =>
-          ref.read(pluginNotifierProvider.notifier).execScript(source),
+          ref.read(extensionNotifierProvider.notifier).exec(source),
       supplyToSession: (args) async => workspace.supplyInteractive(args),
       onDelta: (_) => _bumpTranscript(),
       onUsage: (usage) {

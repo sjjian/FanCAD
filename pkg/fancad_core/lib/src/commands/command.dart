@@ -48,8 +48,9 @@ enum AiExposure {
 
   /// Available in the app, and left out of AI chat and MCP.
   ///
-  /// Writing extension source and running an arbitrary script stay here.
-  /// Managing an extension and running a command it registered do not.
+  /// Only `extensions.run`, which evaluates unsaved source, is here. Chat runs
+  /// unsaved code through its own `exec` tool. Writing, deleting and running
+  /// a saved extension are [approvalRequired] instead.
   hostOnly,
 }
 

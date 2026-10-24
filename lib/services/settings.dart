@@ -241,7 +241,7 @@ class McpNotifier extends _$McpNotifier {
     );
 
   /// List, read, write, delete, doc, and `extension.<name>`. Not the drawing CLI.
-  OperationCatalog scriptCatalog() => OperationCatalog()
+  OperationCatalog extensionCatalog() => OperationCatalog()
     ..addProvider(
       CommandOperationProvider(
         registry: _workspace.commands,
@@ -257,7 +257,7 @@ class McpNotifier extends _$McpNotifier {
   }) {
     final found = _workspace.commands.find(id);
     if (found != null && found.id.startsWith('extension.')) {
-      return _workspace.runSavedScript(
+      return _workspace.runExtension(
         id,
         args: args,
         source: ChangeSource.mcp,
@@ -281,7 +281,7 @@ class McpNotifier extends _$McpNotifier {
     final token = state.token;
     _lockPaths = lockPaths ?? _defaultLockPaths();
     final drawing = catalog();
-    final scripts = scriptCatalog();
+    final scripts = extensionCatalog();
     final session = McpSession.tools([
       McpCliTool(
         name: fancadToolName,

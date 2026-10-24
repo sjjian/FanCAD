@@ -93,7 +93,7 @@ class ScriptRuntime {
     try {
       engine = _openEngine();
     } on JsException catch (error) {
-      throw RpcException(RpcErrorCode.pluginError, error.message);
+      throw RpcException(RpcErrorCode.scriptError, error.message);
     }
     try {
       engine.defineFunction(
@@ -108,7 +108,7 @@ class ScriptRuntime {
     } on JsException catch (error) {
       engine.dispose();
       throw RpcException(
-        RpcErrorCode.pluginError,
+        RpcErrorCode.scriptError,
         'the script prelude failed: ${error.message}',
         data: {'stack': error.stack},
       );
@@ -127,7 +127,7 @@ class ScriptRuntime {
       return {'value': _jsonSafe(value)};
     } on JsException catch (error) {
       throw RpcException(
-        RpcErrorCode.pluginError,
+        RpcErrorCode.scriptError,
         error.message,
         data: {'stack': error.stack},
       );
