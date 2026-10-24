@@ -276,6 +276,26 @@ void main() {
     });
   });
 
+  test('an angle reaches the script in degrees however it arrives', () async {
+    await run('extensions.write', {
+      'name': 'turn',
+      'content': '/**\n * param by: angle = 90 Angle\n */\n1\n',
+    });
+    Future<Object?> angleOf(Future<CommandResult> running) async =>
+        ((await running).data!['args'] as Map)['by'];
+
+    expect(await angleOf(invoke('turn', {'by': 30})), closeTo(30, 1e-9));
+    expect(await angleOf(invoke('turn')), closeTo(90, 1e-9));
+    expect(
+      await angleOf(app.workspace.run('extension.turn', args: {'by': 45})),
+      closeTo(45, 1e-9),
+    );
+    expect(
+      await angleOf(app.workspace.run('extension.turn')),
+      closeTo(90, 1e-9),
+    );
+  });
+
   test('a disabled script leaves the command line and can come back', () async {
     expect(
       (await run('extensions.write', {

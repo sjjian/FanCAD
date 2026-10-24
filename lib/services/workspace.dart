@@ -2345,7 +2345,8 @@ class InteractiveCommandInput implements CommandInput {
     final supplied = _asDouble(
       _preSupplied({ParamType.angle, ParamType.number}),
     );
-    if (supplied != null) return supplied;
+    // ParamType.angle is degrees on the wire, radians internally.
+    if (supplied != null) return supplied * math.pi / 180;
 
     final anchor = basePoint ?? lastPoint;
     final tool = PointPromptTool(

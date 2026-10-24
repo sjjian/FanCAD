@@ -540,11 +540,6 @@ Future<Object?> _ask(CommandContext context, ParamSpec param) async {
         prompt,
         basePoint: context.input.lastPick,
       );
-      final supplied =
-          context.args.has(param.name) || param.defaultValue != null;
-      // A typed argument is already degrees. A pick, and a headless argument,
-      // come back as radians.
-      if (context.input.isInteractive && supplied) return radians;
       return radians * 180 / math.pi;
     case ParamType.text:
     case ParamType.layer:
