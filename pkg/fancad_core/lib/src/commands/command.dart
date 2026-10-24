@@ -300,6 +300,13 @@ abstract class CommandServices {
   /// Headless tests keep English.
   String get locale => 'en';
 
+  /// ARGB of the canvas the user is looking at.
+  ///
+  /// Screenshots for the assistant use this so a line keeps the colour on
+  /// screen. Null means the host has no theme, and the picture stays on
+  /// white paper. File plots ignore it.
+  int? get canvasColor => null;
+
   /// Opens the export pane on the active drawing.
   ///
   /// Omitted [format] and [scope] keep that drawing's last choice.
@@ -355,6 +362,9 @@ class _NullServices implements CommandServices {
 
   @override
   String get locale => 'en';
+
+  @override
+  int? get canvasColor => null;
 
   @override
   void openExport({String? format, String? scope}) {}

@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:fancad/commands/pro/export.dart';
 import 'package:fancad/fancad.dart';
@@ -824,6 +826,44 @@ void main() {
       expect(result.status, CommandStatus.failed);
     });
 
+    test('a screenshot uses the canvas colour, a file stays white', () async {
+      await drawLine(0, 50, 100, 50);
+      const window = {
+        'corner1': [0, 0],
+        'corner2': [100, 100],
+      };
+
+      final dark = await run('print.export', {'format': 'png', ...window});
+      expect(dark.status, CommandStatus.ok, reason: dark.message);
+      final darkImage = await _pngPixels(_imageBytes(dark));
+      expect(_argbAt(darkImage, 0, 0), ThemePreference.darkCanvas);
+      expect(
+        _centerColumnHasInk(darkImage, ThemePreference.darkCanvas, light: true),
+        isTrue,
+      );
+
+      app.settings.set(SettingsKeys.themeBrightness, ThemePreference.light.id);
+      final light = await run('print.export', {'format': 'png', ...window});
+      expect(light.status, CommandStatus.ok, reason: light.message);
+      final lightImage = await _pngPixels(_imageBytes(light));
+      expect(_argbAt(lightImage, 0, 0), ThemePreference.lightCanvas);
+      expect(
+        _centerColumnHasInk(
+          lightImage,
+          ThemePreference.lightCanvas,
+          light: false,
+        ),
+        isTrue,
+      );
+
+      final dir = tempDir(prefix: 'fancad-print-');
+      final path = '${dir.path}/sheet.png';
+      final file = await run('print.export', {'path': path, ...window});
+      expect(file.status, CommandStatus.ok, reason: file.message);
+      final paper = await _pngPixels(File(path).readAsBytesSync());
+      expect(_argbAt(paper, 0, 0), 0xFFFFFFFF);
+    });
+
     test(
       'a headless png export returns bytes and does not write a file',
       () async {
@@ -1046,4 +1086,53 @@ void main() {
       },
     );
   });
+}
+
+Uint8List _imageBytes(CommandResult result) {
+  final image = result.data!['image'] as Map<Object?, Object?>;
+  return base64Decode('${image['data']}');
+}
+
+Future<({int width, int height, ByteData pixels})> _pngPixels(
+  Uint8List png,
+) async {
+  final codec = await ui.instantiateImageCodec(png);
+  final frame = await codec.getNextFrame();
+  final image = frame.image;
+  final pixels = await image.toByteData();
+  image.dispose();
+  codec.dispose();
+  return (width: image.width, height: image.height, pixels: pixels!);
+}
+
+int _argbAt(({int width, int height, ByteData pixels}) image, int x, int y) {
+  final index = (y * image.width + x) * 4;
+  final r = image.pixels.getUint8(index);
+  final g = image.pixels.getUint8(index + 1);
+  final b = image.pixels.getUint8(index + 2);
+  final a = image.pixels.getUint8(index + 3);
+  return (a << 24) | (r << 16) | (g << 8) | b;
+}
+
+/// The centre column of a horizontal stroke. [light] expects ACI 7 on a dark
+/// canvas; otherwise the same index is black on a light canvas.
+bool _centerColumnHasInk(
+  ({int width, int height, ByteData pixels}) image,
+  int background, {
+  required bool light,
+}) {
+  final x = image.width ~/ 2;
+  for (var y = 0; y < image.height; y++) {
+    final pixel = _argbAt(image, x, y);
+    if (pixel == background) continue;
+    final r = (pixel >> 16) & 0xFF;
+    final g = (pixel >> 8) & 0xFF;
+    final b = pixel & 0xFF;
+    if (light) {
+      if (r > 100 && g > 100 && b > 100) return true;
+    } else if (r < 180 && g < 180 && b < 180) {
+      return true;
+    }
+  }
+  return false;
 }

@@ -124,6 +124,15 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   @override
   String get locale => ref.read(appSettingsProvider).appearance.load().language;
 
+  /// Canvas colour of the current theme. Screenshots match this; plots do not.
+  @override
+  int? get canvasColor {
+    final preference = ref.read(appSettingsProvider).appearance.load().theme;
+    final platformDark =
+        PlatformDispatcher.instance.platformBrightness == Brightness.dark;
+    return preference.canvasArgb(platformDark: platformDark);
+  }
+
   /// Snapping is application-wide rather than per-tab, because the toggles live
   /// on the canvas HUD and users expect them to stay put when switching tabs.
   late final SnapEngine snapEngine;

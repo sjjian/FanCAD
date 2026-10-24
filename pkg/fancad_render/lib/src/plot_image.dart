@@ -13,8 +13,10 @@ import 'viewport.dart';
 /// Long edge of a raster plot, in pixels.
 const int plotImageLongEdge = 2048;
 
-/// Paints [frame] on white with [layers] and returns a PNG.
+/// Paints [frame] with [layers] and returns a PNG.
 ///
+/// Omit [canvas] for a white-paper plot. Pass the on-screen canvas colour
+/// when the picture is a screenshot, so ACI 7 stays the colour the user sees.
 /// The same window and layer set a vector plot uses. No grid, no chrome.
 Future<Uint8List> renderPlotPng({
   required CadDocument document,
@@ -22,22 +24,26 @@ Future<Uint8List> renderPlotPng({
   required Set<String> layers,
   ShxFontTable shxFonts = const ShxFontTable(),
   int longEdge = plotImageLongEdge,
+  Color? canvas,
 }) async {
   final size = plotPixelSize(frame, longEdge);
   final viewport = CadViewport.fit(frame, size, margin: 0, devicePixelRatio: 1);
+  final palette = canvas == null
+      ? AciPalette.light
+      : AciPalette(background: canvas);
   final scene = SceneBuilder(
-    palette: AciPalette.light,
+    palette: palette,
     shxFonts: shxFonts,
   ).build(document, viewport, onlyLayers: layers, plotLayers: true);
   final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder);
+  final output = Canvas(recorder);
   final bounds = Offset.zero & size;
-  canvas
-    ..drawRect(bounds, Paint()..color = const Color(0xFFFFFFFF))
+  output
+    ..drawRect(bounds, Paint()..color = palette.background)
     ..save()
     ..clipRect(bounds);
-  ScenePainter().paint(canvas, scene);
-  canvas.restore();
+  ScenePainter().paint(output, scene);
+  output.restore();
   final picture = recorder.endRecording();
   final image = await picture.toImage(size.width.round(), size.height.round());
   try {

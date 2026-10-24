@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' show Color;
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
@@ -299,12 +300,15 @@ Bounds2? _boundsOf(Object? visible) {
 }
 
 /// Paints [layout] to PNG bytes. Does not write a file.
+///
+/// [canvas] is the on-screen background. Omit it for a white-paper plot.
 Future<Uint8List> readPlotPng({
   required CadDocument document,
   required Layout layout,
   ShxFontTable shxFonts = const ShxFontTable(),
   Bounds2? window,
   Set<String>? layers,
+  Color? canvas,
 }) {
   final frame = Plotter.frame(document, layout: layout, window: window);
   return renderPlotPng(
@@ -312,6 +316,7 @@ Future<Uint8List> readPlotPng({
     frame: frame,
     layers: layers ?? defaultPlotLayers(document),
     shxFonts: shxFonts,
+    canvas: canvas,
   );
 }
 
@@ -324,12 +329,14 @@ Future<CommandResult> _readPngResult(CommandContext context) async {
   }
   final window = _exportWindow(context, layout);
   if (window.$1 != null) return CommandResult.failed(window.$1!);
+  final argb = context.services.canvasColor;
   final png = await readPlotPng(
     document: context.document,
     layout: layout,
     shxFonts: context.services.shxFonts,
     window: window.$2,
     layers: exportLayerFilter(context.args),
+    canvas: argb == null ? null : Color(argb),
   );
   final scope = context.args.text('scope')?.trim() ?? '';
   return CommandResult.ok(

@@ -57,6 +57,23 @@ enum ThemePreference {
 
   /// Wire value written to `settings.json`.
   String get id => name;
+
+  /// Canvas behind the drawing. Shared with the on-screen theme so a
+  /// screenshot uses the colour the user is looking at.
+  static const int darkCanvas = 0xFF1B1D21;
+
+  /// Warm off-white of the light theme, not the white of a paper plot.
+  static const int lightCanvas = 0xFFF3F1EC;
+
+  /// ARGB of the canvas for this choice. [platformDark] decides [system].
+  int canvasArgb({required bool platformDark}) {
+    final dark = switch (this) {
+      ThemePreference.dark => true,
+      ThemePreference.light => false,
+      ThemePreference.system => platformDark,
+    };
+    return dark ? darkCanvas : lightCanvas;
+  }
 }
 
 /// Drafting toggles written to `settings.json`.

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../models/settings.dart';
+
 /// The FanCAD colour, spacing and typography scale.
 ///
 /// The window is mostly chrome around one very dark canvas, so the palette is
@@ -31,7 +33,7 @@ class FanCadTokens {
   /// The FanCAD dark theme. Canvas is a desaturated near-black rather than
   /// pure black so that ACI 7 white geometry does not bloom against it.
   static const FanCadTokens dark = FanCadTokens(
-    canvas: Color(0xFF1B1D21),
+    canvas: Color(ThemePreference.darkCanvas),
     surface: Color(0xFF23262B),
     surfaceRaised: Color(0xFF2B2F35),
     surfaceOverlay: Color(0xFF33383F),
@@ -50,7 +52,7 @@ class FanCadTokens {
   );
 
   static const FanCadTokens light = FanCadTokens(
-    canvas: Color(0xFFF3F1EC),
+    canvas: Color(ThemePreference.lightCanvas),
     surface: Color(0xFFFFFFFF),
     surfaceRaised: Color(0xFFF1F3F6),
     surfaceOverlay: Color(0xFFFFFFFF),
