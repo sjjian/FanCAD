@@ -441,28 +441,11 @@ class AgentLoop {
     return null;
   }
 
-  OperationCatalog _opsCatalog() => OperationCatalog()
-    ..addProvider(
-      CommandOperationProvider(
-        registry: registry,
-        execute: execute,
-        include: (command) => !isExtensionCliCommand(command.id),
-      ),
-    )
-    ..addProvider(HostOperationProvider(_hostTools()));
-
-  OperationCatalog _extensionCatalog() => OperationCatalog()
-    ..addProvider(
-      CommandOperationProvider(
-        registry: registry,
-        execute: execute,
-        include: (command) => isExtensionCliCommand(command.id),
-      ),
-    );
-
   Future<void> _runCalls(List<LlmToolCall> calls, Conversation convo) async {
-    final drawing = OpsDispatcher(_opsCatalog());
-    final scripts = OpsDispatcher(_extensionCatalog());
+    final catalogs = commandCatalogs(registry: registry, execute: execute);
+    catalogs.drawing.addProvider(HostOperationProvider(_hostTools()));
+    final drawing = OpsDispatcher(catalogs.drawing);
+    final extensions = OpsDispatcher(catalogs.extensions);
     final images = <ToolImage>[];
     var answeredAll = true;
     for (final call in calls) {
@@ -482,7 +465,7 @@ class AgentLoop {
         final png = await _runCli(
           call,
           convo,
-          call.name == extensionsToolName ? scripts : drawing,
+          call.name == extensionsToolName ? extensions : drawing,
           call.name,
         );
         if (png != null) {

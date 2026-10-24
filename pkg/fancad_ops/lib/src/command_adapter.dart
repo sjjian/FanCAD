@@ -1,7 +1,9 @@
 import 'package:fancad_core/fancad_core.dart';
 
+import 'catalog.dart';
 import 'encode.dart';
 import 'operation.dart';
+import 'tool.dart';
 
 /// Runs a command id. The host injects [Workspace.runHeadless] (or a test stub).
 typedef CommandExecutor =
@@ -60,3 +62,30 @@ Operation operationFromCommand(
   );
   return operation;
 }
+
+/// The two catalogs chat and MCP offer over one registry.
+///
+/// `drawing` backs the [fancadToolName] tool and `extensions` backs
+/// [extensionsToolName]. Both hosts split commands here so a command cannot
+/// end up on one tool in chat and the other over MCP.
+({OperationCatalog drawing, OperationCatalog extensions}) commandCatalogs({
+  required CommandRegistry registry,
+  required CommandExecutor execute,
+}) => (
+  drawing: OperationCatalog()
+    ..addProvider(
+      CommandOperationProvider(
+        registry: registry,
+        execute: execute,
+        include: (command) => !isExtensionCliCommand(command.id),
+      ),
+    ),
+  extensions: OperationCatalog()
+    ..addProvider(
+      CommandOperationProvider(
+        registry: registry,
+        execute: execute,
+        include: (command) => isExtensionCliCommand(command.id),
+      ),
+    ),
+);

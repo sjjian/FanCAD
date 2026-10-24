@@ -231,24 +231,11 @@ class McpNotifier extends _$McpNotifier {
 
   void setAllowlistFromText(String raw) => setAllowlist(parseMcpAllowlist(raw));
 
-  OperationCatalog catalog() => OperationCatalog()
-    ..addProvider(
-      CommandOperationProvider(
-        registry: _workspace.commands,
-        execute: _execute,
-        include: (command) => !isExtensionCliCommand(command.id),
-      ),
-    );
+  /// The drawing catalog behind the MCP `fancad` tool.
+  OperationCatalog catalog() => _catalogs().drawing;
 
-  /// List, read, write, delete, doc, and `extension.<name>`. Not the drawing CLI.
-  OperationCatalog extensionCatalog() => OperationCatalog()
-    ..addProvider(
-      CommandOperationProvider(
-        registry: _workspace.commands,
-        execute: _execute,
-        include: (command) => isExtensionCliCommand(command.id),
-      ),
-    );
+  ({OperationCatalog drawing, OperationCatalog extensions}) _catalogs() =>
+      commandCatalogs(registry: _workspace.commands, execute: _execute);
 
   Future<CommandResult> _execute(
     String id,
@@ -280,8 +267,7 @@ class McpNotifier extends _$McpNotifier {
     final listenPort = port ?? bind.port;
     final token = state.token;
     _lockPaths = lockPaths ?? _defaultLockPaths();
-    final drawing = catalog();
-    final scripts = extensionCatalog();
+    final (:drawing, :extensions) = _catalogs();
     final session = McpSession.tools([
       McpCliTool(
         name: fancadToolName,
@@ -297,8 +283,9 @@ class McpNotifier extends _$McpNotifier {
         description: extensionsToolDescription,
         parameters: extensionsToolParameters,
         dispatch: (request) async {
-          final intercepted = await _approve(scripts, request);
-          return intercepted ?? await OpsDispatcher(scripts).dispatch(request);
+          final intercepted = await _approve(extensions, request);
+          return intercepted ??
+              await OpsDispatcher(extensions).dispatch(request);
         },
       ),
     ]);
