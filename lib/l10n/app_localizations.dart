@@ -2456,114 +2456,6 @@ abstract class AppLocalizations {
   /// **'Send  Enter'**
   String get send_enter;
 
-  /// open extensions folder
-  ///
-  /// In en, this message translates to:
-  /// **'Open extensions folder'**
-  String get open_extensions_folder;
-
-  /// create extension
-  ///
-  /// In en, this message translates to:
-  /// **'Create extension'**
-  String get create_extension;
-
-  /// reload all extensions
-  ///
-  /// In en, this message translates to:
-  /// **'Reload all extensions'**
-  String get reload_all_extensions;
-
-  /// extensions unavailable
-  ///
-  /// In en, this message translates to:
-  /// **'Extensions are unavailable: no extensions folder was configured for this session.'**
-  String get extensions_unavailable;
-
-  /// no extensions installed
-  ///
-  /// In en, this message translates to:
-  /// **'No extensions are installed. Create one, or drop a folder with fancad.plugin.json into the extensions directory.'**
-  String get no_extensions_installed;
-
-  /// edit source
-  ///
-  /// In en, this message translates to:
-  /// **'Edit source'**
-  String get edit_source;
-
-  /// configure extension
-  ///
-  /// In en, this message translates to:
-  /// **'Configure'**
-  String get configure_extension;
-
-  /// extension details
-  ///
-  /// In en, this message translates to:
-  /// **'Details'**
-  String get extension_details;
-
-  /// extension source
-  ///
-  /// In en, this message translates to:
-  /// **'Source'**
-  String get extension_source;
-
-  /// import extension
-  ///
-  /// In en, this message translates to:
-  /// **'Import extension'**
-  String get import_extension;
-
-  /// export extension
-  ///
-  /// In en, this message translates to:
-  /// **'Export extension'**
-  String get export_extension;
-
-  /// delete extension
-  ///
-  /// In en, this message translates to:
-  /// **'Delete extension'**
-  String get delete_extension;
-
-  /// start extension
-  ///
-  /// In en, this message translates to:
-  /// **'Start extension'**
-  String get start_extension;
-
-  /// stop extension
-  ///
-  /// In en, this message translates to:
-  /// **'Stop extension'**
-  String get stop_extension;
-
-  /// plugin view tree failed to decode
-  ///
-  /// In en, this message translates to:
-  /// **'This panel sent a view the shell could not read.'**
-  String get plugin_view_invalid;
-
-  /// plugin canvas is not open
-  ///
-  /// In en, this message translates to:
-  /// **'This canvas is not open.'**
-  String get plugin_viewer_closed;
-
-  /// enable extension
-  ///
-  /// In en, this message translates to:
-  /// **'Enable extension'**
-  String get enable_extension;
-
-  /// disable extension
-  ///
-  /// In en, this message translates to:
-  /// **'Disable extension'**
-  String get disable_extension;
-
   /// reload
   ///
   /// In en, this message translates to:
@@ -2594,59 +2486,11 @@ abstract class AppLocalizations {
   /// **'Log'**
   String get log;
 
-  /// plugin running
-  ///
-  /// In en, this message translates to:
-  /// **'Running'**
-  String get plugin_running;
-
-  /// plugin starting
-  ///
-  /// In en, this message translates to:
-  /// **'Starting'**
-  String get plugin_starting;
-
-  /// plugin failed
-  ///
-  /// In en, this message translates to:
-  /// **'Failed'**
-  String get plugin_failed;
-
-  /// plugin disabled
-  ///
-  /// In en, this message translates to:
-  /// **'Disabled'**
-  String get plugin_disabled;
-
-  /// plugin installed
-  ///
-  /// In en, this message translates to:
-  /// **'Installed'**
-  String get plugin_installed;
-
   /// unsaved editor changes
   ///
   /// In en, this message translates to:
   /// **'Unsaved editor changes'**
   String get unsaved_editor_changes;
-
-  /// editor file dirty
-  ///
-  /// In en, this message translates to:
-  /// **'\"{name}\" has edits that have not been written.'**
-  String editor_file_dirty(String name);
-
-  /// nothing to save
-  ///
-  /// In en, this message translates to:
-  /// **'Nothing to save'**
-  String get nothing_to_save;
-
-  /// save and reload
-  ///
-  /// In en, this message translates to:
-  /// **'Save and reload'**
-  String get save_and_reload;
 
   /// saved
   ///
@@ -2659,36 +2503,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Extension'**
   String get extension;
-
-  /// editor unavailable
-  ///
-  /// In en, this message translates to:
-  /// **'Extensions are unavailable: no extensions folder was configured.'**
-  String get editor_unavailable;
-
-  /// create extension first
-  ///
-  /// In en, this message translates to:
-  /// **'Create an extension first, then open it here.'**
-  String get create_extension_first;
-
-  /// choose extension
-  ///
-  /// In en, this message translates to:
-  /// **'Choose an extension above, or use Edit source from the Extensions panel.'**
-  String get choose_extension;
-
-  /// no such file
-  ///
-  /// In en, this message translates to:
-  /// **'No such file: {name}'**
-  String no_such_file(String name);
-
-  /// plugin not installed
-  ///
-  /// In en, this message translates to:
-  /// **'{id} is not installed'**
-  String plugin_not_installed(String id);
 
   /// snap endpoint
   ///
@@ -3788,114 +3602,6 @@ abstract class AppLocalizations {
   /// **'Bind Xref'**
   String get command_xref_bind;
 
-  /// command plugins list
-  ///
-  /// In en, this message translates to:
-  /// **'List Extensions'**
-  String get command_plugins_list;
-
-  /// command plugins reload
-  ///
-  /// In en, this message translates to:
-  /// **'Reload Extension'**
-  String get command_plugins_reload;
-
-  /// command plugins enable
-  ///
-  /// In en, this message translates to:
-  /// **'Enable Extension'**
-  String get command_plugins_enable;
-
-  /// command plugins disable
-  ///
-  /// In en, this message translates to:
-  /// **'Disable Extension'**
-  String get command_plugins_disable;
-
-  /// command plugins logs
-  ///
-  /// In en, this message translates to:
-  /// **'Show Extension Log'**
-  String get command_plugins_logs;
-
-  /// command plugins scaffold
-  ///
-  /// In en, this message translates to:
-  /// **'Create Extension'**
-  String get command_plugins_scaffold;
-
-  /// command plugins write
-  ///
-  /// In en, this message translates to:
-  /// **'Write Extension File'**
-  String get command_plugins_write;
-
-  /// command plugins read
-  ///
-  /// In en, this message translates to:
-  /// **'Read Extension File'**
-  String get command_plugins_read;
-
-  /// command plugins typings
-  ///
-  /// In en, this message translates to:
-  /// **'Write Plugin API Typings'**
-  String get command_plugins_typings;
-
-  /// command plugins edit
-  ///
-  /// In en, this message translates to:
-  /// **'Edit Extension File'**
-  String get command_plugins_edit;
-
-  /// command plugins import
-  ///
-  /// In en, this message translates to:
-  /// **'Import Extension'**
-  String get command_plugins_import;
-
-  /// command plugins export
-  ///
-  /// In en, this message translates to:
-  /// **'Export Extension'**
-  String get command_plugins_export;
-
-  /// command plugins delete
-  ///
-  /// In en, this message translates to:
-  /// **'Delete Extension'**
-  String get command_plugins_delete;
-
-  /// command plugins start
-  ///
-  /// In en, this message translates to:
-  /// **'Start Extension'**
-  String get command_plugins_start;
-
-  /// command plugins stop
-  ///
-  /// In en, this message translates to:
-  /// **'Stop Extension'**
-  String get command_plugins_stop;
-
-  /// command sandbox query
-  ///
-  /// In en, this message translates to:
-  /// **'Query In Sandbox'**
-  String get command_sandbox_query;
-
-  /// command sandbox run
-  ///
-  /// In en, this message translates to:
-  /// **'Run In Sandbox'**
-  String get command_sandbox_run;
-
-  /// command plugins eval
-  ///
-  /// In en, this message translates to:
-  /// **'Evaluate In Extension'**
-  String get command_plugins_eval;
-
   /// command file list
   ///
   /// In en, this message translates to:
@@ -4862,114 +4568,6 @@ abstract class AppLocalizations {
   /// **'Turns an external reference into a local block so the drawing no longer depends on that file. Inserts stay where they are. Omit the name to bind the selected xref, or the only xref in the drawing.'**
   String get command_xref_bind_desc;
 
-  /// command plugins list desc
-  ///
-  /// In en, this message translates to:
-  /// **'Lists installed extensions with their state, version and the commands they contribute.'**
-  String get command_plugins_list_desc;
-
-  /// command plugins reload desc
-  ///
-  /// In en, this message translates to:
-  /// **'Re-reads an extension from disk and re-evaluates it, picking up both code and manifest changes without restarting.'**
-  String get command_plugins_reload_desc;
-
-  /// command plugins enable desc
-  ///
-  /// In en, this message translates to:
-  /// **'Loads an extension so it can contribute commands again.'**
-  String get command_plugins_enable_desc;
-
-  /// command plugins disable desc
-  ///
-  /// In en, this message translates to:
-  /// **'Unloads an extension and stops it activating again until enabled.'**
-  String get command_plugins_disable_desc;
-
-  /// command plugins logs desc
-  ///
-  /// In en, this message translates to:
-  /// **'Prints what an extension logged, for diagnosing a failure.'**
-  String get command_plugins_logs_desc;
-
-  /// command plugins scaffold desc
-  ///
-  /// In en, this message translates to:
-  /// **'Writes a new extension folder with a manifest and a working main.js, then loads it. Returns the paths written.'**
-  String get command_plugins_scaffold_desc;
-
-  /// command plugins write desc
-  ///
-  /// In en, this message translates to:
-  /// **'Overwrites one file inside an extension folder. Paths are confined to that folder.'**
-  String get command_plugins_write_desc;
-
-  /// command plugins read desc
-  ///
-  /// In en, this message translates to:
-  /// **'Reads one file from an extension folder.'**
-  String get command_plugins_read_desc;
-
-  /// command plugins typings desc
-  ///
-  /// In en, this message translates to:
-  /// **'Regenerates fancad.d.ts from the live command registry, so editors and models see the real API surface.'**
-  String get command_plugins_typings_desc;
-
-  /// command plugins edit desc
-  ///
-  /// In en, this message translates to:
-  /// **'Opens an extension file in the built-in editor so a person can review or change what the AI authoring loop wrote.'**
-  String get command_plugins_edit_desc;
-
-  /// command plugins import desc
-  ///
-  /// In en, this message translates to:
-  /// **'Copies a plugin folder or a .fancadplugin package into the extensions directory without starting it.'**
-  String get command_plugins_import_desc;
-
-  /// command plugins export desc
-  ///
-  /// In en, this message translates to:
-  /// **'Writes an extension folder to a .fancadplugin package.'**
-  String get command_plugins_export_desc;
-
-  /// command plugins delete desc
-  ///
-  /// In en, this message translates to:
-  /// **'Unloads an extension and deletes its folder.'**
-  String get command_plugins_delete_desc;
-
-  /// command plugins start desc
-  ///
-  /// In en, this message translates to:
-  /// **'Loads an enabled extension.'**
-  String get command_plugins_start_desc;
-
-  /// command plugins stop desc
-  ///
-  /// In en, this message translates to:
-  /// **'Unloads an extension and leaves its commands and panels registered.'**
-  String get command_plugins_stop_desc;
-
-  /// command sandbox query desc
-  ///
-  /// In en, this message translates to:
-  /// **'Runs a read-only script in a disposable sandbox.'**
-  String get command_sandbox_query_desc;
-
-  /// command sandbox run desc
-  ///
-  /// In en, this message translates to:
-  /// **'Runs a script in a disposable sandbox. It may edit the drawing and open one dialog.'**
-  String get command_sandbox_run_desc;
-
-  /// command plugins eval desc
-  ///
-  /// In en, this message translates to:
-  /// **'Runs a JavaScript expression inside an extension scope. For debugging; it can do anything the extension can.'**
-  String get command_plugins_eval_desc;
-
   /// command step
   ///
   /// In en, this message translates to:
@@ -5252,12 +4850,6 @@ abstract class AppLocalizations {
   /// **'Enter a layer name:'**
   String get prompt_enter_a_layer_name;
 
-  /// prompt extension id
-  ///
-  /// In en, this message translates to:
-  /// **'Extension id:'**
-  String get prompt_extension_id;
-
   /// prompt enter block name
   ///
   /// In en, this message translates to:
@@ -5293,12 +4885,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter a colour (1-255, #rrggbb or ByLayer):'**
   String get prompt_enter_colour;
-
-  /// prompt javascript
-  ///
-  /// In en, this message translates to:
-  /// **'JavaScript:'**
-  String get prompt_javascript;
 
   /// prompt svg path
   ///
@@ -5347,18 +4933,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Drawing to attach:'**
   String get prompt_drawing_to_attach;
-
-  /// prompt file to write
-  ///
-  /// In en, this message translates to:
-  /// **'File to write:'**
-  String get prompt_file_to_write;
-
-  /// prompt file to read
-  ///
-  /// In en, this message translates to:
-  /// **'File to read:'**
-  String get prompt_file_to_read;
 
   /// prompt select objects to erase
   ///

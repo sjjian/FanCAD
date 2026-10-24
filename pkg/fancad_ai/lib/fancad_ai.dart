@@ -4,7 +4,6 @@ library;
 
 export 'src/agent.dart';
 export 'src/approval.dart';
-export 'src/authoring.dart';
 export 'src/context.dart';
 export 'src/context_compact.dart';
 export 'src/conversation.dart';

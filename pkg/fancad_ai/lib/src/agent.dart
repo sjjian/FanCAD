@@ -6,7 +6,6 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_ops/fancad_ops.dart';
 
 import 'approval.dart';
-import 'authoring.dart';
 import 'context.dart';
 import 'context_compact.dart';
 import 'conversation.dart';
@@ -77,7 +76,6 @@ class AgentLoop {
     this.conversation,
     this.policy = const ApprovalPolicy(),
     this.askApproval,
-    this.typings,
     this.onDelta,
     this.onUsage,
     this.history,
@@ -85,7 +83,6 @@ class AgentLoop {
     this.execCode,
     this.supplyToSession,
     this.hostTools = const [],
-    this.authoring = const NoActivationRepair(),
     this.contextWindowTokens = LlmUsage.contextWindowTokens,
     this.onToolImage,
     this.askCompact,
@@ -97,7 +94,6 @@ class AgentLoop {
   final Conversation? conversation;
   final ApprovalPolicy policy;
   final ApprovalAsker? askApproval;
-  final String? typings;
   final void Function(String delta)? onDelta;
   final void Function(LlmUsage usage)? onUsage;
   final QuestionAsker? askQuestion;
@@ -107,7 +103,6 @@ class AgentLoop {
 
   final SessionSupplier? supplyToSession;
   final List<HostTool> hostTools;
-  final ActivationRepair authoring;
   final int contextWindowTokens;
 
   /// Called once after a tool batch, with every image that batch returned.
@@ -631,22 +626,6 @@ class AgentLoop {
       payload = await dispatcher.dispatch(request);
     } catch (caught) {
       payload = {'status': 'failed', 'error': '$caught', 'message': '$caught'};
-    }
-
-    if (request.action == OpsAction.run && payload['status'] == 'failed') {
-      final result = CommandResult.failed(
-        '${payload['message'] ?? payload['error'] ?? ''}',
-      );
-      if (authoring.isActivationFailure(result)) {
-        payload = {
-          ...payload,
-          'repairHint': authoring.repairPrompt(
-            pluginId: '${request.args['id'] ?? request.path}',
-            error: result.message,
-            typings: typings,
-          ),
-        };
-      }
     }
 
     final image = takeCommandImage(payload);

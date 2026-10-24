@@ -28,7 +28,7 @@ final workspaceFileCommandsOverrideProvider =
 // ignore: unused_element
 typedef WorkspaceFileCommandsOverrideRef =
     ProviderRef<WorkspaceFileCommandsFactory?>;
-String _$workspaceNotifierHash() => r'7ac48e3e977970fbdaf23ce44bf6eee35ae45ffc';
+String _$workspaceNotifierHash() => r'64c5433bcc782614929ef460aec61de874982af0';
 
 /// The application state: open documents, the command registry, and the wiring
 /// that lets a command reach the UI.

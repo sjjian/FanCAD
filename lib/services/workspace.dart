@@ -93,7 +93,6 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     final registration = registerBuiltinCommands(
       commands,
       fileCommands: fileCommands,
-      pluginCommands: null,
       clipboard: clipboard,
     );
     ref.onDispose(() {
@@ -1479,31 +1478,6 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   @override
   void panTo(Vec2 center) => active?.viewport.centerOn(center);
 
-  /// Camera description for one tab, including a drawing that is not active.
-  Map<String, Object?> describeTabView(DocumentTab tab) =>
-      _describedView(tab.viewport.viewport);
-
-  /// Moves [tab]'s camera. The active drawing is what the user sees; a
-  /// background tab keeps the camera until it is shown.
-  void zoomTabTo(DocumentTab tab, Bounds2? bounds) {
-    final left = _viewOcclusion.left;
-    final right = _viewOcclusion.right;
-    if (bounds == null) {
-      tab.viewport.zoomToExtents(
-        tab.document,
-        insetLeft: left,
-        insetRight: right,
-      );
-      return;
-    }
-    tab.viewport.zoomTo(bounds, insetLeft: left, insetRight: right);
-  }
-
-  void zoomTabBy(DocumentTab tab, double factor) =>
-      tab.viewport.zoomAtCenter(factor);
-
-  void panTabTo(DocumentTab tab, Vec2 center) => tab.viewport.centerOn(center);
-
   void holdHighlightsOn(String sessionId, List<int> ids) {
     WorkspaceSessionModel? record;
     for (final session in _store.sessions) {
@@ -1532,65 +1506,6 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
         (session) => session.copyWith(flashIds: const []),
       );
     });
-  }
-
-  /// Lets a plugin ask the canvas for one point or one entity.
-  ///
-  /// Uses the same crosshair as an interactive command, including snap. Fails
-  /// when a command is already running, because the pointer cannot belong to
-  /// both. Returns null when the user cancels.
-  Future<Map<String, Object?>?> acquirePluginPick({
-    required DocumentTab tab,
-    required String kind,
-    String message = 'Pick',
-  }) async {
-    if (_store.runningCommand != null) {
-      throw StateError('${_store.runningCommand} is running');
-    }
-    if (tab.isStartPage || tab.isOpeningShell) {
-      throw StateError('no drawing is open');
-    }
-    final tools = tab.tools;
-    final commandLine = ref.read(commandLineNotifierProvider.notifier);
-    if (kind == 'entity') {
-      final tool = SelectionPromptTool(message: message, single: true);
-      tools.push(tool);
-      try {
-        final ids = await tool.result;
-        if (ids.isEmpty) return null;
-        return {'id': ids.first, 'ids': ids};
-      } on CommandCancelled {
-        return null;
-      } finally {
-        if (!tool.isComplete) tools.cancel();
-      }
-    }
-    final tool = PointPromptTool(
-      message: message,
-      preview: null,
-      markers: tools.pluginMarkers,
-    );
-    final typed = commandLine.request(
-      PendingEntry(
-        message: message,
-        completer: Completer<Object?>(),
-        accept: (raw) => CoordinateParser.parse(raw),
-      ),
-    );
-    tools.push(tool);
-    try {
-      final winner = await Future.any<Object?>([
-        tool.result.then<Object?>((value) => value),
-        typed.then<Object?>((value) => value),
-      ]);
-      if (winner is Vec2) return {'x': winner.x, 'y': winner.y};
-      return null;
-    } on CommandCancelled {
-      return null;
-    } finally {
-      commandLine.cancelPending();
-      if (!tool.isComplete) tools.cancel();
-    }
   }
 
   @override

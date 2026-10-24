@@ -16,7 +16,7 @@ ProviderContainer containerOf(SettingsStore settings) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('an empty plugins folder does not spawn a host', () {
+  test('an empty extensions folder has no runner', () {
     final container = ProviderContainer(
       overrides: [
         settingsProvider.overrideWithValue(SettingsStore.inMemory()),
@@ -25,38 +25,32 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    expect(container.read(pluginNotifierProvider.notifier).manager, isNull);
-    expect(container.read(pluginNotifierProvider.notifier).commands, isNull);
+    expect(container.read(pluginNotifierProvider.notifier).runner, isNull);
   });
 
-  test(
-    'a plugins folder wires a host without starting the isolate transport',
-    () {
-      final root = tempDir(prefix: 'fancad-plugins');
+  test('an extensions folder wires a runner without starting a worker', () {
+    final root = tempDir(prefix: 'fancad-extensions');
+    var opened = 0;
 
-      final container = ProviderContainer(
-        overrides: [
-          settingsProvider.overrideWithValue(SettingsStore.inMemory()),
-          pluginsDirectoryProvider.overrideWithValue(root.path),
-          pluginTransportProvider.overrideWithValue(LocalTransport()),
-        ],
-      );
-      addTearDown(container.dispose);
+    final container = ProviderContainer(
+      overrides: [
+        settingsProvider.overrideWithValue(SettingsStore.inMemory()),
+        pluginsDirectoryProvider.overrideWithValue(root.path),
+        pluginTransportProvider.overrideWithValue(() {
+          opened += 1;
+          return LocalTransport();
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
 
-      final plugins = container.read(pluginNotifierProvider.notifier);
-      expect(plugins.manager, isNotNull);
-      expect(plugins.commands, isNull);
-      expect(
-        container.read(commandRegistryProvider).find('extensions.list'),
-        isNotNull,
-      );
-      expect(container.read(commandRegistryProvider).find('exec'), isNull);
-      expect(
-        container.read(commandRegistryProvider).find('plugins.list'),
-        isNull,
-      );
-    },
-  );
+    expect(container.read(pluginNotifierProvider.notifier).runner, isNotNull);
+    expect(opened, 0);
+    final registry = container.read(commandRegistryProvider);
+    expect(registry.find('extensions.list'), isNotNull);
+    expect(registry.find('exec'), isNull);
+    expect(registry.find('plugins.list'), isNull);
+  });
 
   test('selecting the open sidebar icon collapses it, as VS Code does', () {
     final settings = SettingsStore.inMemory({

@@ -1,57 +1,27 @@
-/// The JavaScript prelude evaluated into every plugin scope before its entry
-/// point runs.
+/// The JavaScript prelude evaluated into every script engine before the
+/// script runs.
 ///
-/// Everything a plugin can reach is built here on top of exactly two host
-/// primitives: `__fancad_rpc` for calling out, and `__fancad_dispatch` for
-/// being called in. Keeping the surface that narrow means the Dart side never
-/// holds a reference to a JavaScript function — handler tables live in
-/// JavaScript, and the host addresses them by string id. That removes a whole
-/// category of cross-language lifetime bugs, and it is why unloading a plugin
-/// is just dropping its runtime.
+/// Everything a script can reach is built here on top of one host primitive,
+/// `__fancad_rpc`. The Dart side never holds a reference to a JavaScript
+/// function, so closing a run is just dropping its engine.
 library;
 
-/// Builds the prelude for one plugin.
-///
-/// [pluginId] and [permissions] are baked in rather than queried, so a plugin
-/// cannot talk its way into a capability its manifest did not declare: the
-/// guard runs before the request is even sent.
-String buildBootstrapScript({
-  required String pluginId,
-  required String version,
-  required Set<String> permissions,
-  required String hostVersion,
-}) {
-  final permissionLiteral = permissions.map((value) => '"$value"').join(', ');
+import 'dart:convert';
+
+import 'protocol.dart';
+
+/// Builds the prelude for one run.
+String buildBootstrapScript({required String hostVersion}) {
   return '''
 (function (global) {
   "use strict";
 
-  const PLUGIN_ID = "$pluginId";
-  const PLUGIN_VERSION = "$version";
-  const HOST_VERSION = "$hostVersion";
-  const GRANTED = new Set([$permissionLiteral]);
-
-  const handlers = {
-    command: Object.create(null),
-    event: Object.create(null),
-    panel: Object.create(null),
-  };
-
-  const disposables = [];
-
-  function require(permission, what) {
-    if (!GRANTED.has(permission)) {
-      throw new Error(
-        what + ' needs the "' + permission + '" permission. ' +
-        'Add it to the "permissions" array in fancad.plugin.json.'
-      );
-    }
-  }
+  const HOST_VERSION = ${jsonEncode(hostVersion)};
 
   // Every host call funnels through here. The host answers with a JSON string
   // so nothing depends on structured clone semantics between the two runtimes.
   async function rpc(method, params) {
-    const raw = await global.__fancad_rpc(method, JSON.stringify(params || {}));
+    const raw = await global.${BootstrapGlobals.rpc}(method, JSON.stringify(params || {}));
     const envelope = JSON.parse(raw);
     if (envelope.error) {
       const error = new Error(envelope.error.message);
@@ -62,20 +32,8 @@ String buildBootstrapScript({
     return envelope.result;
   }
 
-  function disposable(dispose) {
-    const entry = { dispose: dispose };
-    disposables.push(entry);
-    return entry;
-  }
-
-  function assertFunction(value, where) {
-    if (typeof value !== "function") {
-      throw new TypeError(where + " expects a function");
-    }
-  }
-
   // --- Vec2 helpers -------------------------------------------------------
-  // Points cross the wire as [x, y]. A tiny wrapper keeps plugin code from
+  // Points cross the wire as [x, y]. A tiny wrapper keeps script code from
   // being a sea of index literals.
 
   function point(x, y) {
@@ -112,20 +70,11 @@ String buildBootstrapScript({
   // --- commands ----------------------------------------------------------
 
   const commands = {
-    register: function (id, handler) {
-      assertFunction(handler, "commands.register");
-      if (handlers.command[id]) {
-        throw new Error('command "' + id + '" is already registered');
-      }
-      handlers.command[id] = handler;
-      return disposable(function () { delete handlers.command[id]; });
-    },
     execute: function (id, args) {
-      require("commands", "commands.execute");
-      return rpc("${_HostMethodNames.executeCommand}", { command: id, args: args || {} });
+      return rpc("${HostMethod.executeCommand}", { command: id, args: args || {} });
     },
     list: function () {
-      return rpc("${_HostMethodNames.listCommands}", {});
+      return rpc("${HostMethod.listCommands}", {});
     },
   };
 
@@ -185,7 +134,7 @@ String buildBootstrapScript({
       return commandData("query.layers", {});
     },
     // One call, one undo entry. Batching is not an optimisation here: it is the
-    // difference between Ctrl+Z undoing what the plugin did and undoing one
+    // difference between Ctrl+Z undoing what the script did and undoing one
     // three-hundredth of it.
     edit: function (label, operations) {
       return commandData("edit.apply", { label: label, operations: operations });
@@ -194,7 +143,7 @@ String buildBootstrapScript({
 
   // Sugar over document.edit, so the common case reads like drawing rather
   // than like assembling a patch.
-  function editBuilder(label, canvasId, replace) {
+  function editBuilder(label) {
     const operations = [];
     const builder = {
       line: function (a, b, props) {
@@ -269,14 +218,6 @@ String buildBootstrapScript({
         return builder;
       },
       commit: function () {
-        if (canvasId) {
-          return rpc("${_HostMethodNames.viewerEdit}", {
-            id: canvasId,
-            label: label,
-            operations: operations,
-            replace: !!replace,
-          });
-        }
         return document.edit(label, operations);
       },
     };
@@ -310,7 +251,7 @@ String buildBootstrapScript({
 
   const window = {
     showMessage: function (message, options) {
-      return rpc("${_HostMethodNames.showMessage}", {
+      return rpc("${HostMethod.showMessage}", {
         message: String(message),
         error: !!(options && options.error),
       });
@@ -318,39 +259,9 @@ String buildBootstrapScript({
     showError: function (message) {
       return window.showMessage(message, { error: true });
     },
-    prompt: function (spec) {
-      require("ui", "window.prompt");
-      return rpc("${_HostMethodNames.showPrompt}", spec || {});
-    },
   };
 
-  // --- storage -----------------------------------------------------------
-
-  const storage = {
-    get: function (key, fallback) {
-      return rpc("${_HostMethodNames.storageGet}", { key: key }).then(function (value) {
-        return value === null || value === undefined ? fallback : value;
-      });
-    },
-    set: function (key, value) {
-      require("file.write", "storage.set");
-      return rpc("${_HostMethodNames.storageSet}", { key: key, value: value });
-    },
-  };
-
-  // --- events ------------------------------------------------------------
-
-  const events = {
-    on: function (name, handler) {
-      assertFunction(handler, "events.on");
-      (handlers.event[name] || (handlers.event[name] = [])).push(handler);
-      return disposable(function () {
-        const list = handlers.event[name] || [];
-        const at = list.indexOf(handler);
-        if (at >= 0) list.splice(at, 1);
-      });
-    },
-  };
+  // --- canvas ------------------------------------------------------------
 
   function optionalTab(tab) {
     return tab ? { tab: tab } : {};
@@ -358,100 +269,13 @@ String buildBootstrapScript({
 
   const canvas = {
     view: function (tab) {
-      return commandData("query.viewport", tab ? { tab: tab } : {});
-    },
-    zoomTo: function (bounds, tab) {
-      require("ui", "canvas.zoomTo");
-      return rpc("${_HostMethodNames.canvasZoomTo}", Object.assign({ bounds: bounds || null }, optionalTab(tab)));
-    },
-    zoomBy: function (factor, tab) {
-      require("ui", "canvas.zoomBy");
-      return rpc("${_HostMethodNames.canvasZoomBy}", Object.assign({ factor: factor }, optionalTab(tab)));
-    },
-    panTo: function (center, tab) {
-      require("ui", "canvas.panTo");
-      return rpc("${_HostMethodNames.canvasPanTo}", Object.assign({ center: point(center) }, optionalTab(tab)));
-    },
-    preview: function (shapes, tab) {
-      require("ui", "canvas.preview");
-      return rpc("${_HostMethodNames.canvasPreview}", Object.assign({ shapes: shapes || [] }, optionalTab(tab)));
-    },
-    markers: function (points, tab) {
-      require("ui", "canvas.markers");
-      return rpc("${_HostMethodNames.canvasMarkers}", Object.assign({
-        points: (points || []).map(point),
-      }, optionalTab(tab)));
-    },
-    pick: function (kind, options) {
-      require("ui", "canvas.pick");
-      return rpc("${_HostMethodNames.canvasPick}", {
-        kind: kind || "point",
-        message: options && options.message,
-        tab: options && options.tab,
-      });
+      return commandData("query.viewport", optionalTab(tab));
     },
     hold: function (ids, tab) {
-      require("document.read", "canvas.hold");
-      return rpc("${_HostMethodNames.canvasHold}", Object.assign({ ids: [].concat(ids || []) }, optionalTab(tab)));
+      return rpc("${HostMethod.canvasHold}", Object.assign({ ids: [].concat(ids || []) }, optionalTab(tab)));
     },
     flash: function (ids, tab) {
-      require("document.read", "canvas.flash");
-      return rpc("${_HostMethodNames.canvasFlash}", Object.assign({ ids: [].concat(ids || []) }, optionalTab(tab)));
-    },
-  };
-
-  const ui = {
-    render: function (viewId, tree) {
-      require("ui", "ui.render");
-      return rpc("${_HostMethodNames.uiRender}", { viewId: viewId, tree: tree });
-    },
-    showDialog: function (spec) {
-      require("ui", "ui.showDialog");
-      return rpc("${_HostMethodNames.uiShowDialog}", spec || {});
-    },
-    updateDialog: function (tree) {
-      require("ui", "ui.updateDialog");
-      return rpc("${_HostMethodNames.uiUpdateDialog}", { tree: tree });
-    },
-    onEvent: function (handler) {
-      return events.on("ui.event", handler);
-    },
-  };
-
-  // A private document. Creating one does not open a drawing tab and does not
-  // paint on the active canvas. A view tree shows it by placing a viewer node
-  // whose canvas prop is this id.
-  const viewer = {
-    create: function (id) {
-      require("ui", "viewer.create");
-      return rpc("${_HostMethodNames.viewerCreate}", { id: id });
-    },
-    drop: function (id) {
-      require("ui", "viewer.drop");
-      return rpc("${_HostMethodNames.viewerDrop}", { id: id });
-    },
-    fit: function (id) {
-      require("ui", "viewer.fit");
-      return rpc("${_HostMethodNames.viewerFit}", { id: id });
-    },
-    edit: function (id, label, operations) {
-      require("ui", "viewer.edit");
-      return rpc("${_HostMethodNames.viewerEdit}", {
-        id: id, label: label, operations: operations || [],
-      });
-    },
-    beginEdit: function (id, label, options) {
-      require("ui", "viewer.beginEdit");
-      return editBuilder(label, id, options && options.replace);
-    },
-  };
-
-  const keybindings = {
-    register: function (command, key, when) {
-      require("ui", "keybindings.register");
-      return rpc("${_HostMethodNames.registerKeybinding}", {
-        command: command, key: key, when: when,
-      });
+      return rpc("${HostMethod.canvasFlash}", Object.assign({ ids: [].concat(ids || []) }, optionalTab(tab)));
     },
   };
 
@@ -475,8 +299,8 @@ String buildBootstrapScript({
         parts.push(String(value));
       }
     }
-    // Fire and forget: logging must never be able to fail a command.
-    global.__fancad_rpc("${_HostMethodNames.log}", JSON.stringify({
+    // Fire and forget: logging must never be able to fail a script.
+    global.${BootstrapGlobals.rpc}("${HostMethod.log}", JSON.stringify({
       level: level,
       message: parts.join(" "),
     }));
@@ -484,139 +308,20 @@ String buildBootstrapScript({
 
   global.console = console;
   global.fancad = {
-    id: PLUGIN_ID,
-    version: PLUGIN_VERSION,
     hostVersion: HOST_VERSION,
-    permissions: Array.from(GRANTED),
+    args: {},
     commands: commands,
     document: document,
     selection: selection,
     window: window,
-    storage: storage,
-    events: events,
     geometry: geometry,
     canvas: canvas,
-    viewer: viewer,
-    ui: ui,
-    keybindings: keybindings,
-    Disposable: { from: disposable },
-  };
-
-  // The single entry point the host calls. Returning a JSON string keeps the
-  // boundary to one shape regardless of what the handler produced.
-  global.__fancad_dispatch = async function (kind, id, payload) {
-    const args = payload ? JSON.parse(payload) : {};
-    if (kind === "command") {
-      const handler = handlers.command[id];
-      if (!handler) throw new Error('no handler registered for command "' + id + '"');
-      const result = await handler(args);
-      return JSON.stringify({ result: result === undefined ? null : result });
-    }
-    if (kind === "event") {
-      const list = handlers.event[id] || [];
-      for (let i = 0; i < list.length; i++) {
-        await list[i](args);
-      }
-      return JSON.stringify({ result: null });
-    }
-    throw new Error('unknown dispatch kind "' + kind + '"');
-  };
-
-  // Reports what the entry point actually registered, so the host can reconcile
-  // it against the manifest instead of trusting the manifest blindly.
-  global.__fancad_registered = function () {
-    return JSON.stringify({ commands: Object.keys(handlers.command) });
-  };
-
-  global.__fancad_deactivate = async function () {
-    for (let i = disposables.length - 1; i >= 0; i--) {
-      try { await disposables[i].dispose(); } catch (error) { logAt("error", [error]); }
-    }
-    disposables.length = 0;
-    if (typeof global.deactivate === "function") {
-      await global.deactivate();
-    }
-    return JSON.stringify({ result: null });
   };
 })(globalThis);
 ''';
 }
 
-/// Method names duplicated as plain constants so the template above stays a
-/// single string literal. Kept in lockstep with `HostMethod` by a test.
-abstract final class _HostMethodNames {
-  static const String executeCommand = 'commands/execute';
-  static const String listCommands = 'commands/list';
-  static const String documentSummary = 'document/summary';
-  static const String documentQuery = 'document/query';
-  static const String documentEntity = 'document/entity';
-  static const String documentLayers = 'document/layers';
-  static const String selectionGet = 'selection/get';
-  static const String selectionSet = 'selection/set';
-  static const String applyEdit = 'document/edit';
-  static const String showMessage = 'window/showMessage';
-  static const String showPrompt = 'window/showPrompt';
-  static const String log = 'window/log';
-  static const String storageGet = 'storage/get';
-  static const String storageSet = 'storage/set';
-  static const String uiRender = 'ui/render';
-  static const String uiShowDialog = 'ui/showDialog';
-  static const String uiUpdateDialog = 'ui/updateDialog';
-  static const String viewerCreate = 'viewer/create';
-  static const String viewerDrop = 'viewer/drop';
-  static const String viewerEdit = 'viewer/edit';
-  static const String viewerFit = 'viewer/fit';
-  static const String registerKeybinding = 'keybindings/register';
-  static const String canvasView = 'canvas/view';
-  static const String canvasZoomTo = 'canvas/zoomTo';
-  static const String canvasZoomBy = 'canvas/zoomBy';
-  static const String canvasPanTo = 'canvas/panTo';
-  static const String canvasPreview = 'canvas/preview';
-  static const String canvasMarkers = 'canvas/markers';
-  static const String canvasPick = 'canvas/pick';
-  static const String canvasHold = 'canvas/hold';
-  static const String canvasFlash = 'canvas/flash';
-}
-
-/// The names the prelude installs, exposed for the reconciliation test.
+/// The names the prelude installs.
 abstract final class BootstrapGlobals {
   static const String rpc = '__fancad_rpc';
-  static const String dispatch = '__fancad_dispatch';
-  static const String registered = '__fancad_registered';
-  static const String deactivate = '__fancad_deactivate';
-
-  /// The host method names the prelude references, for the lockstep test.
-  static const Map<String, String> hostMethods = {
-    'executeCommand': _HostMethodNames.executeCommand,
-    'listCommands': _HostMethodNames.listCommands,
-    'documentSummary': _HostMethodNames.documentSummary,
-    'documentQuery': _HostMethodNames.documentQuery,
-    'documentEntity': _HostMethodNames.documentEntity,
-    'documentLayers': _HostMethodNames.documentLayers,
-    'selectionGet': _HostMethodNames.selectionGet,
-    'selectionSet': _HostMethodNames.selectionSet,
-    'applyEdit': _HostMethodNames.applyEdit,
-    'showMessage': _HostMethodNames.showMessage,
-    'showPrompt': _HostMethodNames.showPrompt,
-    'log': _HostMethodNames.log,
-    'storageGet': _HostMethodNames.storageGet,
-    'storageSet': _HostMethodNames.storageSet,
-    'uiRender': _HostMethodNames.uiRender,
-    'uiShowDialog': _HostMethodNames.uiShowDialog,
-    'uiUpdateDialog': _HostMethodNames.uiUpdateDialog,
-    'viewerCreate': _HostMethodNames.viewerCreate,
-    'viewerDrop': _HostMethodNames.viewerDrop,
-    'viewerEdit': _HostMethodNames.viewerEdit,
-    'viewerFit': _HostMethodNames.viewerFit,
-    'registerKeybinding': _HostMethodNames.registerKeybinding,
-    'canvasView': _HostMethodNames.canvasView,
-    'canvasZoomTo': _HostMethodNames.canvasZoomTo,
-    'canvasZoomBy': _HostMethodNames.canvasZoomBy,
-    'canvasPanTo': _HostMethodNames.canvasPanTo,
-    'canvasPreview': _HostMethodNames.canvasPreview,
-    'canvasMarkers': _HostMethodNames.canvasMarkers,
-    'canvasPick': _HostMethodNames.canvasPick,
-    'canvasHold': _HostMethodNames.canvasHold,
-    'canvasFlash': _HostMethodNames.canvasFlash,
-  };
 }

@@ -569,14 +569,12 @@ class _TextEditOverlayState extends State<TextEditOverlay> {
   }
 
   Widget _colorChip(AppLocalizations l10n) {
-    return FanCadColorField(
+    return _ColorField(
       key: const Key('text-edit-color'),
-      props: FanCadColorFieldProps(
-        color: _color,
-        caption: _colorCaption(l10n),
-        byLayerLabel: l10n.by_layer,
-        tooltip: l10n.colour,
-      ),
+      color: _color,
+      label: _colorCaption(l10n),
+      byLayerLabel: l10n.by_layer,
+      tooltip: l10n.colour,
       onChanged: _setColor,
     );
   }
@@ -724,4 +722,98 @@ double? _changedNumber(TextEditingController controller, double? current) {
   if (parsed == null) return null;
   if ((parsed - current).abs() < 1e-9) return null;
   return parsed;
+}
+
+/// ACI swatch menu: ByLayer and the seven standard colours.
+class _ColorField extends StatelessWidget {
+  const _ColorField({
+    super.key,
+    required this.color,
+    required this.label,
+    required this.byLayerLabel,
+    required this.tooltip,
+    required this.onChanged,
+  });
+
+  static const _swatches = [1, 2, 3, 4, 5, 6, 7];
+
+  final CadColor color;
+  final String label;
+  final String byLayerLabel;
+  final String tooltip;
+  final ValueChanged<CadColor> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final palette = tokens.isDark ? AciPalette.dark : AciPalette.light;
+    final swatch = color.isInherited
+        ? tokens.textFaint
+        : palette.colorOf(color);
+    return FanCadMenuButton<CadColor>(
+      placement: FanCadMenuPlacement.down,
+      tooltip: tooltip,
+      onSelected: onChanged,
+      itemBuilder: (context) => [
+        fanCadMenuItem(
+          context,
+          value: const CadColor.byLayer(),
+          label: byLayerLabel,
+          checked: color.kind == ColorKind.byLayer,
+        ),
+        for (final index in _swatches)
+          fanCadMenuItem(
+            context,
+            value: CadColor.indexed(index),
+            label: '$index',
+            checked: color.kind == ColorKind.indexed && color.value == index,
+            leading: _swatchBox(
+              palette.colorOf(CadColor.indexed(index)),
+              tokens.border,
+            ),
+          ),
+      ],
+      child: Container(
+        width: 92,
+        height: 22,
+        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space1),
+        decoration: BoxDecoration(
+          color: tokens.surface,
+          border: Border.all(color: tokens.border),
+          borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
+        ),
+        child: Row(
+          children: [
+            _swatchBox(swatch, tokens.border),
+            const SizedBox(width: FanCadTokens.space1),
+            Expanded(
+              child: Text(
+                label,
+                style: tokens.monoStyle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Icon(
+              Icons.expand_more,
+              size: FanCadTokens.iconSmall,
+              color: tokens.textMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _swatchBox(Color color, Color border) {
+    return Container(
+      width: 12,
+      height: 12,
+      decoration: BoxDecoration(
+        color: color,
+        border: Border.all(color: border),
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
 }

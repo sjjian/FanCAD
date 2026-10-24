@@ -6,7 +6,7 @@ part of 'layout.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$layoutNotifierHash() => r'8d0aefeacc248c2c4426ecf4153fc2546d3e6440';
+String _$layoutNotifierHash() => r'a556d63f8dbf9e94900ed3b0c67427745770d74b';
 
 /// Workbench chrome: open panes, the sidebar view, and the three sizes.
 ///

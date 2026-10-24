@@ -1843,60 +1843,6 @@
   "@send_enter": {
     "description": "send enter"
   },
-  "open_extensions_folder": "打开扩展文件夹",
-  "@open_extensions_folder": {
-    "description": "open extensions folder"
-  },
-  "create_extension": "创建扩展",
-  "@create_extension": {
-    "description": "create extension"
-  },
-  "reload_all_extensions": "重新加载全部扩展",
-  "@reload_all_extensions": {
-    "description": "reload all extensions"
-  },
-  "extensions_unavailable": "扩展不可用：本次会话未配置扩展文件夹。",
-  "@extensions_unavailable": {
-    "description": "extensions unavailable"
-  },
-  "no_extensions_installed": "尚未安装扩展。可创建一个，或将含 fancad.plugin.json 的文件夹放入扩展目录。",
-  "@no_extensions_installed": {
-    "description": "no extensions installed"
-  },
-  "edit_source": "编辑源码",
-  "@edit_source": {
-    "description": "edit source"
-  },
-  "configure_extension": "配置",
-  "@configure_extension": {
-    "description": "configure extension"
-  },
-  "extension_details": "详情",
-  "@extension_details": {
-    "description": "extension details"
-  },
-  "extension_source": "源码",
-  "@extension_source": {
-    "description": "extension source"
-  },
-  "import_extension": "导入扩展",
-  "export_extension": "导出扩展",
-  "delete_extension": "删除扩展",
-  "start_extension": "启动扩展",
-  "stop_extension": "停止扩展",
-  "plugin_view_invalid": "这个面板送来的界面无法显示。",
-  "plugin_viewer_closed": "这块画布还没打开。",
-  "@plugin_viewer_closed": {
-    "description": "plugin canvas is not open"
-  },
-  "enable_extension": "启用扩展",
-  "@enable_extension": {
-    "description": "enable extension"
-  },
-  "disable_extension": "禁用扩展",
-  "@disable_extension": {
-    "description": "disable extension"
-  },
   "reload": "重新加载",
   "@reload": {
     "description": "reload"
@@ -1917,46 +1863,9 @@
   "@log": {
     "description": "log"
   },
-  "plugin_running": "运行中",
-  "@plugin_running": {
-    "description": "plugin running"
-  },
-  "plugin_starting": "启动中",
-  "@plugin_starting": {
-    "description": "plugin starting"
-  },
-  "plugin_failed": "失败",
-  "@plugin_failed": {
-    "description": "plugin failed"
-  },
-  "plugin_disabled": "已禁用",
-  "@plugin_disabled": {
-    "description": "plugin disabled"
-  },
-  "plugin_installed": "已安装",
-  "@plugin_installed": {
-    "description": "plugin installed"
-  },
   "unsaved_editor_changes": "编辑器有未保存更改",
   "@unsaved_editor_changes": {
     "description": "unsaved editor changes"
-  },
-  "editor_file_dirty": "“{name}” 有尚未写入的修改。",
-  "@editor_file_dirty": {
-    "description": "editor file dirty",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "nothing_to_save": "没有可保存的内容",
-  "@nothing_to_save": {
-    "description": "nothing to save"
-  },
-  "save_and_reload": "保存并重新加载",
-  "@save_and_reload": {
-    "description": "save and reload"
   },
   "saved": "已保存",
   "@saved": {
@@ -1965,36 +1874,6 @@
   "extension": "扩展",
   "@extension": {
     "description": "extension"
-  },
-  "editor_unavailable": "扩展不可用：未配置扩展文件夹。",
-  "@editor_unavailable": {
-    "description": "editor unavailable"
-  },
-  "create_extension_first": "请先创建扩展，再在此打开。",
-  "@create_extension_first": {
-    "description": "create extension first"
-  },
-  "choose_extension": "请在上方选择扩展，或从扩展面板使用“编辑源码”。",
-  "@choose_extension": {
-    "description": "choose extension"
-  },
-  "no_such_file": "没有此文件：{name}",
-  "@no_such_file": {
-    "description": "no such file",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "plugin_not_installed": "{id} 未安装",
-  "@plugin_not_installed": {
-    "description": "plugin not installed",
-    "placeholders": {
-      "id": {
-        "type": "String"
-      }
-    }
   },
   "snap_endpoint": "端点",
   "@snap_endpoint": {
@@ -2746,57 +2625,6 @@
   "@command_xref_bind": {
     "description": "command xref bind"
   },
-  "command_plugins_list": "列出扩展",
-  "@command_plugins_list": {
-    "description": "command plugins list"
-  },
-  "command_plugins_reload": "重新加载扩展",
-  "@command_plugins_reload": {
-    "description": "command plugins reload"
-  },
-  "command_plugins_enable": "启用扩展",
-  "@command_plugins_enable": {
-    "description": "command plugins enable"
-  },
-  "command_plugins_disable": "禁用扩展",
-  "@command_plugins_disable": {
-    "description": "command plugins disable"
-  },
-  "command_plugins_logs": "显示扩展日志",
-  "@command_plugins_logs": {
-    "description": "command plugins logs"
-  },
-  "command_plugins_scaffold": "创建扩展",
-  "@command_plugins_scaffold": {
-    "description": "command plugins scaffold"
-  },
-  "command_plugins_write": "写入扩展文件",
-  "@command_plugins_write": {
-    "description": "command plugins write"
-  },
-  "command_plugins_read": "读取扩展文件",
-  "@command_plugins_read": {
-    "description": "command plugins read"
-  },
-  "command_plugins_typings": "写入插件 API 类型",
-  "@command_plugins_typings": {
-    "description": "command plugins typings"
-  },
-  "command_plugins_edit": "编辑扩展文件",
-  "@command_plugins_edit": {
-    "description": "command plugins edit"
-  },
-  "command_plugins_import": "导入扩展",
-  "command_plugins_export": "导出扩展",
-  "command_plugins_delete": "删除扩展",
-  "command_plugins_start": "启动扩展",
-  "command_plugins_stop": "停止扩展",
-  "command_sandbox_query": "在沙盒中查询",
-  "command_sandbox_run": "在沙盒中运行",
-  "command_plugins_eval": "在扩展中求值",
-  "@command_plugins_eval": {
-    "description": "command plugins eval"
-  },
   "command_file_list": "列出图纸",
   "@command_file_list": {
     "description": "command file list"
@@ -3441,57 +3269,6 @@
   "@command_xref_bind_desc": {
     "description": "command xref bind desc"
   },
-  "command_plugins_list_desc": "列出已安装扩展及其状态、版本和所贡献的命令。",
-  "@command_plugins_list_desc": {
-    "description": "command plugins list desc"
-  },
-  "command_plugins_reload_desc": "从磁盘重新读取扩展并重新求值，无需重启即可拿到代码和清单的更改。",
-  "@command_plugins_reload_desc": {
-    "description": "command plugins reload desc"
-  },
-  "command_plugins_enable_desc": "加载扩展，使其可以再次贡献命令。",
-  "@command_plugins_enable_desc": {
-    "description": "command plugins enable desc"
-  },
-  "command_plugins_disable_desc": "卸载扩展，在重新启用前不再激活。",
-  "@command_plugins_disable_desc": {
-    "description": "command plugins disable desc"
-  },
-  "command_plugins_logs_desc": "打印扩展记录的日志，用于排查失败。",
-  "@command_plugins_logs_desc": {
-    "description": "command plugins logs desc"
-  },
-  "command_plugins_scaffold_desc": "写入带清单和可运行 main.js 的新扩展文件夹并加载。返回写入的路径。",
-  "@command_plugins_scaffold_desc": {
-    "description": "command plugins scaffold desc"
-  },
-  "command_plugins_write_desc": "覆盖扩展文件夹内的一个文件。路径限制在该文件夹内。",
-  "@command_plugins_write_desc": {
-    "description": "command plugins write desc"
-  },
-  "command_plugins_read_desc": "读取扩展文件夹中的一个文件。",
-  "@command_plugins_read_desc": {
-    "description": "command plugins read desc"
-  },
-  "command_plugins_typings_desc": "根据实时命令注册表重新生成 fancad.d.ts，使编辑器和模型看到真实 API。",
-  "@command_plugins_typings_desc": {
-    "description": "command plugins typings desc"
-  },
-  "command_plugins_edit_desc": "在内置编辑器中打开扩展文件，以便查看或修改 AI 编写循环写下的内容。",
-  "@command_plugins_edit_desc": {
-    "description": "command plugins edit desc"
-  },
-  "command_plugins_import_desc": "把插件文件夹或 .fancadplugin 包复制进扩展目录，不启动。",
-  "command_plugins_export_desc": "把扩展文件夹打成 .fancadplugin 包。",
-  "command_plugins_delete_desc": "卸载扩展并删除它的文件夹。",
-  "command_plugins_start_desc": "加载一个已启用的扩展。",
-  "command_plugins_stop_desc": "卸载扩展，命令和面板仍保留。",
-  "command_sandbox_query_desc": "在一次性沙盒里运行只读 JavaScript。",
-  "command_sandbox_run_desc": "在一次性沙盒里运行 JavaScript。可以改图纸，并打开一个对话框。",
-  "command_plugins_eval_desc": "在扩展作用域中运行 JavaScript 表达式。用于调试；扩展能做的它都能做。",
-  "@command_plugins_eval_desc": {
-    "description": "command plugins eval desc"
-  },
   "command_step": "{verb}  {step}",
   "@command_step": {
     "description": "command step",
@@ -3688,10 +3465,6 @@
   "@prompt_enter_a_layer_name": {
     "description": "prompt enter a layer name"
   },
-  "prompt_extension_id": "扩展 id:",
-  "@prompt_extension_id": {
-    "description": "prompt extension id"
-  },
   "prompt_enter_block_name": "输入块名:",
   "@prompt_enter_block_name": {
     "description": "prompt enter block name"
@@ -3715,10 +3488,6 @@
   "prompt_enter_colour": "输入颜色（1-255、#rrggbb 或 ByLayer）:",
   "@prompt_enter_colour": {
     "description": "prompt enter colour"
-  },
-  "prompt_javascript": "JavaScript:",
-  "@prompt_javascript": {
-    "description": "prompt javascript"
   },
   "prompt_svg_path": "SVG 路径:",
   "@prompt_svg_path": {
@@ -3751,14 +3520,6 @@
   "prompt_drawing_to_attach": "要附着的图形:",
   "@prompt_drawing_to_attach": {
     "description": "prompt drawing to attach"
-  },
-  "prompt_file_to_write": "要写入的文件:",
-  "@prompt_file_to_write": {
-    "description": "prompt file to write"
-  },
-  "prompt_file_to_read": "要读取的文件:",
-  "@prompt_file_to_read": {
-    "description": "prompt file to read"
   },
   "prompt_select_objects_to_erase": "选择要删除的对象:",
   "@prompt_select_objects_to_erase": {

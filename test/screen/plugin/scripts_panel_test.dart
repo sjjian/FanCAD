@@ -31,7 +31,7 @@ void main() {
           settingsProvider.overrideWithValue(SettingsStore.inMemory()),
           drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
           pluginsDirectoryProvider.overrideWithValue(root.path),
-          pluginTransportProvider.overrideWithValue(LocalTransport()),
+          pluginTransportProvider.overrideWithValue(LocalTransport.new),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),
@@ -134,7 +134,7 @@ void main() {
           settingsProvider.overrideWithValue(SettingsStore.inMemory()),
           drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
           pluginsDirectoryProvider.overrideWithValue(root.path),
-          pluginTransportProvider.overrideWithValue(LocalTransport()),
+          pluginTransportProvider.overrideWithValue(LocalTransport.new),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),

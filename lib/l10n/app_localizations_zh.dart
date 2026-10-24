@@ -1295,61 +1295,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get send_enter => '发送  Enter';
 
   @override
-  String get open_extensions_folder => '打开扩展文件夹';
-
-  @override
-  String get create_extension => '创建扩展';
-
-  @override
-  String get reload_all_extensions => '重新加载全部扩展';
-
-  @override
-  String get extensions_unavailable => '扩展不可用：本次会话未配置扩展文件夹。';
-
-  @override
-  String get no_extensions_installed =>
-      '尚未安装扩展。可创建一个，或将含 fancad.plugin.json 的文件夹放入扩展目录。';
-
-  @override
-  String get edit_source => '编辑源码';
-
-  @override
-  String get configure_extension => '配置';
-
-  @override
-  String get extension_details => '详情';
-
-  @override
-  String get extension_source => '源码';
-
-  @override
-  String get import_extension => '导入扩展';
-
-  @override
-  String get export_extension => '导出扩展';
-
-  @override
-  String get delete_extension => '删除扩展';
-
-  @override
-  String get start_extension => '启动扩展';
-
-  @override
-  String get stop_extension => '停止扩展';
-
-  @override
-  String get plugin_view_invalid => '这个面板送来的界面无法显示。';
-
-  @override
-  String get plugin_viewer_closed => '这块画布还没打开。';
-
-  @override
-  String get enable_extension => '启用扩展';
-
-  @override
-  String get disable_extension => '禁用扩展';
-
-  @override
   String get reload => '重新加载';
 
   @override
@@ -1365,58 +1310,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get log => '日志';
 
   @override
-  String get plugin_running => '运行中';
-
-  @override
-  String get plugin_starting => '启动中';
-
-  @override
-  String get plugin_failed => '失败';
-
-  @override
-  String get plugin_disabled => '已禁用';
-
-  @override
-  String get plugin_installed => '已安装';
-
-  @override
   String get unsaved_editor_changes => '编辑器有未保存更改';
-
-  @override
-  String editor_file_dirty(String name) {
-    return '“$name” 有尚未写入的修改。';
-  }
-
-  @override
-  String get nothing_to_save => '没有可保存的内容';
-
-  @override
-  String get save_and_reload => '保存并重新加载';
 
   @override
   String get saved => '已保存';
 
   @override
   String get extension => '扩展';
-
-  @override
-  String get editor_unavailable => '扩展不可用：未配置扩展文件夹。';
-
-  @override
-  String get create_extension_first => '请先创建扩展，再在此打开。';
-
-  @override
-  String get choose_extension => '请在上方选择扩展，或从扩展面板使用“编辑源码”。';
-
-  @override
-  String no_such_file(String name) {
-    return '没有此文件：$name';
-  }
-
-  @override
-  String plugin_not_installed(String id) {
-    return '$id 未安装';
-  }
 
   @override
   String get snap_endpoint => '端点';
@@ -1974,60 +1874,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get command_xref_bind => '绑定外部参照';
-
-  @override
-  String get command_plugins_list => '列出扩展';
-
-  @override
-  String get command_plugins_reload => '重新加载扩展';
-
-  @override
-  String get command_plugins_enable => '启用扩展';
-
-  @override
-  String get command_plugins_disable => '禁用扩展';
-
-  @override
-  String get command_plugins_logs => '显示扩展日志';
-
-  @override
-  String get command_plugins_scaffold => '创建扩展';
-
-  @override
-  String get command_plugins_write => '写入扩展文件';
-
-  @override
-  String get command_plugins_read => '读取扩展文件';
-
-  @override
-  String get command_plugins_typings => '写入插件 API 类型';
-
-  @override
-  String get command_plugins_edit => '编辑扩展文件';
-
-  @override
-  String get command_plugins_import => '导入扩展';
-
-  @override
-  String get command_plugins_export => '导出扩展';
-
-  @override
-  String get command_plugins_delete => '删除扩展';
-
-  @override
-  String get command_plugins_start => '启动扩展';
-
-  @override
-  String get command_plugins_stop => '停止扩展';
-
-  @override
-  String get command_sandbox_query => '在沙盒中查询';
-
-  @override
-  String get command_sandbox_run => '在沙盒中运行';
-
-  @override
-  String get command_plugins_eval => '在扩展中求值';
 
   @override
   String get command_file_list => '列出图纸';
@@ -2593,64 +2439,6 @@ class AppLocalizationsZh extends AppLocalizations {
       '把外部参照变成本地块，图形不再依赖该文件。插入位置不变。省略名称则绑定选定的外部参照，或图中唯一的外部参照。';
 
   @override
-  String get command_plugins_list_desc => '列出已安装扩展及其状态、版本和所贡献的命令。';
-
-  @override
-  String get command_plugins_reload_desc => '从磁盘重新读取扩展并重新求值，无需重启即可拿到代码和清单的更改。';
-
-  @override
-  String get command_plugins_enable_desc => '加载扩展，使其可以再次贡献命令。';
-
-  @override
-  String get command_plugins_disable_desc => '卸载扩展，在重新启用前不再激活。';
-
-  @override
-  String get command_plugins_logs_desc => '打印扩展记录的日志，用于排查失败。';
-
-  @override
-  String get command_plugins_scaffold_desc =>
-      '写入带清单和可运行 main.js 的新扩展文件夹并加载。返回写入的路径。';
-
-  @override
-  String get command_plugins_write_desc => '覆盖扩展文件夹内的一个文件。路径限制在该文件夹内。';
-
-  @override
-  String get command_plugins_read_desc => '读取扩展文件夹中的一个文件。';
-
-  @override
-  String get command_plugins_typings_desc =>
-      '根据实时命令注册表重新生成 fancad.d.ts，使编辑器和模型看到真实 API。';
-
-  @override
-  String get command_plugins_edit_desc => '在内置编辑器中打开扩展文件，以便查看或修改 AI 编写循环写下的内容。';
-
-  @override
-  String get command_plugins_import_desc =>
-      '把插件文件夹或 .fancadplugin 包复制进扩展目录，不启动。';
-
-  @override
-  String get command_plugins_export_desc => '把扩展文件夹打成 .fancadplugin 包。';
-
-  @override
-  String get command_plugins_delete_desc => '卸载扩展并删除它的文件夹。';
-
-  @override
-  String get command_plugins_start_desc => '加载一个已启用的扩展。';
-
-  @override
-  String get command_plugins_stop_desc => '卸载扩展，命令和面板仍保留。';
-
-  @override
-  String get command_sandbox_query_desc => '在一次性沙盒里运行只读 JavaScript。';
-
-  @override
-  String get command_sandbox_run_desc => '在一次性沙盒里运行 JavaScript。可以改图纸，并打开一个对话框。';
-
-  @override
-  String get command_plugins_eval_desc =>
-      '在扩展作用域中运行 JavaScript 表达式。用于调试；扩展能做的它都能做。';
-
-  @override
   String command_step(String verb, String step) {
     return '$verb  $step';
   }
@@ -2794,9 +2582,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get prompt_enter_a_layer_name => '输入图层名:';
 
   @override
-  String get prompt_extension_id => '扩展 id:';
-
-  @override
   String get prompt_enter_block_name => '输入块名:';
 
   @override
@@ -2813,9 +2598,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get prompt_enter_colour => '输入颜色（1-255、#rrggbb 或 ByLayer）:';
-
-  @override
-  String get prompt_javascript => 'JavaScript:';
 
   @override
   String get prompt_svg_path => 'SVG 路径:';
@@ -2840,12 +2622,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get prompt_drawing_to_attach => '要附着的图形:';
-
-  @override
-  String get prompt_file_to_write => '要写入的文件:';
-
-  @override
-  String get prompt_file_to_read => '要读取的文件:';
 
   @override
   String get prompt_select_objects_to_erase => '选择要删除的对象:';

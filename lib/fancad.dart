@@ -1,7 +1,6 @@
 /// FanCAD application library: models, storage views, services and screen.
 library;
 
-export 'ai/authoring.dart';
 export 'commands/builtins.dart';
 export 'commands/clipboard/commands.dart';
 export 'commands/command_base.dart';
@@ -10,7 +9,6 @@ export 'commands/edit/commands.dart';
 export 'commands/extension/commands.dart';
 export 'commands/file/commands.dart';
 export 'commands/keybindings.dart';
-export 'commands/plugin/commands.dart';
 export 'commands/pro/commands.dart';
 export 'commands/query/commands.dart';
 export 'commands/view/commands.dart';
@@ -29,8 +27,6 @@ export 'screen/assistant/object_pin_chip.dart';
 export 'screen/command_line/command_line.dart';
 export 'screen/command_line/command_palette.dart';
 export 'screen/command_line/dynamic_input_hud.dart';
-export 'screen/plugin/extensions_panel.dart';
-export 'screen/plugin/plugin_editor_panel.dart';
 export 'screen/plugin/scripts_panel.dart';
 export 'screen/settings/settings_controls.dart';
 export 'screen/settings/settings_dialog.dart';
@@ -65,7 +61,6 @@ export 'services/assistant.dart';
 export 'services/command_line.dart';
 export 'services/layout.dart';
 export 'services/plugin.dart';
-export 'services/plugin_editor.dart';
 export 'services/providers.dart';
 export 'services/settings.dart';
 export 'services/workspace.dart';

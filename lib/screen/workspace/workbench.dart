@@ -15,12 +15,10 @@ import '../../models/workspace.dart';
 import '../../services/assistant.dart';
 import '../../services/command_line.dart';
 import '../../services/layout.dart';
-import '../../services/plugin.dart';
 import '../../services/workspace.dart';
 import '../assistant/ai_panel.dart';
 import '../command_line/command_line.dart';
 import '../command_line/command_palette.dart';
-import '../plugin/plugin_view.dart';
 import '../plugin/scripts_panel.dart';
 import '../settings/settings_dialog.dart';
 import '../widgets/activity_bar.dart';
@@ -107,9 +105,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     unawaited(_bindWindowClose());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _commandFocus.requestFocus();
-      // The extension host is started after the first frame so third-party
-      // code cannot sit between launch and a usable window.
-      unawaited(_startPlugins());
     });
   }
 
@@ -130,10 +125,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     _assistantSplit.dispose();
     _commandFocus.dispose();
     super.dispose();
-  }
-
-  Future<void> _startPlugins() async {
-    await ref.read(pluginNotifierProvider.notifier).start();
   }
 
   /// Text fields on macOS swallow Ctrl+C before Focus.onKeyEvent. A collapsed
@@ -451,16 +442,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       );
     }
     ref.watch(workspaceNotifierProvider.select((s) => s.runningCommand));
-    ref.listen(
-      pluginNotifierProvider.select((model) => (model.started, model.panels)),
-      (_, next) {
-        if (!next.$1) return;
-        ref.read(layoutNotifierProvider.notifier).setExtraViews({
-          for (final panel in next.$2)
-            if (panel.location == 'sidebar') panel.id,
-        });
-      },
-    );
 
     return CallbackShortcuts(
       bindings: _shortcuts(workspace),
@@ -472,12 +453,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
           if (event is! KeyDownEvent) return KeyEventResult.ignored;
           if (event.logicalKey != LogicalKeyboardKey.escape) {
             return KeyEventResult.ignored;
-          }
-          // A plugin window sits in front of the drawing, the same way the
-          // text editor does. Escape closes it before it can cancel a command.
-          if (ref.read(pluginNotifierProvider).dialog != null) {
-            ref.read(pluginNotifierProvider.notifier).completeDialog(null);
-            return KeyEventResult.handled;
           }
           ref.read(assistantNotifierProvider.notifier).stopBboxPick();
           final tab = workspace.active;
@@ -505,7 +480,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                 onToggleAssistant: ref
                     .read(layoutNotifierProvider.notifier)
                     .toggleAssistant,
-                actions: PluginToolsButton(workspace: workspace),
               ),
               Expanded(
                 child: Stack(
@@ -518,7 +492,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                               : exporting
                               ? 'export'
                               : layout.sidebarView,
-                          extraViews: const [],
                           onSelect: (id) => _selectSidebar(id),
                           onOpenSettings: () {
                             unawaited(showSettingsDialog(context));
@@ -529,7 +502,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                         ),
                       ],
                     ),
-                    PluginDialogLayer(workspace: workspace),
                     if (paletteOpen)
                       CommandPalette(
                         workspace: workspace,
@@ -540,7 +512,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                   ],
                 ),
               ),
-              PluginLocationViews(location: 'panel', workspace: workspace),
               const StatusBar(),
             ],
           ),
@@ -763,12 +734,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
           ref.read(commandLineNotifierProvider.notifier).setPaletteOpen(true),
     ),
     'plugins' => ScriptsPanel(workspace: workspace),
-    _ => PluginLocationViews(
-      location: 'sidebar',
-      onlyId: viewId,
-      workspace: workspace,
-      expand: true,
-    ),
+    _ => LayersPanel(workspace: workspace),
   };
 
   Map<ShortcutActivator, VoidCallback> _shortcuts(Workspace workspace) {

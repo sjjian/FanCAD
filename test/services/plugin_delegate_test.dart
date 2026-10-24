@@ -1,6 +1,5 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_extension/fancad_extension.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/workspace.dart';
@@ -8,24 +7,20 @@ import '../support/workspace.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  Workspace workspace({SettingsStore? settings}) =>
-      Headless(settings: settings, document: false).workspace;
+  Workspace workspace() => Headless(document: false).workspace;
 
-  test('session follows the active tab and is null with no drawing', () {
+  test('sessionFor follows the active tab and is null with no drawing', () {
     final ws = workspace();
-    final delegate = AppPluginDelegate(
-      workspace: () => ws,
-      plugins: PluginSettings(SettingsStore.inMemory()),
-    );
-    expect(delegate.session, isNull);
+    final delegate = AppPluginDelegate(workspace: () => ws);
+    expect(delegate.sessionFor(null), isNull);
 
     final tab = ws.newDocument(title: 'A');
-    expect(delegate.session, same(tab.session));
+    expect(delegate.sessionFor(null), same(tab.session));
     expect(delegate.commands.toList(), ws.commands.all.toList());
   });
 
   test(
-    'runCommand uses the headless path and attributes the edit to the plugin',
+    'runCommand uses the headless path and attributes the edit to the script',
     () async {
       final ws = workspace();
       ChangeSource? seen;
@@ -40,22 +35,19 @@ void main() {
         ),
       );
       ws.newDocument();
-      final delegate = AppPluginDelegate(
-        workspace: () => ws,
-        plugins: PluginSettings(SettingsStore.inMemory()),
-      );
+      final delegate = AppPluginDelegate(workspace: () => ws);
 
       final result = await delegate.runCommand(
         'test.mark',
         const {},
-        pluginId: 'demo',
+        scope: 'run-1',
       );
       expect(result.isOk, isTrue);
       expect(seen, ChangeSource.plugin);
     },
   );
 
-  test('runCommand refuses exec before starting another sandbox', () async {
+  test('runCommand refuses exec before starting another run', () async {
     final ws = workspace();
     var ran = false;
     if (ws.commands.find('exec') == null) {
@@ -70,21 +62,18 @@ void main() {
         ),
       );
     }
-    final delegate = AppPluginDelegate(
-      workspace: () => ws,
-      plugins: PluginSettings(SettingsStore.inMemory()),
-    );
+    final delegate = AppPluginDelegate(workspace: () => ws);
 
     final result = await delegate.runCommand('exec', const {
       'source': '1 + 1',
-    }, pluginId: 'demo');
+    }, scope: 'run-1');
     expect(result.isFailed, isTrue);
     expect(result.message, contains('cannot be called'));
     expect(ran, isFalse);
   });
 
   test(
-    'runCommand refuses a saved script before starting another sandbox',
+    'runCommand refuses a saved extension before starting another run',
     () async {
       final ws = workspace();
       var ran = false;
@@ -98,15 +87,12 @@ void main() {
           },
         ),
       );
-      final delegate = AppPluginDelegate(
-        workspace: () => ws,
-        plugins: PluginSettings(SettingsStore.inMemory()),
-      );
+      final delegate = AppPluginDelegate(workspace: () => ws);
 
       final result = await delegate.runCommand(
         'extension.rings',
         const {},
-        pluginId: 'demo',
+        scope: 'run-1',
       );
       expect(result.isFailed, isTrue);
       expect(result.message, contains('cannot be called'));
@@ -114,84 +100,32 @@ void main() {
     },
   );
 
-  test('showMessage notifies the workspace and writes a plugin log line', () {
+  test('showMessage notifies the workspace', () {
     final ws = workspace();
-    final seen = <(String, String, String)>[];
-    final delegate = AppPluginDelegate(
-      workspace: () => ws,
-      plugins: PluginSettings(SettingsStore.inMemory()),
-      onLog: (pluginId, level, message) => seen.add((pluginId, level, message)),
-    );
+    final delegate = AppPluginDelegate(workspace: () => ws);
 
-    delegate.showMessage('demo', 'hello');
-    delegate.showMessage('demo', 'broken', isError: true);
+    delegate.showMessage('run-1', 'hello');
+    delegate.showMessage('run-1', 'broken', isError: true);
 
     expect(ws.state.notices.map((notice) => notice.message), [
       'hello',
       'broken',
     ]);
     expect(ws.state.notices.last.isError, isTrue);
-    expect(seen, [('demo', 'info', 'hello'), ('demo', 'error', 'broken')]);
   });
 
-  test('plugin logs drop the oldest lines after 500', () async {
+  test('console lines land on the command line', () {
     final ws = workspace();
-    final delegate = AppPluginDelegate(
-      workspace: () => ws,
-      plugins: PluginSettings(SettingsStore.inMemory()),
+    final delegate = AppPluginDelegate(workspace: () => ws);
+
+    delegate.log('run-1', 'info', 'counted 3');
+    delegate.log('run-1', 'error', 'bad input');
+
+    final lines = ws.commandLine.state.lines;
+    expect(
+      lines.map((line) => line.text),
+      containsAllInOrder(['counted 3', 'bad input']),
     );
-    final host = PluginManager(
-      registry: ws.commands,
-      delegate: delegate,
-      transport: LocalTransport(),
-    );
-    addTearDown(host.dispose);
-    host.registerManifest(
-      const PluginManifest(
-        id: 'demo',
-        name: 'demo',
-        version: '0.0.0',
-        entryPoint: 'main.js',
-      ),
-    );
-    delegate.onLog = (pluginId, level, message) {
-      host.appendLog(pluginId, level, message);
-    };
-
-    for (var i = 0; i < 501; i++) {
-      delegate.log('demo', 'info', '$i');
-    }
-
-    final lines = host.plugin('demo')!.log;
-    expect(lines, hasLength(500));
-    expect(lines.first, '[info] 1');
-    expect(lines.last, '[info] 500');
-  });
-
-  test('a prompt without a handler cancels instead of hanging', () async {
-    final ws = workspace();
-    final delegate = AppPluginDelegate(
-      workspace: () => ws,
-      plugins: PluginSettings(SettingsStore.inMemory()),
-    );
-    expect(await delegate.prompt('demo', const {'text': '?'}), isNull);
-
-    delegate.promptHandler = (pluginId, spec) async =>
-        '$pluginId:${spec['text']}';
-    expect(await delegate.prompt('demo', const {'text': '?'}), 'demo:?');
-  });
-
-  test('plugin storage is namespaced inside the settings file', () async {
-    final settings = SettingsStore.inMemory();
-    final ws = workspace(settings: settings);
-    final delegate = AppPluginDelegate(
-      workspace: () => ws,
-      plugins: PluginSettings(settings),
-    );
-
-    await delegate.writeStorage('demo', 'token', 'abc');
-    expect(await delegate.readStorage('demo', 'token'), 'abc');
-    expect(settings.values['plugins.storage.demo.token'], 'abc');
-    expect(await delegate.readStorage('other', 'token'), isNull);
+    expect(lines.last.level, HistoryLevel.error);
   });
 }

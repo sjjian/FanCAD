@@ -7,71 +7,36 @@ import 'package:meta/meta.dart';
 
 part 'protocol.g.dart';
 
-/// The method names the host sends into the plugin worker.
+/// The method names the host sends into the script worker.
 abstract final class WorkerMethod {
-  /// Creates a runtime and evaluates a plugin's entry point.
-  static const String load = 'plugin/load';
+  /// Creates an engine for one run and evaluates the prelude into it.
+  static const String open = 'script/open';
 
-  /// Tears a plugin's runtime down and frees its scope.
-  static const String unload = 'plugin/unload';
+  /// Evaluates source in an open run's engine.
+  static const String eval = 'script/eval';
 
-  /// Calls a command handler a plugin registered.
-  static const String invoke = 'plugin/invoke';
+  /// Disposes one run's engine.
+  static const String close = 'script/close';
 
-  /// Delivers an event a plugin subscribed to. A notification, not a request.
-  static const String event = 'plugin/event';
-
-  /// Evaluates arbitrary source in a plugin's scope, for the console.
-  static const String eval = 'plugin/eval';
-
-  /// Asks a plugin's in-flight work to give up. A notification.
-  static const String cancel = 'plugin/cancel';
+  /// Rejects the next host call an open run makes. A notification.
+  static const String cancel = 'script/cancel';
 
   /// Liveness probe. Used to tell "slow" from "wedged".
   static const String ping = 'worker/ping';
 
-  /// Reports per-plugin memory use, for the extensions panel.
-  static const String stats = 'worker/stats';
-
-  /// Unloads everything and lets the worker's port close.
+  /// Closes every run and lets the worker's port close.
   static const String shutdown = 'worker/shutdown';
 }
 
-/// The method names the plugin worker sends back to the host.
+/// The method names the script worker sends back to the host.
 ///
-/// These mirror the `fancad.*` JavaScript API one-to-one, so adding a host
-/// capability means adding one constant, one handler and one line of prelude.
+/// Each one is a `fancad.*` call in the prelude. Reads and edits are commands,
+/// so this list only holds what a command cannot do.
 abstract final class HostMethod {
   static const String executeCommand = 'commands/execute';
   static const String listCommands = 'commands/list';
-  static const String registerCommand = 'commands/register';
-  static const String documentSummary = 'document/summary';
-  static const String documentQuery = 'document/query';
-  static const String documentEntity = 'document/entity';
-  static const String documentLayers = 'document/layers';
-  static const String selectionGet = 'selection/get';
-  static const String selectionSet = 'selection/set';
-  static const String applyEdit = 'document/edit';
   static const String showMessage = 'window/showMessage';
-  static const String showPrompt = 'window/showPrompt';
   static const String log = 'window/log';
-  static const String storageGet = 'storage/get';
-  static const String storageSet = 'storage/set';
-  static const String uiRender = 'ui/render';
-  static const String uiShowDialog = 'ui/showDialog';
-  static const String uiUpdateDialog = 'ui/updateDialog';
-  static const String viewerCreate = 'viewer/create';
-  static const String viewerDrop = 'viewer/drop';
-  static const String viewerEdit = 'viewer/edit';
-  static const String viewerFit = 'viewer/fit';
-  static const String registerKeybinding = 'keybindings/register';
-  static const String canvasView = 'canvas/view';
-  static const String canvasZoomTo = 'canvas/zoomTo';
-  static const String canvasZoomBy = 'canvas/zoomBy';
-  static const String canvasPanTo = 'canvas/panTo';
-  static const String canvasPreview = 'canvas/preview';
-  static const String canvasMarkers = 'canvas/markers';
-  static const String canvasPick = 'canvas/pick';
   static const String canvasHold = 'canvas/hold';
   static const String canvasFlash = 'canvas/flash';
 }

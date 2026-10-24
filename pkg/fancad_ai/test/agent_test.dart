@@ -428,63 +428,6 @@ void main() {
     },
   );
 
-  test('a failed plugin activate ships a repair hint', () async {
-    registry.register(
-      CommandDescriptor(
-        id: 'plugins.reload',
-        title: 'Reload',
-        risk: CommandRisk.edit,
-        handler: (_) async =>
-            const CommandResult.failed('could not activate: SyntaxError'),
-      ),
-    );
-    final conversation = Conversation();
-    final reload = AgentLoop(
-      provider: ScriptedLlmProvider([
-        LlmCompletion(
-          toolCalls: [
-            _run('1', 'plugins.reload', {'id': 'demo.wall'}),
-          ],
-        ),
-        const LlmCompletion(text: 'I will fix it.'),
-      ]),
-      registry: registry,
-      conversation: conversation,
-      execute: execute,
-      typings: 'declare const fancad: FanCadApi;',
-      policy: const ApprovalPolicy(autoApproveEdits: true),
-      authoring: const _RepairOnActivate(),
-    );
-
-    await reload.run('Reload the plugin');
-    expect(
-      conversation.visible
-          .singleWhere((item) => item.role == ChatRole.tool)
-          .text,
-      contains('repairHint'),
-    );
-    expect(
-      conversation.visible
-          .singleWhere((item) => item.role == ChatRole.tool)
-          .text,
-      contains('plugins.write'),
-    );
-
-    final looping = AgentLoop(
-      provider: ScriptedLlmProvider([
-        LlmCompletion(toolCalls: [_run('1', 'query.summary')]),
-        LlmCompletion(toolCalls: [_run('2', 'query.summary')]),
-        const LlmCompletion(text: 'Done.'),
-      ]),
-      registry: registry,
-      execute: execute,
-    );
-    final kept = await looping.run('Keep going');
-    expect(kept.isOk, isTrue);
-    expect(kept.reply, 'Done.');
-    expect(ran, ['query.summary', 'query.summary']);
-  });
-
   test('streamed leftovers paint tokens as they arrive', () async {
     final conversation = Conversation();
     final deltas = <String>[];
@@ -1042,22 +985,6 @@ class _OverflowThenOkProvider extends LlmProvider {
     yield const LlmTextDelta('Moved.');
     yield const LlmFinished();
   }
-}
-
-class _RepairOnActivate implements ActivationRepair {
-  const _RepairOnActivate();
-
-  @override
-  bool isActivationFailure(CommandResult result) =>
-      result.isFailed && result.message.contains('activate');
-
-  @override
-  String repairPrompt({
-    required String pluginId,
-    required String error,
-    String? source,
-    String? typings,
-  }) => 'Fix $pluginId with plugins.write. $error';
 }
 
 class _CaptureProvider extends LlmProvider {

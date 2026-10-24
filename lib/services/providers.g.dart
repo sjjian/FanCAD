@@ -86,9 +86,9 @@ final commandRegistryProvider = Provider<CommandRegistry>.internal(
 typedef CommandRegistryRef = ProviderRef<CommandRegistry>;
 String _$pluginsDirectoryHash() => r'883437af0aa766aa7633a91eeef02ee5dec57ab0';
 
-/// Where saved scripts live (`scripts/*.js`). Overridden at startup with a
-/// real path, and left empty in tests so a test run never reads the user's
-/// scripts. Extension folders are not scanned.
+/// Where saved extensions live (`extensions/*.js`). Overridden at startup with
+/// a real path, and left empty in tests so a test run never reads the user's
+/// files.
 ///
 /// Copied from [pluginsDirectory].
 @ProviderFor(pluginsDirectory)
@@ -105,13 +105,14 @@ final pluginsDirectoryProvider = Provider<String>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PluginsDirectoryRef = ProviderRef<String>;
-String _$pluginTransportHash() => r'6aa1cc9005914190bf303062e87331e9ec22a5ae';
+String _$pluginTransportHash() => r'4c07ff261d1c2b30a0ef2ed1a310cf2feaa318ae';
 
-/// The transport plugins run over. Overridden in tests with [LocalTransport].
+/// Builds the worker extensions run on. Called again when a wedged worker is
+/// dropped. Overridden in tests with [LocalTransport].
 ///
 /// Copied from [pluginTransport].
 @ProviderFor(pluginTransport)
-final pluginTransportProvider = Provider<PluginTransport>.internal(
+final pluginTransportProvider = Provider<PluginTransport Function()>.internal(
   pluginTransport,
   name: r'pluginTransportProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -123,6 +124,6 @@ final pluginTransportProvider = Provider<PluginTransport>.internal(
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef PluginTransportRef = ProviderRef<PluginTransport>;
+typedef PluginTransportRef = ProviderRef<PluginTransport Function()>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

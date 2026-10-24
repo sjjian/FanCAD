@@ -6,32 +6,9 @@ part of 'plugin.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$bundledPluginDirectoriesHash() =>
-    r'db1e925ec8fc367f0a701cdd4436b0a08b9e416f';
+String _$pluginNotifierHash() => r'02ee26cb2a5341f2a6bdcd255952a984d2958cdc';
 
-/// Folders of extensions shipped with the application.
-///
-/// Copied from [bundledPluginDirectories].
-@ProviderFor(bundledPluginDirectories)
-final bundledPluginDirectoriesProvider = Provider<List<String>>.internal(
-  bundledPluginDirectories,
-  name: r'bundledPluginDirectoriesProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$bundledPluginDirectoriesHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef BundledPluginDirectoriesRef = ProviderRef<List<String>>;
-String _$pluginNotifierHash() => r'0b47b5a58e7df29ba905afaeeff87520149c825e';
-
-/// Discovered extensions and the manager that loads them.
-///
-/// The pkg [PluginManager] stays on this notifier. [PluginModel] is the snapshot
-/// the extensions panel selects.
+/// Saved extensions and the runner that evaluates them.
 ///
 /// Copied from [PluginNotifier].
 @ProviderFor(PluginNotifier)

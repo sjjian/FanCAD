@@ -16,7 +16,6 @@ import '../../services/assistant.dart';
 import '../../services/command_line.dart';
 import '../../services/workspace.dart';
 import '../command_line/dynamic_input_hud.dart';
-import '../plugin/plugin_view.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
 import 'attribute_edit_dialog.dart';
@@ -503,7 +502,6 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
             shortcut: chord('edit.redo'),
             enabled: tab.history.canRedo,
           ),
-          ...pluginCanvasMenuItems(context, ref),
         ],
       ).then((id) {
         if (id == null || !mounted) return;

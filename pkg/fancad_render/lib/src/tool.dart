@@ -500,8 +500,6 @@ class ToolController extends ChangeNotifier
     final snapResult = _snap;
     final base = tool?.basePoint;
     final shapes = <OverlayShape>[
-      ...pluginShapes,
-      for (final marker in pluginMarkers) OverlayPoint(marker),
       ...?tool?.buildPreview(this),
       for (final index in selection.viewportIndices)
         if (index >= 0 && index < document.activeLayout.viewports.length)
@@ -532,22 +530,6 @@ class ToolController extends ChangeNotifier
       cursor: _cursor,
       showCrosshair: tool?.showCrosshair ?? true,
     );
-  }
-
-  /// Transient geometry a plugin asked the canvas to draw.
-  ///
-  /// Kept on the tool controller because the overlay already listens here.
-  /// Clearing both lists is how a plugin drops its rubber band.
-  List<OverlayShape> pluginShapes = const [];
-  List<Vec2> pluginMarkers = const [];
-
-  void setPluginChrome({
-    List<OverlayShape>? shapes,
-    List<Vec2>? markers,
-  }) {
-    if (shapes != null) pluginShapes = List<OverlayShape>.unmodifiable(shapes);
-    if (markers != null) pluginMarkers = List<Vec2>.unmodifiable(markers);
-    notifyListeners();
   }
 
   /// Rebinds this controller to a different document tab.

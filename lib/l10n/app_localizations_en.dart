@@ -1318,63 +1318,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get send_enter => 'Send  Enter';
 
   @override
-  String get open_extensions_folder => 'Open extensions folder';
-
-  @override
-  String get create_extension => 'Create extension';
-
-  @override
-  String get reload_all_extensions => 'Reload all extensions';
-
-  @override
-  String get extensions_unavailable =>
-      'Extensions are unavailable: no extensions folder was configured for this session.';
-
-  @override
-  String get no_extensions_installed =>
-      'No extensions are installed. Create one, or drop a folder with fancad.plugin.json into the extensions directory.';
-
-  @override
-  String get edit_source => 'Edit source';
-
-  @override
-  String get configure_extension => 'Configure';
-
-  @override
-  String get extension_details => 'Details';
-
-  @override
-  String get extension_source => 'Source';
-
-  @override
-  String get import_extension => 'Import extension';
-
-  @override
-  String get export_extension => 'Export extension';
-
-  @override
-  String get delete_extension => 'Delete extension';
-
-  @override
-  String get start_extension => 'Start extension';
-
-  @override
-  String get stop_extension => 'Stop extension';
-
-  @override
-  String get plugin_view_invalid =>
-      'This panel sent a view the shell could not read.';
-
-  @override
-  String get plugin_viewer_closed => 'This canvas is not open.';
-
-  @override
-  String get enable_extension => 'Enable extension';
-
-  @override
-  String get disable_extension => 'Disable extension';
-
-  @override
   String get reload => 'Reload';
 
   @override
@@ -1390,61 +1333,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get log => 'Log';
 
   @override
-  String get plugin_running => 'Running';
-
-  @override
-  String get plugin_starting => 'Starting';
-
-  @override
-  String get plugin_failed => 'Failed';
-
-  @override
-  String get plugin_disabled => 'Disabled';
-
-  @override
-  String get plugin_installed => 'Installed';
-
-  @override
   String get unsaved_editor_changes => 'Unsaved editor changes';
-
-  @override
-  String editor_file_dirty(String name) {
-    return '\"$name\" has edits that have not been written.';
-  }
-
-  @override
-  String get nothing_to_save => 'Nothing to save';
-
-  @override
-  String get save_and_reload => 'Save and reload';
 
   @override
   String get saved => 'Saved';
 
   @override
   String get extension => 'Extension';
-
-  @override
-  String get editor_unavailable =>
-      'Extensions are unavailable: no extensions folder was configured.';
-
-  @override
-  String get create_extension_first =>
-      'Create an extension first, then open it here.';
-
-  @override
-  String get choose_extension =>
-      'Choose an extension above, or use Edit source from the Extensions panel.';
-
-  @override
-  String no_such_file(String name) {
-    return 'No such file: $name';
-  }
-
-  @override
-  String plugin_not_installed(String id) {
-    return '$id is not installed';
-  }
 
   @override
   String get snap_endpoint => 'Endpoint';
@@ -2004,60 +1899,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get command_xref_bind => 'Bind Xref';
-
-  @override
-  String get command_plugins_list => 'List Extensions';
-
-  @override
-  String get command_plugins_reload => 'Reload Extension';
-
-  @override
-  String get command_plugins_enable => 'Enable Extension';
-
-  @override
-  String get command_plugins_disable => 'Disable Extension';
-
-  @override
-  String get command_plugins_logs => 'Show Extension Log';
-
-  @override
-  String get command_plugins_scaffold => 'Create Extension';
-
-  @override
-  String get command_plugins_write => 'Write Extension File';
-
-  @override
-  String get command_plugins_read => 'Read Extension File';
-
-  @override
-  String get command_plugins_typings => 'Write Plugin API Typings';
-
-  @override
-  String get command_plugins_edit => 'Edit Extension File';
-
-  @override
-  String get command_plugins_import => 'Import Extension';
-
-  @override
-  String get command_plugins_export => 'Export Extension';
-
-  @override
-  String get command_plugins_delete => 'Delete Extension';
-
-  @override
-  String get command_plugins_start => 'Start Extension';
-
-  @override
-  String get command_plugins_stop => 'Stop Extension';
-
-  @override
-  String get command_sandbox_query => 'Query In Sandbox';
-
-  @override
-  String get command_sandbox_run => 'Run In Sandbox';
-
-  @override
-  String get command_plugins_eval => 'Evaluate In Extension';
 
   @override
   String get command_file_list => 'List Drawings';
@@ -2688,77 +2529,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Turns an external reference into a local block so the drawing no longer depends on that file. Inserts stay where they are. Omit the name to bind the selected xref, or the only xref in the drawing.';
 
   @override
-  String get command_plugins_list_desc =>
-      'Lists installed extensions with their state, version and the commands they contribute.';
-
-  @override
-  String get command_plugins_reload_desc =>
-      'Re-reads an extension from disk and re-evaluates it, picking up both code and manifest changes without restarting.';
-
-  @override
-  String get command_plugins_enable_desc =>
-      'Loads an extension so it can contribute commands again.';
-
-  @override
-  String get command_plugins_disable_desc =>
-      'Unloads an extension and stops it activating again until enabled.';
-
-  @override
-  String get command_plugins_logs_desc =>
-      'Prints what an extension logged, for diagnosing a failure.';
-
-  @override
-  String get command_plugins_scaffold_desc =>
-      'Writes a new extension folder with a manifest and a working main.js, then loads it. Returns the paths written.';
-
-  @override
-  String get command_plugins_write_desc =>
-      'Overwrites one file inside an extension folder. Paths are confined to that folder.';
-
-  @override
-  String get command_plugins_read_desc =>
-      'Reads one file from an extension folder.';
-
-  @override
-  String get command_plugins_typings_desc =>
-      'Regenerates fancad.d.ts from the live command registry, so editors and models see the real API surface.';
-
-  @override
-  String get command_plugins_edit_desc =>
-      'Opens an extension file in the built-in editor so a person can review or change what the AI authoring loop wrote.';
-
-  @override
-  String get command_plugins_import_desc =>
-      'Copies a plugin folder or a .fancadplugin package into the extensions directory without starting it.';
-
-  @override
-  String get command_plugins_export_desc =>
-      'Writes an extension folder to a .fancadplugin package.';
-
-  @override
-  String get command_plugins_delete_desc =>
-      'Unloads an extension and deletes its folder.';
-
-  @override
-  String get command_plugins_start_desc => 'Loads an enabled extension.';
-
-  @override
-  String get command_plugins_stop_desc =>
-      'Unloads an extension and leaves its commands and panels registered.';
-
-  @override
-  String get command_sandbox_query_desc =>
-      'Runs a read-only script in a disposable sandbox.';
-
-  @override
-  String get command_sandbox_run_desc =>
-      'Runs a script in a disposable sandbox. It may edit the drawing and open one dialog.';
-
-  @override
-  String get command_plugins_eval_desc =>
-      'Runs a JavaScript expression inside an extension scope. For debugging; it can do anything the extension can.';
-
-  @override
   String command_step(String verb, String step) {
     return '$verb  $step';
   }
@@ -2911,9 +2681,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prompt_enter_a_layer_name => 'Enter a layer name:';
 
   @override
-  String get prompt_extension_id => 'Extension id:';
-
-  @override
   String get prompt_enter_block_name => 'Enter block name:';
 
   @override
@@ -2931,9 +2698,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get prompt_enter_colour =>
       'Enter a colour (1-255, #rrggbb or ByLayer):';
-
-  @override
-  String get prompt_javascript => 'JavaScript:';
 
   @override
   String get prompt_svg_path => 'SVG path:';
@@ -2958,12 +2722,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prompt_drawing_to_attach => 'Drawing to attach:';
-
-  @override
-  String get prompt_file_to_write => 'File to write:';
-
-  @override
-  String get prompt_file_to_read => 'File to read:';
 
   @override
   String get prompt_select_objects_to_erase => 'Select objects to erase:';

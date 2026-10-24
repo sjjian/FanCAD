@@ -1,16 +1,9 @@
-/// Shared FanCAD controls and the plugin view catalog.
-///
-/// A plugin node and the Dart widget that paints it share one props class.
-/// Validate a tree without Flutter via `package:fancad_widget/schema.dart`.
+/// Shared FanCAD controls.
 library;
 
-export 'schema.dart';
 export 'src/badge.dart';
 export 'src/banner.dart';
 export 'src/canvas_window.dart';
-export 'src/catalog/controls.dart';
-export 'src/catalog/props.dart';
-export 'src/catalog/view.dart';
 export 'src/chip.dart';
 export 'src/empty.dart';
 export 'src/field.dart';

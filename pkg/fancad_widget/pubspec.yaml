@@ -1,5 +1,5 @@
 name: fancad_widget
-description: "Shared FanCAD controls and the plugin view catalog. Dart widgets and JSON nodes are the same props."
+description: "Shared FanCAD controls."
 version: 0.1.0
 publish_to: 'none'
 resolution: workspace
@@ -10,10 +10,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  fancad_core:
-    path: ../fancad_core
-  fancad_render:
-    path: ../fancad_render
 
 dev_dependencies:
   flutter_test:

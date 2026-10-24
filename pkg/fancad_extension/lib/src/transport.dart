@@ -3,13 +3,15 @@ import 'dart:isolate';
 
 import 'engine_registry.dart';
 import 'js_engine.dart';
-import 'plugin_runtime.dart';
 import 'protocol.dart';
+import 'script_runtime.dart';
 
-/// Serves a request a plugin made of the application.
+/// Serves a request a running script made of the application.
+///
+/// [scope] names the run that asked.
 typedef PluginCallHandler =
     Future<Object?> Function(
-      String pluginId,
+      String scope,
       String method,
       Map<String, Object?> params,
     );
@@ -58,7 +60,7 @@ class LocalTransport implements PluginTransport {
   final JsEngineFactory engineFactory;
   final String hostVersion;
 
-  late final PluginRuntime runtime;
+  late final ScriptRuntime runtime;
   final StreamController<String> _died = StreamController<String>.broadcast();
   bool _alive = false;
 
@@ -70,7 +72,7 @@ class LocalTransport implements PluginTransport {
 
   @override
   Future<void> start(PluginCallHandler onPluginCall) async {
-    runtime = PluginRuntime(
+    runtime = ScriptRuntime(
       createEngine: engineFactory,
       callHost: onPluginCall,
       hostVersion: hostVersion,
@@ -90,7 +92,14 @@ class LocalTransport implements PluginTransport {
     final future = runtime.handle(
       RpcRequest(method: method, params: params, id: 0),
     );
-    return timeout == null ? future : future.timeout(timeout);
+    if (timeout == null) return future;
+    return future.timeout(
+      timeout,
+      onTimeout: () => throw RpcException(
+        RpcErrorCode.timeout,
+        '$method did not answer within ${timeout.inMilliseconds}ms',
+      ),
+    );
   }
 
   @override
@@ -103,7 +112,7 @@ class LocalTransport implements PluginTransport {
   Future<void> dispose({bool immediate = false}) async {
     if (!_alive) return;
     _alive = false;
-    if (!immediate) await runtime.disposeAll();
+    if (!immediate) runtime.disposeAll();
     await _died.close();
   }
 }
@@ -194,8 +203,8 @@ class IsolateTransport implements PluginTransport {
       );
     }
     final params = Map<String, Object?>.from(request.params);
-    final pluginId = params.remove('pluginId');
-    return handler(pluginId is String ? pluginId : '', request.method, params);
+    final scope = params.remove('scope');
+    return handler(scope is String ? scope : '', request.method, params);
   }
 
   void _handleDeath(String reason) {
@@ -273,13 +282,13 @@ void pluginWorkerMain(Object? bootstrap) {
   if (bootstrap is! _WorkerBootstrap) return;
   final fromHost = ReceivePort();
   late final RpcPeer peer;
-  late final PluginRuntime runtime;
+  late final ScriptRuntime runtime;
 
   peer = RpcPeer(
     send: bootstrap.hostPort.send,
     handle: (request) async {
       if (request.method == WorkerMethod.shutdown) {
-        await runtime.disposeAll();
+        runtime.disposeAll();
         Future<void>.delayed(const Duration(milliseconds: 10), fromHost.close);
         return {'ok': true};
       }
@@ -287,15 +296,16 @@ void pluginWorkerMain(Object? bootstrap) {
     },
   );
 
-  runtime = PluginRuntime(
+  runtime = ScriptRuntime(
     // Bound here rather than injected: a spawned isolate gets its own copy of
     // top-level state, so a factory the host closed over would not be visible.
     // The registry is a table compiled into this library.
     engines: EngineRegistry.production(),
-    defaultRuntime: bootstrap.runtime,
+    runtime: bootstrap.runtime,
     hostVersion: bootstrap.hostVersion,
-    callHost: (pluginId, method, params) =>
-        peer.request(method, params: {...params, 'pluginId': pluginId}),
+    // The run id goes last so a script's own params cannot name another run.
+    callHost: (scope, method, params) =>
+        peer.request(method, params: {...params, 'scope': scope}),
   );
 
   fromHost.listen((message) {

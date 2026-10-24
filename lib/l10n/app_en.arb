@@ -1858,78 +1858,6 @@
   "@send_enter": {
     "description": "send enter"
   },
-  "open_extensions_folder": "Open extensions folder",
-  "@open_extensions_folder": {
-    "description": "open extensions folder"
-  },
-  "create_extension": "Create extension",
-  "@create_extension": {
-    "description": "create extension"
-  },
-  "reload_all_extensions": "Reload all extensions",
-  "@reload_all_extensions": {
-    "description": "reload all extensions"
-  },
-  "extensions_unavailable": "Extensions are unavailable: no extensions folder was configured for this session.",
-  "@extensions_unavailable": {
-    "description": "extensions unavailable"
-  },
-  "no_extensions_installed": "No extensions are installed. Create one, or drop a folder with fancad.plugin.json into the extensions directory.",
-  "@no_extensions_installed": {
-    "description": "no extensions installed"
-  },
-  "edit_source": "Edit source",
-  "@edit_source": {
-    "description": "edit source"
-  },
-  "configure_extension": "Configure",
-  "@configure_extension": {
-    "description": "configure extension"
-  },
-  "extension_details": "Details",
-  "@extension_details": {
-    "description": "extension details"
-  },
-  "extension_source": "Source",
-  "@extension_source": {
-    "description": "extension source"
-  },
-  "import_extension": "Import extension",
-  "@import_extension": {
-    "description": "import extension"
-  },
-  "export_extension": "Export extension",
-  "@export_extension": {
-    "description": "export extension"
-  },
-  "delete_extension": "Delete extension",
-  "@delete_extension": {
-    "description": "delete extension"
-  },
-  "start_extension": "Start extension",
-  "@start_extension": {
-    "description": "start extension"
-  },
-  "stop_extension": "Stop extension",
-  "@stop_extension": {
-    "description": "stop extension"
-  },
-  "plugin_view_invalid": "This panel sent a view the shell could not read.",
-  "plugin_viewer_closed": "This canvas is not open.",
-  "@plugin_view_invalid": {
-    "description": "plugin view tree failed to decode"
-  },
-  "@plugin_viewer_closed": {
-    "description": "plugin canvas is not open"
-  },
-  "enable_extension": "Enable extension",
-  "@enable_extension": {
-    "description": "enable extension"
-  },
-  "disable_extension": "Disable extension",
-  "@disable_extension": {
-    "description": "disable extension"
-  },
   "reload": "Reload",
   "@reload": {
     "description": "reload"
@@ -1950,46 +1878,9 @@
   "@log": {
     "description": "log"
   },
-  "plugin_running": "Running",
-  "@plugin_running": {
-    "description": "plugin running"
-  },
-  "plugin_starting": "Starting",
-  "@plugin_starting": {
-    "description": "plugin starting"
-  },
-  "plugin_failed": "Failed",
-  "@plugin_failed": {
-    "description": "plugin failed"
-  },
-  "plugin_disabled": "Disabled",
-  "@plugin_disabled": {
-    "description": "plugin disabled"
-  },
-  "plugin_installed": "Installed",
-  "@plugin_installed": {
-    "description": "plugin installed"
-  },
   "unsaved_editor_changes": "Unsaved editor changes",
   "@unsaved_editor_changes": {
     "description": "unsaved editor changes"
-  },
-  "editor_file_dirty": "\"{name}\" has edits that have not been written.",
-  "@editor_file_dirty": {
-    "description": "editor file dirty",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "nothing_to_save": "Nothing to save",
-  "@nothing_to_save": {
-    "description": "nothing to save"
-  },
-  "save_and_reload": "Save and reload",
-  "@save_and_reload": {
-    "description": "save and reload"
   },
   "saved": "Saved",
   "@saved": {
@@ -1998,36 +1889,6 @@
   "extension": "Extension",
   "@extension": {
     "description": "extension"
-  },
-  "editor_unavailable": "Extensions are unavailable: no extensions folder was configured.",
-  "@editor_unavailable": {
-    "description": "editor unavailable"
-  },
-  "create_extension_first": "Create an extension first, then open it here.",
-  "@create_extension_first": {
-    "description": "create extension first"
-  },
-  "choose_extension": "Choose an extension above, or use Edit source from the Extensions panel.",
-  "@choose_extension": {
-    "description": "choose extension"
-  },
-  "no_such_file": "No such file: {name}",
-  "@no_such_file": {
-    "description": "no such file",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "plugin_not_installed": "{id} is not installed",
-  "@plugin_not_installed": {
-    "description": "plugin not installed",
-    "placeholders": {
-      "id": {
-        "type": "String"
-      }
-    }
   },
   "snap_endpoint": "Endpoint",
   "@snap_endpoint": {
@@ -2784,78 +2645,6 @@
   "@command_xref_bind": {
     "description": "command xref bind"
   },
-  "command_plugins_list": "List Extensions",
-  "@command_plugins_list": {
-    "description": "command plugins list"
-  },
-  "command_plugins_reload": "Reload Extension",
-  "@command_plugins_reload": {
-    "description": "command plugins reload"
-  },
-  "command_plugins_enable": "Enable Extension",
-  "@command_plugins_enable": {
-    "description": "command plugins enable"
-  },
-  "command_plugins_disable": "Disable Extension",
-  "@command_plugins_disable": {
-    "description": "command plugins disable"
-  },
-  "command_plugins_logs": "Show Extension Log",
-  "@command_plugins_logs": {
-    "description": "command plugins logs"
-  },
-  "command_plugins_scaffold": "Create Extension",
-  "@command_plugins_scaffold": {
-    "description": "command plugins scaffold"
-  },
-  "command_plugins_write": "Write Extension File",
-  "@command_plugins_write": {
-    "description": "command plugins write"
-  },
-  "command_plugins_read": "Read Extension File",
-  "@command_plugins_read": {
-    "description": "command plugins read"
-  },
-  "command_plugins_typings": "Write Plugin API Typings",
-  "@command_plugins_typings": {
-    "description": "command plugins typings"
-  },
-  "command_plugins_edit": "Edit Extension File",
-  "@command_plugins_edit": {
-    "description": "command plugins edit"
-  },
-  "command_plugins_import": "Import Extension",
-  "@command_plugins_import": {
-    "description": "command plugins import"
-  },
-  "command_plugins_export": "Export Extension",
-  "@command_plugins_export": {
-    "description": "command plugins export"
-  },
-  "command_plugins_delete": "Delete Extension",
-  "@command_plugins_delete": {
-    "description": "command plugins delete"
-  },
-  "command_plugins_start": "Start Extension",
-  "@command_plugins_start": {
-    "description": "command plugins start"
-  },
-  "command_plugins_stop": "Stop Extension",
-  "@command_plugins_stop": {
-    "description": "command plugins stop"
-  },
-  "command_sandbox_query": "Query In Sandbox",
-  "@command_sandbox_query": {
-    "description": "command sandbox query"
-  },
-  "command_sandbox_run": "Run In Sandbox",
-  "@command_sandbox_run": {
-    "description": "command sandbox run"
-  },
-  "command_plugins_eval": "Evaluate In Extension",
-  "@command_plugins_eval": {
-    "description": "command plugins eval"
-  },
   "command_file_list": "List Drawings",
   "@command_file_list": {
     "description": "command file list"
@@ -3500,78 +3289,6 @@
   "@command_xref_bind_desc": {
     "description": "command xref bind desc"
   },
-  "command_plugins_list_desc": "Lists installed extensions with their state, version and the commands they contribute.",
-  "@command_plugins_list_desc": {
-    "description": "command plugins list desc"
-  },
-  "command_plugins_reload_desc": "Re-reads an extension from disk and re-evaluates it, picking up both code and manifest changes without restarting.",
-  "@command_plugins_reload_desc": {
-    "description": "command plugins reload desc"
-  },
-  "command_plugins_enable_desc": "Loads an extension so it can contribute commands again.",
-  "@command_plugins_enable_desc": {
-    "description": "command plugins enable desc"
-  },
-  "command_plugins_disable_desc": "Unloads an extension and stops it activating again until enabled.",
-  "@command_plugins_disable_desc": {
-    "description": "command plugins disable desc"
-  },
-  "command_plugins_logs_desc": "Prints what an extension logged, for diagnosing a failure.",
-  "@command_plugins_logs_desc": {
-    "description": "command plugins logs desc"
-  },
-  "command_plugins_scaffold_desc": "Writes a new extension folder with a manifest and a working main.js, then loads it. Returns the paths written.",
-  "@command_plugins_scaffold_desc": {
-    "description": "command plugins scaffold desc"
-  },
-  "command_plugins_write_desc": "Overwrites one file inside an extension folder. Paths are confined to that folder.",
-  "@command_plugins_write_desc": {
-    "description": "command plugins write desc"
-  },
-  "command_plugins_read_desc": "Reads one file from an extension folder.",
-  "@command_plugins_read_desc": {
-    "description": "command plugins read desc"
-  },
-  "command_plugins_typings_desc": "Regenerates fancad.d.ts from the live command registry, so editors and models see the real API surface.",
-  "@command_plugins_typings_desc": {
-    "description": "command plugins typings desc"
-  },
-  "command_plugins_edit_desc": "Opens an extension file in the built-in editor so a person can review or change what the AI authoring loop wrote.",
-  "@command_plugins_edit_desc": {
-    "description": "command plugins edit desc"
-  },
-  "command_plugins_import_desc": "Copies a plugin folder or a .fancadplugin package into the extensions directory without starting it.",
-  "@command_plugins_import_desc": {
-    "description": "command plugins import desc"
-  },
-  "command_plugins_export_desc": "Writes an extension folder to a .fancadplugin package.",
-  "@command_plugins_export_desc": {
-    "description": "command plugins export desc"
-  },
-  "command_plugins_delete_desc": "Unloads an extension and deletes its folder.",
-  "@command_plugins_delete_desc": {
-    "description": "command plugins delete desc"
-  },
-  "command_plugins_start_desc": "Loads an enabled extension.",
-  "@command_plugins_start_desc": {
-    "description": "command plugins start desc"
-  },
-  "command_plugins_stop_desc": "Unloads an extension and leaves its commands and panels registered.",
-  "@command_plugins_stop_desc": {
-    "description": "command plugins stop desc"
-  },
-  "command_sandbox_query_desc": "Runs a read-only script in a disposable sandbox.",
-  "@command_sandbox_query_desc": {
-    "description": "command sandbox query desc"
-  },
-  "command_sandbox_run_desc": "Runs a script in a disposable sandbox. It may edit the drawing and open one dialog.",
-  "@command_sandbox_run_desc": {
-    "description": "command sandbox run desc"
-  },
-  "command_plugins_eval_desc": "Runs a JavaScript expression inside an extension scope. For debugging; it can do anything the extension can.",
-  "@command_plugins_eval_desc": {
-    "description": "command plugins eval desc"
-  },
   "command_step": "{verb}  {step}",
   "@command_step": {
     "description": "command step",
@@ -3768,10 +3485,6 @@
   "@prompt_enter_a_layer_name": {
     "description": "prompt enter a layer name"
   },
-  "prompt_extension_id": "Extension id:",
-  "@prompt_extension_id": {
-    "description": "prompt extension id"
-  },
   "prompt_enter_block_name": "Enter block name:",
   "@prompt_enter_block_name": {
     "description": "prompt enter block name"
@@ -3795,10 +3508,6 @@
   "prompt_enter_colour": "Enter a colour (1-255, #rrggbb or ByLayer):",
   "@prompt_enter_colour": {
     "description": "prompt enter colour"
-  },
-  "prompt_javascript": "JavaScript:",
-  "@prompt_javascript": {
-    "description": "prompt javascript"
   },
   "prompt_svg_path": "SVG path:",
   "@prompt_svg_path": {
@@ -3831,14 +3540,6 @@
   "prompt_drawing_to_attach": "Drawing to attach:",
   "@prompt_drawing_to_attach": {
     "description": "prompt drawing to attach"
-  },
-  "prompt_file_to_write": "File to write:",
-  "@prompt_file_to_write": {
-    "description": "prompt file to write"
-  },
-  "prompt_file_to_read": "File to read:",
-  "@prompt_file_to_read": {
-    "description": "prompt file to read"
   },
   "prompt_select_objects_to_erase": "Select objects to erase:",
   "@prompt_select_objects_to_erase": {

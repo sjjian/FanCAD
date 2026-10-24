@@ -7,7 +7,7 @@ import '../session_ask.dart';
 /// A tool that belongs to the agent host, not the command registry.
 ///
 /// Skills and later memory tools must not appear in the command palette or
-/// plugin typings, so they are not [CommandDescriptor]s.
+/// the AI command catalog, so they are not [CommandDescriptor]s.
 class HostTool {
   const HostTool({
     required this.definition,

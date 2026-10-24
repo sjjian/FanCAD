@@ -4,7 +4,7 @@ import 'package:path/path.dart' as p;
 
 /// Resolves [relative] inside [directory], refusing anything that escapes.
 ///
-/// A plugin id and a path both arrive from a model in the authoring loop, so
+/// An extension name arrives from the model as well as from the user, so
 /// `../../.zshrc` has to be rejected here rather than trusted.
 File? resolveInside(String directory, String relative) {
   if (relative.trim().isEmpty) return null;

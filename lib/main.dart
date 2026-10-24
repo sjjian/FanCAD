@@ -9,7 +9,6 @@ import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'screen/app.dart';
-import 'services/plugin.dart';
 import 'services/providers.dart';
 import 'storage/settings.dart';
 
@@ -33,9 +32,6 @@ Future<void> main(List<String> arguments) async {
       overrides: [
         settingsProvider.overrideWithValue(settings),
         pluginsDirectoryProvider.overrideWithValue(pluginsDirectory),
-        bundledPluginDirectoriesProvider.overrideWithValue(
-          _resolveBundledPluginDirectories(),
-        ),
       ],
       child: FanCadApp(
         // argv on Windows / Linux; macOS Finder arrives through the plugin.
@@ -61,32 +57,6 @@ Future<String> _extensionsDirectory(String supportDirectory) async {
   final current = Directory(p.join(supportDirectory, 'extensions'));
   await current.create(recursive: true);
   return current.path;
-}
-
-/// Folders of extensions shipped with the application.
-///
-/// Development runs from the repo root, so `extensions/` next to the working
-/// directory is the honest answer. A packaged build looks next to the
-/// executable. Missing folders are skipped rather than treated as an error:
-/// a user who deleted the bundled set should still get a window.
-List<String> _resolveBundledPluginDirectories() {
-  final candidates = <String>[
-    p.join(Directory.current.path, 'extensions'),
-    p.join(p.dirname(Platform.resolvedExecutable), 'extensions'),
-    p.join(
-      p.dirname(Platform.resolvedExecutable),
-      'data',
-      'flutter_assets',
-      'extensions',
-    ),
-  ];
-  final found = <String>[];
-  for (final candidate in candidates) {
-    if (!Directory(candidate).existsSync()) continue;
-    if (found.contains(candidate)) continue;
-    found.add(candidate);
-  }
-  return found;
 }
 
 Future<void> _configureWindow() async {

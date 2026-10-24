@@ -33,12 +33,14 @@ CommandRegistry commandRegistry(Ref ref) {
   return registry;
 }
 
-/// Where saved scripts live (`scripts/*.js`). Overridden at startup with a
-/// real path, and left empty in tests so a test run never reads the user's
-/// scripts. Extension folders are not scanned.
+/// Where saved extensions live (`extensions/*.js`). Overridden at startup with
+/// a real path, and left empty in tests so a test run never reads the user's
+/// files.
 @Riverpod(keepAlive: true)
 String pluginsDirectory(Ref ref) => '';
 
-/// The transport plugins run over. Overridden in tests with [LocalTransport].
+/// Builds the worker extensions run on. Called again when a wedged worker is
+/// dropped. Overridden in tests with [LocalTransport].
 @Riverpod(keepAlive: true)
-PluginTransport pluginTransport(Ref ref) => IsolateTransport();
+PluginTransport Function() pluginTransport(Ref ref) =>
+    () => IsolateTransport(debugName: 'fancad.extensions');
