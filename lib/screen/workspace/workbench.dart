@@ -289,80 +289,111 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black.withValues(alpha: 0.4),
-      builder: (context) => Dialog(
-        backgroundColor: tokens.surfaceOverlay,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+      builder: (context) {
+        // The stroke is painted inside the box, so the outline reads shorter
+        // than the filled button unless the box is taller by the stroke.
+        final outlined = OutlinedButton.styleFrom(
+          foregroundColor: tokens.text,
+          minimumSize: const Size(0, 30),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space2),
           side: BorderSide(color: tokens.borderStrong),
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420, maxHeight: 360),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              FanCadTokens.space4,
-              FanCadTokens.space3,
-              FanCadTokens.space4,
-              FanCadTokens.space3,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(request.title, style: tokens.dialogTitleStyle),
-                const SizedBox(height: FanCadTokens.space3),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 220),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final line in request.details.split('\n'))
-                          if (line.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: FanCadTokens.space1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(FanCadTokens.radiusSmall),
+          ),
+        );
+        return Dialog(
+          backgroundColor: tokens.surfaceOverlay,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+            side: BorderSide(color: tokens.borderStrong),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420, maxHeight: 360),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                FanCadTokens.space4,
+                FanCadTokens.space3,
+                FanCadTokens.space4,
+                FanCadTokens.space3,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(request.title, style: tokens.dialogTitleStyle),
+                  const SizedBox(height: FanCadTokens.space3),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final line in request.details.split('\n'))
+                            if (line.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  bottom: FanCadTokens.space1,
+                                ),
+                                child: Text(line, style: tokens.bodyStyle),
                               ),
-                              child: Text(line, style: tokens.bodyStyle),
-                            ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: FanCadTokens.space3),
-                Row(
-                  children: [
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop('cancel'),
-                      child: Text(context.l10n.cancel, style: tokens.bodyStyle),
-                    ),
-                    if (unsaved)
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop('discard'),
-                        child: Text(
-                          context.l10n.dont_save,
-                          style: tokens.bodyStyle.copyWith(
-                            color: tokens.danger,
+                  const SizedBox(height: FanCadTokens.space3),
+                  Row(
+                    children: [
+                      if (unsaved)
+                        OutlinedButton(
+                          style: outlined.copyWith(
+                            foregroundColor: WidgetStatePropertyAll(
+                              tokens.danger,
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(context).pop('discard'),
+                          child: Text(
+                            context.l10n.dont_save,
+                            style: tokens.bodyStyle.copyWith(
+                              color: tokens.danger,
+                            ),
                           ),
                         ),
+                      const Spacer(),
+                      OutlinedButton(
+                        style: outlined,
+                        onPressed: () => Navigator.of(context).pop('cancel'),
+                        child: Text(
+                          context.l10n.cancel,
+                          style: tokens.bodyStyle,
+                        ),
                       ),
-                    FilledButton(
-                      onPressed: () => Navigator.of(
-                        context,
-                      ).pop(unsaved ? 'save' : 'continue'),
-                      child: Text(
-                        unsaved
-                            ? context.l10n.save
-                            : context.l10n.continue_action,
+                      const SizedBox(width: FanCadTokens.space2),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 28),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: FanCadTokens.space2,
+                          ),
+                        ),
+                        onPressed: () => Navigator.of(
+                          context,
+                        ).pop(unsaved ? 'save' : 'continue'),
+                        child: Text(
+                          unsaved
+                              ? context.l10n.save
+                              : context.l10n.continue_action,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
     if (approved == 'save') {
       final result = await workspace.run('file.save');
