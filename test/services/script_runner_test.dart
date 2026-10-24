@@ -122,6 +122,50 @@ return reply;
       expect(next.data?['value'], 7);
     },
   );
+
+  group('isolate worker', () {
+    test(
+      'an unhandled rejection is logged and the worker keeps serving',
+      () async {
+        _linkQuickJsForTests();
+        final errors = <String>[];
+        late IsolateTransport transport;
+        final runner = ScriptRunner(
+          openTransport: () =>
+              transport = IsolateTransport(onWorkerError: errors.add),
+          onCall: (_, _, _) async => null,
+        );
+        addTearDown(runner.dispose);
+
+        final first = await runner.run(
+          'Promise.reject(new Error("late")); return 1;',
+        );
+        expect(first.data?['value'], 1, reason: first.message);
+        for (var i = 0; i < 50 && errors.isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+        expect(errors.join(), contains('late'));
+        expect(transport.isAlive, isTrue);
+
+        final second = await runner.run('return 2;');
+        expect(second.data?['value'], 2);
+      },
+    );
+
+    test('dispose closes the worker and later requests fail', () async {
+      _linkQuickJsForTests();
+      final transport = IsolateTransport();
+      await transport.start((_, _, _) async => null);
+      expect(await transport.request(WorkerMethod.ping), isNotNull);
+
+      await transport.dispose();
+      expect(transport.isAlive, isFalse);
+      expect(
+        () => transport.request(WorkerMethod.ping),
+        throwsA(isA<RpcException>()),
+      );
+    });
+  });
 }
 
 /// `flutter test` only finds the QuickJS bridge under `packages/`. The

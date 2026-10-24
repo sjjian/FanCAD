@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:isolate';
 
 import 'engine_registry.dart';
@@ -125,6 +126,8 @@ class IsolateTransport implements ExtensionTransport {
     this.hostVersion = '0.1.0',
     this.runtime = EngineRuntimes.defaultRuntime,
     this.debugName = 'fancad.extensions',
+    this.startTimeout = const Duration(seconds: 10),
+    this.onWorkerError,
   });
 
   final String hostVersion;
@@ -133,9 +136,18 @@ class IsolateTransport implements ExtensionTransport {
   final String runtime;
   final String debugName;
 
+  /// How long [start] waits for the worker to report in.
+  final Duration startTimeout;
+
+  /// An uncaught error on the worker, such as an unhandled promise rejection.
+  /// The worker keeps running. Defaults to the developer log.
+  final void Function(String message)? onWorkerError;
+
   Isolate? _isolate;
   SendPort? _toWorker;
   ReceivePort? _fromWorker;
+  ReceivePort? _onExit;
+  ReceivePort? _onError;
   RpcPeer? _peer;
   ExtensionCallHandler? _onExtensionCall;
   final StreamController<String> _died = StreamController<String>.broadcast();
@@ -154,14 +166,40 @@ class IsolateTransport implements ExtensionTransport {
     final receive = ReceivePort();
     _fromWorker = receive;
 
-    // An exit or error on the worker has to reach the host as a message, not as
-    // a silent hang: every pending request needs failing.
+    // Only an exit is death. The isolate runs with errorsAreFatal: false, so
+    // an uncaught error, usually an unhandled rejection, leaves it serving.
+    // Either one before the worker reports in fails the start instead of
+    // leaving it waiting.
     final onExit = ReceivePort();
     final onError = ReceivePort();
-    onExit.listen((_) => _handleDeath('the script worker exited'));
-    onError.listen(
-      (error) => _handleDeath('the script worker crashed: $error'),
-    );
+    _onExit = onExit;
+    _onError = onError;
+    onExit.listen((_) {
+      if (!ready.isCompleted) {
+        ready.completeError(
+          const RpcException(
+            RpcErrorCode.workerDead,
+            'the script worker exited while starting',
+          ),
+        );
+      }
+      _handleDeath('the script worker exited');
+    });
+    onError.listen((error) {
+      final message = error is List && error.isNotEmpty
+          ? '${error.first}'
+          : '$error';
+      if (!ready.isCompleted) {
+        ready.completeError(
+          RpcException(
+            RpcErrorCode.workerDead,
+            'the script worker failed while starting: $message',
+          ),
+        );
+        return;
+      }
+      _reportWorkerError(message);
+    });
 
     receive.listen((message) {
       if (message is SendPort) {
@@ -173,16 +211,33 @@ class IsolateTransport implements ExtensionTransport {
       }
     });
 
-    _isolate = await Isolate.spawn(
-      extensionWorkerMain,
-      _WorkerBootstrap(receive.sendPort, hostVersion, runtime),
-      debugName: debugName,
-      onExit: onExit.sendPort,
-      onError: onError.sendPort,
-      errorsAreFatal: false,
-    );
-
-    _toWorker = await ready.future;
+    try {
+      _isolate = await Isolate.spawn(
+        extensionWorkerMain,
+        _WorkerBootstrap(receive.sendPort, hostVersion, runtime),
+        debugName: debugName,
+        onExit: onExit.sendPort,
+        onError: onError.sendPort,
+        errorsAreFatal: false,
+      );
+      _toWorker = await ready.future.timeout(
+        startTimeout,
+        onTimeout: () => throw RpcException(
+          RpcErrorCode.workerDead,
+          'the script worker did not start within '
+          '${startTimeout.inMilliseconds}ms',
+        ),
+      );
+    } on RpcException {
+      _teardown();
+      rethrow;
+    } catch (error) {
+      _teardown();
+      throw RpcException(
+        RpcErrorCode.workerDead,
+        'the script worker could not start: $error',
+      );
+    }
     _peer = RpcPeer(
       send: (message) => _toWorker?.send(message),
       handle: _serveWorkerRequest,
@@ -201,6 +256,15 @@ class IsolateTransport implements ExtensionTransport {
     final params = Map<String, Object?>.from(request.params);
     final scope = params.remove('scope');
     return handler(scope is String ? scope : '', request.method, params);
+  }
+
+  void _reportWorkerError(String message) {
+    final report = onWorkerError;
+    if (report != null) {
+      report(message);
+    } else {
+      developer.log(message, name: debugName);
+    }
   }
 
   void _handleDeath(String reason) {
@@ -235,10 +299,9 @@ class IsolateTransport implements ExtensionTransport {
   @override
   Future<void> dispose({bool immediate = false}) async {
     if (_isolate == null) return;
-    _alive = false;
-    if (!immediate) {
-      // Best effort: a wedged worker will not get this far, which is exactly
-      // why the kill below is unconditional.
+    if (!immediate && _alive) {
+      // Asked while still alive, so the worker frees its engines. A wedged
+      // worker never answers, which is why the kill below is unconditional.
       try {
         await request(
           WorkerMethod.shutdown,
@@ -248,13 +311,23 @@ class IsolateTransport implements ExtensionTransport {
         // Nothing to do; we are killing it either way.
       }
     }
+    _alive = false;
+    _teardown();
+    if (!_died.isClosed) await _died.close();
+  }
+
+  void _teardown() {
     _peer?.close();
+    _peer = null;
     _isolate?.kill(priority: Isolate.immediate);
     _isolate = null;
     _fromWorker?.close();
     _fromWorker = null;
+    _onExit?.close();
+    _onExit = null;
+    _onError?.close();
+    _onError = null;
     _toWorker = null;
-    if (!_died.isClosed) await _died.close();
   }
 }
 
