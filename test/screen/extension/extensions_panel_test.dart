@@ -104,21 +104,13 @@ void main() {
       );
     }
 
-    final line1 = tester.getRect(
-      find.descendant(
-        of: find.byKey(const Key('extension-editor-lines')),
-        matching: find.text('1'),
-      ),
-    );
-    final line2 = tester.getRect(
-      find.descendant(
-        of: find.byKey(const Key('extension-editor-lines')),
-        matching: find.text('2'),
-      ),
-    );
-    expect((line1.top - caretAt(0).top).abs(), lessThan(2));
+    final lines = find.byKey(const Key('extension-editor-lines'));
+    final gutter = tester.widget<LineGutter>(lines);
+    double lineTop(int line) =>
+        tester.getRect(lines).top + gutter.top + (line - 1) * gutter.lineHeight;
+    expect((lineTop(1) - caretAt(0).top).abs(), lessThan(2));
     expect(
-      (line2.top - caretAt(source.indexOf('\n') + 1).top).abs(),
+      (lineTop(2) - caretAt(source.indexOf('\n') + 1).top).abs(),
       lessThan(2),
     );
   });
