@@ -24,10 +24,12 @@ class ExtensionCommands {
   /// Evaluates one script and returns when it finishes.
   ///
   /// [args] is the parameter map the command collected. The runner assigns it
-  /// to `fancad.args` before the script itself runs.
+  /// to `fancad.args` before the script itself runs. [label] names the undo
+  /// step the whole run becomes.
   final Future<CommandResult> Function(
     String source, {
     required Map<String, Object?> args,
+    required String label,
   })
   runSource;
 
@@ -623,7 +625,11 @@ class ExtensionsRunCommand extends FanCadCommand {
         'source is required. A saved extension runs as extension.<name>',
       );
     }
-    final result = await extensions.runSource(inline, args: const {});
+    final result = await extensions.runSource(
+      inline,
+      args: const {},
+      label: title,
+    );
     if (!result.isOk) return result;
     final value = result.data?['value'];
     return CommandResult.ok(
@@ -684,6 +690,7 @@ class ExtensionInvokeCommand extends FanCadCommand {
     final result = await extensions.runSource(
       file.readAsStringSync(),
       args: values,
+      label: entry.name,
     );
     if (result.isFailed) {
       extensions.errors[entry.name] = result.message;

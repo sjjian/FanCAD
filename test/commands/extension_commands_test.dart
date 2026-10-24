@@ -20,7 +20,7 @@ void main() {
     app = Headless();
     scripts = ExtensionCommands(
       directory: root.path,
-      runSource: (source, {required args}) async {
+      runSource: (source, {required args, required label}) async {
         if (source.contains('throw')) {
           return const CommandResult.failed('boom');
         }

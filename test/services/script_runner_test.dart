@@ -1,9 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:fancad/fancad.dart';
 import 'package:fancad_extension/fancad_extension.dart';
+import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+
+import '../support/workspace.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -14,14 +18,7 @@ void main() {
   }) {
     _linkQuickJsForTests();
     final runner = ScriptRunner(
-      openTransport: () => LocalTransport(
-        engineFactory: ({required memoryLimit, required stackSize}) =>
-            EngineRegistry.production().create(
-              EngineRuntimes.quickjs,
-              memoryLimit: memoryLimit,
-              stackSize: stackSize,
-            ),
-      ),
+      openTransport: () => LocalTransport(engineFactory: _quickJs),
       onCall: onCall ?? (_, _, _) async => null,
       timeout: timeout,
     );
@@ -166,7 +163,64 @@ return reply;
       );
     });
   });
+
+  group('one run, one undo step', () {
+    late Headless app;
+    late Directory root;
+
+    setUp(() {
+      _linkQuickJsForTests();
+      root = tempDir(prefix: 'fancad-extensions');
+      app = Headless(
+        overrides: [
+          extensionsDirectoryProvider.overrideWithValue(root.path),
+          extensionTransportProvider.overrideWithValue(
+            () => LocalTransport(engineFactory: _quickJs),
+          ),
+        ],
+      );
+    });
+
+    ExtensionNotifier extensions() =>
+        app.container.read(extensionNotifierProvider.notifier);
+
+    const twoLines = '''
+await fancad.commands.execute("draw.line", { start: [0, 0], end: [10, 0] });
+await fancad.commands.execute("draw.line", { start: [0, 0], end: [0, 10] });
+return 2;
+''';
+
+    test('a saved extension undoes as one step named after it', () async {
+      File(p.join(root.path, 'cross.js')).writeAsStringSync(twoLines);
+      extensions();
+      final history = app.workspace.active!.history;
+      final before = history.depth;
+
+      final result = await app.workspace.runExtension('extension.cross');
+      expect(result.isOk, isTrue, reason: result.message);
+      expect(app.document.entityCount, 2);
+      expect(history.depth, before + 1);
+      expect(history.undoEntries.last.label, 'cross');
+    });
+
+    test('exec from chat undoes as one step', () async {
+      final history = app.workspace.active!.history;
+      final before = history.depth;
+
+      final result = await extensions().exec(twoLines);
+      expect(result['status'], 'ok', reason: '${result['message']}');
+      expect(history.depth, before + 1);
+      expect(history.undoEntries.last.label, 'exec');
+    });
+  });
 }
+
+JsEngine _quickJs({required int memoryLimit, required int stackSize}) =>
+    EngineRegistry.production().create(
+      EngineRuntimes.quickjs,
+      memoryLimit: memoryLimit,
+      stackSize: stackSize,
+    );
 
 /// `flutter test` only finds the QuickJS bridge under `packages/`. The
 /// published package keeps the library in `macos/Frameworks`, so the test

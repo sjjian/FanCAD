@@ -14,6 +14,7 @@ class Headless {
     SettingsStore? settings,
     FileCommands Function(WorkspaceNotifier workspace)? files,
     bool document = true,
+    List<Override> overrides = const [],
   }) : settings = settings ?? SettingsStore.inMemory() {
     container = ProviderContainer(
       overrides: [
@@ -21,6 +22,7 @@ class Headless {
         drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
         if (files != null)
           workspaceFileCommandsOverrideProvider.overrideWithValue(files),
+        ...overrides,
       ],
     );
     addTearDown(container.dispose);

@@ -163,13 +163,8 @@ class ExtensionNotifier extends _$ExtensionNotifier {
     final commands = ExtensionCommands(
       directory: directory,
       disabled: settings.disabledIds(),
-      runSource: (source, {required args}) async {
-        final runner = _runner;
-        if (runner == null) {
-          return const CommandResult.failed('extensions are unavailable');
-        }
-        return runner.run(source, args: args);
-      },
+      runSource: (source, {required args, required label}) =>
+          _runAsOneStep(source, args: args, label: label),
       onChanged: () {
         state = state.copyWith(epoch: state.epoch + 1);
       },
@@ -197,15 +192,38 @@ class ExtensionNotifier extends _$ExtensionNotifier {
   /// not a [CommandRegistry] entry, so a script cannot `commands.execute` it
   /// back into another run.
   Future<Map<String, Object?>> exec(String source) async {
-    final runner = _runner;
-    if (runner == null) {
-      return {'status': 'failed', 'message': 'extensions are unavailable'};
-    }
-    final result = await runner.run(source);
+    final result = await _runAsOneStep(source, label: 'exec');
     if (!result.isOk) {
       return {'status': 'failed', 'message': result.message};
     }
     return {'status': 'ok', 'value': result.data?['value']};
+  }
+
+  /// Runs [source] and folds what it did to each drawing into one undo step
+  /// named [label], so undo takes back the whole run, not its last command.
+  Future<CommandResult> _runAsOneStep(
+    String source, {
+    Map<String, Object?> args = const {},
+    required String label,
+  }) async {
+    final runner = _runner;
+    if (runner == null) {
+      return const CommandResult.failed('extensions are unavailable');
+    }
+    final workspace = ref.read(workspaceNotifierProvider.notifier);
+    final before = <String, int>{
+      for (final id in workspace.state.sessionIds)
+        id: workspace.session(id)?.history.depth ?? 0,
+    };
+    try {
+      return await runner.run(source, args: args);
+    } finally {
+      for (final id in workspace.state.sessionIds) {
+        final history = workspace.session(id)?.history;
+        if (history == null) continue;
+        history.coalesceLast(history.depth - (before[id] ?? 0), label: label);
+      }
+    }
   }
 
   void _disposeRuntime() {
