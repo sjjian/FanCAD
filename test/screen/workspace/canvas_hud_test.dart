@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -635,6 +636,78 @@ void main() {
       tester.getRect(row).top,
       greaterThanOrEqualTo(tester.getRect(list).top - 1),
     );
+  });
+
+  testWidgets('hovering another text hit keeps the current match', (
+    tester,
+  ) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+    final document = workspace.active!.document;
+    final ids = <int>[];
+    for (var i = 0; i < 3; i++) {
+      final id = document.allocateId();
+      ids.add(id);
+      document.addEntity(
+        TextEntity(id: id, position: Vec2(0, (2 - i) * 10), content: 'Hit$i'),
+      );
+    }
+
+    await tester.tap(find.byKey(const Key('canvas-hud-mode-switch')));
+    await tester.pump();
+    await tester.enterText(_commandField, 'Hit');
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('1 / 3'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(workspace.active!.selection.ids, {ids[0]});
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(
+      tester.getCenter(find.byKey(Key('canvas-text-suggest-row-${ids[2]}-2'))),
+    );
+    await tester.pump();
+
+    expect(find.text('1 / 3'), findsOneWidget);
+    expect(workspace.active!.selection.ids, {ids[0]});
+
+    await tester.tap(find.byKey(const Key('canvas-text-search-next')));
+    await tester.pump();
+
+    expect(find.text('2 / 3'), findsOneWidget);
+    expect(workspace.active!.selection.ids, {ids[1]});
+  });
+
+  testWidgets('next match steps to the following hit', (tester) async {
+    final container = await pumpWorkbench(tester, document: true);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+    final document = workspace.active!.document;
+    final ids = <int>[];
+    for (var i = 0; i < 3; i++) {
+      final id = document.allocateId();
+      ids.add(id);
+      document.addEntity(
+        TextEntity(id: id, position: Vec2(0, (2 - i) * 10), content: 'Hit$i'),
+      );
+    }
+
+    await tester.tap(find.byKey(const Key('canvas-hud-mode-switch')));
+    await tester.pump();
+    await tester.enterText(_commandField, 'Hit');
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('1 / 3'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('canvas-text-search-next')));
+    await tester.pump();
+
+    expect(find.text('2 / 3'), findsOneWidget);
+    expect(workspace.active!.selection.ids, {ids[1]});
   });
 
   testWidgets('ctrl+v in the command field pastes text, not the drawing', (

@@ -43,9 +43,19 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
   bool _textMode = false;
   bool _textEmpty = false;
   int _highlighted = 0;
+
+  /// The current text hit has been framed. Enter frames it once, then steps.
+  bool _viewed = false;
+  String _textQuery = '';
+  int? _keptId;
+  Vec2? _keptAnchor;
+  bool _confirmLatch = false;
   bool _scheduled = false;
   TextSearchSignal? _signal;
   final ScrollController _textScroll = ScrollController();
+
+  /// The search field listens so its match count follows this list.
+  final ChangeNotifier textCursor = ChangeNotifier();
 
   bool get isOpen =>
       _textMode ? _textHits.isNotEmpty || _textEmpty : _matches.isNotEmpty;
@@ -57,6 +67,12 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
     if (!_textMode || _textHits.isEmpty) return null;
     return _textHits[_highlighted.clamp(0, _textHits.length - 1)];
   }
+
+  /// Hits in the current search. Zero when search is closed or has no match.
+  int get textTotal => _textMode ? _textHits.length : 0;
+
+  /// 1-based index of the current hit. Zero when [textTotal] is zero.
+  int get textCurrent => textTotal == 0 ? 0 : _highlighted + 1;
 
   int get _rowCount => _textMode ? _textHits.length : _matches.length;
 
@@ -81,6 +97,7 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
     _signal?.removeListener(_onSignal);
     widget.input.removeListener(_schedule);
     _textScroll.dispose();
+    textCursor.dispose();
     super.dispose();
   }
 
@@ -95,6 +112,11 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
     _signal?.removeListener(_onSignal);
     _signal = signal;
     _signal?.addListener(_onSignal);
+    // A different drawing must not keep the previous hit.
+    _textQuery = '';
+    _keptId = null;
+    _keptAnchor = null;
+    _viewed = false;
   }
 
   void _onSignal() {
@@ -130,7 +152,12 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
       _textEmpty = false;
       _textMode = searching;
       _highlighted = 0;
+      _viewed = false;
+      _textQuery = '';
+      _keptId = null;
+      _keptAnchor = null;
     });
+    _notifyCursor();
   }
 
   void _search() {
@@ -164,20 +191,95 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
   }
 
   void _searchText(DocumentTab tab) {
-    final query = widget.input.text;
-    if (query.trim().isEmpty) {
+    final query = widget.input.text.trim();
+    if (query.isEmpty) {
       _clear();
       return;
     }
     final filtered = filterTextSearchHits(textSearchHits(tab.document), query);
+    // A new query starts at the first hit and does not move the canvas.
+    // The same query, after the drawing changes, stays on that hit.
+    final sameQuery = query == _textQuery;
+    var index = 0;
+    var viewed = false;
+    if (sameQuery && filtered.isNotEmpty) {
+      final kept = _indexOfKept(filtered);
+      if (kept >= 0) {
+        index = kept;
+        viewed = _viewed;
+      } else {
+        index = _highlighted.clamp(0, filtered.length - 1);
+      }
+    }
+    _textQuery = query;
     setState(() {
       _textMode = true;
       _matches = const [];
       _textHits = filtered;
       _textEmpty = filtered.isEmpty;
-      _highlighted = 0;
+      _highlighted = filtered.isEmpty ? 0 : index;
+      _viewed = filtered.isEmpty ? false : viewed;
     });
-    _reveal(0);
+    _rememberCurrent();
+    if (filtered.isNotEmpty) _reveal(_highlighted);
+    _notifyCursor();
+  }
+
+  int _indexOfKept(List<TextSearchHit> hits) {
+    final id = _keptId;
+    final anchor = _keptAnchor;
+    if (id == null || anchor == null) return -1;
+    for (var i = 0; i < hits.length; i++) {
+      final hit = hits[i];
+      if (hit.selectId == id && hit.anchor == anchor) return i;
+    }
+    return -1;
+  }
+
+  void _rememberCurrent() {
+    final hit = currentText;
+    _keptId = hit?.selectId;
+    _keptAnchor = hit?.anchor;
+  }
+
+  void _notifyCursor() => textCursor.notifyListeners();
+
+  /// Steps to another text hit, wrapping at either end, and frames it.
+  void step(int delta) {
+    if (!_textMode || _textHits.isEmpty || delta == 0) return;
+    final count = _textHits.length;
+    final raw = (_highlighted + delta) % count;
+    _go(raw < 0 ? raw + count : raw);
+  }
+
+  /// Enter frames the current hit the first time, then moves to the next.
+  void confirm() {
+    if (!_textMode || _textHits.isEmpty || _confirmLatch) return;
+    // The field and the key handler can both see one Enter. Hold the latch
+    // until the frame ends so the second delivery does not step again.
+    _confirmLatch = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _confirmLatch = false;
+    });
+    if (!_viewed) {
+      _go(_highlighted);
+      return;
+    }
+    step(1);
+  }
+
+  void _go(int index) {
+    if (_textHits.isEmpty) return;
+    final next = index.clamp(0, _textHits.length - 1);
+    setState(() {
+      _highlighted = next;
+      _viewed = true;
+    });
+    _rememberCurrent();
+    _reveal(next);
+    _notifyCursor();
+    final hit = currentText;
+    if (hit != null) _jumpToTextHit(ref, widget.workspace, hit);
   }
 
   void move(int delta) {
@@ -211,9 +313,8 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
 
   void accept() {
     if (_textMode) {
-      final hit = currentText;
-      if (hit == null) return;
-      _jumpToTextHit(ref, widget.workspace, hit);
+      if (currentText == null) return;
+      _go(_highlighted);
       return;
     }
     final descriptor = current;
@@ -305,11 +406,7 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
                             query: widget.input.text,
                             selected: i == _highlighted,
                             kindLabel: _textKindLabel(l10n, _textHits[i].kind),
-                            onHover: () => highlight(i),
-                            onTap: () {
-                              highlight(i);
-                              accept();
-                            },
+                            onTap: () => _go(i),
                           ),
                         ),
                       ),
@@ -366,7 +463,6 @@ class _TextSuggestRow extends StatelessWidget {
     required this.query,
     required this.selected,
     required this.kindLabel,
-    required this.onHover,
     required this.onTap,
   });
 
@@ -375,7 +471,6 @@ class _TextSuggestRow extends StatelessWidget {
   final String query;
   final bool selected;
   final String kindLabel;
-  final VoidCallback onHover;
   final VoidCallback onTap;
 
   @override
@@ -383,52 +478,39 @@ class _TextSuggestRow extends StatelessWidget {
     final tokens = context.tokens;
     final meta = [kindLabel, if (hit.layer.isNotEmpty) hit.layer].join(' · ');
     final tag = hit.tag;
-    return MouseRegion(
-      onEnter: (_) => onHover(),
-      child: FanCadRow(
-        key: Key('canvas-text-suggest-row-${hit.selectId}-$index'),
-        isSelected: selected,
-        onTap: onTap,
-        height: FanCadTokens.rowHeight,
-        padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: Row(
-                children: [
-                  Flexible(child: _textSnippet(hit.text, query, tokens)),
-                  if (meta.isNotEmpty) ...[
-                    const SizedBox(width: FanCadTokens.space2),
-                    Expanded(
-                      child: Text(
-                        meta,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: tokens.labelStyle.copyWith(fontSize: 10.5),
-                      ),
-                    ),
-                  ],
-                ],
+    return FanCadRow(
+      key: Key('canvas-text-suggest-row-${hit.selectId}-$index'),
+      isSelected: selected,
+      onTap: onTap,
+      height: FanCadTokens.rowHeight,
+      padding: const EdgeInsets.symmetric(horizontal: FanCadTokens.space3),
+      child: Row(
+        children: [
+          Expanded(child: _textSnippet(hit.text, query, tokens)),
+          if (tag != null && tag.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: FanCadTokens.space3),
+              child: Text(
+                tag,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: tokens.monoStyle.copyWith(
+                  fontSize: 10.5,
+                  color: tokens.textFaint,
+                ),
               ),
             ),
-            const SizedBox(width: FanCadTokens.space3),
-            Expanded(
-              child: tag == null || tag.isEmpty
-                  ? const SizedBox.shrink()
-                  : Text(
-                      tag,
-                      textAlign: TextAlign.right,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tokens.monoStyle.copyWith(
-                        fontSize: 10.5,
-                        color: tokens.textFaint,
-                      ),
-                    ),
+          if (meta.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: FanCadTokens.space3),
+              child: Text(
+                meta,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: tokens.labelStyle.copyWith(fontSize: 10.5),
+              ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -666,7 +748,7 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
 
   void _acceptSuggest() {
     if (_searching) {
-      _suggest?.accept();
+      _suggest?.confirm();
       return;
     }
     final typed = _input.text;
@@ -686,17 +768,12 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
       case LogicalKeyboardKey.arrowDown:
         if (_suggest?.isOpen == true) {
           final delta = event.logicalKey == LogicalKeyboardKey.arrowUp ? -1 : 1;
-          _suggest!.move(delta);
-          final hit = _suggest!.currentText;
-          if (hit != null) _jumpToTextHit(ref, widget.workspace, hit);
+          _suggest!.step(delta);
         }
         return KeyEventResult.handled;
       case LogicalKeyboardKey.enter:
       case LogicalKeyboardKey.numpadEnter:
-        if (event is KeyDownEvent) {
-          final hit = _suggest?.currentText;
-          if (hit != null) _jumpToTextHit(ref, widget.workspace, hit);
-        }
+        if (event is KeyDownEvent) _suggest?.confirm();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.escape:
         if (event is KeyDownEvent) _onEscape();
@@ -933,10 +1010,7 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                             : null,
                         onSubmitted: (raw) {
                           if (_searching) {
-                            final hit = _suggest?.currentText;
-                            if (hit != null) {
-                              _jumpToTextHit(ref, widget.workspace, hit);
-                            }
+                            _suggest?.confirm();
                             return;
                           }
                           if (_suggest?.isOpen == true) {
@@ -997,6 +1071,7 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                 ),
               ),
             ),
+          if (searching) _textMatchControls(tokens),
           FanCadIconButton(
             key: const Key('canvas-hud-mode-switch'),
             icon: Icons.swap_horiz,
@@ -1021,6 +1096,65 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _textMatchControls(FanCadTokens tokens) {
+    final cursor = _suggest?.textCursor;
+    if (cursor == null) return const SizedBox.shrink();
+    return ListenableBuilder(
+      listenable: cursor,
+      builder: (context, _) {
+        final suggest = _suggest;
+        final total = suggest?.textTotal ?? 0;
+        final current = suggest?.textCurrent ?? 0;
+        final label = total == 0
+            ? '0'
+            : context.l10n.find_match_count(current, total);
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              key: const Key('canvas-text-search-count'),
+              style: tokens.monoStyle.copyWith(
+                fontSize: 11,
+                color: tokens.textMuted,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(width: FanCadTokens.space2),
+            FanCadIconButton(
+              key: const Key('canvas-text-search-previous'),
+              icon: Icons.keyboard_arrow_up,
+              tooltip: context.l10n.find_previous,
+              size: 24,
+              iconSize: FanCadTokens.iconMedium,
+              enabled: total > 0,
+              onPressed: total == 0
+                  ? null
+                  : () {
+                      suggest?.step(-1);
+                      widget.focusNode.requestFocus();
+                    },
+            ),
+            FanCadIconButton(
+              key: const Key('canvas-text-search-next'),
+              icon: Icons.keyboard_arrow_down,
+              tooltip: context.l10n.find_next,
+              size: 24,
+              iconSize: FanCadTokens.iconMedium,
+              enabled: total > 0,
+              onPressed: total == 0
+                  ? null
+                  : () {
+                      suggest?.step(1);
+                      widget.focusNode.requestFocus();
+                    },
+            ),
+          ],
+        );
+      },
     );
   }
 }

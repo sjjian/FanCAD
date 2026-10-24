@@ -1310,6 +1310,24 @@ abstract class AppLocalizations {
   /// **'No matching text'**
   String get find_text_empty;
 
+  /// text search: go to the previous hit
+  ///
+  /// In en, this message translates to:
+  /// **'Previous match'**
+  String get find_previous;
+
+  /// text search: go to the next hit
+  ///
+  /// In en, this message translates to:
+  /// **'Next match'**
+  String get find_next;
+
+  /// text search: which hit is current
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {total}'**
+  String find_match_count(int current, int total);
+
   /// text search kind: single-line text
   ///
   /// In en, this message translates to:

@@ -962,6 +962,26 @@
   "@find_text_empty": {
     "description": "text search has no hits"
   },
+  "find_previous": "Previous match",
+  "@find_previous": {
+    "description": "text search: go to the previous hit"
+  },
+  "find_next": "Next match",
+  "@find_next": {
+    "description": "text search: go to the next hit"
+  },
+  "find_match_count": "{current} / {total}",
+  "@find_match_count": {
+    "description": "text search: which hit is current",
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "text_kind_text": "Text",
   "@text_kind_text": {
     "description": "text search kind: single-line text"

@@ -684,6 +684,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get find_text_empty => 'No matching text';
 
   @override
+  String get find_previous => 'Previous match';
+
+  @override
+  String get find_next => 'Next match';
+
+  @override
+  String find_match_count(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
   String get text_kind_text => 'Text';
 
   @override

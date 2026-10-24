@@ -673,6 +673,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get find_text_empty => '没有匹配的文字';
 
   @override
+  String get find_previous => '上一个';
+
+  @override
+  String get find_next => '下一个';
+
+  @override
+  String find_match_count(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
   String get text_kind_text => '文字';
 
   @override
