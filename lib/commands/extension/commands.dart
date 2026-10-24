@@ -11,6 +11,11 @@ import 'paths.dart';
 
 const _category = 'Extensions';
 
+/// Tool names the chat and MCP clients call directly. An extension file with
+/// one of these names keeps its `extension.<name>` id but gets no alias, so
+/// typing the name never means two things.
+const _reservedNames = {'exec', 'ask', 'fancad', 'extensions'};
+
 /// Saved extensions: one `.js` file each, run on the script worker.
 class ExtensionCommands {
   ExtensionCommands({
@@ -48,6 +53,9 @@ class ExtensionCommands {
 
   final Map<String, String> errors = {};
 
+  /// Extensions the last rebind could not register, with the reason.
+  final Map<String, String> _conflicts = {};
+
   /// Registry the saved-extension commands are installed into.
   CommandRegistry? _registry;
   Disposable? _bound;
@@ -83,7 +91,7 @@ class ExtensionCommands {
       description: note.description,
       usage: note.usage,
       params: note.params,
-      error: note.problem ?? errors[name],
+      error: note.problem ?? _conflicts[name] ?? errors[name],
       enabled: !disabled.contains(name),
     );
   }
@@ -118,22 +126,35 @@ class ExtensionCommands {
   void _rebind() {
     final registry = _registry;
     if (registry == null) return;
-    _bound?.dispose();
-    final bag = DisposableBag();
-    for (final entry in list()) {
-      if (!entry.enabled) continue;
-      final taken = registry.find(entry.name) != null;
-      bag.add(
-        registry.register(
-          ExtensionInvokeCommand(
-            this,
-            entry,
-            alias: taken ? null : entry.name,
-          ).toDescriptor(),
-        ),
-      );
+    final List<ExtensionEntry> entries;
+    try {
+      entries = list();
+    } on FileSystemException {
+      return;
     }
+    _bound?.dispose();
+    _conflicts.clear();
+    final bag = DisposableBag();
     _bound = bag;
+    for (final entry in entries) {
+      if (!entry.enabled) continue;
+      final taken =
+          _reservedNames.contains(entry.name.toLowerCase()) ||
+          registry.find(entry.name) != null;
+      try {
+        bag.add(
+          registry.register(
+            ExtensionInvokeCommand(
+              this,
+              entry,
+              alias: taken ? null : entry.name,
+            ).toDescriptor(),
+          ),
+        );
+      } on DuplicateCommandException catch (error) {
+        _conflicts[entry.name] = '$error';
+      }
+    }
   }
 
   ExtensionNote _noteOf(File file) {

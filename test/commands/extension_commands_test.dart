@@ -319,6 +319,28 @@ void main() {
     expect(scripts.disabled, isEmpty);
   });
 
+  test('a tool name is never an extension alias', () {
+    File(p.join(root.path, 'exec.js')).writeAsStringSync('1\n');
+    scripts.changed();
+    expect(app.workspace.commands.find('extension.exec')!.aliases, isEmpty);
+  });
+
+  test('a clashing id is reported and the rest still register', () {
+    app.workspace.commands.register(
+      CommandDescriptor(
+        id: 'extension.taken',
+        title: 'Taken',
+        handler: (_) async => const CommandResult.ok(),
+      ),
+    );
+    File(p.join(root.path, 'taken.js')).writeAsStringSync('1\n');
+    File(p.join(root.path, 'free.js')).writeAsStringSync('1\n');
+    scripts.changed();
+    expect(app.workspace.commands.find('extension.free'), isNotNull);
+    final taken = scripts.list().singleWhere((entry) => entry.name == 'taken');
+    expect(taken.error, contains('already registered'));
+  });
+
   test('exec is not a command', () async {
     expect(app.workspace.commands.find('exec'), isNull);
     final result = await run('exec', {'source': '1 + 1'});
