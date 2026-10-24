@@ -13,12 +13,6 @@ Map<String, dynamic> _$RpcRequestToJson(RpcRequest instance) =>
       if (instance.id case final value?) 'id': value,
     };
 
-RpcError _$RpcErrorFromJson(Map<String, dynamic> json) => RpcError(
-  (json['code'] as num).toInt(),
-  json['message'] as String,
-  data: json['data'],
-);
-
 Map<String, dynamic> _$RpcErrorToJson(RpcError instance) => <String, dynamic>{
   'code': instance.code,
   'message': instance.message,

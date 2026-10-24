@@ -95,16 +95,36 @@ class RpcRequest {
     ..._$RpcRequestToJson(this),
   };
 
+  /// Parses one request. Anything malformed is an [RpcException] with
+  /// [RpcErrorCode.invalidRequest], never a cast error.
   static RpcRequest fromJson(Map<String, Object?> json) {
     final method = json['method'];
     if (method is! String) {
       throw const RpcException(RpcErrorCode.invalidRequest, 'missing "method"');
     }
-    final params = json['params'];
+    final id = json['id'];
+    if (id != null && id is! num) {
+      throw const RpcException(
+        RpcErrorCode.invalidRequest,
+        '"id" must be a number',
+      );
+    }
     return RpcRequest(
       method: method,
-      params: params is Map<String, Object?> ? params : const {},
-      id: (json['id'] as num?)?.toInt(),
+      params: _paramsOf(json['params']),
+      id: (id as num?)?.toInt(),
+    );
+  }
+
+  static Map<String, Object?> _paramsOf(Object? raw) {
+    if (raw == null) return const {};
+    if (raw is Map<String, Object?>) return raw;
+    if (raw is Map && raw.keys.every((key) => key is String)) {
+      return Map<String, Object?>.from(raw);
+    }
+    throw const RpcException(
+      RpcErrorCode.invalidRequest,
+      '"params" must be an object',
     );
   }
 
@@ -136,7 +156,8 @@ class RpcResponse {
   };
 
   static RpcResponse fromJson(Map<String, Object?> json) {
-    final id = (json['id'] as num?)?.toInt() ?? -1;
+    final raw = json['id'];
+    final id = raw is num ? raw.toInt() : -1;
     final error = json['error'];
     if (error is Map<String, Object?>) {
       return RpcResponse.failure(id, RpcError.fromJson(error));
@@ -152,7 +173,7 @@ class RpcResponse {
 
 /// The error payload of a failed response.
 @immutable
-@JsonSerializable(includeIfNull: false)
+@JsonSerializable(createFactory: false, includeIfNull: false)
 class RpcError {
   const RpcError(this.code, this.message, {this.data});
 
@@ -164,11 +185,15 @@ class RpcError {
 
   Map<String, Object?> toJson() => _$RpcErrorToJson(this);
 
-  static RpcError fromJson(Map<String, Object?> json) => _$RpcErrorFromJson({
-    'code': json['code'] ?? RpcErrorCode.internalError,
-    'message': json['message'] ?? 'Unknown error',
-    'data': json['data'],
-  });
+  static RpcError fromJson(Map<String, Object?> json) {
+    final code = json['code'];
+    final message = json['message'];
+    return RpcError(
+      code is num ? code.toInt() : RpcErrorCode.internalError,
+      message is String ? message : 'Unknown error',
+      data: json['data'],
+    );
+  }
 
   @override
   String toString() => 'RpcError($code: $message)';
@@ -279,8 +304,10 @@ class RpcPeer {
     try {
       request = RpcRequest.fromJson(message);
     } on RpcException catch (error) {
-      final id = (message['id'] as num?)?.toInt();
-      if (id != null) send(RpcResponse.failure(id, error.toError()).toJson());
+      final id = message['id'];
+      if (id is num) {
+        send(RpcResponse.failure(id.toInt(), error.toError()).toJson());
+      }
       return;
     }
     try {
