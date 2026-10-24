@@ -191,6 +191,45 @@ void main() {
     expect(noted.params.last.defaultValue, 3);
     expect(noted.params.last.required, isFalse);
     expect(noted.params.last.prompt, 'How many');
+    expect(noted.description, 'Circles.');
+    expect(noted.problem, contains('"widget" is not a type'));
+  });
+
+  test('a quoted default keeps its spaces', () {
+    final noted = extensionNote('''
+/**
+ * param label: text = "Hello world" What to write
+ * param tag: text = 'a b'
+ */
+''');
+    expect(noted.problem, isNull);
+    expect(noted.params.first.defaultValue, 'Hello world');
+    expect(noted.params.first.prompt, 'What to write');
+    expect(noted.params.last.defaultValue, 'a b');
+  });
+
+  test('a param line that cannot be read is reported, not folded in', () {
+    for (final line in [
+      'param count: integer = many',
+      'param label: text = "open',
+      'param 2x: number',
+      'param a: number\n * param a: number',
+    ]) {
+      final noted = extensionNote('/**\n * description: X\n * $line\n */\n');
+      expect(noted.problem, isNotNull, reason: line);
+      expect(noted.description, 'X', reason: line);
+    }
+  });
+
+  test('a saved extension with a bad param line refuses to run', () async {
+    File(
+      p.join(root.path, 'bad.js'),
+    ).writeAsStringSync('/**\n * param n: widget\n */\nreturn 1;\n');
+    scripts.changed();
+    expect(scripts.list().single.error, contains('"widget" is not a type'));
+    final result = await invoke('extension.bad');
+    expect(result.status, CommandStatus.failed);
+    expect(result.message, contains('bad:'));
   });
 
   test('a saved script command asks only for missing parameters', () async {

@@ -83,7 +83,7 @@ class ExtensionCommands {
       description: note.description,
       usage: note.usage,
       params: note.params,
-      error: errors[name],
+      error: note.problem ?? errors[name],
       enabled: !disabled.contains(name),
     );
   }
@@ -458,6 +458,9 @@ class ExtensionInvokeCommand extends FanCadCommand {
     if (file == null || !file.existsSync()) {
       return CommandResult.failed('No such extension: ${entry.name}');
     }
+    final source = file.readAsStringSync();
+    final problem = extensionNote(source).problem;
+    if (problem != null) return CommandResult.failed('${entry.name}: $problem');
     if (!context.input.isInteractive && !context.input.canHandOff) {
       final missing = [
         for (final param in params)
@@ -475,7 +478,7 @@ class ExtensionInvokeCommand extends FanCadCommand {
       values[param.name] = await _ask(context, param);
     }
     final result = await extensions.runSource(
-      file.readAsStringSync(),
+      source,
       args: values,
       label: entry.name,
     );
