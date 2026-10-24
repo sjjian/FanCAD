@@ -19,6 +19,7 @@ import 'select_by_linetype.dart';
 import 'select_by_lineweight.dart';
 import 'select_by_type.dart';
 import 'select_invert.dart';
+import 'select_set.dart';
 import 'select_similar.dart';
 import 'unisolate.dart';
 import 'units.dart';
@@ -46,6 +47,7 @@ class ViewCommands {
     ViewUnitsCommand().toDescriptor(),
     SelectAllCommand().toDescriptor(),
     SelectNoneCommand().toDescriptor(),
+    SelectSetCommand().toDescriptor(),
     SelectInvertCommand().toDescriptor(),
     SelectSimilarCommand().toDescriptor(),
     SelectByLayerCommand().toDescriptor(),

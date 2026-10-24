@@ -417,4 +417,21 @@ void main() {
       expect(document.entityCount, 0);
     });
   });
+
+  test(
+    'select.set replaces the selection and an empty list clears it',
+    () async {
+      final kept = await drawLine(0, 0, 1, 0);
+      await drawLine(0, 1, 1, 1);
+      final selected = await run('select.set', {
+        'ids': [kept],
+      });
+      expect(selected.status, CommandStatus.ok, reason: selected.message);
+      expect(workspace.active!.session.selection.ids, [kept]);
+
+      final cleared = await run('select.set', {'ids': <int>[]});
+      expect(cleared.status, CommandStatus.ok, reason: cleared.message);
+      expect(workspace.active!.session.selection.ids, isEmpty);
+    },
+  );
 }

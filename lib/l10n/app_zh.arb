@@ -2186,6 +2186,10 @@
   "@command_edit_erase": {
     "description": "command edit erase"
   },
+  "command_edit_apply": "批量编辑",
+  "@command_edit_apply": {
+    "description": "command edit apply"
+  },
   "command_edit_overkill": "删除重复",
   "@command_edit_overkill": {
     "description": "command edit overkill"
@@ -2425,6 +2429,10 @@
   "command_select_none": "取消全部选择",
   "@command_select_none": {
     "description": "command select none"
+  },
+  "command_select_set": "设置选择",
+  "@command_select_set": {
+    "description": "command select set"
   },
   "command_select_invert": "反向选择",
   "@command_select_invert": {
@@ -2932,6 +2940,10 @@
   "@command_edit_erase_desc": {
     "description": "command edit erase desc"
   },
+  "command_edit_apply_desc": "把新增、删除、变换和特性修改作为一步撤销应用。",
+  "@command_edit_apply_desc": {
+    "description": "command edit apply desc"
+  },
   "command_edit_overkill_desc": "删除完全重合的几何副本，并把重叠或首尾相接的共线直线收成一笔。保留第一份并拉到并集。省略 ids 表示整个当前空间，以免残留选择集挡住其余重复。",
   "@command_edit_overkill_desc": {
     "description": "command edit overkill desc"
@@ -3175,6 +3187,10 @@
   "command_select_none_desc": "清除选择。",
   "@command_select_none_desc": {
     "description": "command select none desc"
+  },
+  "command_select_set_desc": "用给定的对象替换当前选择。",
+  "@command_select_set_desc": {
+    "description": "command select set desc"
   },
   "command_select_invert_desc": "选择当前未选中的所有对象。",
   "@command_select_invert_desc": {

@@ -1574,6 +1574,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get command_edit_erase => 'Erase';
 
   @override
+  String get command_edit_apply => 'Apply Edit';
+
+  @override
   String get command_edit_overkill => 'Overkill';
 
   @override
@@ -1754,6 +1757,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get command_select_none => 'Deselect All';
+
+  @override
+  String get command_select_set => 'Set Selection';
 
   @override
   String get command_select_invert => 'Invert Selection';
@@ -2168,6 +2174,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get command_edit_erase_desc => 'Deletes the selected objects.';
 
   @override
+  String get command_edit_apply_desc =>
+      'Applies adds, erases, transforms and property edits as one undo step.';
+
+  @override
   String get command_edit_overkill_desc =>
       'Deletes exact geometric duplicates and folds overlapping or abutting collinear lines into one stroke. The first copy is kept and stretched to the union. Omitted ids means the whole current space, so a leftover selection cannot hide the rest of the duplicates.';
 
@@ -2407,6 +2417,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get command_select_none_desc => 'Clears the selection.';
+
+  @override
+  String get command_select_set_desc =>
+      'Replaces the selection with the given objects.';
 
   @override
   String get command_select_invert_desc =>

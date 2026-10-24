@@ -2201,6 +2201,10 @@
   "@command_edit_erase": {
     "description": "command edit erase"
   },
+  "command_edit_apply": "Apply Edit",
+  "@command_edit_apply": {
+    "description": "command edit apply"
+  },
   "command_edit_overkill": "Overkill",
   "@command_edit_overkill": {
     "description": "command edit overkill"
@@ -2445,6 +2449,10 @@
   "command_select_none": "Deselect All",
   "@command_select_none": {
     "description": "command select none"
+  },
+  "command_select_set": "Set Selection",
+  "@command_select_set": {
+    "description": "command select set"
   },
   "command_select_invert": "Invert Selection",
   "@command_select_invert": {
@@ -2952,6 +2960,10 @@
   "@command_edit_erase_desc": {
     "description": "command edit erase desc"
   },
+  "command_edit_apply_desc": "Applies adds, erases, transforms and property edits as one undo step.",
+  "@command_edit_apply_desc": {
+    "description": "command edit apply desc"
+  },
   "command_edit_overkill_desc": "Deletes exact geometric duplicates and folds overlapping or abutting collinear lines into one stroke. The first copy is kept and stretched to the union. Omitted ids means the whole current space, so a leftover selection cannot hide the rest of the duplicates.",
   "@command_edit_overkill_desc": {
     "description": "command edit overkill desc"
@@ -3195,6 +3207,10 @@
   "command_select_none_desc": "Clears the selection.",
   "@command_select_none_desc": {
     "description": "command select none desc"
+  },
+  "command_select_set_desc": "Replaces the selection with the given objects.",
+  "@command_select_set_desc": {
+    "description": "command select set desc"
   },
   "command_select_invert_desc": "Selects everything that is not currently selected.",
   "@command_select_invert_desc": {

@@ -1,6 +1,7 @@
 import 'package:fancad_core/fancad_core.dart';
 
 import 'align.dart';
+import 'apply.dart';
 import 'array.dart';
 import 'attedit.dart';
 import 'block.dart';
@@ -56,6 +57,7 @@ class EditCommands {
 
   static List<CommandDescriptor> all() => [
     EditEraseCommand().toDescriptor(),
+    EditApplyCommand().toDescriptor(),
     EditOverkillCommand().toDescriptor(),
     EditMoveCommand().toDescriptor(),
     EditCopyCommand().toDescriptor(),

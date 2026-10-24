@@ -2948,6 +2948,12 @@ abstract class AppLocalizations {
   /// **'Erase'**
   String get command_edit_erase;
 
+  /// command edit apply
+  ///
+  /// In en, this message translates to:
+  /// **'Apply Edit'**
+  String get command_edit_apply;
+
   /// command edit overkill
   ///
   /// In en, this message translates to:
@@ -3307,6 +3313,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Deselect All'**
   String get command_select_none;
+
+  /// command select set
+  ///
+  /// In en, this message translates to:
+  /// **'Set Selection'**
+  String get command_select_set;
 
   /// command select invert
   ///
@@ -4040,6 +4052,12 @@ abstract class AppLocalizations {
   /// **'Deletes the selected objects.'**
   String get command_edit_erase_desc;
 
+  /// command edit apply desc
+  ///
+  /// In en, this message translates to:
+  /// **'Applies adds, erases, transforms and property edits as one undo step.'**
+  String get command_edit_apply_desc;
+
   /// command edit overkill desc
   ///
   /// In en, this message translates to:
@@ -4405,6 +4423,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clears the selection.'**
   String get command_select_none_desc;
+
+  /// command select set desc
+  ///
+  /// In en, this message translates to:
+  /// **'Replaces the selection with the given objects.'**
+  String get command_select_set_desc;
 
   /// command select invert desc
   ///

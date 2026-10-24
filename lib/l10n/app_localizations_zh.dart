@@ -1548,6 +1548,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_edit_erase => '删除';
 
   @override
+  String get command_edit_apply => '批量编辑';
+
+  @override
   String get command_edit_overkill => '删除重复';
 
   @override
@@ -1728,6 +1731,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get command_select_none => '取消全部选择';
+
+  @override
+  String get command_select_set => '设置选择';
 
   @override
   String get command_select_invert => '反向选择';
@@ -2124,6 +2130,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_edit_erase_desc => '删除选定对象。';
 
   @override
+  String get command_edit_apply_desc => '把新增、删除、变换和特性修改作为一步撤销应用。';
+
+  @override
   String get command_edit_overkill_desc =>
       '删除完全重合的几何副本，并把重叠或首尾相接的共线直线收成一笔。保留第一份并拉到并集。省略 ids 表示整个当前空间，以免残留选择集挡住其余重复。';
 
@@ -2337,6 +2346,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get command_select_none_desc => '清除选择。';
+
+  @override
+  String get command_select_set_desc => '用给定的对象替换当前选择。';
 
   @override
   String get command_select_invert_desc => '选择当前未选中的所有对象。';
