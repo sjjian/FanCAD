@@ -1870,10 +1870,6 @@
   "@log": {
     "description": "log"
   },
-  "unsaved_editor_changes": "Unsaved editor changes",
-  "@unsaved_editor_changes": {
-    "description": "unsaved editor changes"
-  },
   "saved": "Saved",
   "@saved": {
     "description": "saved"
@@ -4125,6 +4121,81 @@
   "prompt_extension_name": "Extension name",
   "@prompt_extension_name": {
     "description": "prompt extension name"
+  },
+  "extension_list_failed": "Could not list extensions: {error}",
+  "@extension_list_failed": {
+    "description": "extension list failed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "extension_exists": "{name} already exists",
+  "@extension_exists": {
+    "description": "extension exists",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "extension_create_failed": "Could not create {name}: {error}",
+  "@extension_create_failed": {
+    "description": "extension create failed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "extension_read_failed": "Could not open {name}: {error}",
+  "@extension_read_failed": {
+    "description": "extension read failed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "extension_delete_failed": "Could not delete {name}: {error}",
+  "@extension_delete_failed": {
+    "description": "extension delete failed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "extension_save_failed": "Could not save {name}: {error}",
+  "@extension_save_failed": {
+    "description": "extension save failed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "unsaved_extension_changes": "{name} has unsaved changes",
+  "@unsaved_extension_changes": {
+    "description": "unsaved extension changes",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
   "hint_type_extension": "Extension name or JavaScript",
   "@hint_type_extension": {

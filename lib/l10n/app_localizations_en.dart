@@ -1327,9 +1327,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get log => 'Log';
 
   @override
-  String get unsaved_editor_changes => 'Unsaved editor changes';
-
-  @override
   String get saved => 'Saved';
 
   @override
@@ -3179,6 +3176,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prompt_extension_name => 'Extension name';
+
+  @override
+  String extension_list_failed(String error) {
+    return 'Could not list extensions: $error';
+  }
+
+  @override
+  String extension_exists(String name) {
+    return '$name already exists';
+  }
+
+  @override
+  String extension_create_failed(String name, String error) {
+    return 'Could not create $name: $error';
+  }
+
+  @override
+  String extension_read_failed(String name, String error) {
+    return 'Could not open $name: $error';
+  }
+
+  @override
+  String extension_delete_failed(String name, String error) {
+    return 'Could not delete $name: $error';
+  }
+
+  @override
+  String extension_save_failed(String name, String error) {
+    return 'Could not save $name: $error';
+  }
+
+  @override
+  String unsaved_extension_changes(String name) {
+    return '$name has unsaved changes';
+  }
 
   @override
   String get hint_type_extension => 'Extension name or JavaScript';

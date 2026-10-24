@@ -10,12 +10,41 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
+Future<void> pumpPanel(WidgetTester tester, Directory root) async {
+  tester.view.physicalSize = const Size(1600, 1000);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        settingsProvider.overrideWithValue(SettingsStore.inMemory()),
+        drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
+        extensionsDirectoryProvider.overrideWithValue(root.path),
+        extensionTransportProvider.overrideWithValue(LocalTransport.new),
+      ],
+      child: MaterialApp(
+        theme: FanCadTheme.dark(),
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SizedBox(
+            width: 280,
+            height: 640,
+            child: Consumer(
+              builder: (context, ref, _) => ExtensionsPanel(
+                workspace: ref.read(workspaceNotifierProvider.notifier),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 void main() {
   testWidgets('the script list shows saved files', (tester) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
     final root = tempDir(prefix: 'fancad-script-ui');
     File(p.join(root.path, 'polar.js')).writeAsStringSync('''
 /**
@@ -25,33 +54,7 @@ void main() {
 1;
 ''');
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          settingsProvider.overrideWithValue(SettingsStore.inMemory()),
-          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
-          extensionsDirectoryProvider.overrideWithValue(root.path),
-          extensionTransportProvider.overrideWithValue(LocalTransport.new),
-        ],
-        child: MaterialApp(
-          theme: FanCadTheme.dark(),
-          locale: const Locale('en'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: SizedBox(
-              width: 280,
-              height: 640,
-              child: Consumer(
-                builder: (context, ref, _) => ExtensionsPanel(
-                  workspace: ref.read(workspaceNotifierProvider.notifier),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    await pumpPanel(tester, root);
     await tester.pump();
     await tester.pump();
     await tester.pump();
@@ -123,40 +126,10 @@ void main() {
   testWidgets('configure can disable a script without opening it', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
     final root = tempDir(prefix: 'fancad-script-ui');
     File(p.join(root.path, 'polar.js')).writeAsStringSync('1;\n');
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          settingsProvider.overrideWithValue(SettingsStore.inMemory()),
-          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
-          extensionsDirectoryProvider.overrideWithValue(root.path),
-          extensionTransportProvider.overrideWithValue(LocalTransport.new),
-        ],
-        child: MaterialApp(
-          theme: FanCadTheme.dark(),
-          locale: const Locale('en'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: SizedBox(
-              width: 280,
-              height: 640,
-              child: Consumer(
-                builder: (context, ref, _) => ExtensionsPanel(
-                  workspace: ref.read(workspaceNotifierProvider.notifier),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    await pumpPanel(tester, root);
     await tester.pump();
     await tester.pump();
 
@@ -176,5 +149,42 @@ void main() {
     await tester.tap(find.byTooltip('Configure'));
     await tester.pumpAndSettle();
     expect(find.text('Enable'), findsOneWidget);
+  });
+
+  testWidgets('new with a taken name keeps the file and opens nothing', (
+    tester,
+  ) async {
+    final root = tempDir(prefix: 'fancad-script-ui');
+    final file = File(p.join(root.path, 'polar.js'))..writeAsStringSync('1;\n');
+    await pumpPanel(tester, root);
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('New extension'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'polar');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('polar already exists'), findsOneWidget);
+    expect(find.byKey(const Key('extension-polar-card')), findsNothing);
+    expect(file.readAsStringSync(), '1;\n');
+  });
+
+  testWidgets('closing with unsaved edits names the file', (tester) async {
+    final root = tempDir(prefix: 'fancad-script-ui');
+    File(p.join(root.path, 'polar.js')).writeAsStringSync('1;\n');
+    await pumpPanel(tester, root);
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('polar'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(EditableText), '2;\n');
+    await tester.pump();
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('polar has unsaved changes'), findsOneWidget);
   });
 }

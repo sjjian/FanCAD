@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../commands/extension/header.dart';
+import '../../commands/extension/paths.dart';
 import '../../l10n/l10n.dart';
 import '../../services/extension.dart';
 import '../../services/workspace.dart';
@@ -31,6 +32,9 @@ class _ExtensionsPanelState extends ConsumerState<ExtensionsPanel> {
   List<({String name, String? description, String? error, bool enabled})>
   _entries = const [];
 
+  /// Why the last list, create or delete failed. The rows stay as they were.
+  String? _error;
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +46,11 @@ class _ExtensionsPanelState extends ConsumerState<ExtensionsPanel> {
   Future<void> _reload() async {
     final result = await widget.workspace.runHeadless('extensions.list');
     if (!mounted) return;
+    if (!result.isOk) {
+      final error = context.l10n.extension_list_failed(result.message);
+      setState(() => _error = error);
+      return;
+    }
     final raw = result.data?['extensions'];
     final scripts =
         <({String name, String? description, String? error, bool enabled})>[];
@@ -58,7 +67,10 @@ class _ExtensionsPanelState extends ConsumerState<ExtensionsPanel> {
         ));
       }
     }
-    setState(() => _entries = scripts);
+    setState(() {
+      _entries = scripts;
+      _error = null;
+    });
   }
 
   String? _text(Object? value) {
@@ -88,8 +100,11 @@ class _ExtensionsPanelState extends ConsumerState<ExtensionsPanel> {
               FanCadIconButton(
                 icon: Icons.folder_open_outlined,
                 tooltip: context.l10n.open_extensions_folder,
-                onPressed: () =>
-                    _openExtensionsFolder(widget.workspace, directory),
+                onPressed: () => _openExtensionsFolder(
+                  widget.workspace,
+                  directory,
+                  context.l10n,
+                ),
               ),
             if (available)
               FanCadIconButton(
@@ -99,6 +114,20 @@ class _ExtensionsPanelState extends ConsumerState<ExtensionsPanel> {
               ),
           ],
         ),
+        if (_error != null)
+          Padding(
+            key: const Key('extensions-error'),
+            padding: const EdgeInsets.symmetric(
+              horizontal: FanCadTokens.space3,
+              vertical: FanCadTokens.space1,
+            ),
+            child: Text(
+              _error!,
+              style: context.tokens.labelStyle.copyWith(
+                color: context.tokens.danger,
+              ),
+            ),
+          ),
         Expanded(
           child: !available
               ? FanCadEmpty(message: context.l10n.extensions_unavailable)
@@ -131,18 +160,37 @@ class _ExtensionsPanelState extends ConsumerState<ExtensionsPanel> {
   }
 
   Future<void> _create() async {
-    final name = await _askName(context);
-    if (name == null || name.trim().isEmpty || !mounted) return;
-    await widget.workspace.run(
+    final raw = await _askName(context);
+    if (raw == null || raw.trim().isEmpty || !mounted) return;
+    final name = extensionStem(raw) ?? raw.trim();
+    final l10n = context.l10n;
+    if (_entries.any((entry) => entry.name == name)) {
+      setState(() => _error = l10n.extension_exists(name));
+      return;
+    }
+    final result = await widget.workspace.run(
       'extensions.write',
-      args: {'name': name.trim(), 'content': extensionTemplate},
+      args: {'name': name, 'content': extensionTemplate},
     );
     if (!mounted) return;
-    await _edit(name.trim());
+    if (!result.isOk) {
+      setState(
+        () => _error = l10n.extension_create_failed(name, result.message),
+      );
+      return;
+    }
+    setState(() => _error = null);
+    await _edit(name);
   }
 
   Future<void> _delete(String name) async {
-    await widget.workspace.run('extensions.delete', args: {'name': name});
+    final l10n = context.l10n;
+    final result = await widget.workspace.run(
+      'extensions.delete',
+      args: {'name': name},
+    );
+    if (!mounted || result.isOk) return;
+    setState(() => _error = l10n.extension_delete_failed(name, result.message));
   }
 
   Future<void> _edit(String name) async {
@@ -365,7 +413,11 @@ class _ExtensionEditorState extends ConsumerState<_ExtensionEditor> {
     );
     if (!mounted) return;
     if (!result.isOk) {
-      setState(() => _error = result.message);
+      final error = context.l10n.extension_read_failed(
+        widget.name,
+        result.message,
+      );
+      setState(() => _error = error);
       return;
     }
     final content = result.data?['content'];
@@ -381,14 +433,21 @@ class _ExtensionEditorState extends ConsumerState<_ExtensionEditor> {
 
   Future<void> _save() async {
     if (!_opened || !_dirty) return;
+    final saved = _body.text;
+    final l10n = context.l10n;
     final result = await widget.workspace.runHeadless(
       'extensions.write',
-      args: {'name': widget.name, 'content': _body.text},
+      args: {'name': widget.name, 'content': saved},
     );
     if (!mounted) return;
     setState(() {
-      _dirty = !result.isOk;
-      _error = result.isOk ? null : result.message;
+      if (!result.isOk) {
+        _error = l10n.extension_save_failed(widget.name, result.message);
+        return;
+      }
+      _error = null;
+      // Typing while the write was in flight is still unsaved.
+      if (_body.text == saved) _dirty = false;
     });
   }
 
@@ -402,7 +461,7 @@ class _ExtensionEditorState extends ConsumerState<_ExtensionEditor> {
         final tokens = context.tokens;
         return AlertDialog(
           backgroundColor: tokens.surfaceOverlay,
-          title: Text(context.l10n.unsaved_editor_changes),
+          title: Text(context.l10n.unsaved_extension_changes(widget.name)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop('cancel'),
@@ -826,7 +885,11 @@ class _JsSourceController extends TextEditingController {
   }
 }
 
-Future<void> _openExtensionsFolder(Workspace workspace, String path) async {
+Future<void> _openExtensionsFolder(
+  Workspace workspace,
+  String path,
+  AppLocalizations l10n,
+) async {
   try {
     await Directory(path).create(recursive: true);
     if (Platform.isMacOS) {
@@ -837,9 +900,6 @@ Future<void> _openExtensionsFolder(Workspace workspace, String path) async {
       await Process.start('xdg-open', [path]);
     }
   } catch (error) {
-    workspace.notify(
-      lookupAppLocalizations(const Locale('en')).could_not_open(path, '$error'),
-      isError: true,
-    );
+    workspace.notify(l10n.could_not_open(path, '$error'), isError: true);
   }
 }

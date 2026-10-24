@@ -1855,10 +1855,6 @@
   "@log": {
     "description": "log"
   },
-  "unsaved_editor_changes": "编辑器有未保存更改",
-  "@unsaved_editor_changes": {
-    "description": "unsaved editor changes"
-  },
   "saved": "已保存",
   "@saved": {
     "description": "saved"
@@ -4105,6 +4101,81 @@
   "prompt_extension_name": "扩展名称",
   "@prompt_extension_name": {
     "description": "prompt extension name"
+  },
+  "extension_list_failed": "无法列出扩展：{error}",
+  "@extension_list_failed": {
+    "description": "extension list failed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "extension_exists": "{name} 已存在",
+  "@extension_exists": {
+    "description": "extension exists",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "extension_create_failed": "无法新建 {name}：{error}",
+  "@extension_create_failed": {
+    "description": "extension create failed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "extension_read_failed": "无法打开 {name}：{error}",
+  "@extension_read_failed": {
+    "description": "extension read failed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "extension_delete_failed": "无法删除 {name}：{error}",
+  "@extension_delete_failed": {
+    "description": "extension delete failed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "extension_save_failed": "无法保存 {name}：{error}",
+  "@extension_save_failed": {
+    "description": "extension save failed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "unsaved_extension_changes": "{name} 有未保存更改",
+  "@unsaved_extension_changes": {
+    "description": "unsaved extension changes",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
   "hint_type_extension": "扩展名或 JavaScript",
   "@hint_type_extension": {

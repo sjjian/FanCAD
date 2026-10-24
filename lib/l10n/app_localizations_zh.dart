@@ -1304,9 +1304,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get log => '日志';
 
   @override
-  String get unsaved_editor_changes => '编辑器有未保存更改';
-
-  @override
   String get saved => '已保存';
 
   @override
@@ -3046,6 +3043,41 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get prompt_extension_name => '扩展名称';
+
+  @override
+  String extension_list_failed(String error) {
+    return '无法列出扩展：$error';
+  }
+
+  @override
+  String extension_exists(String name) {
+    return '$name 已存在';
+  }
+
+  @override
+  String extension_create_failed(String name, String error) {
+    return '无法新建 $name：$error';
+  }
+
+  @override
+  String extension_read_failed(String name, String error) {
+    return '无法打开 $name：$error';
+  }
+
+  @override
+  String extension_delete_failed(String name, String error) {
+    return '无法删除 $name：$error';
+  }
+
+  @override
+  String extension_save_failed(String name, String error) {
+    return '无法保存 $name：$error';
+  }
+
+  @override
+  String unsaved_extension_changes(String name) {
+    return '$name 有未保存更改';
+  }
 
   @override
   String get hint_type_extension => '扩展名或 JavaScript';

@@ -2474,12 +2474,6 @@ abstract class AppLocalizations {
   /// **'Log'**
   String get log;
 
-  /// unsaved editor changes
-  ///
-  /// In en, this message translates to:
-  /// **'Unsaved editor changes'**
-  String get unsaved_editor_changes;
-
   /// saved
   ///
   /// In en, this message translates to:
@@ -5749,6 +5743,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Extension name'**
   String get prompt_extension_name;
+
+  /// extension list failed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not list extensions: {error}'**
+  String extension_list_failed(String error);
+
+  /// extension exists
+  ///
+  /// In en, this message translates to:
+  /// **'{name} already exists'**
+  String extension_exists(String name);
+
+  /// extension create failed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create {name}: {error}'**
+  String extension_create_failed(String name, String error);
+
+  /// extension read failed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open {name}: {error}'**
+  String extension_read_failed(String name, String error);
+
+  /// extension delete failed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not delete {name}: {error}'**
+  String extension_delete_failed(String name, String error);
+
+  /// extension save failed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save {name}: {error}'**
+  String extension_save_failed(String name, String error);
+
+  /// unsaved extension changes
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has unsaved changes'**
+  String unsaved_extension_changes(String name);
 
   /// hint type extension
   ///
