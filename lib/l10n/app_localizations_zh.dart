@@ -425,6 +425,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get last_badge => '最近';
 
   @override
+  String get opening_drawing => '正在打开';
+
+  @override
   String get empty_tagline => 'AI 原生、插件化的二维 CAD';
 
   @override

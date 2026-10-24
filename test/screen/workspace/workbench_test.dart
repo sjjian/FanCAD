@@ -25,6 +25,58 @@ Tooltip _scopeTooltip(WidgetTester tester) => tester.widget<Tooltip>(
 /// registry the palette shows is the same one an AI turn would call. The
 /// geometry itself is covered by the package tests.
 void main() {
+  testWidgets('opening a file leaves the start page while it loads', (
+    tester,
+  ) async {
+    final dir = Directory.systemTemp.createTempSync('fancad-open-progress');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final file = File('${dir.path}/part.dxf')..createSync();
+    final gate = Completer<void>();
+    final container = await pumpWorkbench(tester);
+    final workspace = container.read(workspaceNotifierProvider.notifier);
+    workspace.drawingFiles = _PausedDrawingFiles(gate);
+
+    final pending = workspace.openFile(file.path);
+    await tester.pump();
+
+    expect(find.byKey(const Key('opening-canvas')), findsOneWidget);
+    expect(find.text('Opening'), findsOneWidget);
+    expect(find.text('part.dxf'), findsWidgets);
+    expect(find.byKey(const Key('empty-workspace-new')), findsNothing);
+
+    gate.complete();
+    await pending;
+    await tester.pump();
+    expect(find.byKey(const Key('opening-canvas')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'a failed open explains itself and closes back to the start page',
+    (tester) async {
+      final container = await pumpWorkbench(tester);
+      final workspace = container.read(workspaceNotifierProvider.notifier);
+
+      expect(
+        await workspace.openFile('/tmp/fancad-widget-missing.dxf'),
+        isNull,
+      );
+      await tester.pump();
+
+      expect(find.byKey(const Key('open-failed-card')), findsOneWidget);
+      expect(find.textContaining('fancad-widget-missing.dxf'), findsWidgets);
+      expect(find.byKey(const Key('empty-workspace-new')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('open-failed-close')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('open-failed-card')), findsNothing);
+      expect(find.byKey(const Key('empty-workspace-new')), findsOneWidget);
+      expect(workspace.active!.isStartPage, isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('the workbench mounts and shows the empty state', (tester) async {
     await pumpWorkbench(tester);
 
@@ -1349,4 +1401,16 @@ void _expectViewportCenter(
   }
   final canvas = tester.getRect(find.byType(CadCanvas));
   expect((canvas.center.dx - hud.center.dx).abs(), greaterThan(20));
+}
+
+class _PausedDrawingFiles extends DrawingFileService {
+  _PausedDrawingFiles(this._gate) : super.inMemory();
+
+  final Completer<void> _gate;
+
+  @override
+  Future<OpenedDrawing> open(String path) async {
+    await _gate.future;
+    return OpenedDrawing(document: CadDocument());
+  }
 }

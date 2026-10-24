@@ -154,6 +154,10 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   WorkspaceModel get _store => state;
   final Map<String, DocumentTab> _hosts = {};
+
+  /// In-flight opens, keyed by file identity, so a second click waits on the
+  /// same read instead of starting another tab.
+  final Map<String, Future<DocumentTab?>> _opening = {};
   int _nextSessionId = 1;
   final Map<DocumentTab, StreamSubscription<Set<int>>> _selectionReveals = {};
 
@@ -177,10 +181,11 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     return _hosts[session.id];
   }
 
-  /// The active tab when it is a real drawing, not the start screen.
+  /// The active tab when it is a real drawing, not the start screen or a file
+  /// that is still opening.
   DocumentTab? get activeDrawing {
     final tab = active;
-    if (tab == null || tab.isStartPage) return null;
+    if (tab == null || tab.isStartPage || tab.isOpeningShell) return null;
     return tab;
   }
 
@@ -190,7 +195,9 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     final key = id.trim();
     if (key.isEmpty) return null;
     for (final record in _store.sessions) {
-      if (record.isStartPage) continue;
+      if (record.isStartPage || record.loading || record.openError.isNotEmpty) {
+        continue;
+      }
       if (record.id != key) continue;
       return _hosts[record.id]?.session;
     }
@@ -342,69 +349,163 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     return _adopt(_createTab(session), _openRecord(session, isStartPage: true));
   }
 
-  /// Opens [path], reporting failures as notices rather than exceptions.
+  /// Opens [path]. The tab appears before the file is read, so the start page
+  /// does not sit still for the whole load. Failures stay on that tab.
   Future<DocumentTab?> openFile(String path) async {
     final target = path.trim();
     if (target.isEmpty) {
       notify('There is no file to open.', isError: true);
       return null;
     }
+    final stored = _fileIdentity(target);
+    final pending = _opening[stored];
+    if (pending != null) {
+      _activateStored(stored);
+      return pending;
+    }
     // An already-open file is activated rather than opened twice; two tabs onto
     // one file with independent undo stacks is a data-loss trap. Compare the
     // resolved file, so a symlink or a `./` in the path is not a second tab.
     // Do this before the exists check: a tab whose path vanished on disk
-    // should still come to the front.
+    // should still come to the front. A failed open is the same tab too — a
+    // second click shows that failure again instead of stacking another one.
     for (var i = 0; i < _store.sessions.length; i++) {
-      final tab = _hosts[_store.sessions[i].id];
+      final record = _store.sessions[i];
+      final tab = _hosts[record.id];
       if (tab == null || !_sameDrawingFile(tab.filePath, target)) continue;
       activate(i);
       _discardIdleStartPages();
+      if (record.loading || record.openError.isNotEmpty) return null;
       return tab;
     }
+    final future = _readIntoNewTab(target, stored);
+    _opening[stored] = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_opening[stored], future)) _opening.remove(stored);
+    }
+  }
+
+  /// Puts an empty tab for [stored] on screen before the read starts.
+  DocumentTab _openPlaceholder(String stored) {
+    final session = DocumentSession(
+      id: '${_nextSessionId++}',
+      document: CadDocument(),
+      filePath: stored,
+    );
+    final tab = _adopt(
+      _createTab(session),
+      _openRecord(session).copyWith(loading: true),
+    );
+    _discardIdleStartPages();
+    return tab;
+  }
+
+  Future<DocumentTab?> _readIntoNewTab(String target, String stored) async {
+    final placeholder = _openPlaceholder(stored);
     if (!File(target).existsSync()) {
       _dropRecent(target);
-      notify('$target is missing and was removed from Recent.', isError: true);
+      _failOpen(placeholder, '$target is missing and was removed from Recent.');
       return null;
     }
+    OpenedDrawing result;
     try {
       commandLine.write('Opening $target ...');
-      final result = await drawingFiles.open(target);
-      final stored = _fileIdentity(target);
-      final session = DocumentSession(
-        id: '${_nextSessionId++}',
-        document: result.document,
-        filePath: stored,
-      );
-      final tab = _adopt(
-        _createTab(session),
-        _openRecord(session, diagnostics: result.diagnostics),
-      );
-      tab.viewport.zoomToExtents(result.document);
-      _rememberRecent(stored);
-      _syncRecent();
-      unawaited(reloadShxFonts(drawingPath: stored));
-      commandLine.writeSuccess(
-        'Opened ${result.entityCount} entities in '
-        '${result.totalTime.inMilliseconds} ms.',
-      );
-      for (final diagnostic in result.diagnostics.take(20)) {
-        commandLine.write(diagnostic, level: HistoryLevel.warning);
-      }
-      if (result.diagnostics.length > 20) {
-        commandLine.write(
-          '... and ${result.diagnostics.length - 20} more warnings.',
-          level: HistoryLevel.warning,
-        );
-      }
-      _discardIdleStartPages();
-      return tab;
+      result = await drawingFiles.open(target);
     } on DrawingFileException catch (error) {
-      notify(error.message, isError: true);
+      _failOpen(placeholder, error.message);
       return null;
     } catch (error) {
-      notify('Could not open $target: $error', isError: true);
+      _failOpen(placeholder, 'Could not open $target: $error');
       return null;
     }
+    return _commitOpen(placeholder, result, stored);
+  }
+
+  void _failOpen(DocumentTab tab, String message) {
+    if (indexOfSession(tab.session) < 0) return;
+    commandLine.writeError(message);
+    _replaceSession(
+      tab.session.id,
+      (record) => record.copyWith(loading: false, openError: message),
+    );
+  }
+
+  /// Replaces [placeholder] with the drawing that finished reading.
+  ///
+  /// The slot and the active index stay put, so a tab the user switched away
+  /// from does not steal focus when the file arrives. A placeholder they
+  /// already closed is left closed.
+  DocumentTab? _commitOpen(
+    DocumentTab placeholder,
+    OpenedDrawing result,
+    String stored,
+  ) {
+    final index = indexOfSession(placeholder.session);
+    if (index < 0) return null;
+    final session = DocumentSession(
+      id: '${_nextSessionId++}',
+      document: result.document,
+      filePath: stored,
+    );
+    final tab = _createTab(session);
+    _swapHost(
+      index,
+      tab,
+      _openRecord(session, diagnostics: result.diagnostics),
+    );
+    tab.viewport.zoomToExtents(result.document);
+    _rememberRecent(stored);
+    _syncRecent();
+    unawaited(reloadShxFonts(drawingPath: stored));
+    commandLine.writeSuccess(
+      'Opened ${result.entityCount} entities in '
+      '${result.totalTime.inMilliseconds} ms.',
+    );
+    for (final diagnostic in result.diagnostics.take(20)) {
+      commandLine.write(diagnostic, level: HistoryLevel.warning);
+    }
+    if (result.diagnostics.length > 20) {
+      commandLine.write(
+        '... and ${result.diagnostics.length - 20} more warnings.',
+        level: HistoryLevel.warning,
+      );
+    }
+    return tab;
+  }
+
+  void _activateStored(String stored) {
+    for (var i = 0; i < _store.sessions.length; i++) {
+      final tab = _hosts[_store.sessions[i].id];
+      if (tab == null || !_sameDrawingFile(tab.filePath, stored)) continue;
+      activate(i);
+      return;
+    }
+  }
+
+  /// Puts [tab] in the slot [index] held, without moving the active tab.
+  void _swapHost(int index, DocumentTab tab, WorkspaceSessionModel record) {
+    final previousId = _store.sessions[index].id;
+    final old = _hosts.remove(previousId);
+    if (old != null) {
+      _selectionReveals.remove(old)?.cancel();
+      old.removeListener(_onHostTick);
+      ref.invalidate(documentTabNotifierProvider(previousId));
+    }
+    _hosts[record.id] = tab;
+    tab.bindStore(
+      read: () => _sessionRecord(record.id),
+      write: (update) => _replaceSession(record.id, update),
+    );
+    tab.addListener(_onHostTick);
+    _selectionReveals[tab] = tab.session.selection.changes.listen((ids) {
+      if (ids.isEmpty || !identical(tab, active)) return;
+      revealPanel('properties');
+    });
+    final sessions = [..._store.sessions];
+    sessions[index] = record;
+    _setStore(_store.copyWith(sessions: sessions));
   }
 
   /// Writes the active document, returning the path written or null.
@@ -584,17 +685,17 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     if (key.isEmpty) return activeDrawing;
 
     for (final tab in tabs) {
-      if (tab.isStartPage) continue;
+      if (tab.isStartPage || tab.isOpeningShell) continue;
       if (tab.session.id == key) return tab;
     }
     for (final tab in tabs) {
-      if (tab.isStartPage) continue;
+      if (tab.isStartPage || tab.isOpeningShell) continue;
       if (_sameDrawingFile(tab.filePath, key)) return tab;
     }
     DocumentTab? titled;
     var matches = 0;
     for (final tab in tabs) {
-      if (tab.isStartPage) continue;
+      if (tab.isStartPage || tab.isOpeningShell) continue;
       if (tab.title != key) continue;
       titled = tab;
       matches += 1;
@@ -692,6 +793,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   bool closeTab(int index, {bool force = false}) {
     if (index < 0 || index >= _store.sessions.length) return true;
     final record = _store.sessions[index];
+    final openingShell = record.loading || record.openError.isNotEmpty;
     final tab = _hosts[record.id];
     if (tab != null && tab.isDirty && !force) return false;
     if (index == _store.activeIndex && record.export.open) {
@@ -717,6 +819,9 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       nextActive = sessions.length - 1;
     }
     _setStore(_store.copyWith(sessions: sessions, activeIndex: nextActive));
+    // Closing the last real drawing leaves an empty window. A file that never
+    // became a drawing should land back on the start page instead.
+    if (openingShell && _store.sessions.isEmpty) openStartTab();
     return true;
   }
 
@@ -812,6 +917,17 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       commandLine.cancelPending('Superseded by $idOrAlias');
       active?.tools.cancel();
     }
+    final shell = active;
+    final openingShell = shell != null && shell.isOpeningShell;
+    if (openingShell &&
+        descriptor.id != 'file.close' &&
+        !_isHostCommand(descriptor.id)) {
+      final message = shell.loading
+          ? 'Still opening ${shell.title}.'
+          : shell.openError;
+      commandLine.writeError(message);
+      return CommandResult.failed(message);
+    }
     if (activeDrawing == null) {
       final message = _missingDocumentMessage(descriptor.id);
       if (message != null &&
@@ -825,12 +941,17 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     // A start tab is reused for New, and promoted when a drawing command runs.
     final tab =
         activeDrawing ??
-        (_isHostCommand(descriptor.id)
-            ? (active ??
-                  _createTab(
-                    DocumentSession(id: 'transient', document: CadDocument()),
-                  ))
-            : newDocument(title: 'Drawing1'));
+        (openingShell && descriptor.id == 'file.close'
+            ? shell!
+            : (_isHostCommand(descriptor.id)
+                  ? (active ??
+                        _createTab(
+                          DocumentSession(
+                            id: 'transient',
+                            document: CadDocument(),
+                          ),
+                        ))
+                  : newDocument(title: 'Drawing1')));
     _setStore(_store.copyWith(runningCommand: descriptor.id));
 
     InteractiveCommandInput? input;
@@ -946,8 +1067,22 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       }
       session = found.session;
     }
+    final current = active;
     if (session == null &&
-        active?.isStartPage == true &&
+        current != null &&
+        current.isOpeningShell &&
+        !_isHostCommand(descriptor.id)) {
+      if (descriptor.id == 'file.close') {
+        closeSession(current.session, force: true);
+        return const CommandResult.ok();
+      }
+      final message = current.loading
+          ? 'Still opening ${current.title}.'
+          : current.openError;
+      return CommandResult.failed(message);
+    }
+    if (session == null &&
+        current?.isStartPage == true &&
         !_isHostCommand(descriptor.id)) {
       newDocument();
     }
@@ -1087,7 +1222,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     final find = textSearchCommand(text);
     if (find != null) {
       final tab = active;
-      if (tab != null && !tab.isStartPage) {
+      if (tab != null && !tab.isStartPage && !tab.isOpeningShell) {
         commandLine.setPaletteOpen(false);
         tab.textSearch.request(query: find.isEmpty ? null : find);
       }
@@ -1397,7 +1532,12 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   WorkspaceSessionModel? get _activeDrawing {
     final session = _store.active;
-    if (session == null || session.isStartPage) return null;
+    if (session == null ||
+        session.isStartPage ||
+        session.loading ||
+        session.openError.isNotEmpty) {
+      return null;
+    }
     return session;
   }
 
@@ -1675,6 +1815,18 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
   /// The tab strip plus control opens one of these so New / Open can be
   /// chosen without inventing a leftover Drawing1.
   bool get isStartPage => _record.isStartPage;
+
+  /// Set while the file for this tab is still being read.
+  bool get loading => _record.loading;
+
+  /// Why this open failed, or empty when the drawing is available.
+  String get openError => _record.openError;
+
+  /// A file tab that is not a drawing yet: still reading, or the read failed.
+  ///
+  /// Commands, search and the side panels stay off it until the file is in,
+  /// or the user closes the tab.
+  bool get isOpeningShell => loading || openError.isNotEmpty;
 
   CadDocument get document => session.document;
   SelectionSet get selection => session.selection;

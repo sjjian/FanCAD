@@ -28,7 +28,7 @@ class PropertiesPanel extends ConsumerWidget {
       workspaceNotifierProvider.select((s) => s.active?.id),
     );
     final tab = workspace.active;
-    if (tab == null) {
+    if (tab == null || tab.isOpeningShell) {
       return Column(
         children: [
           PanelHeader(title: context.l10n.properties),

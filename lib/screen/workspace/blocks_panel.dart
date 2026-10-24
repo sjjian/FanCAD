@@ -38,7 +38,7 @@ class _BlocksPanelState extends ConsumerState<BlocksPanel> {
       workspaceNotifierProvider.select((s) => s.active?.id),
     );
     final tab = _workspace.active;
-    if (tab == null) {
+    if (tab == null || tab.isOpeningShell) {
       return Column(
         key: const Key('blocks-panel'),
         children: [

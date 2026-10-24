@@ -605,6 +605,10 @@
   "@last_badge": {
     "description": "last badge"
   },
+  "opening_drawing": "Opening",
+  "@opening_drawing": {
+    "description": "shown on the canvas while a drawing file is loading"
+  },
   "empty_tagline": "An AI-native, plugin-everything 2D CAD",
   "@empty_tagline": {
     "description": "empty tagline"

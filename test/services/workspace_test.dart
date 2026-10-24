@@ -301,7 +301,7 @@ void main() {
   });
 
   test(
-    'an already-open path is activated and a missing file becomes a notice',
+    'an already-open path is activated and a missing file stays a failed tab',
     () async {
       final ws = workspace();
       final first = ws.newDocument();
@@ -314,15 +314,15 @@ void main() {
       expect(ws.active, same(first));
 
       expect(await ws.openFile('/tmp/fancad-missing-open.dxf'), isNull);
-      expect(ws.state.notices.single.isError, isTrue);
-      expect(
-        ws.state.notices.single.message,
-        contains('fancad-missing-open.dxf'),
-      );
+      expect(ws.state.notices, isEmpty);
+      expect(ws.active!.loading, isFalse);
+      expect(ws.active!.openError, contains('fancad-missing-open.dxf'));
+      expect(await ws.openFile('/tmp/fancad-missing-open.dxf'), isNull);
+      expect(ws.tabs, hasLength(3));
 
       expect(await ws.openFile('   '), isNull);
-      expect(ws.state.notices.last.message, contains('no file to open'));
-      expect(ws.tabs, hasLength(2));
+      expect(ws.state.notices.single.message, contains('no file to open'));
+      expect(ws.tabs, hasLength(3));
     },
   );
 
@@ -344,6 +344,82 @@ void main() {
     final viaLink = await ws.openFile(link.path);
     expect(viaLink, same(first));
     expect(ws.tabs, hasLength(1));
+  });
+
+  test('a file opens onto its tab before the read finishes', () async {
+    final ws = workspace();
+    ws.openStartTab();
+    final dir = tempDir(prefix: 'fancad-open-progress');
+    final file = File('${dir.path}/part.dxf')..writeAsStringSync(_emptyDxf);
+    final gate = Completer<void>();
+    ws.drawingFiles = _PausedDrawingFiles(gate);
+
+    final pending = ws.openFile(file.path);
+    expect(ws.tabs.where((tab) => tab.isStartPage), isEmpty);
+    final opening = ws.active!;
+    expect(opening.loading, isTrue);
+    expect(opening.isStartPage, isFalse);
+    expect(opening.title, 'part.dxf');
+
+    final joined = ws.openFile(file.path);
+    expect(ws.tabs, hasLength(1));
+    final blocked = await ws.run('draw.line');
+    expect(blocked.status, CommandStatus.failed);
+    expect(blocked.message, contains('Still opening'));
+    expect(ws.tabs, hasLength(1));
+
+    gate.complete();
+    final opened = await pending;
+    expect(await joined, same(opened));
+    expect(opened, isNotNull);
+    expect(ws.tabs, [same(opened)]);
+    expect(opened!.loading, isFalse);
+    expect(opened.openError, isEmpty);
+    expect(ws.active, same(opened));
+  });
+
+  test('closing a file while it opens drops the drawing', () async {
+    final ws = workspace();
+    final keep = ws.newDocument(title: 'Keep');
+    final dir = tempDir(prefix: 'fancad-open-cancel');
+    final file = File('${dir.path}/part.dxf')..writeAsStringSync(_emptyDxf);
+    final gate = Completer<void>();
+    ws.drawingFiles = _PausedDrawingFiles(gate);
+
+    final pending = ws.openFile(file.path);
+    expect(ws.active!.loading, isTrue);
+    expect(ws.closeTab(ws.state.activeIndex, force: true), isTrue);
+    expect(ws.tabs, [same(keep)]);
+
+    gate.complete();
+    expect(await pending, isNull);
+    expect(ws.tabs, [same(keep)]);
+    expect(ws.active!.isStartPage, isFalse);
+  });
+
+  test('a failed open stays on its tab until that tab is closed', () async {
+    final ws = workspace();
+    final dir = tempDir(prefix: 'fancad-open-fail');
+    final file = File('${dir.path}/part.dxf')..writeAsStringSync(_emptyDxf);
+    final files = _PausedDrawingFiles(Completer<void>()..complete());
+    files.throwOnOpen = const DrawingFileException('unreadable header');
+    ws.drawingFiles = files;
+
+    expect(await ws.openFile(file.path), isNull);
+    expect(ws.state.notices, isEmpty);
+    final failed = ws.active!;
+    expect(failed.loading, isFalse);
+    expect(failed.isStartPage, isFalse);
+    expect(failed.title, 'part.dxf');
+    expect(failed.openError, 'unreadable header');
+    final blocked = await ws.run('draw.line');
+    expect(blocked.status, CommandStatus.failed);
+    expect(blocked.message, 'unreadable header');
+    expect(ws.tabs, hasLength(1));
+
+    expect(ws.closeTab(ws.state.activeIndex, force: true), isTrue);
+    expect(ws.tabs, hasLength(1));
+    expect(ws.active!.isStartPage, isTrue);
   });
 
   test(
@@ -888,4 +964,22 @@ void main() {
       expect(line.end, const Vec2(14, 5));
     },
   );
+}
+
+const _emptyDxf = '0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n';
+
+/// Holds [DrawingFileService.open] until [gate] completes.
+class _PausedDrawingFiles extends DrawingFileService {
+  _PausedDrawingFiles(this._gate) : super.inMemory();
+
+  final Completer<void> _gate;
+  Object? throwOnOpen;
+
+  @override
+  Future<OpenedDrawing> open(String path) async {
+    await _gate.future;
+    final error = throwOnOpen;
+    if (error != null) throw error;
+    return super.open(path);
+  }
 }

@@ -854,6 +854,12 @@ abstract class AppLocalizations {
   /// **'Last'**
   String get last_badge;
 
+  /// shown on the canvas while a drawing file is loading
+  ///
+  /// In en, this message translates to:
+  /// **'Opening'**
+  String get opening_drawing;
+
   /// empty tagline
   ///
   /// In en, this message translates to:

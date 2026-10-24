@@ -23,7 +23,7 @@ class LayoutsPanel extends ConsumerWidget {
       workspaceNotifierProvider.select((s) => s.active?.id),
     );
     final tab = workspace.active;
-    if (tab == null) {
+    if (tab == null || tab.isOpeningShell) {
       return Column(
         key: const Key('layouts-panel'),
         children: [

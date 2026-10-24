@@ -908,7 +908,9 @@ as int,
 /// @nodoc
 mixin _$WorkspaceSessionModel {
 
- String get id; bool get isStartPage; String get title; bool get isDirty; bool get showGrid; Set<String>? get isolatedLayers; List<String> get diagnostics; List<int> get heldIds; List<int> get flashIds; List<int> get hoverIds;/// Format, scope, and region for this drawing. Not shared, not persisted.
+ String get id; bool get isStartPage; String get title; bool get isDirty;/// Set while the file for this tab is still being read.
+ bool get loading;/// Why the file could not be opened. Empty once a drawing is available.
+ String get openError; bool get showGrid; Set<String>? get isolatedLayers; List<String> get diagnostics; List<int> get heldIds; List<int> get flashIds; List<int> get hoverIds;/// Format, scope, and region for this drawing. Not shared, not persisted.
  ExportStateModel get export;
 /// Create a copy of WorkspaceSessionModel
 /// with the given fields replaced by the non-null parameter values.
@@ -920,16 +922,16 @@ $WorkspaceSessionModelCopyWith<WorkspaceSessionModel> get copyWith => _$Workspac
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is WorkspaceSessionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.isStartPage, isStartPage) || other.isStartPage == isStartPage)&&(identical(other.title, title) || other.title == title)&&(identical(other.isDirty, isDirty) || other.isDirty == isDirty)&&(identical(other.showGrid, showGrid) || other.showGrid == showGrid)&&const DeepCollectionEquality().equals(other.isolatedLayers, isolatedLayers)&&const DeepCollectionEquality().equals(other.diagnostics, diagnostics)&&const DeepCollectionEquality().equals(other.heldIds, heldIds)&&const DeepCollectionEquality().equals(other.flashIds, flashIds)&&const DeepCollectionEquality().equals(other.hoverIds, hoverIds)&&(identical(other.export, export) || other.export == export));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is WorkspaceSessionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.isStartPage, isStartPage) || other.isStartPage == isStartPage)&&(identical(other.title, title) || other.title == title)&&(identical(other.isDirty, isDirty) || other.isDirty == isDirty)&&(identical(other.loading, loading) || other.loading == loading)&&(identical(other.openError, openError) || other.openError == openError)&&(identical(other.showGrid, showGrid) || other.showGrid == showGrid)&&const DeepCollectionEquality().equals(other.isolatedLayers, isolatedLayers)&&const DeepCollectionEquality().equals(other.diagnostics, diagnostics)&&const DeepCollectionEquality().equals(other.heldIds, heldIds)&&const DeepCollectionEquality().equals(other.flashIds, flashIds)&&const DeepCollectionEquality().equals(other.hoverIds, hoverIds)&&(identical(other.export, export) || other.export == export));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,isStartPage,title,isDirty,showGrid,const DeepCollectionEquality().hash(isolatedLayers),const DeepCollectionEquality().hash(diagnostics),const DeepCollectionEquality().hash(heldIds),const DeepCollectionEquality().hash(flashIds),const DeepCollectionEquality().hash(hoverIds),export);
+int get hashCode => Object.hash(runtimeType,id,isStartPage,title,isDirty,loading,openError,showGrid,const DeepCollectionEquality().hash(isolatedLayers),const DeepCollectionEquality().hash(diagnostics),const DeepCollectionEquality().hash(heldIds),const DeepCollectionEquality().hash(flashIds),const DeepCollectionEquality().hash(hoverIds),export);
 
 @override
 String toString() {
-  return 'WorkspaceSessionModel(id: $id, isStartPage: $isStartPage, title: $title, isDirty: $isDirty, showGrid: $showGrid, isolatedLayers: $isolatedLayers, diagnostics: $diagnostics, heldIds: $heldIds, flashIds: $flashIds, hoverIds: $hoverIds, export: $export)';
+  return 'WorkspaceSessionModel(id: $id, isStartPage: $isStartPage, title: $title, isDirty: $isDirty, loading: $loading, openError: $openError, showGrid: $showGrid, isolatedLayers: $isolatedLayers, diagnostics: $diagnostics, heldIds: $heldIds, flashIds: $flashIds, hoverIds: $hoverIds, export: $export)';
 }
 
 
@@ -940,7 +942,7 @@ abstract mixin class $WorkspaceSessionModelCopyWith<$Res>  {
   factory $WorkspaceSessionModelCopyWith(WorkspaceSessionModel value, $Res Function(WorkspaceSessionModel) _then) = _$WorkspaceSessionModelCopyWithImpl;
 @useResult
 $Res call({
- String id, bool isStartPage, String title, bool isDirty, bool showGrid, Set<String>? isolatedLayers, List<String> diagnostics, List<int> heldIds, List<int> flashIds, List<int> hoverIds, ExportStateModel export
+ String id, bool isStartPage, String title, bool isDirty, bool loading, String openError, bool showGrid, Set<String>? isolatedLayers, List<String> diagnostics, List<int> heldIds, List<int> flashIds, List<int> hoverIds, ExportStateModel export
 });
 
 
@@ -957,13 +959,15 @@ class _$WorkspaceSessionModelCopyWithImpl<$Res>
 
 /// Create a copy of WorkspaceSessionModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? isStartPage = null,Object? title = null,Object? isDirty = null,Object? showGrid = null,Object? isolatedLayers = freezed,Object? diagnostics = null,Object? heldIds = null,Object? flashIds = null,Object? hoverIds = null,Object? export = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? isStartPage = null,Object? title = null,Object? isDirty = null,Object? loading = null,Object? openError = null,Object? showGrid = null,Object? isolatedLayers = freezed,Object? diagnostics = null,Object? heldIds = null,Object? flashIds = null,Object? hoverIds = null,Object? export = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,isStartPage: null == isStartPage ? _self.isStartPage : isStartPage // ignore: cast_nullable_to_non_nullable
 as bool,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,isDirty: null == isDirty ? _self.isDirty : isDirty // ignore: cast_nullable_to_non_nullable
-as bool,showGrid: null == showGrid ? _self.showGrid : showGrid // ignore: cast_nullable_to_non_nullable
+as bool,loading: null == loading ? _self.loading : loading // ignore: cast_nullable_to_non_nullable
+as bool,openError: null == openError ? _self.openError : openError // ignore: cast_nullable_to_non_nullable
+as String,showGrid: null == showGrid ? _self.showGrid : showGrid // ignore: cast_nullable_to_non_nullable
 as bool,isolatedLayers: freezed == isolatedLayers ? _self.isolatedLayers : isolatedLayers // ignore: cast_nullable_to_non_nullable
 as Set<String>?,diagnostics: null == diagnostics ? _self.diagnostics : diagnostics // ignore: cast_nullable_to_non_nullable
 as List<String>,heldIds: null == heldIds ? _self.heldIds : heldIds // ignore: cast_nullable_to_non_nullable
@@ -1064,10 +1068,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds,  ExportStateModel export)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool loading,  String openError,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds,  ExportStateModel export)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _WorkspaceSessionModel() when $default != null:
-return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds,_that.export);case _:
+return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.loading,_that.openError,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds,_that.export);case _:
   return orElse();
 
 }
@@ -1085,10 +1089,10 @@ return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showG
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds,  ExportStateModel export)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool loading,  String openError,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds,  ExportStateModel export)  $default,) {final _that = this;
 switch (_that) {
 case _WorkspaceSessionModel():
-return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds,_that.export);case _:
+return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.loading,_that.openError,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds,_that.export);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1105,10 +1109,10 @@ return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showG
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds,  ExportStateModel export)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  bool isStartPage,  String title,  bool isDirty,  bool loading,  String openError,  bool showGrid,  Set<String>? isolatedLayers,  List<String> diagnostics,  List<int> heldIds,  List<int> flashIds,  List<int> hoverIds,  ExportStateModel export)?  $default,) {final _that = this;
 switch (_that) {
 case _WorkspaceSessionModel() when $default != null:
-return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds,_that.export);case _:
+return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.loading,_that.openError,_that.showGrid,_that.isolatedLayers,_that.diagnostics,_that.heldIds,_that.flashIds,_that.hoverIds,_that.export);case _:
   return null;
 
 }
@@ -1120,13 +1124,17 @@ return $default(_that.id,_that.isStartPage,_that.title,_that.isDirty,_that.showG
 
 
 class _WorkspaceSessionModel implements WorkspaceSessionModel {
-  const _WorkspaceSessionModel({required this.id, this.isStartPage = false, this.title = '', this.isDirty = false, this.showGrid = true, final  Set<String>? isolatedLayers, final  List<String> diagnostics = const [], final  List<int> heldIds = const [], final  List<int> flashIds = const [], final  List<int> hoverIds = const [], this.export = const ExportStateModel()}): _isolatedLayers = isolatedLayers,_diagnostics = diagnostics,_heldIds = heldIds,_flashIds = flashIds,_hoverIds = hoverIds;
+  const _WorkspaceSessionModel({required this.id, this.isStartPage = false, this.title = '', this.isDirty = false, this.loading = false, this.openError = '', this.showGrid = true, final  Set<String>? isolatedLayers, final  List<String> diagnostics = const [], final  List<int> heldIds = const [], final  List<int> flashIds = const [], final  List<int> hoverIds = const [], this.export = const ExportStateModel()}): _isolatedLayers = isolatedLayers,_diagnostics = diagnostics,_heldIds = heldIds,_flashIds = flashIds,_hoverIds = hoverIds;
   
 
 @override final  String id;
 @override@JsonKey() final  bool isStartPage;
 @override@JsonKey() final  String title;
 @override@JsonKey() final  bool isDirty;
+/// Set while the file for this tab is still being read.
+@override@JsonKey() final  bool loading;
+/// Why the file could not be opened. Empty once a drawing is available.
+@override@JsonKey() final  String openError;
 @override@JsonKey() final  bool showGrid;
  final  Set<String>? _isolatedLayers;
 @override Set<String>? get isolatedLayers {
@@ -1178,16 +1186,16 @@ _$WorkspaceSessionModelCopyWith<_WorkspaceSessionModel> get copyWith => __$Works
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _WorkspaceSessionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.isStartPage, isStartPage) || other.isStartPage == isStartPage)&&(identical(other.title, title) || other.title == title)&&(identical(other.isDirty, isDirty) || other.isDirty == isDirty)&&(identical(other.showGrid, showGrid) || other.showGrid == showGrid)&&const DeepCollectionEquality().equals(other._isolatedLayers, _isolatedLayers)&&const DeepCollectionEquality().equals(other._diagnostics, _diagnostics)&&const DeepCollectionEquality().equals(other._heldIds, _heldIds)&&const DeepCollectionEquality().equals(other._flashIds, _flashIds)&&const DeepCollectionEquality().equals(other._hoverIds, _hoverIds)&&(identical(other.export, export) || other.export == export));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _WorkspaceSessionModel&&(identical(other.id, id) || other.id == id)&&(identical(other.isStartPage, isStartPage) || other.isStartPage == isStartPage)&&(identical(other.title, title) || other.title == title)&&(identical(other.isDirty, isDirty) || other.isDirty == isDirty)&&(identical(other.loading, loading) || other.loading == loading)&&(identical(other.openError, openError) || other.openError == openError)&&(identical(other.showGrid, showGrid) || other.showGrid == showGrid)&&const DeepCollectionEquality().equals(other._isolatedLayers, _isolatedLayers)&&const DeepCollectionEquality().equals(other._diagnostics, _diagnostics)&&const DeepCollectionEquality().equals(other._heldIds, _heldIds)&&const DeepCollectionEquality().equals(other._flashIds, _flashIds)&&const DeepCollectionEquality().equals(other._hoverIds, _hoverIds)&&(identical(other.export, export) || other.export == export));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,isStartPage,title,isDirty,showGrid,const DeepCollectionEquality().hash(_isolatedLayers),const DeepCollectionEquality().hash(_diagnostics),const DeepCollectionEquality().hash(_heldIds),const DeepCollectionEquality().hash(_flashIds),const DeepCollectionEquality().hash(_hoverIds),export);
+int get hashCode => Object.hash(runtimeType,id,isStartPage,title,isDirty,loading,openError,showGrid,const DeepCollectionEquality().hash(_isolatedLayers),const DeepCollectionEquality().hash(_diagnostics),const DeepCollectionEquality().hash(_heldIds),const DeepCollectionEquality().hash(_flashIds),const DeepCollectionEquality().hash(_hoverIds),export);
 
 @override
 String toString() {
-  return 'WorkspaceSessionModel(id: $id, isStartPage: $isStartPage, title: $title, isDirty: $isDirty, showGrid: $showGrid, isolatedLayers: $isolatedLayers, diagnostics: $diagnostics, heldIds: $heldIds, flashIds: $flashIds, hoverIds: $hoverIds, export: $export)';
+  return 'WorkspaceSessionModel(id: $id, isStartPage: $isStartPage, title: $title, isDirty: $isDirty, loading: $loading, openError: $openError, showGrid: $showGrid, isolatedLayers: $isolatedLayers, diagnostics: $diagnostics, heldIds: $heldIds, flashIds: $flashIds, hoverIds: $hoverIds, export: $export)';
 }
 
 
@@ -1198,7 +1206,7 @@ abstract mixin class _$WorkspaceSessionModelCopyWith<$Res> implements $Workspace
   factory _$WorkspaceSessionModelCopyWith(_WorkspaceSessionModel value, $Res Function(_WorkspaceSessionModel) _then) = __$WorkspaceSessionModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, bool isStartPage, String title, bool isDirty, bool showGrid, Set<String>? isolatedLayers, List<String> diagnostics, List<int> heldIds, List<int> flashIds, List<int> hoverIds, ExportStateModel export
+ String id, bool isStartPage, String title, bool isDirty, bool loading, String openError, bool showGrid, Set<String>? isolatedLayers, List<String> diagnostics, List<int> heldIds, List<int> flashIds, List<int> hoverIds, ExportStateModel export
 });
 
 
@@ -1215,13 +1223,15 @@ class __$WorkspaceSessionModelCopyWithImpl<$Res>
 
 /// Create a copy of WorkspaceSessionModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? isStartPage = null,Object? title = null,Object? isDirty = null,Object? showGrid = null,Object? isolatedLayers = freezed,Object? diagnostics = null,Object? heldIds = null,Object? flashIds = null,Object? hoverIds = null,Object? export = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? isStartPage = null,Object? title = null,Object? isDirty = null,Object? loading = null,Object? openError = null,Object? showGrid = null,Object? isolatedLayers = freezed,Object? diagnostics = null,Object? heldIds = null,Object? flashIds = null,Object? hoverIds = null,Object? export = null,}) {
   return _then(_WorkspaceSessionModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,isStartPage: null == isStartPage ? _self.isStartPage : isStartPage // ignore: cast_nullable_to_non_nullable
 as bool,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,isDirty: null == isDirty ? _self.isDirty : isDirty // ignore: cast_nullable_to_non_nullable
-as bool,showGrid: null == showGrid ? _self.showGrid : showGrid // ignore: cast_nullable_to_non_nullable
+as bool,loading: null == loading ? _self.loading : loading // ignore: cast_nullable_to_non_nullable
+as bool,openError: null == openError ? _self.openError : openError // ignore: cast_nullable_to_non_nullable
+as String,showGrid: null == showGrid ? _self.showGrid : showGrid // ignore: cast_nullable_to_non_nullable
 as bool,isolatedLayers: freezed == isolatedLayers ? _self._isolatedLayers : isolatedLayers // ignore: cast_nullable_to_non_nullable
 as Set<String>?,diagnostics: null == diagnostics ? _self._diagnostics : diagnostics // ignore: cast_nullable_to_non_nullable
 as List<String>,heldIds: null == heldIds ? _self._heldIds : heldIds // ignore: cast_nullable_to_non_nullable

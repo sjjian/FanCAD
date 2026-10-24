@@ -181,7 +181,10 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     if (ref.read(commandLineNotifierProvider).paletteOpen) return false;
     final workspace = ref.read(workspaceNotifierProvider.notifier);
     final tab = workspace.active;
-    if (tab != null && !tab.isStartPage && tab.textSearch.handleEscape()) {
+    if (tab != null &&
+        !tab.isStartPage &&
+        !tab.isOpeningShell &&
+        tab.textSearch.handleEscape()) {
       return true;
     }
     workspace.cancelActive();
@@ -206,7 +209,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     if (ModalRoute.of(context)?.isCurrent == false) return false;
     final workspace = ref.read(workspaceNotifierProvider.notifier);
     final tab = workspace.active;
-    if (tab == null || tab.isStartPage) return false;
+    if (tab == null || tab.isStartPage || tab.isOpeningShell) return false;
     ref.read(commandLineNotifierProvider.notifier).setPaletteOpen(false);
     tab.textSearch.request();
     _commandFocus.requestFocus();
@@ -223,7 +226,10 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     if (call.method != 'escape') return;
     final workspace = ref.read(workspaceNotifierProvider.notifier);
     final tab = workspace.active;
-    if (tab != null && !tab.isStartPage && tab.textSearch.handleEscape()) {
+    if (tab != null &&
+        !tab.isStartPage &&
+        !tab.isOpeningShell &&
+        tab.textSearch.handleEscape()) {
       return;
     }
     workspace.cancelActive();
@@ -421,6 +427,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
           final tab = workspace.active;
           if (tab != null &&
               !tab.isStartPage &&
+              !tab.isOpeningShell &&
               tab.textSearch.handleEscape()) {
             return KeyEventResult.handled;
           }
@@ -501,7 +508,7 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
         return;
       }
       final tab = workspace.active;
-      if (tab == null || tab.isStartPage) return;
+      if (tab == null || tab.isStartPage || tab.isOpeningShell) return;
       workspace.beginExport();
       return;
     }
@@ -542,7 +549,19 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     );
     final tooltip = context.l10n.resize_reset_width;
     _noteViewOcclusion();
-    final showStart = workspace.active == null || workspace.active!.isStartPage;
+    final shell = ref.watch(
+      workspaceNotifierProvider.select((s) {
+        final active = s.active;
+        return (
+          start: active == null || active.isStartPage,
+          loading: active?.loading ?? false,
+          openError: active?.openError ?? '',
+        );
+      }),
+    );
+    final showStart = shell.start;
+    final showOpening =
+        !showStart && (shell.loading || shell.openError.isNotEmpty);
     // The document tabs share this row with the sidebar header and the
     // assistant tabs. The drawing itself stays full-bleed under the side
     // panes, starting just below that row.
@@ -566,6 +585,8 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
                       .read(commandLineNotifierProvider.notifier)
                       .setPaletteOpen(true),
                 )
+              else if (showOpening)
+                _OpeningCanvas(workspace: workspace)
               else ...[
                 CanvasHud(workspace: workspace, commandFocus: _commandFocus),
                 CanvasViewportChrome(
@@ -645,9 +666,14 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
   }
 
   Widget _canvasArea(Workspace workspace) {
-    ref.watch(workspaceNotifierProvider.select((s) => s.activeSessionId));
+    ref.watch(
+      workspaceNotifierProvider.select((s) {
+        final active = s.active;
+        return (active?.id, active?.loading, active?.openError);
+      }),
+    );
     final tab = workspace.active;
-    final showStart = tab == null || tab.isStartPage;
+    final showStart = tab == null || tab.isStartPage || tab.isOpeningShell;
     final body = showStart
         ? ColoredBox(color: context.tokens.canvas)
         : DocumentView(
@@ -1118,6 +1144,113 @@ class _NoticeToastState extends State<_NoticeToast> {
         tapTooltip: context.l10n.copy_and_dismiss,
         onDismiss: () => widget.workspace.dismissNotice(notice),
         dismissTooltip: context.l10n.dismiss,
+      ),
+    );
+  }
+}
+
+/// Canvas stand-in while a file is reading, or after that read failed.
+///
+/// The tab is already open. This fills the drawing area so the start page is
+/// not what the user stares at, and a failure stays in the tab that asked.
+class _OpeningCanvas extends StatelessWidget {
+  const _OpeningCanvas({required this.workspace});
+
+  final Workspace workspace;
+
+  @override
+  Widget build(BuildContext context) {
+    final tab = workspace.active;
+    if (tab == null) return const SizedBox.shrink();
+    final tokens = context.tokens;
+    final failed = tab.openError.isNotEmpty;
+    return ColoredBox(
+      color: tokens.canvas,
+      child: Center(
+        child: failed
+            ? _OpenFailedCard(workspace: workspace, tab: tab)
+            : _OpeningProgress(title: tab.title),
+      ),
+    );
+  }
+}
+
+class _OpeningProgress extends StatelessWidget {
+  const _OpeningProgress({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Column(
+      key: const Key('opening-canvas'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(title, style: tokens.dialogTitleStyle),
+        const SizedBox(height: FanCadTokens.space4),
+        SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: tokens.accent,
+          ),
+        ),
+        const SizedBox(height: FanCadTokens.space3),
+        Text(context.l10n.opening_drawing, style: tokens.labelStyle),
+      ],
+    );
+  }
+}
+
+class _OpenFailedCard extends StatelessWidget {
+  const _OpenFailedCard({required this.workspace, required this.tab});
+
+  final Workspace workspace;
+  final DocumentTab tab;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 440),
+      child: Material(
+        key: const Key('open-failed-card'),
+        color: tokens.surfaceOverlay,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+          side: BorderSide(color: tokens.borderStrong),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(FanCadTokens.space5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(tab.title, style: tokens.dialogTitleStyle),
+              const SizedBox(height: FanCadTokens.space3),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 240),
+                child: SingleChildScrollView(
+                  child: Text(tab.openError, style: tokens.bodyStyle),
+                ),
+              ),
+              const SizedBox(height: FanCadTokens.space4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  key: const Key('open-failed-close'),
+                  onPressed: () {
+                    final index = workspace.indexOfSession(tab.session);
+                    workspace.closeTab(index, force: true);
+                  },
+                  child: Text(context.l10n.close),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

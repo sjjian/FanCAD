@@ -41,7 +41,7 @@ class _LayersPanelState extends ConsumerState<LayersPanel> {
     );
     final tokens = context.tokens;
     final tab = _workspace.active;
-    if (tab == null) {
+    if (tab == null || tab.isOpeningShell) {
       // The header stays even with nothing to list, so a closed workspace looks
       // empty rather than broken.
       return Column(

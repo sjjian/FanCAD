@@ -605,6 +605,10 @@
   "@last_badge": {
     "description": "last badge"
   },
+  "opening_drawing": "正在打开",
+  "@opening_drawing": {
+    "description": "shown on the canvas while a drawing file is loading"
+  },
   "empty_tagline": "AI 原生、插件化的二维 CAD",
   "@empty_tagline": {
     "description": "empty tagline"

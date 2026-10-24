@@ -117,6 +117,12 @@ abstract class WorkspaceSessionModel with _$WorkspaceSessionModel {
     @Default(false) bool isStartPage,
     @Default('') String title,
     @Default(false) bool isDirty,
+
+    /// Set while the file for this tab is still being read.
+    @Default(false) bool loading,
+
+    /// Why the file could not be opened. Empty once a drawing is available.
+    @Default('') String openError,
     @Default(true) bool showGrid,
     Set<String>? isolatedLayers,
     @Default([]) List<String> diagnostics,

@@ -85,7 +85,7 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
   }
 
   TextSearchSignal? _signalOf(DocumentTab? tab) {
-    if (tab == null || tab.isStartPage) return null;
+    if (tab == null || tab.isStartPage || tab.isOpeningShell) return null;
     return tab.textSearch;
   }
 
@@ -135,7 +135,10 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
 
   void _search() {
     final tab = widget.workspace.active;
-    if (tab != null && !tab.isStartPage && tab.textSearch.open) {
+    if (tab != null &&
+        !tab.isStartPage &&
+        !tab.isOpeningShell &&
+        tab.textSearch.open) {
       _searchText(tab);
       return;
     }
@@ -559,7 +562,7 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
   }
 
   TextSearchSignal? _signalOf(DocumentTab? tab) {
-    if (tab == null || tab.isStartPage) return null;
+    if (tab == null || tab.isStartPage || tab.isOpeningShell) return null;
     return tab.textSearch;
   }
 
@@ -622,13 +625,18 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
 
   void _leaveSearch() {
     final tab = widget.workspace.active;
-    if (tab != null && !tab.isStartPage) tab.textSearch.close();
+    if (tab != null && !tab.isStartPage && !tab.isOpeningShell) {
+      tab.textSearch.close();
+    }
     if (_input.text.isNotEmpty) _input.clear();
   }
 
   void _onEscape() {
     final tab = widget.workspace.active;
-    if (tab != null && !tab.isStartPage && tab.textSearch.handleEscape()) {
+    if (tab != null &&
+        !tab.isStartPage &&
+        !tab.isOpeningShell &&
+        tab.textSearch.handleEscape()) {
       if (_input.text.isNotEmpty) _input.clear();
       return;
     }
@@ -1004,7 +1012,7 @@ class _CommandLinePaneState extends ConsumerState<CommandLinePane> {
                 return;
               }
               final tab = widget.workspace.active;
-              if (tab == null || tab.isStartPage) return;
+              if (tab == null || tab.isStartPage || tab.isOpeningShell) return;
               ref
                   .read(commandLineNotifierProvider.notifier)
                   .setPaletteOpen(false);

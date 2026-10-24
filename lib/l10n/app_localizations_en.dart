@@ -431,6 +431,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get last_badge => 'Last';
 
   @override
+  String get opening_drawing => 'Opening';
+
+  @override
   String get empty_tagline => 'An AI-native, plugin-everything 2D CAD';
 
   @override
