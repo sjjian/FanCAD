@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -59,6 +60,8 @@ class ExtensionCommands {
   /// Registry the saved-extension commands are installed into.
   CommandRegistry? _registry;
   Disposable? _bound;
+  StreamSubscription<FileSystemEvent>? _folder;
+  Timer? _settle;
 
   List<CommandDescriptor> descriptors() => [
     ExtensionsDocCommand().toDescriptor(),
@@ -112,15 +115,44 @@ class ExtensionCommands {
   ///
   /// The file name is also an alias when it does not already name a command,
   /// so the command line can run `concentric` the way it runs `line`.
+  ///
+  /// The folder is watched too, so a file saved by another editor, or deleted,
+  /// changes the commands without restarting.
   void watch(CommandRegistry registry) {
     _registry = registry;
     _rebind();
+    _watchFolder();
   }
 
   void release() {
+    _settle?.cancel();
+    _settle = null;
+    unawaited(_folder?.cancel());
+    _folder = null;
     _bound?.dispose();
     _bound = null;
     _registry = null;
+  }
+
+  void _watchFolder() {
+    if (directory.isEmpty || !FileSystemEntity.isWatchSupported) return;
+    try {
+      final root = Directory(directory)..createSync(recursive: true);
+      _folder = root.watch().where(_touchesScript).listen((_) {
+        // One save is often several events. Rebind once they stop.
+        _settle?.cancel();
+        _settle = Timer(const Duration(milliseconds: 100), changed);
+      }, onError: (Object _) {});
+    } on FileSystemException {
+      return;
+    }
+  }
+
+  static bool _touchesScript(FileSystemEvent event) {
+    bool isScript(String? path) =>
+        path != null && p.extension(path).toLowerCase() == '.js';
+    return isScript(event.path) ||
+        (event is FileSystemMoveEvent && isScript(event.destination));
   }
 
   void _rebind() {
@@ -134,6 +166,8 @@ class ExtensionCommands {
     }
     _bound?.dispose();
     _conflicts.clear();
+    final names = {for (final entry in entries) entry.name};
+    errors.removeWhere((name, _) => !names.contains(name));
     final bag = DisposableBag();
     _bound = bag;
     for (final entry in entries) {

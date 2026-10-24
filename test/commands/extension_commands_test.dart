@@ -31,7 +31,16 @@ void main() {
       app.workspace.commands.register(descriptor);
     }
     scripts.watch(app.workspace.commands);
+    addTearDown(scripts.release);
   });
+
+  Future<void> eventually(bool Function() check) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (!check()) {
+      if (DateTime.now().isAfter(deadline)) fail('timed out');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+  }
 
   Future<CommandResult> run(
     String id, [
@@ -318,6 +327,22 @@ void main() {
     expect(app.workspace.commands.find('extension.rings'), isNotNull);
     expect(scripts.disabled, isEmpty);
   });
+
+  test(
+    'a file saved or deleted outside the app updates the commands',
+    () async {
+      final file = File(p.join(root.path, 'outside.js'))
+        ..writeAsStringSync('1\n');
+      await eventually(
+        () => app.workspace.commands.find('extension.outside') != null,
+      );
+      file.deleteSync();
+      await eventually(
+        () => app.workspace.commands.find('extension.outside') == null,
+      );
+      expect(scripts.list(), isEmpty);
+    },
+  );
 
   test('a tool name is never an extension alias', () {
     File(p.join(root.path, 'exec.js')).writeAsStringSync('1\n');
