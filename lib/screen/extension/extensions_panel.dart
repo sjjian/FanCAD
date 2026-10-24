@@ -591,34 +591,55 @@ Future<void> _showExtensionDialog(BuildContext context, Widget child) {
 }
 
 Future<String?> _askName(BuildContext context) {
-  final controller = TextEditingController();
   return showDialog<String>(
     context: context,
-    builder: (context) {
-      return AlertDialog(
-        backgroundColor: context.tokens.surfaceOverlay,
-        title: Text(context.l10n.new_extension),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: context.l10n.prompt_extension_name,
-          ),
-          onSubmitted: (value) => Navigator.of(context).pop(value),
+    builder: (context) => const _NameDialog(),
+  );
+}
+
+/// Owns its field controller, so the field outlives the dialog's exit
+/// animation instead of rebuilding with a disposed controller.
+class _NameDialog extends StatefulWidget {
+  const _NameDialog();
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: context.tokens.surfaceOverlay,
+      title: Text(context.l10n.new_extension),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(
+          hintText: context.l10n.prompt_extension_name,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: Text(context.l10n.save),
-          ),
-        ],
-      );
-    },
-  ).whenComplete(controller.dispose);
+        onSubmitted: (value) => Navigator.of(context).pop(value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: Text(context.l10n.save),
+        ),
+      ],
+    );
+  }
 }
 
 /// Most of the canvas, and at least a readable editor when the window is wide.
