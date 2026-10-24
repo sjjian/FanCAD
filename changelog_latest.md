@@ -1,11 +1,9 @@
 ##  Features ✨
-* Added in-place block editing with BEDIT and BCLOSE, a blocks panel, and an edit button on the properties block row. Changes show up on existing inserts immediately.
-* Added block attributes in the properties panel, and editing from the properties row or a double-click dialog. Pre-R2007 attribute text is read from the drawing codepage.
-* Added drawing text search from the command dock. FIND, the context menu, or Ctrl/Cmd+F pans to a hit without changing zoom.
+* Replaced installed plugin packages with single-file extensions. A .js file with a header comment runs as extension.<name> from the sidebar, the command line, chat, or MCP, and the assistant tries unsaved code with exec before saving it. A run is one undo step, angles are degrees, outside edits are picked up, and Stop ends a running exec immediately. A bad parameter line is reported, text defaults may be quoted, and a script cannot erase, replace the drawing, save to a new path, rewrite extensions, or move undo unless chat or MCP asks first.
+* Added edit.apply and select.set so a script or the assistant can add, erase, and transform several objects as one undo step and set the selection to a known list of ids.
+* Added a drawing tab that shows while a file opens and stays when the open fails.
 
 ## Improvements 🛠
-* Fixed DWG and DXF import so extruded entities bake into world coordinates, including arcs, circles, polylines, text, hatches, and inserts that used to draw mirrored or off to the side.
-* Fixed mirror and transform so arcs, inserts, text baselines, and hatch patterns follow the reflection, and an ellipse keeps its tilt when moved, rotated, or scaled.
-* Fixed trim and extend so a picked line extends from that end, an unpicked spline or closed polyline trims at mid-span, and a grown polyline bulge stays on its own circle.
-* Fixed long REGION export so every SAT block is written instead of repeating the second chunk.
-* Fixed dimension blocks so their bounds match the drawn size.
+* Text search steps through matches and keeps the current hit while the list is hovered.
+* Assistant screenshots use the canvas colour on screen.
+* Fixed the workbench so changing the selection or running a command no longer rebuilds the whole window.
