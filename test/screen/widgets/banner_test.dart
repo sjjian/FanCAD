@@ -34,4 +34,33 @@ void main() {
       FanCadTone.success,
     );
   });
+
+  testWidgets('an inset banner keeps the dismiss button off the border', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: FanCadTheme.dark(),
+        home: Scaffold(
+          body: FanCadBanner(
+            tone: FanCadTone.danger,
+            inset: true,
+            message: 'Open a drawing first.',
+            onDismiss: () {},
+          ),
+        ),
+      ),
+    );
+    final banner = tester.getRect(find.byType(FanCadBanner));
+    final button = tester.getRect(find.byType(FanCadIconButton));
+    expect(
+      banner.right - button.right,
+      greaterThanOrEqualTo(FanCadTokens.space1),
+    );
+    expect(button.top - banner.top, greaterThanOrEqualTo(FanCadTokens.space1));
+    expect(
+      banner.bottom - button.bottom,
+      greaterThanOrEqualTo(FanCadTokens.space1),
+    );
+  });
 }

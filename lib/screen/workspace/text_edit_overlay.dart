@@ -2,21 +2,15 @@ import 'dart:math' as math;
 
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
+import 'package:fancad_widget/fancad_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../commands/edit/helpers.dart';
 import '../../l10n/l10n.dart';
-import '../widgets/canvas_window.dart';
-import '../widgets/hairline.dart';
-import '../widgets/icon_button.dart';
-import '../widgets/menu.dart';
-import '../widgets/tokens.dart';
 
-const _aciSwatches = [1, 2, 3, 4, 5, 6, 7];
 const _chipHeight = 22.0;
 const _styleChipWidth = 108.0;
-const _colorChipWidth = 92.0;
 const _numberFieldWidth = 44.0;
 
 /// A floating card parked at the double-click.
@@ -318,6 +312,7 @@ class _TextEditOverlayState extends State<TextEditOverlay> {
         FanCadTokens.tabBarHeight + toolbarHeight + noteHeight + 1,
       ),
       minSize: const Size(380, 200),
+      closeTooltip: l10n.close,
       onClose: widget.onCancel,
       onBarrierTap: _commit,
       child: CallbackShortcuts(
@@ -365,7 +360,7 @@ class _TextEditOverlayState extends State<TextEditOverlay> {
                           leading: [
                             _historyCluster(l10n),
                             if (_canStyle) _styleChip(tokens, l10n),
-                            _colorChip(tokens, l10n),
+                            _colorChip(l10n),
                             if (_canHeight)
                               _iconField(
                                 key: const Key('text-edit-height'),
@@ -573,70 +568,16 @@ class _TextEditOverlayState extends State<TextEditOverlay> {
     );
   }
 
-  Widget _colorChip(FanCadTokens tokens, AppLocalizations l10n) {
-    final palette = tokens.isDark ? AciPalette.dark : AciPalette.light;
-    final swatch = _color.isInherited
-        ? tokens.textFaint
-        : palette.colorOf(_color);
-    return FanCadMenuButton<CadColor>(
+  Widget _colorChip(AppLocalizations l10n) {
+    return FanCadColorField(
       key: const Key('text-edit-color'),
-      placement: FanCadMenuPlacement.down,
-      tooltip: l10n.colour,
-      onSelected: (color) => _setColor(color),
-      itemBuilder: (context) => [
-        fanCadMenuItem(
-          context,
-          value: const CadColor.byLayer(),
-          label: l10n.by_layer,
-          checked: _color.kind == ColorKind.byLayer,
-        ),
-        for (final index in _aciSwatches)
-          fanCadMenuItem(
-            context,
-            value: CadColor.indexed(index),
-            label: '$index',
-            checked: _color.kind == ColorKind.indexed && _color.value == index,
-            leading: Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: palette.colorOf(CadColor.indexed(index)),
-                border: Border.all(color: tokens.border),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-      ],
-      child: _chip(
-        width: _colorChipWidth,
-        child: Row(
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: swatch,
-                border: Border.all(color: tokens.border),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: FanCadTokens.space1),
-            Expanded(
-              child: Text(
-                _colorCaption(l10n),
-                style: tokens.monoStyle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Icon(
-              Icons.expand_more,
-              size: FanCadTokens.iconSmall,
-              color: tokens.textMuted,
-            ),
-          ],
-        ),
+      props: FanCadColorFieldProps(
+        color: _color,
+        caption: _colorCaption(l10n),
+        byLayerLabel: l10n.by_layer,
+        tooltip: l10n.colour,
       ),
+      onChanged: _setColor,
     );
   }
 

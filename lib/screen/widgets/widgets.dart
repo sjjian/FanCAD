@@ -1,5 +1,4 @@
-import 'dart:io';
-
+export 'package:fancad_widget/src/shortcut.dart';
 export 'badge.dart';
 export 'banner.dart';
 export 'canvas_window.dart';
@@ -16,9 +15,3 @@ export 'row.dart';
 export 'splitter.dart';
 export 'tab.dart';
 export 'toggle.dart';
-
-/// A modifier-aware shortcut label for chrome that mentions keystrokes.
-String fanCadShortcut(String key, {bool shift = false}) {
-  final prefix = Platform.isMacOS ? '⌘' : 'Ctrl';
-  return shift ? '$prefix Shift $key' : '$prefix $key';
-}
