@@ -80,7 +80,11 @@ class ScriptRunner {
       }
       return const CommandResult.failed('the extension did not run');
     } on RpcException catch (error) {
-      if (error.code == RpcErrorCode.timeout) await reset();
+      if (error.code == RpcErrorCode.timeout) {
+        await reset();
+      } else if (!_live.contains(scope)) {
+        return const CommandResult.failed('the script was stopped');
+      }
       return CommandResult.failed(error.message);
     } finally {
       _live.remove(scope);

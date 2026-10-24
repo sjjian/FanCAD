@@ -212,6 +212,16 @@ return 2;
       expect(history.depth, before + 1);
       expect(history.undoEntries.last.label, 'exec');
     });
+
+    test('stopRuns fails a run that would never finish', () async {
+      final running = extensions().exec('await new Promise(() => {});');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await extensions().stopRuns();
+
+      final result = await running.timeout(const Duration(seconds: 2));
+      expect(result['status'], 'failed');
+      expect(result['message'], contains('stopped'));
+    });
   });
 }
 

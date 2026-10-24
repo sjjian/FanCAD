@@ -157,6 +157,8 @@ class AssistantNotifier extends _$AssistantNotifier {
     if (_active == null) return;
     _stopping = true;
     _active!.cancel();
+    // A running exec would otherwise keep editing until its timeout.
+    unawaited(ref.read(extensionNotifierProvider.notifier).stopRuns());
   }
 
   /// Lets the pending tool batch run.

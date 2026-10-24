@@ -199,6 +199,14 @@ class ExtensionNotifier extends _$ExtensionNotifier {
     return {'status': 'ok', 'value': result.data?['value']};
   }
 
+  /// Fails every run in flight and drops the worker. Chat's Stop calls this:
+  /// QuickJS cannot be interrupted, so a run only ends when its worker does.
+  Future<void> stopRuns() async {
+    final runner = _runner;
+    if (runner == null || !runner.isBusy) return;
+    await runner.reset();
+  }
+
   /// Runs [source] and folds what it did to each drawing into one undo step
   /// named [label], so undo takes back the whole run, not its last command.
   Future<CommandResult> _runAsOneStep(

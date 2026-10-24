@@ -60,6 +60,7 @@ class LocalTransport implements ExtensionTransport {
 
   late final ScriptRuntime runtime;
   final StreamController<String> _died = StreamController<String>.broadcast();
+  final Completer<void> _closed = Completer<void>();
   bool _alive = false;
 
   @override
@@ -87,9 +88,16 @@ class LocalTransport implements ExtensionTransport {
     if (!_alive) {
       throw const RpcException(RpcErrorCode.workerDead, 'transport is closed');
     }
-    final future = runtime.handle(
-      RpcRequest(method: method, params: params, id: 0),
-    );
+    // Like the isolate, a dispose fails what is still waiting.
+    final future = Future.any([
+      runtime.handle(RpcRequest(method: method, params: params, id: 0)),
+      _closed.future.then<Object?>(
+        (_) => throw const RpcException(
+          RpcErrorCode.workerDead,
+          'transport is closed',
+        ),
+      ),
+    ]);
     if (timeout == null) return future;
     return future.timeout(
       timeout,
@@ -110,6 +118,7 @@ class LocalTransport implements ExtensionTransport {
   Future<void> dispose({bool immediate = false}) async {
     if (!_alive) return;
     _alive = false;
+    _closed.complete();
     if (!immediate) runtime.disposeAll();
     await _died.close();
   }
