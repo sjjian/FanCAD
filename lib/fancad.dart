@@ -7,6 +7,8 @@ export 'commands/command_base.dart';
 export 'commands/draw/commands.dart';
 export 'commands/edit/commands.dart';
 export 'commands/extension/commands.dart';
+export 'commands/extension/guide.dart';
+export 'commands/extension/header.dart';
 export 'commands/file/commands.dart';
 export 'commands/keybindings.dart';
 export 'commands/pro/commands.dart';

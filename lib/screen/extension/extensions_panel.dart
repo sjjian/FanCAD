@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../commands/extension/commands.dart';
+import '../../commands/extension/header.dart';
 import '../../l10n/l10n.dart';
 import '../../services/extension.dart';
 import '../../services/workspace.dart';

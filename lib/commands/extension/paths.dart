@@ -17,3 +17,13 @@ File? resolveInside(String directory, String relative) {
 
 bool isSafeSegment(String value) =>
     RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]*$').hasMatch(value);
+
+/// `polar.js` and `polar` are the same extension. Anything else is refused.
+String? extensionStem(String raw) {
+  var stem = raw.trim();
+  if (stem.toLowerCase().endsWith('.js')) {
+    stem = stem.substring(0, stem.length - 3);
+  }
+  if (!isSafeSegment(stem)) return null;
+  return stem;
+}
