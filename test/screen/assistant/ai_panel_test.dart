@@ -279,7 +279,7 @@ void main() {
     final ai = panelAi();
     await pumpAiPanel(tester, ai);
     ai.state.activeChat.conversation.addUser('2505.1 × 2349.6');
-    ai.debugAskApproval(_execPending());
+    unawaited(ai.debugAskApproval(_execPending()));
     await tester.pump();
 
     expect(find.text('Run this code?'), findsOneWidget);

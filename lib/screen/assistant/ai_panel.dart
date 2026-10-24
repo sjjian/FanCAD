@@ -1465,8 +1465,7 @@ class _ApprovalCardState extends State<_ApprovalCard> {
 
 List<String> _execSources(PendingChangeSet pending) => [
   for (final call in pending.calls)
-    if (call.name == execToolId)
-      if (parseExecSource(call.arguments) case final source?) source,
+    if (call.name == execToolId) ?parseExecSource(call.arguments),
 ];
 
 /// Preview height of a tool body. Taller text folds instead of scrolling,
@@ -1476,12 +1475,9 @@ const _foldedBodyHeight = 360.0;
 /// Shows [child] in full when it fits. Past [_foldedBodyHeight], clips and
 /// floats a button that expands the body into the chat list.
 class _FoldedBody extends StatefulWidget {
-  const _FoldedBody({required this.child, this.fade});
+  const _FoldedBody({required this.child});
 
   final Widget child;
-
-  /// Colour the bottom fade blends into. Matches the card fill behind the text.
-  final Color? fade;
 
   @override
   State<_FoldedBody> createState() => _FoldedBodyState();
@@ -1502,7 +1498,8 @@ class _FoldedBodyState extends State<_FoldedBody> {
     final tokens = context.tokens;
     final l10n = context.l10n;
     final clip = !_expanded;
-    final fade = widget.fade ?? tokens.surface;
+    // The bottom fade blends into the card fill behind the text.
+    final fade = tokens.surface;
     final showButton = _overflows && _hover;
     return MouseRegion(
       hitTestBehavior: HitTestBehavior.opaque,

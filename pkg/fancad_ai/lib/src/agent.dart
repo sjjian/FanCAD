@@ -398,8 +398,9 @@ class AgentLoop {
       if (call.name == execToolId) {
         return parseExecSource(call.arguments) == null;
       }
-      if (call.name != fancadToolName && call.name != extensionsToolName)
+      if (call.name != fancadToolName && call.name != extensionsToolName) {
         continue;
+      }
       final request = OpsRequest.tryParse(call.arguments);
       if (request == null) return true;
       if (request.action != OpsAction.run) continue;
