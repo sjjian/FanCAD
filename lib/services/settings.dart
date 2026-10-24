@@ -6,7 +6,6 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_ops/fancad_ops.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../ai/skills/bundled.dart';
 import '../models/settings.dart';
 import '../storage/assistant.dart';
 import '../storage/settings.dart';
@@ -236,17 +235,42 @@ class McpNotifier extends _$McpNotifier {
     ..addProvider(
       CommandOperationProvider(
         registry: _workspace.commands,
-        execute: (id, args, {tab}) => _workspace.runHeadless(
-          id,
-          args: args,
-          source: ChangeSource.mcp,
-          tab: tab,
-        ),
+        execute: _execute,
+        include: (command) => !isExtensionCliCommand(command.id),
       ),
-    )
-    ..addProvider(
-      HostOperationProvider(bundledHostTools(bundledSkillRegistry())),
     );
+
+  /// List, read, write, delete, doc, and `extension.<name>`. Not the drawing CLI.
+  OperationCatalog scriptCatalog() => OperationCatalog()
+    ..addProvider(
+      CommandOperationProvider(
+        registry: _workspace.commands,
+        execute: _execute,
+        include: (command) => isExtensionCliCommand(command.id),
+      ),
+    );
+
+  Future<CommandResult> _execute(
+    String id,
+    Map<String, Object?> args, {
+    String? tab,
+  }) {
+    final found = _workspace.commands.find(id);
+    if (found != null && found.id.startsWith('extension.')) {
+      return _workspace.runSavedScript(
+        id,
+        args: args,
+        source: ChangeSource.mcp,
+        tab: tab,
+      );
+    }
+    return _workspace.runHeadless(
+      id,
+      args: args,
+      source: ChangeSource.mcp,
+      tab: tab,
+    );
+  }
 
   /// Starts the HTTP listener. Tests pass [lockPaths] and [port] so an
   /// in-memory store can still bind without writing `~/.fancad/mcp.lock`.
@@ -256,13 +280,28 @@ class McpNotifier extends _$McpNotifier {
     final listenPort = port ?? bind.port;
     final token = state.token;
     _lockPaths = lockPaths ?? _defaultLockPaths();
-    final dispatcher = OpsDispatcher(catalog());
-    final session = McpSession(
-      dispatch: (request) async {
-        final intercepted = await _approve(dispatcher.catalog, request);
-        return intercepted ?? await dispatcher.dispatch(request);
-      },
-    );
+    final drawing = catalog();
+    final scripts = scriptCatalog();
+    final session = McpSession.tools([
+      McpCliTool(
+        name: fancadToolName,
+        description: fancadToolDescription,
+        parameters: fancadToolParameters,
+        dispatch: (request) async {
+          final intercepted = await _approve(drawing, request);
+          return intercepted ?? await OpsDispatcher(drawing).dispatch(request);
+        },
+      ),
+      McpCliTool(
+        name: extensionsToolName,
+        description: extensionsToolDescription,
+        parameters: extensionsToolParameters,
+        dispatch: (request) async {
+          final intercepted = await _approve(scripts, request);
+          return intercepted ?? await OpsDispatcher(scripts).dispatch(request);
+        },
+      ),
+    ]);
     final server = McpHttpServer(
       session: session,
       token: token,

@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_extension/fancad_extension.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -54,11 +54,11 @@ void main() {
     final plugins = container.read(pluginNotifierProvider.notifier);
     await plugins.start();
     expect(plugins.isStarted, isFalse);
-    expect(plugins.host, isNull);
+    expect(plugins.manager, isNull);
   });
 
   test(
-    'start discovers bundled then user plugins once, and forwards document events',
+    'start leaves extension folders unloaded and forwards document events',
     () async {
       final bundled = tempDir(prefix: 'fancad-bundled');
       final user = tempDir(prefix: 'fancad-user');
@@ -81,11 +81,11 @@ void main() {
       addTearDown(container.dispose);
 
       final plugins = container.read(pluginNotifierProvider.notifier);
-      final host = plugins.host!;
+      final host = plugins.manager!;
       await plugins.start();
       expect(plugins.isStarted, isTrue);
-      expect(host.plugin('shipped.tools')!.state, PluginState.active);
-      expect(host.plugin('user.tools')!.state, PluginState.installed);
+      expect(host.plugin('shipped.tools'), isNull);
+      expect(host.plugin('user.tools'), isNull);
 
       await writePlugin(bundled.path, 'late.tools', startup: true);
       await plugins.start();
@@ -93,11 +93,6 @@ void main() {
 
       final workspace = container.read(workspaceNotifierProvider.notifier);
       workspace.newDocument();
-      expect(
-        events.where((event) => event.id == 'document.opened'),
-        isNotEmpty,
-      );
-
       final drawn = await workspace.runHeadless(
         'draw.line',
         args: {
@@ -106,16 +101,7 @@ void main() {
         },
       );
       expect(drawn.status, CommandStatus.ok, reason: drawn.message);
-      expect(
-        events.where((event) => event.id == 'document.changed'),
-        isNotEmpty,
-      );
-
-      workspace.newDocument();
-      expect(
-        events.where((event) => event.id == 'document.opened').length,
-        greaterThanOrEqualTo(2),
-      );
+      expect(events, isEmpty);
     },
   );
 }

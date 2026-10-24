@@ -6,11 +6,48 @@ import '../request.dart';
 import '../rpc.dart';
 import '../tool.dart';
 
+/// One CLI tool on an MCP session. Each tool has its own catalog.
+class McpCliTool {
+  const McpCliTool({
+    required this.name,
+    required this.description,
+    required this.parameters,
+    required this.dispatch,
+  });
+
+  final String name;
+  final String description;
+  final Map<String, Object?> parameters;
+  final Future<Map<String, Object?>> Function(OpsRequest request) dispatch;
+
+  Map<String, Object?> definition() => {
+    'name': name,
+    'description': description,
+    'inputSchema': parameters,
+  };
+
+  /// The drawing CLI, used when a session advertises only [fancadToolName].
+  static McpCliTool fancad(
+    Future<Map<String, Object?>> Function(OpsRequest request) dispatch,
+  ) => McpCliTool(
+    name: fancadToolName,
+    description: fancadToolDescription,
+    parameters: fancadToolParameters,
+    dispatch: dispatch,
+  );
+}
+
 /// MCP tools-only session. Transport-agnostic so tests do not open stdio.
 class McpSession {
-  McpSession({required this.dispatch});
+  /// Advertises only the drawing CLI. The app passes [McpSession.tools] when
+  /// the script CLI is available too.
+  McpSession({
+    required Future<Map<String, Object?>> Function(OpsRequest request) dispatch,
+  }) : tools = [McpCliTool.fancad(dispatch)];
 
-  final Future<Map<String, Object?>> Function(OpsRequest request) dispatch;
+  McpSession.tools(this.tools);
+
+  final List<McpCliTool> tools;
 
   /// Returns a JSON-RPC response, or null for a notification.
   Future<JsonRpcMessage?> handle(JsonRpcMessage message) async {
@@ -30,7 +67,7 @@ class McpSession {
         return JsonRpcMessage.resultOf(message.id, const {});
       case 'tools/list':
         return JsonRpcMessage.resultOf(message.id, {
-          'tools': [fancadMcpTool()],
+          'tools': [for (final tool in tools) tool.definition()],
         });
       case 'tools/call':
         return JsonRpcMessage.resultOf(message.id, await _call(message.params));
@@ -45,10 +82,12 @@ class McpSession {
 
   Future<Map<String, Object?>> _call(Map<String, Object?>? params) async {
     final name = '${params?['name'] ?? ''}';
-    if (name.isNotEmpty && name != fancadToolName) {
+    final tool = _toolNamed(name);
+    if (tool == null) {
+      final known = tools.map((each) => each.name).join(' or ');
       return {
         'content': [
-          {'type': 'text', 'text': 'Unknown tool: $name. Use $fancadToolName.'},
+          {'type': 'text', 'text': 'Unknown tool: $name. Use $known.'},
         ],
         'isError': true,
       };
@@ -61,7 +100,7 @@ class McpSession {
           {
             'type': 'text',
             'text':
-                'fancad requires action=list|help|schema|run. '
+                '${tool.name} requires action=list|help|schema|run. '
                 'Call help with no path to see groups.',
           },
         ],
@@ -69,7 +108,7 @@ class McpSession {
       };
     }
     try {
-      final payload = await dispatch(request);
+      final payload = await tool.dispatch(request);
       final image = takeCommandImage(payload);
       final failed = image.payload['status'] == 'failed';
       final text = const JsonEncoder.withIndent('  ').convert(image.payload);
@@ -94,5 +133,13 @@ class McpSession {
         'isError': true,
       };
     }
+  }
+
+  McpCliTool? _toolNamed(String name) {
+    if (name.isEmpty) return tools.length == 1 ? tools.single : null;
+    for (final tool in tools) {
+      if (tool.name == name) return tool;
+    }
+    return null;
   }
 }

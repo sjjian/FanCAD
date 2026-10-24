@@ -12,6 +12,6 @@ export 'src/mock_provider.dart';
 export 'src/openai_provider.dart';
 export 'src/provider.dart';
 export 'src/session_ask.dart';
+export 'src/session_exec.dart';
 export 'src/skills/host_tools.dart';
-export 'src/skills/skill.dart';
 export 'src/tools.dart';

@@ -12,11 +12,16 @@ class ActivityBar extends StatelessWidget {
     required this.activeViewId,
     required this.onSelect,
     required this.onOpenSettings,
+    this.extraViews = const [],
   });
 
   final String activeViewId;
   final ValueChanged<String> onSelect;
   final VoidCallback onOpenSettings;
+
+  /// Plugin sidebar panels, after the built-in views.
+  final List<({String id, IconData icon, String label, String hint})>
+  extraViews;
 
   static const List<({String id, IconData icon, IconData activeIcon})>
   _views = [
@@ -30,8 +35,8 @@ class ActivityBar extends StatelessWidget {
     ),
     (id: 'history', icon: Icons.history_outlined, activeIcon: Icons.history),
     (id: 'commands', icon: Icons.terminal_outlined, activeIcon: Icons.terminal),
+    (id: 'plugins', icon: Icons.extension_outlined, activeIcon: Icons.extension),
     (id: 'export', icon: Icons.download_outlined, activeIcon: Icons.download),
-    // plugins / editor stay off the strip until the extension UI is designed.
   ];
 
   ({String label, String hint}) _copy(AppLocalizations l10n, String id) {
@@ -43,7 +48,7 @@ class ActivityBar extends StatelessWidget {
       'history' => (label: l10n.command_history, hint: l10n.view_history_hint),
       'commands' => (label: l10n.commands, hint: l10n.view_commands_hint),
       'export' => (label: l10n.export_menu, hint: l10n.view_export_hint),
-      'plugins' => (label: l10n.extensions, hint: l10n.view_extensions_hint),
+      'plugins' => (label: l10n.scripts, hint: l10n.view_scripts_hint),
       _ => (label: l10n.re_editor, hint: l10n.view_editor_hint),
     };
   }
@@ -73,6 +78,22 @@ class ActivityBar extends StatelessWidget {
                       ? '${l10n.hide_view(copy.label)}\n${copy.hint}'
                       : '${copy.label}\n${copy.hint}';
                 }(),
+                size: FanCadTokens.activityBarWidth - FanCadTokens.space3,
+                iconSize: 22,
+                isActive: activeViewId == view.id,
+                showActiveBar: true,
+                onPressed: () => onSelect(view.id),
+              ),
+            ),
+          for (final view in extraViews)
+            Padding(
+              padding: const EdgeInsets.only(bottom: FanCadTokens.space1),
+              child: FanCadIconButton(
+                key: Key('activity-${view.id}'),
+                icon: view.icon,
+                tooltip: activeViewId == view.id
+                    ? '${l10n.hide_view(view.label)}\n${view.hint}'
+                    : '${view.label}\n${view.hint}',
                 size: FanCadTokens.activityBarWidth - FanCadTokens.space3,
                 iconSize: 22,
                 isActive: activeViewId == view.id,

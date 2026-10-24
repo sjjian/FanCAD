@@ -7,7 +7,7 @@ part of 'plugin_editor.dart';
 // **************************************************************************
 
 String _$pluginEditorNotifierHash() =>
-    r'312c8670f0ba798e0c8316b793f747fc21964d8b';
+    r'819d1abcc0154abd1849088d788e5a4c0e78cf1b';
 
 /// The built-in extension editor: which file to open, and a request counter so
 /// a second edit of the same file still reloads it.

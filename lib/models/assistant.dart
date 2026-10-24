@@ -32,6 +32,9 @@ abstract class AssistantModel with _$AssistantModel {
     String? error,
     PendingChangeSet? approval,
     SessionQuestion? question,
+
+    /// The chat is waiting for a yes on compacting a full context.
+    @Default(false) bool compactPrompt,
     @Default(false) bool busy,
     @Default(0) int transcriptEpoch,
 
@@ -193,6 +196,119 @@ abstract class AssistantReceiptModel with _$AssistantReceiptModel {
   }
 }
 
+/// JavaScript stored on a visible exec card. Older transcripts have none.
+String? execCardSource(String raw) {
+  final source = _execCardMap(raw)?['source'];
+  if (source is! String || source.trim().isEmpty) return null;
+  return source;
+}
+
+/// The value an exec snippet returned, pretty-printed when it is structured.
+///
+/// Failures use the error text. A missing value reads as `undefined`, the
+/// same word the one-line preview uses.
+String execCardResult(String raw) {
+  final decoded = _execCardMap(raw);
+  if (decoded == null) {
+    final trimmed = raw.trim();
+    return trimmed.isEmpty ? 'undefined' : trimmed;
+  }
+  final status = decoded['status'];
+  if (status == 'failed' || status == 'cancelled') {
+    final error = decoded['error'] ?? decoded['message'];
+    if (error is String && error.trim().isNotEmpty) return error;
+  }
+  if (decoded.containsKey('value')) return _formatExecValue(decoded['value']);
+  final message = decoded['message'];
+  if (message is String && message.isNotEmpty) return message;
+  return 'undefined';
+}
+
+/// One line on the tool card, the command rather than its output.
+///
+/// Exec shows the snippet's first line. A CLI call shows the command path,
+/// so a JSON result stays in the body. A merged run keeps the count.
+String assistantToolDescription(AssistantReceiptModel receipt) {
+  var text = '';
+  if (receipt.toolName == execToolId) {
+    final source = execCardSource(receipt.raw);
+    if (source != null) {
+      for (final part in source.split('\n')) {
+        final line = part.trim();
+        if (line.isNotEmpty) {
+          text = line;
+          break;
+        }
+      }
+    }
+    if (text.isEmpty) text = execToolId;
+  } else if (receipt.toolName != null && receipt.toolName!.trim().isNotEmpty) {
+    text = receipt.toolName!.trim();
+  } else {
+    text = receipt.summary;
+  }
+  if (receipt.count > 1 && text.isNotEmpty) return '$text ×${receipt.count}';
+  if (receipt.count > 1) return '×${receipt.count}';
+  return text;
+}
+
+/// Indented JSON for a tool card body. Text that is not JSON stays as written.
+String formatReceiptJson(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return raw;
+  Object? decoded;
+  try {
+    decoded = jsonDecode(trimmed);
+  } catch (_) {
+    return raw;
+  }
+  try {
+    return const JsonEncoder.withIndent('  ').convert(decoded);
+  } catch (_) {
+    return raw;
+  }
+}
+
+/// Tool-call arguments stored on a visible CLI card. Older transcripts have none.
+String? cliCardInput(String raw) {
+  final input = _execCardMap(raw)?['input'];
+  if (input == null) return null;
+  final text = _formatExecValue(input);
+  if (text.trim().isEmpty) return null;
+  return text;
+}
+
+/// A CLI card's result, without the call arguments copied on for the panel.
+String cliCardOutput(String raw) {
+  final decoded = _execCardMap(raw);
+  if (decoded == null || !decoded.containsKey('input')) {
+    return formatReceiptJson(raw);
+  }
+  final copy = Map<String, Object?>.from(decoded)..remove('input');
+  return formatReceiptJson(jsonEncode(copy));
+}
+
+String _formatExecValue(Object? value) {
+  if (value == null) return 'undefined';
+  if (value is String) return value;
+  try {
+    return const JsonEncoder.withIndent('  ').convert(value);
+  } catch (_) {
+    return '$value';
+  }
+}
+
+Map<String, Object?>? _execCardMap(String raw) {
+  Object? decoded;
+  try {
+    decoded = jsonDecode(raw);
+  } catch (_) {
+    return null;
+  }
+  if (decoded is! Map) return null;
+  return decoded.map((key, value) => MapEntry('$key', value));
+}
+
 /// Last segment of `draw_ellipse` / `draw.ellipse` → `ELLIPSE`.
 String assistantCommandVerb(String? toolName) {
   if (toolName == null || toolName.trim().isEmpty) return 'TOOL';
@@ -284,6 +400,7 @@ sealed class AssistantLogEntryModel with _$AssistantLogEntryModel {
     return switch (this) {
       AssistantLogReceiptModel(:final receipt) =>
         receipt.toolName != null &&
+            receipt.toolName != execToolId &&
             receipt.toolName == next.toolName &&
             ((receipt.isOk && next.isOk) ||
                 (receipt.status == 'cancelled' && next.status == 'cancelled')),
@@ -332,45 +449,6 @@ List<AssistantLogEntryModel> groupAssistantLog(List<ChatMessage> messages) {
     }
   }
   return entries;
-}
-
-/// Entity ids a leftover receipt can flash or pin.
-List<int> assistantReceiptEntityIds(AssistantReceiptModel receipt) {
-  Object? decoded;
-  try {
-    decoded = jsonDecode(receipt.raw);
-  } catch (_) {
-    return const [];
-  }
-  if (decoded is! Map) return const [];
-  final ids = <int>{};
-  final change = decoded['change'];
-  if (change is Map) {
-    _collectReceiptIds(change['added'], ids);
-    _collectReceiptIds(change['modified'], ids);
-    _collectReceiptIds(change['removed'], ids);
-  }
-  final data = decoded['data'];
-  if (data is Map) {
-    _collectReceiptIds(data['ids'], ids);
-  }
-  _collectReceiptIds(decoded['ids'], ids);
-  return ids.toList();
-}
-
-void _collectReceiptIds(Object? value, Set<int> into) {
-  if (value is int) {
-    into.add(value);
-  } else if (value is num) {
-    into.add(value.toInt());
-  } else if (value is String) {
-    final parsed = int.tryParse(value);
-    if (parsed != null) into.add(parsed);
-  } else if (value is List) {
-    for (final item in value) {
-      _collectReceiptIds(item, into);
-    }
-  }
 }
 
 enum ComposerPinKind { entity, drawing, bbox }

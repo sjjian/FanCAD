@@ -61,10 +61,10 @@ Future<CommandResult> _setEnabled(
   bool enabled,
 ) async {
   final id = await context.resolveText('id', context.l10n.prompt_extension_id);
-  if (plugins.host.plugin(id) == null) {
+  if (plugins.manager.plugin(id) == null) {
     return CommandResult.failed('$id is not installed');
   }
-  await plugins.host.setEnabled(id, enabled);
+  await plugins.manager.setEnabled(id, enabled);
   return CommandResult.ok(
     message: '${enabled ? 'Enabled' : 'Disabled'} $id',
     data: {'id': id, 'enabled': enabled},

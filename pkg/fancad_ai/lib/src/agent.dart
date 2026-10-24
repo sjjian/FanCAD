@@ -12,8 +12,8 @@ import 'context_compact.dart';
 import 'conversation.dart';
 import 'provider.dart';
 import 'session_ask.dart';
+import 'session_exec.dart';
 import 'skills/host_tools.dart';
-import 'skills/skill.dart';
 import 'tools.dart';
 
 /// PNG bytes lifted out of one tool result, and the visible row to hang them on.
@@ -61,10 +61,13 @@ class AgentTurn {
   bool get isOk => error == null && !cancelled;
 }
 
+/// Whether to compact a full model window and keep the turn going.
+typedef CompactAsker = Future<bool> Function();
+
 /// The agent loop: complete, run tools, complete again.
 ///
 /// CAD platform ops go through the fancad CLI (same handlers a person uses).
-/// Chat primitives such as ask are sibling LLM tools, not catalog paths.
+/// Chat primitives such as ask and exec are sibling LLM tools, not catalog paths.
 /// One undo step reverts the whole turn rather than one call inside it.
 class AgentLoop {
   AgentLoop({
@@ -77,15 +80,15 @@ class AgentLoop {
     this.typings,
     this.onDelta,
     this.onUsage,
-    this.maxRounds = 16,
     this.history,
     this.askQuestion,
+    this.execCode,
     this.supplyToSession,
-    this.skills,
     this.hostTools = const [],
     this.authoring = const NoActivationRepair(),
     this.contextWindowTokens = LlmUsage.contextWindowTokens,
     this.onToolImage,
+    this.askCompact,
   });
 
   final LlmProvider provider;
@@ -97,16 +100,23 @@ class AgentLoop {
   final String? typings;
   final void Function(String delta)? onDelta;
   final void Function(LlmUsage usage)? onUsage;
-  final int maxRounds;
   final QuestionAsker? askQuestion;
+
+  /// Evaluates one snippet above the command registry. Null hides [execLlmTool].
+  final CodeExecutor? execCode;
+
   final SessionSupplier? supplyToSession;
-  final SkillRegistry? skills;
   final List<HostTool> hostTools;
   final ActivationRepair authoring;
   final int contextWindowTokens;
 
   /// Called once after a tool batch, with every image that batch returned.
   final ToolImageHandler? onToolImage;
+
+  /// When reported prompt tokens exceed the window, asks whether to compact.
+  ///
+  /// Null compacts from the local estimate without asking.
+  final CompactAsker? askCompact;
 
   /// When set, every edit this turn produced is collapsed into one undo entry.
   final UndoStack? history;
@@ -117,6 +127,9 @@ class AgentLoop {
   bool _cancelled = false;
   int? _lastPromptTokens;
 
+  /// Last reported prompt size the user already agreed to compact past.
+  int? _roomConsent;
+
   /// Asks the loop to stop after the in-flight model reply or tool call.
   void cancel() => _cancelled = true;
 
@@ -124,7 +137,9 @@ class AgentLoop {
   /// system prompt. CAD platform is fancad; chat primitives are siblings.
   List<LlmTool> get advertisedTools => [
     fancadLlmTool,
+    extensionsLlmTool,
     if (askQuestion != null) askLlmTool,
+    if (execCode != null) execLlmTool,
   ];
 
   /// Runs one user message to completion.
@@ -148,16 +163,16 @@ class AgentLoop {
     final undoBefore = history?.depth ?? 0;
     String? error;
 
-    for (var round = 0; round < maxRounds; round++) {
+    for (;;) {
       if (_cancelled) {
         return _stopped(convo, collectedCalls, undoBefore);
       }
-      final system = LlmMessage.system(
-        contextBuilder.systemPrompt(
-          skills: skills?.listSummaries() ?? const [],
-        ),
-      );
-      await _compactTranscript(convo, system);
+      final system = LlmMessage.system(contextBuilder.systemPrompt());
+      if (askCompact == null) {
+        await _compactTranscript(convo, system);
+      } else if (!await _askIfUsageOver(convo, system)) {
+        return _stopped(convo, collectedCalls, undoBefore);
+      }
       final messages = [system, ...convo.llmMessages];
       final request = LlmRequest(messages: messages, tools: tools);
       LlmCompletion completion;
@@ -168,7 +183,9 @@ class AgentLoop {
           error = caught.message;
           break;
         }
-        await _compactTranscript(convo, system, force: true);
+        if (!await _askOnOverflow(convo, system)) {
+          return _stopped(convo, collectedCalls, undoBefore);
+        }
         final retried = LlmRequest(
           messages: [system, ...convo.llmMessages],
           tools: tools,
@@ -251,9 +268,42 @@ class AgentLoop {
           .join('\n'),
       toolCalls: collectedCalls,
       cancelled: false,
-      error: error ?? 'Stopped after $maxRounds tool rounds.',
+      error: error,
       undoEntries: (history?.depth ?? undoBefore) - undoBefore,
     );
+  }
+
+  /// Asks when the last response's prompt tokens exceed the window.
+  ///
+  /// The size just agreed covers later rounds until a new reading exceeds it.
+  Future<bool> _askIfUsageOver(Conversation convo, LlmMessage system) async {
+    final reported = _lastPromptTokens;
+    if (reported == null || reported <= contextWindowTokens) return true;
+    if (_roomConsent != null && reported <= _roomConsent!) return true;
+    return _confirmAndCompact(convo, system, reported);
+  }
+
+  /// A context-length rejection has no usage. Ask, then compact and retry.
+  Future<bool> _askOnOverflow(Conversation convo, LlmMessage system) async {
+    if (askCompact == null) {
+      await _compactTranscript(convo, system, force: true);
+      return !_cancelled;
+    }
+    return _confirmAndCompact(convo, system, _lastPromptTokens);
+  }
+
+  Future<bool> _confirmAndCompact(
+    Conversation convo,
+    LlmMessage system,
+    int? reported,
+  ) async {
+    final asker = askCompact;
+    if (asker == null || _cancelled) return false;
+    final allowed = await asker();
+    if (!allowed || _cancelled) return false;
+    if (reported != null) _roomConsent = reported;
+    await _compactTranscript(convo, system, force: true);
+    return !_cancelled;
   }
 
   AgentTurn _stopped(
@@ -350,7 +400,11 @@ class AgentLoop {
         final question = '${call.arguments['question'] ?? ''}'.trim();
         return question.isEmpty || call.arguments['options'] == null;
       }
-      if (call.name != fancadToolName) continue;
+      if (call.name == execToolId) {
+        return parseExecSource(call.arguments) == null;
+      }
+      if (call.name != fancadToolName && call.name != extensionsToolName)
+        continue;
       final request = OpsRequest.tryParse(call.arguments);
       if (request == null) return true;
       if (request.action != OpsAction.run) continue;
@@ -378,12 +432,7 @@ class AgentLoop {
   }
 
   List<HostTool> _hostTools() {
-    final tools = <HostTool>[
-      if (hostTools.isNotEmpty)
-        ...hostTools
-      else if (skills != null)
-        ...bundledHostTools(skills!),
-    ];
+    final tools = <HostTool>[...hostTools];
     final supplier = supplyToSession;
     if (supplier != null) tools.add(sessionSupplyTool(supplier));
     return tools;
@@ -399,12 +448,26 @@ class AgentLoop {
 
   OperationCatalog _opsCatalog() => OperationCatalog()
     ..addProvider(
-      CommandOperationProvider(registry: registry, execute: execute),
+      CommandOperationProvider(
+        registry: registry,
+        execute: execute,
+        include: (command) => !isExtensionCliCommand(command.id),
+      ),
     )
     ..addProvider(HostOperationProvider(_hostTools()));
 
+  OperationCatalog _scriptCatalog() => OperationCatalog()
+    ..addProvider(
+      CommandOperationProvider(
+        registry: registry,
+        execute: execute,
+        include: (command) => isExtensionCliCommand(command.id),
+      ),
+    );
+
   Future<void> _runCalls(List<LlmToolCall> calls, Conversation convo) async {
-    final dispatcher = OpsDispatcher(_opsCatalog());
+    final drawing = OpsDispatcher(_opsCatalog());
+    final scripts = OpsDispatcher(_scriptCatalog());
     final images = <ToolImage>[];
     var answeredAll = true;
     for (final call in calls) {
@@ -416,28 +479,40 @@ class AgentLoop {
         await _runAsk(call, convo);
         continue;
       }
-      if (call.name != fancadToolName) {
-        final allowed = askQuestion != null
-            ? '$fancadToolName or $askToolId'
-            : fancadToolName;
-        final message = 'Unknown tool: ${call.name}. Use $allowed.';
-        convo.addToolResult(
-          call: call,
-          content: jsonEncode({
-            'status': 'failed',
-            'error': message,
-            'message': message,
-          }),
-          isError: true,
-        );
+      if (call.name == execToolId) {
+        await _runExec(call, convo);
         continue;
       }
-      final png = await _runFancad(call, convo, dispatcher);
-      if (png != null) {
-        images.add(
-          ToolImage(visibleIndex: convo.visible.length - 1, bytes: png),
+      if (call.name == fancadToolName || call.name == extensionsToolName) {
+        final png = await _runCli(
+          call,
+          convo,
+          call.name == extensionsToolName ? scripts : drawing,
+          call.name,
         );
+        if (png != null) {
+          images.add(
+            ToolImage(visibleIndex: convo.visible.length - 1, bytes: png),
+          );
+        }
+        continue;
       }
+      final allowed = [
+        fancadToolName,
+        extensionsToolName,
+        if (askQuestion != null) askToolId,
+        if (execCode != null) execToolId,
+      ].join(' or ');
+      final message = 'Unknown tool: ${call.name}. Use $allowed.';
+      convo.addToolResult(
+        call: call,
+        content: jsonEncode({
+          'status': 'failed',
+          'error': message,
+          'message': message,
+        }),
+        isError: true,
+      );
     }
     await _attachToolImages(convo, images, forModel: answeredAll);
   }
@@ -485,25 +560,68 @@ class AgentLoop {
     );
   }
 
-  Future<Uint8List?> _runFancad(
+  Future<void> _runExec(LlmToolCall call, Conversation convo) async {
+    final executor = execCode;
+    Map<String, Object?> payload;
+    final source = parseExecSource(call.arguments);
+    if (executor == null) {
+      payload = {
+        'status': 'failed',
+        'error': 'exec is not available in this session.',
+        'message': 'exec is not available in this session.',
+      };
+    } else if (source == null) {
+      payload = {
+        'status': 'failed',
+        'error': 'exec needs source, the JavaScript to evaluate.',
+        'message': 'exec needs source, the JavaScript to evaluate.',
+      };
+    } else {
+      try {
+        payload = await executor(source);
+      } catch (error) {
+        payload = {'status': 'failed', 'error': '$error', 'message': '$error'};
+      }
+    }
+    if (payload['status'] == null) {
+      payload = {
+        'status': 'failed',
+        'error': 'exec returned no status.',
+        'message': 'exec returned no status.',
+      };
+    }
+    final encoded = encodeExecPayload(payload);
+    convo.addToolResult(
+      call: call,
+      content: encoded,
+      visibleContent: source == null ? null : encodeExecCard(encoded, source),
+      isError: payload['status'] == 'failed',
+      toolName: execToolId,
+    );
+  }
+
+  Future<Uint8List?> _runCli(
     LlmToolCall call,
     Conversation convo,
     OpsDispatcher dispatcher,
+    String toolName,
   ) async {
     final request = OpsRequest.tryParse(call.arguments);
     if (request == null) {
       final message =
-          'fancad requires action=list|help|schema|run. '
+          '$toolName requires action=list|help|schema|run. '
           'Call help with no path to see groups.';
+      final encoded = jsonEncode({
+        'status': 'failed',
+        'error': message,
+        'message': message,
+      });
       convo.addToolResult(
         call: call,
-        content: jsonEncode({
-          'status': 'failed',
-          'error': message,
-          'message': message,
-        }),
+        content: encoded,
+        visibleContent: encodeCliCard(encoded, call.arguments),
         isError: true,
-        toolName: fancadToolName,
+        toolName: toolName,
       );
       return null;
     }
@@ -532,9 +650,11 @@ class AgentLoop {
     }
 
     final image = takeCommandImage(payload);
+    final encoded = jsonEncode(image.payload);
     convo.addToolResult(
       call: call,
-      content: jsonEncode(image.payload),
+      content: encoded,
+      visibleContent: encodeCliCard(encoded, call.arguments),
       isError: image.payload['status'] == 'failed',
       toolName: request.displayName,
     );
@@ -594,4 +714,69 @@ class AgentLoop {
       stack.coalesceLast(produced, label: 'Assistant turn');
     }
   }
+}
+
+/// JSON for an exec tool result. The model sees this payload.
+/// A short [message] is filled in when the executor omitted one.
+/// The source stays off it; the panel reads [value] from the visible card.
+String encodeExecPayload(Map<String, Object?> payload) {
+  final shaped = <String, Object?>{
+    ...payload,
+    if (payload['message'] == null && payload['status'] == 'ok')
+      'message': execPreview(payload['value']),
+  };
+  try {
+    return jsonEncode(shaped);
+  } catch (_) {
+    return jsonEncode({
+      'status': '${shaped['status'] ?? 'ok'}',
+      'message': execPreview(shaped['value']),
+      'value': '${shaped['value']}',
+    });
+  }
+}
+
+/// Visible exec card. [source] is what the panel shows in full. The model
+/// transcript keeps [encoded], which does not repeat the snippet.
+String encodeExecCard(String encoded, String source) {
+  Object? decoded;
+  try {
+    decoded = jsonDecode(encoded);
+  } catch (_) {}
+  if (decoded is Map) {
+    return jsonEncode({
+      for (final entry in decoded.entries) '${entry.key}': entry.value,
+      'source': source,
+    });
+  }
+  return jsonEncode({'status': 'ok', 'message': encoded, 'source': source});
+}
+
+/// Visible CLI card. [input] is the tool call the panel shows above the
+/// result. The model transcript keeps [encoded], which does not repeat it.
+String encodeCliCard(String encoded, Map<String, Object?> input) {
+  Object? decoded;
+  try {
+    decoded = jsonDecode(encoded);
+  } catch (_) {}
+  if (decoded is Map) {
+    return jsonEncode({
+      for (final entry in decoded.entries) '${entry.key}': entry.value,
+      'input': input,
+    });
+  }
+  return jsonEncode({'status': 'ok', 'message': encoded, 'input': input});
+}
+
+/// One line of an exec value, stored as the model message.
+/// The card shows the full value.
+String execPreview(Object? value) {
+  if (value == null) return 'undefined';
+  String text;
+  try {
+    text = value is String ? value : jsonEncode(value);
+  } catch (_) {
+    text = '$value';
+  }
+  return text.length <= 120 ? text : '${text.substring(0, 117)}...';
 }

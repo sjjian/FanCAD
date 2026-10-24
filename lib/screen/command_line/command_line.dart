@@ -14,6 +14,11 @@ import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
 import 'dynamic_input_hud.dart';
 
+/// Tells the search field that the highlighted hit moved.
+class _TextCursor extends ChangeNotifier {
+  void ping() => notifyListeners();
+}
+
 /// Matches shown above the canvas HUD.
 ///
 /// Command mode lists verbs. Search mode lists drawn text in the current
@@ -55,7 +60,8 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
   final ScrollController _textScroll = ScrollController();
 
   /// The search field listens so its match count follows this list.
-  final ChangeNotifier textCursor = ChangeNotifier();
+  ChangeNotifier get textCursor => _textCursor;
+  final _TextCursor _textCursor = _TextCursor();
 
   bool get isOpen =>
       _textMode ? _textHits.isNotEmpty || _textEmpty : _matches.isNotEmpty;
@@ -242,7 +248,7 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
     _keptAnchor = hit?.anchor;
   }
 
-  void _notifyCursor() => textCursor.notifyListeners();
+  void _notifyCursor() => _textCursor.ping();
 
   /// Steps to another text hit, wrapping at either end, and frames it.
   void step(int delta) {

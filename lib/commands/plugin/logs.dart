@@ -32,7 +32,7 @@ class PluginsLogsCommand extends FanCadCommand {
       'id',
       context.l10n.prompt_extension_id,
     );
-    final handle = plugins.host.plugin(id);
+    final handle = plugins.manager.plugin(id);
     if (handle == null) return CommandResult.failed('$id is not installed');
     if (handle.log.isEmpty) {
       context.input.write('$id has logged nothing.');

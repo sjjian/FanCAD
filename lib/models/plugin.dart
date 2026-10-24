@@ -20,6 +20,32 @@ abstract class PluginEditorModel with _$PluginEditorModel {
   }) = _PluginEditorModel;
 }
 
+/// A panel a plugin declared. The tree, when the plugin has rendered one,
+/// lives on [PluginModel.viewTrees] under [id].
+@freezed
+abstract class PluginPanelModel with _$PluginPanelModel {
+  const factory PluginPanelModel({
+    required String id,
+    required String pluginId,
+    @Default('') String title,
+    @Default('sidebar') String location,
+    @Default('') String icon,
+  }) = _PluginPanelModel;
+}
+
+/// A modal a plugin is waiting on. [token] changes for each request.
+@freezed
+abstract class PluginDialogModel with _$PluginDialogModel {
+  const factory PluginDialogModel({
+    required int token,
+    required String pluginId,
+    @Default('') String title,
+    @Default('{}') String bodyJson,
+    @Default([]) List<String> buttons,
+    @Default(false) bool prompt,
+  }) = _PluginDialogModel;
+}
+
 /// One contributed command on a discovered extension.
 @freezed
 abstract class PluginCommandRefModel with _$PluginCommandRefModel {
@@ -29,7 +55,7 @@ abstract class PluginCommandRefModel with _$PluginCommandRefModel {
   }) = _PluginCommandRefModel;
 }
 
-/// Snapshot of one installed extension. The pkg [PluginHost] stays on the
+/// Snapshot of one installed extension. The pkg [PluginManager] stays on the
 /// notifier; this is what the panel selects.
 @freezed
 abstract class PluginRefModel with _$PluginRefModel {
@@ -57,6 +83,9 @@ abstract class PluginModel with _$PluginModel {
     @Default(false) bool started,
     @Default('') String directory,
     @Default([]) List<PluginRefModel> plugins,
+    @Default([]) List<PluginPanelModel> panels,
+    @Default({}) Map<String, String> viewTrees,
+    PluginDialogModel? dialog,
     @Default(0) int epoch,
   }) = _PluginModel;
 }

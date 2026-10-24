@@ -42,7 +42,15 @@ enum AiExposure {
   approvalRequired,
 
   /// Hidden from the model, for example UI-only commands like `zoom.in`.
+  ///
+  /// Still listed for MCP, so a caller can run `file.open`.
   hidden,
+
+  /// Available in the app, and left out of AI chat and MCP.
+  ///
+  /// Writing extension source and running an arbitrary script stay here.
+  /// Managing an extension and running a command it registered do not.
+  hostOnly,
 }
 
 /// The outcome of running a command.

@@ -65,6 +65,19 @@ void main() {
   test('a leftover approval title still localizes without dumping args', () {
     final en = lookupAppLocalizations(const Locale('en'));
     final zh = lookupAppLocalizations(const Locale('zh'));
+    expect(en.allow_run_code, 'Run this code?');
+    expect(zh.allow_run_code, '运行这段代码？');
+    expect(en.compact_context_title, 'Context is full');
+    expect(zh.compact_context_title, '上下文已满');
+    expect(
+      en.compact_context_body,
+      'Compress the earlier conversation and continue?',
+    );
+    expect(zh.compact_context_body, '压缩较早的对话并继续？');
+    expect(en.tool_expand, 'Expand');
+    expect(zh.tool_expand, '展开');
+    expect(en.tool_collapse, 'Collapse');
+    expect(zh.tool_collapse, '收起');
     expect(en.allow_one_change('Ellipse'), 'Allow Ellipse?');
     expect(en.allow_n_changes(8), 'Allow 8 changes?');
     expect(en.affects_n_objects(2), 'Affects 2 object(s).');

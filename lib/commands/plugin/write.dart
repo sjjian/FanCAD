@@ -25,7 +25,7 @@ class PluginsWriteCommand extends FanCadCommand {
   @override
   CommandRisk get risk => CommandRisk.destructive;
   @override
-  AiExposure get aiExposure => AiExposure.approvalRequired;
+  AiExposure get aiExposure => AiExposure.hostOnly;
   @override
   List<ParamSpec> get params => const [
     ParamSpec(name: 'id', type: ParamType.text),
@@ -43,7 +43,7 @@ class PluginsWriteCommand extends FanCadCommand {
       'id',
       context.l10n.prompt_extension_id,
     );
-    final handle = plugins.host.plugin(id);
+    final handle = plugins.manager.plugin(id);
     if (handle == null) return CommandResult.failed('$id is not installed');
     final directory = handle.manifest.directory;
     if (directory.isEmpty) {
@@ -67,7 +67,7 @@ class PluginsWriteCommand extends FanCadCommand {
 
     // Reloading here is the point: the caller wants the change to take effect,
     // and a write that leaves the old code running is a trap.
-    final reloaded = await plugins.host.reload(id);
+    final reloaded = await plugins.manager.reload(id);
     return CommandResult.ok(
       message:
           'Wrote ${p.relative(file.path, from: directory)} and reloaded $id',

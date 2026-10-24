@@ -4,7 +4,7 @@ import 'package:fancad_ops/fancad_ops.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('the catalog advertises one fancad tool, not every command', () {
+  test('the catalog advertises fancad and script, not every command', () {
     final registry = CommandRegistry();
     registry.register(
       CommandDescriptor(
@@ -28,12 +28,17 @@ void main() {
     );
 
     final tools = const CommandToolCatalog().toolsOf(registry);
-    expect(tools, hasLength(1));
-    expect(tools.single.name, fancadToolName);
-    expect(tools.single.parameters['required'], ['action']);
-    expect(tools.single.description, contains(fancadCallExample));
-    expect(tools.single.description, contains('never inside args'));
-    expect(tools.single.description, contains('skill.read'));
+    expect(tools.map((tool) => tool.name), [
+      fancadToolName,
+      extensionsToolName,
+    ]);
+    expect(tools.first.parameters['required'], ['action']);
+    expect(tools.first.description, contains(fancadCallExample));
+    expect(tools.first.description, contains('never inside args'));
+    expect(tools.first.description, isNot(contains('skill.read')));
+    expect(tools.first.description, contains('print.export'));
+    expect(tools.last.description, contains('extensions.list'));
+    expect(tools.last.description, contains('extensions.doc'));
   });
 
   test('a dotted path resolves back to the original command', () {

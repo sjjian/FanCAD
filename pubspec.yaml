@@ -9,7 +9,7 @@ environment:
 workspace:
   - pkg/fancad_core
   - pkg/fancad_render
-  - pkg/fancad_plugin_host
+  - pkg/fancad_extension
   - pkg/fancad_widget
   - pkg/fancad_ai
   - pkg/fancad_ops
@@ -27,8 +27,8 @@ dependencies:
     path: pkg/fancad_core
   fancad_render:
     path: pkg/fancad_render
-  fancad_plugin_host:
-    path: pkg/fancad_plugin_host
+  fancad_extension:
+    path: pkg/fancad_extension
   fancad_widget:
     path: pkg/fancad_widget
   fancad_ai:
@@ -45,6 +45,7 @@ dependencies:
   window_manager: ^0.4.3
   screen_retriever: ^0.2.2
   path: ^1.9.0
+  archive: ^4.0.7
   path_provider: ^2.1.5
   file_selector: ^1.0.3
   image: ^4.9.2

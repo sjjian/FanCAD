@@ -22,6 +22,8 @@ class PluginsReadCommand extends FanCadCommand {
   @override
   CommandRisk get risk => CommandRisk.readOnly;
   @override
+  AiExposure get aiExposure => AiExposure.hostOnly;
+  @override
   List<ParamSpec> get params => const [
     ParamSpec(name: 'id', type: ParamType.text),
     ParamSpec(name: 'path', type: ParamType.text),
@@ -33,7 +35,7 @@ class PluginsReadCommand extends FanCadCommand {
       'id',
       context.l10n.prompt_extension_id,
     );
-    final handle = plugins.host.plugin(id);
+    final handle = plugins.manager.plugin(id);
     if (handle == null) return CommandResult.failed('$id is not installed');
     final directory = handle.manifest.directory;
     if (directory.isEmpty) {

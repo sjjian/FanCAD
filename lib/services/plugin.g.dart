@@ -26,11 +26,11 @@ final bundledPluginDirectoriesProvider = Provider<List<String>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef BundledPluginDirectoriesRef = ProviderRef<List<String>>;
-String _$pluginNotifierHash() => r'89605f10e30abf8b57b94a29331def770d0e95e3';
+String _$pluginNotifierHash() => r'0b47b5a58e7df29ba905afaeeff87520149c825e';
 
-/// Discovered extensions and the host that loads them.
+/// Discovered extensions and the manager that loads them.
 ///
-/// The pkg [PluginHost] stays on this notifier. [PluginModel] is the snapshot
+/// The pkg [PluginManager] stays on this notifier. [PluginModel] is the snapshot
 /// the extensions panel selects.
 ///
 /// Copied from [PluginNotifier].

@@ -1,13 +1,18 @@
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_extension/fancad_extension.dart';
 
+import 'delete.dart';
 import 'edit.dart';
 import 'enable.dart';
 import 'eval.dart';
+import 'export.dart';
+import 'import.dart';
+import 'lifecycle.dart';
 import 'list.dart';
 import 'logs.dart';
 import 'read.dart';
 import 'reload.dart';
+import 'sandbox.dart';
 import 'scaffold.dart';
 import 'typings.dart';
 import 'write.dart';
@@ -19,12 +24,20 @@ import 'write.dart';
 /// and run it", exposed the same way to a person and to a model.
 class PluginCommands {
   PluginCommands({
-    required this.host,
+    required this.manager,
     required this.pluginsDirectory,
+    this.scratch,
     this.openEditor,
   });
 
-  final PluginHost host;
+  final PluginManager manager;
+
+  /// One-shot sandbox. Null only in tests that construct commands by hand
+  /// and never call `sandbox.query` or `sandbox.run`.
+  ///
+  /// [write] selects `sandbox.run`. A read-only call is `sandbox.query`.
+  final Future<CommandResult> Function(String source, {required bool write})?
+  scratch;
 
   /// Where user extensions live.
   final String pluginsDirectory;
@@ -45,5 +58,12 @@ class PluginCommands {
     PluginsTypingsCommand(this).toDescriptor(),
     PluginsEditCommand(this).toDescriptor(),
     PluginsEvalCommand(this).toDescriptor(),
+    PluginsImportCommand(this).toDescriptor(),
+    PluginsExportCommand(this).toDescriptor(),
+    PluginsDeleteCommand(this).toDescriptor(),
+    PluginsStartCommand(this).toDescriptor(),
+    PluginsStopCommand(this).toDescriptor(),
+    SandboxQueryCommand(this).toDescriptor(),
+    SandboxRunCommand(this).toDescriptor(),
   ];
 }

@@ -4,6 +4,7 @@ import 'package:test/test.dart';
 void main() {
   test('the system prompt tells the model to query instead of guessing', () {
     final prompt = const DocumentContextBuilder().systemPrompt();
+    expect(prompt, contains('do not call a tool for a greeting'));
     expect(prompt, contains('query.summary'));
     expect(prompt, contains('query.session'));
     expect(prompt, contains('query.selection'));
@@ -20,19 +21,7 @@ void main() {
     expect(prompt, contains('corner2'));
     expect(prompt, contains('Do not export extents'));
     expect(prompt, isNot(contains('fancad API')));
-  });
-
-  test('a leftover skill index lists names without dumping the body', () {
-    final prompt = const DocumentContextBuilder().systemPrompt(
-      skills: const [
-        SkillSummary(
-          name: 'inspect-drawing',
-          description: 'Inspect the open drawing.',
-        ),
-      ],
-    );
-    expect(prompt, contains('inspect-drawing: Inspect the open drawing.'));
-    expect(prompt, contains('Available skills:'));
-    expect(prompt, isNot(contains('Never dump the whole drawing')));
+    expect(prompt, isNot(contains('Available skills:')));
+    expect(prompt, isNot(contains('skill.read')));
   });
 }

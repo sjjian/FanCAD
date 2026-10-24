@@ -25,14 +25,21 @@ class LayoutNotifier extends _$LayoutNotifier {
     'history',
     'commands',
     'plugins',
-    'editor',
   };
+
+  /// Sidebar ids contributed by plugins. A stored id that is no longer
+  /// contributed falls back to layers the next time this set is replaced.
+  Set<String> _extraViews = {};
 
   @override
   LayoutModel build() {
     final stored = ref.watch(appSettingsProvider).layout.load();
+    // A leftover assistant or preferences id must not open an empty left
+    // pane. Plugin panel ids are not known until the host publishes them,
+    // so a stored plugin id also starts on layers and is chosen again from
+    // the activity bar.
     return stored.copyWith(
-      sidebarView: _leftViewId(stored.sidebarView),
+      sidebarView: _known(stored.sidebarView) ? stored.sidebarView : 'layers',
       sidebarWidth: stored.sidebarWidth.clamp(
         SidebarLayout.minWidth,
         SidebarLayout.maxWidth,
@@ -48,10 +55,23 @@ class LayoutNotifier extends _$LayoutNotifier {
     );
   }
 
+  bool _known(String viewId) =>
+      _leftViews.contains(viewId) || _extraViews.contains(viewId);
+
   /// Assistant used to live here; a leftover setting must not open an empty
   /// left pane after the chat moved to the right.
-  static String _leftViewId(String viewId) =>
-      _leftViews.contains(viewId) ? viewId : 'layers';
+  String _leftViewId(String viewId) => _known(viewId) ? viewId : 'layers';
+
+  /// Plugin sidebar ids the activity bar is currently showing.
+  void setExtraViews(Set<String> ids) {
+    if (_extraViews.length == ids.length && _extraViews.containsAll(ids)) {
+      return;
+    }
+    _extraViews = Set<String>.of(ids);
+    if (!_known(state.sidebarView)) {
+      state = state.copyWith(sidebarView: 'layers');
+    }
+  }
 
   /// Clicking the active icon collapses the sidebar, as VS Code does.
   void select(String viewId) {

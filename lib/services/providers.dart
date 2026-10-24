@@ -1,5 +1,5 @@
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_extension/fancad_extension.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -33,8 +33,9 @@ CommandRegistry commandRegistry(Ref ref) {
   return registry;
 }
 
-/// Where user extensions live. Overridden at startup with a real path, and left
-/// empty in tests so that a test run never scans the user's real folder.
+/// Where saved scripts live (`scripts/*.js`). Overridden at startup with a
+/// real path, and left empty in tests so a test run never reads the user's
+/// scripts. Extension folders are not scanned.
 @Riverpod(keepAlive: true)
 String pluginsDirectory(Ref ref) => '';
 

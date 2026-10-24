@@ -24,8 +24,7 @@ Future<void> main(List<String> arguments) async {
 
   final supportDirectory = await _resolveSupportDirectory();
   final settings = await SettingsStore.open(supportDirectory);
-  final pluginsDirectory = p.join(supportDirectory, 'extensions');
-  await Directory(pluginsDirectory).create(recursive: true);
+  final pluginsDirectory = await _extensionsDirectory(supportDirectory);
 
   await _configureWindow();
 
@@ -55,6 +54,13 @@ Future<String> _resolveSupportDirectory() async {
     // application from starting; an in-temp profile is a fine fallback.
     return Directory.systemTemp.createTempSync('fancad').path;
   }
+}
+
+/// Saved extensions live in `extensions/`.
+Future<String> _extensionsDirectory(String supportDirectory) async {
+  final current = Directory(p.join(supportDirectory, 'extensions'));
+  await current.create(recursive: true);
+  return current.path;
 }
 
 /// Folders of extensions shipped with the application.

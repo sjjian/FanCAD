@@ -1,5 +1,5 @@
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_extension/fancad_extension.dart';
 
 import '../command_base.dart';
 import 'commands.dart';
@@ -24,7 +24,7 @@ class PluginsEvalCommand extends FanCadCommand {
   @override
   CommandRisk get risk => CommandRisk.destructive;
   @override
-  AiExposure get aiExposure => AiExposure.approvalRequired;
+  AiExposure get aiExposure => AiExposure.hostOnly;
   @override
   List<ParamSpec> get params => const [
     ParamSpec(name: 'id', type: ParamType.text),
@@ -41,11 +41,11 @@ class PluginsEvalCommand extends FanCadCommand {
       'source',
       context.l10n.prompt_javascript,
     );
-    if (plugins.host.plugin(id) == null) {
+    if (plugins.manager.plugin(id) == null) {
       return CommandResult.failed('$id is not installed');
     }
     try {
-      final value = await plugins.host.evaluate(id, source);
+      final value = await plugins.manager.evaluate(id, source);
       context.input.write('$value');
       return CommandResult.ok(message: '$value', data: {'value': value});
     } on RpcException catch (error) {

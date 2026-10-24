@@ -113,7 +113,7 @@ void main() {
     expect(session.document.entities, isEmpty);
   });
 
-  test('a text-only reply advertises only the fancad tool', () async {
+  test('a text-only reply advertises the fancad and script tools', () async {
     late LlmRequest seen;
     final agent = AgentLoop(
       provider: _CaptureProvider((request) {
@@ -124,8 +124,12 @@ void main() {
       execute: execute,
     );
     await agent.run('Hi');
-    expect(seen.tools.map((tool) => tool.name), [fancadToolName]);
-    expect(seen.tools.single.description, fancadLlmTool.description);
+    expect(seen.tools.map((tool) => tool.name), [
+      fancadToolName,
+      extensionsToolName,
+    ]);
+    expect(seen.tools.first.description, fancadLlmTool.description);
+    expect(seen.tools[1].description, extensionsLlmTool.description);
   });
 
   test('an empty message does not call the model', () async {
@@ -149,12 +153,14 @@ void main() {
   });
 
   test('a read-only tool runs without asking', () async {
+    final conversation = Conversation();
     final agent = AgentLoop(
       provider: ScriptedLlmProvider([
         LlmCompletion(toolCalls: [_run('1', 'query.summary')]),
         const LlmCompletion(text: 'Nothing is drawn yet.'),
       ]),
       registry: registry,
+      conversation: conversation,
       execute: execute,
     );
 
@@ -162,6 +168,14 @@ void main() {
     expect(ran, ['query.summary']);
     expect(turn.reply, contains('Nothing'));
     expect(turn.cancelled, isFalse);
+    final row = conversation.visible.firstWhere(
+      (item) => item.role == ChatRole.tool,
+    );
+    expect(row.text, contains('"path":"query.summary"'));
+    final model = conversation.llmMessages.lastWhere(
+      (item) => item.role == LlmRole.tool,
+    );
+    expect(model.content, isNot(contains('"input"')));
   });
 
   test('a drawing png follows every tool result in that turn', () async {
@@ -414,63 +428,62 @@ void main() {
     },
   );
 
-  test(
-    'a failed plugin activate ships a repair hint and max rounds stop',
-    () async {
-      registry.register(
-        CommandDescriptor(
-          id: 'plugins.reload',
-          title: 'Reload',
-          risk: CommandRisk.edit,
-          handler: (_) async =>
-              const CommandResult.failed('could not activate: SyntaxError'),
+  test('a failed plugin activate ships a repair hint', () async {
+    registry.register(
+      CommandDescriptor(
+        id: 'plugins.reload',
+        title: 'Reload',
+        risk: CommandRisk.edit,
+        handler: (_) async =>
+            const CommandResult.failed('could not activate: SyntaxError'),
+      ),
+    );
+    final conversation = Conversation();
+    final reload = AgentLoop(
+      provider: ScriptedLlmProvider([
+        LlmCompletion(
+          toolCalls: [
+            _run('1', 'plugins.reload', {'id': 'demo.wall'}),
+          ],
         ),
-      );
-      final conversation = Conversation();
-      final reload = AgentLoop(
-        provider: ScriptedLlmProvider([
-          LlmCompletion(
-            toolCalls: [
-              _run('1', 'plugins.reload', {'id': 'demo.wall'}),
-            ],
-          ),
-          const LlmCompletion(text: 'I will fix it.'),
-        ]),
-        registry: registry,
-        conversation: conversation,
-        execute: execute,
-        typings: 'declare const fancad: FanCadApi;',
-        policy: const ApprovalPolicy(autoApproveEdits: true),
-        authoring: const _RepairOnActivate(),
-      );
+        const LlmCompletion(text: 'I will fix it.'),
+      ]),
+      registry: registry,
+      conversation: conversation,
+      execute: execute,
+      typings: 'declare const fancad: FanCadApi;',
+      policy: const ApprovalPolicy(autoApproveEdits: true),
+      authoring: const _RepairOnActivate(),
+    );
 
-      await reload.run('Reload the plugin');
-      expect(
-        conversation.visible
-            .singleWhere((item) => item.role == ChatRole.tool)
-            .text,
-        contains('repairHint'),
-      );
-      expect(
-        conversation.visible
-            .singleWhere((item) => item.role == ChatRole.tool)
-            .text,
-        contains('plugins.write'),
-      );
+    await reload.run('Reload the plugin');
+    expect(
+      conversation.visible
+          .singleWhere((item) => item.role == ChatRole.tool)
+          .text,
+      contains('repairHint'),
+    );
+    expect(
+      conversation.visible
+          .singleWhere((item) => item.role == ChatRole.tool)
+          .text,
+      contains('plugins.write'),
+    );
 
-      final looping = AgentLoop(
-        provider: ScriptedLlmProvider([
-          LlmCompletion(toolCalls: [_run('1', 'query.summary')]),
-        ]),
-        registry: registry,
-        execute: execute,
-        maxRounds: 1,
-      );
-      final stopped = await looping.run('Keep going');
-      expect(stopped.error, contains('Stopped after 1'));
-      expect(ran, ['query.summary']);
-    },
-  );
+    final looping = AgentLoop(
+      provider: ScriptedLlmProvider([
+        LlmCompletion(toolCalls: [_run('1', 'query.summary')]),
+        LlmCompletion(toolCalls: [_run('2', 'query.summary')]),
+        const LlmCompletion(text: 'Done.'),
+      ]),
+      registry: registry,
+      execute: execute,
+    );
+    final kept = await looping.run('Keep going');
+    expect(kept.isOk, isTrue);
+    expect(kept.reply, 'Done.');
+    expect(ran, ['query.summary', 'query.summary']);
+  });
 
   test('streamed leftovers paint tokens as they arrive', () async {
     final conversation = Conversation();
@@ -661,9 +674,70 @@ void main() {
     );
 
     await agent.run('Hello');
-    expect(seen.tools.map((tool) => tool.name), [fancadToolName, askToolId]);
+    expect(seen.tools.map((tool) => tool.name), [
+      fancadToolName,
+      extensionsToolName,
+      askToolId,
+    ]);
     expect(seen.tools.last.description, askLlmTool.description);
     expect(seen.messages.first.content, isNot(contains('Available tools:')));
+  });
+
+  test('exec runs above the command registry and returns the value', () async {
+    final conversation = Conversation();
+    final sources = <String>[];
+    var asked = false;
+    final agent = AgentLoop(
+      provider: ScriptedLlmProvider([
+        const LlmCompletion(
+          toolCalls: [
+            LlmToolCall(
+              id: '1',
+              name: execToolId,
+              arguments: {'source': '1 + 1'},
+            ),
+          ],
+        ),
+        const LlmCompletion(text: 'Two.'),
+      ]),
+      registry: registry,
+      conversation: conversation,
+      execute: (id, args, {tab}) async {
+        sources.add('command:$id');
+        return execute(id, args, tab: tab);
+      },
+      execCode: (source) async {
+        sources.add(source);
+        return {'status': 'ok', 'value': 2};
+      },
+      askApproval: (_) async {
+        asked = true;
+        return true;
+      },
+    );
+
+    final turn = await agent.run('What is one plus one?');
+    expect(turn.isOk, isTrue);
+    expect(asked, isTrue);
+    expect(sources, ['1 + 1']);
+    expect(registry.find(execToolId), isNull);
+    expect(turn.reply, 'Two.');
+    final row = conversation.visible.firstWhere(
+      (item) => item.role == ChatRole.tool,
+    );
+    expect(row.toolName, execToolId);
+    expect(row.text, contains('"value":2'));
+    expect(row.text, contains('"message":"2"'));
+    expect(row.text, contains('"source":"1 + 1"'));
+    final model = conversation.llmMessages.lastWhere(
+      (item) => item.role == LlmRole.tool,
+    );
+    expect(model.content, isNot(contains('source')));
+    expect(agent.advertisedTools.map((tool) => tool.name), [
+      fancadToolName,
+      extensionsToolName,
+      execToolId,
+    ]);
   });
 
   test(
@@ -748,6 +822,206 @@ void main() {
     expect(calls, 2);
     expect(isToolStubContent(conversation.llmMessages[2].content), isTrue);
   });
+
+  test('prompt tokens under the window do not ask to compact', () async {
+    final conversation = _dumpConversation();
+    var asked = 0;
+    final provider = ScriptedLlmProvider([
+      LlmCompletion(
+        toolCalls: [_run('2', 'query.summary')],
+        usage: const LlmUsage(promptTokens: LlmUsage.contextWindowTokens),
+      ),
+      const LlmCompletion(text: 'Moved them.'),
+    ]);
+    final agent = AgentLoop(
+      provider: provider,
+      registry: registry,
+      execute: execute,
+      conversation: conversation,
+      askCompact: () async {
+        asked++;
+        return true;
+      },
+    );
+
+    final turn = await agent.run('now the right one');
+    expect(turn.isOk, isTrue);
+    expect(asked, 0);
+    final followUp = provider.requests[1].messages.firstWhere(
+      (item) => item.role == LlmRole.tool,
+    );
+    expect(followUp.content, contains('entity-dump:'));
+  });
+
+  test(
+    'prompt tokens over the window ask once, and a later reading under it does not',
+    () async {
+      final conversation = _dumpConversation();
+      var asked = 0;
+      final window = LlmUsage.contextWindowTokens;
+      final provider = ScriptedLlmProvider([
+        LlmCompletion(
+          toolCalls: [_run('2', 'query.summary')],
+          usage: LlmUsage(promptTokens: window + 1),
+        ),
+        LlmCompletion(
+          toolCalls: [_run('3', 'query.summary')],
+          usage: LlmUsage(promptTokens: window),
+        ),
+        const LlmCompletion(text: 'Done.'),
+      ]);
+      final agent = AgentLoop(
+        provider: provider,
+        registry: registry,
+        execute: execute,
+        conversation: conversation,
+        askCompact: () async {
+          asked++;
+          return true;
+        },
+      );
+
+      final turn = await agent.run('now the right one');
+      expect(turn.isOk, isTrue);
+      expect(asked, 1);
+      expect(provider.requests, hasLength(3));
+      final before = provider.requests[0].messages.firstWhere(
+        (item) => item.role == LlmRole.tool,
+      );
+      expect(before.content, contains('entity-dump:'));
+      final after = provider.requests[1].messages.firstWhere(
+        (item) => item.role == LlmRole.tool,
+      );
+      expect(after.content, startsWith('omitted:'));
+      expect(conversation.visible[1].text, contains('entity-dump:'));
+      final later = provider.requests[2].messages.where(
+        (item) =>
+            item.role == LlmRole.tool && item.content.contains('entityCount'),
+      );
+      expect(later, isNotEmpty);
+    },
+  );
+
+  test(
+    'an agreed prompt size is not asked again until a larger reading',
+    () async {
+      var asked = 0;
+      final window = LlmUsage.contextWindowTokens;
+      final provider = ScriptedLlmProvider([
+        LlmCompletion(
+          toolCalls: [_run('2', 'query.summary')],
+          usage: LlmUsage(promptTokens: window + 1),
+        ),
+        LlmCompletion(
+          toolCalls: [_run('3', 'query.summary')],
+          usage: LlmUsage(promptTokens: window + 1),
+        ),
+        LlmCompletion(
+          toolCalls: [_run('4', 'query.summary')],
+          usage: LlmUsage(promptTokens: window + 2),
+        ),
+        const LlmCompletion(text: 'Done.'),
+      ]);
+      final agent = AgentLoop(
+        provider: provider,
+        registry: registry,
+        execute: execute,
+        conversation: _dumpConversation(),
+        askCompact: () async {
+          asked++;
+          return true;
+        },
+      );
+
+      final turn = await agent.run('now the right one');
+      expect(turn.isOk, isTrue);
+      expect(asked, 2);
+      expect(provider.requests, hasLength(4));
+    },
+  );
+
+  test('declining a full context stops the turn without an error', () async {
+    var asked = 0;
+    final provider = ScriptedLlmProvider([
+      LlmCompletion(
+        toolCalls: [_run('2', 'query.summary')],
+        usage: const LlmUsage(promptTokens: LlmUsage.contextWindowTokens + 1),
+      ),
+      const LlmCompletion(text: 'Moved them.'),
+    ]);
+    final agent = AgentLoop(
+      provider: provider,
+      registry: registry,
+      execute: execute,
+      conversation: _dumpConversation(),
+      askCompact: () async {
+        asked++;
+        return false;
+      },
+    );
+
+    final stopped = await agent.run('now the right one');
+    expect(stopped.cancelled, isTrue);
+    expect(stopped.error, isNull);
+    expect(asked, 1);
+    expect(provider.requests, hasLength(1));
+  });
+
+  test('a context-length rejection asks, then compact-retries once', () async {
+    final conversation = _dumpConversation();
+    var asked = 0;
+    var calls = 0;
+    final agent = AgentLoop(
+      provider: _OverflowThenOkProvider(() => calls++),
+      registry: registry,
+      execute: execute,
+      conversation: conversation,
+      askCompact: () async {
+        asked++;
+        return true;
+      },
+    );
+
+    final turn = await agent.run('now the right one');
+    expect(turn.isOk, isTrue);
+    expect(turn.reply, 'Moved.');
+    expect(asked, 1);
+    expect(calls, 2);
+    expect(isToolStubContent(conversation.llmMessages[2].content), isTrue);
+    expect(conversation.visible[1].text, contains('entity-dump:'));
+  });
+
+  test('declining a context-length rejection stops without an error', () async {
+    var calls = 0;
+    final agent = AgentLoop(
+      provider: _OverflowThenOkProvider(() => calls++),
+      registry: registry,
+      execute: execute,
+      conversation: _dumpConversation(),
+      askCompact: () async => false,
+    );
+
+    final stopped = await agent.run('now the right one');
+    expect(stopped.cancelled, isTrue);
+    expect(stopped.error, isNull);
+    expect(calls, 1);
+  });
+}
+
+Conversation _dumpConversation() {
+  final conversation = Conversation();
+  conversation.addUser('offset the left turtle');
+  conversation.addAssistantLlm(
+    const LlmMessage.assistant(
+      '',
+      toolCalls: [LlmToolCall(id: '1', name: 'fancad', arguments: {})],
+    ),
+  );
+  conversation.addToolResult(
+    call: const LlmToolCall(id: '1', name: 'fancad', arguments: {}),
+    content: 'entity-dump:${'x' * 2000}',
+  );
+  return conversation;
 }
 
 class _OverflowThenOkProvider extends LlmProvider {

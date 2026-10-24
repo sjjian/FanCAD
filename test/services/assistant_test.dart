@@ -220,6 +220,23 @@ void main() {
     },
   );
 
+  test('a message sends when no drawing is open', () async {
+    final app = headless();
+    final ai = app.container.read(assistantNotifierProvider.notifier);
+    final accounts = app.container.read(
+      assistantAccountsNotifierProvider.notifier,
+    );
+    accounts.setApiKey('sk-test');
+    accounts.setBaseUrl('http://127.0.0.1:9/v1');
+    expect(ai.workspace.active, isNull);
+
+    await ai.send('hello');
+
+    expect(ai.state.error, isNot(contains('Open a drawing first')));
+    expect(ai.state.busy, isFalse);
+    expect(ai.state.activeChat.conversation.visible.first.text, 'hello');
+  });
+
   test('clearing a leftover pasted key forgets it', () {
     final app = headless();
     final ai = app.container.read(assistantNotifierProvider.notifier);

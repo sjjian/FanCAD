@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_extension/fancad_extension.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -27,7 +27,7 @@ JsEngineFactory scriptedEngine() =>
 
 late Headless app;
 late Directory root;
-late PluginHost host;
+late PluginManager host;
 
 Workspace get workspace => app.workspace;
 
@@ -41,14 +41,14 @@ void main() {
       workspace: () => workspace,
       plugins: PluginSettings(SettingsStore.inMemory()),
     );
-    host = PluginHost(
+    host = PluginManager(
       registry: workspace.commands,
       delegate: delegate,
       transport: LocalTransport(engineFactory: scriptedEngine()),
     );
     await host.start();
     for (final descriptor in PluginCommands(
-      host: host,
+      manager: host,
       pluginsDirectory: root.path,
     ).descriptors()) {
       workspace.commands.register(descriptor);
@@ -170,11 +170,17 @@ void main() {
       expect(disabled.status, CommandStatus.ok);
       expect(disabled.data!['enabled'], isFalse);
       expect(host.plugin('acme.safe')!.state, PluginState.disabled);
+      expect(workspace.commands.find('acme.safe.run'), isNull);
 
       final enabled = await run('plugins.enable', {'id': 'acme.safe'});
       expect(enabled.status, CommandStatus.ok);
       expect(enabled.data!['enabled'], isTrue);
       expect(host.plugin('acme.safe')!.state, PluginState.installed);
+      expect(workspace.commands.find('acme.safe.run'), isNotNull);
+
+      final disabledAgain = await run('plugins.disable', {'id': 'acme.safe'});
+      expect(disabledAgain.status, CommandStatus.ok);
+      expect(workspace.commands.find('acme.safe.run'), isNull);
     },
   );
 

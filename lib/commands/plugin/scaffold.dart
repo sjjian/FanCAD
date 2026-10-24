@@ -1,5 +1,5 @@
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_extension/fancad_extension.dart';
 import 'package:path/path.dart' as p;
 
 import '../command_base.dart';
@@ -23,6 +23,8 @@ class PluginsScaffoldCommand extends FanCadCommand {
   String get description =>
       'Writes a new extension folder with a manifest and a working '
       'main.js, then loads it. Returns the paths written.';
+  @override
+  AiExposure get aiExposure => AiExposure.hostOnly;
   @override
   List<ParamSpec> get params => const [
     ParamSpec(
@@ -52,7 +54,7 @@ class PluginsScaffoldCommand extends FanCadCommand {
       context.l10n.prompt_extension_id,
     );
     if (id.isEmpty) return const CommandResult.failed('An id is required');
-    if (plugins.host.plugin(id) != null) {
+    if (plugins.manager.plugin(id) != null) {
       return CommandResult.failed('$id is already installed');
     }
     if (!isSafeSegment(id)) {
@@ -62,19 +64,19 @@ class PluginsScaffoldCommand extends FanCadCommand {
       );
     }
 
-    final manifest = await PluginHost.scaffold(
+    final manifest = await PluginManager.scaffold(
       root: plugins.pluginsDirectory,
       id: id,
       name: context.args.text('name') ?? id,
       description: context.args.text('description') ?? '',
       source: context.args.text('source'),
     );
-    final handle = await plugins.host.install(manifest.directory);
+    final handle = await plugins.manager.install(manifest.directory);
     if (handle == null) {
       return CommandResult.failed('Wrote $id but could not install it');
     }
-    await plugins.host.activate(id);
-    final refreshed = plugins.host.plugin(id)!;
+    await plugins.manager.activate(id);
+    final refreshed = plugins.manager.plugin(id)!;
     return CommandResult.ok(
       message: 'Created $id in ${manifest.directory}',
       data: {

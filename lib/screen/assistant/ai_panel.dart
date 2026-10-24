@@ -4,6 +4,7 @@ import 'package:fancad_ai/fancad_ai.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:file_selector/file_selector.dart' as picker;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
@@ -15,6 +16,7 @@ import '../../services/assistant.dart';
 import '../../services/assistant_images.dart';
 import '../../services/settings.dart';
 import '../../services/workspace.dart';
+import '../plugin/js_highlight.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
 import 'assistant_markdown.dart';
@@ -322,10 +324,6 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         receipt: receipt,
         readImage: controller.readChatImage,
         onCopy: () => _copy(receipt.raw),
-        onFlash: () =>
-            controller.flashEntities(assistantReceiptEntityIds(receipt)),
-        onPin: () =>
-            controller.pinReceiptIds(assistantReceiptEntityIds(receipt)),
       ),
       AssistantLogMessageModel() => const SizedBox.shrink(),
     };
@@ -341,6 +339,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           s.busy,
           s.approval,
           s.question,
+          s.compactPrompt,
           s.pins,
           s.images.length,
           s.error,
@@ -372,9 +371,11 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     final busy = model.busy;
     final pending = model.approval;
     final question = model.question;
+    final compactPrompt = model.compactPrompt;
     final showWorking =
         pending == null &&
         question == null &&
+        !compactPrompt &&
         assistantPanelShowsWorking(busy: busy, messages: messages);
     final showCaret = assistantPanelShowsCaret(busy: busy, messages: messages);
     _input.pins = model.pins;
@@ -424,10 +425,6 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                             pending: pending,
                             onAccept: controller.acceptPending,
                             onReject: controller.rejectPending,
-                            onFlash: () =>
-                                controller.flashEntities(pending.highlightIds),
-                            onPin: () =>
-                                controller.pinReceiptIds(pending.highlightIds),
                           ),
                       ];
                       return CustomScrollView(
@@ -488,11 +485,16 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                   ),
           ),
           if (model.error != null)
-            FanCadBanner(
-              tone: FanCadTone.danger,
-              inset: true,
-              message: model.error!,
-              onDismiss: controller.clearError,
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: assistantPromptInset,
+              ),
+              child: FanCadBanner(
+                tone: FanCadTone.danger,
+                inset: true,
+                message: model.error!,
+                onDismiss: controller.clearError,
+              ),
             ),
           _Composer(
             controller: _input,
@@ -512,9 +514,8 @@ class _AiPanelState extends ConsumerState<AiPanel> {
             usage: model.activeChat.usage,
             pins: model.pins,
             workspace: controller.workspace,
-            ask: question == null
-                ? null
-                : _AskCard(
+            ask: question != null
+                ? _AskCard(
                     question: question,
                     onSubmit: controller.submitQuestion,
                     onCancel: controller.cancelQuestion,
@@ -522,7 +523,13 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                     onHoverPin: controller.hoverPin,
                     onHoverPins: controller.hoverPins,
                     resolvePin: controller.resolvePin,
-                  ),
+                  )
+                : compactPrompt
+                ? _CompactContextCard(
+                    onAccept: controller.acceptCompact,
+                    onReject: controller.declineCompact,
+                  )
+                : null,
             onChanged: (_) {},
             onSend: _send,
             onStop: controller.stop,
@@ -1115,15 +1122,11 @@ class _ToolCard extends StatefulWidget {
     required this.receipt,
     required this.readImage,
     required this.onCopy,
-    required this.onFlash,
-    required this.onPin,
   });
 
   final AssistantReceiptModel receipt;
   final Future<Uint8List?> Function(String id) readImage;
   final VoidCallback onCopy;
-  final VoidCallback onFlash;
-  final VoidCallback onPin;
 
   @override
   State<_ToolCard> createState() => _ToolCardState();
@@ -1134,20 +1137,22 @@ class _ToolCardState extends State<_ToolCard> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final receipt = widget.receipt;
+    final tokens = context.tokens;
+    final isExec = receipt.toolName == execToolId;
+    final source = isExec ? execCardSource(receipt.raw) : null;
     final dot = receipt.isError
         ? tokens.danger
         : receipt.isOk
         ? tokens.success
         : tokens.warning;
-    final verb = receipt.count > 1
-        ? '${receipt.verb} ×${receipt.count}'
-        : receipt.verb;
+    final description = assistantToolDescription(receipt);
+    final hasBody =
+        receipt.images.isNotEmpty || source != null || receipt.raw.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.only(bottom: FanCadTokens.space3),
       child: Material(
-        color: tokens.surfaceRaised,
+        color: tokens.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(FanCadTokens.radius),
           side: BorderSide(color: tokens.border),
@@ -1156,96 +1161,117 @@ class _ToolCardState extends State<_ToolCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             InkWell(
-              onTap: () {
-                widget.onFlash();
-                setState(() => _open = !_open);
-              },
+              onTap: hasBody ? () => setState(() => _open = !_open) : null,
               onSecondaryTap: widget.onCopy,
               borderRadius: BorderRadius.circular(FanCadTokens.radius),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: FanCadTokens.space3,
-                  vertical: FanCadTokens.space2,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: dot,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: FanCadTokens.space2),
-                    Text(
-                      verb,
-                      style: tokens.bodyStyle.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: receipt.isError ? tokens.danger : tokens.text,
-                      ),
-                    ),
-                    if (receipt.summary.isNotEmpty) ...[
-                      const SizedBox(width: FanCadTokens.space2),
+              child: SizedBox(
+                height: FanCadTokens.titleBarHeight,
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    left: FanCadTokens.space2,
+                    right: FanCadTokens.space3,
+                  ),
+                  child: Row(
+                    children: [
+                      if (hasBody) ...[
+                        Icon(
+                          _open ? Icons.expand_less : Icons.expand_more,
+                          size: FanCadTokens.iconSmall,
+                          color: tokens.textMuted,
+                        ),
+                        const SizedBox(width: FanCadTokens.space2),
+                      ],
                       Expanded(
                         child: Text(
-                          receipt.summary,
+                          description,
                           style: tokens.labelStyle,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ] else
-                      const Spacer(),
-                    FanCadIconButton(
-                      key: const Key('assistant-receipt-pin'),
-                      icon: Icons.add_comment_outlined,
-                      tooltip: context.l10n.pin_into_chat,
-                      iconSize: FanCadTokens.iconSmall,
-                      onPressed: widget.onPin,
-                    ),
-                    Icon(
-                      _open ? Icons.expand_less : Icons.expand_more,
-                      size: FanCadTokens.iconSmall,
-                      color: tokens.textFaint,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (_open && receipt.images.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  FanCadTokens.space3,
-                  0,
-                  FanCadTokens.space3,
-                  FanCadTokens.space2,
-                ),
-                child: _ChatImageStrip(
-                  images: [
-                    for (final image in receipt.images)
-                      (id: image.id, mime: image.mime),
-                  ],
-                  readImage: widget.readImage,
-                  fitWidth: true,
-                ),
-              ),
-            if (_open && receipt.raw.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  FanCadTokens.space3,
-                  0,
-                  FanCadTokens.space3,
-                  FanCadTokens.space3,
-                ),
-                child: SelectableText(
-                  receipt.raw,
-                  style: tokens.monoStyle.copyWith(
-                    fontSize: 11,
-                    height: 1.4,
-                    color: tokens.textMuted,
+                      const SizedBox(width: FanCadTokens.space2),
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: dot,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
+            ),
+            if (_open && hasBody) ...[
+              const FanCadHairline(strong: false),
+              if (receipt.images.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                  ),
+                  child: _ChatImageStrip(
+                    images: [
+                      for (final image in receipt.images)
+                        (id: image.id, mime: image.mime),
+                    ],
+                    readImage: widget.readImage,
+                    fitWidth: true,
+                  ),
+                ),
+              if (source != null) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                  ),
+                  child: _JavaScriptBlock(source: source),
+                ),
+                const FanCadHairline(strong: false),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                    FanCadTokens.space3,
+                    FanCadTokens.space3,
+                  ),
+                  child: _ExecResultBlock(
+                    text: execCardResult(receipt.raw),
+                    isError: receipt.isError,
+                  ),
+                ),
+              ] else if (receipt.raw.isNotEmpty) ...[
+                if (cliCardInput(receipt.raw) case final input?) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      FanCadTokens.space3,
+                      FanCadTokens.space2,
+                      FanCadTokens.space3,
+                      FanCadTokens.space2,
+                    ),
+                    child: _ExecResultBlock(text: input, isError: false),
+                  ),
+                  const FanCadHairline(strong: false),
+                ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                  ),
+                  child: _ExecResultBlock(
+                    text: cliCardOutput(receipt.raw),
+                    isError: receipt.isError,
+                  ),
+                ),
+              ],
+            ],
           ],
         ),
       ),
@@ -1253,109 +1279,521 @@ class _ToolCardState extends State<_ToolCard> {
   }
 }
 
-class _ApprovalCard extends StatelessWidget {
+class _ApprovalCard extends StatefulWidget {
   const _ApprovalCard({
     required this.pending,
     required this.onAccept,
     required this.onReject,
-    required this.onFlash,
-    required this.onPin,
   });
 
   final PendingChangeSet pending;
   final VoidCallback onAccept;
   final VoidCallback onReject;
-  final VoidCallback onFlash;
-  final VoidCallback onPin;
+
+  @override
+  State<_ApprovalCard> createState() => _ApprovalCardState();
+}
+
+class _ApprovalCardState extends State<_ApprovalCard> {
+  bool _open = true;
 
   @override
   Widget build(BuildContext context) {
+    final pending = widget.pending;
     final tokens = context.tokens;
     final l10n = context.l10n;
-    final title = pending.calls.length == 1
+    final sources = _execSources(pending);
+    final execOnly =
+        sources.isNotEmpty &&
+        pending.calls.every((call) => call.name == execToolId);
+    final title = execOnly
+        ? l10n.allow_run_code
+        : pending.calls.length == 1
         ? l10n.allow_one_change(
             pending.commands.isNotEmpty
                 ? pending.commands.first.title
                 : pending.calls.first.name,
           )
         : l10n.allow_n_changes(pending.calls.length);
+    final execTitle = pending.commands
+        .where((command) => command.id == execToolId)
+        .map((command) => command.title)
+        .firstOrNull;
+    final lines = [
+      if (!execOnly)
+        for (final line in pending.groupedTitles)
+          if (execTitle == null ||
+              (line != execTitle && !line.startsWith('$execTitle ×')))
+            line,
+    ];
+    final hasBody =
+        lines.isNotEmpty ||
+        sources.isNotEmpty ||
+        pending.highlightIds.isNotEmpty;
+    final open = _open && hasBody;
     return Padding(
       padding: const EdgeInsets.only(bottom: FanCadTokens.space3),
       child: Material(
         key: const Key('assistant-approval-card'),
-        color: tokens.surfaceRaised,
+        color: tokens.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(FanCadTokens.radius),
-          side: BorderSide(color: tokens.accent.withValues(alpha: 0.55)),
+          side: BorderSide(color: tokens.border),
         ),
-        child: GestureDetector(
-          onTap: onFlash,
-          child: Padding(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: hasBody ? () => setState(() => _open = !_open) : null,
+              borderRadius: BorderRadius.circular(FanCadTokens.radius),
+              child: SizedBox(
+                height: FanCadTokens.titleBarHeight,
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    left: FanCadTokens.space2,
+                    right: FanCadTokens.space3,
+                  ),
+                  child: Row(
+                    children: [
+                      if (hasBody) ...[
+                        Icon(
+                          open ? Icons.expand_less : Icons.expand_more,
+                          size: FanCadTokens.iconSmall,
+                          color: tokens.textMuted,
+                        ),
+                        const SizedBox(width: FanCadTokens.space2),
+                      ],
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: tokens.labelStyle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: FanCadTokens.space2),
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: tokens.warning,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (open) ...[
+              const FanCadHairline(strong: false),
+              if (lines.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final line in lines)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(line, style: tokens.labelStyle),
+                        ),
+                    ],
+                  ),
+                ),
+              for (var i = 0; i < sources.length; i++) ...[
+                if (lines.isNotEmpty || i > 0)
+                  const FanCadHairline(strong: false),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                  ),
+                  child: _JavaScriptBlock(source: sources[i]),
+                ),
+              ],
+              if (pending.highlightIds.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                    FanCadTokens.space3,
+                    FanCadTokens.space2,
+                  ),
+                  child: Text(
+                    l10n.affects_n_objects(pending.highlightIds.length),
+                    style: tokens.labelStyle.copyWith(color: tokens.textMuted),
+                  ),
+                ),
+            ],
+            const FanCadHairline(strong: false),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: FanCadTokens.space2,
+                vertical: FanCadTokens.space1,
+              ),
+              child: Row(
+                children: [
+                  const Spacer(),
+                  TextButton(
+                    key: const Key('assistant-approval-cancel'),
+                    onPressed: widget.onReject,
+                    child: Text(l10n.cancel, style: tokens.bodyStyle),
+                  ),
+                  const SizedBox(width: FanCadTokens.space1),
+                  FilledButton(
+                    key: const Key('assistant-approval-continue'),
+                    onPressed: widget.onAccept,
+                    child: Text(l10n.continue_action),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+List<String> _execSources(PendingChangeSet pending) => [
+  for (final call in pending.calls)
+    if (call.name == execToolId)
+      if (parseExecSource(call.arguments) case final source?) source,
+];
+
+/// Preview height of a tool body. Taller text folds instead of scrolling,
+/// so the wheel stays with the chat list.
+const _foldedBodyHeight = 360.0;
+
+/// Shows [child] in full when it fits. Past [_foldedBodyHeight], clips and
+/// floats a button that expands the body into the chat list.
+class _FoldedBody extends StatefulWidget {
+  const _FoldedBody({required this.child, this.fade});
+
+  final Widget child;
+
+  /// Colour the bottom fade blends into. Matches the card fill behind the text.
+  final Color? fade;
+
+  @override
+  State<_FoldedBody> createState() => _FoldedBodyState();
+}
+
+class _FoldedBodyState extends State<_FoldedBody> {
+  bool _expanded = false;
+  bool _overflows = false;
+  bool _hover = false;
+
+  void _onOverflow(bool overflows) {
+    if (!mounted || overflows == _overflows) return;
+    setState(() => _overflows = overflows);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    final clip = !_expanded;
+    final fade = widget.fade ?? tokens.surface;
+    final showButton = _overflows && _hover;
+    return MouseRegion(
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: (_) {
+        if (!_hover) setState(() => _hover = true);
+      },
+      onExit: (_) {
+        if (_hover) setState(() => _hover = false);
+      },
+      child: Stack(
+        children: [
+          _FoldClip(
+            clip: clip,
+            maxHeight: _foldedBodyHeight,
+            onOverflow: _onOverflow,
+            child: widget.child,
+          ),
+          if (clip && showButton)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 48,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [fade.withValues(alpha: 0), fade],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (showButton)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: FanCadTokens.space2,
+              child: Center(
+                child: Material(
+                  color: tokens.surfaceOverlay,
+                  elevation: 1,
+                  borderRadius: BorderRadius.circular(FanCadTokens.radius),
+                  child: InkWell(
+                    onTap: () => setState(() => _expanded = !_expanded),
+                    borderRadius: BorderRadius.circular(FanCadTokens.radius),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: FanCadTokens.space2,
+                        vertical: FanCadTokens.space1,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _expanded ? Icons.expand_less : Icons.expand_more,
+                            size: FanCadTokens.iconSmall,
+                            color: tokens.text,
+                          ),
+                          const SizedBox(width: FanCadTokens.space1),
+                          Text(
+                            _expanded ? l10n.tool_collapse : l10n.tool_expand,
+                            style: tokens.labelStyle.copyWith(
+                              color: tokens.text,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Lays the child out at its real height and, while [clip] is set, reports
+/// only the first [_foldedBodyHeight] pixels. No inner scrollable.
+class _FoldClip extends SingleChildRenderObjectWidget {
+  const _FoldClip({
+    required this.clip,
+    required this.maxHeight,
+    required this.onOverflow,
+    required super.child,
+  });
+
+  final bool clip;
+  final double maxHeight;
+  final ValueChanged<bool> onOverflow;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderFoldClip(
+      clip: clip,
+      maxHeight: maxHeight,
+      onOverflow: onOverflow,
+    );
+  }
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderFoldClip renderObject) {
+    renderObject
+      ..clip = clip
+      ..maxHeight = maxHeight
+      ..onOverflow = onOverflow;
+  }
+}
+
+class _RenderFoldClip extends RenderProxyBox {
+  _RenderFoldClip({
+    required bool clip,
+    required double maxHeight,
+    required this.onOverflow,
+  }) : _clip = clip,
+       _maxHeight = maxHeight;
+
+  bool _clip;
+  double _maxHeight;
+  ValueChanged<bool> onOverflow;
+  bool? _overflows;
+
+  set clip(bool value) {
+    if (_clip == value) return;
+    _clip = value;
+    markNeedsLayout();
+  }
+
+  set maxHeight(double value) {
+    if (_maxHeight == value) return;
+    _maxHeight = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.smallest;
+      return;
+    }
+    final maxWidth = constraints.maxWidth;
+    child.layout(
+      BoxConstraints(
+        minWidth: maxWidth.isFinite ? maxWidth : constraints.minWidth,
+        maxWidth: maxWidth,
+        minHeight: 0,
+        maxHeight: double.infinity,
+      ),
+      parentUsesSize: true,
+    );
+    final overflows = child.size.height > _maxHeight + 1;
+    final height = _clip && child.size.height > _maxHeight
+        ? _maxHeight
+        : child.size.height;
+    final width = maxWidth.isFinite ? maxWidth : child.size.width;
+    size = constraints.constrain(Size(width, height));
+    if (overflows == _overflows) return;
+    _overflows = overflows;
+    final reported = overflows;
+    WidgetsBinding.instance.addPostFrameCallback((_) => onOverflow(reported));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) return;
+    if (child.size.height <= size.height) {
+      context.paintChild(child, offset);
+      return;
+    }
+    context.pushClipRect(needsCompositing, offset, Offset.zero & size, (
+      context,
+      offset,
+    ) {
+      context.paintChild(child, offset);
+    });
+  }
+}
+
+/// Syntax-coloured JavaScript the exec cards show in full.
+class _JavaScriptBlock extends StatelessWidget {
+  const _JavaScriptBlock({required this.source});
+
+  final String source;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final plain = tokens.monoStyle.copyWith(
+      fontSize: 12,
+      height: 1.5,
+      color: tokens.textMuted,
+    );
+    return _FoldedBody(
+      child: SelectableText.rich(
+        TextSpan(
+          style: plain,
+          children: highlightJavaScript(
+            source,
+            plain: plain,
+            keyword: plain.copyWith(color: tokens.accent),
+            string: plain.copyWith(color: tokens.success),
+            comment: plain.copyWith(color: tokens.textFaint),
+            number: plain.copyWith(color: tokens.warning),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExecResultBlock extends StatelessWidget {
+  const _ExecResultBlock({required this.text, required this.isError});
+
+  final String text;
+  final bool isError;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return _FoldedBody(
+      child: SelectableText(
+        text,
+        style: tokens.monoStyle.copyWith(
+          fontSize: 12,
+          height: 1.45,
+          color: isError ? tokens.danger : tokens.textMuted,
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactContextCard extends StatelessWidget {
+  const _CompactContextCard({required this.onAccept, required this.onReject});
+
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+    return CallbackShortcuts(
+      bindings: {const SingleActivator(LogicalKeyboardKey.escape): onReject},
+      child: Focus(
+        autofocus: true,
+        child: Material(
+          key: const Key('assistant-compact-card'),
+          color: tokens.surfaceOverlay,
+          elevation: 3,
+          shadowColor: tokens.shadow,
+          borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(FanCadTokens.radiusLarge),
+              border: Border.all(color: tokens.borderStrong),
+            ),
             padding: const EdgeInsets.fromLTRB(
               FanCadTokens.space3,
-              FanCadTokens.space2,
+              FanCadTokens.space3,
               FanCadTokens.space3,
               FanCadTokens.space2,
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: tokens.accent,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: FanCadTokens.space2),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: tokens.bodyStyle.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    FanCadIconButton(
-                      key: const Key('assistant-approval-pin'),
-                      icon: Icons.add_comment_outlined,
-                      tooltip: l10n.pin_into_chat,
-                      iconSize: FanCadTokens.iconSmall,
-                      onPressed: onPin,
-                    ),
-                  ],
+                Text(
+                  l10n.compact_context_title,
+                  style: tokens.bodyStyle.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: FanCadTokens.space2),
-                for (final line in pending.groupedTitles)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: Text(line, style: tokens.labelStyle),
-                  ),
-                if (pending.highlightIds.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      l10n.affects_n_objects(pending.highlightIds.length),
-                      style: tokens.labelStyle.copyWith(
-                        color: tokens.textMuted,
-                      ),
-                    ),
-                  ),
+                Text(l10n.compact_context_body, style: tokens.bodyStyle),
                 const SizedBox(height: FanCadTokens.space2),
                 Row(
                   children: [
                     const Spacer(),
                     TextButton(
-                      key: const Key('assistant-approval-cancel'),
+                      key: const Key('assistant-compact-cancel'),
                       onPressed: onReject,
                       child: Text(l10n.cancel, style: tokens.bodyStyle),
                     ),
                     const SizedBox(width: FanCadTokens.space1),
                     FilledButton(
-                      key: const Key('assistant-approval-continue'),
+                      key: const Key('assistant-compact-continue'),
                       onPressed: onAccept,
                       child: Text(l10n.continue_action),
                     ),
@@ -2832,6 +3270,7 @@ class _ChatImagePreview extends StatelessWidget {
                 initialSize: _size,
                 minSize: const Size(320, 240),
                 maxSize: _maxSize,
+                closeTooltip: context.l10n.close,
                 onClose: close,
                 onBarrierTap: close,
                 child: InteractiveViewer(

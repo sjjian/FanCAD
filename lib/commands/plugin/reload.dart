@@ -1,5 +1,5 @@
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_extension/fancad_extension.dart';
 
 import '../command_base.dart';
 import 'commands.dart';
@@ -33,7 +33,7 @@ class PluginsReloadCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final host = plugins.host;
+    final host = plugins.manager;
     final id = context.args.text('id');
     final targets = id == null || id.isEmpty
         ? [for (final handle in host.plugins) handle.id]

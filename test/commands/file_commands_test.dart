@@ -28,6 +28,26 @@ void main() {
       return (app: app, opened: opened);
     }
 
+    test('file.new creates the first tab when none is open', () async {
+      final app = Headless(
+        document: false,
+        files: (workspace) => FileCommands(
+          openFile: (_) async => false,
+          newDocument: workspace.newDocument,
+          closeActive: (session, {bool force = false}) =>
+              workspace.closeSession(session, force: force),
+          saveActive: (session, path) async => path,
+          recentFiles: () => const [],
+        ),
+      );
+      expect(app.workspace.tabs, isEmpty);
+
+      final result = await app.run('file.new');
+      expect(result.status, CommandStatus.ok, reason: result.message);
+      expect(app.workspace.tabs, hasLength(1));
+      expect(app.workspace.active!.document.entityCount, 0);
+    });
+
     test('file.new opens another empty tab', () async {
       final env = harness();
       expect(env.app.workspace.tabs, hasLength(1));

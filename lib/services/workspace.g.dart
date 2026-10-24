@@ -28,7 +28,7 @@ final workspaceFileCommandsOverrideProvider =
 // ignore: unused_element
 typedef WorkspaceFileCommandsOverrideRef =
     ProviderRef<WorkspaceFileCommandsFactory?>;
-String _$workspaceNotifierHash() => r'05f939100a8cf3c8a1fcc81da3f9273665fc537d';
+String _$workspaceNotifierHash() => r'7ac48e3e977970fbdaf23ce44bf6eee35ae45ffc';
 
 /// The application state: open documents, the command registry, and the wiring
 /// that lets a command reach the UI.
@@ -53,7 +53,7 @@ final workspaceNotifierProvider =
 
 typedef _$WorkspaceNotifier = Notifier<WorkspaceModel>;
 String _$documentTabNotifierHash() =>
-    r'e287b370bd72e0a3d198190f2715c4ca33c39f02';
+    r'532c83c7daf69754bcaedbf55ef55e9041d505c6';
 
 /// Copied from Dart SDK
 class _SystemHash {

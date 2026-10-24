@@ -383,7 +383,10 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     try {
       return await future;
     } finally {
-      if (identical(_opening[stored], future)) _opening.remove(stored);
+      if (identical(_opening[stored], future)) {
+        // remove() yields the future already awaited above.
+        _opening.remove(stored)?.ignore();
+      }
     }
   }
 
@@ -942,7 +945,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     final tab =
         activeDrawing ??
         (openingShell && descriptor.id == 'file.close'
-            ? shell!
+            ? shell
             : (_isHostCommand(descriptor.id)
                   ? (active ??
                         _createTab(
@@ -995,7 +998,8 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       id == 'file.new' ||
       id == 'file.list' ||
       id == 'file.activate' ||
-      id == 'workbench.preferences';
+      id == 'workbench.preferences' ||
+      id.startsWith('extensions.');
 
   /// Save and close have nowhere to act when the last tab is already gone.
   /// Inventing a blank drawing just so the command can run would leave that
@@ -1039,7 +1043,8 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   /// unanswerable prompt is an error instead of a hang. Headless runs never
   /// fall back to the current selection. An AI write while a person is in a
   /// command is refused; a missing point on an AI run hands off to the
-  /// crosshair instead of cancelling.
+  /// crosshair instead of cancelling. A saved script is refused; chat and MCP
+  /// use [runSavedScript], and the command line uses [run].
   Future<CommandResult> runHeadless(
     String idOrAlias, {
     Map<String, Object?> args = const {},
@@ -1047,10 +1052,57 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     DocumentSession? session,
     String? tab,
     void Function(String message)? log,
+  }) => _runWithArguments(
+    idOrAlias,
+    args: args,
+    source: source,
+    session: session,
+    tab: tab,
+    log: log,
+    savedScript: false,
+  );
+
+  /// Runs one saved script, `extension.<name>`, from supplied arguments.
+  ///
+  /// Chat and MCP run a saved script here. The command line uses [run].
+  /// [runHeadless] refuses the same id, and a snippet cannot `commands.execute` it.
+  Future<CommandResult> runSavedScript(
+    String idOrAlias, {
+    Map<String, Object?> args = const {},
+    ChangeSource source = ChangeSource.plugin,
+    DocumentSession? session,
+    String? tab,
+    void Function(String message)? log,
+  }) => _runWithArguments(
+    idOrAlias,
+    args: args,
+    source: source,
+    session: session,
+    tab: tab,
+    log: log,
+    savedScript: true,
+  );
+
+  Future<CommandResult> _runWithArguments(
+    String idOrAlias, {
+    Map<String, Object?> args = const {},
+    ChangeSource source = ChangeSource.plugin,
+    DocumentSession? session,
+    String? tab,
+    void Function(String message)? log,
+    required bool savedScript,
   }) async {
     final descriptor = commands.find(idOrAlias);
     if (descriptor == null) {
       return CommandResult.failed('Unknown command: $idOrAlias');
+    }
+    final isScript = descriptor.id.startsWith('extension.');
+    if (isScript != savedScript) {
+      return CommandResult.failed(
+        isScript
+            ? '${descriptor.id} cannot be called through runHeadless.'
+            : 'Not a saved extension: $idOrAlias',
+      );
     }
     if (source == ChangeSource.ai &&
         _store.runningCommand != null &&
@@ -1091,7 +1143,13 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
         activeDrawing?.session ??
         (_isHostCommand(descriptor.id) ? active?.session : null);
     if (target == null) {
-      if (descriptor.id == 'file.list' || descriptor.id == 'file.activate') {
+      // New opens the first tab. List and activate only read the tab strip.
+      // Extensions only touch files in their folder. All of them have to run
+      // when the window is empty.
+      if (descriptor.id == 'file.new' ||
+          descriptor.id == 'file.list' ||
+          descriptor.id == 'file.activate' ||
+          descriptor.id.startsWith('extensions.')) {
         final result = await commands.run(
           descriptor.id,
           args: args,
@@ -1420,6 +1478,120 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   @override
   void panTo(Vec2 center) => active?.viewport.centerOn(center);
+
+  /// Camera description for one tab, including a drawing that is not active.
+  Map<String, Object?> describeTabView(DocumentTab tab) =>
+      _describedView(tab.viewport.viewport);
+
+  /// Moves [tab]'s camera. The active drawing is what the user sees; a
+  /// background tab keeps the camera until it is shown.
+  void zoomTabTo(DocumentTab tab, Bounds2? bounds) {
+    final left = _viewOcclusion.left;
+    final right = _viewOcclusion.right;
+    if (bounds == null) {
+      tab.viewport.zoomToExtents(
+        tab.document,
+        insetLeft: left,
+        insetRight: right,
+      );
+      return;
+    }
+    tab.viewport.zoomTo(bounds, insetLeft: left, insetRight: right);
+  }
+
+  void zoomTabBy(DocumentTab tab, double factor) =>
+      tab.viewport.zoomAtCenter(factor);
+
+  void panTabTo(DocumentTab tab, Vec2 center) => tab.viewport.centerOn(center);
+
+  void holdHighlightsOn(String sessionId, List<int> ids) {
+    WorkspaceSessionModel? record;
+    for (final session in _store.sessions) {
+      if (session.id == sessionId) record = session;
+    }
+    if (record == null) return;
+    if (_sameIds(record.heldIds, ids)) return;
+    _replaceSession(
+      sessionId,
+      (session) => session.copyWith(heldIds: List<int>.unmodifiable(ids)),
+    );
+  }
+
+  void flashHighlightsOn(String sessionId, List<int> ids) {
+    _flashTimer?.cancel();
+    WorkspaceSessionModel? record;
+    for (final session in _store.sessions) {
+      if (session.id == sessionId) record = session;
+    }
+    if (record == null) return;
+    _replaceSession(sessionId, (session) => session.copyWith(flashIds: ids));
+    if (ids.isEmpty) return;
+    _flashTimer = Timer(const Duration(milliseconds: 700), () {
+      _replaceSession(
+        sessionId,
+        (session) => session.copyWith(flashIds: const []),
+      );
+    });
+  }
+
+  /// Lets a plugin ask the canvas for one point or one entity.
+  ///
+  /// Uses the same crosshair as an interactive command, including snap. Fails
+  /// when a command is already running, because the pointer cannot belong to
+  /// both. Returns null when the user cancels.
+  Future<Map<String, Object?>?> acquirePluginPick({
+    required DocumentTab tab,
+    required String kind,
+    String message = 'Pick',
+  }) async {
+    if (_store.runningCommand != null) {
+      throw StateError('${_store.runningCommand} is running');
+    }
+    if (tab.isStartPage || tab.isOpeningShell) {
+      throw StateError('no drawing is open');
+    }
+    final tools = tab.tools;
+    final commandLine = ref.read(commandLineNotifierProvider.notifier);
+    if (kind == 'entity') {
+      final tool = SelectionPromptTool(message: message, single: true);
+      tools.push(tool);
+      try {
+        final ids = await tool.result;
+        if (ids.isEmpty) return null;
+        return {'id': ids.first, 'ids': ids};
+      } on CommandCancelled {
+        return null;
+      } finally {
+        if (!tool.isComplete) tools.cancel();
+      }
+    }
+    final tool = PointPromptTool(
+      message: message,
+      preview: null,
+      markers: tools.pluginMarkers,
+    );
+    final typed = commandLine.request(
+      PendingEntry(
+        message: message,
+        completer: Completer<Object?>(),
+        accept: (raw) => CoordinateParser.parse(raw),
+      ),
+    );
+    tools.push(tool);
+    try {
+      final winner = await Future.any<Object?>([
+        tool.result.then<Object?>((value) => value),
+        typed.then<Object?>((value) => value),
+      ]);
+      if (winner is Vec2) return {'x': winner.x, 'y': winner.y};
+      return null;
+    } on CommandCancelled {
+      return null;
+    } finally {
+      commandLine.cancelPending();
+      if (!tool.isComplete) tools.cancel();
+    }
+  }
 
   @override
   void holdView() => active?.viewport.holdView();

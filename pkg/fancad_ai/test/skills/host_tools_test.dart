@@ -14,8 +14,7 @@ void main() {
           handler: (_) async => const CommandResult.ok(),
         ),
       );
-    expect(registry.find('read_skill'), isNull);
-    expect(registry.find('skill.read'), isNull);
+    expect(registry.find('session.supply'), isNull);
 
     final catalog = OperationCatalog()
       ..addProvider(
@@ -26,14 +25,10 @@ void main() {
       )
       ..addProvider(
         HostOperationProvider([
-          readSkillTool(
-            InMemorySkillRegistry({
-              'demo': const Skill(name: 'demo', description: 'd', body: 'b'),
-            }),
-          ),
+          sessionSupplyTool((args) async => {'status': 'ok'}),
         ]),
       );
-    expect(catalog.find('skill.read'), isNotNull);
+    expect(catalog.find('session.supply'), isNotNull);
     expect(catalog.find('query.selection'), isNotNull);
   });
 

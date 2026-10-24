@@ -1759,6 +1759,26 @@
       }
     }
   },
+  "allow_run_code": "运行这段代码？",
+  "@allow_run_code": {
+    "description": "approval card for one exec snippet"
+  },
+  "compact_context_title": "上下文已满",
+  "@compact_context_title": {
+    "description": "title when the assistant context window is full"
+  },
+  "compact_context_body": "压缩较早的对话并继续？",
+  "@compact_context_body": {
+    "description": "asks whether to compact the model transcript and keep going"
+  },
+  "tool_expand": "展开",
+  "@tool_expand": {
+    "description": "show the rest of a tool card body"
+  },
+  "tool_collapse": "收起",
+  "@tool_collapse": {
+    "description": "fold a tool card body back to its preview"
+  },
   "allow_one_change": "允许{title}？",
   "@allow_one_change": {
     "description": "allow one change"
@@ -1846,6 +1866,28 @@
   "edit_source": "编辑源码",
   "@edit_source": {
     "description": "edit source"
+  },
+  "configure_extension": "配置",
+  "@configure_extension": {
+    "description": "configure extension"
+  },
+  "extension_details": "详情",
+  "@extension_details": {
+    "description": "extension details"
+  },
+  "extension_source": "源码",
+  "@extension_source": {
+    "description": "extension source"
+  },
+  "import_extension": "导入扩展",
+  "export_extension": "导出扩展",
+  "delete_extension": "删除扩展",
+  "start_extension": "启动扩展",
+  "stop_extension": "停止扩展",
+  "plugin_view_invalid": "这个面板送来的界面无法显示。",
+  "plugin_viewer_closed": "这块画布还没打开。",
+  "@plugin_viewer_closed": {
+    "description": "plugin canvas is not open"
   },
   "enable_extension": "启用扩展",
   "@enable_extension": {
@@ -2744,6 +2786,13 @@
   "@command_plugins_edit": {
     "description": "command plugins edit"
   },
+  "command_plugins_import": "导入扩展",
+  "command_plugins_export": "导出扩展",
+  "command_plugins_delete": "删除扩展",
+  "command_plugins_start": "启动扩展",
+  "command_plugins_stop": "停止扩展",
+  "command_sandbox_query": "在沙盒中查询",
+  "command_sandbox_run": "在沙盒中运行",
   "command_plugins_eval": "在扩展中求值",
   "@command_plugins_eval": {
     "description": "command plugins eval"
@@ -3432,6 +3481,13 @@
   "@command_plugins_edit_desc": {
     "description": "command plugins edit desc"
   },
+  "command_plugins_import_desc": "把插件文件夹或 .fancadplugin 包复制进扩展目录，不启动。",
+  "command_plugins_export_desc": "把扩展文件夹打成 .fancadplugin 包。",
+  "command_plugins_delete_desc": "卸载扩展并删除它的文件夹。",
+  "command_plugins_start_desc": "加载一个已启用的扩展。",
+  "command_plugins_stop_desc": "卸载扩展，命令和面板仍保留。",
+  "command_sandbox_query_desc": "在一次性沙盒里运行只读 JavaScript。",
+  "command_sandbox_run_desc": "在一次性沙盒里运行 JavaScript。可以改图纸，并打开一个对话框。",
   "command_plugins_eval_desc": "在扩展作用域中运行 JavaScript 表达式。用于调试；扩展能做的它都能做。",
   "@command_plugins_eval_desc": {
     "description": "command plugins eval desc"
@@ -4236,6 +4292,138 @@
   "use": "使用",
   "@use": {
     "description": "use"
+  },
+  "scripts": "扩展",
+  "@scripts": {
+    "description": "scripts sidebar"
+  },
+  "view_scripts_hint": "可以再次运行的已保存扩展",
+  "@view_scripts_hint": {
+    "description": "scripts sidebar hint"
+  },
+  "new_script": "新建扩展",
+  "@new_script": {
+    "description": "create a script"
+  },
+  "run_script": "运行",
+  "@run_script": {
+    "description": "run a script"
+  },
+  "edit_script": "编辑",
+  "@edit_script": {
+    "description": "edit a script"
+  },
+  "configure_script": "配置",
+  "@configure_script": {
+    "description": "open the script configure menu"
+  },
+  "enable_script": "启用",
+  "@enable_script": {
+    "description": "enable a script"
+  },
+  "disable_script": "禁用",
+  "@disable_script": {
+    "description": "disable a script"
+  },
+  "script_disabled": "已禁用",
+  "@script_disabled": {
+    "description": "script is switched off"
+  },
+  "delete_script": "删除扩展",
+  "@delete_script": {
+    "description": "delete a script"
+  },
+  "script_usage": "用法",
+  "@script_usage": {
+    "description": "label before how to run a script"
+  },
+  "no_scripts": "还没有扩展",
+  "@no_scripts": {
+    "description": "empty script list"
+  },
+  "scripts_unavailable": "扩展不可用：这次会话没有配置扩展文件夹。",
+  "@scripts_unavailable": {
+    "description": "scripts folder missing"
+  },
+  "open_scripts_folder": "打开扩展文件夹",
+  "@open_scripts_folder": {
+    "description": "reveal the scripts folder"
+  },
+  "prompt_script_name": "扩展名称",
+  "@prompt_script_name": {
+    "description": "prompt for a script name"
+  },
+  "hint_type_script": "扩展名或 JavaScript",
+  "@hint_type_script": {
+    "description": "command dock hint in script mode"
+  },
+  "hud_mode_script": "扩展",
+  "@hud_mode_script": {
+    "description": "canvas dock mode: run a script"
+  },
+  "hud_switch_to_script": "切换到扩展",
+  "@hud_switch_to_script": {
+    "description": "canvas dock: run a script"
+  },
+  "category_scripts": "扩展",
+  "@category_scripts": {
+    "description": "category scripts"
+  },
+  "command_scripts_doc": "扩展开发文档",
+  "@command_scripts_doc": {
+    "description": "command scripts doc"
+  },
+  "command_scripts_list": "列出扩展",
+  "@command_scripts_list": {
+    "description": "command scripts list"
+  },
+  "command_scripts_read": "读取扩展",
+  "@command_scripts_read": {
+    "description": "command scripts read"
+  },
+  "command_scripts_write": "写入扩展",
+  "@command_scripts_write": {
+    "description": "command scripts write"
+  },
+  "command_scripts_delete": "删除扩展",
+  "@command_scripts_delete": {
+    "description": "command scripts delete"
+  },
+  "command_scripts_run": "运行扩展",
+  "@command_scripts_run": {
+    "description": "command scripts run"
+  },
+  "command_scripts_doc_desc": "返回如何编写一个已保存的扩展。",
+  "@command_scripts_doc_desc": {
+    "description": "command scripts doc desc"
+  },
+  "command_scripts_list_desc": "列出每个已保存的扩展，包括描述、用法、参数和上次的错误。",
+  "@command_scripts_list_desc": {
+    "description": "command scripts list desc"
+  },
+  "command_scripts_read_desc": "读取一个已保存的扩展，包括它的描述、用法和参数。",
+  "@command_scripts_read_desc": {
+    "description": "command scripts read desc"
+  },
+  "command_scripts_write_desc": "新建或覆盖一个已保存的扩展。描述、用法和参数写在开头的注释里。",
+  "@command_scripts_write_desc": {
+    "description": "command scripts write desc"
+  },
+  "command_scripts_delete_desc": "删除一个已保存的扩展。",
+  "@command_scripts_delete_desc": {
+    "description": "command scripts delete desc"
+  },
+  "command_scripts_run_desc": "运行 source 里的一段临时 JavaScript。已保存的扩展是命令 extension.<name>。",
+  "@command_scripts_run_desc": {
+    "description": "command scripts run desc"
+  },
+  "command_exec": "执行",
+  "@command_exec": {
+    "description": "command exec"
+  },
+  "command_exec_desc": "在 QuickJS 沙盒里执行一段 JavaScript，并返回它的值。",
+  "@command_exec_desc": {
+    "description": "command exec desc"
   },
   "objects_in_drawing_many": "此图纸有 {count} 个对象。",
   "@objects_in_drawing_many": {

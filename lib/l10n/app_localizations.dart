@@ -2330,6 +2330,36 @@ abstract class AppLocalizations {
   /// **'Thought {seconds}s'**
   String thinking_for(int seconds);
 
+  /// approval card for one exec snippet
+  ///
+  /// In en, this message translates to:
+  /// **'Run this code?'**
+  String get allow_run_code;
+
+  /// title when the assistant context window is full
+  ///
+  /// In en, this message translates to:
+  /// **'Context is full'**
+  String get compact_context_title;
+
+  /// asks whether to compact the model transcript and keep going
+  ///
+  /// In en, this message translates to:
+  /// **'Compress the earlier conversation and continue?'**
+  String get compact_context_body;
+
+  /// show the rest of a tool card body
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get tool_expand;
+
+  /// fold a tool card body back to its preview
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get tool_collapse;
+
   /// allow one change
   ///
   /// In en, this message translates to:
@@ -2461,6 +2491,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Edit source'**
   String get edit_source;
+
+  /// configure extension
+  ///
+  /// In en, this message translates to:
+  /// **'Configure'**
+  String get configure_extension;
+
+  /// extension details
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get extension_details;
+
+  /// extension source
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get extension_source;
+
+  /// import extension
+  ///
+  /// In en, this message translates to:
+  /// **'Import extension'**
+  String get import_extension;
+
+  /// export extension
+  ///
+  /// In en, this message translates to:
+  /// **'Export extension'**
+  String get export_extension;
+
+  /// delete extension
+  ///
+  /// In en, this message translates to:
+  /// **'Delete extension'**
+  String get delete_extension;
+
+  /// start extension
+  ///
+  /// In en, this message translates to:
+  /// **'Start extension'**
+  String get start_extension;
+
+  /// stop extension
+  ///
+  /// In en, this message translates to:
+  /// **'Stop extension'**
+  String get stop_extension;
+
+  /// plugin view tree failed to decode
+  ///
+  /// In en, this message translates to:
+  /// **'This panel sent a view the shell could not read.'**
+  String get plugin_view_invalid;
+
+  /// plugin canvas is not open
+  ///
+  /// In en, this message translates to:
+  /// **'This canvas is not open.'**
+  String get plugin_viewer_closed;
 
   /// enable extension
   ///
@@ -3758,6 +3848,48 @@ abstract class AppLocalizations {
   /// **'Edit Extension File'**
   String get command_plugins_edit;
 
+  /// command plugins import
+  ///
+  /// In en, this message translates to:
+  /// **'Import Extension'**
+  String get command_plugins_import;
+
+  /// command plugins export
+  ///
+  /// In en, this message translates to:
+  /// **'Export Extension'**
+  String get command_plugins_export;
+
+  /// command plugins delete
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Extension'**
+  String get command_plugins_delete;
+
+  /// command plugins start
+  ///
+  /// In en, this message translates to:
+  /// **'Start Extension'**
+  String get command_plugins_start;
+
+  /// command plugins stop
+  ///
+  /// In en, this message translates to:
+  /// **'Stop Extension'**
+  String get command_plugins_stop;
+
+  /// command sandbox query
+  ///
+  /// In en, this message translates to:
+  /// **'Query In Sandbox'**
+  String get command_sandbox_query;
+
+  /// command sandbox run
+  ///
+  /// In en, this message translates to:
+  /// **'Run In Sandbox'**
+  String get command_sandbox_run;
+
   /// command plugins eval
   ///
   /// In en, this message translates to:
@@ -4789,6 +4921,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Opens an extension file in the built-in editor so a person can review or change what the AI authoring loop wrote.'**
   String get command_plugins_edit_desc;
+
+  /// command plugins import desc
+  ///
+  /// In en, this message translates to:
+  /// **'Copies a plugin folder or a .fancadplugin package into the extensions directory without starting it.'**
+  String get command_plugins_import_desc;
+
+  /// command plugins export desc
+  ///
+  /// In en, this message translates to:
+  /// **'Writes an extension folder to a .fancadplugin package.'**
+  String get command_plugins_export_desc;
+
+  /// command plugins delete desc
+  ///
+  /// In en, this message translates to:
+  /// **'Unloads an extension and deletes its folder.'**
+  String get command_plugins_delete_desc;
+
+  /// command plugins start desc
+  ///
+  /// In en, this message translates to:
+  /// **'Loads an enabled extension.'**
+  String get command_plugins_start_desc;
+
+  /// command plugins stop desc
+  ///
+  /// In en, this message translates to:
+  /// **'Unloads an extension and leaves its commands and panels registered.'**
+  String get command_plugins_stop_desc;
+
+  /// command sandbox query desc
+  ///
+  /// In en, this message translates to:
+  /// **'Runs a read-only script in a disposable sandbox.'**
+  String get command_sandbox_query_desc;
+
+  /// command sandbox run desc
+  ///
+  /// In en, this message translates to:
+  /// **'Runs a script in a disposable sandbox. It may edit the drawing and open one dialog.'**
+  String get command_sandbox_run_desc;
 
   /// command plugins eval desc
   ///
@@ -5923,6 +6097,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use'**
   String get use;
+
+  /// scripts sidebar
+  ///
+  /// In en, this message translates to:
+  /// **'Extensions'**
+  String get scripts;
+
+  /// scripts sidebar hint
+  ///
+  /// In en, this message translates to:
+  /// **'Saved extensions you can run again'**
+  String get view_scripts_hint;
+
+  /// create a script
+  ///
+  /// In en, this message translates to:
+  /// **'New extension'**
+  String get new_script;
+
+  /// run a script
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get run_script;
+
+  /// edit a script
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit_script;
+
+  /// open the script configure menu
+  ///
+  /// In en, this message translates to:
+  /// **'Configure'**
+  String get configure_script;
+
+  /// enable a script
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get enable_script;
+
+  /// disable a script
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get disable_script;
+
+  /// script is switched off
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get script_disabled;
+
+  /// delete a script
+  ///
+  /// In en, this message translates to:
+  /// **'Delete extension'**
+  String get delete_script;
+
+  /// label before how to run a script
+  ///
+  /// In en, this message translates to:
+  /// **'Usage'**
+  String get script_usage;
+
+  /// empty script list
+  ///
+  /// In en, this message translates to:
+  /// **'No extensions yet'**
+  String get no_scripts;
+
+  /// scripts folder missing
+  ///
+  /// In en, this message translates to:
+  /// **'Extensions are unavailable: no extensions folder was configured for this session.'**
+  String get scripts_unavailable;
+
+  /// reveal the scripts folder
+  ///
+  /// In en, this message translates to:
+  /// **'Open extensions folder'**
+  String get open_scripts_folder;
+
+  /// prompt for a script name
+  ///
+  /// In en, this message translates to:
+  /// **'Extension name'**
+  String get prompt_script_name;
+
+  /// command dock hint in script mode
+  ///
+  /// In en, this message translates to:
+  /// **'Extension name or JavaScript'**
+  String get hint_type_script;
+
+  /// canvas dock mode: run a script
+  ///
+  /// In en, this message translates to:
+  /// **'Extension'**
+  String get hud_mode_script;
+
+  /// canvas dock: run a script
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to extension'**
+  String get hud_switch_to_script;
+
+  /// category scripts
+  ///
+  /// In en, this message translates to:
+  /// **'Extensions'**
+  String get category_scripts;
+
+  /// command scripts doc
+  ///
+  /// In en, this message translates to:
+  /// **'Extension Guide'**
+  String get command_scripts_doc;
+
+  /// command scripts list
+  ///
+  /// In en, this message translates to:
+  /// **'List Extensions'**
+  String get command_scripts_list;
+
+  /// command scripts read
+  ///
+  /// In en, this message translates to:
+  /// **'Read Extension'**
+  String get command_scripts_read;
+
+  /// command scripts write
+  ///
+  /// In en, this message translates to:
+  /// **'Write Extension'**
+  String get command_scripts_write;
+
+  /// command scripts delete
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Extension'**
+  String get command_scripts_delete;
+
+  /// command scripts run
+  ///
+  /// In en, this message translates to:
+  /// **'Run Extension'**
+  String get command_scripts_run;
+
+  /// command scripts doc desc
+  ///
+  /// In en, this message translates to:
+  /// **'Returns how to write a saved extension.'**
+  String get command_scripts_doc_desc;
+
+  /// command scripts list desc
+  ///
+  /// In en, this message translates to:
+  /// **'Lists each saved extension with its description, usage, parameters, and last error.'**
+  String get command_scripts_list_desc;
+
+  /// command scripts read desc
+  ///
+  /// In en, this message translates to:
+  /// **'Reads one saved extension, including its description, usage, and parameters.'**
+  String get command_scripts_read_desc;
+
+  /// command scripts write desc
+  ///
+  /// In en, this message translates to:
+  /// **'Creates or overwrites one saved extension. Put description, usage, and params in the opening comment.'**
+  String get command_scripts_write_desc;
+
+  /// command scripts delete desc
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes one saved extension.'**
+  String get command_scripts_delete_desc;
+
+  /// command scripts run desc
+  ///
+  /// In en, this message translates to:
+  /// **'Runs JavaScript passed as source. A saved extension is the command extension.<name>.'**
+  String get command_scripts_run_desc;
+
+  /// command exec
+  ///
+  /// In en, this message translates to:
+  /// **'Exec'**
+  String get command_exec;
+
+  /// command exec desc
+  ///
+  /// In en, this message translates to:
+  /// **'Evaluates one JavaScript snippet in the QuickJS sandbox and returns its value.'**
+  String get command_exec_desc;
 
   /// objects in drawing many
   ///

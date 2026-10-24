@@ -1246,6 +1246,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get allow_run_code => 'Run this code?';
+
+  @override
+  String get compact_context_title => 'Context is full';
+
+  @override
+  String get compact_context_body =>
+      'Compress the earlier conversation and continue?';
+
+  @override
+  String get tool_expand => 'Expand';
+
+  @override
+  String get tool_collapse => 'Collapse';
+
+  @override
   String allow_one_change(String title) {
     return 'Allow $title?';
   }
@@ -1320,6 +1336,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get edit_source => 'Edit source';
+
+  @override
+  String get configure_extension => 'Configure';
+
+  @override
+  String get extension_details => 'Details';
+
+  @override
+  String get extension_source => 'Source';
+
+  @override
+  String get import_extension => 'Import extension';
+
+  @override
+  String get export_extension => 'Export extension';
+
+  @override
+  String get delete_extension => 'Delete extension';
+
+  @override
+  String get start_extension => 'Start extension';
+
+  @override
+  String get stop_extension => 'Stop extension';
+
+  @override
+  String get plugin_view_invalid =>
+      'This panel sent a view the shell could not read.';
+
+  @override
+  String get plugin_viewer_closed => 'This canvas is not open.';
 
   @override
   String get enable_extension => 'Enable extension';
@@ -1987,6 +2034,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get command_plugins_edit => 'Edit Extension File';
+
+  @override
+  String get command_plugins_import => 'Import Extension';
+
+  @override
+  String get command_plugins_export => 'Export Extension';
+
+  @override
+  String get command_plugins_delete => 'Delete Extension';
+
+  @override
+  String get command_plugins_start => 'Start Extension';
+
+  @override
+  String get command_plugins_stop => 'Stop Extension';
+
+  @override
+  String get command_sandbox_query => 'Query In Sandbox';
+
+  @override
+  String get command_sandbox_run => 'Run In Sandbox';
 
   @override
   String get command_plugins_eval => 'Evaluate In Extension';
@@ -2660,6 +2728,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'Opens an extension file in the built-in editor so a person can review or change what the AI authoring loop wrote.';
 
   @override
+  String get command_plugins_import_desc =>
+      'Copies a plugin folder or a .fancadplugin package into the extensions directory without starting it.';
+
+  @override
+  String get command_plugins_export_desc =>
+      'Writes an extension folder to a .fancadplugin package.';
+
+  @override
+  String get command_plugins_delete_desc =>
+      'Unloads an extension and deletes its folder.';
+
+  @override
+  String get command_plugins_start_desc => 'Loads an enabled extension.';
+
+  @override
+  String get command_plugins_stop_desc =>
+      'Unloads an extension and leaves its commands and panels registered.';
+
+  @override
+  String get command_sandbox_query_desc =>
+      'Runs a read-only script in a disposable sandbox.';
+
+  @override
+  String get command_sandbox_run_desc =>
+      'Runs a script in a disposable sandbox. It may edit the drawing and open one dialog.';
+
+  @override
   String get command_plugins_eval_desc =>
       'Runs a JavaScript expression inside an extension scope. For debugging; it can do anything the extension can.';
 
@@ -3286,6 +3381,112 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get use => 'Use';
+
+  @override
+  String get scripts => 'Extensions';
+
+  @override
+  String get view_scripts_hint => 'Saved extensions you can run again';
+
+  @override
+  String get new_script => 'New extension';
+
+  @override
+  String get run_script => 'Run';
+
+  @override
+  String get edit_script => 'Edit';
+
+  @override
+  String get configure_script => 'Configure';
+
+  @override
+  String get enable_script => 'Enable';
+
+  @override
+  String get disable_script => 'Disable';
+
+  @override
+  String get script_disabled => 'Disabled';
+
+  @override
+  String get delete_script => 'Delete extension';
+
+  @override
+  String get script_usage => 'Usage';
+
+  @override
+  String get no_scripts => 'No extensions yet';
+
+  @override
+  String get scripts_unavailable =>
+      'Extensions are unavailable: no extensions folder was configured for this session.';
+
+  @override
+  String get open_scripts_folder => 'Open extensions folder';
+
+  @override
+  String get prompt_script_name => 'Extension name';
+
+  @override
+  String get hint_type_script => 'Extension name or JavaScript';
+
+  @override
+  String get hud_mode_script => 'Extension';
+
+  @override
+  String get hud_switch_to_script => 'Switch to extension';
+
+  @override
+  String get category_scripts => 'Extensions';
+
+  @override
+  String get command_scripts_doc => 'Extension Guide';
+
+  @override
+  String get command_scripts_list => 'List Extensions';
+
+  @override
+  String get command_scripts_read => 'Read Extension';
+
+  @override
+  String get command_scripts_write => 'Write Extension';
+
+  @override
+  String get command_scripts_delete => 'Delete Extension';
+
+  @override
+  String get command_scripts_run => 'Run Extension';
+
+  @override
+  String get command_scripts_doc_desc =>
+      'Returns how to write a saved extension.';
+
+  @override
+  String get command_scripts_list_desc =>
+      'Lists each saved extension with its description, usage, parameters, and last error.';
+
+  @override
+  String get command_scripts_read_desc =>
+      'Reads one saved extension, including its description, usage, and parameters.';
+
+  @override
+  String get command_scripts_write_desc =>
+      'Creates or overwrites one saved extension. Put description, usage, and params in the opening comment.';
+
+  @override
+  String get command_scripts_delete_desc => 'Deletes one saved extension.';
+
+  @override
+  String get command_scripts_run_desc =>
+      'Runs JavaScript passed as source. A saved extension is the command extension.<name>.';
+
+  @override
+  String get command_exec => 'Exec';
+
+  @override
+  String get command_exec_desc =>
+      'Evaluates one JavaScript snippet in the QuickJS sandbox and returns its value.';
 
   @override
   String objects_in_drawing_many(int count) {

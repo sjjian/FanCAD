@@ -1,6 +1,6 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_extension/fancad_extension.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/workspace.dart';
@@ -55,6 +55,65 @@ void main() {
     },
   );
 
+  test('runCommand refuses exec before starting another sandbox', () async {
+    final ws = workspace();
+    var ran = false;
+    if (ws.commands.find('exec') == null) {
+      ws.commands.register(
+        CommandDescriptor(
+          id: 'exec',
+          title: 'Exec',
+          handler: (context) async {
+            ran = true;
+            return const CommandResult.ok();
+          },
+        ),
+      );
+    }
+    final delegate = AppPluginDelegate(
+      workspace: () => ws,
+      plugins: PluginSettings(SettingsStore.inMemory()),
+    );
+
+    final result = await delegate.runCommand('exec', const {
+      'source': '1 + 1',
+    }, pluginId: 'demo');
+    expect(result.isFailed, isTrue);
+    expect(result.message, contains('cannot be called'));
+    expect(ran, isFalse);
+  });
+
+  test(
+    'runCommand refuses a saved script before starting another sandbox',
+    () async {
+      final ws = workspace();
+      var ran = false;
+      ws.commands.register(
+        CommandDescriptor(
+          id: 'extension.rings',
+          title: 'rings',
+          handler: (context) async {
+            ran = true;
+            return const CommandResult.ok();
+          },
+        ),
+      );
+      final delegate = AppPluginDelegate(
+        workspace: () => ws,
+        plugins: PluginSettings(SettingsStore.inMemory()),
+      );
+
+      final result = await delegate.runCommand(
+        'extension.rings',
+        const {},
+        pluginId: 'demo',
+      );
+      expect(result.isFailed, isTrue);
+      expect(result.message, contains('cannot be called'));
+      expect(ran, isFalse);
+    },
+  );
+
   test('showMessage notifies the workspace and writes a plugin log line', () {
     final ws = workspace();
     final seen = <(String, String, String)>[];
@@ -81,7 +140,7 @@ void main() {
       workspace: () => ws,
       plugins: PluginSettings(SettingsStore.inMemory()),
     );
-    final host = PluginHost(
+    final host = PluginManager(
       registry: ws.commands,
       delegate: delegate,
       transport: LocalTransport(),

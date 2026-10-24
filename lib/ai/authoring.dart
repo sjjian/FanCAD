@@ -19,7 +19,8 @@ class PluginAuthoring implements ActivationRepair {
     'plugins.typings',
     'plugins.logs',
     'plugins.list',
-    'reEditor.open',
+    'sandbox.query',
+    'sandbox.run',
   ];
 
   @override

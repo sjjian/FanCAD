@@ -200,6 +200,7 @@ class Conversation {
     required String content,
     bool isError = false,
     String? toolName,
+    String? visibleContent,
   }) {
     llmMessages.add(
       LlmMessage.tool(toolCallId: call.id, content: content, name: call.name),
@@ -207,7 +208,7 @@ class Conversation {
     visible.add(
       ChatMessage(
         role: ChatRole.tool,
-        text: content,
+        text: visibleContent ?? content,
         toolName: toolName ?? call.name,
         isError: isError,
       ),

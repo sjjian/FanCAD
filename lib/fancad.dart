@@ -2,12 +2,12 @@
 library;
 
 export 'ai/authoring.dart';
-export 'ai/skills/bundled.dart';
 export 'commands/builtins.dart';
 export 'commands/clipboard/commands.dart';
 export 'commands/command_base.dart';
 export 'commands/draw/commands.dart';
 export 'commands/edit/commands.dart';
+export 'commands/extension/commands.dart';
 export 'commands/file/commands.dart';
 export 'commands/keybindings.dart';
 export 'commands/plugin/commands.dart';
@@ -31,6 +31,7 @@ export 'screen/command_line/command_palette.dart';
 export 'screen/command_line/dynamic_input_hud.dart';
 export 'screen/plugin/extensions_panel.dart';
 export 'screen/plugin/plugin_editor_panel.dart';
+export 'screen/plugin/scripts_panel.dart';
 export 'screen/settings/settings_controls.dart';
 export 'screen/settings/settings_dialog.dart';
 export 'screen/widgets/activity_bar.dart';

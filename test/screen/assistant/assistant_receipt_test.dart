@@ -155,4 +155,67 @@ void main() {
       'CIRCLE  The user declined this change.',
     );
   });
+
+  test('exec cards keep each snippet instead of collapsing', () {
+    const first = '{"status":"ok","message":"2","source":"1 + 1"}';
+    const second =
+        '{"status":"ok","message":"undefined","source":"const a = 1;\\na"}';
+    final entries = groupAssistantLog([
+      const ChatMessage(role: ChatRole.tool, toolName: 'exec', text: first),
+      const ChatMessage(role: ChatRole.tool, toolName: 'exec', text: second),
+    ]);
+    expect(entries, hasLength(2));
+    expect(execCardSource(first), '1 + 1');
+    expect(execCardSource(second), 'const a = 1;\na');
+    expect(execCardSource('{"status":"ok","message":"2"}'), isNull);
+    expect(execCardResult(first), '2');
+    expect(
+      execCardResult(
+        '{"status":"ok","message":"{\\"a\\":1...","value":{"minx":1,"maxx":2}}',
+      ),
+      '{\n  "minx": 1,\n  "maxx": 2\n}',
+    );
+    expect(
+      execCardResult('{"status":"failed","error":"nope","message":"nope"}'),
+      'nope',
+    );
+    expect(execCardResult('{"status":"ok","value":null}'), 'undefined');
+  });
+
+  test('a tool card names exec by its first line and indents cli json', () {
+    final exec = parseAssistantReceipt(
+      const ChatMessage(
+        role: ChatRole.tool,
+        toolName: 'exec',
+        text:
+            '{"status":"ok","message":"2","value":2,"source":"const a = 1;\\na"}',
+      ),
+    );
+    expect(assistantToolDescription(exec), 'const a = 1;');
+
+    const raw = '{"status":"ok","message":"Nothing selected.","data":{"n":1}}';
+    final cli = parseAssistantReceipt(
+      const ChatMessage(
+        role: ChatRole.tool,
+        toolName: 'query.session',
+        text: raw,
+      ),
+    );
+    expect(assistantToolDescription(cli), 'query.session');
+    expect(cli.verb, 'SESSION');
+    final formatted = formatReceiptJson(raw);
+    expect(formatted, contains('\n'));
+    expect(formatted, contains('  "status"'));
+    expect(formatted, contains('  "data"'));
+    expect(formatReceiptJson('not json'), 'not json');
+
+    const withInput =
+        '{"status":"ok","message":"Nothing selected.","data":{"n":1},"input":{"action":"run","path":"query.session"}}';
+    expect(cliCardInput(withInput), contains('"path"'));
+    expect(cliCardInput(withInput), contains('query.session'));
+    expect(cliCardInput(raw), isNull);
+    final output = cliCardOutput(withInput);
+    expect(output, contains('"data"'));
+    expect(output, isNot(contains('"input"')));
+  });
 }

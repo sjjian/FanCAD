@@ -20,6 +20,38 @@ void main() {
     expect((tools.single as Map)['name'], fancadToolName);
   });
 
+  test('tools/list can advertise the script CLI beside fancad', () async {
+    final session = McpSession.tools([
+      McpCliTool.fancad((_) async => {'status': 'ok'}),
+      McpCliTool(
+        name: extensionsToolName,
+        description: extensionsToolDescription,
+        parameters: extensionsToolParameters,
+        dispatch: (_) async => {'status': 'ok', 'scripts': []},
+      ),
+    ]);
+    final reply = await session.handle(
+      const JsonRpcMessage(id: 1, method: 'tools/list'),
+    );
+    final tools = asObjectMap(reply!.result)['tools'] as List<Object?>;
+    expect(tools.map((tool) => (tool as Map)['name']), [
+      fancadToolName,
+      extensionsToolName,
+    ]);
+
+    final called = await session.handle(
+      JsonRpcMessage(
+        id: 2,
+        method: 'tools/call',
+        params: {
+          'name': extensionsToolName,
+          'arguments': {'action': 'run', 'path': 'extensions.list'},
+        },
+      ),
+    );
+    expect('${asObjectMap(called!.result)['content']}', contains('scripts'));
+  });
+
   test('tools/call maps onto ops.dispatch', () async {
     OpsRequest? seen;
     final session = McpSession(

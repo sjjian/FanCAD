@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_extension/fancad_extension.dart';
 import 'package:path/path.dart' as p;
 
 import '../command_base.dart';
@@ -25,6 +25,8 @@ class PluginsTypingsCommand extends FanCadCommand {
       'Regenerates fancad.d.ts from the live command registry, so editors '
       'and models see the real API surface.';
   @override
+  AiExposure get aiExposure => AiExposure.hostOnly;
+  @override
   List<ParamSpec> get params => const [
     ParamSpec(
       name: 'path',
@@ -36,7 +38,7 @@ class PluginsTypingsCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final host = plugins.host;
+    final host = plugins.manager;
     final target = context.args.text('path')?.trim();
     final path = target == null || target.isEmpty
         ? p.join(plugins.pluginsDirectory, 'fancad.d.ts')

@@ -26,11 +26,15 @@ class TitleBar extends StatelessWidget {
     required this.onTogglePalette,
     required this.onToggleAssistant,
     this.assistantOpen = false,
+    this.actions,
   });
 
   final VoidCallback onTogglePalette;
   final VoidCallback onToggleAssistant;
   final bool assistantOpen;
+
+  /// Extra controls before search, used for plugin title-bar menus.
+  final Widget? actions;
 
   /// Space before the first title-bar control.
   ///
@@ -80,6 +84,7 @@ class TitleBar extends StatelessWidget {
                 width: leadingInset(usesNativeTrafficLights: nativeLights),
               ),
               const Expanded(child: _DragArea(child: SizedBox.expand())),
+              ?actions,
               FanCadIconButton(
                 icon: Icons.search,
                 tooltip:

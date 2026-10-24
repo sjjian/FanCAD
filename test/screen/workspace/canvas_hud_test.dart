@@ -581,6 +581,13 @@ void main() {
 
     expect(workspace.active!.textSearch.open, isFalse);
     expect(find.text('Type a command'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('canvas-hud-mode')),
+        matching: find.byIcon(Icons.terminal_outlined),
+      ),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('canvas-command-suggest')), findsNothing);
   });
 

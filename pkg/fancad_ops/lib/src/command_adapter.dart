@@ -13,14 +13,27 @@ typedef CommandExecutor =
 
 /// Every registered command, including those hidden from the old per-tool list.
 class CommandOperationProvider implements OperationProvider {
-  CommandOperationProvider({required this.registry, required this.execute});
+  CommandOperationProvider({
+    required this.registry,
+    required this.execute,
+    this.include,
+  });
 
   final CommandRegistry registry;
   final CommandExecutor execute;
 
+  /// Extra gate after `hostOnly` is skipped. The drawing CLI passes
+  /// commands that are not saved scripts; the script CLI passes only those.
+  final bool Function(CommandDescriptor command)? include;
+
   @override
   Iterable<Operation> operations() sync* {
     for (final command in registry.all) {
+      // `hidden` stays callable (`file.open`). `hostOnly` is the in-app
+      // editor and the sandbox, which this catalog does not offer.
+      if (command.aiExposure == AiExposure.hostOnly) continue;
+      final filter = include;
+      if (filter != null && !filter(command)) continue;
       yield operationFromCommand(command, execute);
     }
   }

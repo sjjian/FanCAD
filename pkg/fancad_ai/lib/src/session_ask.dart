@@ -9,32 +9,46 @@ const askToolId = 'ask';
 const askLlmTool = LlmTool(
   name: askToolId,
   description:
-      'Ask the user a question with two to six short options. Set '
-      'multiple=true when more than one answer may apply. The card always '
-      'offers a custom-answer field. Do not use it to pick objects on a '
-      'large drawing. This is a chat tool, not a fancad path. When a '
-      'question or option refers to objects, a drawing, or a region, write '
+      'Asks the user to pick. Not a fancad path, and not for selecting '
+      'objects on a large drawing. '
+      'Pass question and 2–6 options of {id, label}. multiple=true allows '
+      'several. allowCustom defaults to true. Optional ids highlight '
+      'entities. Refer to objects, a drawing, or a region with '
       '`@objects[tab=<id> ids=1,2,3]`, `@drawing[tab=<id>]`, or '
-      '`@bbox[tab=<id> x1=<n> y1=<n> x2=<n> y2=<n>]` instead of listing ids '
-      'or coordinates in prose.',
+      '`@bbox[tab=<id> x1=<n> y1=<n> x2=<n> y2=<n>]`.',
   parameters: {
     'type': 'object',
     'properties': {
-      'question': {'type': 'string'},
+      'question': {
+        'type': 'string',
+        'description': 'The question shown on the card.',
+      },
       'options': {
         'type': 'array',
+        'description': 'Two to six {id, label} choices.',
         'items': {
           'type': 'object',
           'properties': {
-            'id': {'type': 'string'},
-            'label': {'type': 'string'},
+            'id': {
+              'type': 'string',
+              'description': 'Value returned when this option is picked.',
+            },
+            'label': {'type': 'string', 'description': 'Text the user reads.'},
           },
+          'required': ['id', 'label'],
         },
       },
-      'multiple': {'type': 'boolean'},
-      'allowCustom': {'type': 'boolean'},
+      'multiple': {
+        'type': 'boolean',
+        'description': 'True when more than one option may apply.',
+      },
+      'allowCustom': {
+        'type': 'boolean',
+        'description': 'True keeps the custom-answer field. Defaults to true.',
+      },
       'ids': {
         'type': 'array',
+        'description': 'Entity ids to highlight while the card is open.',
         'items': {'type': 'integer'},
       },
     },

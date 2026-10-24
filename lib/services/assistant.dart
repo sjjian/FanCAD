@@ -8,12 +8,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../ai/authoring.dart';
-import '../ai/skills/bundled.dart';
 import '../models/assistant.dart';
 import '../models/workspace.dart';
 import '../storage/assistant.dart';
 import 'assistant_images.dart';
+import 'plugin.dart';
 import 'providers.dart';
 import 'settings.dart';
 import 'workspace.dart';
@@ -39,6 +38,7 @@ class AssistantNotifier extends _$AssistantNotifier {
       _disposed = true;
       _settlePending(false);
       _settleAsk(const {'status': 'cancelled'});
+      _settleCompact(false);
       _frameFlash?.cancel();
       _active?.cancel();
       if (pending) {
@@ -68,6 +68,7 @@ class AssistantNotifier extends _$AssistantNotifier {
   Timer? _frameFlash;
   Completer<bool>? _pendingDecision;
   Completer<Map<String, Object?>>? _askDecision;
+  Completer<bool>? _compactDecision;
 
   AssistantChatModel get _chat => state.activeChat;
 
@@ -81,6 +82,7 @@ class AssistantNotifier extends _$AssistantNotifier {
   void clear() {
     _active?.cancel();
     _settlePending(false);
+    _settleCompact(false);
     _chat.conversation.clear();
     _patchChat((chat) => chat.copyWith(title: '', usage: null));
     _bumpTranscript();
@@ -93,6 +95,7 @@ class AssistantNotifier extends _$AssistantNotifier {
   void newSession() {
     _active?.cancel();
     _settlePending(false);
+    _settleCompact(false);
     final created = AssistantChatModel(
       id: 'c${DateTime.now().microsecondsSinceEpoch}',
     );
@@ -115,6 +118,7 @@ class AssistantNotifier extends _$AssistantNotifier {
     if (!_store.chats.any((chat) => chat.id == id)) return;
     _active?.cancel();
     _settlePending(false);
+    _settleCompact(false);
     _setStore(_store.copyWith(activeChatId: id, images: const [], error: null));
     _persistChats();
   }
@@ -123,6 +127,7 @@ class AssistantNotifier extends _$AssistantNotifier {
     final target = id ?? _store.activeChatId;
     _active?.cancel();
     _settlePending(false);
+    _settleCompact(false);
     if (_store.chats.length <= 1) {
       _chat.conversation.clear();
       _patchChat((chat) => chat.copyWith(title: '', usage: null, draft: ''));
@@ -148,6 +153,7 @@ class AssistantNotifier extends _$AssistantNotifier {
   void stop() {
     _settlePending(false);
     _settleAsk(const {'status': 'cancelled'});
+    _settleCompact(false);
     if (_active == null) return;
     _stopping = true;
     _active!.cancel();
@@ -175,6 +181,12 @@ class AssistantNotifier extends _$AssistantNotifier {
   }
 
   void cancelQuestion() => _settleAsk(const {'status': 'cancelled'});
+
+  /// Lets the full context be compacted so the turn can continue.
+  void acceptCompact() => _settleCompact(true);
+
+  /// Leaves the transcript as it is and ends the turn.
+  void declineCompact() => _settleCompact(false);
 
   void flashEntities(List<int> ids, {String? tabId}) {
     if (ids.isEmpty) return;
@@ -369,12 +381,6 @@ class AssistantNotifier extends _$AssistantNotifier {
     _pinEntities(ids, tab: tab);
   }
 
-  void pinReceiptIds(List<int> ids) {
-    final tab = workspace.activeDrawing;
-    if (tab == null) return;
-    _pinEntities(ids, tab: tab);
-  }
-
   void pinDrawing(DocumentTab tab) {
     if (tab.isStartPage) return;
     final tabId = tab.session.id;
@@ -539,11 +545,8 @@ class AssistantNotifier extends _$AssistantNotifier {
     if (tabIds.length == 1) {
       target = workspace.findDrawing(tabIds.single) ?? target;
     }
+    // Chat does not need a drawing. A command that needs one fails on its own.
     final session = target?.session ?? workspace.active?.session;
-    if (session == null) {
-      _setStore(_store.copyWith(error: 'Open a drawing first.'));
-      return;
-    }
 
     _setStore(
       _store.copyWith(
@@ -566,17 +569,27 @@ class AssistantNotifier extends _$AssistantNotifier {
     final agent = AgentLoop(
       provider: provider,
       registry: workspace.commands,
-      execute: (id, args, {tab}) => workspace.runHeadless(
-        id,
-        args: args,
-        source: ChangeSource.ai,
-        session: session,
-        tab: tab,
-      ),
+      execute: (id, args, {tab}) {
+        final found = workspace.commands.find(id);
+        if (found != null && found.id.startsWith('extension.')) {
+          return workspace.runSavedScript(
+            id,
+            args: args,
+            source: ChangeSource.ai,
+            session: session,
+            tab: tab,
+          );
+        }
+        return workspace.runHeadless(
+          id,
+          args: args,
+          source: ChangeSource.ai,
+          session: session,
+          tab: tab,
+        );
+      },
       conversation: _chat.conversation,
-      history: session.history,
-      skills: bundledSkillRegistry(),
-      authoring: const PluginAuthoring(),
+      history: session?.history,
       policy: ApprovalPolicy(
         autoApproveEdits: ref
             .read(assistantAccountsNotifierProvider)
@@ -584,6 +597,9 @@ class AssistantNotifier extends _$AssistantNotifier {
       ),
       askApproval: _askApproval,
       askQuestion: _askQuestion,
+      askCompact: _askCompact,
+      execCode: (source) =>
+          ref.read(pluginNotifierProvider.notifier).execScript(source),
       supplyToSession: (args) async => workspace.supplyInteractive(args),
       onDelta: (_) => _bumpTranscript(),
       onUsage: (usage) {
@@ -611,6 +627,7 @@ class AssistantNotifier extends _$AssistantNotifier {
       workspace.setAssistantBusy(false);
       _settlePending(false);
       _settleAsk(const {'status': 'cancelled'});
+      _settleCompact(false);
       _persistChats();
       _setStore(_store.copyWith(busy: false));
     }
@@ -623,6 +640,9 @@ class AssistantNotifier extends _$AssistantNotifier {
   @visibleForTesting
   Future<bool> debugAskApproval(PendingChangeSet pending) =>
       _askApproval(pending);
+
+  @visibleForTesting
+  Future<bool> debugAskCompact() => _askCompact();
 
   @visibleForTesting
   Future<Map<String, Object?>> debugAskQuestion(SessionQuestion question) =>
@@ -674,6 +694,27 @@ class AssistantNotifier extends _$AssistantNotifier {
     final decision = _askDecision;
     if (decision == null || decision.isCompleted) return;
     decision.complete(result);
+  }
+
+  Future<bool> _askCompact() async {
+    _settleCompact(false);
+    _replaceStore(_store.copyWith(compactPrompt: true));
+    final decision = Completer<bool>();
+    _compactDecision = decision;
+    try {
+      return await decision.future;
+    } finally {
+      if (_store.compactPrompt) {
+        _setStore(_store.copyWith(compactPrompt: false));
+        _compactDecision = null;
+      }
+    }
+  }
+
+  void _settleCompact(bool allowed) {
+    final decision = _compactDecision;
+    if (decision == null || decision.isCompleted) return;
+    decision.complete(allowed);
   }
 
   /// Stores an uploaded picture on the composer. Ignored for text models.
@@ -739,6 +780,11 @@ class AssistantNotifier extends _$AssistantNotifier {
   void debugSetBusy(bool value) {
     _setStore(_store.copyWith(busy: value));
     workspace.setAssistantBusy(value);
+  }
+
+  @visibleForTesting
+  void debugSetError(String? message) {
+    _setStore(_store.copyWith(error: message));
   }
 
   @visibleForTesting

@@ -3,7 +3,6 @@ import 'package:fancad_ops/fancad_ops.dart';
 
 import '../provider.dart';
 import '../session_ask.dart';
-import 'skill.dart';
 
 /// A tool that belongs to the agent host, not the command registry.
 ///
@@ -15,7 +14,7 @@ class HostTool {
     required this.execute,
     this.params = const [],
     this.risk = CommandRisk.readOnly,
-    this.groupTitle = 'Skill',
+    this.groupTitle = '',
   });
 
   final LlmTool definition;
@@ -26,17 +25,8 @@ class HostTool {
   final String groupTitle;
 }
 
-/// Catalog id for [readSkillTool]. Dotted so `help skill` lists it.
-const skillReadId = 'skill.read';
-
 /// Catalog id for [sessionSupplyTool].
 const sessionSupplyId = 'session.supply';
-
-const _skillNameParam = ParamSpec(
-  name: 'name',
-  type: ParamType.text,
-  description: 'Skill name, for example inspect-drawing or annotate',
-);
 
 const _supplyParams = [
   ParamSpec(
@@ -65,71 +55,32 @@ const _supplyParams = [
   ),
 ];
 
-/// Builds the `skill.read` host operation against [registry].
-HostTool readSkillTool(SkillRegistry registry) {
-  return HostTool(
-    definition: const LlmTool(
-      name: skillReadId,
-      description:
-          'Load full skill instructions by name. Call this when a listed '
-          'skill matches the user request, then follow the workflow.',
-      parameters: {
-        'type': 'object',
-        'properties': {
-          'name': {
-            'type': 'string',
-            'description':
-                'Skill name, for example inspect-drawing or annotate',
-          },
-        },
-        'required': ['name'],
-      },
-    ),
-    params: const [_skillNameParam],
-    execute: (args) async {
-      final name = '${args['name'] ?? ''}'.trim();
-      if (name.isEmpty) {
-        return {'status': 'failed', 'message': 'skill.read requires a name.'};
-      }
-      final skill = registry.read(name);
-      if (skill == null) {
-        final known = [
-          for (final item in registry.listSummaries()) item.name,
-        ].join(', ');
-        return {
-          'status': 'failed',
-          'message': 'Unknown skill: $name. Known: $known',
-        };
-      }
-      return {
-        'status': 'ok',
-        'name': skill.name,
-        'description': skill.description,
-        'body': skill.body,
-      };
-    },
-  );
-}
-
 /// Builds `session.supply` so the model can fill the human's current prompt.
 HostTool sessionSupplyTool(SessionSupplier supplier) {
   return HostTool(
     definition: const LlmTool(
       name: sessionSupplyId,
       description:
-          'Feed a point, number, keyword or selection into the command the '
-          'user is already running. Do not start a second copy of that command.',
+          'Feeds a point, number, keyword, or selection into the command '
+          'the user is already running. Do not start a second copy.\n'
+          'Call fancad action=run path=session.supply with one of point, '
+          'number, keyword, or ids.',
       parameters: {
         'type': 'object',
         'properties': {
           'point': {
             'type': 'array',
+            'description': 'Point [x, y].',
             'items': {'type': 'number'},
           },
-          'number': {'type': 'number'},
-          'keyword': {'type': 'string'},
+          'number': {'type': 'number', 'description': 'Distance or radius.'},
+          'keyword': {
+            'type': 'string',
+            'description': 'A prompt word such as Close or Undo.',
+          },
           'ids': {
             'type': 'array',
+            'description': 'Entity ids for a selection prompt.',
             'items': {'type': 'integer'},
           },
         },
@@ -140,11 +91,6 @@ HostTool sessionSupplyTool(SessionSupplier supplier) {
     execute: supplier,
   );
 }
-
-/// Host tools bundled with the CAD assistant.
-List<HostTool> bundledHostTools(SkillRegistry skills) => [
-  readSkillTool(skills),
-];
 
 /// Host tools as catalog operations so they share list/help/run with commands.
 class HostOperationProvider implements OperationProvider {

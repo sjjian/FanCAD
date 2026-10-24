@@ -25,7 +25,7 @@ class PluginsListCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final plugins = this.plugins.host.plugins;
+    final plugins = this.plugins.manager.plugins;
     if (plugins.isEmpty) {
       context.input.write('No extensions are installed.');
       return const CommandResult.ok(

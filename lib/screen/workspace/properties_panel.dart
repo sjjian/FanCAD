@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../commands/edit/helpers.dart';
 import '../../l10n/l10n.dart';
 import '../../services/workspace.dart';
+import '../plugin/plugin_view.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
 
@@ -133,6 +134,7 @@ class PropertiesPanel extends ConsumerWidget {
                   ],
                 ),
         ),
+        PluginLocationViews(location: 'properties', workspace: workspace),
       ],
     );
   }

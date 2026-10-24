@@ -1,6 +1,6 @@
 import 'package:fancad/fancad.dart';
 import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_plugin_host/fancad_plugin_host.dart';
+import 'package:fancad_extension/fancad_extension.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,7 +25,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    expect(container.read(pluginNotifierProvider.notifier).host, isNull);
+    expect(container.read(pluginNotifierProvider.notifier).manager, isNull);
     expect(container.read(pluginNotifierProvider.notifier).commands, isNull);
   });
 
@@ -44,9 +44,17 @@ void main() {
       addTearDown(container.dispose);
 
       final plugins = container.read(pluginNotifierProvider.notifier);
-      expect(plugins.host, isNotNull);
-      expect(plugins.commands, isNotNull);
-      expect(plugins.commands!.pluginsDirectory, root.path);
+      expect(plugins.manager, isNotNull);
+      expect(plugins.commands, isNull);
+      expect(
+        container.read(commandRegistryProvider).find('extensions.list'),
+        isNotNull,
+      );
+      expect(container.read(commandRegistryProvider).find('exec'), isNull);
+      expect(
+        container.read(commandRegistryProvider).find('plugins.list'),
+        isNull,
+      );
     },
   );
 

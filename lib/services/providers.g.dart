@@ -86,8 +86,9 @@ final commandRegistryProvider = Provider<CommandRegistry>.internal(
 typedef CommandRegistryRef = ProviderRef<CommandRegistry>;
 String _$pluginsDirectoryHash() => r'883437af0aa766aa7633a91eeef02ee5dec57ab0';
 
-/// Where user extensions live. Overridden at startup with a real path, and left
-/// empty in tests so that a test run never scans the user's real folder.
+/// Where saved scripts live (`scripts/*.js`). Overridden at startup with a
+/// real path, and left empty in tests so a test run never reads the user's
+/// scripts. Extension folders are not scanned.
 ///
 /// Copied from [pluginsDirectory].
 @ProviderFor(pluginsDirectory)

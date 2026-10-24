@@ -16,7 +16,7 @@ class Operation {
     this.risk = CommandRisk.edit,
   });
 
-  /// Dotted id, for example `draw.line` or `skill.read`.
+  /// Dotted id, for example `draw.line` or `session.supply`.
   final String id;
 
   /// First path segment, used by `list` / `help` with no further id.

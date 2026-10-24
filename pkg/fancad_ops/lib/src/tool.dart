@@ -1,5 +1,8 @@
-/// The only tool advertised to a model or an MCP client.
+/// Drawing CLI. Saved extensions are [extensionsToolName], not a path on this tool.
 const fancadToolName = 'fancad';
+
+/// Extension CLI. Management, creation, and running one saved extension share it.
+const extensionsToolName = 'extensions';
 
 /// Wire shape so models do not nest `path` inside `args`.
 const fancadCallExample =
@@ -7,16 +10,38 @@ const fancadCallExample =
 
 /// Instructions that teach progressive discovery instead of listing 150 tools.
 const fancadToolDescription =
-    'FanCAD CLI. One entry for every drawing command and host operation. '
-    'Do not guess parameters. '
-    '1. Call with action=help and no path to list groups (draw, edit, query, …). '
-    '2. action=help path=draw to list commands in a group. '
-    '3. action=help path=draw.line for parameters, aliases and risk. '
-    '4. action=schema path=draw.line for the JSON Schema. '
-    '5. action=run path=draw.line with args from that help. '
-    'Example: $fancadCallExample. path is a sibling of action, never inside args. '
-    'To operate a background drawing, call file.list then pass tab with that id. '
-    'Skills load with action=run path=skill.read args={name: inspect-drawing}.';
+    'Draws, edits, and queries the open drawing. One tool for every drawing '
+    'command. To see the drawing, run print.export with format png and no '
+    'path; the picture comes back. Frame it with corner1 and corner2, or '
+    'scope selection. Do not export extents or the whole drawing. '
+    'Saved extensions are the extensions tool. '
+    'Do not guess parameters. help with no path lists groups; help path=draw '
+    'lists that group; help path=draw.line returns parameters. schema '
+    'path=draw.line returns JSON Schema. run path=draw.line args={...} '
+    'executes. path is a sibling of action, never inside args. '
+    'Example: $fancadCallExample. '
+    'For a drawing that is open but not showing, call file.list and pass tab.';
+
+/// Same discovery shape as [fancadToolDescription], for the extension collection.
+const extensionsToolDescription =
+    'Lists, reads, writes, deletes, and runs saved extensions. Unsaved '
+    'JavaScript is exec, not this tool. Run extensions.doc before writing one. '
+    'Same help, schema, then run as fancad. path is a sibling of action, '
+    'never inside args. extensions.list takes no args. read and delete take '
+    '{name}. write takes {name, content}; put description, usage, and params '
+    'in the opening comment. extension.<name> runs one saved extension. '
+    'Example: {"action":"run","path":"extensions.list"}.';
+
+/// A saved-extension command offered by [extensionsToolName], not by [fancadToolName].
+///
+/// `extensions.run` is an unsaved snippet and stays off both CLIs.
+bool isExtensionCliCommand(String id) =>
+    id == 'extensions.list' ||
+    id == 'extensions.read' ||
+    id == 'extensions.write' ||
+    id == 'extensions.delete' ||
+    id == 'extensions.doc' ||
+    id.startsWith('extension.');
 
 const fancadToolParameters = <String, Object?>{
   'type': 'object',
@@ -25,27 +50,25 @@ const fancadToolParameters = <String, Object?>{
       'type': 'string',
       'enum': ['list', 'help', 'schema', 'run'],
       'description':
-          'list or help discover groups and commands. schema returns JSON '
-          'Schema. run executes a command id.',
+          'help lists groups or one command. schema returns JSON Schema. '
+          'run executes path. list is the short form of help.',
     },
     'path': {
       'type': 'string',
       'description':
-          'Group or dotted command id, for example draw or draw.line. '
-          'Omit for the top-level group list.',
+          'Group or command id, such as draw or draw.line. Omit on help to '
+          'list groups.',
     },
     'args': {
       'type': 'object',
-      'description':
-          'Command parameters from help/schema. Do not put path here.',
+      'description': 'Parameters from help or schema. Do not put path here.',
     },
     'tab': {
       'type': 'string',
       'description':
-          'Open drawing to run against. Call file.list first and pass the '
-          'drawing id. A unique file path or title also works. Omit to use the '
-          'active drawing. Does not switch the visible tab; use file.activate '
-          'for that.',
+          'Open drawing to run against. Call file.list and pass that id. '
+          'Omit for the active drawing. Does not switch the visible tab; '
+          'file.activate does.',
     },
   },
   'required': ['action'],
@@ -58,9 +81,19 @@ Map<String, Object?> fancadToolDefinition() => {
   'parameters': fancadToolParameters,
 };
 
+/// Same argument object as [fancadToolParameters]. The description differs.
+const extensionsToolParameters = fancadToolParameters;
+
 /// MCP `inputSchema` is the parameters object plus a name/description.
 Map<String, Object?> fancadMcpTool() => {
   'name': fancadToolName,
   'description': fancadToolDescription,
   'inputSchema': fancadToolParameters,
+};
+
+/// MCP `inputSchema` for [extensionsToolName].
+Map<String, Object?> extensionsMcpTool() => {
+  'name': extensionsToolName,
+  'description': extensionsToolDescription,
+  'inputSchema': extensionsToolParameters,
 };

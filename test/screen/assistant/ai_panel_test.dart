@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:fancad/fancad.dart';
 import 'package:fancad_ai/fancad_ai.dart';
@@ -129,6 +130,20 @@ void main() {
     );
   });
 
+  testWidgets('an assistant error lines up with the composer', (tester) async {
+    final ai = panelAi();
+    await pumpAiPanel(tester, ai);
+    ai.debugSetError('The model returned HTTP 402');
+    await tester.pump();
+
+    final banner = tester.getRect(find.byType(FanCadBanner));
+    final card = tester.getRect(
+      find.byKey(const Key('assistant-composer-card')),
+    );
+    expect(banner.left, closeTo(card.left, 0.5));
+    expect(banner.right, closeTo(card.right, 0.5));
+  });
+
   testWidgets('an unconfigured composer says the model is unavailable', (
     tester,
   ) async {
@@ -257,6 +272,178 @@ void main() {
       expect(find.byKey(const Key('assistant-approval-card')), findsNothing);
     },
   );
+
+  testWidgets('an exec approval shows the snippet, not the word Exec', (
+    tester,
+  ) async {
+    final ai = panelAi();
+    await pumpAiPanel(tester, ai);
+    ai.state.activeChat.conversation.addUser('2505.1 × 2349.6');
+    ai.debugAskApproval(_execPending());
+    await tester.pump();
+
+    expect(find.text('Run this code?'), findsOneWidget);
+    expect(find.text('Exec'), findsNothing);
+    expect(find.textContaining('Allow Exec'), findsNothing);
+    expect(find.byIcon(Icons.play_arrow), findsNothing);
+    expect(find.byIcon(Icons.expand_less), findsOneWidget);
+    expect(find.textContaining('const a = 2505.1'), findsOneWidget);
+    expect(find.textContaining('a * b'), findsOneWidget);
+
+    await tester.tap(find.text('Run this code?'));
+    await tester.pump();
+    expect(find.textContaining('a * b'), findsNothing);
+    expect(find.byIcon(Icons.expand_more), findsOneWidget);
+    expect(
+      find.byKey(const Key('assistant-approval-continue')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('an exec card shows the result under the source', (tester) async {
+    final ai = panelAi();
+    await pumpAiPanel(tester, ai);
+    ai.state.activeChat.conversation.addToolResult(
+      call: const LlmToolCall(
+        id: '1',
+        name: execToolId,
+        arguments: {'source': 'const a = 1;\na'},
+      ),
+      content:
+          '{"status":"ok","message":"{\\"minx\\":1...","value":{"minx":1,"maxx":9}}',
+      visibleContent: encodeExecCard(
+        '{"status":"ok","message":"{\\"minx\\":1...","value":{"minx":1,"maxx":9}}',
+        'const a = 1;\na',
+      ),
+      toolName: execToolId,
+    );
+    ai.debugSetBusy(true);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('EXEC'), findsNothing);
+    expect(find.text('Source'), findsNothing);
+    expect(find.text('Result'), findsNothing);
+    expect(find.byIcon(Icons.play_arrow), findsNothing);
+    expect(find.textContaining('"minx": 1'), findsNothing);
+    expect(find.byIcon(Icons.expand_more), findsOneWidget);
+
+    final title = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text &&
+          widget.data == 'const a = 1;' &&
+          widget.maxLines == 1,
+    );
+    await tester.tap(title);
+    await tester.pump();
+    expect(find.textContaining('const a = 1'), findsWidgets);
+    expect(find.textContaining('"minx": 1'), findsOneWidget);
+    expect(find.textContaining('"maxx": 9'), findsOneWidget);
+    expect(find.textContaining('minx":1...'), findsNothing);
+    expect(find.byIcon(Icons.expand_less), findsOneWidget);
+
+    await tester.tap(title);
+    await tester.pump();
+    expect(find.textContaining('"minx": 1'), findsNothing);
+    expect(find.byIcon(Icons.expand_more), findsOneWidget);
+  });
+
+  testWidgets('a cli card shows the call above the result', (tester) async {
+    final ai = panelAi();
+    await pumpAiPanel(tester, ai);
+    ai.state.activeChat.conversation.addToolResult(
+      call: const LlmToolCall(
+        id: '1',
+        name: 'fancad',
+        arguments: {'action': 'run', 'path': 'query.session'},
+      ),
+      content: '{"status":"ok","message":"Nothing selected.","data":{"n":1}}',
+      visibleContent: encodeCliCard(
+        '{"status":"ok","message":"Nothing selected.","data":{"n":1}}',
+        const {'action': 'run', 'path': 'query.session'},
+      ),
+      toolName: 'query.session',
+    );
+    ai.debugSetBusy(true);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('query.session'), findsOneWidget);
+    expect(find.textContaining('"path"'), findsNothing);
+    await tester.tap(find.text('query.session'));
+    await tester.pump();
+    expect(find.textContaining('"path"'), findsOneWidget);
+    expect(find.textContaining('"n": 1'), findsOneWidget);
+    expect(find.textContaining('"input"'), findsNothing);
+  });
+
+  testWidgets('a long tool body folds until expanded', (tester) async {
+    tester.view.physicalSize = const Size(800, 5000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final ai = panelAi();
+    await pumpAiPanel(tester, ai);
+    final raw = jsonEncode({
+      'status': 'ok',
+      'message': 'listed',
+      'data': [
+        for (var i = 0; i < 40; i++)
+          {'id': i, 'kind': 'line', 'note': i == 39 ? 'TAILMARKER' : 'row'},
+      ],
+    });
+    ai.state.activeChat.conversation.addToolResult(
+      call: const LlmToolCall(id: '1', name: 'fancad', arguments: {}),
+      content: raw,
+      toolName: 'query.selection',
+    );
+    ai.debugSetBusy(true);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Expand'), findsNothing);
+    await tester.tap(find.text('query.selection'));
+    await tester.pump();
+    await tester.pump();
+    final body = find.textContaining('TAILMARKER');
+    final hover = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await hover.addPointer();
+    addTearDown(hover.removePointer);
+    await hover.moveTo(tester.getTopLeft(body) + const Offset(24, 24));
+    await tester.pump();
+
+    expect(find.text('Expand'), findsOneWidget);
+    final folded = find.ancestor(
+      of: find.text('Expand'),
+      matching: find.byType(Stack),
+    );
+    expect(tester.getSize(folded.first).height, 360);
+
+    await tester.tap(find.text('Expand'));
+    await tester.pump();
+    expect(find.text('Collapse'), findsOneWidget);
+    expect(
+      tester
+          .getSize(
+            find
+                .ancestor(
+                  of: find.text('Collapse'),
+                  matching: find.byType(Stack),
+                )
+                .first,
+          )
+          .height,
+      greaterThan(360),
+    );
+    expect(find.textContaining('TAILMARKER'), findsOneWidget);
+
+    await tester.tap(find.text('Collapse'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Expand'), findsOneWidget);
+    expect(tester.getSize(folded.first).height, 360);
+  });
 
   testWidgets(
     'new-session leftover sits after the last tab, not the strip end',
@@ -496,6 +683,34 @@ void main() {
       'label': 'Fillet 10',
     });
     expect(find.byKey(const Key('assistant-ask-card')), findsNothing);
+  });
+
+  testWidgets('a full context asks to compact before continuing', (
+    tester,
+  ) async {
+    final ai = panelAi(
+      settings: SettingsStore.inMemory({
+        SettingsKeys.aiModel: 'deepseek-chat',
+        SettingsKeys.aiBaseUrl: 'https://api.deepseek.com/v1',
+        SettingsKeys.aiApiKey: 'sk-one',
+      }),
+    );
+    final future = ai.debugAskCompact();
+    await pumpAiPanel(tester, ai);
+    await tester.pump();
+
+    expect(find.byKey(const Key('assistant-compact-card')), findsOneWidget);
+    expect(find.text('Context is full'), findsOneWidget);
+    expect(
+      find.text('Compress the earlier conversation and continue?'),
+      findsOneWidget,
+    );
+    expect(find.byType(Dialog), findsNothing);
+
+    await tester.tap(find.byKey(const Key('assistant-compact-continue')));
+    await tester.pump();
+    expect(await future, isTrue);
+    expect(find.byKey(const Key('assistant-compact-card')), findsNothing);
   });
 
   testWidgets('a multiple ask waits until continue', (tester) async {
@@ -853,6 +1068,17 @@ void _expectEmptyGuideCentered(WidgetTester tester) {
   expect(guide.center.dx, closeTo(panel.center.dx, 8));
   expect(guide.center.dy, closeTo((tabs.bottom + composer.top) / 2, 12));
 }
+
+PendingChangeSet _execPending() => const PendingChangeSet(
+  calls: [
+    LlmToolCall(
+      id: '1',
+      name: execToolId,
+      arguments: {'source': 'const a = 2505.1;\nconst b = 2349.6;\na * b;'},
+    ),
+  ],
+  commands: [CommandDescriptor(id: execToolId, title: 'Exec', handler: _noop)],
+);
 
 PendingChangeSet _leftoverPending() => const PendingChangeSet(
   calls: [

@@ -118,6 +118,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 bounds: bounds,
                 initialSize: size,
                 minSize: const Size(520, 400),
+                closeTooltip: l10n.close,
                 onClose: close,
                 onBarrierTap: close,
                 child: _SettingsBody(tab: _tab, onTab: _setTab),

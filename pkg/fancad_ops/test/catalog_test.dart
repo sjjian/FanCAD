@@ -43,6 +43,15 @@ void main() {
           params: const [ParamSpec(name: 'path', type: ParamType.text)],
           handler: (_) async => const CommandResult.ok(),
         ),
+      )
+      ..register(
+        CommandDescriptor(
+          id: 'plugins.write',
+          title: 'Write Extension File',
+          category: 'Extensions',
+          aiExposure: AiExposure.hostOnly,
+          handler: (_) async => const CommandResult.ok(),
+        ),
       );
     catalog = OperationCatalog()
       ..addProvider(
@@ -56,16 +65,16 @@ void main() {
       )
       ..register(
         Operation(
-          id: 'skill.read',
-          group: 'skill',
-          groupTitle: 'Skill',
-          title: 'Read skill',
-          description: 'Load a skill body.',
-          params: const [ParamSpec(name: 'name', type: ParamType.text)],
+          id: 'session.supply',
+          group: 'session',
+          groupTitle: 'Session',
+          title: 'Supply',
+          description: 'Feed the running command.',
+          params: const [ParamSpec(name: 'point', type: ParamType.point)],
           risk: CommandRisk.readOnly,
           execute: (args, {tab}) async => {
             'status': 'ok',
-            'name': args['name'],
+            'point': args['point'],
           },
         ),
       );
@@ -82,7 +91,7 @@ void main() {
       final groups = payload['groups'] as List<Object?>;
       expect(
         groups.map((item) => (item as Map)['id']),
-        containsAll(['draw', 'file', 'query', 'skill']),
+        containsAll(['draw', 'file', 'query', 'session']),
       );
       expect(payload.toString(), isNot(contains('start')));
     },
@@ -133,17 +142,20 @@ void main() {
     'hidden file commands and host tools appear and resolve aliases',
     () async {
       expect(catalog.find('file.open'), isNotNull);
+      expect(catalog.find('plugins.write'), isNull);
       expect(catalog.find('L')?.id, 'draw.line');
       expect(catalog.find('draw_line'), isNull);
 
-      final skill = await dispatcher.dispatch(
+      final supply = await dispatcher.dispatch(
         const OpsRequest(
           action: OpsAction.run,
-          path: 'skill.read',
-          args: {'name': 'annotate'},
+          path: 'session.supply',
+          args: {
+            'point': [1, 2],
+          },
         ),
       );
-      expect(skill['name'], 'annotate');
+      expect(supply['point'], [1, 2]);
     },
   );
 

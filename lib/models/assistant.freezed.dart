@@ -14,7 +14,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AssistantModel {
 
- List<AssistantChatModel> get chats; String get activeChatId; List<ComposerPinModel> get pins; List<AssistantImageModel> get images; String? get error; PendingChangeSet? get approval; SessionQuestion? get question; bool get busy; int get transcriptEpoch;/// The canvas is waiting for one dragged region for the composer.
+ List<AssistantChatModel> get chats; String get activeChatId; List<ComposerPinModel> get pins; List<AssistantImageModel> get images; String? get error; PendingChangeSet? get approval; SessionQuestion? get question;/// The chat is waiting for a yes on compacting a full context.
+ bool get compactPrompt; bool get busy; int get transcriptEpoch;/// The canvas is waiting for one dragged region for the composer.
  bool get pickingBbox;/// Drawing-unit rectangle shown while a bbox chip is hovered or flashed.
 ///
 /// Four numbers, minX minY maxX maxY. Null when nothing is showing.
@@ -30,16 +31,16 @@ $AssistantModelCopyWith<AssistantModel> get copyWith => _$AssistantModelCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantModel&&const DeepCollectionEquality().equals(other.chats, chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other.pins, pins)&&const DeepCollectionEquality().equals(other.images, images)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pickingBbox, pickingBbox) || other.pickingBbox == pickingBbox)&&const DeepCollectionEquality().equals(other.hoverFrame, hoverFrame)&&(identical(other.hoverFrameTab, hoverFrameTab) || other.hoverFrameTab == hoverFrameTab));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AssistantModel&&const DeepCollectionEquality().equals(other.chats, chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other.pins, pins)&&const DeepCollectionEquality().equals(other.images, images)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.compactPrompt, compactPrompt) || other.compactPrompt == compactPrompt)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pickingBbox, pickingBbox) || other.pickingBbox == pickingBbox)&&const DeepCollectionEquality().equals(other.hoverFrame, hoverFrame)&&(identical(other.hoverFrameTab, hoverFrameTab) || other.hoverFrameTab == hoverFrameTab));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(chats),activeChatId,const DeepCollectionEquality().hash(pins),const DeepCollectionEquality().hash(images),error,approval,question,busy,transcriptEpoch,pickingBbox,const DeepCollectionEquality().hash(hoverFrame),hoverFrameTab);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(chats),activeChatId,const DeepCollectionEquality().hash(pins),const DeepCollectionEquality().hash(images),error,approval,question,compactPrompt,busy,transcriptEpoch,pickingBbox,const DeepCollectionEquality().hash(hoverFrame),hoverFrameTab);
 
 @override
 String toString() {
-  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, images: $images, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch, pickingBbox: $pickingBbox, hoverFrame: $hoverFrame, hoverFrameTab: $hoverFrameTab)';
+  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, images: $images, error: $error, approval: $approval, question: $question, compactPrompt: $compactPrompt, busy: $busy, transcriptEpoch: $transcriptEpoch, pickingBbox: $pickingBbox, hoverFrame: $hoverFrame, hoverFrameTab: $hoverFrameTab)';
 }
 
 
@@ -50,7 +51,7 @@ abstract mixin class $AssistantModelCopyWith<$Res>  {
   factory $AssistantModelCopyWith(AssistantModel value, $Res Function(AssistantModel) _then) = _$AssistantModelCopyWithImpl;
 @useResult
 $Res call({
- List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, List<AssistantImageModel> images, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch, bool pickingBbox, List<double>? hoverFrame, String hoverFrameTab
+ List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, List<AssistantImageModel> images, String? error, PendingChangeSet? approval, SessionQuestion? question, bool compactPrompt, bool busy, int transcriptEpoch, bool pickingBbox, List<double>? hoverFrame, String hoverFrameTab
 });
 
 
@@ -67,7 +68,7 @@ class _$AssistantModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? images = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,Object? pickingBbox = null,Object? hoverFrame = freezed,Object? hoverFrameTab = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? images = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? compactPrompt = null,Object? busy = null,Object? transcriptEpoch = null,Object? pickingBbox = null,Object? hoverFrame = freezed,Object? hoverFrameTab = null,}) {
   return _then(_self.copyWith(
 chats: null == chats ? _self.chats : chats // ignore: cast_nullable_to_non_nullable
 as List<AssistantChatModel>,activeChatId: null == activeChatId ? _self.activeChatId : activeChatId // ignore: cast_nullable_to_non_nullable
@@ -76,7 +77,8 @@ as List<ComposerPinModel>,images: null == images ? _self.images : images // igno
 as List<AssistantImageModel>,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,approval: freezed == approval ? _self.approval : approval // ignore: cast_nullable_to_non_nullable
 as PendingChangeSet?,question: freezed == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
-as SessionQuestion?,busy: null == busy ? _self.busy : busy // ignore: cast_nullable_to_non_nullable
+as SessionQuestion?,compactPrompt: null == compactPrompt ? _self.compactPrompt : compactPrompt // ignore: cast_nullable_to_non_nullable
+as bool,busy: null == busy ? _self.busy : busy // ignore: cast_nullable_to_non_nullable
 as bool,transcriptEpoch: null == transcriptEpoch ? _self.transcriptEpoch : transcriptEpoch // ignore: cast_nullable_to_non_nullable
 as int,pickingBbox: null == pickingBbox ? _self.pickingBbox : pickingBbox // ignore: cast_nullable_to_non_nullable
 as bool,hoverFrame: freezed == hoverFrame ? _self.hoverFrame : hoverFrame // ignore: cast_nullable_to_non_nullable
@@ -166,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  bool pickingBbox,  List<double>? hoverFrame,  String hoverFrameTab)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool compactPrompt,  bool busy,  int transcriptEpoch,  bool pickingBbox,  List<double>? hoverFrame,  String hoverFrameTab)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AssistantModel() when $default != null:
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pickingBbox,_that.hoverFrame,_that.hoverFrameTab);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.compactPrompt,_that.busy,_that.transcriptEpoch,_that.pickingBbox,_that.hoverFrame,_that.hoverFrameTab);case _:
   return orElse();
 
 }
@@ -187,10 +189,10 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.err
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  bool pickingBbox,  List<double>? hoverFrame,  String hoverFrameTab)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool compactPrompt,  bool busy,  int transcriptEpoch,  bool pickingBbox,  List<double>? hoverFrame,  String hoverFrameTab)  $default,) {final _that = this;
 switch (_that) {
 case _AssistantModel():
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pickingBbox,_that.hoverFrame,_that.hoverFrameTab);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.compactPrompt,_that.busy,_that.transcriptEpoch,_that.pickingBbox,_that.hoverFrame,_that.hoverFrameTab);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +209,10 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.err
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool busy,  int transcriptEpoch,  bool pickingBbox,  List<double>? hoverFrame,  String hoverFrameTab)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AssistantChatModel> chats,  String activeChatId,  List<ComposerPinModel> pins,  List<AssistantImageModel> images,  String? error,  PendingChangeSet? approval,  SessionQuestion? question,  bool compactPrompt,  bool busy,  int transcriptEpoch,  bool pickingBbox,  List<double>? hoverFrame,  String hoverFrameTab)?  $default,) {final _that = this;
 switch (_that) {
 case _AssistantModel() when $default != null:
-return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.busy,_that.transcriptEpoch,_that.pickingBbox,_that.hoverFrame,_that.hoverFrameTab);case _:
+return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.error,_that.approval,_that.question,_that.compactPrompt,_that.busy,_that.transcriptEpoch,_that.pickingBbox,_that.hoverFrame,_that.hoverFrameTab);case _:
   return null;
 
 }
@@ -222,7 +224,7 @@ return $default(_that.chats,_that.activeChatId,_that.pins,_that.images,_that.err
 
 
 class _AssistantModel extends AssistantModel {
-  const _AssistantModel({final  List<AssistantChatModel> chats = const [], this.activeChatId = AssistantChatModel.defaultId, final  List<ComposerPinModel> pins = const [], final  List<AssistantImageModel> images = const [], this.error, this.approval, this.question, this.busy = false, this.transcriptEpoch = 0, this.pickingBbox = false, final  List<double>? hoverFrame, this.hoverFrameTab = ''}): _chats = chats,_pins = pins,_images = images,_hoverFrame = hoverFrame,super._();
+  const _AssistantModel({final  List<AssistantChatModel> chats = const [], this.activeChatId = AssistantChatModel.defaultId, final  List<ComposerPinModel> pins = const [], final  List<AssistantImageModel> images = const [], this.error, this.approval, this.question, this.compactPrompt = false, this.busy = false, this.transcriptEpoch = 0, this.pickingBbox = false, final  List<double>? hoverFrame, this.hoverFrameTab = ''}): _chats = chats,_pins = pins,_images = images,_hoverFrame = hoverFrame,super._();
   
 
  final  List<AssistantChatModel> _chats;
@@ -250,6 +252,8 @@ class _AssistantModel extends AssistantModel {
 @override final  String? error;
 @override final  PendingChangeSet? approval;
 @override final  SessionQuestion? question;
+/// The chat is waiting for a yes on compacting a full context.
+@override@JsonKey() final  bool compactPrompt;
 @override@JsonKey() final  bool busy;
 @override@JsonKey() final  int transcriptEpoch;
 /// The canvas is waiting for one dragged region for the composer.
@@ -283,16 +287,16 @@ _$AssistantModelCopyWith<_AssistantModel> get copyWith => __$AssistantModelCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantModel&&const DeepCollectionEquality().equals(other._chats, _chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other._pins, _pins)&&const DeepCollectionEquality().equals(other._images, _images)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pickingBbox, pickingBbox) || other.pickingBbox == pickingBbox)&&const DeepCollectionEquality().equals(other._hoverFrame, _hoverFrame)&&(identical(other.hoverFrameTab, hoverFrameTab) || other.hoverFrameTab == hoverFrameTab));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AssistantModel&&const DeepCollectionEquality().equals(other._chats, _chats)&&(identical(other.activeChatId, activeChatId) || other.activeChatId == activeChatId)&&const DeepCollectionEquality().equals(other._pins, _pins)&&const DeepCollectionEquality().equals(other._images, _images)&&(identical(other.error, error) || other.error == error)&&(identical(other.approval, approval) || other.approval == approval)&&(identical(other.question, question) || other.question == question)&&(identical(other.compactPrompt, compactPrompt) || other.compactPrompt == compactPrompt)&&(identical(other.busy, busy) || other.busy == busy)&&(identical(other.transcriptEpoch, transcriptEpoch) || other.transcriptEpoch == transcriptEpoch)&&(identical(other.pickingBbox, pickingBbox) || other.pickingBbox == pickingBbox)&&const DeepCollectionEquality().equals(other._hoverFrame, _hoverFrame)&&(identical(other.hoverFrameTab, hoverFrameTab) || other.hoverFrameTab == hoverFrameTab));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_chats),activeChatId,const DeepCollectionEquality().hash(_pins),const DeepCollectionEquality().hash(_images),error,approval,question,busy,transcriptEpoch,pickingBbox,const DeepCollectionEquality().hash(_hoverFrame),hoverFrameTab);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_chats),activeChatId,const DeepCollectionEquality().hash(_pins),const DeepCollectionEquality().hash(_images),error,approval,question,compactPrompt,busy,transcriptEpoch,pickingBbox,const DeepCollectionEquality().hash(_hoverFrame),hoverFrameTab);
 
 @override
 String toString() {
-  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, images: $images, error: $error, approval: $approval, question: $question, busy: $busy, transcriptEpoch: $transcriptEpoch, pickingBbox: $pickingBbox, hoverFrame: $hoverFrame, hoverFrameTab: $hoverFrameTab)';
+  return 'AssistantModel(chats: $chats, activeChatId: $activeChatId, pins: $pins, images: $images, error: $error, approval: $approval, question: $question, compactPrompt: $compactPrompt, busy: $busy, transcriptEpoch: $transcriptEpoch, pickingBbox: $pickingBbox, hoverFrame: $hoverFrame, hoverFrameTab: $hoverFrameTab)';
 }
 
 
@@ -303,7 +307,7 @@ abstract mixin class _$AssistantModelCopyWith<$Res> implements $AssistantModelCo
   factory _$AssistantModelCopyWith(_AssistantModel value, $Res Function(_AssistantModel) _then) = __$AssistantModelCopyWithImpl;
 @override @useResult
 $Res call({
- List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, List<AssistantImageModel> images, String? error, PendingChangeSet? approval, SessionQuestion? question, bool busy, int transcriptEpoch, bool pickingBbox, List<double>? hoverFrame, String hoverFrameTab
+ List<AssistantChatModel> chats, String activeChatId, List<ComposerPinModel> pins, List<AssistantImageModel> images, String? error, PendingChangeSet? approval, SessionQuestion? question, bool compactPrompt, bool busy, int transcriptEpoch, bool pickingBbox, List<double>? hoverFrame, String hoverFrameTab
 });
 
 
@@ -320,7 +324,7 @@ class __$AssistantModelCopyWithImpl<$Res>
 
 /// Create a copy of AssistantModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? images = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? busy = null,Object? transcriptEpoch = null,Object? pickingBbox = null,Object? hoverFrame = freezed,Object? hoverFrameTab = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? chats = null,Object? activeChatId = null,Object? pins = null,Object? images = null,Object? error = freezed,Object? approval = freezed,Object? question = freezed,Object? compactPrompt = null,Object? busy = null,Object? transcriptEpoch = null,Object? pickingBbox = null,Object? hoverFrame = freezed,Object? hoverFrameTab = null,}) {
   return _then(_AssistantModel(
 chats: null == chats ? _self._chats : chats // ignore: cast_nullable_to_non_nullable
 as List<AssistantChatModel>,activeChatId: null == activeChatId ? _self.activeChatId : activeChatId // ignore: cast_nullable_to_non_nullable
@@ -329,7 +333,8 @@ as List<ComposerPinModel>,images: null == images ? _self._images : images // ign
 as List<AssistantImageModel>,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,approval: freezed == approval ? _self.approval : approval // ignore: cast_nullable_to_non_nullable
 as PendingChangeSet?,question: freezed == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
-as SessionQuestion?,busy: null == busy ? _self.busy : busy // ignore: cast_nullable_to_non_nullable
+as SessionQuestion?,compactPrompt: null == compactPrompt ? _self.compactPrompt : compactPrompt // ignore: cast_nullable_to_non_nullable
+as bool,busy: null == busy ? _self.busy : busy // ignore: cast_nullable_to_non_nullable
 as bool,transcriptEpoch: null == transcriptEpoch ? _self.transcriptEpoch : transcriptEpoch // ignore: cast_nullable_to_non_nullable
 as int,pickingBbox: null == pickingBbox ? _self.pickingBbox : pickingBbox // ignore: cast_nullable_to_non_nullable
 as bool,hoverFrame: freezed == hoverFrame ? _self._hoverFrame : hoverFrame // ignore: cast_nullable_to_non_nullable

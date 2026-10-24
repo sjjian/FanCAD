@@ -1226,6 +1226,21 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get allow_run_code => '运行这段代码？';
+
+  @override
+  String get compact_context_title => '上下文已满';
+
+  @override
+  String get compact_context_body => '压缩较早的对话并继续？';
+
+  @override
+  String get tool_expand => '展开';
+
+  @override
+  String get tool_collapse => '收起';
+
+  @override
   String allow_one_change(String title) {
     return '允许$title？';
   }
@@ -1297,6 +1312,36 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get edit_source => '编辑源码';
+
+  @override
+  String get configure_extension => '配置';
+
+  @override
+  String get extension_details => '详情';
+
+  @override
+  String get extension_source => '源码';
+
+  @override
+  String get import_extension => '导入扩展';
+
+  @override
+  String get export_extension => '导出扩展';
+
+  @override
+  String get delete_extension => '删除扩展';
+
+  @override
+  String get start_extension => '启动扩展';
+
+  @override
+  String get stop_extension => '停止扩展';
+
+  @override
+  String get plugin_view_invalid => '这个面板送来的界面无法显示。';
+
+  @override
+  String get plugin_viewer_closed => '这块画布还没打开。';
 
   @override
   String get enable_extension => '启用扩展';
@@ -1961,6 +2006,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_plugins_edit => '编辑扩展文件';
 
   @override
+  String get command_plugins_import => '导入扩展';
+
+  @override
+  String get command_plugins_export => '导出扩展';
+
+  @override
+  String get command_plugins_delete => '删除扩展';
+
+  @override
+  String get command_plugins_start => '启动扩展';
+
+  @override
+  String get command_plugins_stop => '停止扩展';
+
+  @override
+  String get command_sandbox_query => '在沙盒中查询';
+
+  @override
+  String get command_sandbox_run => '在沙盒中运行';
+
+  @override
   String get command_plugins_eval => '在扩展中求值';
 
   @override
@@ -2559,6 +2625,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_plugins_edit_desc => '在内置编辑器中打开扩展文件，以便查看或修改 AI 编写循环写下的内容。';
 
   @override
+  String get command_plugins_import_desc =>
+      '把插件文件夹或 .fancadplugin 包复制进扩展目录，不启动。';
+
+  @override
+  String get command_plugins_export_desc => '把扩展文件夹打成 .fancadplugin 包。';
+
+  @override
+  String get command_plugins_delete_desc => '卸载扩展并删除它的文件夹。';
+
+  @override
+  String get command_plugins_start_desc => '加载一个已启用的扩展。';
+
+  @override
+  String get command_plugins_stop_desc => '卸载扩展，命令和面板仍保留。';
+
+  @override
+  String get command_sandbox_query_desc => '在一次性沙盒里运行只读 JavaScript。';
+
+  @override
+  String get command_sandbox_run_desc => '在一次性沙盒里运行 JavaScript。可以改图纸，并打开一个对话框。';
+
+  @override
   String get command_plugins_eval_desc =>
       '在扩展作用域中运行 JavaScript 表达式。用于调试；扩展能做的它都能做。';
 
@@ -3143,6 +3231,106 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get use => '使用';
+
+  @override
+  String get scripts => '扩展';
+
+  @override
+  String get view_scripts_hint => '可以再次运行的已保存扩展';
+
+  @override
+  String get new_script => '新建扩展';
+
+  @override
+  String get run_script => '运行';
+
+  @override
+  String get edit_script => '编辑';
+
+  @override
+  String get configure_script => '配置';
+
+  @override
+  String get enable_script => '启用';
+
+  @override
+  String get disable_script => '禁用';
+
+  @override
+  String get script_disabled => '已禁用';
+
+  @override
+  String get delete_script => '删除扩展';
+
+  @override
+  String get script_usage => '用法';
+
+  @override
+  String get no_scripts => '还没有扩展';
+
+  @override
+  String get scripts_unavailable => '扩展不可用：这次会话没有配置扩展文件夹。';
+
+  @override
+  String get open_scripts_folder => '打开扩展文件夹';
+
+  @override
+  String get prompt_script_name => '扩展名称';
+
+  @override
+  String get hint_type_script => '扩展名或 JavaScript';
+
+  @override
+  String get hud_mode_script => '扩展';
+
+  @override
+  String get hud_switch_to_script => '切换到扩展';
+
+  @override
+  String get category_scripts => '扩展';
+
+  @override
+  String get command_scripts_doc => '扩展开发文档';
+
+  @override
+  String get command_scripts_list => '列出扩展';
+
+  @override
+  String get command_scripts_read => '读取扩展';
+
+  @override
+  String get command_scripts_write => '写入扩展';
+
+  @override
+  String get command_scripts_delete => '删除扩展';
+
+  @override
+  String get command_scripts_run => '运行扩展';
+
+  @override
+  String get command_scripts_doc_desc => '返回如何编写一个已保存的扩展。';
+
+  @override
+  String get command_scripts_list_desc => '列出每个已保存的扩展，包括描述、用法、参数和上次的错误。';
+
+  @override
+  String get command_scripts_read_desc => '读取一个已保存的扩展，包括它的描述、用法和参数。';
+
+  @override
+  String get command_scripts_write_desc => '新建或覆盖一个已保存的扩展。描述、用法和参数写在开头的注释里。';
+
+  @override
+  String get command_scripts_delete_desc => '删除一个已保存的扩展。';
+
+  @override
+  String get command_scripts_run_desc =>
+      '运行 source 里的一段临时 JavaScript。已保存的扩展是命令 extension.<name>。';
+
+  @override
+  String get command_exec => '执行';
+
+  @override
+  String get command_exec_desc => '在 QuickJS 沙盒里执行一段 JavaScript，并返回它的值。';
 
   @override
   String objects_in_drawing_many(int count) {
