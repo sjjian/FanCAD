@@ -433,15 +433,6 @@ class _WorkbenchState extends ConsumerState<Workbench> with WindowListener {
     final paletteOpen = ref.watch(
       commandLineNotifierProvider.select((s) => s.paletteOpen),
     );
-    final activeId = ref.watch(
-      workspaceNotifierProvider.select((s) => s.activeSessionId),
-    );
-    if (activeId != null) {
-      ref.watch(
-        documentTabNotifierProvider(activeId).select((s) => s.selectionEpoch),
-      );
-    }
-    ref.watch(workspaceNotifierProvider.select((s) => s.runningCommand));
 
     return CallbackShortcuts(
       bindings: _shortcuts(workspace),
