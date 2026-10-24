@@ -35,10 +35,7 @@ void main() {
 
     await peer.accept(const {'method': 'm', 'id': 7, 'params': 'x'});
     expect(sent.single['id'], 7);
-    expect(
-      (sent.single['error']! as Map)['code'],
-      RpcErrorCode.invalidRequest,
-    );
+    expect((sent.single['error']! as Map)['code'], RpcErrorCode.invalidRequest);
 
     await peer.accept(const {'method': 'm', 'id': 'seven'});
     expect(sent, hasLength(1));

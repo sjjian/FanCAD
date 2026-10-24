@@ -50,7 +50,8 @@ Future<CommandResult> _execNotACommand(CommandContext context) async =>
 /// looked up in [CommandRegistry]. The sandbox sits above that registry.
 CommandDescriptor? commandForCall(CommandRegistry registry, LlmToolCall call) {
   if (call.name == execToolId) return _execApproval;
-  if (call.name != fancadToolName && call.name != extensionsToolName) return null;
+  if (call.name != fancadToolName && call.name != extensionsToolName)
+    return null;
   final path = '${call.arguments['path'] ?? ''}'.trim();
   if (path.isEmpty) return null;
   return const CommandToolCatalog().commandFor(registry, path);
@@ -103,7 +104,9 @@ String assistantToolErrorMessage(
     for (final param in command.params)
       param.required ? param.name : '${param.name}?',
   ];
-  final tool = isExtensionCliCommand(command.id) ? extensionsToolName : fancadToolName;
+  final tool = isExtensionCliCommand(command.id)
+      ? extensionsToolName
+      : fancadToolName;
   final shape = names.isEmpty
       ? '$tool({action: run, path: ${command.id}})'
       : '$tool({action: run, path: ${command.id}, args: {${names.join(', ')}}})';
