@@ -47,7 +47,7 @@ final assistantAccountsNotifierProvider =
     );
 
 typedef _$AssistantAccountsNotifier = Notifier<AssistantAccountsModel>;
-String _$mcpNotifierHash() => r'b7f6c2a257b2335dd89d7993246ae105dae33a53';
+String _$mcpNotifierHash() => r'9a8875aa99e4aa5ad6eee8c2374628e6404f8351';
 
 /// MCP bind settings plus the localhost listener the stdio proxy connects to.
 ///

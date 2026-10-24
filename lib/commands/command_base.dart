@@ -26,6 +26,10 @@ abstract class FanCadCommand {
   List<String> get aliases => const [];
   List<ParamSpec> get params => const [];
   CommandRisk get risk => CommandRisk.edit;
+
+  /// Risk for one call. Override when an argument makes the call worse than
+  /// [risk], for example erasing everything first.
+  CommandRisk riskFor(Map<String, Object?> args) => risk;
   AiExposure get aiExposure => AiExposure.tool;
   String? get icon => null;
   bool get repeatable => true;
@@ -40,6 +44,7 @@ abstract class FanCadCommand {
     aliases: aliases,
     params: params,
     risk: risk,
+    riskOf: riskFor,
     aiExposure: aiExposure,
     icon: icon,
     repeatable: repeatable,

@@ -380,7 +380,7 @@ return drawn;
 A param line is: param <name>: <type> [= default] [description]
 name is an identifier. type is text, number, integer, boolean, point, distance, angle, entity, selection, layer, block, choice, json, or points. A default makes the parameter optional. point, selection, layer, block, choice, json, and points take no default. angle is degrees.
 
-Call a command with await fancad.commands.execute(path, args). path and args match fancad action=run. Read them with fancad help and schema before writing the call. Do not call help, schema, exec, or extension.<name> from the file. Batch drawing changes with commands.execute("edit.apply", ...) so they undo together; its arguments are on fancad schema path=edit.apply.
+Call a command with await fancad.commands.execute(path, args). path and args match fancad action=run. Read them with fancad help and schema before writing the call. Do not call help, schema, exec, or extension.<name> from the file. Destructive commands fail inside a script: edit.erase, edit.apply with replace or an erase operation, saving or closing a file, undo and redo, and extensions.write, delete, or run. Return what should be removed and let the caller erase it. Batch drawing changes with commands.execute("edit.apply", ...) so they undo together; its arguments are on fancad schema path=edit.apply.
 
 fancad.document.summary(), fancad.document.query(filter), fancad.document.entity(id), and fancad.selection.get() read the drawing. fancad.document.edit(label, operations) is edit.apply. Return the value the caller should see.
 ''';

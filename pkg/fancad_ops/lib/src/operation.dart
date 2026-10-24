@@ -14,6 +14,7 @@ class Operation {
     this.params = const [],
     this.aliases = const [],
     this.risk = CommandRisk.edit,
+    this.riskOf,
   });
 
   /// Dotted id, for example `draw.line` or `session.supply`.
@@ -30,11 +31,16 @@ class Operation {
   final List<ParamSpec> params;
   final List<String> aliases;
   final CommandRisk risk;
+
+  /// Risk for one call, when arguments can raise it above [risk].
+  final CommandRisk Function(Map<String, Object?> args)? riskOf;
   final Future<Map<String, Object?>> Function(
     Map<String, Object?> args, {
     String? tab,
   })
   execute;
+
+  CommandRisk riskFor(Map<String, Object?> args) => riskOf?.call(args) ?? risk;
 
   /// JSON Schema for [params], the same shape a command already advertised.
   Map<String, Object?> schema() => {

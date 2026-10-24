@@ -100,6 +100,68 @@ void main() {
     },
   );
 
+  test('runCommand refuses what the drawing cannot undo', () async {
+    final ws = workspace();
+    ws.newDocument();
+    final delegate = ExtensionDelegate(workspace: () => ws);
+    final before = ws.active!.document.entityCount;
+
+    for (final (id, args) in <(String, Map<String, Object?>)>[
+      (
+        'edit.erase',
+        const {
+          'ids': [1],
+        },
+      ),
+      ('edit.apply', const {'operations': [], 'replace': true}),
+      ('file.save', const {}),
+      ('file.saveAs', const {'path': '/tmp/out.dwg'}),
+      ('file.close', const {}),
+      ('edit.undo', const {}),
+      ('edit.redo', const {}),
+      ('extensions.write', const {'name': 'x', 'content': '1'}),
+      ('extensions.delete', const {'name': 'x'}),
+      ('extensions.run', const {'source': '1'}),
+    ]) {
+      final result = await delegate.runCommand(id, args, scope: 'run-1');
+      expect(result.isFailed, isTrue, reason: id);
+      expect(result.message, contains('cannot be called'), reason: id);
+    }
+    expect(ws.active!.document.entityCount, before);
+  });
+
+  test('scriptRefusal follows aliases and lets ordinary edits through', () {
+    final ws = workspace();
+    final commands = ws.commands;
+    String? refusal(String id, [Map<String, Object?> args = const {}]) =>
+        scriptRefusal(id, commands.find(id), args);
+
+    expect(refusal('erase'), isNotNull);
+    expect(refusal('draw.line'), isNull);
+    expect(refusal('edit.apply', const {'operations': []}), isNull);
+    expect(refusal('extensions.list'), isNull);
+    expect(refusal('file.new'), isNull);
+  });
+
+  test('saveAs and a replacing edit.apply count as destructive', () {
+    final commands = workspace().commands;
+    expect(commands.find('file.saveAs')!.risk, CommandRisk.destructive);
+    final apply = commands.find('edit.apply')!;
+    expect(apply.riskFor(const {}), CommandRisk.edit);
+    expect(apply.riskFor(const {'replace': true}), CommandRisk.destructive);
+    expect(
+      apply.riskFor(const {
+        'operations': [
+          {
+            'op': 'erase',
+            'ids': [1],
+          },
+        ],
+      }),
+      CommandRisk.destructive,
+    );
+  });
+
   test('showMessage notifies the workspace', () {
     final ws = workspace();
     final delegate = ExtensionDelegate(workspace: () => ws);

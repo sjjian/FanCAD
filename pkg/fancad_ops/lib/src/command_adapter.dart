@@ -55,6 +55,7 @@ Operation operationFromCommand(
     params: command.params,
     aliases: command.aliases,
     risk: command.risk,
+    riskOf: command.riskFor,
     execute: (args, {tab}) async {
       final result = await execute(command.id, args, tab: tab);
       return encodeOperationResult(result, operation);

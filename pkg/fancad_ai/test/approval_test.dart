@@ -57,6 +57,20 @@ void main() {
     expect(auto.requiresApproval(registry.find('edit.erase')!), isFalse);
   });
 
+  test('arguments can make a call destructive', () {
+    const policy = ApprovalPolicy();
+    final apply = CommandDescriptor(
+      id: 'edit.apply',
+      title: 'Apply',
+      riskOf: (args) =>
+          args['replace'] == true ? CommandRisk.destructive : CommandRisk.edit,
+      handler: (_) async => const CommandResult.ok(),
+    );
+    expect(policy.requiresApproval(apply), isFalse);
+    expect(policy.requiresApproval(apply, const {'replace': false}), isFalse);
+    expect(policy.requiresApproval(apply, const {'replace': true}), isTrue);
+  });
+
   test('pendingOf keeps only the calls that need a decision', () {
     const policy = ApprovalPolicy();
     expect(

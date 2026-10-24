@@ -501,6 +501,7 @@ class CommandDescriptor {
     this.params = const [],
     this.aliases = const [],
     this.risk = CommandRisk.edit,
+    this.riskOf,
     this.aiExposure = AiExposure.tool,
     this.icon,
     this.keybindings = const [],
@@ -535,8 +536,17 @@ class CommandDescriptor {
   @JsonKey(toJson: _omitEmptyStringList)
   final List<String> aliases;
 
+  /// The risk advertised in help and lists, before any arguments are known.
   @JsonKey(toJson: _riskName)
   final CommandRisk risk;
+
+  /// Risk for one call, when arguments can raise it above [risk].
+  @JsonKey(includeToJson: false)
+  final CommandRisk Function(Map<String, Object?> args)? riskOf;
+
+  /// What a call with [args] can do. Approval and the script gate use this,
+  /// so `edit.apply` with `replace: true` counts as destructive.
+  CommandRisk riskFor(Map<String, Object?> args) => riskOf?.call(args) ?? risk;
   @JsonKey(includeToJson: false)
   final AiExposure aiExposure;
 

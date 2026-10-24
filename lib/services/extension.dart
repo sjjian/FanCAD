@@ -54,24 +54,12 @@ class ExtensionDelegate implements ExtensionHost {
     required String scope,
     String? tab,
   }) {
-    // `exec` and `extension.<name>` are the shell. A snippet that reached either
-    // through commands.execute would start another run while this one is
-    // still waiting on the host.
-    final found = workspace.commands.find(commandId);
-    if (commandId == 'exec' || found?.id == 'exec') {
-      return Future.value(
-        const CommandResult.failed(
-          'exec cannot be called from inside a script.',
-        ),
-      );
-    }
-    if (found != null && found.id.startsWith('extension.')) {
-      return Future.value(
-        const CommandResult.failed(
-          'an extension cannot be called from inside a script.',
-        ),
-      );
-    }
+    final refused = scriptRefusal(
+      commandId,
+      workspace.commands.find(commandId),
+      args,
+    );
+    if (refused != null) return Future.value(CommandResult.failed(refused));
     // Script-initiated commands are non-interactive by construction: there is
     // no user at the crosshair when a script runs LINE, so an unanswered
     // prompt has to be an error rather than a wait.
@@ -99,6 +87,44 @@ class ExtensionDelegate implements ExtensionHost {
     }
   }
 }
+
+/// Why a script may not run [commandId], or null when it may.
+///
+/// The user approved the run, not every command inside it. Anything that
+/// cannot be undone from the drawing's history, or that would start another
+/// run while this one waits on the host, is refused here.
+String? scriptRefusal(
+  String commandId,
+  CommandDescriptor? found,
+  Map<String, Object?> args,
+) {
+  final id = found?.id ?? commandId;
+  if (id == 'exec') return 'exec cannot be called from inside a script.';
+  if (id.startsWith('extension.') || _reentrant.contains(id)) {
+    return '$id cannot be called from inside a script.';
+  }
+  if (_outsideHistory.contains(id)) {
+    return '$id cannot be called from inside a script. '
+        'It changes files or the undo history, which the drawing cannot undo.';
+  }
+  if (found != null && found.riskFor(args) == CommandRisk.destructive) {
+    return '$id cannot be called from inside a script because it is '
+        'destructive. Ask the user to run it.';
+  }
+  return null;
+}
+
+/// Commands that write, delete or run extension files.
+const _reentrant = {'extensions.write', 'extensions.delete', 'extensions.run'};
+
+/// Commands whose effect is outside the drawing's undo stack.
+const _outsideHistory = {
+  'file.save',
+  'file.saveAs',
+  'file.close',
+  'edit.undo',
+  'edit.redo',
+};
 
 /// Saved extensions and the runner that evaluates them.
 @Riverpod(keepAlive: true)

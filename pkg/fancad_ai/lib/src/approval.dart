@@ -64,8 +64,13 @@ class ApprovalPolicy {
   /// When true, even destructive tools run without asking.
   final bool autoApproveEdits;
 
-  bool requiresApproval(CommandDescriptor command) {
-    if (command.risk != CommandRisk.destructive) return false;
+  /// Whether a call with [args] waits for the user. Arguments matter:
+  /// `edit.apply` with `replace: true` erases the whole drawing first.
+  bool requiresApproval(
+    CommandDescriptor command, [
+    Map<String, Object?> args = const {},
+  ]) {
+    if (command.riskFor(args) != CommandRisk.destructive) return false;
     return !autoApproveEdits;
   }
 
@@ -80,10 +85,11 @@ class ApprovalPolicy {
     for (final call in calls) {
       final command = commandForCall(registry, call);
       if (command == null) continue;
-      if (!requiresApproval(command)) continue;
+      final args = runArgumentsOf(call);
+      if (!requiresApproval(command, args)) continue;
       pendingCalls.add(call);
       pendingCommands.add(command);
-      highlights.addAll(highlightIdsOf(runArgumentsOf(call)));
+      highlights.addAll(highlightIdsOf(args));
     }
     if (pendingCalls.isEmpty) return null;
     return PendingChangeSet(

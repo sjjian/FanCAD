@@ -339,7 +339,9 @@ class McpNotifier extends _$McpNotifier {
     if (request.action != OpsAction.run || !request.hasPath) return null;
     final operation = catalog.find(request.path);
     if (operation == null) return null;
-    if (operation.risk != CommandRisk.destructive) return null;
+    if (operation.riskFor(request.args) != CommandRisk.destructive) {
+      return null;
+    }
     final drawing = _workspace.findDrawing(request.tab);
     final drawingTitle = drawing?.title.trim() ?? '';
     final prompt = drawingTitle.isEmpty

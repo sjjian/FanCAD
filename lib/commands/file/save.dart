@@ -66,6 +66,10 @@ class FileSaveAsCommand extends FanCadCommand implements CommandKeybindings {
   List<String> get keybindings => const ['ctrl+shift+s'];
   @override
   AiExposure get aiExposure => AiExposure.hidden;
+
+  /// Writes any path it is given, including over another file.
+  @override
+  CommandRisk get risk => CommandRisk.destructive;
   @override
   String get description =>
       'Saves the drawing this command is targeting to a new file.';

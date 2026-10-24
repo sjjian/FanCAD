@@ -19,6 +19,19 @@ class EditApplyCommand extends FanCadCommand {
   String get category => _category;
   @override
   CommandRisk get risk => CommandRisk.edit;
+
+  /// Erasing is destructive here for the same reason `edit.erase` is.
+  @override
+  CommandRisk riskFor(Map<String, Object?> args) {
+    if (args['replace'] == true) return CommandRisk.destructive;
+    final operations = args['operations'];
+    if (operations is List &&
+        operations.any((item) => item is Map && item['op'] == 'erase')) {
+      return CommandRisk.destructive;
+    }
+    return risk;
+  }
+
   @override
   String get description =>
       'Applies a list of add, erase, transform and property operations as '
