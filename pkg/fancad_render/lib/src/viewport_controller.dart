@@ -39,8 +39,11 @@ class ViewportController extends ChangeNotifier {
   /// A pan or a pinch reports its own end, but a mouse wheel does not: there is
   /// no event that says the notches have stopped. This delay stands in for the
   /// missing gesture end, so a wheel spin reuses the recording like a pinch
-  /// does instead of rebuilding once per notch.
-  static const Duration settleDelay = Duration(milliseconds: 90);
+  /// does instead of rebuilding once per notch. A hand turning a wheel
+  /// leaves more than 90 ms between notches often enough that a shorter delay
+  /// rebuilt a large drawing between them, which is the stall it exists to
+  /// avoid.
+  static const Duration settleDelay = Duration(milliseconds: 150);
 
   CadViewport _viewport;
 

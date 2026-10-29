@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'device_space.dart';
+import 'drawing_cache.dart';
 import 'overlay.dart';
 import 'palette.dart';
-import 'picture_cache.dart';
 import 'render_scene.dart';
 import 'scene_builder.dart';
 import 'scene_painter.dart';
@@ -690,7 +690,7 @@ class _DrawingLayerPainter extends CustomPainter {
       interactive: quality == RenderQuality.interactive,
     );
     if (placement != null) {
-      cache.replay(canvas, placement, viewport.devicePixelRatio);
+      cache.replay(canvas, placement, viewport, painter);
       canvas.restore();
       return;
     }

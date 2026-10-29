@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'batch.dart';
@@ -15,15 +16,57 @@ import 'drawing_font.dart';
 /// colour filter, but that costs a `saveLayer` per text run, and a drawing only
 /// uses a handful of distinct colours, so keying on it is the cheaper trade.
 class ParagraphCache {
-  ParagraphCache({this.capacity = 2048});
+  ParagraphCache({this.capacity = 8192, this.maxCharacters = 1 << 18});
 
-  /// Maximum retained paragraphs. Each is small; the cap exists to bound a
-  /// drawing full of unique strings, such as a coordinate table.
+  /// Maximum retained paragraphs. A sheet set shows several thousand labels at
+  /// once, and a cap below that evicted every label before the next build could
+  /// reuse it.
   final int capacity;
 
+  /// Maximum total characters retained, which bounds what a drawing full of
+  /// unique strings — a coordinate table, a sheet of notes — costs in memory.
+  /// A paragraph is mostly its native layout object and its text, so counting
+  /// the input is a close enough stand-in at about 1 KB per 100 characters.
+  final int maxCharacters;
+
   final LinkedHashMap<_Key, ui.Paragraph> _entries = LinkedHashMap();
+  int _characters = 0;
   int _hits = 0;
   int _misses = 0;
+
+  /// MTEXT wrapping measures at model height, which never matches a painted
+  /// label. Kept apart so measuring cannot evict what the painter needs.
+  late final ParagraphCache _measures = ParagraphCache(capacity: 2048);
+
+  /// Height bands per doubling of size for [obtainBanded].
+  static const int bandsPerOctave = 2;
+
+  /// The height [obtainBanded] lays [pixels] out at.
+  ///
+  /// Neighbouring bands are a factor of 2^(1/[bandsPerOctave]) apart, so the
+  /// painter's correcting scale stays within about 19% of one.
+  static double heightBand(double pixels) {
+    if (!pixels.isFinite || pixels <= 0) return quantiseHeight(pixels);
+    final step = (math.log(pixels) * _log2 * bandsPerOctave).round();
+    final index = step + _bandBias;
+    if (index >= 0 && index < _bands.length) return _bands[index];
+    return math.pow(2, step / bandsPerOctave).toDouble();
+  }
+
+  static const double _log2 = 1 / math.ln2;
+
+  /// Band `step` is `_bands[step + _bandBias]`.
+  static const int _bandBias = 128;
+
+  /// `2^(step / bandsPerOctave)` for step -128..128 — every size from a
+  /// hundredth of a pixel to 10^19 of them. A `pow` per label per frame was
+  /// measurable on a sheet full of notes, and this table has every answer a
+  /// drawing can ask for.
+  static final List<double> _bands = List<double>.generate(
+    2 * _bandBias + 1,
+    (i) => math.pow(2, (i - _bandBias) / bandsPerOctave).toDouble(),
+    growable: false,
+  );
 
   int get length => _entries.length;
   int get hits => _hits;
@@ -39,12 +82,53 @@ class ParagraphCache {
   /// on paper instead of the 0.72 guess that only fitted one face.
   double capRatio(String family) => const DrawingFontMap().capRatioOf(family);
 
-  ui.Paragraph obtain(TextItem item, {required String fontFamily}) {
-    final family = item.fontFamily.isEmpty ? fontFamily : item.fontFamily;
-    final height = quantiseHeight(item.pixelHeight);
-    final wrap = item.wrapWidth <= 0
+  ui.Paragraph obtain(TextItem item, {required String fontFamily}) => _obtain(
+    item,
+    fontFamily: fontFamily,
+    height: quantiseHeight(item.pixelHeight),
+    wrap: item.wrapWidth <= 0
         ? double.infinity
-        : quantiseHeight(item.wrapWidth);
+        : quantiseHeight(item.wrapWidth),
+  );
+
+  /// A paragraph laid out at [heightBand], and the scale that brings it to
+  /// [TextItem.pixelHeight].
+  ///
+  /// Every zoom changes every label's pixel height, so a cache keyed on the
+  /// exact height re-shapes every visible string on every settled zoom. Glyph
+  /// advances scale linearly with size, so shaping once per band and scaling
+  /// the result lands within a fraction of a pixel of an exact layout. A wrap
+  /// is laid out at the same ratio so the scaled box still matches the MTEXT
+  /// width.
+  ({ui.Paragraph paragraph, double scale}) obtainBanded(
+    TextItem item, {
+    required String fontFamily,
+  }) {
+    final band = heightBand(item.pixelHeight);
+    final scale = band > 0 && item.pixelHeight.isFinite
+        ? item.pixelHeight / band
+        : 1.0;
+    if (!scale.isFinite || scale <= 0) {
+      return (paragraph: obtain(item, fontFamily: fontFamily), scale: 1.0);
+    }
+    final paragraph = _obtain(
+      item,
+      fontFamily: fontFamily,
+      height: band,
+      wrap: item.wrapWidth <= 0
+          ? double.infinity
+          : quantiseHeight(item.wrapWidth / scale),
+    );
+    return (paragraph: paragraph, scale: scale);
+  }
+
+  ui.Paragraph _obtain(
+    TextItem item, {
+    required String fontFamily,
+    required double height,
+    required double wrap,
+  }) {
+    final family = item.fontFamily.isEmpty ? fontFamily : item.fontFamily;
     final key = _Key(
       item.text,
       height,
@@ -71,8 +155,12 @@ class ParagraphCache {
       fontFamily: family,
     );
     _entries[key] = paragraph;
-    while (_entries.length > capacity) {
-      _entries.remove(_entries.keys.first);
+    _characters += item.text.length;
+    while (_entries.length > capacity || _characters > maxCharacters) {
+      if (_entries.isEmpty) break;
+      final oldest = _entries.keys.first;
+      _characters -= oldest.text.length;
+      _entries.remove(oldest);
     }
     return paragraph;
   }
@@ -98,7 +186,7 @@ class ParagraphCache {
       tracking: tracking,
       fontFamily: fontFamily,
     );
-    final paragraph = obtain(item, fontFamily: fontFamily);
+    final paragraph = _measures.obtain(item, fontFamily: fontFamily);
     return paragraph.maxIntrinsicWidth * widthFactor;
   }
 
@@ -155,6 +243,9 @@ class ParagraphCache {
 
   void clear() {
     _entries.clear();
+    _characters = 0;
+    _measures._entries.clear();
+    _measures._characters = 0;
   }
 }
 

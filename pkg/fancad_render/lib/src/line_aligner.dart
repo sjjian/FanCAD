@@ -63,6 +63,11 @@ class LineAligner {
   /// Which segments already share a row, so merging stays pairwise.
   Uint8List _paired = Uint8List(0);
 
+  /// Cross-axis position of each segment and its vertex index, sorted
+  /// together so the neighbour scan walks rows in order.
+  Float64List _keys = Float64List(0);
+  Int32List _order = Int32List(0);
+
   /// Remembered merge decisions, for the leftover tests and diagnostics.
   int get decisionCount => _current.length;
 
@@ -120,28 +125,44 @@ class LineAligner {
     for (var i = 0; i + 3 < xy.length; i += 4) {
       final along = (xy[i + 2] - xy[i]).abs();
       final across = (xy[i + 3] - xy[i + 1]).abs();
+      // `along.isFinite` also keeps a NaN or infinite coordinate out of the
+      // sort below: `_before` orders finite doubles only, so a key that is
+      // neither less nor greater than another would land anywhere and take the
+      // neighbour scan with it.
       if (horizontal) {
-        if (across <= axisTolerance && across <= along) _starts.add(i);
+        if (across <= axisTolerance && across <= along && along.isFinite) {
+          _starts.add(i);
+        }
       } else {
-        if (along <= axisTolerance && along <= across) _starts.add(i);
+        if (along <= axisTolerance && along <= across && across.isFinite) {
+          _starts.add(i);
+        }
       }
     }
     if (_starts.isEmpty) return;
 
     final crossOffset = horizontal ? 1 : 0;
     final alongOffset = horizontal ? 0 : 1;
+    final count = _starts.length;
 
-    double crossOf(int start) =>
-        (xy[start + crossOffset] + xy[start + 2 + crossOffset]) * 0.5;
-
-    _starts.sort((a, b) => crossOf(a).compareTo(crossOf(b)));
-
-    if (_cross.length < _starts.length) {
-      _cross = Float32List(_starts.length);
-      _assigned = Float32List(_starts.length);
-      _paired = Uint8List(_starts.length);
+    if (_cross.length < count) {
+      _cross = Float32List(count);
+      _assigned = Float32List(count);
+      _paired = Uint8List(count);
+      _keys = Float64List(count);
+      _order = Int32List(count);
     }
-    _paired.fillRange(0, _starts.length, 0);
+    _paired.fillRange(0, count, 0);
+
+    // A sheet set has hundreds of thousands of axis-aligned segments. Sorting
+    // them through a comparator closure that re-read the vertex buffer on
+    // every comparison was a third of a settled rebuild.
+    for (var i = 0; i < count; i++) {
+      final start = _starts[i];
+      _keys[i] = (xy[start + crossOffset] + xy[start + 2 + crossOffset]) * 0.5;
+      _order[i] = start;
+    }
+    _sortByKey(_keys, _order, 0, count - 1);
 
     // Merging is decided by the projected gap between two lines, never by
     // which pixel each one's `floor()` happens to land in. The latter is what
@@ -154,9 +175,9 @@ class LineAligner {
     // would mean a pair inside the band never reached the decision at all.
     final searchGap = mergeGap * splitAbove;
 
-    for (var i = 0; i < _starts.length; i++) {
-      final start = _starts[i];
-      final cross = crossOf(start);
+    for (var i = 0; i < count; i++) {
+      final start = _order[i];
+      final cross = _keys[i];
       final lo = math.min(xy[start + alongOffset], xy[start + 2 + alongOffset]);
       final hi = math.max(xy[start + alongOffset], xy[start + 2 + alongOffset]);
       _cross[i] = cross;
@@ -165,7 +186,7 @@ class LineAligner {
       for (var j = i - 1; j >= 0; j--) {
         final gap = cross - _cross[j];
         if (gap >= searchGap) break;
-        final other = _starts[j];
+        final other = _order[j];
         final otherLo = math.min(
           xy[other + alongOffset],
           xy[other + 2 + alongOffset],
@@ -234,6 +255,63 @@ class LineAligner {
   /// the same answer anyway.
   int _pairKey(BatchKey key, double worldGap, bool horizontal) =>
       Object.hash(key, _quantise(worldGap), horizontal);
+
+  /// Sorts [keys] ascending in `[lo, hi]`, moving [values] with them.
+  ///
+  /// Equal keys are ordered by value, so the vertex buffer decides ties and
+  /// two builds of the same scene pair the same segments. The keys are finite:
+  /// [_resolve] leaves a segment with a non-finite coordinate unaligned
+  /// rather than sorting a value that has no order.
+  static void _sortByKey(Float64List keys, Int32List values, int lo, int hi) {
+    while (hi - lo > 16) {
+      final mid = lo + ((hi - lo) >> 1);
+      final pivotKey = keys[mid];
+      final pivotValue = values[mid];
+      var i = lo;
+      var j = hi;
+      while (i <= j) {
+        while (_before(keys[i], values[i], pivotKey, pivotValue)) {
+          i++;
+        }
+        while (_before(pivotKey, pivotValue, keys[j], values[j])) {
+          j--;
+        }
+        if (i <= j) {
+          final k = keys[i];
+          keys[i] = keys[j];
+          keys[j] = k;
+          final v = values[i];
+          values[i] = values[j];
+          values[j] = v;
+          i++;
+          j--;
+        }
+      }
+      // Recurse into the smaller side so the stack stays logarithmic.
+      if (j - lo < hi - i) {
+        _sortByKey(keys, values, lo, j);
+        lo = i;
+      } else {
+        _sortByKey(keys, values, i, hi);
+        hi = j;
+      }
+    }
+    for (var i = lo + 1; i <= hi; i++) {
+      final k = keys[i];
+      final v = values[i];
+      var j = i - 1;
+      while (j >= lo && _before(k, v, keys[j], values[j])) {
+        keys[j + 1] = keys[j];
+        values[j + 1] = values[j];
+        j--;
+      }
+      keys[j + 1] = k;
+      values[j + 1] = v;
+    }
+  }
+
+  static bool _before(double ka, int va, double kb, int vb) =>
+      ka < kb || (ka == kb && va < vb);
 
   /// Four significant digits: coarse enough to absorb the single-precision
   /// noise in a re-projected gap, fine enough to keep a 2 mm seam and a 2.1 mm

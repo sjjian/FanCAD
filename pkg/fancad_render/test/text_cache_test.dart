@@ -92,6 +92,69 @@ void main() {
     },
   );
 
+  test('a settled zoom inside one band reuses the shaped label', () {
+    final cache = ParagraphCache();
+    final a = cache.obtainBanded(item('A1', height: 11), fontFamily: 'Roboto');
+    final b = cache.obtainBanded(item('A1', height: 12), fontFamily: 'Roboto');
+    expect(identical(a.paragraph, b.paragraph), isTrue);
+    expect(cache.misses, 1);
+    expect(
+      a.paragraph.height * a.scale,
+      lessThan(b.paragraph.height * b.scale),
+    );
+    expect(b.scale, closeTo(12 / ParagraphCache.heightBand(12), 1e-9));
+  });
+
+  test('a banded label scales back to its own height and wrap', () {
+    final cache = ParagraphCache();
+    final exact = cache.obtain(item('NOTE', height: 13), fontFamily: 'Roboto');
+    final banded = cache.obtainBanded(
+      item('NOTE', height: 13),
+      fontFamily: 'Roboto',
+    );
+    expect(
+      banded.paragraph.maxIntrinsicWidth * banded.scale,
+      closeTo(exact.maxIntrinsicWidth, 1),
+    );
+
+    final wrapped = cache.obtainBanded(
+      item('NOTE', height: 13, wrapWidth: 90),
+      fontFamily: 'Roboto',
+    );
+    expect(wrapped.paragraph.width * wrapped.scale, closeTo(90, 0.5));
+  });
+
+  test('measuring for MTEXT wrap cannot evict a painted label', () {
+    final cache = ParagraphCache(capacity: 1);
+    cache.obtain(item('LABEL'), fontFamily: 'Roboto');
+    cache.measureWidth('other', height: 250, fontFamily: 'Roboto');
+    cache.obtain(item('LABEL'), fontFamily: 'Roboto');
+    expect(cache.hits, 1);
+  });
+
+  test('the character budget evicts before the entry count does', () {
+    final cache = ParagraphCache(capacity: 64, maxCharacters: 8);
+    cache.obtain(item('ABCDE'), fontFamily: 'Roboto');
+    cache.obtain(item('FGH'), fontFamily: 'Roboto');
+    // Five plus three is still inside the budget.
+    expect(cache.length, 2);
+
+    cache.obtain(item('IJK'), fontFamily: 'Roboto');
+    // Eleven characters want eight: the oldest label goes, not the newest.
+    expect(cache.length, 2);
+    final misses = cache.misses;
+    cache.obtain(item('ABCDE'), fontFamily: 'Roboto');
+    expect(cache.misses, misses + 1);
+  });
+
+  test('height bands come from a table for every size a drawing can use', () {
+    expect(ParagraphCache.heightBand(12), closeTo(11.3137, 1e-3));
+    expect(ParagraphCache.heightBand(12), ParagraphCache.heightBand(11.9));
+    // The table has to answer far outside the ordinary label sizes too.
+    expect(ParagraphCache.heightBand(1e-6), greaterThan(0));
+    expect(ParagraphCache.heightBand(1e6), greaterThan(0));
+  });
+
   test('width factor stretches the measured advance', () {
     final cache = ParagraphCache();
     final narrow = cache.measureWidth('MM', height: 10, fontFamily: 'Roboto');

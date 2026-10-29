@@ -42,7 +42,7 @@ Future<Uint8List> renderPlotPng({
     ..drawRect(bounds, Paint()..color = palette.background)
     ..save()
     ..clipRect(bounds);
-  ScenePainter().paint(output, scene);
+  ScenePainter().paint(output, scene, exactText: true);
   output.restore();
   final picture = recorder.endRecording();
   final image = await picture.toImage(size.width.round(), size.height.round());

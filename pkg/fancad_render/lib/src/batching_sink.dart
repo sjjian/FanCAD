@@ -61,8 +61,6 @@ class BatchingSink implements GeometrySink {
   final List<TextItem> texts = [];
   final List<ImageItem> images = [];
 
-  int segmentCount = 0;
-
   /// Reused between primitives so the hot loop does not allocate.
   Float32List _scratch = Float32List(1024);
 
@@ -141,14 +139,12 @@ class BatchingSink implements GeometrySink {
     }
     final projected = _project(xy);
     final batch = _lineBatch(_keyFor(style));
-    final before = batch.segmentCount;
     final dashes = _dashPixelsFor(style);
     if (dashes == null) {
       batch.addPolyline(projected, closed: closed);
     } else {
       _addDashed(batch, projected, dashes, closed: closed);
     }
-    segmentCount += batch.segmentCount - before;
   }
 
   /// The dash pattern in physical pixels, or null when the line should be

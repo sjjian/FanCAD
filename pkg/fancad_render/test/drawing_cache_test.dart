@@ -122,15 +122,36 @@ void main() {
     final before = builds();
 
     controller.beginInteraction();
-    // Past a factor of two the recording's tessellation and pen widths belong
+    // Past a factor of four the recording's tessellation and pen widths belong
     // to a scale too far away to stand in, so it is rebuilt even though the
     // gesture is still running.
-    controller.zoomBy(3, const Offset(400, 300));
+    controller.zoomBy(6, const Offset(400, 300));
     await tester.pump();
     expect(builds(), greaterThan(before));
 
     controller.endInteraction();
     await tester.pump();
+  });
+
+  testWidgets('a zoom out past the overscan keeps replaying mid-gesture', (
+    tester,
+  ) async {
+    final builds = await pumpCanvas(tester);
+    final before = builds();
+
+    controller.beginInteraction();
+    // A third of a screen of overscan runs out well before a factor of four.
+    // The uncovered strip stays empty until the camera settles; a rebuild here
+    // is the stall the gesture is meant to avoid.
+    for (var i = 0; i < 6; i++) {
+      controller.zoomBy(1 / 1.2, const Offset(400, 300));
+      await tester.pump();
+    }
+    expect(builds(), before);
+
+    controller.endInteraction();
+    await tester.pump();
+    expect(builds(), greaterThan(before));
   });
 
   test('the cache refuses a recording built for another document', () {
@@ -146,6 +167,29 @@ void main() {
 
     expect(cache.placementFor(view, 7, interactive: false), isNotNull);
     expect(cache.placementFor(view, 8, interactive: false), isNull);
+  });
+
+  test('a zoom out that outlasts the overscan grace asks for a rebuild', () {
+    const view = CadViewport(
+      center: Vec2.zero(),
+      scale: 1,
+      size: Size(400, 300),
+    );
+    final painter = ScenePainter();
+    final scene = SceneBuilder(palette: AciPalette.dark).build(document, view);
+    final cache = DrawingCache()..store(scene, painter.record(scene), 0);
+    addTearDown(cache.dispose);
+
+    // A factor of 2.5 out runs past the overscan the scene was built for.
+    final out = view.copyWith(scale: 0.4);
+    expect(scene.covers(out), isFalse);
+    for (var i = 0; i < DrawingCache.overscanGraceFrames; i++) {
+      expect(cache.placementFor(out, 0, interactive: true), isNotNull);
+    }
+
+    // A gesture that keeps going gets one rebuild rather than a border of
+    // blank canvas that keeps growing.
+    expect(cache.placementFor(out, 0, interactive: true), isNull);
   });
 
   test('a settled zoom is refused and an in-flight one inside the window is '
@@ -164,7 +208,7 @@ void main() {
     expect(cache.placementFor(zoomed, 0, interactive: false), isNull);
     expect(cache.placementFor(zoomed, 0, interactive: true), isNotNull);
 
-    final farther = view.copyWith(scale: 4);
+    final farther = view.copyWith(scale: 8);
     expect(cache.placementFor(farther, 0, interactive: true), isNull);
   });
 }

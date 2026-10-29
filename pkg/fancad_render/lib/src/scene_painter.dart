@@ -45,6 +45,10 @@ class ScenePainter {
     ..strokeCap = StrokeCap.round
     ..isAntiAlias = true;
 
+  /// Segments kept by [_cullTo], reused between batches and frames so a
+  /// zoomed repaint does not allocate per batch.
+  Float32List _culled = Float32List(0);
+
   /// Impeller drops a true zero-width `drawRawPoints` stroke, and a hairline
   /// means one physical pixel anyway. The batch key still stores 0 so
   /// identical lines from any layer stay in one batch.
@@ -58,7 +62,25 @@ class ScenePainter {
   /// a sloped line gets the soft edge that keeps it off the staircase. The old
   /// pairing of "align and turn AA off" made zoom pop between solid and grey
   /// green as segments crossed the threshold.
-  void paint(ui.Canvas canvas, RenderScene scene) {
+  ///
+  /// [zoom] is the scale the caller has already applied to [canvas] to show
+  /// the scene under a camera that has zoomed since it was built. Strokes are
+  /// divided by it, so a line keeps its width on screen instead of swelling
+  /// with the zoom and snapping back when the scene is rebuilt. [window] is
+  /// the part of the scene, in its physical pixels, that is on screen;
+  /// segments outside it are skipped.
+  ///
+  /// [exactText] lays every label out at its own size instead of at the height
+  /// band the cache keeps. The screen takes the band, because a settled zoom
+  /// would otherwise re-shape every label; a plot export takes the exact
+  /// layout, because its text is the output rather than a preview of it.
+  void paint(
+    ui.Canvas canvas,
+    RenderScene scene, {
+    double zoom = 1,
+    Rect? window,
+    bool exactText = false,
+  }) {
     final dpr = _ratio(scene.viewport.devicePixelRatio);
     canvas.save();
     // Batches are in physical pixels. Undoing the ratio once, here, is what
@@ -67,8 +89,9 @@ class ScenePainter {
     canvas.scale(1 / dpr);
 
     final extent = scene.viewport.size * dpr;
+    final strokeScale = zoom > 0 && zoom.isFinite ? 1 / zoom : 1.0;
     for (final pass in scene.passes) {
-      _paintPass(canvas, pass, dpr, extent);
+      _paintPass(canvas, pass, dpr, extent, strokeScale, window, exactText);
     }
 
     canvas.restore();
@@ -79,7 +102,15 @@ class ScenePainter {
   /// Underlays first, then fills, then the linework that bounds them, then
   /// markers, then text. That is the order AutoCAD's draw order produces in
   /// practice for a document that does not specify one.
-  void _paintPass(ui.Canvas canvas, RenderPass pass, double dpr, Size extent) {
+  void _paintPass(
+    ui.Canvas canvas,
+    RenderPass pass,
+    double dpr,
+    Size extent,
+    double strokeScale,
+    Rect? window,
+    bool exactText,
+  ) {
     for (final item in pass.images) {
       _paintImagePlaceholder(canvas, item, dpr);
     }
@@ -89,21 +120,29 @@ class ScenePainter {
       canvas.drawPath(batch.path, _fillPaint);
     }
 
+    // One `drawRawPoints` per batch, not one `drawLine` per segment. The
+    // recording is replayed on every pan, so an op per segment is charged to
+    // the pan as well: measured on the test rasteriser it records an order of
+    // magnitude slower and makes the picture half again as large, for the same
+    // raster time.
+    //
+    // A zoom passes the part of the scene it can see, and `_paintLines` draws
+    // only that: a batch wholly inside the window goes out untouched, one
+    // wholly outside is skipped, and one that straddles it is drawn cell by
+    // cell. That keeps a zoom out — where the whole drawing is on screen and
+    // culling can drop nothing — at one call per batch, while a zoom in walks
+    // the cells that are left instead of every segment in the drawing.
     for (final batch in pass.lineBatches) {
       _strokePaint
         ..color = batch.key.color
-        ..strokeWidth = _hairline(batch.key.strokeWidth);
-      canvas.drawRawPoints(
-        ui.PointMode.lines,
-        batch.vertices.view,
-        _strokePaint,
-      );
+        ..strokeWidth = _hairline(batch.key.strokeWidth) * strokeScale;
+      _paintLines(canvas, batch, window);
     }
 
     for (final batch in pass.pointBatches) {
       _pointPaint
         ..color = batch.key.color
-        ..strokeWidth = _hairline(batch.key.strokeWidth);
+        ..strokeWidth = _hairline(batch.key.strokeWidth) * strokeScale;
       canvas.drawRawPoints(
         ui.PointMode.points,
         batch.vertices.view,
@@ -113,8 +152,134 @@ class ScenePainter {
 
     for (final item in pass.texts) {
       if (_isFarOffscreen(item.origin, extent)) continue;
-      _paintText(canvas, item, dpr);
+      if (window != null && !_mayReach(item, window)) continue;
+      _paintText(canvas, item, dpr, exactText);
     }
+  }
+
+  /// Draws [batch], keeping only what [window] can show when one is given.
+  ///
+  /// [LineBatch.bounds] answers for a whole batch without touching a vertex,
+  /// and [LineBatch.cellStarts] cuts a batch that straddles the window into
+  /// cells, so neither case walks the whole drawing. Only a batch too small to
+  /// have a grid falls back to [_cullTo], where scanning costs less than the
+  /// extra draw calls a grid would make.
+  void _paintLines(ui.Canvas canvas, LineBatch batch, Rect? window) {
+    final xy = batch.vertices.view;
+    if (xy.isEmpty) return;
+    if (window == null) {
+      canvas.drawRawPoints(ui.PointMode.lines, xy, _strokePaint);
+      return;
+    }
+    // A pen reaches past its segment, so grow the window before comparing it
+    // with anything. Without this a wide line just outside the window is
+    // dropped while half its stroke would have been on screen.
+    final half = _strokePaint.strokeWidth / 2;
+    final reach = half > 0 ? window.inflate(half) : window;
+
+    final bounds = batch.bounds;
+    if (bounds != null) {
+      if (!_touches(bounds, reach)) return;
+      if (_inside(bounds, reach)) {
+        canvas.drawRawPoints(ui.PointMode.lines, xy, _strokePaint);
+        return;
+      }
+    }
+
+    final starts = batch.cellStarts;
+    final cells = batch.cellBounds;
+    if (starts != null && cells != null) {
+      for (var c = 0; c < cells.length; c++) {
+        final start = starts[c], end = starts[c + 1];
+        if (start == end || !_touches(cells[c], reach)) continue;
+        canvas.drawRawPoints(
+          ui.PointMode.lines,
+          Float32List.sublistView(xy, start * 4, end * 4),
+          _strokePaint,
+        );
+      }
+      final wideStart = starts[cells.length];
+      final wide = batch.wideBounds;
+      if (wideStart < batch.segmentCount &&
+          wide != null &&
+          _touches(wide, reach)) {
+        canvas.drawRawPoints(
+          ui.PointMode.lines,
+          Float32List.sublistView(xy, wideStart * 4, xy.length),
+          _strokePaint,
+        );
+      }
+      return;
+    }
+
+    final culled = _cullTo(xy, reach);
+    if (culled.isEmpty) return;
+    canvas.drawRawPoints(ui.PointMode.lines, culled, _strokePaint);
+  }
+
+  static bool _touches(Rect a, Rect b) =>
+      a.left <= b.right &&
+      a.right >= b.left &&
+      a.top <= b.bottom &&
+      a.bottom >= b.top;
+
+  static bool _inside(Rect a, Rect b) =>
+      a.left >= b.left &&
+      a.right <= b.right &&
+      a.top >= b.top &&
+      a.bottom <= b.bottom;
+
+  /// The segments of [xy] that can touch [window], in a buffer reused between
+  /// batches.
+  ///
+  /// The result is a view into that buffer, valid until the next call, so the
+  /// caller has to copy it or draw it before the next batch. A segment is
+  /// dropped only when its whole bounding box is outside [window]; the window
+  /// carries the margin for a pen that reaches past its endpoints.
+  Float32List _cullTo(Float32List xy, Rect window) {
+    if (_culled.length < xy.length) {
+      var capacity = _culled.isEmpty ? 1024 : _culled.length;
+      while (capacity < xy.length) {
+        capacity *= 2;
+      }
+      _culled = Float32List(capacity);
+    }
+    var kept = 0;
+    for (var i = 0; i + 3 < xy.length; i += 4) {
+      final x0 = xy[i], y0 = xy[i + 1], x1 = xy[i + 2], y1 = xy[i + 3];
+      if (math.max(x0, x1) < window.left ||
+          math.min(x0, x1) > window.right ||
+          math.max(y0, y1) < window.top ||
+          math.min(y0, y1) > window.bottom) {
+        continue;
+      }
+      _culled[kept++] = x0;
+      _culled[kept++] = y0;
+      _culled[kept++] = x1;
+      _culled[kept++] = y1;
+    }
+    return Float32List.sublistView(_culled, 0, kept);
+  }
+
+  /// Whether a label anchored at its origin could touch [window]. Measuring it
+  /// would cost what drawing it does, so the reach is a generous bound: a full
+  /// em per character in any direction, plus the wrap width.
+  ///
+  /// [TextItem.pixelHeight] is the cap height, not the em, and a CJK advance is
+  /// a whole em — about 1.4 times the cap height in the default face, and up to
+  /// 2.5 in the narrowest one. Using the cap height directly under-reached a
+  /// long note by a third and culled it while half of it was on screen.
+  bool _mayReach(TextItem item, Rect window) {
+    final family = item.fontFamily.isEmpty ? fontFamily : item.fontFamily;
+    final capRatio = paragraphs.capRatio(family);
+    final em = capRatio > 0 ? item.pixelHeight / capRatio : item.pixelHeight;
+    final reach =
+        em *
+            (item.text.length + 2) *
+            math.max(item.widthFactor, 1) *
+            math.max(item.tracking, 1) +
+        item.wrapWidth;
+    return window.inflate(reach).contains(item.origin);
   }
 
   static double _ratio(double dpr) => dpr > 0 && dpr.isFinite ? dpr : 1.0;
@@ -130,13 +295,20 @@ class ScenePainter {
         origin.dy > size.height + pad;
   }
 
-  void _paintText(ui.Canvas canvas, TextItem item, double dpr) {
-    final paragraph = paragraphs.obtain(item, fontFamily: fontFamily);
+  void _paintText(ui.Canvas canvas, TextItem item, double dpr, bool exactText) {
+    final (:paragraph, :scale) = exactText
+        ? (
+            paragraph: paragraphs.obtain(item, fontFamily: fontFamily),
+            scale: 1.0,
+          )
+        : paragraphs.obtainBanded(item, fontFamily: fontFamily);
     final width =
-        (item.wrapWidth > 0 ? item.wrapWidth : paragraph.maxIntrinsicWidth) *
+        (item.wrapWidth > 0
+            ? item.wrapWidth
+            : paragraph.maxIntrinsicWidth * scale) *
         item.widthFactor;
-    final height = paragraph.height;
-    final baseline = paragraph.alphabeticBaseline;
+    final height = paragraph.height * scale;
+    final baseline = paragraph.alphabeticBaseline * scale;
 
     // DWG anchors TEXT on the baseline and MTEXT on a box corner. A
     // paragraph is painted from its top-left, so the two tables differ:
@@ -192,11 +364,18 @@ class ScenePainter {
     if ((item.widthFactor - 1).abs() > 1e-9) {
       canvas.scale(item.widthFactor, 1);
     }
-    canvas.drawParagraph(paragraph, ui.Offset.zero);
+    if (scale != 1) {
+      canvas.save();
+      canvas.scale(scale);
+      canvas.drawParagraph(paragraph, ui.Offset.zero);
+      canvas.restore();
+    } else {
+      canvas.drawParagraph(paragraph, ui.Offset.zero);
+    }
     if (item.underline || item.overline || item.strike) {
       final span = item.wrapWidth > 0
           ? item.wrapWidth / item.widthFactor
-          : paragraph.maxIntrinsicWidth;
+          : paragraph.maxIntrinsicWidth * scale;
       final stroke = Paint()
         ..color = item.color
         ..strokeWidth = math.max(dpr, item.pixelHeight * 0.06)

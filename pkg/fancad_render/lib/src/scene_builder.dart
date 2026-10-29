@@ -44,6 +44,9 @@ class SceneBuilder {
   /// hysteresis carries over from one zoom level to the next.
   final LineAligner aligner = LineAligner();
 
+  /// Hash tables [LineBatch.removeOverlaps] reuses across batches and builds.
+  final BatchScratch _scratch = BatchScratch();
+
   /// Parsed SHX faces. Empty keeps the TTF fallback for every STYLE.
   final ShxFontTable shxFonts;
 
@@ -147,6 +150,13 @@ class SceneBuilder {
       points: pointBatches,
       pixels: sink.pixels,
     );
+    // After alignment, which is what lands close parallels on the same row.
+    var segmentCount = 0;
+    for (final batch in lineBatches) {
+      batch.removeOverlaps(_scratch);
+      batch.indexCells();
+      segmentCount += batch.segmentCount;
+    }
 
     stopwatch.stop();
     return RenderScene(
@@ -159,7 +169,7 @@ class SceneBuilder {
         images: sink.images,
       ),
       entityCount: drawn,
-      segmentCount: sink.segmentCount,
+      segmentCount: segmentCount,
       culledCount: culled,
       buildTime: stopwatch.elapsed,
       coverage: visible,

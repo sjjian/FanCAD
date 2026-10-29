@@ -231,7 +231,7 @@ void main() {
     expect(placement.offset, const Offset(0, -2));
 
     final raster = await rasterFrom(to, (canvas) {
-      cache.replay(canvas, placement, to.devicePixelRatio);
+      cache.replay(canvas, placement, to, ScenePainter());
     });
 
     expect(raster.litRows(Channel.green), [18]);
@@ -269,7 +269,7 @@ void main() {
       final placement = cache.placementFor(to, 0, interactive: false);
       expect(placement, isNotNull);
       final raster = await rasterFrom(to, (canvas) {
-        cache.replay(canvas, placement!, to.devicePixelRatio);
+        cache.replay(canvas, placement!, to, ScenePainter());
       });
 
       expect(raster.litColumns(Channel.green), isNotEmpty);
@@ -284,6 +284,64 @@ void main() {
       );
     },
   );
+
+  test('a zoom out in flight keeps a shallow hairline unbroken', () async {
+    // Replayed at the far end of the zoom window, a line drawn as geometry is
+    // thinner than a pixel and falls between pixel centres along most of a
+    // shallow run. Painting it again at its own width keeps every column lit.
+    final document = CadDocument()
+      ..addEntity(
+        const LineEntity(
+          id: 0,
+          props: EntityProps(color: CadColor.indexed(3)),
+          start: Vec2(-60, -4),
+          end: Vec2(60, 5),
+        ),
+      );
+    final from = CadViewport(
+      center: const Vec2.zero(),
+      scale: 1,
+      size: const Size(160, 160),
+    );
+    final scene = build(document, from);
+    final cache = DrawingCache()..store(scene, ScenePainter().record(scene), 0);
+    addTearDown(cache.dispose);
+
+    final to = from.copyWith(scale: DrawingCache.minPreviewScale);
+    final placement = cache.placementFor(to, 0, interactive: true);
+    expect(placement, isNotNull);
+    expect(placement!.isTranslation, isFalse);
+    final raster = await rasterFrom(to, (canvas) {
+      cache.replay(canvas, placement, to, ScenePainter());
+    });
+
+    final columns = raster.litColumns(Channel.green, margin: 0);
+    expect(columns.length, greaterThan(120 * DrawingCache.minPreviewScale - 4));
+    expect(columns.last - columns.first + 1, columns.length);
+  });
+
+  test('a zoom in flight keeps a hairline one pixel wide', () async {
+    // Replaying the recording under the zoom used to scale the stroke with
+    // it: two pixels wide at twice the scale, then one again once the camera
+    // settled. A column's coverage adds up to the pen's width.
+    final from = window();
+    final scene = build(rules([0]), from);
+    final cache = DrawingCache()..store(scene, ScenePainter().record(scene), 0);
+    addTearDown(cache.dispose);
+
+    final to = from.copyWith(scale: DrawingCache.maxPreviewScale);
+    final placement = cache.placementFor(to, 0, interactive: true);
+    expect(placement, isNotNull);
+    final raster = await rasterFrom(to, (canvas) {
+      cache.replay(canvas, placement!, to, ScenePainter());
+    });
+
+    var coverage = 0;
+    for (var y = 0; y < raster.height; y++) {
+      coverage += raster.at(20, y, Channel.green);
+    }
+    expect(coverage, closeTo(255, 40));
+  });
 
   test('a hairline at device ratio 2 occupies one physical pixel', () async {
     final document = CadDocument()
@@ -357,4 +415,84 @@ void main() {
       picture.dispose();
     },
   );
+
+  test('a plot lays text out at its own size, not at a height band', () async {
+    final cache = ParagraphCache();
+    final painter = ScenePainter(paragraphs: cache);
+    final scene = RenderScene.single(
+      viewport: const CadViewport(
+        center: Vec2.zero(),
+        scale: 1,
+        size: Size(200, 200),
+      ),
+      texts: const [
+        TextItem(
+          text: 'NOTE',
+          origin: Offset(20, 100),
+          pixelHeight: 13,
+          rotation: 0,
+          color: Color(0xFFFFFFFF),
+          hAlign: 0,
+          vAlign: 0,
+          fontFamily: 'Roboto',
+        ),
+      ],
+    );
+
+    await rasterFrom(scene.viewport, (canvas) {
+      painter.paint(canvas, scene, exactText: true);
+    });
+    expect(cache.length, 1);
+
+    await rasterFrom(scene.viewport, (canvas) {
+      painter.paint(canvas, scene);
+    });
+    // The exact layout keys on the label's own height and the banded one on the
+    // band, so the two stand side by side instead of sharing an entry.
+    expect(cache.length, 2);
+  });
+
+  test('a zoomed repaint draws only the cells its window touches', () async {
+    // Two clusters a whole cell apart, so the window can be placed in the gap.
+    // A 4 by 4 grid over the batch leaves cells 1 and 2 empty, which is what a
+    // repaint must be able to skip without knowing anything about the
+    // segments inside them.
+    final batch = LineBatch(const BatchKey(Color(0xFF00FF00), 0));
+    for (var i = 0; i < 200; i++) {
+      final x = 5.0 + (i % 10) * 2;
+      final y = 5.5 + (i ~/ 10) * 2;
+      batch.vertices.add4(x, y, x + 4, y);
+      final other = 95.0 + (i % 10) * 2;
+      batch.vertices.add4(other, y, other + 4, y);
+    }
+    batch.removeOverlaps();
+    batch.indexCells();
+    expect(batch.hasCells, isTrue);
+
+    final scene = RenderScene.single(
+      viewport: const CadViewport(
+        center: Vec2.zero(),
+        scale: 1,
+        size: Size(120, 120),
+      ),
+      lineBatches: [batch],
+      segmentCount: batch.segmentCount,
+    );
+    final painter = ScenePainter();
+
+    final clipped = await rasterFrom(scene.viewport, (canvas) {
+      painter.paint(canvas, scene, window: const Rect.fromLTRB(0, 0, 50, 120));
+    });
+    final columns = clipped.litColumns(Channel.green, margin: 0);
+    expect(columns, isNotEmpty);
+    expect(columns.every((column) => column < 50), isTrue);
+
+    final whole = await rasterFrom(scene.viewport, (canvas) {
+      painter.paint(canvas, scene);
+    });
+    expect(
+      whole.litColumns(Channel.green, margin: 0).any((column) => column > 90),
+      isTrue,
+    );
+  });
 }

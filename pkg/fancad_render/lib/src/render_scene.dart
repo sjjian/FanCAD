@@ -154,6 +154,12 @@ class RenderScene {
       other.devicePixelRatio == viewport.devicePixelRatio &&
       coverage.containsBox(other.visibleBounds);
 
+  /// Whether [other] still sees any of [coverage], on the same display.
+  bool overlaps(CadViewport other) =>
+      coverage.isNotEmpty &&
+      other.devicePixelRatio == viewport.devicePixelRatio &&
+      coverage.intersects(other.visibleBounds);
+
   /// [coverage] in the logical pixels of [viewport].
   ///
   /// The picture recorder culls to this so a pan that stays inside the
