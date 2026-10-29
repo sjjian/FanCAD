@@ -1181,16 +1181,14 @@ class _OpeningCanvas extends StatelessWidget {
       child: Center(
         child: failed
             ? _OpenFailedCard(workspace: workspace, tab: tab)
-            : _OpeningProgress(title: tab.title),
+            : const _OpeningProgress(),
       ),
     );
   }
 }
 
 class _OpeningProgress extends StatelessWidget {
-  const _OpeningProgress({required this.title});
-
-  final String title;
+  const _OpeningProgress();
 
   @override
   Widget build(BuildContext context) {
@@ -1199,8 +1197,6 @@ class _OpeningProgress extends StatelessWidget {
       key: const Key('opening-canvas'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(title, style: tokens.dialogTitleStyle),
-        const SizedBox(height: FanCadTokens.space4),
         SizedBox(
           width: 28,
           height: 28,
