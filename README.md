@@ -20,14 +20,19 @@
 </p>
 
 <p align="center">
+  <sub>Note: This example image is entirely AI-generated, using the deepseek-v4.1-flash-1017 model.</sub>
+</p>
+
+<p align="center">
   <b>English</b> | <a href="./README.zh.md">简体中文</a>
 </p>
 
 ## Why
 
-1. Day-to-day work involves CAD, and traditional software charges for it.
-2. Traditional CAD is too complicated. I designed this one after VS Code and simplified the experience.
-3. There isn't a decent native AI product. I wanted one built in, integrated deep enough for everyday use.
+1. I need to use CAD deeply — I go through dozens of drawings every day.
+2. AI coding keeps getting stronger, making it feasible to build and polish a CAD, while traditional CAD software charges for it.
+3. Traditional CAD is too complicated. I designed this one after VS Code and simplified the experience.
+4. There isn't a decent native AI product. I wanted one built in, integrated deep enough for everyday use.
 
 ## Features
 
@@ -35,6 +40,7 @@
 2. A deeply integrated AI assistant.
 3. Expose an MCP server.
 4. Windows, macOS, and Linux.
+5. A plugin system — the AI chat can add new plugins on its own.
 
 ## Building
 
