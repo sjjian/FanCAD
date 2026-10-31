@@ -122,6 +122,72 @@ void main() {
     },
   );
 
+  test('REGION center and quadrant snaps use its conic arcs', () {
+    const origin = CadViewport(
+      center: Vec2.zero(),
+      scale: 1,
+      size: Size(800, 600),
+    );
+    const circle = RegionConicArc(
+      center: Vec2.zero(),
+      u: Vec2(10, 0),
+      v: Vec2(0, 10),
+      startParameter: 0,
+      sweep: math.pi * 2,
+    );
+    final document = CadDocument()
+      ..addEntity(
+        RegionEntity(
+          id: 0,
+          components: [
+            RegionComponent(outer: RegionLoop([circle])),
+          ],
+        ),
+      );
+
+    final atCenter = SnapEngine(
+      modes: {SnapMode.center},
+    ).resolve(document, origin, const Vec2(0.4, 0.3));
+    expect(atCenter.marker!.kind, SnapMarkerKind.center);
+    expect(atCenter.point.distanceTo(Vec2.zero()), closeTo(0, 1e-9));
+
+    final atEast = SnapEngine(
+      modes: {SnapMode.quadrant},
+    ).resolve(document, origin, const Vec2(10.2, 0.2));
+    expect(atEast.marker!.kind, SnapMarkerKind.quadrant);
+    expect(atEast.point.distanceTo(const Vec2(10, 0)), closeTo(0, 1e-6));
+  });
+
+  test('REGION boundary intersections are snapped', () {
+    const origin = CadViewport(
+      center: Vec2(5, 0),
+      scale: 1,
+      size: Size(800, 600),
+    );
+    final document = CadDocument()
+      ..addEntity(
+        RegionEntity(
+          id: 0,
+          components: [
+            RegionComponent(
+              outer: RegionLoop(const [
+                RegionLine(start: Vec2(0, 0), end: Vec2(10, 0)),
+                RegionLine(start: Vec2(10, 0), end: Vec2(10, 10)),
+                RegionLine(start: Vec2(10, 10), end: Vec2(0, 10)),
+                RegionLine(start: Vec2(0, 10), end: Vec2(0, 0)),
+              ]),
+            ),
+          ],
+        ),
+      )
+      ..addEntity(const LineEntity(id: 0, start: Vec2(5, -5), end: Vec2(5, 5)));
+    final result = SnapEngine(
+      modes: {SnapMode.intersection},
+    ).resolve(document, origin, const Vec2(5.2, 0.2));
+    expect(result.marker!.kind, SnapMarkerKind.intersection);
+    expect(result.point.distanceTo(const Vec2(5, 0)), closeTo(0, 1e-6));
+  });
+
   test('center and quadrant fire on a circle, not on its rim as nearest', () {
     const origin = CadViewport(
       center: Vec2.zero(),

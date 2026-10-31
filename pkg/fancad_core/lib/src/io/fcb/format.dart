@@ -278,6 +278,7 @@ class FcbType {
   static const int attdef = 18;
   static const int attrib = 19;
   static const int mleader = 20;
+  static const int region = 21;
 }
 
 /// Entity flag bits.
@@ -306,6 +307,9 @@ class FcbFlags {
   /// the props run is then `[elevation, lineTypeScale, transparency, nx, ny,
   /// nz]`, and the reader bakes the entity into WCS.
   static const int hasExtrusion = 1 << 6;
+
+  /// The stored geometry is an approximation of the original curve.
+  static const int approximated = 1 << 7;
 }
 
 /// Layer flag bits.

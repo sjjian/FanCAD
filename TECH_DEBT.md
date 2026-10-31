@@ -1,1 +1,2 @@
 - [ ] 重构 MTEXT 布局：去掉热路径中反复构造的正则，把格式解析和折行收敛成单遍 tokenizer。
+- [ ] REGION 布尔：当前用曲线离散后的 polygon 实现，后续替换为 line/conic arrangement 精确后端；RegionBoolean 接口、RegionEntity 和 FCB 格式保持不变。

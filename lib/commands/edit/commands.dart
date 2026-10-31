@@ -34,6 +34,7 @@ import 'overkill.dart';
 import 'polar_array.dart';
 import 'polyline_width.dart';
 import 'purge.dart';
+import 'region_boolean.dart';
 import 'rename.dart';
 import 'reverse.dart';
 import 'rotate.dart';
@@ -73,6 +74,9 @@ class EditCommands {
     EditExtendCommand().toDescriptor(),
     EditFilletCommand().toDescriptor(),
     EditChamferCommand().toDescriptor(),
+    RegionUnionCommand().toDescriptor(),
+    RegionSubtractCommand().toDescriptor(),
+    RegionIntersectCommand().toDescriptor(),
     EditBreakCommand().toDescriptor(),
     EditLengthenCommand().toDescriptor(),
     EditExplodeCommand().toDescriptor(),

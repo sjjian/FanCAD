@@ -129,6 +129,9 @@ int fcb_view_open(fcb_view *v, const uint8_t *data, uint64_t length);
 /* Copies string [index] into [buf] (NUL-terminated). Empty on OOB. */
 void fcb_view_str(const fcb_view *v, uint32_t index, char *buf, size_t cap);
 
+/* Returns an allocated NUL-terminated copy of string [index], or NULL. */
+char *fcb_view_str_dup(const fcb_view *v, uint32_t index);
+
 const uint8_t *fcb_view_entity(const fcb_view *v, uint64_t index);
 const uint8_t *fcb_view_layer(const fcb_view *v, uint64_t index);
 const uint8_t *fcb_view_linetype(const fcb_view *v, uint64_t index);

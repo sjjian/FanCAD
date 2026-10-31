@@ -367,4 +367,26 @@ void main() {
     expect(hit, isNotNull);
     expect(hit!.entityId, dim);
   });
+  test('a REGION is picked by clicking inside it', () {
+    final document = CadDocument();
+    document.addEntity(
+      RegionEntity(
+        id: 0,
+        components: [
+          RegionComponent(
+            outer: RegionLoop(const [
+              RegionLine(start: Vec2(0, 0), end: Vec2(100, 0)),
+              RegionLine(start: Vec2(100, 0), end: Vec2(100, 100)),
+              RegionLine(start: Vec2(100, 100), end: Vec2(0, 100)),
+              RegionLine(start: Vec2(0, 100), end: Vec2(0, 0)),
+            ]),
+          ),
+        ],
+      ),
+    );
+    const view = CadViewport(center: Vec2(50, 50), scale: 1, size: size);
+    final hit = const Picker().pickTopmost(document, view, const Vec2(50, 50));
+    expect(hit, isNotNull);
+    expect(document.entity(hit!.entityId), isA<RegionEntity>());
+  });
 }

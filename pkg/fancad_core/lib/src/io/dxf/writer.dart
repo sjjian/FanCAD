@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import '../../document/document.dart';
 import '../../document/entity.dart';
 import '../../document/style.dart';
+import '../region_sat_writer.dart';
 
 /// Writes a drawing as ASCII DXF R2000.
 ///
@@ -553,6 +554,48 @@ class DxfWriter {
         pair(22, entity.vVector.y);
         pair(32, 0);
         pair(1, entity.reference);
+      case RegionEntity():
+        final source = entity.source;
+        final sourceSat =
+            source != null &&
+                source.format == 'sat' &&
+                (source.transform == null || source.transform!.isIdentity)
+            ? source.text
+            : '';
+        final result = sourceSat.isNotEmpty
+            ? RegionSatWriteResult(sourceSat, approximated: entity.approximated)
+            : const RegionSatWriter().writeResult(entity.geometry);
+        final sat = result.text;
+        if (sat == null || sat.isEmpty) {
+          // Keep the outline visible when ACIS cannot be generated.
+          for (final component in entity.components) {
+            for (final loop in [component.outer, ...component.holes]) {
+              final points = loop.toBuffer(0.01);
+              if (points.length < 4) continue;
+              pair(0, 'LWPOLYLINE');
+              _common(pair, entity, paperSpace: paperSpace);
+              pair(90, points.length ~/ 2);
+              pair(70, 1);
+              for (var i = 0; i < points.length ~/ 2; i++) {
+                pair(10, points[i * 2]);
+                pair(20, points[i * 2 + 1]);
+              }
+            }
+          }
+          break;
+        }
+        pair(0, 'REGION');
+        _common(pair, entity, paperSpace: paperSpace);
+        if (result.approximated) pair(999, 'FanCAD REGION APPROXIMATED');
+        pair(100, 'AcDbModelerGeometry');
+        pair(70, 1);
+        final lines = sat.split('\n');
+        var first = true;
+        for (final line in lines) {
+          if (line.isEmpty) continue;
+          pair(first ? 1 : 3, line);
+          first = false;
+        }
       case UnknownEntity():
         // ASCII DXF cannot carry the original DWG payload. A POINT at the
         // origin would move every unsupported object onto 0,0.

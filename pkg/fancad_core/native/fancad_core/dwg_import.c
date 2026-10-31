@@ -2079,6 +2079,7 @@ static char sat_kind(const char *name) {
   if (strcmp(name, "vertex") == 0) return 'V';
   if (strcmp(name, "point") == 0) return 'P';
   if (strcmp(name, "ellipse-curve") == 0) return 'O';
+  if (strcmp(name, "transform") == 0) return 'T';
   return 'X';
 }
 
@@ -2086,6 +2087,90 @@ static int sat_near(double x0, double y0, double x1, double y1) {
   double dx = x0 - x1;
   double dy = y0 - y1;
   return dx * dx + dy * dy < 1e-8;
+}
+
+/* Planar part of an ACIS `transform` record.
+ *
+ * The SAT text stores a 3x3 row-major matrix followed by the translation.
+ * Point records are in that local frame; a REGION that was copied or rotated
+ * keeps its original coordinates and moves them through this record. Ignoring
+ * it drew the profile at the location it was first modelled. */
+typedef struct {
+  int present;
+  double m00, m01, m10, m11;
+  double tx, ty;
+} sat_transform;
+
+/* SAB v2 stores the transform as a length-prefixed text payload. LibreDWG's
+ * SAT1 conversion keeps only a `transform $-1 $-1 #` stub, so read the raw
+ * buffer before converting. */
+static const char *sat_find_bytes(const char *hay, size_t hay_len,
+                                  const char *needle, size_t needle_len) {
+  size_t i;
+  if (needle_len == 0 || hay_len < needle_len) return NULL;
+  for (i = 0; i + needle_len <= hay_len; i++) {
+    if (memcmp(hay + i, needle, needle_len) == 0) return hay + i;
+  }
+  return NULL;
+}
+
+static int sat_numbers_at(const char *p, const char *end,
+                          sat_transform *xf) {
+  double v[12];
+  int i;
+  for (i = 0; i < 12; i++) {
+    char *stop = NULL;
+    while (p < end && sat_is_ws(*p)) p++;
+    if (p >= end) return 0;
+    v[i] = strtod(p, &stop);
+    if (stop == p) return 0;
+    p = stop;
+  }
+  while (p < end && sat_is_ws(*p)) p++;
+  if (p >= end || *p != '1') return 0;
+  p++;
+  while (p < end && sat_is_ws(*p)) p++;
+  if (p >= end || !((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z'))) {
+    return 0;
+  }
+  xf->present = 1;
+  xf->m00 = v[0];
+  xf->m01 = v[1];
+  xf->m10 = v[3];
+  xf->m11 = v[4];
+  xf->tx = v[9];
+  xf->ty = v[10];
+  return 1;
+}
+
+static int solid_acis_transform(Dwg_Entity__3DSOLID *solid,
+                                sat_transform *xf) {
+  const char *data;
+  size_t len = 0;
+  size_t i;
+  const char *marker;
+  if (!solid || !solid->acis_data) return 0;
+  data = (const char *)solid->acis_data;
+  if (strncmp(data, "ACIS Binary", 11) == 0) {
+    len = solid->sab_size;
+    if (len == 0 && solid->num_blocks && solid->block_size) {
+      for (i = 0; i < solid->num_blocks; i++) len += solid->block_size[i];
+    }
+    if (len == 0) return 0;
+  } else {
+    len = strlen(data);
+  }
+  marker = sat_find_bytes(data, len, "transform", 9);
+  while (marker) {
+    const char *end = data + len;
+    const char *q;
+    for (q = marker + 9; q < marker + 320 && q < end; q++) {
+      if (sat_numbers_at(q, end, xf)) return 1;
+    }
+    marker = sat_find_bytes(
+        marker + 1, (size_t)(end - (marker + 1)), "transform", 9);
+  }
+  return 0;
 }
 
 static int sat_vertex_xy(const sat_rec *recs, uint32_t nrec, int32_t vi,
@@ -2105,8 +2190,13 @@ static int sat_vertex_xy(const sat_rec *recs, uint32_t nrec, int32_t vi,
   return isfinite(*x) && isfinite(*y);
 }
 
-static void sat_push_xy(coords *g, box *bounds, uint32_t *count, double x,
-                        double y) {
+static void sat_push_xy(coords *g, box *bounds, uint32_t *count,
+                        const sat_transform *xf, double x, double y) {
+  if (xf && xf->present) {
+    double tx = xf->m00 * x + xf->m01 * y + xf->tx;
+    y = xf->m10 * x + xf->m11 * y + xf->ty;
+    x = tx;
+  }
   if (*count > 0 &&
       sat_near(g->data[g->length - 2], g->data[g->length - 1], x, y)) {
     return;
@@ -2118,7 +2208,7 @@ static void sat_push_xy(coords *g, box *bounds, uint32_t *count, double x,
 
 static void sat_emit_edge(coords *g, box *bounds, uint32_t *count,
                           const sat_rec *recs, uint32_t nrec, int32_t ei,
-                          int reversed) {
+                          int reversed, const sat_transform *xf) {
   const sat_rec *edge;
   int32_t start_v;
   int32_t end_v;
@@ -2144,7 +2234,7 @@ static void sat_emit_edge(coords *g, box *bounds, uint32_t *count,
   }
   if (!sat_vertex_xy(recs, nrec, start_v, &sx, &sy)) return;
   if (!sat_vertex_xy(recs, nrec, end_v, &ex, &ey)) return;
-  sat_push_xy(g, bounds, count, sx, sy);
+  sat_push_xy(g, bounds, count, xf, sx, sy);
   if (curve >= 0 && (uint32_t)curve < nrec && recs[curve].kind == 'O' &&
       recs[curve].nnums >= 10) {
     const sat_rec *c = &recs[curve];
@@ -2177,11 +2267,11 @@ static void sat_emit_edge(coords *g, box *bounds, uint32_t *count,
       double t = a0 + sweep * (double)i / (double)steps;
       double ct = cos(t);
       double st = sin(t);
-      sat_push_xy(g, bounds, count, cx + mx * ct + bx * st,
+      sat_push_xy(g, bounds, count, xf, cx + mx * ct + bx * st,
                   cy + my * ct + by * st);
     }
   }
-  sat_push_xy(g, bounds, count, ex, ey);
+  sat_push_xy(g, bounds, count, xf, ex, ey);
 }
 
 static const char *sat_parse_record(const char *p, sat_rec *rec) {
@@ -2258,7 +2348,10 @@ static uint32_t extract_sat_loops(coords *g, box *bounds, int64_t *runs,
   uint32_t i;
   uint32_t run_count = 0;
   uint32_t start;
+  sat_transform xf;
+  memset(&xf, 0, sizeof(xf));
   if (run_cap == 0 || !solid) return 0;
+  solid_acis_transform(solid, &xf);
   sat = solid_sat_text(solid);
   if (!sat || sat[0] == '\0') {
     free(sat);
@@ -2296,6 +2389,17 @@ static uint32_t extract_sat_loops(coords *g, box *bounds, int64_t *runs,
     g->length = start;
     return 0;
   }
+  for (i = 0; i < nrec && !xf.present; i++) {
+    if (recs[i].kind != 'T' || recs[i].nnums < 12) continue;
+    xf.present = 1;
+    xf.m00 = recs[i].nums[0];
+    xf.m01 = recs[i].nums[1];
+    xf.m10 = recs[i].nums[3];
+    xf.m11 = recs[i].nums[4];
+    xf.tx = recs[i].nums[9];
+    xf.ty = recs[i].nums[10];
+    break;
+  }
   for (i = 0; i < nrec && run_count < run_cap; i++) {
     int32_t start_c = -1;
     int32_t cur;
@@ -2304,7 +2408,10 @@ static uint32_t extract_sat_loops(coords *g, box *bounds, int64_t *runs,
     uint32_t steps = 0;
     uint32_t r;
     if (recs[i].kind != 'L') continue;
-    for (r = 3; r < recs[i].nrefs; r++) {
+    /* Loop records differ by SAT version: the first coedge can sit at
+     * ref 3 (older) or ref 4 with a next-loop link in ref 3. Scan every
+     * reference instead of assuming one layout. */
+    for (r = 0; r < recs[i].nrefs; r++) {
       int32_t idx = recs[i].refs[r];
       if (idx >= 0 && (uint32_t)idx < nrec && recs[idx].kind == 'C') {
         start_c = idx;
@@ -2322,13 +2429,14 @@ static uint32_t extract_sat_loops(coords *g, box *bounds, int64_t *runs,
       used[cur] = 1;
       edge = co->refs[6];
       next = co->refs[3];
-      sat_emit_edge(g, bounds, &npts, recs, nrec, edge, co->reversed);
+      sat_emit_edge(g, bounds, &npts, recs, nrec, edge, co->reversed, &xf);
       if (next == start_c) break;
       if (next < 0 || (uint32_t)next >= nrec) break;
       cur = next;
     }
     if (npts >= 2) {
-      sat_push_xy(g, bounds, &npts, g->data[run_start], g->data[run_start + 1]);
+      sat_push_xy(g, bounds, &npts, NULL, g->data[run_start],
+                  g->data[run_start + 1]);
       runs[run_count++] = (int64_t)npts;
     } else {
       g->length = run_start;
@@ -2339,7 +2447,7 @@ static uint32_t extract_sat_loops(coords *g, box *bounds, int64_t *runs,
       uint32_t run_start = g->length;
       uint32_t npts = 0;
       if (recs[i].kind != 'E') continue;
-      sat_emit_edge(g, bounds, &npts, recs, nrec, (int32_t)i, 0);
+      sat_emit_edge(g, bounds, &npts, recs, nrec, (int32_t)i, 0, &xf);
       if (npts >= 2) {
         runs[run_count++] = (int64_t)npts;
       } else {
@@ -3098,6 +3206,70 @@ static int import_entity(import_state *s, const Dwg_Object *obj,
       if (g->length < 6) return 0;
       attach_geometry(s, &e);
       commit(s, &e, &bounds, owner_block, FCB_TYPE_POLYLINE);
+      return 1;
+    }
+
+    case DWG_TYPE_REGION: {
+      Dwg_Entity__3DSOLID *o = ent->tio.REGION;
+      char *sat;
+      sat_transform xf;
+      int64_t region_ints[257];
+      int64_t runs[256];
+      uint32_t run_count = 0;
+      uint32_t i;
+      uint32_t stroke_len;
+      box record_bounds;
+      if (!o) return 0;
+      memset(&xf, 0, sizeof(xf));
+      /* Read the transform from the raw SAB before SAT1 conversion drops it. */
+      solid_acis_transform(o, &xf);
+      sat = solid_sat_text(o);
+      run_count = extract_sat_loops(g, &bounds, runs, 256, o);
+      if (run_count == 0) {
+        run_count = extract_acis_wires(g, &bounds, runs, 256, o);
+      }
+      stroke_len = g->length;
+      record_bounds = bounds;
+      if (xf.present && stroke_len > 0) {
+        double xs[4];
+        double ys[4];
+        xs[0] = bounds.min_x;
+        ys[0] = bounds.min_y;
+        xs[1] = bounds.max_x;
+        ys[1] = bounds.min_y;
+        xs[2] = bounds.max_x;
+        ys[2] = bounds.max_y;
+        xs[3] = bounds.min_x;
+        ys[3] = bounds.max_y;
+        box_init(&record_bounds);
+        for (i = 0; i < 4; i++) {
+          box_add(&record_bounds,
+                  xf.m00 * xs[i] + xf.m01 * ys[i] + xf.tx,
+                  xf.m10 * xs[i] + xf.m11 * ys[i] + xf.ty);
+        }
+      }
+      region_ints[0] = (int64_t)run_count;
+      for (i = 0; i < run_count; i++) {
+        region_ints[i + 1] = runs[i];
+      }
+      e.int_offset =
+          fcb_add_ints(s->b, region_ints, (uint32_t)(run_count + 1));
+      e.int_count = (uint32_t)(run_count + 1);
+      e.string_offset = fcb_append_string(s->b, sat ? sat : "");
+      fcb_append_string(s->b, "REGION");
+      e.string_count = 2;
+      /* Geometry layout: transform (6 doubles) followed by fallback strokes. */
+      for (i = 0; i < 6; i++) coords_push(g, 0.0);
+      memmove(g->data + 6, g->data, (size_t)stroke_len * sizeof(double));
+      g->data[0] = xf.present ? xf.m00 : 1.0;
+      g->data[1] = xf.present ? xf.m01 : 0.0;
+      g->data[2] = xf.present ? xf.m10 : 0.0;
+      g->data[3] = xf.present ? xf.m11 : 1.0;
+      g->data[4] = xf.present ? xf.tx : 0.0;
+      g->data[5] = xf.present ? xf.ty : 0.0;
+      attach_geometry(s, &e);
+      commit(s, &e, &record_bounds, owner_block, FCB_TYPE_REGION);
+      free(sat);
       return 1;
     }
 

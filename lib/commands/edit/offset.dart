@@ -20,8 +20,8 @@ class EditOffsetCommand extends FanCadCommand {
   String? get icon => 'offset';
   @override
   String get description =>
-      'Creates parallel copies of lines, arcs, circles and polylines at a '
-      'fixed distance.';
+      'Creates parallel copies of lines, arcs, circles, polylines and regions '
+      'at a fixed distance.';
   @override
   List<ParamSpec> get params => const [
     ParamSpec(

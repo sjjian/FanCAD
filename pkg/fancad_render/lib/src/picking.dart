@@ -119,7 +119,9 @@ class Picker {
 
         final sink = PolylineSink();
         _emitEntity(entity, space.context, sink);
-        final closest = _closestOn(sink, world, radius);
+        final closest =
+            _closestOn(sink, world, radius) ??
+            _insideRegion(entity, space, world);
         if (closest == null) continue;
         if (space.paperClip != null &&
             !space.paperClip!
@@ -284,6 +286,25 @@ class Picker {
         },
       );
     }
+  }
+
+  /// A REGION is picked anywhere inside it, not only on its outline.
+  static PolylineHit? _insideRegion(
+    CadEntity entity,
+    LayoutSpace space,
+    Vec2 world,
+  ) {
+    if (entity is! RegionEntity) return null;
+    final transform = space.context.transform;
+    Vec2 local;
+    if (transform.isIdentity) {
+      local = world;
+    } else {
+      final inverse = transform.inverted();
+      if (inverse == null) return null;
+      local = inverse.transform(world);
+    }
+    return entity.contains(local) ? PolylineHit(world, 0, 0) : null;
   }
 
   static bool _isSelectable(CadDocument document, CadEntity entity) =>

@@ -1067,6 +1067,40 @@ fail:
   return NULL;
 }
 
+/* ACIS transform record: 3x3 row-major linear part + translation. */
+static int sat_transform_is_identity(const double *m) {
+  if (!m) return 1;
+  return m[0] == 1.0 && m[1] == 0.0 && m[2] == 0.0 && m[3] == 1.0 &&
+         m[4] == 0.0 && m[5] == 0.0;
+}
+
+static char *sat_with_transform(const char *sat, const double *m) {
+  const char *stub = "transform $-1 $-1 #";
+  const char *at;
+  size_t prefix;
+  size_t suffix;
+  char record[256];
+  char *out;
+  int n;
+  if (!sat) return NULL;
+  if (sat_transform_is_identity(m)) return strdup(sat);
+  at = strstr(sat, stub);
+  if (!at) return strdup(sat);
+  prefix = (size_t)(at - sat);
+  suffix = strlen(at + strlen(stub));
+  n = snprintf(record, sizeof(record),
+               "transform %.17g %.17g 0 %.17g %.17g 0 0 0 1 %.17g %.17g 0 1 "
+               "no_rotate no_reflect no_shear #",
+               m[0], m[1], m[2], m[3], m[4], m[5]);
+  if (n < 0) return strdup(sat);
+  out = (char *)malloc(prefix + (size_t)n + suffix + 1);
+  if (!out) return strdup(sat);
+  memcpy(out, sat, prefix);
+  memcpy(out + prefix, record, (size_t)n);
+  memcpy(out + prefix + (size_t)n, at + strlen(stub), suffix + 1);
+  return out;
+}
+
 static void *export_unknown_solid(Dwg_Object_BLOCK_HEADER *hdr,
                                   const fcb_view *v, const uint8_t *rec,
                                   const double *g, uint32_t geom_count) {
@@ -1627,6 +1661,48 @@ static void export_entity(Dwg_Data *dwg, Dwg_Object_BLOCK_HEADER *hdr,
       }
       break;
     }
+    case FCB_TYPE_REGION: {
+      uint32_t str_off = fcb_u32(rec + FCB_ENT_STRING_OFFSET);
+      uint32_t str_count = fcb_u32(rec + FCB_ENT_STRING_COUNT);
+      uint64_t int_off = fcb_u64(rec + FCB_ENT_INT_OFFSET);
+      uint32_t int_count = fcb_u32(rec + FCB_ENT_INT_COUNT);
+      char *sat = NULL;
+      char *placed = NULL;
+      if (str_count > 0) sat = fcb_view_str_dup(v, str_off);
+      if (sat && sat[0]) {
+        placed = sat_with_transform(sat, g);
+        ent = dwg_add_REGION(hdr, placed ? placed : sat);
+      } else if (g && geom_count > 6 && ints_ok(v, int_off, int_count) &&
+                 int_count > 1) {
+        const int64_t *runs = ints_at(v, int_off) + 1;
+        uint32_t points = geom_count - 6;
+        double *with_bounds = (double *)malloc(
+            ((size_t)points + 4) * sizeof(double));
+        char *generated = NULL;
+        if (with_bounds) {
+          with_bounds[0] = 0.0;
+          with_bounds[1] = 0.0;
+          with_bounds[2] = 0.0;
+          with_bounds[3] = 0.0;
+          memcpy(with_bounds + 4, g + 6, (size_t)points * sizeof(double));
+          generated =
+              sat_from_strokes(with_bounds, points + 4, runs, int_count - 1);
+          free(with_bounds);
+        }
+        if (generated) {
+          ent = dwg_add_REGION(hdr, generated);
+          free(generated);
+        }
+      }
+      free(placed);
+      free(sat);
+      if (ent) {
+        bind_entity(dwg, hdr, ent, v, rec);
+        break;
+      }
+      return;
+    }
+
     case FCB_TYPE_UNKNOWN: {
       if (!g || geom_count < 6) return;
       ent = export_unknown_solid(hdr, v, rec, g, geom_count);

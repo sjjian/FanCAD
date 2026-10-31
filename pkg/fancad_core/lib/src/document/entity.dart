@@ -1,5 +1,6 @@
 // ignore_for_file: invalid_annotation_target
 
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -8,6 +9,7 @@ import 'package:meta/meta.dart';
 
 import '../annotation/dimension.dart';
 import '../geometry/bounds.dart';
+import '../geometry/bspline.dart';
 import '../geometry/flatten.dart';
 import '../geometry/intersect.dart';
 import '../geometry/matrix.dart';
@@ -44,6 +46,7 @@ part 'entity_solid.dart';
 part 'entity_ray.dart';
 part 'entity_xline.dart';
 part 'entity_image.dart';
+part 'entity_region.dart';
 part 'entity_unknown.dart';
 
 /// The discriminator used on the wire and in query filters.
@@ -68,6 +71,7 @@ enum EntityKind {
   image,
   attdef,
   attrib,
+  region,
   unknown;
 
   static EntityKind parse(String value) => EntityKind.values.firstWhere(
@@ -265,6 +269,7 @@ sealed class CadEntity {
       EntityKind.ray => RayEntity.fromGeometry(id, props, json),
       EntityKind.xline => XLineEntity.fromGeometry(id, props, json),
       EntityKind.image => ImageEntity.fromGeometry(id, props, json),
+      EntityKind.region => RegionEntity.fromGeometry(id, props, json),
       EntityKind.unknown => UnknownEntity.fromGeometry(id, props, json),
     };
   }

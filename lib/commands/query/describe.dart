@@ -65,6 +65,16 @@ Map<String, Object?> describeEntity(CadDocument document, CadEntity entity) {
       record
         ..['pattern'] = patternName
         ..['area'] = Construct.areaOf(entity).abs();
+    case RegionEntity(:final components, :final approximated):
+      record
+        ..['area'] = entity.signedArea.abs()
+        ..['perimeter'] = entity.pathLength
+        ..['components'] = components.length
+        ..['holes'] = components.fold<int>(
+          0,
+          (sum, component) => sum + component.holes.length,
+        )
+        ..['approximated'] = approximated;
     case DimensionEntity(:final measurement, :final displayText):
       record
         ..['measurement'] = measurement

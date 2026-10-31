@@ -9,6 +9,7 @@ import '../geometry/flatten.dart';
 import '../geometry/intersect.dart';
 import '../geometry/vector.dart';
 import 'boundary.dart';
+import 'region_offset.dart';
 
 /// The analytic constructions behind the editing commands.
 ///
@@ -1177,9 +1178,25 @@ class Construct {
   ///
   /// Analytic per type rather than a general polygon offset: a circle offsets to
   /// a circle and an arc to an arc. A user who offsets a circle and gets a
-  /// 64-segment polyline back will not use the command twice.
+  /// 64-segment polyline back will not use the command twice. A REGION keeps
+  /// lines and circular arcs exact and only falls back to a polygon offset for
+  /// an ellipse, spline or a join that the analytic path cannot resolve.
   static CadEntity? offset(CadEntity entity, double distance, Vec2 towards) {
     if (distance <= 0) return null;
+    if (entity is RegionEntity) {
+      final inside = entity.contains(towards);
+      final geometry = const RegionOffset().apply(
+        entity.geometry,
+        inside ? distance : -distance,
+      );
+      if (geometry == null || geometry.components.isEmpty) return null;
+      return RegionEntity(
+        id: 0,
+        props: entity.props,
+        components: geometry.components,
+        approximated: geometry.approximated,
+      );
+    }
     return entity.offsetBy(distance, towards);
   }
 

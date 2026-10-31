@@ -8,8 +8,10 @@ import '../../document/geometry_sink.dart';
 import '../../document/paper_viewport.dart';
 import '../../document/style.dart';
 import '../../geometry/bounds.dart';
+import '../../geometry/matrix.dart';
 import '../../geometry/vector.dart';
 import '../../hatch/pattern.dart';
+import '../acis_sat.dart';
 import '../ocs.dart';
 import 'format.dart';
 
@@ -1071,6 +1073,61 @@ class FcbReader {
           origin: Vec2(geom[0], geom[1]),
           uVector: Vec2(geom[2], geom[3]),
           vVector: Vec2(geom[4], geom[5]),
+        );
+
+      case FcbType.region:
+        final sat = stringAt(0);
+        final approximatedFlag = flags & FcbFlags.approximated != 0;
+        final transform = geom.length >= 6
+            ? Mat3(geom[0], geom[1], geom[2], geom[3], geom[4], geom[5])
+            : null;
+        final strokes = geom.length > 6
+            ? Float64List.fromList(geom.sublist(6))
+            : Float64List(0);
+        final runCount = ints.isNotEmpty ? ints[0].toInt() : 0;
+        final runs = [
+          for (var i = 1; i <= runCount && i < ints.length; i++)
+            ints[i].toInt(),
+        ];
+        RegionGeometry? geometry = sat.isEmpty
+            ? null
+            : const AcisSatReader().read(sat, transform: transform);
+        final sourceParsed = geometry != null && !geometry.isEmpty;
+        if (!sourceParsed) {
+          final loops = <RegionLoop>[];
+          final counts = runs.isEmpty && strokes.isNotEmpty
+              ? [strokes.length ~/ 2]
+              : runs;
+          var cursor = 0;
+          for (final count in counts) {
+            final end = cursor + count * 2;
+            if (count < 3 || end > strokes.length) break;
+            loops.add(
+              RegionLoop([
+                RegionPolyline(
+                  Float64List.fromList(strokes.sublist(cursor, end)),
+                ),
+              ]),
+            );
+            cursor = end;
+          }
+          if (loops.isEmpty) return null;
+          // Fallback strokes are already world coordinates. Applying the
+          // source transform here would move native-imported regions twice.
+          geometry = RegionGeometry.fromLoops(loops, approximated: true);
+        }
+        return RegionEntity(
+          id: id,
+          props: props,
+          components: geometry.components,
+          approximated: approximatedFlag || geometry.approximated,
+          source: sourceParsed
+              ? AcisPayload(
+                  format: 'sat',
+                  bytes: Uint8List.fromList(utf8.encode(sat)),
+                  transform: transform,
+                )
+              : null,
         );
 
       default:

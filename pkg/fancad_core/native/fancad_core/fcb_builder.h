@@ -68,6 +68,7 @@
 #define FCB_TYPE_ATTDEF 18
 #define FCB_TYPE_ATTRIB 19
 #define FCB_TYPE_MLEADER 20
+#define FCB_TYPE_REGION 21
 
 /* Entity flags. */
 #define FCB_FLAG_CLOSED (1u << 0)
@@ -80,6 +81,7 @@
  * FCB_FLAG_HAS_EXTENDED_PROPS; the props run grows from
  * [elevation, ltscale, transparency] to [..., nx, ny, nz]. */
 #define FCB_FLAG_HAS_EXTRUSION (1u << 6)
+#define FCB_FLAG_APPROXIMATED (1u << 7)
 
 /* Layer flags. */
 #define FCB_LAYER_HIDDEN (1u << 0)

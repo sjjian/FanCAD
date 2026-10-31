@@ -1,5 +1,6 @@
 #include "fcb_view.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 static const uint8_t *section_at(const fcb_view *v, uint32_t kind,
@@ -167,6 +168,25 @@ void fcb_view_str(const fcb_view *v, uint32_t index, char *buf, size_t cap) {
   if (n >= cap) n = (uint32_t)cap - 1;
   memcpy(buf, v->string_bytes + start, n);
   buf[n] = '\0';
+}
+
+char *fcb_view_str_dup(const fcb_view *v, uint32_t index) {
+  uint32_t start;
+  uint32_t end;
+  uint32_t n;
+  char *out;
+  if (!v || index >= v->string_count || !v->string_offsets || !v->string_bytes) {
+    return NULL;
+  }
+  start = fcb_u32(v->string_offsets + (size_t)index * 4);
+  end = fcb_u32(v->string_offsets + ((size_t)index + 1) * 4);
+  if (end < start || end > v->string_data_len) return NULL;
+  n = end - start;
+  out = (char *)malloc((size_t)n + 1);
+  if (!out) return NULL;
+  memcpy(out, v->string_bytes + start, n);
+  out[n] = '\0';
+  return out;
 }
 
 const uint8_t *fcb_view_entity(const fcb_view *v, uint64_t index) {

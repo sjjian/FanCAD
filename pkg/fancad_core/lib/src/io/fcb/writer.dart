@@ -5,6 +5,8 @@ import '../../document/document.dart';
 import '../../document/entity.dart';
 import '../../document/style.dart';
 import '../../geometry/bounds.dart';
+import '../../geometry/matrix.dart';
+import '../region_sat_writer.dart';
 import 'format.dart';
 
 /// A growable `Float64List`, used for the FCB double pool.
@@ -689,6 +691,54 @@ class FcbWriter {
           stringCount: stringCount,
         );
 
+      case RegionEntity():
+        final source = entity.source;
+        final sourceSat = source != null && source.format == 'sat'
+            ? source.text
+            : '';
+        var sat = sourceSat;
+        var approximated = entity.approximated;
+        if (sat.isEmpty) {
+          final generated = const RegionSatWriter().writeResult(
+            entity.geometry,
+          );
+          sat = generated.text ?? '';
+          approximated = approximated || generated.approximated;
+        } else if (approximated) {
+          sat = RegionSatWriter.markApproximated(sat);
+        }
+        final transform = sourceSat.isNotEmpty
+            ? source?.transform ?? const Mat3.identity()
+            : const Mat3.identity();
+        final strokes = <double>[];
+        final runs = <int>[];
+        for (final component in entity.components) {
+          for (final loop in [component.outer, ...component.holes]) {
+            final points = loop.toBuffer(0.001);
+            if (points.length < 4) continue;
+            runs.add(points.length ~/ 2);
+            strokes.addAll(points);
+          }
+        }
+        final (stringOffset, stringCount) = _strings.internRun([sat, 'REGION']);
+        return _Payload(
+          geomOffset: _doubles.addAll([
+            transform.a,
+            transform.b,
+            transform.c,
+            transform.d,
+            transform.e,
+            transform.f,
+            ...strokes,
+          ]),
+          geomCount: 6 + strokes.length,
+          intOffset: _ints.addAll([runs.length, ...runs]),
+          intCount: 1 + runs.length,
+          stringOffset: stringOffset,
+          stringCount: stringCount,
+          flags: approximated ? FcbFlags.approximated : 0,
+        );
+
       case UnknownEntity(
         :final originalType,
         :final proxyBounds,
@@ -1174,6 +1224,7 @@ class FcbWriter {
     EntityKind.image => FcbType.image,
     EntityKind.attdef => FcbType.attdef,
     EntityKind.attrib => FcbType.attrib,
+    EntityKind.region => FcbType.region,
     EntityKind.unknown => FcbType.unknown,
   };
 }

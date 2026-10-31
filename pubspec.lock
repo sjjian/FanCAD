@@ -153,6 +153,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.4.2"
+  clipper2:
+    dependency: transitive
+    description:
+      name: clipper2
+      sha256: eddedb18c8ad4beaa35e77e0493c1797ef728d8d594223e684c42f9a4bb2df13
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.3"
   clock:
     dependency: transitive
     description:

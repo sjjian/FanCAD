@@ -34,6 +34,7 @@ CadEntity bakeOcs(CadEntity entity, Vec3 extrusion) {
     MLeaderEntity() ||
     DimensionEntity() ||
     ImageEntity() ||
+    RegionEntity() ||
     UnknownEntity() => entity,
   };
 }

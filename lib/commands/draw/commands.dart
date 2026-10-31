@@ -26,6 +26,7 @@ import 'polygon.dart';
 import 'polyline.dart';
 import 'ray.dart';
 import 'rectangle.dart';
+import 'region.dart';
 import 'spline.dart';
 import 'text.dart';
 import 'textstyle.dart';
@@ -64,6 +65,7 @@ class DrawCommands {
     DrawMtextCommand().toDescriptor(),
     DrawLeaderCommand().toDescriptor(),
     DrawHatchCommand().toDescriptor(),
+    DrawRegionCommand().toDescriptor(),
     DrawDimLinearCommand().toDescriptor(),
     DrawDimAlignedCommand().toDescriptor(),
     DrawDimContinueCommand().toDescriptor(),

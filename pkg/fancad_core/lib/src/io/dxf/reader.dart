@@ -11,6 +11,7 @@ import '../../document/style.dart';
 import '../../geometry/bounds.dart';
 import '../../geometry/vector.dart';
 import '../../hatch/pattern.dart';
+import '../acis_sat.dart';
 import '../ocs.dart';
 
 /// Reads ASCII DXF into a [CadDocument].
@@ -605,6 +606,27 @@ class DxfReader {
         );
       case 'HATCH':
         return _hatch(id, props, pairs, v);
+      case 'REGION':
+        final sat = StringBuffer();
+        for (final (code, value) in pairs) {
+          if (code == 1 || code == 3) sat.writeln(value);
+        }
+        final text = sat.toString();
+        final geometry = const AcisSatReader().read(text);
+        if (geometry == null) return null;
+        final approximated = pairs.any(
+          (pair) => pair.$1 == 999 && pair.$2 == 'FanCAD REGION APPROXIMATED',
+        );
+        return RegionEntity(
+          id: id,
+          props: props,
+          components: geometry.components,
+          approximated: approximated || geometry.approximated,
+          source: AcisPayload(
+            format: 'sat',
+            bytes: Uint8List.fromList(utf8.encode(text)),
+          ),
+        );
       case 'MTEXT':
         return MTextEntity(
           id: id,

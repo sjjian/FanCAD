@@ -214,11 +214,19 @@ class Flatten {
     List<double> weights = const [],
     required double tolerance,
     bool closed = false,
+    double start = 0,
+    double end = 1,
   }) {
     final n = controlPoints.length ~/ 2;
     if (n == 0) return Float64List(0);
     if (n <= degree || degree < 1 || knots.length != n + degree + 1) {
       return Float64List.fromList(controlPoints);
+    }
+    var from = start.clamp(0.0, 1.0).toDouble();
+    var to = end.clamp(0.0, 1.0).toDouble();
+    if (!(to > from)) {
+      from = 0;
+      to = 1;
     }
     // Sample density scales with the control polygon length so that long,
     // wiggly splines get proportionally more samples.
@@ -228,12 +236,12 @@ class Flatten {
       final dy = controlPoints[i * 2 + 1] - controlPoints[(i - 1) * 2 + 1];
       polygonLength += math.sqrt(dx * dx + dy * dy);
     }
+    final fraction = to - from;
     final samples = tolerance <= 0
         ? maxSegments
-        : (polygonLength / math.max(tolerance * 8, 1e-9)).ceil().clamp(
-            n * 4,
-            maxSegments,
-          );
+        : (polygonLength * fraction / math.max(tolerance * 8, 1e-9))
+              .ceil()
+              .clamp(n * 4, maxSegments);
     final tMin = knots[degree];
     final tMax = knots[n];
     if (!(tMax > tMin)) return Float64List.fromList(controlPoints);
@@ -241,8 +249,9 @@ class Flatten {
     final out = Float64List((samples + 1) * 2);
     final rational = weights.length == n;
     for (var s = 0; s <= samples; s++) {
-      var t = tMin + (tMax - tMin) * s / samples;
-      if (s == samples) t = tMax - 1e-12;
+      final parameter = from + (to - from) * s / samples;
+      var t = tMin + (tMax - tMin) * parameter;
+      if (t >= tMax) t = tMax - 1e-12;
       final span = _findSpan(knots, n, degree, t);
       final basis = _basisFunctions(knots, span, degree, t);
       var x = 0.0, y = 0.0, w = 0.0;

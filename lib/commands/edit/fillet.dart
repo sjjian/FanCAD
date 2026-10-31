@@ -19,10 +19,10 @@ class EditFilletCommand extends FanCadCommand {
   String? get icon => 'fillet';
   @override
   String get description =>
-      'Rounds the corner between two lines, or vertices of a polyline, with '
-      'an arc of a given radius. Pass all=true to fillet every straight '
-      'corner of a polyline. A radius of zero trims or extends two lines to '
-      'a sharp corner.';
+      'Rounds the corner between two lines, vertices of a polyline, or a '
+      'region corner with an arc of a given radius. Pass all=true to fillet '
+      'every straight corner of a polyline or region. A radius of zero trims '
+      'or extends two lines to a sharp corner.';
   @override
   List<ParamSpec> get params => const [
     ParamSpec(
@@ -102,6 +102,9 @@ class EditFilletCommand extends FanCadCommand {
       if (firstPick.isEmpty) return const CommandResult.cancelled();
       id1 = firstPick.first;
       final firstEntity = context.document.entity(id1);
+      if (firstEntity is RegionEntity) {
+        return _filletRegion(context, firstEntity, radius);
+      }
       if (firstEntity is PolylineEntity) {
         return _filletPolyline(context, firstEntity, radius);
       }
@@ -115,6 +118,9 @@ class EditFilletCommand extends FanCadCommand {
     }
 
     final first = context.document.entity(id1);
+    if (first is RegionEntity) {
+      return _filletRegion(context, first, radius);
+    }
     if (first is PolylineEntity && (id2 == null || id2 == id1)) {
       return _filletPolyline(context, first, radius);
     }
@@ -172,6 +178,72 @@ class EditFilletCommand extends FanCadCommand {
       transaction: committed,
     );
   }
+}
+
+Future<CommandResult> _filletRegion(
+  CommandContext context,
+  RegionEntity region,
+  double radius,
+) async {
+  if (radius <= 0) {
+    return const CommandResult.failed(
+      'A region fillet needs a positive radius.',
+    );
+  }
+  final filletAll = context.args.boolean('all') ?? false;
+  final Vec2? pick;
+  if (filletAll) {
+    pick = null;
+  } else {
+    pick =
+        context.args.point('pick1') ??
+        context.args.point('pick') ??
+        await context.input.point(
+          context.commandPrompt(
+            'FILLET',
+            context.l10n.prompt_specify_vertex_to_round,
+          ),
+        );
+  }
+  final result = filletAll
+      ? const RegionFillet().all(region.geometry, radius)
+      : const RegionFillet().vertex(region.geometry, pick!, radius);
+  if (result == null || result.components.isEmpty) {
+    return CommandResult.failed(
+      filletAll
+          ? 'No region corner could be filleted; the radius may be larger '
+                'than the adjoining edges.'
+          : 'That region corner cannot be filleted; the radius may be larger '
+                'than the adjoining edges, or the corner may not be '
+                'filletable.',
+    );
+  }
+  final filleted = RegionEntity(
+    id: region.id,
+    props: region.props,
+    components: result.components,
+    approximated: result.approximated,
+    valid: region.valid,
+  );
+  final committed = context.edit('Fillet', (transaction) {
+    transaction.modify(filleted);
+  });
+  if (committed == null) {
+    return const CommandResult.failed(
+      'Nothing was filleted; the region may be on a locked layer.',
+    );
+  }
+  context.selection.replace([region.id]);
+  return CommandResult(
+    status: CommandStatus.ok,
+    message: filletAll
+        ? 'Fillet: region, radius ${radius.toStringAsFixed(4)}.'
+        : 'Fillet: region corner, radius ${radius.toStringAsFixed(4)}.',
+    data: {
+      'ids': [region.id],
+    },
+    transaction: committed,
+  );
 }
 
 Future<CommandResult> _filletPolyline(
