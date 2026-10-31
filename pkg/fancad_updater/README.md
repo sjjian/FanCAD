@@ -28,13 +28,14 @@ the FanCAD app.
 ```
 manifest.json
 manifest.json.sig          base64 of the raw RSA signature
-fancad-macos-0.6.0.dmg     universal (arm64 + x86_64)
-fancad-windows-setup-0.6.0.exe
-fancad-linux-0.6.0.tar.gz
+fancad-macos-arm64-0.6.0.dmg
+fancad-windows-setup-x64-0.6.0.exe
+fancad-linux-x64-0.6.0.tar.gz
 ```
 
-The names are what `release-desktop.yml` produces. `SHA256SUMS` is optional for
-humans; the app ignores it.
+The names are what `release-desktop.yml` produces. macOS currently ships an
+arm64 build; Windows and Linux ship x64. `SHA256SUMS` is optional for humans;
+the app ignores it.
 
 ## Manifest format
 
@@ -46,7 +47,7 @@ humans; the app ignores it.
   "notes": "Optional, not shown by the app yet",
   "assets": [
     {
-      "name": "fancad-macos-0.6.0.dmg",
+      "name": "fancad-macos-arm64-0.6.0.dmg",
       "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
       "size": 12345678
     }

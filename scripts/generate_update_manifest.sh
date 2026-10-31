@@ -26,12 +26,16 @@ if not os.path.isdir(directory):
     raise SystemExit(f"error: {directory} is not a directory")
 
 assets = []
+arch_tokens = ("arm64", "aarch64", "x64", "x86_64", "amd64", "universal")
 for name in sorted(os.listdir(directory)):
     path = os.path.join(directory, name)
     if not os.path.isfile(path):
         continue
     if not name.startswith("fancad-") or not name.endswith((".dmg", ".exe", ".tar.gz")):
         continue
+    lower = name.lower()
+    if not any(token in lower for token in arch_tokens):
+        raise SystemExit(f"error: {name} has no architecture token")
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
         for chunk in iter(lambda: handle.read(1 << 20), b""):

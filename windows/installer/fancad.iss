@@ -1,6 +1,6 @@
 ; Inno Setup script for FanCAD Windows installer.
 ; AppId must stay stable across releases so upgrades overwrite the same install.
-; CI passes /DMyAppVersion=x.y.z
+; CI passes /DMyAppVersion=x.y.z and /DMyAppArch=x64
 ;
 ; Install mode:
 ;   Setup runs as the invoking user (no elevation). The mode page offers
@@ -11,6 +11,10 @@
 
 #ifndef MyAppVersion
   #define MyAppVersion "0.1.0"
+#endif
+
+#ifndef MyAppArch
+  #define MyAppArch "x64"
 #endif
 
 #define MyAppName "FanCAD"
@@ -27,7 +31,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=..\..\dist
-OutputBaseFilename=fancad-windows-setup-{#MyAppVersion}
+OutputBaseFilename=fancad-windows-setup-{#MyAppArch}-{#MyAppVersion}
 SetupIconFile=..\runner\resources\app_icon.ico
 Compression=lzma
 SolidCompression=yes

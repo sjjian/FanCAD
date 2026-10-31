@@ -14,6 +14,9 @@ permissions:
 
 env:
   FLUTTER_VERSION: 3.38.4
+  MACOS_ARCH: arm64
+  WINDOWS_ARCH: x64
+  LINUX_ARCH: x64
 
 jobs:
   version:
@@ -73,6 +76,8 @@ jobs:
         run: flutter build macos --release
 
       - name: Package DMG
+        env:
+          ARCH: ${{ env.MACOS_ARCH }}
         run: |
           chmod +x scripts/package_macos_dmg.sh
           scripts/package_macos_dmg.sh "${{ needs.version.outputs.version }}"
@@ -80,7 +85,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: fancad-macos
-          path: dist/fancad-macos-${{ needs.version.outputs.version }}.dmg
+          path: dist/fancad-macos-${{ env.MACOS_ARCH }}-${{ needs.version.outputs.version }}.dmg
           if-no-files-found: error
 
   build-windows:
@@ -121,13 +126,14 @@ jobs:
           $version = "${{ needs.version.outputs.version }}"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
             "windows\installer\fancad.iss" `
-            "/DMyAppVersion=$version"
+            "/DMyAppVersion=$version" `
+            "/DMyAppArch=${{ env.WINDOWS_ARCH }}"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - uses: actions/upload-artifact@v4
         with:
           name: fancad-windows
-          path: dist/fancad-windows-setup-${{ needs.version.outputs.version }}.exe
+          path: dist/fancad-windows-setup-${{ env.WINDOWS_ARCH }}-${{ needs.version.outputs.version }}.exe
           if-no-files-found: error
 
   build-linux:
@@ -163,13 +169,14 @@ jobs:
       - name: Package tarball
         run: |
           version="${{ needs.version.outputs.version }}"
+          arch="${LINUX_ARCH:-x64}"
           mkdir -p dist
-          tar -C build/linux/x64/release/bundle -czf "dist/fancad-linux-${version}.tar.gz" .
+          tar -C build/linux/x64/release/bundle -czf "dist/fancad-linux-${arch}-${version}.tar.gz" .
 
       - uses: actions/upload-artifact@v4
         with:
           name: fancad-linux
-          path: dist/fancad-linux-${{ needs.version.outputs.version }}.tar.gz
+          path: dist/fancad-linux-${{ env.LINUX_ARCH }}-${{ needs.version.outputs.version }}.tar.gz
           if-no-files-found: error
 
   release:

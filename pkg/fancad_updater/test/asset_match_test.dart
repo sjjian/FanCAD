@@ -51,6 +51,33 @@ void main() {
       );
     });
 
+    test('accepts the names the release workflow produces', () {
+      expect(
+        scoreReleaseAsset(
+          'fancad-macos-arm64-0.6.0.dmg',
+          platform: UpdatePlatform.macos,
+          arch: UpdateArch.arm64,
+        ),
+        isNotNull,
+      );
+      expect(
+        scoreReleaseAsset(
+          'fancad-windows-setup-x64-0.6.0.exe',
+          platform: UpdatePlatform.windows,
+          arch: UpdateArch.x64,
+        ),
+        isNotNull,
+      );
+      expect(
+        scoreReleaseAsset(
+          'fancad-linux-x64-0.6.0.tar.gz',
+          platform: UpdatePlatform.linux,
+          arch: UpdateArch.x64,
+        ),
+        isNotNull,
+      );
+    });
+
     test('keeps legacy names without an architecture', () {
       expect(
         scoreReleaseAsset(
