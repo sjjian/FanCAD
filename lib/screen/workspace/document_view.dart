@@ -1445,6 +1445,12 @@ class _ExportWindowInput extends ChangeNotifier implements CanvasInputHandler {
   @override
   Vec2? get hoverPoint => null;
 
+  /// This pick only follows the pointer to draw a window frame. The tool
+  /// overlay cursor belongs to the previous tool, so leave the system pointer
+  /// alone instead of freezing a crosshair at that stale position.
+  @override
+  bool get tracksOverlayCursor => false;
+
   @override
   bool onPointerDown(Vec2 world, PointerDownEvent event) {
     if (event.buttons & kPrimaryMouseButton == 0) return false;

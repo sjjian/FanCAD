@@ -153,7 +153,24 @@ void main() {
   });
 
   test('overlay shapes, grips and snap glyphs still paint', () {
-    expect(const OverlayTheme().crosshairSize, 14);
+    expect(const OverlayTheme().crosshairSize, 56);
+    expect(const OverlayTheme().pickBoxSize, 10);
+    expect(
+      const OverlayTheme().withCanvas(const Color(0xFF1B1D21)).crosshair,
+      const Color(0xFFFFFFFF),
+    );
+    expect(
+      const OverlayTheme().withCanvas(const Color(0xFFFFFFFF)).crosshair,
+      const Color(0xFF000000),
+    );
+    // An explicit colour is an override, not a value withCanvas throws away.
+    expect(
+      const OverlayTheme(
+        crosshair: Color(0xFFFF0000),
+      ).withCanvas(const Color(0xFF1B1D21)).crosshair,
+      const Color(0xFFFF0000),
+    );
+    expect(const OverlayTheme().crosshair, isNull);
     expect(const OverlayTheme().preview.toARGB32(), 0xFFE0E0E0);
 
     const view = CadViewport(

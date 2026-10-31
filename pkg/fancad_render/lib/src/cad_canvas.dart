@@ -38,6 +38,14 @@ abstract class CanvasInputHandler {
   /// The canvas publishes it on the viewport so a coordinate readout can
   /// follow the pointer by listening to that layout controller.
   Vec2? get hoverPoint => null;
+
+  /// Whether this handler keeps [OverlayModel.cursor] in step with the pointer.
+  ///
+  /// The canvas hides the system pointer while it paints the overlay crosshair.
+  /// A handler that does not publish a cursor — an export-window pick, or the
+  /// assistant taking the pointer away — must leave the system pointer alone,
+  /// otherwise the drawn crosshair freezes at its last position.
+  bool get tracksOverlayCursor => false;
 }
 
 /// The drawing viewport.
@@ -348,6 +356,27 @@ class CadCanvasState extends State<CadCanvas> {
   @override
   Widget build(BuildContext context) {
     final version = widget.document.version;
+    final tracking = widget.inputHandler?.tracksOverlayCursor ?? false;
+    var overlay = _overlay;
+    final local = _lastLocal;
+    if (!tracking) {
+      // Nobody is moving this cursor any more (an export pick, or the
+      // assistant took the pointer). A frozen copy of the old tool cursor
+      // would read as a second, stuck pointer, so leave it out entirely.
+      overlay = overlay.copyWith(clearCursor: true, clearSnap: true);
+    } else if (_panDragging || _trackpadPointer != null) {
+      // The sheet moves under a still pointer while panning. Re-project the
+      // last pointer so the drawn crosshair rides with the pointer instead of
+      // drifting away with the drawing. The old snap belongs to the
+      // pre-gesture point, so it goes with it.
+      overlay = local == null || overlay.cursor == null
+          ? overlay.copyWith(clearCursor: true, clearSnap: true)
+          : overlay.copyWith(
+              cursor: widget.controller.viewport.toWorld(local),
+              clearSnap: true,
+            );
+    }
+    final drawsCrosshair = overlay.showCrosshair && overlay.cursor != null;
     if (version != _seenVersion) {
       if (_seenVersion != -1) {
         // A version bump that did not go through [applyDocumentChange].
@@ -392,8 +421,11 @@ class CadCanvasState extends State<CadCanvas> {
             onPointerPanZoomEnd: _handlePanZoomEnd,
             onPointerCancel: (_) => _endAllGestures(),
             child: MouseRegion(
-              cursor: _panDragging || _trackpadPointer != null
-                  ? SystemMouseCursors.grabbing
+              // The overlay draws its own crosshair. Leaving the system
+              // cursor visible stacks a second crosshair on top of it, and a
+              // grabbing hand on a pan does the same.
+              cursor: drawsCrosshair
+                  ? SystemMouseCursors.none
                   : SystemMouseCursors.precise,
               onExit: (_) {
                 _lastLocal = null;
@@ -419,7 +451,7 @@ class CadCanvasState extends State<CadCanvas> {
                           paintEpoch: _paintEpoch,
                           onlyLayers: widget.onlyLayers,
                           plotPreview: widget.plotPreview,
-                          hiddenIds: _overlay.hiddenIds,
+                          hiddenIds: overlay.hiddenIds,
                           onSceneBuilt: widget.onSceneBuilt,
                           grid: widget.showGrid
                               ? _GridStyle(
@@ -436,7 +468,7 @@ class CadCanvasState extends State<CadCanvas> {
                           document: widget.document,
                           documentVersion: widget.document.version,
                           viewport: widget.controller.viewport,
-                          model: _overlay,
+                          model: overlay,
                           painter: _overlayPainter,
                           paintEpoch: _paintEpoch,
                         ),
@@ -484,6 +516,7 @@ class CadCanvasState extends State<CadCanvas> {
       }
       widget.controller.panBy(event.localPosition - _lastPanPosition);
       _lastPanPosition = event.localPosition;
+      _rememberLocal(event.localPosition);
       return;
     }
     _rememberLocal(event.localPosition);
@@ -528,7 +561,12 @@ class CadCanvasState extends State<CadCanvas> {
     _panPointer = null;
     _panDragging = false;
     _panIsSecondary = false;
-    if (wasDragging) widget.controller.endInteraction();
+    if (wasDragging) {
+      widget.controller.endInteraction();
+      // The tool cursor still points at where the drag started. Put it back
+      // under the pointer so the crosshair does not jump when the pan stops.
+      _resyncPointer();
+    }
   }
 
   void _endTrackpad() {
@@ -537,6 +575,21 @@ class CadCanvasState extends State<CadCanvas> {
     _lastTrackpadScale = 1;
     _lastTrackpadTime = null;
     widget.controller.endInteraction();
+    _resyncPointer();
+  }
+
+  /// Moves the tool crosshair to the last pointer after the camera moved.
+  ///
+  /// A pan and a trackpad gesture do not send pointer moves to the tool, so
+  /// its cursor would stay at the pre-gesture world point.
+  void _resyncPointer() {
+    final local = _lastLocal;
+    if (local == null) return;
+    widget.inputHandler?.onPointerMove(
+      _toWorld(local),
+      PointerHoverEvent(position: local),
+    );
+    _publishPointer();
   }
 
   void _endAllGestures() {

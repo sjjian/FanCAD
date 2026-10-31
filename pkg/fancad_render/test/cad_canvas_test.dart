@@ -685,6 +685,121 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('a drawn crosshair hides the system pointer', (tester) async {
+    Future<MouseCursor> cursorFor(
+      OverlayModel overlay, {
+      CanvasInputHandler? handler,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SizedBox(
+            width: 800,
+            height: 600,
+            child: CadCanvas(
+              document: CadDocument(),
+              controller: controller,
+              overlay: overlay,
+              inputHandler: handler,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      return tester
+          .widget<MouseRegion>(
+            find.descendant(
+              of: find.byType(CadCanvas),
+              matching: find.byType(MouseRegion),
+            ),
+          )
+          .cursor;
+    }
+
+    final tracking = _TrackingHandler();
+    expect(
+      await cursorFor(
+        const OverlayModel(cursor: Vec2.zero()),
+        handler: tracking,
+      ),
+      SystemMouseCursors.none,
+    );
+    // A handler that does not move the overlay cursor would leave a frozen
+    // crosshair with no pointer at all, so the system cursor has to stay.
+    expect(
+      await cursorFor(
+        const OverlayModel(cursor: Vec2.zero()),
+        handler: _PromptingHandler(),
+      ),
+      SystemMouseCursors.precise,
+    );
+    expect(
+      await cursorFor(
+        const OverlayModel(cursor: Vec2.zero(), showCrosshair: false),
+        handler: tracking,
+      ),
+      SystemMouseCursors.precise,
+    );
+    // No pointer yet: nothing was drawn, so the system pointer stays.
+    expect(
+      await cursorFor(const OverlayModel(), handler: tracking),
+      SystemMouseCursors.precise,
+    );
+  });
+
+  testWidgets('a pan keeps the drawn crosshair, not a hand', (tester) async {
+    final handler = _TrackingHandler();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 800,
+          height: 600,
+          child: CadCanvas(
+            document: CadDocument(),
+            controller: controller,
+            overlay: const OverlayModel(cursor: Vec2.zero()),
+            inputHandler: handler,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final location = tester.getCenter(find.byType(CadCanvas));
+    MouseCursor cursor() => tester
+        .widget<MouseRegion>(
+          find.descendant(
+            of: find.byType(CadCanvas),
+            matching: find.byType(MouseRegion),
+          ),
+        )
+        .cursor;
+
+    final pointer = TestPointer(1, PointerDeviceKind.mouse);
+    await tester.sendEventToBinding(pointer.hover(location));
+    await tester.pump();
+    expect(cursor(), SystemMouseCursors.none);
+
+    final pan = TestPointer(
+      2,
+      PointerDeviceKind.mouse,
+      null,
+      kSecondaryMouseButton,
+    );
+    await tester.sendEventToBinding(pan.down(location));
+    await tester.sendEventToBinding(pan.move(location + const Offset(30, 0)));
+    await tester.pump();
+    expect(controller.viewport.center.x, isNot(closeTo(0, 1e-6)));
+    expect(cursor(), SystemMouseCursors.none);
+
+    await tester.sendEventToBinding(pan.up());
+    await tester.pump();
+    expect(cursor(), SystemMouseCursors.none);
+  });
+}
+
+class _TrackingHandler extends _PromptingHandler {
+  @override
+  bool get tracksOverlayCursor => true;
 }
 
 class _PromptingHandler extends CanvasInputHandler {

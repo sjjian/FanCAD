@@ -207,6 +207,9 @@ class ToolController extends ChangeNotifier
   Vec2? get hoverPoint => cursor;
   SnapResult? get snap => _snap;
 
+  @override
+  bool get tracksOverlayCursor => true;
+
   /// True while a prompt tool owns the pointer, which is how the shell knows a
   /// command is mid-flight.
   @override

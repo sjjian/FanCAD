@@ -93,12 +93,13 @@ class OverlayTheme {
     this.snap = const ui.Color(0xFFFFD166),
     this.preview = const ui.Color(0xFFE0E0E0),
     this.tracking = const ui.Color(0xFF6BE38F),
-    this.crosshair = const ui.Color(0x66FFFFFF),
+    this.crosshair,
     this.selectionStroke = const ui.Color(0xFFFFFFFF),
     this.selectionMask = const ui.Color(0xFF1B1D21),
     this.gripSize = 7,
     this.snapSize = 9,
-    this.crosshairSize = 14,
+    this.crosshairSize = 56,
+    this.pickBoxSize = 10,
   });
 
   final ui.Color selection;
@@ -107,7 +108,12 @@ class OverlayTheme {
   final ui.Color snap;
   final ui.Color preview;
   final ui.Color tracking;
-  final ui.Color crosshair;
+
+  /// Optional crosshair colour override.
+  ///
+  /// Null follows the sheet in [withCanvas]: white on a dark canvas, black on
+  /// a light one, the same way a drawing line is coloured.
+  final ui.Color? crosshair;
 
   /// Selected entities are redrawn dashed in this colour, after the original
   /// solid stroke is covered by [selectionMask].
@@ -118,7 +124,13 @@ class OverlayTheme {
   /// size on every display. The painter scales them by the device ratio.
   final double gripSize;
   final double snapSize;
+
+  /// Half-length of one crosshair arm, in logical pixels.
   final double crosshairSize;
+
+  /// Side of the pick box at the crosshair centre. Fixed, so growing the arms
+  /// does not grow the box.
+  final double pickBoxSize;
 
   /// Covers the original solid stroke with the canvas colour and picks a
   /// dash colour that stays readable on it.
@@ -130,7 +142,11 @@ class OverlayTheme {
       hotGrip: hotGrip,
       snap: snap,
       tracking: tracking,
-      crosshair: crosshair,
+      // An explicit colour wins. Otherwise the crosshair reads as a drawing
+      // line and takes the same white / black as the sheet.
+      crosshair:
+          crosshair ??
+          (dark ? const ui.Color(0xFFFFFFFF) : const ui.Color(0xFF000000)),
       preview: dark ? const ui.Color(0xFFFFFFFF) : const ui.Color(0xFF000000),
       selectionStroke: dark
           ? const ui.Color(0xFFFFFFFF)
@@ -139,6 +155,7 @@ class OverlayTheme {
       gripSize: gripSize,
       snapSize: snapSize,
       crosshairSize: crosshairSize,
+      pickBoxSize: pickBoxSize,
     );
   }
 }
@@ -516,14 +533,17 @@ class OverlayPainter {
 
   void _paintCrosshair(ui.Canvas canvas, ui.Offset at) {
     _stroke
-      ..color = theme.crosshair
+      ..color = theme.crosshair ?? const ui.Color(0xFFFFFFFF)
       ..strokeWidth = _dpr;
     final reach = _pixels.fromLogical(theme.crosshairSize);
+    final box = _pixels.fromLogical(theme.pickBoxSize);
+    // The arms run through the pick box so the centre reads as a crosshair,
+    // not as four stubs around an empty square.
     canvas
       ..drawLine(at.translate(-reach, 0), at.translate(reach, 0), _stroke)
       ..drawLine(at.translate(0, -reach), at.translate(0, reach), _stroke)
       ..drawRect(
-        ui.Rect.fromCenter(center: at, width: reach * 0.7, height: reach * 0.7),
+        ui.Rect.fromCenter(center: at, width: box, height: box),
         _stroke,
       );
   }
