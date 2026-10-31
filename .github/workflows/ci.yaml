@@ -40,6 +40,7 @@ jobs:
         run: |
           dart test pkg/fancad_core
           dart test pkg/fancad_ai
+          dart test pkg/fancad_updater
 
       - name: Test the Flutter packages
         run: flutter test

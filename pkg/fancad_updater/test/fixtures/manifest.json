@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "version": "0.6.0",
+  "publishedAt": "2026-10-30T09:00:00Z",
+  "notes": "Test release",
+  "assets": [
+    {"name": "fancad-macos-arm64-0.6.0.dmg", "sha256": "e34210a6de4f653edf588301431c3d69a633638cbf587345cc50a7fed9f38f4c", "size": 15},
+    {"name": "fancad-windows-setup-x64-0.6.0.exe", "sha256": "3295ba53cad01dad8fadea54e8ffe93c51b7d2d0d1104da816fe2b2a1543df00", "size": 13},
+    {"name": "fancad-linux-x64-0.6.0.tar.gz", "sha256": "80cefd43a542d6617c0580b2fa5783361652c004e7131645cc6423efb26be77e", "size": 11}
+  ]
+}

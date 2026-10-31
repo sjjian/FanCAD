@@ -13,6 +13,7 @@ workspace:
   - pkg/fancad_widget
   - pkg/fancad_ai
   - pkg/fancad_ops
+  - pkg/fancad_updater
   - pkg/desktop_open_files
   - pkg/fancad_test
 
