@@ -222,6 +222,7 @@ class CadCanvasState extends State<CadCanvas> {
     if (oldWidget.renderer != widget.renderer) {
       if (_ownsRenderer) _renderer.dispose();
       _renderer
+        ..cancelSettle()
         ..onNeedsPaint = null
         ..onSceneBuilt = null;
       _adoptRenderer();
@@ -266,6 +267,10 @@ class CadCanvasState extends State<CadCanvas> {
   void dispose() {
     _unbindInput();
     widget.controller.removeListener(_onViewportChanged);
+    _renderer
+      ..cancelSettle()
+      ..onNeedsPaint = null
+      ..onSceneBuilt = null;
     if (_ownsRenderer) _renderer.dispose();
     _renderer.paragraphs.clear();
     super.dispose();

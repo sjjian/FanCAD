@@ -167,14 +167,21 @@ class CanvasRenderer {
   void invalidate() {
     _cache.invalidate();
     _seen = null;
-    _moving = false;
+    cancelSettle();
+  }
+
+  /// Cancels a pending settle frame without dropping the recording.
+  ///
+  /// A canvas that leaves the tree no longer needs the exact rebuild the timer
+  /// would request. The next render re-arms it if the camera changed again.
+  void cancelSettle() {
     _settle?.cancel();
     _settle = null;
+    _moving = false;
   }
 
   void dispose() {
-    _settle?.cancel();
-    _settle = null;
+    cancelSettle();
     onNeedsPaint = null;
     onSceneBuilt = null;
     _cache.dispose();
