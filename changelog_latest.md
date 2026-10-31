@@ -1,9 +1,9 @@
 ##  Features ✨
-* Replaced installed plugin packages with single-file extensions. A .js file with a header comment runs as extension.<name> from the sidebar, the command line, chat, or MCP, and the assistant tries unsaved code with exec before saving it. A run is one undo step, angles are degrees, outside edits are picked up, and Stop ends a running exec immediately. A bad parameter line is reported, text defaults may be quoted, and a script cannot erase, replace the drawing, save to a new path, rewrite extensions, or move undo unless chat or MCP asks first.
-* Added edit.apply and select.set so a script or the assistant can add, erase, and transform several objects as one undo step and set the selection to a known list of ids.
-* Added a drawing tab that shows while a file opens and stays when the open fails.
+* Added first-class 2D REGION support. Regions can be created from an internal point or selected closed boundaries, combined with union, subtract and intersect, filleted and offset, and read from and written to DXF, DWG and FCB. Picking and snapping use the region geometry, and approximated boundaries are flagged.
+* Added signed in-app updates. The About tab shows the version and checks GitHub, with Gitee as a fallback; a new version downloads only after its signed manifest and SHA-256 digest are verified, then opens the DMG, the Windows installer or the Linux replacement script.
 
 ## Improvements 🛠
-* Text search steps through matches and keeps the current hit while the list is hovered.
-* Assistant screenshots use the canvas colour on screen.
-* Fixed the workbench so changing the selection or running a command no longer rebuilds the whole window.
+* Reworked canvas rendering around one RenderTarget entry point. Pan and zoom replay the existing recording, picking and snapping share the same flattened geometry, and a missed gesture end can no longer leave the canvas soft.
+* Cut the build and paint cost of large drawings with merged batch vertices, culled grid painting and text shaped once per height band; a 200,000-segment zoom frame paints in 0.27 ms instead of 1.81 ms.
+* Hid the system pointer while the overlay draws its crosshair, kept the crosshair under the pointer during pans, and dropped stale cursor and snap state when the input handler changes.
+* Fixed Chinese MTEXT wrapping so notes without spaces break between glyphs instead of running past the rectangle.
