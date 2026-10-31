@@ -218,6 +218,16 @@ class MTextLayout {
       lineWidth = 0.0;
     }
 
+    void append(_Frag frag, String text, double w) {
+      if (text.isEmpty) return;
+      if (line.isNotEmpty && line.last.style == frag.style) {
+        line[line.length - 1] = line.last.withText('${line.last.text}$text');
+      } else {
+        line.add(frag.withText(text));
+      }
+      lineWidth += w;
+    }
+
     for (final frag in paragraph) {
       if (frag.stack != null) {
         final w = _stackWidth(frag, entityHeight);
@@ -226,32 +236,98 @@ class MTextLayout {
         lineWidth += w;
         continue;
       }
-      final words = frag.text.split(RegExp(r'\s+'));
-      var leadingSpace = frag.text.startsWith(' ');
-      for (final word in words) {
-        if (word.isEmpty) continue;
-        final piece = leadingSpace ? ' $word' : word;
-        leadingSpace = true;
-        final w = _textWidth(piece, _heightOf(frag.style, entityHeight));
+      final height = _heightOf(frag.style, entityHeight);
+      for (var atom in _breakOpportunities(frag.text)) {
+        if (atom.isEmpty) continue;
+        var w = _atomWidth(atom, frag.style, height);
         if (line.isNotEmpty && lineWidth + w > width) {
           breakLine();
-          line.add(frag.withText(word));
-          lineWidth = _textWidth(word, _heightOf(frag.style, entityHeight));
-        } else {
-          if (line.isNotEmpty && line.last.style == frag.style) {
-            line[line.length - 1] = line.last.withText(
-              '${line.last.text}$piece',
-            );
-          } else {
-            line.add(frag.withText(piece));
-          }
-          lineWidth += w;
+          atom = atom.replaceFirst(RegExp(r'^\s+'), '');
+          if (atom.isEmpty) continue;
+          w = _atomWidth(atom, frag.style, height);
         }
+        if (line.isEmpty && w > width) {
+          // AutoCAD breaks an unbroken word that is wider than the column;
+          // otherwise a note without spaces would run off the drawing.
+          for (final piece in _splitToWidth(atom, frag.style, height, width)) {
+            if (line.isNotEmpty) breakLine();
+            append(frag, piece, _atomWidth(piece, frag.style, height));
+          }
+          continue;
+        }
+        append(frag, atom, w);
       }
     }
     if (line.isNotEmpty) lines.add(line);
     return lines.isEmpty ? [paragraph] : lines;
   }
+
+  /// Splits [text] into the smallest units a line may break between.
+  ///
+  /// Latin words stay together, while every CJK glyph is its own unit: a
+  /// Chinese note usually has no spaces at all, so word-only wrapping never
+  /// fires and the whole paragraph overflows its column.
+  List<String> _breakOpportunities(String text) {
+    final atoms = <String>[];
+    final word = StringBuffer();
+
+    void flush() {
+      if (word.isNotEmpty) atoms.add(word.toString());
+      word.clear();
+    }
+
+    for (final rune in text.runes) {
+      if (rune == 0x20 || rune == 0x09 || rune == 0x0A || rune == 0x0D) {
+        if (word.isNotEmpty && word.toString().trim().isNotEmpty) {
+          // The space belongs to the following atom, so a wrapped line never
+          // starts with a separator that used to end the previous one.
+          atoms.add(word.toString());
+          word.clear();
+        }
+        word.writeCharCode(rune);
+        continue;
+      }
+      if (_isCjkRune(rune)) {
+        // A space before a CJK glyph travels with the glyph, the same way a
+        // space already travels with the following Latin word.
+        final pending = word.toString();
+        word.clear();
+        final trailing = RegExp(r'\s+$').firstMatch(pending)?.group(0) ?? '';
+        final head = pending.substring(0, pending.length - trailing.length);
+        if (head.isNotEmpty) atoms.add(head);
+        atoms.add('$trailing${String.fromCharCode(rune)}');
+        continue;
+      }
+      word.writeCharCode(rune);
+    }
+    flush();
+    return atoms;
+  }
+
+  /// Greedy character split for an atom that cannot fit on a line by itself.
+  List<String> _splitToWidth(
+    String atom,
+    _Style style,
+    double height,
+    double width,
+  ) {
+    final pieces = <String>[];
+    final buffer = StringBuffer();
+    for (final rune in atom.runes) {
+      final char = String.fromCharCode(rune);
+      final candidate = '$buffer$char';
+      if (buffer.isNotEmpty && _atomWidth(candidate, style, height) > width) {
+        pieces.add(buffer.toString());
+        buffer.clear();
+      }
+      buffer.write(char);
+    }
+    if (buffer.isNotEmpty) pieces.add(buffer.toString());
+    return pieces;
+  }
+
+  double _atomWidth(String text, _Style style, double height) =>
+      _textWidth(text, height) * style.widthFactor;
 
   ({List<MTextRun> runs, double lineHeight}) _placeLine(
     MTextEntity entity,
@@ -669,6 +745,26 @@ String replaceMTextPlain(String raw, String plain) {
   if (first < 0) return '$raw$encoded';
   return '${raw.substring(0, first)}$encoded${raw.substring(lastEnd)}';
 }
+
+/// Whether a line may break before or after [rune] without a space.
+///
+/// Covers Han, kana, Hangul and the CJK punctuation/fullwidth blocks, which
+/// are all set with glyph advances wide enough that a note wraps per glyph.
+bool _isCjkRune(int rune) =>
+    (rune >= 0x1100 && rune <= 0x11FF) || // Hangul Jamo
+    (rune >= 0x2E80 && rune <= 0x303F) || // radicals and CJK punctuation
+    (rune >= 0x3040 && rune <= 0x30FF) || // kana
+    (rune >= 0x3130 && rune <= 0x318F) || // Hangul compatibility Jamo
+    (rune >= 0x3400 && rune <= 0x4DBF) || // CJK extension A
+    (rune >= 0x4E00 && rune <= 0x9FFF) || // CJK unified ideographs
+    (rune >= 0xA960 && rune <= 0xA97F) || // Hangul Jamo extended A
+    (rune >= 0xAC00 && rune <= 0xD7AF) || // Hangul syllables
+    (rune >= 0xD7B0 && rune <= 0xD7FF) || // Hangul Jamo extended B
+    (rune >= 0xF900 && rune <= 0xFAFF) || // CJK compatibility ideographs
+    (rune >= 0xFE30 && rune <= 0xFE4F) || // CJK compatibility forms
+    (rune >= 0xFF00 && rune <= 0xFF60) || // fullwidth forms
+    (rune >= 0xFFE0 && rune <= 0xFFE6) ||
+    (rune >= 0x20000 && rune <= 0x3FFFF); // CJK extension B and beyond
 
 class _Frag {
   const _Frag({required this.text, required this.style, this.stack});

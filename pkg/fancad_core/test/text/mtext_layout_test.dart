@@ -360,6 +360,23 @@ void main() {
     expect(runs.map((run) => run.text), ['aa', 'bb']);
   });
 
+  test('MTEXT wraps between CJK glyphs without any spaces', () {
+    final runs =
+        MTextLayout(
+          measureWidth: (text, height) => text.length * height,
+        ).layout(
+          const MTextEntity(
+            id: 1,
+            position: Vec2.zero(),
+            content: '特别注意：一字TR和弹簧片不能用错；',
+            height: 10,
+            rectangleWidth: 100,
+          ),
+        );
+    expect(runs.length, greaterThan(1));
+    expect(runs.map((run) => run.text).join(), '特别注意：一字TR和弹簧片不能用错；');
+  });
+
   group('MTextEntity', () {
     test('attachment points map to the nine AutoCAD corners', () {
       TextHAlign hOf(int attachment) => MTextEntity(
