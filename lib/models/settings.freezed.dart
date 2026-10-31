@@ -1920,4 +1920,270 @@ as bool,
 
 }
 
+/// @nodoc
+mixin _$UpdatesModel {
+
+ bool get autoCheck; String get promptedVersion; String get skippedVersion; DateTime? get lastCheckedAt;
+/// Create a copy of UpdatesModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$UpdatesModelCopyWith<UpdatesModel> get copyWith => _$UpdatesModelCopyWithImpl<UpdatesModel>(this as UpdatesModel, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdatesModel&&(identical(other.autoCheck, autoCheck) || other.autoCheck == autoCheck)&&(identical(other.promptedVersion, promptedVersion) || other.promptedVersion == promptedVersion)&&(identical(other.skippedVersion, skippedVersion) || other.skippedVersion == skippedVersion)&&(identical(other.lastCheckedAt, lastCheckedAt) || other.lastCheckedAt == lastCheckedAt));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,autoCheck,promptedVersion,skippedVersion,lastCheckedAt);
+
+@override
+String toString() {
+  return 'UpdatesModel(autoCheck: $autoCheck, promptedVersion: $promptedVersion, skippedVersion: $skippedVersion, lastCheckedAt: $lastCheckedAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $UpdatesModelCopyWith<$Res>  {
+  factory $UpdatesModelCopyWith(UpdatesModel value, $Res Function(UpdatesModel) _then) = _$UpdatesModelCopyWithImpl;
+@useResult
+$Res call({
+ bool autoCheck, String promptedVersion, String skippedVersion, DateTime? lastCheckedAt
+});
+
+
+
+
+}
+/// @nodoc
+class _$UpdatesModelCopyWithImpl<$Res>
+    implements $UpdatesModelCopyWith<$Res> {
+  _$UpdatesModelCopyWithImpl(this._self, this._then);
+
+  final UpdatesModel _self;
+  final $Res Function(UpdatesModel) _then;
+
+/// Create a copy of UpdatesModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? autoCheck = null,Object? promptedVersion = null,Object? skippedVersion = null,Object? lastCheckedAt = freezed,}) {
+  return _then(_self.copyWith(
+autoCheck: null == autoCheck ? _self.autoCheck : autoCheck // ignore: cast_nullable_to_non_nullable
+as bool,promptedVersion: null == promptedVersion ? _self.promptedVersion : promptedVersion // ignore: cast_nullable_to_non_nullable
+as String,skippedVersion: null == skippedVersion ? _self.skippedVersion : skippedVersion // ignore: cast_nullable_to_non_nullable
+as String,lastCheckedAt: freezed == lastCheckedAt ? _self.lastCheckedAt : lastCheckedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [UpdatesModel].
+extension UpdatesModelPatterns on UpdatesModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _UpdatesModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _UpdatesModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _UpdatesModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _UpdatesModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _UpdatesModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _UpdatesModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool autoCheck,  String promptedVersion,  String skippedVersion,  DateTime? lastCheckedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _UpdatesModel() when $default != null:
+return $default(_that.autoCheck,_that.promptedVersion,_that.skippedVersion,_that.lastCheckedAt);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool autoCheck,  String promptedVersion,  String skippedVersion,  DateTime? lastCheckedAt)  $default,) {final _that = this;
+switch (_that) {
+case _UpdatesModel():
+return $default(_that.autoCheck,_that.promptedVersion,_that.skippedVersion,_that.lastCheckedAt);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool autoCheck,  String promptedVersion,  String skippedVersion,  DateTime? lastCheckedAt)?  $default,) {final _that = this;
+switch (_that) {
+case _UpdatesModel() when $default != null:
+return $default(_that.autoCheck,_that.promptedVersion,_that.skippedVersion,_that.lastCheckedAt);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _UpdatesModel implements UpdatesModel {
+  const _UpdatesModel({this.autoCheck = true, this.promptedVersion = '', this.skippedVersion = '', this.lastCheckedAt});
+
+
+@override@JsonKey() final  bool autoCheck;
+@override@JsonKey() final  String promptedVersion;
+@override@JsonKey() final  String skippedVersion;
+@override final  DateTime? lastCheckedAt;
+
+/// Create a copy of UpdatesModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$UpdatesModelCopyWith<_UpdatesModel> get copyWith => __$UpdatesModelCopyWithImpl<_UpdatesModel>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdatesModel&&(identical(other.autoCheck, autoCheck) || other.autoCheck == autoCheck)&&(identical(other.promptedVersion, promptedVersion) || other.promptedVersion == promptedVersion)&&(identical(other.skippedVersion, skippedVersion) || other.skippedVersion == skippedVersion)&&(identical(other.lastCheckedAt, lastCheckedAt) || other.lastCheckedAt == lastCheckedAt));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,autoCheck,promptedVersion,skippedVersion,lastCheckedAt);
+
+@override
+String toString() {
+  return 'UpdatesModel(autoCheck: $autoCheck, promptedVersion: $promptedVersion, skippedVersion: $skippedVersion, lastCheckedAt: $lastCheckedAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$UpdatesModelCopyWith<$Res> implements $UpdatesModelCopyWith<$Res> {
+  factory _$UpdatesModelCopyWith(_UpdatesModel value, $Res Function(_UpdatesModel) _then) = __$UpdatesModelCopyWithImpl;
+@override @useResult
+$Res call({
+ bool autoCheck, String promptedVersion, String skippedVersion, DateTime? lastCheckedAt
+});
+
+
+
+
+}
+/// @nodoc
+class __$UpdatesModelCopyWithImpl<$Res>
+    implements _$UpdatesModelCopyWith<$Res> {
+  __$UpdatesModelCopyWithImpl(this._self, this._then);
+
+  final _UpdatesModel _self;
+  final $Res Function(_UpdatesModel) _then;
+
+/// Create a copy of UpdatesModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? autoCheck = null,Object? promptedVersion = null,Object? skippedVersion = null,Object? lastCheckedAt = freezed,}) {
+  return _then(_UpdatesModel(
+autoCheck: null == autoCheck ? _self.autoCheck : autoCheck // ignore: cast_nullable_to_non_nullable
+as bool,promptedVersion: null == promptedVersion ? _self.promptedVersion : promptedVersion // ignore: cast_nullable_to_non_nullable
+as String,skippedVersion: null == skippedVersion ? _self.skippedVersion : skippedVersion // ignore: cast_nullable_to_non_nullable
+as String,lastCheckedAt: freezed == lastCheckedAt ? _self.lastCheckedAt : lastCheckedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
+  ));
+}
+
+
+}
+
 // dart format on

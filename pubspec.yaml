@@ -36,6 +36,8 @@ dependencies:
     path: pkg/fancad_ai
   fancad_ops:
     path: pkg/fancad_ops
+  fancad_updater:
+    path: pkg/fancad_updater
   desktop_open_files:
     path: pkg/desktop_open_files
 
@@ -48,6 +50,7 @@ dependencies:
   path: ^1.9.0
   archive: ^4.0.7
   path_provider: ^2.1.5
+  package_info_plus: ^8.3.0
   file_selector: ^1.0.3
   image: ^4.9.2
   meta: ^1.16.0

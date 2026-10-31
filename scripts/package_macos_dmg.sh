@@ -8,7 +8,7 @@ VERSION="${1:-}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT_DIR/dist}"
 
 if [[ -z "$VERSION" ]]; then
-  VERSION="$(sed -n 's/^version:[[:space:]]*\([0-9.]*\).*/\1/p' "$ROOT_DIR/pubspec.yaml" | head -n1)"
+  VERSION="$(sed -n 's/^version:[[:space:]]*\([^+]*\).*/\1/p' "$ROOT_DIR/pubspec.yaml" | head -n1)"
 fi
 
 if [[ ! -d "$APP_PATH" ]]; then

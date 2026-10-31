@@ -12,7 +12,8 @@ class AppSettings {
       layout = LayoutSettings(store),
       appearance = AppearanceSettings(store),
       extensions = ExtensionSettings(store),
-      mcp = McpSettings(store);
+      mcp = McpSettings(store),
+      updates = UpdatesSettings(store);
 
   final WorkspaceStore workspace;
   final AssistantStore assistant;
@@ -20,4 +21,5 @@ class AppSettings {
   final AppearanceStore appearance;
   final ExtensionStore extensions;
   final McpStore mcp;
+  final UpdatesStore updates;
 }

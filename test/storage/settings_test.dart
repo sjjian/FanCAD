@@ -50,6 +50,35 @@ void main() {
     expect(store.getStringList(SettingsKeys.recentFiles), ['b.dxf', 'a.dxf']);
   });
 
+  test('update preferences round-trip through the store', () {
+    final store = SettingsStore.inMemory();
+    final updates = UpdatesSettings(store);
+
+    final defaults = updates.load();
+    expect(defaults.autoCheck, isTrue);
+    expect(defaults.promptedVersion, isEmpty);
+    expect(defaults.skippedVersion, isEmpty);
+    expect(defaults.lastCheckedAt, isNull);
+
+    final checkedAt = DateTime.utc(2026, 10, 30, 9);
+    updates.save(
+      UpdatesModel(
+        autoCheck: false,
+        promptedVersion: '0.6.0',
+        skippedVersion: '0.5.0',
+        lastCheckedAt: checkedAt,
+      ),
+    );
+    final loaded = updates.load();
+    expect(loaded.autoCheck, isFalse);
+    expect(loaded.promptedVersion, '0.6.0');
+    expect(loaded.skippedVersion, '0.5.0');
+    expect(loaded.lastCheckedAt, checkedAt);
+
+    updates.save(loaded.copyWith(skippedVersion: ''));
+    expect(updates.load().skippedVersion, isEmpty);
+  });
+
   test(
     'a corrupt file is treated as empty and a flush can be reread',
     () async {

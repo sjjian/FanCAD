@@ -5,10 +5,12 @@ on:
     tags:
       - "[0-9]+.[0-9]+.[0-9]+"
       - "[0-9]+.[0-9]+.[0-9]+-*"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   FLUTTER_VERSION: 3.38.4
@@ -23,10 +25,21 @@ jobs:
       - id: version
         shell: bash
         run: |
+          set -euo pipefail
+          PUBSPEC_VERSION="$(sed -n 's/^version:[[:space:]]*\([^+]*\).*/\1/p' pubspec.yaml | head -n1)"
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            VERSION="${GITHUB_REF_NAME}"
+            # Accept both 0.6.0 and v0.6.0; the feed strips the v as well.
+            VERSION="${GITHUB_REF_NAME#v}"
           else
-            VERSION="$(sed -n 's/^version:[[:space:]]*\([0-9.]*\).*/\1/p' pubspec.yaml | head -n1)"
+            VERSION="${PUBSPEC_VERSION}"
+          fi
+          if [[ -z "${VERSION}" ]]; then
+            echo "Could not resolve a version" >&2
+            exit 1
+          fi
+          if [[ "${VERSION}" != "${PUBSPEC_VERSION}" ]]; then
+            echo "Tag ${VERSION} does not match pubspec ${PUBSPEC_VERSION}" >&2
+            exit 1
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Resolved version: ${VERSION}"
@@ -162,6 +175,8 @@ jobs:
   release:
     if: github.ref_type == 'tag'
     needs: [version, build-macos, build-windows, build-linux]
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -186,6 +201,34 @@ jobs:
             echo "changelog_latest.md is missing or empty" >&2
             exit 1
           fi
+
+      - name: Build update manifest
+        run: |
+          scripts/generate_update_manifest.sh \
+            "${{ needs.version.outputs.version }}" release-assets
+
+      - name: Sign update manifest
+        env:
+          UPDATE_KEY_B64: ${{ secrets.FANCAD_UPDATE_KEY_B64 }}
+          UPDATE_KEY_PASSPHRASE: ${{ secrets.FANCAD_UPDATE_KEY_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${UPDATE_KEY_B64:-}" ]]; then
+            echo "FANCAD_UPDATE_KEY_B64 is not configured" >&2
+            exit 1
+          fi
+          if [[ -z "${UPDATE_KEY_PASSPHRASE:-}" ]]; then
+            echo "FANCAD_UPDATE_KEY_PASSPHRASE is not configured" >&2
+            exit 1
+          fi
+          key="$RUNNER_TEMP/fancad-update.pem"
+          trap 'rm -f "$key"' EXIT
+          umask 077
+          printf '%s' "$UPDATE_KEY_B64" | base64 -d > "$key"
+          chmod 600 "$key"
+          FANCAD_UPDATE_KEY_PASSPHRASE="${UPDATE_KEY_PASSPHRASE:-}" \
+            scripts/sign_update_manifest.sh \
+            release-assets/manifest.json "$key"
 
       - uses: softprops/action-gh-release@v2
         with:

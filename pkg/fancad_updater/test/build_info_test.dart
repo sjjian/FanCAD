@@ -23,14 +23,6 @@ void main() {
     final build = BuildInfo.fromEnvironment();
     expect(build.version, BuildInfo.devVersion);
     expect(build.isDevelopment, isTrue);
-    expect(build.channel, 'stable');
-  });
-
-  test('shortens the commit for display', () {
-    expect(
-      const BuildInfo(version: '0.5.0', commit: 'abcdef1234').shortCommit,
-      'abcdef1',
-    );
-    expect(const BuildInfo(version: '0.5.0', commit: 'abc').shortCommit, 'abc');
+    expect(build.buildNumber, 0);
   });
 }

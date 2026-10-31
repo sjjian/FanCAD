@@ -33,7 +33,7 @@ class WorkbenchPreferencesCommand extends FanCadCommand
     ParamSpec(
       name: 'tab',
       type: ParamType.text,
-      description: 'Settings page: general, assistant, models or mcp',
+      description: 'Settings page: general, assistant, models, mcp or about',
       required: false,
     ),
   ];
@@ -45,6 +45,7 @@ class WorkbenchPreferencesCommand extends FanCadCommand
       'assistant' => 'preferences:assistant',
       'models' => 'preferences:models',
       'mcp' => 'preferences:mcp',
+      'about' => 'preferences:about',
       _ => 'preferences',
     });
     return const CommandResult.ok();

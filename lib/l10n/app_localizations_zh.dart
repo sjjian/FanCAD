@@ -33,7 +33,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings => '设置';
 
   @override
-  String get settings_tooltip => '设置。主题、语言和助手';
+  String get settings_tooltip => '设置。主题、语言、助手和更新';
 
   @override
   String get settings_tab_general => '常规';
@@ -3135,4 +3135,137 @@ class AppLocalizationsZh extends AppLocalizations {
   String objects_in_drawing_many(int count) {
     return '此图纸有 $count 个对象。';
   }
+
+  @override
+  String get settings_tab_about => '关于';
+
+  @override
+  String get about_tagline => 'AI 原生的专业 2D CAD';
+
+  @override
+  String get about_version => '版本';
+
+  @override
+  String get about_links => '链接';
+
+  @override
+  String get about_github => 'GitHub';
+
+  @override
+  String get about_issues => '问题反馈';
+
+  @override
+  String get about_changelog => '更新日志';
+
+  @override
+  String get about_updates => '软件更新';
+
+  @override
+  String get about_auto_check => '自动检查更新';
+
+  @override
+  String get about_auto_check_hint => '每天最多一次';
+
+  @override
+  String get about_check => '检查更新';
+
+  @override
+  String get about_checking => '正在检查更新…';
+
+  @override
+  String get about_up_to_date => '已是最新版本';
+
+  @override
+  String about_available(String version) {
+    return '发现新版本 $version';
+  }
+
+  @override
+  String get about_download => '下载更新';
+
+  @override
+  String about_downloading(int percent) {
+    return '正在下载 $percent%';
+  }
+
+  @override
+  String get about_cancel => '取消';
+
+  @override
+  String about_ready(String version) {
+    return '$version 已下载，可以安装';
+  }
+
+  @override
+  String get about_install => '立即安装';
+
+  @override
+  String get about_installing => '正在启动安装程序…';
+
+  @override
+  String get about_skip => '忽略此版本';
+
+  @override
+  String about_skipped(String version) {
+    return '已忽略 $version';
+  }
+
+  @override
+  String get about_unskip => '取消忽略';
+
+  @override
+  String get about_failed => '检查更新失败';
+
+  @override
+  String get about_retry => '重试';
+
+  @override
+  String get about_unsupported => '开发构建不支持自动更新';
+
+  @override
+  String get about_unconfigured => '尚未配置更新签名公钥';
+
+  @override
+  String get about_reveal => '已打开下载目录，请手动完成更新';
+
+  @override
+  String get about_no_notes => '暂无更新说明';
+
+  @override
+  String get about_source => '更新源：GitHub（主）、Gitee（备用）';
+
+  @override
+  String about_download_size(String received, String total) {
+    return '$received / $total';
+  }
+
+  @override
+  String update_available_title(String version) {
+    return '发现新版本 $version';
+  }
+
+  @override
+  String update_available_current(String version) {
+    return '当前版本 $version';
+  }
+
+  @override
+  String get update_available_skip => '忽略该版本';
+
+  @override
+  String get update_available_upgrade => '升级';
+
+  @override
+  String install_confirm_title(String version) {
+    return '退出并安装 $version？';
+  }
+
+  @override
+  String get install_confirm_body => 'FanCAD 可能关闭以运行安装程序，请先保存图纸。';
+
+  @override
+  String get install_confirm_action => '退出并安装';
+
+  @override
+  String get about_not_checked => '尚未检查';
 }

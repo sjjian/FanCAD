@@ -218,3 +218,17 @@ Map<String, dynamic> _assistantProfileWire(Map<Object?, Object?> raw) {
     'vision': raw['vision'] == true,
   };
 }
+
+/// Update checks, persisted in `settings.json`.
+///
+/// The update package owns the network and install work; this model only
+/// records what the user has already been told and when we last asked.
+@freezed
+abstract class UpdatesModel with _$UpdatesModel {
+  const factory UpdatesModel({
+    @Default(true) bool autoCheck,
+    @Default('') String promptedVersion,
+    @Default('') String skippedVersion,
+    DateTime? lastCheckedAt,
+  }) = _UpdatesModel;
+}

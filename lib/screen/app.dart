@@ -1,13 +1,17 @@
 import 'dart:async';
 
 import 'package:desktop_open_files/desktop_open_files.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/l10n.dart';
 import '../models/settings.dart';
 import '../services/settings.dart';
+import '../services/updater.dart';
 import '../services/workspace.dart';
+import 'settings/settings_dialog.dart';
+import 'settings/update_dialog.dart';
 import 'widgets/theme.dart';
 import 'workspace/workbench.dart';
 
@@ -26,8 +30,10 @@ class FanCadApp extends ConsumerStatefulWidget {
 }
 
 class _FanCadAppState extends ConsumerState<FanCadApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   late final DesktopOpenFiles _openFiles;
   StreamSubscription<List<String>>? _incomingOpens;
+  var _promptingUpdate = false;
 
   @override
   void initState() {
@@ -36,6 +42,7 @@ class _FanCadAppState extends ConsumerState<FanCadApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(mcpNotifierProvider);
       unawaited(_openLaunchFiles());
+      unawaited(_startUpdates());
     });
   }
 
@@ -58,6 +65,56 @@ class _FanCadAppState extends ConsumerState<FanCadApp> {
     }
   }
 
+  /// Checks silently after the window is up, then offers a new version once.
+  Future<void> _startUpdates() async {
+    // A debug build should not pop an update offer on every hot restart.
+    // Test the full startup flow with: --dart-define=FANCAD_UPDATE_TEST=true
+    const updateTest = bool.fromEnvironment('FANCAD_UPDATE_TEST');
+    if (kDebugMode && !updateTest) return;
+    final delay = ref.read(updateStartupDelayProvider);
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
+    if (!mounted) return;
+    final notifier = ref.read(updateNotifierProvider.notifier);
+    await notifier.restoreCache();
+    if (!mounted) return;
+    await _maybePromptUpdate();
+    unawaited(
+      notifier.check().then((_) async {
+        if (!mounted) return;
+        await _maybePromptUpdate();
+      }),
+    );
+  }
+
+  Future<void> _maybePromptUpdate() async {
+    if (_promptingUpdate) return;
+    final context = _navigatorKey.currentContext;
+    if (context == null) return;
+    final notifier = ref.read(updateNotifierProvider.notifier);
+    final release = notifier.consumePrompt();
+    if (release == null) return;
+    _promptingUpdate = true;
+    try {
+      await showUpdateAvailableDialog(
+        context,
+        release: release,
+        currentVersion: ref.read(buildInfoProvider).version,
+        onSkip: notifier.skipVersion,
+        onUpgrade: () {
+          final context = _navigatorKey.currentContext;
+          if (context == null) return;
+          unawaited(notifier.download());
+          unawaited(showSettingsDialog(context, initialTab: SettingsTab.about));
+        },
+      );
+    } finally {
+      _promptingUpdate = false;
+    }
+    if (!mounted) return;
+    // A check that finished while the dialog was open may have another one.
+    await _maybePromptUpdate();
+  }
+
   @override
   void dispose() {
     unawaited(_incomingOpens?.cancel());
@@ -77,6 +134,7 @@ class _FanCadAppState extends ConsumerState<FanCadApp> {
       ThemePreference.dark => ThemeMode.dark,
     };
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'FanCAD',
       debugShowCheckedModeBanner: false,
       theme: FanCadTheme.light(),

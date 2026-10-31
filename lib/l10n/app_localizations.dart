@@ -149,7 +149,7 @@ abstract class AppLocalizations {
   /// settings title-bar tooltip
   ///
   /// In en, this message translates to:
-  /// **'Settings. Theme, language and assistant'**
+  /// **'Settings. Theme, language, assistant and updates'**
   String get settings_tooltip;
 
   /// settings general tab
@@ -5893,6 +5893,240 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} objects in this drawing.'**
   String objects_in_drawing_many(int count);
+
+  /// settings about tab
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get settings_tab_about;
+
+  /// product tagline
+  ///
+  /// In en, this message translates to:
+  /// **'AI-native 2D CAD'**
+  String get about_tagline;
+
+  /// about version label
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get about_version;
+
+  /// about links section
+  ///
+  /// In en, this message translates to:
+  /// **'Links'**
+  String get about_links;
+
+  /// about github link
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub'**
+  String get about_github;
+
+  /// about issue link
+  ///
+  /// In en, this message translates to:
+  /// **'Report an issue'**
+  String get about_issues;
+
+  /// about changelog link
+  ///
+  /// In en, this message translates to:
+  /// **'Changelog'**
+  String get about_changelog;
+
+  /// about updates section
+  ///
+  /// In en, this message translates to:
+  /// **'Software updates'**
+  String get about_updates;
+
+  /// about auto check
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates automatically'**
+  String get about_auto_check;
+
+  /// about auto check hint
+  ///
+  /// In en, this message translates to:
+  /// **'At most once a day'**
+  String get about_auto_check_hint;
+
+  /// about check button
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get about_check;
+
+  /// about checking
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for updates…'**
+  String get about_checking;
+
+  /// about up to date
+  ///
+  /// In en, this message translates to:
+  /// **'You are up to date'**
+  String get about_up_to_date;
+
+  /// about available
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is available'**
+  String about_available(String version);
+
+  /// about download button
+  ///
+  /// In en, this message translates to:
+  /// **'Download update'**
+  String get about_download;
+
+  /// about downloading
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading {percent}%'**
+  String about_downloading(int percent);
+
+  /// about cancel button
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get about_cancel;
+
+  /// about ready
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is ready to install'**
+  String about_ready(String version);
+
+  /// about install button
+  ///
+  /// In en, this message translates to:
+  /// **'Install now'**
+  String get about_install;
+
+  /// about installing
+  ///
+  /// In en, this message translates to:
+  /// **'Starting the installer…'**
+  String get about_installing;
+
+  /// about skip button
+  ///
+  /// In en, this message translates to:
+  /// **'Skip this version'**
+  String get about_skip;
+
+  /// about skipped
+  ///
+  /// In en, this message translates to:
+  /// **'You skipped {version}'**
+  String about_skipped(String version);
+
+  /// about unskip button
+  ///
+  /// In en, this message translates to:
+  /// **'Unskip'**
+  String get about_unskip;
+
+  /// about check failed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not check for updates'**
+  String get about_failed;
+
+  /// about retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get about_retry;
+
+  /// about unsupported
+  ///
+  /// In en, this message translates to:
+  /// **'Development builds cannot update'**
+  String get about_unsupported;
+
+  /// about unconfigured
+  ///
+  /// In en, this message translates to:
+  /// **'The update signing key is not configured'**
+  String get about_unconfigured;
+
+  /// about reveal
+  ///
+  /// In en, this message translates to:
+  /// **'The download folder is open; finish the update manually'**
+  String get about_reveal;
+
+  /// about no notes
+  ///
+  /// In en, this message translates to:
+  /// **'No release notes'**
+  String get about_no_notes;
+
+  /// about source hint
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub, with Gitee as a fallback'**
+  String get about_source;
+
+  /// about download size
+  ///
+  /// In en, this message translates to:
+  /// **'{received} of {total}'**
+  String about_download_size(String received, String total);
+
+  /// update dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'FanCAD {version} is available'**
+  String update_available_title(String version);
+
+  /// update dialog current version
+  ///
+  /// In en, this message translates to:
+  /// **'You are on {version}'**
+  String update_available_current(String version);
+
+  /// update dialog skip
+  ///
+  /// In en, this message translates to:
+  /// **'Skip this version'**
+  String get update_available_skip;
+
+  /// update dialog upgrade
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade'**
+  String get update_available_upgrade;
+
+  /// install confirm title
+  ///
+  /// In en, this message translates to:
+  /// **'Exit and install {version}?'**
+  String install_confirm_title(String version);
+
+  /// install confirm body
+  ///
+  /// In en, this message translates to:
+  /// **'FanCAD may close to run the installer. Save your drawings first.'**
+  String get install_confirm_body;
+
+  /// install confirm action
+  ///
+  /// In en, this message translates to:
+  /// **'Exit and install'**
+  String get install_confirm_action;
+
+  /// about not checked yet
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked yet'**
+  String get about_not_checked;
 }
 
 class _AppLocalizationsDelegate

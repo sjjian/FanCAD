@@ -1,6 +1,13 @@
 ; Inno Setup script for FanCAD Windows installer.
 ; AppId must stay stable across releases so upgrades overwrite the same install.
 ; CI passes /DMyAppVersion=x.y.z
+;
+; Install mode:
+;   Setup runs as the invoking user (no elevation). The mode page offers
+;   "for all users" (elevates, {autopf} = Program Files) and "for me only"
+;   ({autopf} = %LOCALAPPDATA%\Programs). The updater passes /ALLUSERS when the
+;   running copy was installed for all users, so an update replaces that copy
+;   instead of creating a per-user one next to it.
 
 #ifndef MyAppVersion
   #define MyAppVersion "0.1.0"
@@ -27,7 +34,8 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-PrivilegesRequired=admin
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=commandline dialog
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Languages]
@@ -45,4 +53,6 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
+; runasoriginaluser keeps FanCAD running as the desktop user when Setup was
+; elevated for an all-users install.
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent runasoriginaluser

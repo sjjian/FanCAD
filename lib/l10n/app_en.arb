@@ -32,7 +32,7 @@
   "@settings": {
     "description": "settings dialog title"
   },
-  "settings_tooltip": "Settings. Theme, language and assistant",
+  "settings_tooltip": "Settings. Theme, language, assistant and updates",
   "@settings_tooltip": {
     "description": "settings title-bar tooltip"
   },
@@ -4273,5 +4273,204 @@
         "type": "int"
       }
     }
+  },
+  "settings_tab_about": "About",
+  "@settings_tab_about": {
+    "description": "settings about tab"
+  },
+  "about_tagline": "AI-native 2D CAD",
+  "@about_tagline": {
+    "description": "product tagline"
+  },
+  "about_version": "Version",
+  "@about_version": {
+    "description": "about version label"
+  },
+  "about_links": "Links",
+  "@about_links": {
+    "description": "about links section"
+  },
+  "about_github": "GitHub",
+  "@about_github": {
+    "description": "about github link"
+  },
+  "about_issues": "Report an issue",
+  "@about_issues": {
+    "description": "about issue link"
+  },
+  "about_changelog": "Changelog",
+  "@about_changelog": {
+    "description": "about changelog link"
+  },
+  "about_updates": "Software updates",
+  "@about_updates": {
+    "description": "about updates section"
+  },
+  "about_auto_check": "Check for updates automatically",
+  "@about_auto_check": {
+    "description": "about auto check"
+  },
+  "about_auto_check_hint": "At most once a day",
+  "@about_auto_check_hint": {
+    "description": "about auto check hint"
+  },
+  "about_check": "Check for updates",
+  "@about_check": {
+    "description": "about check button"
+  },
+  "about_checking": "Checking for updates…",
+  "@about_checking": {
+    "description": "about checking"
+  },
+  "about_up_to_date": "You are up to date",
+  "@about_up_to_date": {
+    "description": "about up to date"
+  },
+  "about_available": "Version {version} is available",
+  "@about_available": {
+    "description": "about available",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "about_download": "Download update",
+  "@about_download": {
+    "description": "about download button"
+  },
+  "about_downloading": "Downloading {percent}%",
+  "@about_downloading": {
+    "description": "about downloading",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "about_cancel": "Cancel",
+  "@about_cancel": {
+    "description": "about cancel button"
+  },
+  "about_ready": "Version {version} is ready to install",
+  "@about_ready": {
+    "description": "about ready",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "about_install": "Install now",
+  "@about_install": {
+    "description": "about install button"
+  },
+  "about_installing": "Starting the installer…",
+  "@about_installing": {
+    "description": "about installing"
+  },
+  "about_skip": "Skip this version",
+  "@about_skip": {
+    "description": "about skip button"
+  },
+  "about_skipped": "You skipped {version}",
+  "@about_skipped": {
+    "description": "about skipped",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "about_unskip": "Unskip",
+  "@about_unskip": {
+    "description": "about unskip button"
+  },
+  "about_failed": "Could not check for updates",
+  "@about_failed": {
+    "description": "about check failed"
+  },
+  "about_retry": "Retry",
+  "@about_retry": {
+    "description": "about retry button"
+  },
+  "about_unsupported": "Development builds cannot update",
+  "@about_unsupported": {
+    "description": "about unsupported"
+  },
+  "about_unconfigured": "The update signing key is not configured",
+  "@about_unconfigured": {
+    "description": "about unconfigured"
+  },
+  "about_reveal": "The download folder is open; finish the update manually",
+  "@about_reveal": {
+    "description": "about reveal"
+  },
+  "about_no_notes": "No release notes",
+  "@about_no_notes": {
+    "description": "about no notes"
+  },
+  "about_source": "GitHub, with Gitee as a fallback",
+  "@about_source": {
+    "description": "about source hint"
+  },
+  "about_download_size": "{received} of {total}",
+  "@about_download_size": {
+    "description": "about download size",
+    "placeholders": {
+      "received": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "update_available_title": "FanCAD {version} is available",
+  "@update_available_title": {
+    "description": "update dialog title",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "update_available_current": "You are on {version}",
+  "@update_available_current": {
+    "description": "update dialog current version",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "update_available_skip": "Skip this version",
+  "@update_available_skip": {
+    "description": "update dialog skip"
+  },
+  "update_available_upgrade": "Upgrade",
+  "@update_available_upgrade": {
+    "description": "update dialog upgrade"
+  },
+  "install_confirm_title": "Exit and install {version}?",
+  "@install_confirm_title": {
+    "description": "install confirm title",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "install_confirm_body": "FanCAD may close to run the installer. Save your drawings first.",
+  "@install_confirm_body": {
+    "description": "install confirm body"
+  },
+  "install_confirm_action": "Exit and install",
+  "@install_confirm_action": {
+    "description": "install confirm action"
+  },
+  "about_not_checked": "Not checked yet",
+  "@about_not_checked": {
+    "description": "about not checked yet"
   }
 }

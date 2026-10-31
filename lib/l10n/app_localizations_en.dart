@@ -35,7 +35,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings => 'Settings';
 
   @override
-  String get settings_tooltip => 'Settings. Theme, language and assistant';
+  String get settings_tooltip =>
+      'Settings. Theme, language, assistant and updates';
 
   @override
   String get settings_tab_general => 'General';
@@ -3273,4 +3274,139 @@ class AppLocalizationsEn extends AppLocalizations {
   String objects_in_drawing_many(int count) {
     return '$count objects in this drawing.';
   }
+
+  @override
+  String get settings_tab_about => 'About';
+
+  @override
+  String get about_tagline => 'AI-native 2D CAD';
+
+  @override
+  String get about_version => 'Version';
+
+  @override
+  String get about_links => 'Links';
+
+  @override
+  String get about_github => 'GitHub';
+
+  @override
+  String get about_issues => 'Report an issue';
+
+  @override
+  String get about_changelog => 'Changelog';
+
+  @override
+  String get about_updates => 'Software updates';
+
+  @override
+  String get about_auto_check => 'Check for updates automatically';
+
+  @override
+  String get about_auto_check_hint => 'At most once a day';
+
+  @override
+  String get about_check => 'Check for updates';
+
+  @override
+  String get about_checking => 'Checking for updates…';
+
+  @override
+  String get about_up_to_date => 'You are up to date';
+
+  @override
+  String about_available(String version) {
+    return 'Version $version is available';
+  }
+
+  @override
+  String get about_download => 'Download update';
+
+  @override
+  String about_downloading(int percent) {
+    return 'Downloading $percent%';
+  }
+
+  @override
+  String get about_cancel => 'Cancel';
+
+  @override
+  String about_ready(String version) {
+    return 'Version $version is ready to install';
+  }
+
+  @override
+  String get about_install => 'Install now';
+
+  @override
+  String get about_installing => 'Starting the installer…';
+
+  @override
+  String get about_skip => 'Skip this version';
+
+  @override
+  String about_skipped(String version) {
+    return 'You skipped $version';
+  }
+
+  @override
+  String get about_unskip => 'Unskip';
+
+  @override
+  String get about_failed => 'Could not check for updates';
+
+  @override
+  String get about_retry => 'Retry';
+
+  @override
+  String get about_unsupported => 'Development builds cannot update';
+
+  @override
+  String get about_unconfigured => 'The update signing key is not configured';
+
+  @override
+  String get about_reveal =>
+      'The download folder is open; finish the update manually';
+
+  @override
+  String get about_no_notes => 'No release notes';
+
+  @override
+  String get about_source => 'GitHub, with Gitee as a fallback';
+
+  @override
+  String about_download_size(String received, String total) {
+    return '$received of $total';
+  }
+
+  @override
+  String update_available_title(String version) {
+    return 'FanCAD $version is available';
+  }
+
+  @override
+  String update_available_current(String version) {
+    return 'You are on $version';
+  }
+
+  @override
+  String get update_available_skip => 'Skip this version';
+
+  @override
+  String get update_available_upgrade => 'Upgrade';
+
+  @override
+  String install_confirm_title(String version) {
+    return 'Exit and install $version?';
+  }
+
+  @override
+  String get install_confirm_body =>
+      'FanCAD may close to run the installer. Save your drawings first.';
+
+  @override
+  String get install_confirm_action => 'Exit and install';
+
+  @override
+  String get about_not_checked => 'Not checked yet';
 }

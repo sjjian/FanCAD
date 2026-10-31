@@ -7,9 +7,10 @@ import '../../models/settings.dart';
 import '../../services/settings.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
+import 'about_page.dart';
 
 /// Pages inside the settings dialog.
-enum SettingsTab { general, assistant, models, mcp }
+enum SettingsTab { general, assistant, models, mcp, about }
 
 const _settingsRouteName = 'fancad.settings';
 
@@ -29,6 +30,7 @@ SettingsTab settingsTabFromPanelId(String panelId) {
     'preferences:assistant' => SettingsTab.assistant,
     'preferences:models' => SettingsTab.models,
     'preferences:mcp' => SettingsTab.mcp,
+    'preferences:about' => SettingsTab.about,
     _ => SettingsTab.general,
   };
 }
@@ -265,6 +267,12 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
                   selected: tab == SettingsTab.mcp,
                   onTap: () => _setTab(SettingsTab.mcp),
                 ),
+                _SettingsNavItem(
+                  tabKey: const Key('settings-tab-about'),
+                  label: l10n.settings_tab_about,
+                  selected: tab == SettingsTab.about,
+                  onTap: () => _setTab(SettingsTab.about),
+                ),
               ],
             ),
           ),
@@ -277,6 +285,7 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
               SettingsTab.assistant => 1,
               SettingsTab.models => 2,
               SettingsTab.mcp => 3,
+              SettingsTab.about => 4,
             },
             children: [
               _GeneralPage(),
@@ -296,6 +305,7 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
                 allowlist: _mcpAllowlist,
                 onCommit: _flushMcpFields,
               ),
+              const AboutPage(),
             ],
           ),
         ),

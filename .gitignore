@@ -54,3 +54,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Offline update signing keys and certificate exports
+*.pem
+*.p12
+*.pfx

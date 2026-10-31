@@ -28,12 +28,13 @@ the FanCAD app.
 ```
 manifest.json
 manifest.json.sig          base64 of the raw RSA signature
-fancad-macos-arm64-0.6.0.dmg
-fancad-windows-setup-x64-0.6.0.exe
-fancad-linux-x64-0.6.0.tar.gz
+fancad-macos-0.6.0.dmg     universal (arm64 + x86_64)
+fancad-windows-setup-0.6.0.exe
+fancad-linux-0.6.0.tar.gz
 ```
 
-`SHA256SUMS` is optional for humans; the app ignores it.
+The names are what `release-desktop.yml` produces. `SHA256SUMS` is optional for
+humans; the app ignores it.
 
 ## Manifest format
 
@@ -45,7 +46,7 @@ fancad-linux-x64-0.6.0.tar.gz
   "notes": "Optional, not shown by the app yet",
   "assets": [
     {
-      "name": "fancad-macos-arm64-0.6.0.dmg",
+      "name": "fancad-macos-0.6.0.dmg",
       "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
       "size": 12345678
     }
@@ -58,13 +59,18 @@ fancad-linux-x64-0.6.0.tar.gz
 ## One-time key setup
 
 ```bash
+mkdir -p ~/.keys
+chmod 700 ~/.keys
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 \
-  -out ~/.keys/fancad-update.pem
+  -aes-256-cbc -out ~/.keys/fancad-update.pem
 chmod 600 ~/.keys/fancad-update.pem
 
 # The number to paste into the app:
 openssl rsa -in ~/.keys/fancad-update.pem -noout -modulus
 ```
+
+`-aes-256-cbc` makes OpenSSL ask for a passphrase and stores the key encrypted.
+The same passphrase becomes the `FANCAD_UPDATE_KEY_PASSPHRASE` secret.
 
 The key never enters this repository. Embed the modulus in FanCAD:
 
@@ -77,6 +83,9 @@ final verifier = ManifestVerifier(
 The exponent is `65537` unless a different key was generated.
 
 ## Publishing a release
+
+The release workflow does this automatically on a tag. The commands below are
+the manual fallback for a machine that holds the key.
 
 ```bash
 # CI builds the installers into dist/, then:
@@ -91,6 +100,34 @@ scripts/sign_update_manifest.sh dist/manifest.json ~/.keys/fancad-update.pem
 The signing script verifies its own output with the public key before exiting.
 RSA PKCS#1 v1.5 signatures are deterministic, so re-signing the same manifest
 produces the same bytes.
+
+Before tagging, bump `pubspec.yaml` (for example `0.6.0+1`) and update
+`changelog_latest.md`. The tag may be `0.6.0` or `v0.6.0`; both are accepted and
+the `v` is stripped.
+
+## Signing in GitHub Actions
+
+The release workflow signs automatically. Add two repository secrets:
+
+- `FANCAD_UPDATE_KEY_B64`: base64 of the encrypted private key.
+
+  ```bash
+  base64 < ~/.keys/fancad-update.pem | tr -d '\n'
+  ```
+
+- `FANCAD_UPDATE_KEY_PASSPHRASE`: the passphrase for that key.
+
+The `release` job decodes the key into `$RUNNER_TEMP`, signs `manifest.json`,
+deletes the key, and uploads `manifest.json.sig` with the installers. The three
+build jobs do not reference the secret. Because these are repository secrets,
+every job in the repository can read them; only the release job actually does,
+and only after all builds succeeded. Restrict who can push workflows and review
+changes to `.github/workflows/` as part of the release. Keep the tag and
+`pubspec.yaml` version in sync; the workflow refuses to build when they differ.
+
+If either secret is missing, the release job fails before publishing anything.
+Keep the offline key and an encrypted backup: CI signing is a convenience, not
+the only copy.
 
 ## Using the client
 
@@ -123,6 +160,10 @@ if (check.hasUpdate) {
 
 `plan.canInstall` is also the quit signal: an install replaces files the
 running process holds open; a reveal plan just shows the download.
+
+The app's release cache uses `ReleaseInfo.toJson()` and
+`ReleaseInfo.tryFromJson()`. A malformed cache entry returns null and only costs
+the next network check; it never becomes a source of update metadata.
 
 ## Limitations
 

@@ -32,7 +32,7 @@
   "@settings": {
     "description": "settings dialog title"
   },
-  "settings_tooltip": "设置。主题、语言和助手",
+  "settings_tooltip": "设置。主题、语言、助手和更新",
   "@settings_tooltip": {
     "description": "settings title-bar tooltip"
   },
@@ -4253,5 +4253,204 @@
         "type": "int"
       }
     }
+  },
+  "settings_tab_about": "关于",
+  "@settings_tab_about": {
+    "description": "settings about tab"
+  },
+  "about_tagline": "AI 原生的专业 2D CAD",
+  "@about_tagline": {
+    "description": "product tagline"
+  },
+  "about_version": "版本",
+  "@about_version": {
+    "description": "about version label"
+  },
+  "about_links": "链接",
+  "@about_links": {
+    "description": "about links section"
+  },
+  "about_github": "GitHub",
+  "@about_github": {
+    "description": "about github link"
+  },
+  "about_issues": "问题反馈",
+  "@about_issues": {
+    "description": "about issue link"
+  },
+  "about_changelog": "更新日志",
+  "@about_changelog": {
+    "description": "about changelog link"
+  },
+  "about_updates": "软件更新",
+  "@about_updates": {
+    "description": "about updates section"
+  },
+  "about_auto_check": "自动检查更新",
+  "@about_auto_check": {
+    "description": "about auto check"
+  },
+  "about_auto_check_hint": "每天最多一次",
+  "@about_auto_check_hint": {
+    "description": "about auto check hint"
+  },
+  "about_check": "检查更新",
+  "@about_check": {
+    "description": "about check button"
+  },
+  "about_checking": "正在检查更新…",
+  "@about_checking": {
+    "description": "about checking"
+  },
+  "about_up_to_date": "已是最新版本",
+  "@about_up_to_date": {
+    "description": "about up to date"
+  },
+  "about_available": "发现新版本 {version}",
+  "@about_available": {
+    "description": "about available",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "about_download": "下载更新",
+  "@about_download": {
+    "description": "about download button"
+  },
+  "about_downloading": "正在下载 {percent}%",
+  "@about_downloading": {
+    "description": "about downloading",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "about_cancel": "取消",
+  "@about_cancel": {
+    "description": "about cancel button"
+  },
+  "about_ready": "{version} 已下载，可以安装",
+  "@about_ready": {
+    "description": "about ready",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "about_install": "立即安装",
+  "@about_install": {
+    "description": "about install button"
+  },
+  "about_installing": "正在启动安装程序…",
+  "@about_installing": {
+    "description": "about installing"
+  },
+  "about_skip": "忽略此版本",
+  "@about_skip": {
+    "description": "about skip button"
+  },
+  "about_skipped": "已忽略 {version}",
+  "@about_skipped": {
+    "description": "about skipped",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "about_unskip": "取消忽略",
+  "@about_unskip": {
+    "description": "about unskip button"
+  },
+  "about_failed": "检查更新失败",
+  "@about_failed": {
+    "description": "about check failed"
+  },
+  "about_retry": "重试",
+  "@about_retry": {
+    "description": "about retry button"
+  },
+  "about_unsupported": "开发构建不支持自动更新",
+  "@about_unsupported": {
+    "description": "about unsupported"
+  },
+  "about_unconfigured": "尚未配置更新签名公钥",
+  "@about_unconfigured": {
+    "description": "about unconfigured"
+  },
+  "about_reveal": "已打开下载目录，请手动完成更新",
+  "@about_reveal": {
+    "description": "about reveal"
+  },
+  "about_no_notes": "暂无更新说明",
+  "@about_no_notes": {
+    "description": "about no notes"
+  },
+  "about_source": "更新源：GitHub（主）、Gitee（备用）",
+  "@about_source": {
+    "description": "about source hint"
+  },
+  "about_download_size": "{received} / {total}",
+  "@about_download_size": {
+    "description": "about download size",
+    "placeholders": {
+      "received": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "update_available_title": "发现新版本 {version}",
+  "@update_available_title": {
+    "description": "update dialog title",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "update_available_current": "当前版本 {version}",
+  "@update_available_current": {
+    "description": "update dialog current version",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "update_available_skip": "忽略该版本",
+  "@update_available_skip": {
+    "description": "update dialog skip"
+  },
+  "update_available_upgrade": "升级",
+  "@update_available_upgrade": {
+    "description": "update dialog upgrade"
+  },
+  "install_confirm_title": "退出并安装 {version}？",
+  "@install_confirm_title": {
+    "description": "install confirm title",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "install_confirm_body": "FanCAD 可能关闭以运行安装程序，请先保存图纸。",
+  "@install_confirm_body": {
+    "description": "install confirm body"
+  },
+  "install_confirm_action": "退出并安装",
+  "@install_confirm_action": {
+    "description": "install confirm action"
+  },
+  "about_not_checked": "尚未检查",
+  "@about_not_checked": {
+    "description": "about not checked yet"
   }
 }

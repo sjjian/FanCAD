@@ -39,6 +39,9 @@ ProviderContainer workbenchContainer({SettingsStore? settings}) {
       // No cache and a stub backend, so a test run never touches the disk or
       // requires the native library to be present.
       drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
+      // No startup timer in tests: the update check itself is a no-op with an
+      // in-memory settings store.
+      updateStartupDelayProvider.overrideWithValue(Duration.zero),
     ],
   );
   addTearDown(container.dispose);

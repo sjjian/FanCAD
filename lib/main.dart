@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:desktop_open_files/desktop_open_files.dart';
+import 'package:fancad_updater/fancad_updater.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:screen_retriever/screen_retriever.dart';
@@ -10,6 +12,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'screen/app.dart';
 import 'services/providers.dart';
+import 'services/updater.dart';
 import 'storage/settings.dart';
 
 /// Application entry point.
@@ -24,6 +27,7 @@ Future<void> main(List<String> arguments) async {
   final supportDirectory = await _resolveSupportDirectory();
   final settings = await SettingsStore.open(supportDirectory);
   final extensionsDirectory = await _extensionsDirectory(supportDirectory);
+  final buildInfo = await _resolveBuildInfo();
 
   await _configureWindow();
 
@@ -32,6 +36,7 @@ Future<void> main(List<String> arguments) async {
       overrides: [
         settingsProvider.overrideWithValue(settings),
         extensionsDirectoryProvider.overrideWithValue(extensionsDirectory),
+        buildInfoProvider.overrideWithValue(buildInfo),
       ],
       child: FanCadApp(
         // argv on Windows / Linux; macOS Finder arrives through the plugin.
@@ -49,6 +54,25 @@ Future<String> _resolveSupportDirectory() async {
     // A missing platform channel (a headless test run, say) must not stop the
     // application from starting; an in-temp profile is a fine fallback.
     return Directory.systemTemp.createTempSync('fancad').path;
+  }
+}
+
+/// The installed bundle version, which Flutter writes from `pubspec.yaml`.
+///
+/// The version and build number come from the native bundle, so a normal
+/// `flutter run` reports the pubspec version too.
+Future<BuildInfo> _resolveBuildInfo() async {
+  final fallback = BuildInfo.fromEnvironment();
+  try {
+    final info = await PackageInfo.fromPlatform();
+    final version = info.version.trim();
+    if (version.isEmpty) return fallback;
+    return BuildInfo(
+      version: version,
+      buildNumber: int.tryParse(info.buildNumber) ?? fallback.buildNumber,
+    );
+  } catch (_) {
+    return fallback;
   }
 }
 

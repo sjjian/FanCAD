@@ -28,11 +28,21 @@ public="$(mktemp)"
 cleanup() { rm -f "$raw" "$public"; }
 trap cleanup EXIT
 
-openssl dgst -sha256 -sign "$key" -out "$raw" "$manifest"
+if [[ -n "${FANCAD_UPDATE_KEY_PASSPHRASE:-}" ]]; then
+  openssl dgst -sha256 -sign "$key" \
+    -passin env:FANCAD_UPDATE_KEY_PASSPHRASE \
+    -out "$raw" "$manifest"
+  openssl rsa -in "$key" \
+    -passin env:FANCAD_UPDATE_KEY_PASSPHRASE \
+    -pubout -out "$public" 2>/dev/null
+else
+  openssl dgst -sha256 -sign "$key" -out "$raw" "$manifest"
+  openssl rsa -in "$key" -pubout -out "$public" 2>/dev/null
+fi
+
 base64 < "$raw" | tr -d '\n' > "$manifest.sig"
 
 # Prove the signature before uploading it.
-openssl rsa -in "$key" -pubout -out "$public" 2>/dev/null
 openssl dgst -sha256 -verify "$public" -signature "$raw" "$manifest"
 
 echo "wrote $manifest.sig"

@@ -41,6 +41,12 @@ void main() {
         isPanel: true,
         tab: SettingsTab.mcp,
       ),
+      (
+        name: 'preferences:about',
+        panel: 'preferences:about',
+        isPanel: true,
+        tab: SettingsTab.about,
+      ),
       (name: 'ai', panel: 'ai', isPanel: false, tab: null),
       (name: 'layers', panel: 'layers', isPanel: false, tab: null),
     ],
@@ -89,6 +95,7 @@ void main() {
     expect(find.byKey(const Key('settings-tab-assistant')), findsOneWidget);
     expect(find.byKey(const Key('settings-tab-models')), findsOneWidget);
     expect(find.byKey(const Key('settings-tab-mcp')), findsOneWidget);
+    expect(find.byKey(const Key('settings-tab-about')), findsOneWidget);
 
     expect(find.byKey(const Key('settings-model-field')), findsNothing);
     expect(find.byKey(const Key('settings-add-profile')), findsOneWidget);
@@ -157,6 +164,7 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('settings-tab-mcp')), findsOneWidget);
+    expect(find.byKey(const Key('settings-tab-about')), findsOneWidget);
     expect(find.byKey(const Key('settings-mcp-enabled')), findsOneWidget);
     expect(find.byKey(const Key('settings-mcp-local')), findsOneWidget);
     expect(find.byKey(const Key('settings-mcp-port')), findsOneWidget);

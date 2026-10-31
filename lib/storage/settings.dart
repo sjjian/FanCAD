@@ -176,6 +176,10 @@ class SettingsKeys {
   static const String mcpToken = 'mcp.token';
   static const String mcpLocal = 'mcp.local';
   static const String mcpAllowlist = 'mcp.allowlist';
+  static const String updatesAutoCheck = 'updates.autoCheck';
+  static const String updatesPromptedVersion = 'updates.promptedVersion';
+  static const String updatesSkippedVersion = 'updates.skippedVersion';
+  static const String updatesLastCheckedAt = 'updates.lastCheckedAt';
 }
 
 /// Theme and language in `settings.json`.
@@ -263,5 +267,41 @@ class McpSettings implements McpStore {
     final next = randomMcpToken();
     _store.set(SettingsKeys.mcpToken, next);
     return next;
+  }
+}
+
+/// Update preferences in `settings.json`.
+abstract interface class UpdatesStore {
+  UpdatesModel load();
+
+  void save(UpdatesModel value);
+}
+
+class UpdatesSettings implements UpdatesStore {
+  UpdatesSettings(this._store);
+
+  final SettingsStore _store;
+
+  @override
+  UpdatesModel load() {
+    return UpdatesModel(
+      autoCheck: _store.getBool(SettingsKeys.updatesAutoCheck, fallback: true),
+      promptedVersion: _store.getString(SettingsKeys.updatesPromptedVersion),
+      skippedVersion: _store.getString(SettingsKeys.updatesSkippedVersion),
+      lastCheckedAt: DateTime.tryParse(
+        _store.getString(SettingsKeys.updatesLastCheckedAt),
+      ),
+    );
+  }
+
+  @override
+  void save(UpdatesModel value) {
+    _store.set(SettingsKeys.updatesAutoCheck, value.autoCheck);
+    _store.set(SettingsKeys.updatesPromptedVersion, value.promptedVersion);
+    _store.set(SettingsKeys.updatesSkippedVersion, value.skippedVersion);
+    _store.set(
+      SettingsKeys.updatesLastCheckedAt,
+      value.lastCheckedAt?.toIso8601String(),
+    );
   }
 }
