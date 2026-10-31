@@ -76,6 +76,9 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
         polar: _draft.polar,
         polarIncrement: _draft.polarIncrement,
       ),
+      // One engine serves every tab, so resolve the cache at call time: the
+      // key is an entity id and another drawing's geometry must never reply.
+      cacheProvider: () => activeDrawing?.renderer.tessellation,
     );
     final fileCommands =
         ref.read(workspaceFileCommandsOverrideProvider)?.call(this) ??
@@ -1818,7 +1821,10 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
   bool _attached = false;
   bool _tornDown = false;
 
-  final TessellationCache tessellation = TessellationCache();
+  /// Drawing, tessellation and hit testing for this tab. Kept here rather than
+  /// on the canvas widget so swapping the widget does not throw the recording
+  /// away, and so picking can replay what was drawn.
+  final CanvasRenderer renderer = CanvasRenderer();
   final _TabTicks _ticks = _TabTicks();
 
   /// Canvas text search for this tab. Not written to settings.
@@ -1834,9 +1840,8 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
 
   /// Set by the workbench so a document change can drop the right cached geometry.
   ///
-  /// Picture recordings live on the canvas widget; tessellation lives on the
-  /// tab so hover pick can share it. This hook is how a session change reaches
-  /// the widget's picture cache without the tab holding a State.
+  /// Picture recordings live on the renderer; this hook is how a session change
+  /// reaches it without the tab holding a widget State.
   void Function(DocumentChange change)? onGeometryInvalidated;
 
   /// The most recent scene, for the canvas zoom readout's draw-call tooltip.
@@ -1864,7 +1869,7 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
       session: session,
       viewportProvider: () => viewport.viewport,
       snapEngine: snapEngine,
-      tessellation: tessellation,
+      picker: renderer.picker,
       onWrite: onWrite,
       onPrompt: (message) {
         setPrompt(message);
@@ -2020,6 +2025,7 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
     _viewport?.removeListener(_tick);
     _tools?.removeListener(_tick);
     _tools?.dispose();
+    renderer.dispose();
     _viewport?.dispose();
     _session?.dispose();
     textSearch.dispose();

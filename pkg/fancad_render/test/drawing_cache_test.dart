@@ -51,7 +51,6 @@ void main() {
     final builds = await pumpCanvas(tester);
     final before = builds();
 
-    controller.beginInteraction();
     for (var i = 0; i < 8; i++) {
       controller.zoomBy(1.05, const Offset(400, 300));
       await tester.pump();
@@ -62,9 +61,10 @@ void main() {
     // eight times.
     expect(builds(), before);
 
-    controller.endInteraction();
-    await tester.pump();
-    expect(builds(), greaterThan(before));
+    // The renderer decides the camera has stopped on its own; nothing outside
+    // it has to report a gesture end.
+    await tester.pump(CanvasRenderer.settleDelay);
+    expect(builds(), before + 1);
   });
 
   testWidgets('a wheel spin settles into one rebuild', (tester) async {
@@ -76,11 +76,9 @@ void main() {
       controller.zoomBy(1.1, const Offset(400, 300));
       await tester.pump();
     }
-    expect(controller.quality, RenderQuality.interactive);
     expect(builds(), before);
 
-    await tester.pump(ViewportController.settleDelay);
-    expect(controller.quality, RenderQuality.crisp);
+    await tester.pump(CanvasRenderer.settleDelay);
     expect(builds(), before + 1);
   });
 
@@ -88,13 +86,11 @@ void main() {
     final builds = await pumpCanvas(tester);
     final before = builds();
 
-    controller.beginInteraction();
     for (var i = 0; i < 6; i++) {
       controller.panBy(const Offset(4.7, -2.3));
       await tester.pump();
     }
-    controller.endInteraction();
-    await tester.pump();
+    await tester.pump(CanvasRenderer.settleDelay);
 
     // A settled pan does not rebuild either: both cameras are locked to whole
     // physical pixels, so replaying the recording displaced by whole pixels is
@@ -106,11 +102,9 @@ void main() {
     final builds = await pumpCanvas(tester);
     final before = builds();
 
-    controller.beginInteraction();
     controller.panBy(const Offset(-4000, 0));
     await tester.pump();
-    controller.endInteraction();
-    await tester.pump();
+    await tester.pump(CanvasRenderer.settleDelay);
 
     expect(builds(), greaterThan(before));
   });
@@ -121,16 +115,12 @@ void main() {
     final builds = await pumpCanvas(tester);
     final before = builds();
 
-    controller.beginInteraction();
     // Past a factor of four the recording's tessellation and pen widths belong
     // to a scale too far away to stand in, so it is rebuilt even though the
-    // gesture is still running.
+    // camera is still moving.
     controller.zoomBy(6, const Offset(400, 300));
     await tester.pump();
     expect(builds(), greaterThan(before));
-
-    controller.endInteraction();
-    await tester.pump();
   });
 
   testWidgets('a zoom out past the overscan keeps replaying mid-gesture', (
@@ -139,7 +129,6 @@ void main() {
     final builds = await pumpCanvas(tester);
     final before = builds();
 
-    controller.beginInteraction();
     // A third of a screen of overscan runs out well before a factor of four.
     // The uncovered strip stays empty until the camera settles; a rebuild here
     // is the stall the gesture is meant to avoid.
@@ -149,8 +138,7 @@ void main() {
     }
     expect(builds(), before);
 
-    controller.endInteraction();
-    await tester.pump();
+    await tester.pump(CanvasRenderer.settleDelay);
     expect(builds(), greaterThan(before));
   });
 

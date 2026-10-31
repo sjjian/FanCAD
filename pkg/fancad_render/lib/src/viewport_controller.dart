@@ -7,17 +7,6 @@ import 'package:flutter/foundation.dart';
 
 import 'viewport.dart';
 
-/// How much work the renderer should do for the current camera.
-enum RenderQuality {
-  /// The camera is moving. Reuse the last recording, translated or scaled.
-  /// Constant cost regardless of drawing size, and it leaves the linework
-  /// following the geometry instead of being realigned mid-gesture.
-  interactive,
-
-  /// The camera has settled. Rebuild the scene and align it to the pixel grid.
-  crisp,
-}
-
 /// Owns the camera for one document tab.
 ///
 /// A separate notifier from the document itself, because panning must not mark
@@ -36,14 +25,12 @@ class ViewportController extends ChangeNotifier {
 
   /// How long after the last camera move the view counts as settled.
   ///
-  /// A pan or a pinch reports its own end, but a mouse wheel does not: there is
-  /// no event that says the notches have stopped. This delay stands in for the
-  /// missing gesture end, so a wheel spin reuses the recording like a pinch
-  /// does instead of rebuilding once per notch. A hand turning a wheel
-  /// leaves more than 90 ms between notches often enough that a shorter delay
-  /// rebuilt a large drawing between them, which is the stall it exists to
-  /// avoid.
-  static const Duration settleDelay = Duration(milliseconds: 150);
+  /// Used only to re-lock the camera to the pixel grid after a splitter drag:
+  /// the camera itself is the controller's business, and a resize shifts it by
+  /// sub-pixel amounts that should not be rounded back in on every event. How
+  /// long a moving camera may keep the renderer on its recording is decided by
+  /// the renderer, from the same duration.
+  static const Duration settleDelay = cameraSettleDelay;
 
   CadViewport _viewport;
 
@@ -51,11 +38,10 @@ class ViewportController extends ChangeNotifier {
   /// here so a mouse move does not write a store or rebuild the page.
   Vec2? _pointer;
 
-  /// Set while a pan or zoom gesture is in flight, so the renderer can prefer
-  /// reusing the last scene over building an exact one.
+  /// Set while a pan or zoom gesture is in flight, so a command can tell a
+  /// drag from a click. Purely input bookkeeping: the renderer never sees it.
   bool _interacting = false;
 
-  RenderQuality _quality = RenderQuality.crisp;
   Timer? _settle;
 
   /// Viewport as it was when the current pan/pinch began, so Escape can put
@@ -91,8 +77,6 @@ class ViewportController extends ChangeNotifier {
     notifyListeners();
   }
 
-  RenderQuality get quality => _quality;
-
   /// Every camera this controller hands out is [CadViewport.pixelLocked], so
   /// the renderer's alignment survives a pan and the cursor agrees with the
   /// pixels a line was drawn on.
@@ -110,9 +94,10 @@ class ViewportController extends ChangeNotifier {
   /// stays still on screen while the window is resized. Omit it and the
   /// centre stays put, which is what tests and the first layout do.
   ///
-  /// A resize that does anchor the drawing is interactive until
-  /// [settleDelay] elapses. Pixel locking waits for that settle, so the
-  /// resize does not snap the recording onto a new pixel grid every frame.
+  /// A resize that does anchor the drawing leaves the camera a sub-pixel
+  /// amount off the grid until [settleDelay] elapses. Rounding every layout
+  /// would feed that rounding back into the next delta and let a splitter drag
+  /// creep, so the lock is taken once, after the resize stops.
   void setSize(Size size, double devicePixelRatio, {Offset? screenOrigin}) {
     final previousOrigin = _screenOrigin;
     final previousSize = _viewport.size;
@@ -155,9 +140,8 @@ class ViewportController extends ChangeNotifier {
     }
     if (anchor) {
       _viewport = next;
-      _quality = RenderQuality.interactive;
       _settle?.cancel();
-      _settle = Timer(settleDelay, _onResizeSettled);
+      _settle = Timer(settleDelay, _lockAfterResize);
       notifyListeners();
       return;
     }
@@ -171,9 +155,6 @@ class ViewportController extends ChangeNotifier {
     if (_interacting) return;
     _interacting = true;
     _interactionOrigin = _viewport;
-    _quality = RenderQuality.interactive;
-    _settle?.cancel();
-    _settle = null;
     notifyListeners();
   }
 
@@ -181,50 +162,25 @@ class ViewportController extends ChangeNotifier {
     if (!_interacting) return;
     _interacting = false;
     _interactionOrigin = null;
-    _settleNow();
     notifyListeners();
   }
 
-  /// Moves the camera, marks it as moving, and arms the settle timer, as one
-  /// write and one notification.
-  ///
-  /// The camera and the quality have to move together. A zoom clamped at
-  /// [CadViewport.minScale] or [CadViewport.maxScale] leaves the camera where
-  /// it was, so writing the quality separately would drop the renderer onto
-  /// the cached recording with nothing to tell it, and it would stay there
-  /// until the settle timer happened to fire.
-  ///
-  /// A gesture reports its own end, so while one is in flight there is nothing
-  /// to time. A wheel notch has no end, which is what the timer is for.
+  /// Moves the camera to [next] and publishes it.
   void _moveTo(CadViewport next) {
     final locked = next.pixelLocked();
     if (locked == _viewport) return;
     _viewport = locked;
-    _quality = RenderQuality.interactive;
-    _settle?.cancel();
-    _settle = _interacting ? null : Timer(settleDelay, _onSettled);
     notifyListeners();
   }
 
-  void _onSettled() {
+  /// Ends a resize: lock the camera once, so the next rebuild aligns to the
+  /// pixel grid the window finally landed on.
+  void _lockAfterResize() {
     _settle = null;
-    if (_quality == RenderQuality.crisp) return;
-    _quality = RenderQuality.crisp;
+    final locked = _viewport.pixelLocked();
+    if (locked == _viewport) return;
+    _viewport = locked;
     notifyListeners();
-  }
-
-  /// Ends a resize: lock the camera once, then rebuild at the settled size.
-  void _onResizeSettled() {
-    _settle = null;
-    _viewport = _viewport.pixelLocked();
-    _quality = RenderQuality.crisp;
-    notifyListeners();
-  }
-
-  void _settleNow() {
-    _settle?.cancel();
-    _settle = null;
-    _quality = RenderQuality.crisp;
   }
 
   /// Restores the camera from the start of the current pan or pinch.
@@ -237,7 +193,6 @@ class ViewportController extends ChangeNotifier {
     final origin = _interactionOrigin;
     _interacting = false;
     _interactionOrigin = null;
-    _settleNow();
     final changed = origin != null && origin != _viewport;
     if (changed) {
       _viewport = origin;

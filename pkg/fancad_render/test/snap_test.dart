@@ -241,6 +241,31 @@ void main() {
     expect(perp.point.distanceTo(const Vec2(4, 0)), closeTo(0, 1e-6));
   });
 
+  test('flattening for nearest reuses the shared tessellation cache', () {
+    const origin = CadViewport(
+      center: Vec2.zero(),
+      scale: 1,
+      size: Size(800, 600),
+    );
+    final document = CadDocument()
+      ..addEntity(const CircleEntity(id: 0, center: Vec2.zero(), radius: 5));
+    final cache = TessellationCache();
+    final engine = SnapEngine(
+      modes: {SnapMode.nearest},
+      cacheProvider: () => cache,
+    );
+
+    final first = engine.resolve(document, origin, const Vec2(4, 0.2));
+    expect(first.marker!.kind, SnapMarkerKind.nearest);
+    expect(cache.entryCount, greaterThan(0));
+    final misses = cache.misses;
+
+    final second = engine.resolve(document, origin, const Vec2(4, 0.25));
+    expect(second.marker!.kind, SnapMarkerKind.nearest);
+    expect(cache.misses, misses, reason: 'the second resolve re-flattened');
+    expect(cache.hits, greaterThan(0));
+  });
+
   test('tangent from outside a circle does not snap to the center', () {
     const origin = CadViewport(
       center: Vec2.zero(),

@@ -38,8 +38,10 @@ void main() {
   }
 
   testWidgets('a mouse-wheel notch zooms about the cursor', (tester) async {
-    final location = await pumpCanvas(tester);
+    var builds = 0;
+    final location = await pumpCanvas(tester, onSceneBuilt: (_) => builds++);
     final before = controller.viewport.scale;
+    final firstFrameBuilds = builds;
 
     final pointer = TestPointer(1, PointerDeviceKind.mouse);
     await tester.sendEventToBinding(pointer.hover(location));
@@ -48,11 +50,11 @@ void main() {
 
     expect(controller.viewport.scale, greaterThan(before));
 
-    // A notch has no gesture end, so the camera counts as moving until the
-    // settle timer fires and asks for a crisp rebuild.
-    expect(controller.quality, RenderQuality.interactive);
-    await tester.pump(ViewportController.settleDelay);
-    expect(controller.quality, RenderQuality.crisp);
+    // A notch has no gesture end, so the renderer keeps replaying the
+    // recording until its own settle timer decides the camera has stopped.
+    expect(builds, firstFrameBuilds);
+    await tester.pump(CanvasRenderer.settleDelay);
+    expect(builds, greaterThan(firstFrameBuilds));
   });
 
   testWidgets('a trackpad pinch zooms about the cursor', (tester) async {
@@ -593,6 +595,8 @@ void main() {
     tester,
   ) async {
     final cache = TessellationCache();
+    final renderer = CanvasRenderer(tessellation: cache);
+    addTearDown(renderer.dispose);
     final document = CadDocument();
     for (var i = 0; i < 12; i++) {
       document.addEntity(
@@ -607,7 +611,7 @@ void main() {
           child: CadCanvas(
             document: document,
             controller: controller,
-            tessellation: cache,
+            renderer: renderer,
           ),
         ),
       ),
@@ -627,7 +631,7 @@ void main() {
           child: CadCanvas(
             document: document,
             controller: controller,
-            tessellation: cache,
+            renderer: renderer,
           ),
         ),
       ),
@@ -641,6 +645,8 @@ void main() {
     tester,
   ) async {
     final cache = TessellationCache();
+    final renderer = CanvasRenderer(tessellation: cache);
+    addTearDown(renderer.dispose);
     final document = CadDocument();
     for (var i = 0; i < 12; i++) {
       document.addEntity(
@@ -655,7 +661,7 @@ void main() {
           child: CadCanvas(
             document: document,
             controller: controller,
-            tessellation: cache,
+            renderer: renderer,
           ),
         ),
       ),

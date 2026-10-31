@@ -113,7 +113,7 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
     super.dispose();
   }
 
-  /// Connects document changes to the canvas's tessellation cache.
+  /// Connects document changes to the tab renderer's caches.
   ///
   /// The canvas cannot listen to the document itself without knowing about
   /// sessions, and the tab cannot reach into the canvas's cache, so the tab
@@ -142,10 +142,11 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
   void _onDoubleClick(Offset local) {
     final tab = widget.tab;
     final world = tab.viewport.viewport.toWorld(local);
-    final hit = Picker(
-      cache: tab.tessellation,
-      shxFonts: widget.workspace.shxFonts,
-    ).pickTopmost(tab.document, tab.viewport.viewport, world);
+    final hit = tab.renderer.picker.pickTopmost(
+      tab.document,
+      tab.viewport.viewport,
+      world,
+    );
     final commandRunning =
         ref.read(workspaceNotifierProvider).runningCommand != null;
     final target = canvasTextEditTarget(
@@ -702,7 +703,7 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
                         if (tab.document.isLayerVisible(layer.name)) layer.name,
                     },
               plotPreview: plotting,
-              tessellation: tab.tessellation,
+              renderer: tab.renderer,
               shxFonts: widget.workspace.shxFonts,
             ),
             Positioned.fill(

@@ -6,6 +6,15 @@ import 'package:meta/meta.dart';
 
 import 'device_space.dart';
 
+/// How long after the last camera change a camera counts as settled.
+///
+/// A pan or a pinch reports its own end, but a mouse wheel does not: there is
+/// no event that says the notches have stopped. This delay stands in for the
+/// missing gesture end. A hand turning a wheel leaves more than 90 ms between
+/// notches often enough that a shorter delay rebuilt a large drawing between
+/// them, which is the stall it exists to avoid.
+const Duration cameraSettleDelay = Duration(milliseconds: 150);
+
 /// The mapping between drawing coordinates and device pixels.
 ///
 /// CAD conventions differ from screen conventions in two ways that matter: the

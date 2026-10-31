@@ -5,15 +5,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'canvas_renderer.dart';
 import 'device_space.dart';
-import 'drawing_cache.dart';
 import 'overlay.dart';
 import 'palette.dart';
 import 'render_scene.dart';
-import 'scene_builder.dart';
-import 'scene_painter.dart';
-import 'tessellation_cache.dart';
-import 'text_cache.dart';
 import 'viewport.dart';
 import 'viewport_controller.dart';
 
@@ -73,7 +69,7 @@ class CadCanvas extends StatefulWidget {
     this.showGrid = true,
     this.onlyLayers,
     this.plotPreview = false,
-    this.tessellation,
+    this.renderer,
     this.shxFonts = const ShxFontTable(),
     super.key,
   });
@@ -119,9 +115,9 @@ class CadCanvas extends StatefulWidget {
   /// paints a white sheet with the grid off.
   final bool plotPreview;
 
-  /// Shared with tools and overlay so hover/pick replay the drawing's flatten.
-  /// The canvas creates its own when omitted.
-  final TessellationCache? tessellation;
+  /// Owned by the tab so hit testing and the overlay replay the same flatten.
+  /// The canvas creates one of its own when omitted.
+  final CanvasRenderer? renderer;
 
   /// Parsed SHX faces. Empty keeps the TTF fallback for every STYLE.
   final ShxFontTable shxFonts;
@@ -132,13 +128,13 @@ class CadCanvas extends StatefulWidget {
 
 class CadCanvasState extends State<CadCanvas> {
   late AciPalette _palette;
-  late SceneBuilder _sceneBuilder;
-  late TessellationCache _tessellation;
-  late final ParagraphCache _paragraphs;
-  late final ScenePainter _scenePainter;
+
+  /// The tab owns this so hit testing and the overlay share the drawing's
+  /// flatten. A canvas used on its own creates one and disposes it.
+  late CanvasRenderer _renderer;
+  late bool _ownsRenderer;
   late OverlayPainter _overlayPainter;
 
-  final DrawingCache _cache = DrawingCache();
   int _paintEpoch = 0;
   int _seenVersion = -1;
   List<int> _hiddenIds = const [];
@@ -176,28 +172,40 @@ class CadCanvasState extends State<CadCanvas> {
   @override
   void initState() {
     super.initState();
-    _tessellation = widget.tessellation ?? TessellationCache();
-    _paragraphs = ParagraphCache();
-    _scenePainter = ScenePainter(paragraphs: _paragraphs);
-    _bindAppearance();
+    _adoptRenderer();
     widget.controller.addListener(_onViewportChanged);
     _bindInput(widget.inputHandler);
     _hiddenIds = _overlay.hiddenIds;
   }
 
+  void _adoptRenderer() {
+    final given = widget.renderer;
+    _ownsRenderer = given == null;
+    _renderer = given ?? CanvasRenderer();
+    _bindAppearance();
+  }
+
   void _bindAppearance() {
     _palette = widget.palette ?? AciPalette(background: widget.background);
-    _sceneBuilder = SceneBuilder(
-      palette: _palette,
-      cache: _tessellation,
-      paragraphs: _paragraphs,
-      shxFonts: widget.shxFonts,
-    );
+    _renderer
+      ..bindAppearance(palette: _palette, shxFonts: widget.shxFonts)
+      ..onNeedsPaint = _requestPaint
+      ..onSceneBuilt = widget.onSceneBuilt;
     _overlayPainter = OverlayPainter(
       theme: widget.overlayTheme.withCanvas(widget.background),
-      cache: _tessellation,
+      cache: _renderer.tessellation,
       shxFonts: widget.shxFonts,
     );
+  }
+
+  /// The renderer settled a moving camera on its own. Scheduling a frame is
+  /// the host's only job in that decision; the epoch bump is what makes the
+  /// painter run again when nothing about the camera or document changed.
+  void _requestPaint() {
+    if (!mounted) return;
+    setState(() {
+      _paintEpoch++;
+    });
   }
 
   @override
@@ -211,14 +219,18 @@ class CadCanvasState extends State<CadCanvas> {
       _unbindInput();
       _bindInput(widget.inputHandler);
     }
+    if (oldWidget.renderer != widget.renderer) {
+      if (_ownsRenderer) _renderer.dispose();
+      _renderer
+        ..onNeedsPaint = null
+        ..onSceneBuilt = null;
+      _adoptRenderer();
+      _paintEpoch++;
+      _seenVersion = -1;
+    }
     if (oldWidget.document != widget.document) {
-      if (widget.tessellation != null) {
-        _tessellation = widget.tessellation!;
-      } else {
-        _tessellation.clear();
-      }
-      _paragraphs.clear();
-      _cache.invalidate();
+      _renderer.tessellation.clear();
+      _renderer.paragraphs.clear();
       _bindAppearance();
       _paintEpoch++;
       _seenVersion = -1;
@@ -226,27 +238,25 @@ class CadCanvasState extends State<CadCanvas> {
     if (oldWidget.showGrid != widget.showGrid ||
         oldWidget.onlyLayers != widget.onlyLayers ||
         oldWidget.plotPreview != widget.plotPreview) {
-      _cache.invalidate();
+      _renderer.invalidate();
       _paintEpoch++;
     }
     if (oldWidget.shxFonts != widget.shxFonts) {
       _bindAppearance();
-      _tessellation.clear();
-      _paragraphs.clear();
-      _cache.invalidate();
+      _renderer.tessellation.clear();
+      _renderer.paragraphs.clear();
       _paintEpoch++;
     }
     final hidden = _overlay.hiddenIds;
     if (!_sameIds(_hiddenIds, hidden)) {
       _hiddenIds = hidden;
-      _cache.invalidate();
+      _renderer.invalidate();
       _paintEpoch++;
     }
     if (oldWidget.palette != widget.palette ||
         oldWidget.background != widget.background ||
         oldWidget.overlayTheme != widget.overlayTheme) {
       _bindAppearance();
-      _cache.invalidate();
       _paintEpoch++;
     }
     _replayPromptHover();
@@ -256,8 +266,8 @@ class CadCanvasState extends State<CadCanvas> {
   void dispose() {
     _unbindInput();
     widget.controller.removeListener(_onViewportChanged);
-    _cache.dispose();
-    _paragraphs.clear();
+    if (_ownsRenderer) _renderer.dispose();
+    _renderer.paragraphs.clear();
     super.dispose();
   }
 
@@ -317,16 +327,16 @@ class CadCanvasState extends State<CadCanvas> {
 
   void _dropGeometry(DocumentChange change) {
     if (change.requiresFullRegeneration) {
-      _tessellation.clear();
-      _paragraphs.clear();
+      _renderer.tessellation.clear();
+      _renderer.paragraphs.clear();
     } else {
-      _tessellation.invalidate([
+      _renderer.tessellation.invalidate([
         ...change.modified,
         ...change.removed,
         ...change.added,
       ]);
     }
-    _cache.invalidate();
+    _renderer.invalidate();
     _paintEpoch++;
   }
 
@@ -380,9 +390,9 @@ class CadCanvasState extends State<CadCanvas> {
     if (version != _seenVersion) {
       if (_seenVersion != -1) {
         // A version bump that did not go through [applyDocumentChange].
-        _tessellation.clear();
-        _paragraphs.clear();
-        _cache.invalidate();
+        _renderer.tessellation.clear();
+        _renderer.paragraphs.clear();
+        _renderer.invalidate();
         _paintEpoch++;
       }
       _seenVersion = version;
@@ -441,18 +451,16 @@ class CadCanvasState extends State<CadCanvas> {
                     RepaintBoundary(
                       child: CustomPaint(
                         painter: _DrawingLayerPainter(
-                          document: widget.document,
+                          renderer: _renderer,
+                          target: RenderTarget(
+                            document: widget.document,
+                            viewport: widget.controller.viewport,
+                            onlyLayers: widget.onlyLayers,
+                            hiddenIds: overlay.hiddenIds,
+                            plotLayers: widget.plotPreview,
+                          ),
                           documentVersion: widget.document.version,
-                          viewport: widget.controller.viewport,
-                          builder: _sceneBuilder,
-                          painter: _scenePainter,
-                          cache: _cache,
-                          quality: widget.controller.quality,
                           paintEpoch: _paintEpoch,
-                          onlyLayers: widget.onlyLayers,
-                          plotPreview: widget.plotPreview,
-                          hiddenIds: overlay.hiddenIds,
-                          onSceneBuilt: widget.onSceneBuilt,
                           grid: widget.showGrid
                               ? _GridStyle(
                                   color: widget.background,
@@ -692,74 +700,33 @@ class _GridStyle {
 
 class _DrawingLayerPainter extends CustomPainter {
   _DrawingLayerPainter({
-    required this.document,
+    required this.renderer,
+    required this.target,
     required this.documentVersion,
-    required this.viewport,
-    required this.builder,
-    required this.painter,
-    required this.cache,
-    required this.quality,
     required this.paintEpoch,
-    required this.onlyLayers,
-    required this.plotPreview,
-    required this.hiddenIds,
-    required this.onSceneBuilt,
     required this.grid,
   });
 
-  final CadDocument document;
+  final CanvasRenderer renderer;
 
-  /// Captured rather than read from [document], so that a change is visible to
-  /// `shouldRepaint`, which is handed the same mutable document instance.
+  /// Content plus camera, as a terminal value. The renderer decides whether
+  /// the frame is a replay or a rebuild.
+  final RenderTarget target;
+
+  /// Captured rather than read from [target.document], so that a change is
+  /// visible to `shouldRepaint`, which is handed the same mutable document.
   final int documentVersion;
 
-  final CadViewport viewport;
-  final SceneBuilder builder;
-  final ScenePainter painter;
-  final DrawingCache cache;
-  final RenderQuality quality;
   final int paintEpoch;
-  final Set<String>? onlyLayers;
-  final bool plotPreview;
-  final List<int> hiddenIds;
-  final void Function(RenderScene scene)? onSceneBuilt;
   final _GridStyle? grid;
 
-  /// Three paths, cheapest first.
-  ///
-  /// A pan replays the recording translated by a whole number of physical
-  /// pixels, which is identical to a rebuild. A zoom still in flight replays it
-  /// under a scale, which keeps the linework on the geometry rather than
-  /// realigning it mid-gesture. Only a settled camera rebuilds and realigns.
   @override
   void paint(ui.Canvas canvas, Size size) {
     canvas.save();
     canvas.clipRect(Offset.zero & size, doAntiAlias: false);
     if (grid != null) _paintGrid(canvas, size);
-
-    final placement = cache.placementFor(
-      viewport,
-      documentVersion,
-      interactive: quality == RenderQuality.interactive,
-    );
-    if (placement != null) {
-      cache.replay(canvas, placement, viewport, painter);
-      canvas.restore();
-      return;
-    }
-
-    final scene = builder.build(
-      document,
-      viewport,
-      onlyLayers: onlyLayers,
-      plotLayers: plotPreview,
-      hiddenIds: hiddenIds.isEmpty ? null : hiddenIds.toSet(),
-    );
-    final recorded = painter.record(scene);
-    cache.store(scene, recorded, documentVersion);
-    canvas.drawPicture(recorded);
+    renderer.render(canvas, target);
     canvas.restore();
-    onSceneBuilt?.call(scene);
   }
 
   /// A reference grid, spaced at a round number of drawing units.
@@ -769,6 +736,7 @@ class _DrawingLayerPainter extends CustomPainter {
   /// physical pixels on pixel centres like the drawing itself, so a grid line
   /// is one crisp pixel rather than a two-pixel smear on a Retina display.
   void _paintGrid(ui.Canvas canvas, Size size) {
+    final viewport = target.viewport;
     if (!viewport.isUsable) return;
     final style = grid!;
     // Aim for roughly one line every 12 pixels, snapped to a 1, 2, 5 sequence.
@@ -833,14 +801,14 @@ class _DrawingLayerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DrawingLayerPainter old) =>
-      old.document != document ||
+      old.renderer != renderer ||
+      old.target.document != target.document ||
       old.documentVersion != documentVersion ||
       old.paintEpoch != paintEpoch ||
-      old.viewport != viewport ||
-      old.quality != quality ||
-      old.onlyLayers != onlyLayers ||
-      old.plotPreview != plotPreview ||
-      !_sameIds(old.hiddenIds, hiddenIds) ||
+      old.target.viewport != target.viewport ||
+      old.target.onlyLayers != target.onlyLayers ||
+      old.target.plotLayers != target.plotLayers ||
+      !_sameIds(old.target.hiddenIds, target.hiddenIds) ||
       (old.grid == null) != (grid == null);
 }
 

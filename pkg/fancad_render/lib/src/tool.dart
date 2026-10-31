@@ -142,7 +142,7 @@ class ToolController extends ChangeNotifier
     this.onPrompt,
   }) : _session = session,
        _viewportProvider = viewportProvider,
-       snapEngine = snapEngine ?? SnapEngine(),
+       snapEngine = snapEngine ?? SnapEngine(cacheProvider: () => tessellation),
        picker = picker ?? Picker(cache: tessellation);
 
   DocumentSession _session;

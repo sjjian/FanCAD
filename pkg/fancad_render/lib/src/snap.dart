@@ -5,6 +5,7 @@ import 'package:fancad_core/fancad_core.dart';
 import 'package:meta/meta.dart';
 
 import 'picking.dart';
+import 'tessellation_cache.dart';
 import 'viewport.dart';
 
 /// The object snap modes a user can turn on, matching AutoCAD's OSMODE bits in
@@ -200,6 +201,7 @@ class SnapEngine {
     this.snapToGrid = false,
     this.aperturePixels = 12,
     this.trackingAperturePixels = 6,
+    this.cacheProvider,
   });
 
   Set<SnapMode> modes;
@@ -221,6 +223,15 @@ class SnapEngine {
   /// ray before polar tracking engages. Narrower than object snap so a
   /// small down-right move can leave the axis.
   final double trackingAperturePixels;
+
+  /// Tessellation shared with the canvas that draws the drawing being snapped.
+  ///
+  /// It is read through a callback because one engine serves every tab: the
+  /// cache key is an entity id, so replaying another drawing's geometry would
+  /// be wrong. Nearest, perpendicular and intersection all need the flattened
+  /// curves, and without this they re-flatten every nearby entity on every
+  /// mouse move — the most expensive part of snapping a spline or a REGION.
+  final TessellationCache? Function()? cacheProvider;
 
   /// Resolves [cursor] against the drawing.
   ///
@@ -332,6 +343,7 @@ class SnapEngine {
     // Flattened geometry per entity, kept so intersections can be computed
     // between the entities that are actually near the cursor.
     final flattened = <int, PolylineSink>{};
+    final cache = cacheProvider?.call();
 
     for (final space in Picker.spacesUnder(
       document,
@@ -385,7 +397,7 @@ class SnapEngine {
             modes.contains(SnapMode.perpendicular) ||
             modes.contains(SnapMode.intersection)) {
           final sink = PolylineSink();
-          entity.emit(space.context, sink);
+          Picker.emitInto(entity, space.context, sink, cache: cache);
           flattened[id] = sink;
           _collectFromFlattened(id, sink, cursor, radius, candidates);
         }
