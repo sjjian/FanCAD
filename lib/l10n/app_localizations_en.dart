@@ -1472,6 +1472,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get command_draw_hatch => 'Hatch';
 
   @override
+  String get command_draw_region => 'Region';
+
+  @override
   String get command_draw_dim_linear => 'Linear Dimension';
 
   @override
@@ -1512,6 +1515,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get command_edit_overkill => 'Overkill';
+
+  @override
+  String get command_edit_union => 'Union';
+
+  @override
+  String get command_edit_subtract => 'Subtract';
+
+  @override
+  String get command_edit_intersect => 'Intersect';
 
   @override
   String get command_edit_move => 'Move';
@@ -2028,6 +2040,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Fills the area around an internal point, or around selected closed boundaries. Four lines that meet still count as a boundary.';
 
   @override
+  String get command_draw_region_desc =>
+      'Creates a 2D region from an internal point or selected closed boundaries.';
+
+  @override
   String get command_draw_dim_linear_desc =>
       'Places a horizontal or vertical dimension. The dimension-line pick chooses the axis: above or below the origins measures width; left or right measures height. A line can stand in for the two origins.';
 
@@ -2081,6 +2097,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get command_edit_overkill_desc =>
       'Deletes exact geometric duplicates and folds overlapping or abutting collinear lines into one stroke. The first copy is kept and stretched to the union. Omitted ids means the whole current space, so a leftover selection cannot hide the rest of the duplicates.';
+
+  @override
+  String get command_edit_union_desc =>
+      'Combines REGION objects into one region.';
+
+  @override
+  String get command_edit_subtract_desc =>
+      'Subtracts the other selected REGION objects from the first one.';
+
+  @override
+  String get command_edit_intersect_desc =>
+      'Keeps the area shared by the selected REGION objects.';
 
   @override
   String get command_edit_move_desc =>

@@ -2762,6 +2762,12 @@ abstract class AppLocalizations {
   /// **'Hatch'**
   String get command_draw_hatch;
 
+  /// command draw region
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get command_draw_region;
+
   /// command draw dim linear
   ///
   /// In en, this message translates to:
@@ -2845,6 +2851,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Overkill'**
   String get command_edit_overkill;
+
+  /// command edit union
+  ///
+  /// In en, this message translates to:
+  /// **'Union'**
+  String get command_edit_union;
+
+  /// command edit subtract
+  ///
+  /// In en, this message translates to:
+  /// **'Subtract'**
+  String get command_edit_subtract;
+
+  /// command edit intersect
+  ///
+  /// In en, this message translates to:
+  /// **'Intersect'**
+  String get command_edit_intersect;
 
   /// command edit move
   ///
@@ -3800,6 +3824,12 @@ abstract class AppLocalizations {
   /// **'Fills the area around an internal point, or around selected closed boundaries. Four lines that meet still count as a boundary.'**
   String get command_draw_hatch_desc;
 
+  /// command draw region desc
+  ///
+  /// In en, this message translates to:
+  /// **'Creates a 2D region from an internal point or selected closed boundaries.'**
+  String get command_draw_region_desc;
+
   /// command draw dim linear desc
   ///
   /// In en, this message translates to:
@@ -3883,6 +3913,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Deletes exact geometric duplicates and folds overlapping or abutting collinear lines into one stroke. The first copy is kept and stretched to the union. Omitted ids means the whole current space, so a leftover selection cannot hide the rest of the duplicates.'**
   String get command_edit_overkill_desc;
+
+  /// command edit union desc
+  ///
+  /// In en, this message translates to:
+  /// **'Combines REGION objects into one region.'**
+  String get command_edit_union_desc;
+
+  /// command edit subtract desc
+  ///
+  /// In en, this message translates to:
+  /// **'Subtracts the other selected REGION objects from the first one.'**
+  String get command_edit_subtract_desc;
+
+  /// command edit intersect desc
+  ///
+  /// In en, this message translates to:
+  /// **'Keeps the area shared by the selected REGION objects.'**
+  String get command_edit_intersect_desc;
 
   /// command edit move desc
   ///

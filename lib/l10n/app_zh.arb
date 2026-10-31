@@ -2047,6 +2047,10 @@
   "@command_draw_hatch": {
     "description": "command draw hatch"
   },
+  "command_draw_region": "面域",
+  "@command_draw_region": {
+    "description": "command draw region"
+  },
   "command_draw_dim_linear": "线性标注",
   "@command_draw_dim_linear": {
     "description": "command draw dim linear"
@@ -2102,6 +2106,18 @@
   "command_edit_overkill": "删除重复",
   "@command_edit_overkill": {
     "description": "command edit overkill"
+  },
+  "command_edit_union": "并集",
+  "@command_edit_union": {
+    "description": "command edit union"
+  },
+  "command_edit_subtract": "差集",
+  "@command_edit_subtract": {
+    "description": "command edit subtract"
+  },
+  "command_edit_intersect": "交集",
+  "@command_edit_intersect": {
+    "description": "command edit intersect"
   },
   "command_edit_move": "移动",
   "@command_edit_move": {
@@ -2757,6 +2773,10 @@
   "@command_draw_hatch_desc": {
     "description": "command draw hatch desc"
   },
+  "command_draw_region_desc": "从内部点或选定的闭合边界创建二维面域。",
+  "@command_draw_region_desc": {
+    "description": "command draw region desc"
+  },
   "command_draw_dim_linear_desc": "放置水平或垂直标注。尺寸线拾取决定轴向：原点上方或下方测宽度，左侧或右侧测高度。一条直线可代替两个原点。",
   "@command_draw_dim_linear_desc": {
     "description": "command draw dim linear desc"
@@ -2812,6 +2832,18 @@
   "command_edit_overkill_desc": "删除完全重合的几何副本，并把重叠或首尾相接的共线直线收成一笔。保留第一份并拉到并集。省略 ids 表示整个当前空间，以免残留选择集挡住其余重复。",
   "@command_edit_overkill_desc": {
     "description": "command edit overkill desc"
+  },
+  "command_edit_union_desc": "将多个面域合并为一个面域。",
+  "@command_edit_union_desc": {
+    "description": "command edit union desc"
+  },
+  "command_edit_subtract_desc": "从第一个面域中减去其他选定的面域。",
+  "@command_edit_subtract_desc": {
+    "description": "command edit subtract desc"
+  },
+  "command_edit_intersect_desc": "保留选定的面域共有的区域。",
+  "@command_edit_intersect_desc": {
+    "description": "command edit intersect desc"
   },
   "command_edit_move_desc": "按位移移动选定对象。",
   "@command_edit_move_desc": {

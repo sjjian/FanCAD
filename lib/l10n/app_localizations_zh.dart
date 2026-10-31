@@ -1448,6 +1448,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_draw_hatch => '填充';
 
   @override
+  String get command_draw_region => '面域';
+
+  @override
   String get command_draw_dim_linear => '线性标注';
 
   @override
@@ -1488,6 +1491,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get command_edit_overkill => '删除重复';
+
+  @override
+  String get command_edit_union => '并集';
+
+  @override
+  String get command_edit_subtract => '差集';
+
+  @override
+  String get command_edit_intersect => '交集';
 
   @override
   String get command_edit_move => '移动';
@@ -1986,6 +1998,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get command_draw_hatch_desc => '填充内部点周围的区域，或选定闭合边界围成的区域。四条相接的直线仍算作边界。';
 
   @override
+  String get command_draw_region_desc => '从内部点或选定的闭合边界创建二维面域。';
+
+  @override
   String get command_draw_dim_linear_desc =>
       '放置水平或垂直标注。尺寸线拾取决定轴向：原点上方或下方测宽度，左侧或右侧测高度。一条直线可代替两个原点。';
 
@@ -2038,6 +2053,15 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get command_edit_overkill_desc =>
       '删除完全重合的几何副本，并把重叠或首尾相接的共线直线收成一笔。保留第一份并拉到并集。省略 ids 表示整个当前空间，以免残留选择集挡住其余重复。';
+
+  @override
+  String get command_edit_union_desc => '将多个面域合并为一个面域。';
+
+  @override
+  String get command_edit_subtract_desc => '从第一个面域中减去其他选定的面域。';
+
+  @override
+  String get command_edit_intersect_desc => '保留选定的面域共有的区域。';
 
   @override
   String get command_edit_move_desc => '按位移移动选定对象。';

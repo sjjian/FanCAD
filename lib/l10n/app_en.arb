@@ -2062,6 +2062,10 @@
   "@command_draw_hatch": {
     "description": "command draw hatch"
   },
+  "command_draw_region": "Region",
+  "@command_draw_region": {
+    "description": "command draw region"
+  },
   "command_draw_dim_linear": "Linear Dimension",
   "@command_draw_dim_linear": {
     "description": "command draw dim linear"
@@ -2117,6 +2121,18 @@
   "command_edit_overkill": "Overkill",
   "@command_edit_overkill": {
     "description": "command edit overkill"
+  },
+  "command_edit_union": "Union",
+  "@command_edit_union": {
+    "description": "command edit union"
+  },
+  "command_edit_subtract": "Subtract",
+  "@command_edit_subtract": {
+    "description": "command edit subtract"
+  },
+  "command_edit_intersect": "Intersect",
+  "@command_edit_intersect": {
+    "description": "command edit intersect"
   },
   "command_edit_move": "Move",
   "@command_edit_move": {
@@ -2777,6 +2793,10 @@
   "@command_draw_hatch_desc": {
     "description": "command draw hatch desc"
   },
+  "command_draw_region_desc": "Creates a 2D region from an internal point or selected closed boundaries.",
+  "@command_draw_region_desc": {
+    "description": "command draw region desc"
+  },
   "command_draw_dim_linear_desc": "Places a horizontal or vertical dimension. The dimension-line pick chooses the axis: above or below the origins measures width; left or right measures height. A line can stand in for the two origins.",
   "@command_draw_dim_linear_desc": {
     "description": "command draw dim linear desc"
@@ -2832,6 +2852,18 @@
   "command_edit_overkill_desc": "Deletes exact geometric duplicates and folds overlapping or abutting collinear lines into one stroke. The first copy is kept and stretched to the union. Omitted ids means the whole current space, so a leftover selection cannot hide the rest of the duplicates.",
   "@command_edit_overkill_desc": {
     "description": "command edit overkill desc"
+  },
+  "command_edit_union_desc": "Combines REGION objects into one region.",
+  "@command_edit_union_desc": {
+    "description": "command edit union desc"
+  },
+  "command_edit_subtract_desc": "Subtracts the other selected REGION objects from the first one.",
+  "@command_edit_subtract_desc": {
+    "description": "command edit subtract desc"
+  },
+  "command_edit_intersect_desc": "Keeps the area shared by the selected REGION objects.",
+  "@command_edit_intersect_desc": {
+    "description": "command edit intersect desc"
   },
   "command_edit_move_desc": "Moves the selected objects by a displacement.",
   "@command_edit_move_desc": {
