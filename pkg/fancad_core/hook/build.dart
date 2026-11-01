@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
 import 'package:logging/logging.dart';
 import 'package:native_toolchain_c/native_toolchain_c.dart';
@@ -33,7 +34,11 @@ void main(List<String> arguments) async {
       nativeDirectory.resolve('dwg_export.c').toFilePath(),
     ];
 
-    final libredwg = await _resolveLibreDwg(input, logger);
+    final libredwg = await _resolveLibreDwg(
+      input,
+      logger,
+      arch: input.config.code.targetArchitecture.name,
+    );
 
     if (libredwg != null) {
       logger.info('Linking LibreDWG from ${libredwg.root}');
@@ -125,7 +130,11 @@ class _LibreDwg {
   final String archive;
 }
 
-Future<_LibreDwg?> _resolveLibreDwg(BuildInput input, Logger logger) async {
+Future<_LibreDwg?> _resolveLibreDwg(
+  BuildInput input,
+  Logger logger, {
+  required String arch,
+}) async {
   final forced = [
     ?input.userDefines['libredwg_root'] as String?,
     ?Platform.environment['FANCAD_LIBREDWG_ROOT'],
@@ -148,7 +157,7 @@ Future<_LibreDwg?> _resolveLibreDwg(BuildInput input, Logger logger) async {
     }
     return null;
   }
-  return _buildFromSource(source, input, logger);
+  return _buildFromSource(source, input, logger, arch: arch);
 }
 
 bool _looksLikeSource(String root) {
@@ -177,9 +186,10 @@ const _libredwgPatches = [
 Future<_LibreDwg?> _buildFromSource(
   String source,
   BuildInput input,
-  Logger logger,
-) async {
-  final buildDir = input.outputDirectoryShared.resolve('libredwg-build/');
+  Logger logger, {
+  required String arch,
+}) async {
+  final buildDir = input.outputDirectoryShared.resolve('libredwg-build/$arch/');
   Directory(buildDir.toFilePath()).createSync(recursive: true);
   final archive = _findArchive(buildDir.toFilePath());
   final stamp = File('${buildDir.toFilePath()}/.fancad-built');
@@ -188,7 +198,7 @@ Future<_LibreDwg?> _buildFromSource(
   if (archive != null &&
       stamp.existsSync() &&
       stamp.readAsStringSync().trim() == revision) {
-    logger.info('Reusing LibreDWG static library at $archive');
+    logger.info('Reusing LibreDWG static library for $arch at $archive');
     _restorePatchedSources(source, patchDir, logger);
     return _fromSourceBuild(source, archive);
   }
@@ -198,7 +208,12 @@ Future<_LibreDwg?> _buildFromSource(
     _applyLibreDwgPatches(source, patchDir, logger);
     if (File('$source/CMakeLists.txt').existsSync() &&
         _which('cmake') != null) {
-      rebuilt = await _cmakeBuild(source, buildDir.toFilePath(), logger);
+      rebuilt = await _cmakeBuild(
+        source,
+        buildDir.toFilePath(),
+        logger,
+        arch: arch,
+      );
       if (!rebuilt && !Platform.isWindows) {
         logger.warning(
           'cmake could not compile LibreDWG; trying autotools instead.',
@@ -209,7 +224,7 @@ Future<_LibreDwg?> _buildFromSource(
       final autoDir = '${buildDir.toFilePath()}/autotools';
       Directory(autoDir).createSync(recursive: true);
       if (await _ensureConfigure(source, logger)) {
-        rebuilt = await _autotoolsBuild(source, autoDir, logger);
+        rebuilt = await _autotoolsBuild(source, autoDir, logger, arch: arch);
       } else if (!File('$source/CMakeLists.txt').existsSync()) {
         logger.severe(
           'LibreDWG has no usable build system. Install cmake, or autoconf so '
@@ -224,8 +239,8 @@ Future<_LibreDwg?> _buildFromSource(
   final built = _findArchive(buildDir.toFilePath());
   if (built == null) {
     logger.severe(
-      'LibreDWG finished building but libredwg.a was not produced in '
-      '${buildDir.toFilePath()}',
+      'LibreDWG finished building but libredwg.a was not produced for $arch '
+      'in ${buildDir.toFilePath()}',
     );
     return null;
   }
@@ -407,6 +422,9 @@ _LibreDwg _fromSourceBuild(String source, String archive) {
   return _LibreDwg(root: source, includes: [headerDir], archive: archive);
 }
 
+/// The architecture name Xcode and CMake expect (`x86_64`, not `x64`).
+String _appleArchName(String arch) => arch == 'x64' ? 'x86_64' : arch;
+
 String? _findArchive(String buildDir) {
   for (final path in [
     '$buildDir/libredwg.a',
@@ -461,8 +479,13 @@ _LibreDwg? _probePrefix(String prefix) {
   return null;
 }
 
-Future<bool> _cmakeBuild(String source, String buildDir, Logger logger) async {
-  logger.info('Configuring LibreDWG with cmake in $buildDir');
+Future<bool> _cmakeBuild(
+  String source,
+  String buildDir,
+  Logger logger, {
+  required String arch,
+}) async {
+  logger.info('Configuring LibreDWG with cmake in $buildDir for $arch');
   // LibreDWG's generated config.h defines `_POSIX_C_SOURCE=200809L` so strdup
   // is visible. On Apple that hides `memmem`, while cmake's configure check
   // still finds the symbol. The compile then dies on an undeclared `memmem`
@@ -482,6 +505,7 @@ Future<bool> _cmakeBuild(String source, String buildDir, Logger logger) async {
     // CMake 4 drops compatibility with projects that still declare 2.8.
     '-DCMAKE_POLICY_VERSION_MINIMUM=3.5',
     if (Platform.isMacOS) ...[
+      '-DCMAKE_OSX_ARCHITECTURES=${_appleArchName(arch)}',
       '-DCMAKE_C_FLAGS=-D_DARWIN_C_SOURCE',
       '-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0',
     ],
@@ -528,9 +552,10 @@ Future<bool> _ensureConfigure(String source, Logger logger) async {
 Future<bool> _autotoolsBuild(
   String source,
   String buildDir,
-  Logger logger,
-) async {
-  logger.info('Configuring LibreDWG with autotools in $buildDir');
+  Logger logger, {
+  required String arch,
+}) async {
+  logger.info('Configuring LibreDWG with autotools in $buildDir for $arch');
   final configure = await Process.run(
     '$source/configure',
     const [
@@ -545,7 +570,7 @@ Future<bool> _autotoolsBuild(
       ...Platform.environment,
       if (Platform.isMacOS) 'MACOSX_DEPLOYMENT_TARGET': '12.0',
       'CFLAGS':
-          '-O2 -fPIC${Platform.isMacOS ? ' -mmacosx-version-min=12.0' : ''} '
+          '-O2 -fPIC${Platform.isMacOS ? ' -arch ${_appleArchName(arch)} -mmacosx-version-min=12.0' : ''} '
                   '${Platform.environment['CFLAGS'] ?? ''}'
               .trim(),
     },
