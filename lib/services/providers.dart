@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_extension/fancad_extension.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../storage/app_settings.dart';
 import '../storage/settings.dart';
+import 'clipboard.dart';
+import 'text_search.dart';
 
 part 'providers.g.dart';
 
@@ -22,9 +25,9 @@ SettingsStore settings(Ref ref) =>
 @Riverpod(keepAlive: true)
 AppSettings appSettings(Ref ref) => AppSettings(ref.watch(settingsProvider));
 
-/// Drawing file access. Overridden in tests with an in-memory DWG adapter.
+/// Drawing file access. Tests override it when they need a paused service.
 @Riverpod(keepAlive: true)
-DrawingFileService drawingFiles(Ref ref) => DrawingFileService();
+DrawingFileService drawingFiles(Ref ref) => const DrawingFileService();
 
 @Riverpod(keepAlive: true)
 CommandRegistry commandRegistry(Ref ref) {
@@ -32,6 +35,12 @@ CommandRegistry commandRegistry(Ref ref) {
   ref.onDispose(registry.dispose);
   return registry;
 }
+
+@Riverpod(keepAlive: true)
+ClipboardStore clipboard(Ref ref) => ClipboardStore();
+
+@Riverpod(keepAlive: true)
+TextSearchService textSearchService(Ref ref) => const DrawingTextSearch();
 
 /// Where saved extensions live (`extensions/*.js`). Overridden at startup with
 /// a real path, and left empty in tests so a test run never reads the user's

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/foundation.dart';
@@ -17,7 +18,9 @@ import '../models/settings.dart';
 import '../models/workspace.dart';
 import '../storage/workspace.dart';
 import 'assistant_images.dart';
+import 'clipboard.dart';
 import 'command_line.dart';
+import 'frame_timing.dart';
 import 'layout.dart';
 import 'providers.dart';
 
@@ -60,10 +63,12 @@ WorkspaceFileCommandsFactory? workspaceFileCommandsOverride(Ref ref) => null;
 /// [CommandRegistry.run] call routed through here, so there is exactly one place
 /// where a change can be observed, logged, undone or refused.
 @Riverpod(keepAlive: true)
-class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
+class WorkspaceNotifier extends _$WorkspaceNotifier
+    implements CommandServices, RenderStatsSource {
   @override
   WorkspaceModel build() {
     commands = ref.read(commandRegistryProvider);
+    clipboard = ref.read(clipboardProvider);
     drawingFiles = ref.read(drawingFilesProvider);
     _drawing = ref.read(appSettingsProvider).workspace;
     _draft = _drawing.load();
@@ -141,7 +146,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   /// Geometry clipboard shared by every open tab. COPYCLIP writes here;
   /// PASTECLIP in another drawing reads it. Not the OS clipboard.
-  final DrawingClipboard clipboard = DrawingClipboard();
+  late final ClipboardStore clipboard;
 
   ShxFontTable _shxFonts = const ShxFontTable();
   bool _disposed = false;
@@ -156,6 +161,12 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   WorkspaceModel get _store => state;
   final Map<String, DocumentTab> _hosts = {};
+
+  /// A tool-bearing tab for host commands that run with no drawing open.
+  ///
+  /// It is not in the tab strip. Reused so the command context does not leak a
+  /// provider or an engine every time the user opens the file menu.
+  DocumentTab? _transientTab;
 
   /// In-flight opens, keyed by file identity, so a second click waits on the
   /// same read instead of starting another tab.
@@ -327,12 +338,13 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       current.promoteToDrawing(title: title);
       return current;
     }
-    final session = DocumentSession(
+    final engine = AdvancedCadEngine.fromDocument(
+      document ?? CadDocument(),
       id: '${_nextSessionId++}',
-      document: document ?? CadDocument(),
       title: title,
+      files: drawingFiles,
     );
-    final tab = _adopt(_createTab(session), _openRecord(session));
+    final tab = _adopt(_createTab(engine), _openRecord(engine));
     _discardIdleStartPages();
     return tab;
   }
@@ -344,11 +356,11 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       activate(i);
       return _hosts[_store.sessions[i].id]!;
     }
-    final session = DocumentSession(
+    final engine = AdvancedCadEngine.create(
       id: '${_nextSessionId++}',
-      document: CadDocument(),
+      files: drawingFiles,
     );
-    return _adopt(_createTab(session), _openRecord(session, isStartPage: true));
+    return _adopt(_createTab(engine), _openRecord(engine, isStartPage: true));
   }
 
   /// Opens [path]. The tab appears before the file is read, so the start page
@@ -394,14 +406,15 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   /// Puts an empty tab for [stored] on screen before the read starts.
   DocumentTab _openPlaceholder(String stored) {
-    final session = DocumentSession(
+    final engine = AdvancedCadEngine.fromDocument(
+      CadDocument(),
       id: '${_nextSessionId++}',
-      document: CadDocument(),
       filePath: stored,
+      files: drawingFiles,
     );
     final tab = _adopt(
-      _createTab(session),
-      _openRecord(session).copyWith(loading: true),
+      _createTab(engine),
+      _openRecord(engine).copyWith(loading: true),
     );
     _discardIdleStartPages();
     return tab;
@@ -449,18 +462,16 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   ) {
     final index = indexOfSession(placeholder.session);
     if (index < 0) return null;
-    final session = DocumentSession(
+    final engine = AdvancedCadEngine.fromDocument(
+      result.document,
       id: '${_nextSessionId++}',
-      document: result.document,
       filePath: stored,
+      diagnostics: result.diagnostics,
+      files: drawingFiles,
     );
-    final tab = _createTab(session);
-    _swapHost(
-      index,
-      tab,
-      _openRecord(session, diagnostics: result.diagnostics),
-    );
-    tab.viewport.zoomToExtents(result.document);
+    final tab = _createTab(engine);
+    _swapHost(index, tab, _openRecord(engine, diagnostics: result.diagnostics));
+    tab.viewport.zoomToExtents(engine.session.document);
     _rememberRecent(stored);
     _syncRecent();
     unawaited(reloadShxFonts(drawingPath: stored));
@@ -515,11 +526,9 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
 
   /// Writes the active document, returning the path written or null.
   ///
-  /// DWG writing is not in this build yet, so rather than silently doing
-  /// nothing or silently writing a file the user cannot reopen elsewhere, a save
-  /// to an unwritable format falls back to FanCAD's own `.fcb` alongside it and
-  /// says so. Losing work is not an acceptable failure mode; a clearly named
-  /// sidecar file is.
+  /// Saving chooses a format the document can actually represent: DWG when the
+  /// writer covers every object, otherwise a sibling DXF. Losing work is not an
+  /// acceptable failure mode; a clearly named sidecar file is.
   Future<String?> saveActive([String? path]) async {
     final tab = activeDrawing;
     if (tab == null) {
@@ -548,9 +557,8 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     }
 
     try {
-      final outcome = await drawingFiles.save(target, tab.document);
+      final outcome = await tab.engine.save(target);
       final written = _fileIdentity(outcome.path);
-      tab.markSaved(written);
       _rememberRecent(written);
       if (outcome.usedFallback && outcome.reason.isNotEmpty) {
         notify(outcome.reason);
@@ -563,15 +571,27 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     }
   }
 
-  DocumentTab _createTab(DocumentSession session) {
-    final tab = ref.read(documentTabNotifierProvider(session.id).notifier);
+  DocumentTab _createTab(CadEngine engine) {
+    final tab = ref.read(
+      documentTabNotifierProvider(engine.session.id).notifier,
+    );
     tab.attach(
-      session: session,
+      engine: engine,
       snapEngine: snapEngine,
       selectionTool: _selectionTool(),
       onWrite: commandLine.write,
     );
     return tab;
+  }
+
+  DocumentTab _transient() {
+    final existing = _transientTab;
+    if (existing != null) return existing;
+    final engine = AdvancedCadEngine.create(
+      id: 'transient',
+      files: drawingFiles,
+    );
+    return _transientTab = _createTab(engine);
   }
 
   DocumentTab _adopt(DocumentTab tab, WorkspaceSessionModel record) {
@@ -609,17 +629,17 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   }
 
   WorkspaceSessionModel _openRecord(
-    DocumentSession session, {
+    CadEngine engine, {
     bool isStartPage = false,
     List<String> diagnostics = const [],
   }) {
     return WorkspaceSessionModel(
-      id: session.id,
+      id: engine.session.id,
       isStartPage: isStartPage,
       showGrid: _draft.showGrid,
       diagnostics: diagnostics,
-      title: session.title,
-      isDirty: session.isDirty,
+      title: engine.title,
+      isDirty: engine.isDirty,
     );
   }
 
@@ -879,8 +899,8 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
     if (tab == null) return;
     final ids = tab.selection.ids.toList();
     if (ids.isEmpty) return;
-    final base = DrawingClip.lowerLeftOf(tab.document, ids);
-    final clip = DrawingClip.extract(tab.document, ids, basePoint: base);
+    final base = ClipPayload.lowerLeftOf(tab.document, ids);
+    final clip = ClipPayload.extract(tab.document, ids, basePoint: base);
     if (clip == null) return;
     clipboard.clip = clip;
     unawaited(clearClipboardPicture());
@@ -949,13 +969,7 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
         (openingShell && descriptor.id == 'file.close'
             ? shell
             : (_isHostCommand(descriptor.id)
-                  ? (active ??
-                        _createTab(
-                          DocumentSession(
-                            id: 'transient',
-                            document: CadDocument(),
-                          ),
-                        ))
+                  ? (active ?? _transient())
                   : newDocument(title: 'Drawing1')));
     _setStore(_store.copyWith(runningCommand: descriptor.id));
 
@@ -1157,12 +1171,8 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
           args: args,
           source: source,
           contextBuilder: (each) {
-            final transient = DocumentSession(
-              id: 'transient',
-              document: CadDocument(),
-            );
             return CommandContext(
-              session: transient,
+              session: _transient().session,
               args: CommandArgs(args),
               input: ArgsCommandInput(
                 args: CommandArgs(args),
@@ -1659,24 +1669,18 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
   /// and entity totals stay on `query.summary`.
   @override
   Map<String, Object?> describeSession(DocumentSession session) {
-    DocumentTab? tab;
-    for (final host in _hosts.values) {
-      if (identical(host.session, session)) {
-        tab = host;
-        break;
-      }
-    }
+    final tab = _tabFor(session);
     Map<String, Object?>? viewport;
     if (tab != null) {
       viewport = _describedView(tab.viewport.viewport);
     }
-    final path = (tab?.filePath ?? session.filePath)?.trim() ?? '';
+    final path = tab?.filePath?.trim() ?? '';
     final running = state.runningCommand?.trim() ?? '';
     final prompt = commandLine.pending?.message.trim() ?? '';
     final modes = [for (final mode in snapEngine.modes) mode.name]..sort();
     return {
       'drawingId': session.id,
-      'title': tab?.title ?? session.title,
+      'title': tab?.title ?? session.id,
       if (path.isNotEmpty) 'path': path,
       'selectionCount': session.selection.ids.length,
       'viewport': viewport,
@@ -1691,6 +1695,68 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       'lastCreatedIds': [...state.lastCreatedIds.take(32)],
       'lastModifiedIds': [...state.lastModifiedIds.take(32)],
     };
+  }
+
+  /// The tab behind [session], or null when it is not hosted here.
+  DocumentTab? _tabFor(DocumentSession session) {
+    for (final host in _hosts.values) {
+      if (identical(host.session, session)) return host;
+    }
+    return null;
+  }
+
+  @override
+  Map<String, Object?> describeRender(DocumentSession session) {
+    final tab = _tabFor(session);
+    if (tab == null) return const {};
+    return {
+      'drawingId': session.id,
+      'viewport': _describedView(tab.viewport.viewport),
+      'render': tab.renderDiagnostics.toJson(),
+      'frame': tab.frameTiming.stats.toJson(),
+    };
+  }
+
+  @override
+  void resetRenderStats(DocumentSession session, {bool regen = true}) {
+    final tab = _tabFor(session);
+    if (tab == null) return;
+    tab.frameTiming.clear();
+    if (regen) tab.invalidateAll();
+  }
+
+  @override
+  String drawingTitle(DocumentSession session) {
+    final tab = tabForSession(session);
+    return tab?.title ?? session.id;
+  }
+
+  @override
+  String? drawingPath(DocumentSession session) =>
+      tabForSession(session)?.filePath;
+
+  @override
+  bool drawingIsDirty(DocumentSession session) =>
+      tabForSession(session)?.isDirty ?? session.isDirty;
+
+  @override
+  String? maximizedLayout(DocumentSession session) =>
+      tabForSession(session)?.maximizedLayoutName;
+
+  @override
+  int? maximizedViewport(DocumentSession session) =>
+      tabForSession(session)?.maximizedViewportIndex;
+
+  @override
+  void setMaximizedViewport(
+    DocumentSession session, {
+    String? layout,
+    int? index,
+  }) {
+    final tab = tabForSession(session);
+    if (tab == null) return;
+    tab.maximizedLayoutName = layout;
+    tab.maximizedViewportIndex = index;
   }
 
   @override
@@ -1769,6 +1835,10 @@ class WorkspaceNotifier extends _$WorkspaceNotifier implements CommandServices {
       sub.cancel();
     }
     _selectionReveals.clear();
+    if (_transientTab != null) {
+      ref.invalidate(documentTabNotifierProvider('transient'));
+      _transientTab = null;
+    }
     _hosts.clear();
     if (!_approvals.isClosed) _approvals.close();
     if (!_panelReveals.isClosed) _panelReveals.close();
@@ -1815,7 +1885,7 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
     return const DocumentTabModel();
   }
 
-  DocumentSession? _session;
+  CadEngine? _engine;
   ViewportController? _viewport;
   ToolController? _tools;
   bool _attached = false;
@@ -1825,6 +1895,7 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
   /// on the canvas widget so swapping the widget does not throw the recording
   /// away, and so picking can replay what was drawn.
   final CanvasRenderer renderer = CanvasRenderer();
+  final FrameTimingTracker frameTiming = FrameTimingTracker();
   final _TabTicks _ticks = _TabTicks();
 
   /// Canvas text search for this tab. Not written to settings.
@@ -1847,22 +1918,31 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
   /// The most recent scene, for the canvas zoom readout's draw-call tooltip.
   RenderScene? lastScene;
 
-  DocumentSession get session => _session!;
+  /// Paper layout and viewport left by VPMAX so VPMIN can restore the sheet.
+  String? maximizedLayoutName;
+  int? maximizedViewportIndex;
+
+  CadEngine get engine => _engine!;
+  DocumentSession get session => engine.session;
+
+  /// Retained-scene and cache state for the live frame diagnostics.
+  RenderDiagnostics get renderDiagnostics => renderer.diagnostics;
   ViewportController get viewport => _viewport!;
   ToolController get tools => _tools!;
 
   WorkspaceSessionModel get _record => _readRecord?.call() ?? _unbound;
 
-  /// Wires the drawing session onto this family member.
+  /// Wires the drawing engine onto this family member.
   void attach({
-    required DocumentSession session,
+    required CadEngine engine,
     SnapEngine? snapEngine,
     SelectionTool? selectionTool,
     void Function(String message)? onWrite,
   }) {
     if (_attached) return;
     _attached = true;
-    _session = session;
+    _engine = engine;
+    final session = engine.session;
     _unbound = WorkspaceSessionModel(id: session.id);
     _viewport = ViewportController();
     _tools = ToolController(
@@ -1897,7 +1977,7 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
   }
 
   /// The file this tab was opened from, if any.
-  String? get filePath => session.filePath;
+  String? get filePath => engine.filePath;
 
   /// Import warnings, kept so the user can review them after the fact.
   List<String> get diagnostics => _record.diagnostics;
@@ -1924,18 +2004,18 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
   SelectionSet get selection => session.selection;
   UndoStack get history => session.history;
 
-  String get title => session.title;
-  bool get isDirty => session.isDirty;
+  String get title => engine.title;
+  bool get isDirty => engine.isDirty;
 
   /// Turns a start tab into an empty drawing, keeping this tab's place.
   void promoteToDrawing({String? title}) {
     if (!isStartPage) return;
-    if (title != null) session.title = title;
+    if (title != null) engine.title = title;
     _patch(
       (record) => record.copyWith(
         isStartPage: false,
-        title: session.title,
-        isDirty: session.isDirty,
+        title: engine.title,
+        isDirty: engine.isDirty,
       ),
     );
   }
@@ -1980,7 +2060,7 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
 
   /// Records that the document has been written to [path].
   void markSaved(String path) {
-    session.markSaved(path);
+    engine.markSaved(path);
     _tick();
   }
 
@@ -2026,8 +2106,9 @@ class DocumentTabNotifier extends _$DocumentTabNotifier implements Listenable {
     _tools?.removeListener(_tick);
     _tools?.dispose();
     renderer.dispose();
+    frameTiming.dispose();
     _viewport?.dispose();
-    _session?.dispose();
+    _engine?.dispose();
     textSearch.dispose();
     _ticks.dispose();
   }

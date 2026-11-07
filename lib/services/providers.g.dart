@@ -48,9 +48,9 @@ final appSettingsProvider = Provider<AppSettings>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef AppSettingsRef = ProviderRef<AppSettings>;
-String _$drawingFilesHash() => r'17296ba422f53f3bc908b95ec01d385e04628eec';
+String _$drawingFilesHash() => r'100f35d33e0807ab09d7f219aa27fcf3034ab1fd';
 
-/// Drawing file access. Overridden in tests with an in-memory DWG adapter.
+/// Drawing file access. Tests override it when they need a paused service.
 ///
 /// Copied from [drawingFiles].
 @ProviderFor(drawingFiles)
@@ -84,6 +84,40 @@ final commandRegistryProvider = Provider<CommandRegistry>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef CommandRegistryRef = ProviderRef<CommandRegistry>;
+String _$clipboardHash() => r'813c68bfee7db5a48fdea3e03ccaf9ac3b5d7d03';
+
+/// See also [clipboard].
+@ProviderFor(clipboard)
+final clipboardProvider = Provider<ClipboardStore>.internal(
+  clipboard,
+  name: r'clipboardProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$clipboardHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ClipboardRef = ProviderRef<ClipboardStore>;
+String _$textSearchServiceHash() => r'ca2b29bae6e45dec8da883a54b6c366adced99bd';
+
+/// See also [textSearchService].
+@ProviderFor(textSearchService)
+final textSearchServiceProvider = Provider<TextSearchService>.internal(
+  textSearchService,
+  name: r'textSearchServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$textSearchServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TextSearchServiceRef = ProviderRef<TextSearchService>;
 String _$extensionsDirectoryHash() =>
     r'2ef63181acbd0412c316f2df1c3aa5731f5eb434';
 

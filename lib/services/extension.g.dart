@@ -6,7 +6,7 @@ part of 'extension.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$extensionNotifierHash() => r'930dc1b8b908f8b1b6c6412d3f99a63d98b0e2ea';
+String _$extensionNotifierHash() => r'ac4fc122501bf7678f07170f441ca051355d671c';
 
 /// Saved extensions and the runner that evaluates them.
 ///

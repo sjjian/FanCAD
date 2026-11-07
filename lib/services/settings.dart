@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:fancad_ai/fancad_ai.dart';
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_ops/fancad_ops.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -234,7 +235,12 @@ class McpNotifier extends _$McpNotifier {
   /// The drawing catalog behind the MCP `fancad` tool.
   OperationCatalog catalog() => _catalogs().drawing;
 
-  ({OperationCatalog drawing, OperationCatalog extensions}) _catalogs() =>
+  ({
+    OperationCatalog drawing,
+    OperationCatalog extensions,
+    OperationCatalog perf,
+  })
+  _catalogs() =>
       commandCatalogs(registry: _workspace.commands, execute: _execute);
 
   Future<CommandResult> _execute(
@@ -267,7 +273,7 @@ class McpNotifier extends _$McpNotifier {
     final listenPort = port ?? bind.port;
     final token = state.token;
     _lockPaths = lockPaths ?? _defaultLockPaths();
-    final (:drawing, :extensions) = _catalogs();
+    final (:drawing, :extensions, :perf) = _catalogs();
     final session = McpSession.tools([
       McpCliTool(
         name: fancadToolName,
@@ -286,6 +292,15 @@ class McpNotifier extends _$McpNotifier {
           final intercepted = await _approve(extensions, request);
           return intercepted ??
               await OpsDispatcher(extensions).dispatch(request);
+        },
+      ),
+      McpCliTool(
+        name: perfToolName,
+        description: perfToolDescription,
+        parameters: perfToolParameters,
+        dispatch: (request) async {
+          final intercepted = await _approve(perf, request);
+          return intercepted ?? await OpsDispatcher(perf).dispatch(request);
         },
       ),
     ]);

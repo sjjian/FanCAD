@@ -80,7 +80,7 @@ final updatesDirectoryProvider = Provider<String>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef UpdatesDirectoryRef = ProviderRef<String>;
-String _$updateNotifierHash() => r'6453a4c79de31f2e78a3c7f517d6d3421903d766';
+String _$updateNotifierHash() => r'0dda3f833ef6c88f90a640c2fa3bbf6409a113c0';
 
 /// Checks, downloads and hands the update to the platform.
 ///
