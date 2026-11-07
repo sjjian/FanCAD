@@ -39,7 +39,7 @@
 1. Supports DWG and DXF.
 2. A deeply integrated AI assistant.
 3. Expose an MCP server.
-4. Windows, macOS, and Linux.
+4. Windows, macOS (Apple Silicon for release builds), and Linux.
 5. A plugin system — the AI chat can add new plugins on its own.
 
 ## Building

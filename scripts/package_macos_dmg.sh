@@ -1,25 +1,15 @@
 #!/usr/bin/env bash
 # Build an unsigned, non-notarized DMG from the Flutter macOS release app.
 #
-# ARCH defaults to arm64. Set ARCH=x64 or ARCH=universal when packaging another
-# slice; the executable is checked with lipo before the DMG is named.
+# FanCAD ships Apple Silicon only. The executable is checked with lipo so a
+# stale x64 build cannot be published under an arm64 name.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_PATH="${APP_PATH:-$ROOT_DIR/build/macos/Build/Products/Release/fancad.app}"
 VERSION="${1:-}"
-ARCH="${ARCH:-arm64}"
 OUTPUT_DIR="${OUTPUT_DIR:-$ROOT_DIR/dist}"
-
-case "$ARCH" in
-  universal) expected_archs=("arm64" "x86_64") ;;
-  arm64) expected_archs=("arm64") ;;
-  x64) expected_archs=("x86_64") ;;
-  *)
-    echo "error: ARCH must be universal, arm64 or x64 (got $ARCH)" >&2
-    exit 2
-    ;;
-esac
+ARCH="arm64"
 
 if [[ -z "$VERSION" ]]; then
   VERSION="$(sed -n 's/^version:[[:space:]]*\([^+]*\).*/\1/p' "$ROOT_DIR/pubspec.yaml" | head -n1)"
@@ -33,13 +23,10 @@ fi
 
 executable="$APP_PATH/Contents/MacOS/$(basename "${APP_PATH%.app}")"
 actual_archs="$(lipo -archs "$executable" 2>/dev/null || true)"
-for wanted in "${expected_archs[@]}"; do
-  if [[ " $actual_archs " != *" $wanted "* ]]; then
-    echo "error: $executable is '$actual_archs', expected $ARCH ($wanted)" >&2
-    echo "build a universal app or set ARCH to the architecture you built" >&2
-    exit 1
-  fi
-done
+if [[ " $actual_archs " != *" arm64 "* ]]; then
+  echo "error: $executable is '$actual_archs', expected arm64 (Apple Silicon)" >&2
+  exit 1
+fi
 
 DMG_NAME="fancad-macos-${ARCH}-${VERSION}.dmg"
 DMG_PATH="$OUTPUT_DIR/$DMG_NAME"

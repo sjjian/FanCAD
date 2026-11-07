@@ -14,7 +14,6 @@ permissions:
 
 env:
   FLUTTER_VERSION: 3.38.4
-  MACOS_ARCH: arm64
   WINDOWS_ARCH: x64
   LINUX_ARCH: x64
 
@@ -49,7 +48,9 @@ jobs:
 
   build-macos:
     needs: version
-    runs-on: macos-latest
+    # Apple Silicon only. macos-14 is an arm64 runner, so the app is built
+    # natively for arm64 without a cross-compile or universal merge.
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
@@ -69,8 +70,6 @@ jobs:
         run: flutter build macos --release
 
       - name: Package DMG
-        env:
-          ARCH: ${{ env.MACOS_ARCH }}
         run: |
           chmod +x scripts/package_macos_dmg.sh
           scripts/package_macos_dmg.sh "${{ needs.version.outputs.version }}"
@@ -78,7 +77,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: fancad-macos
-          path: dist/fancad-macos-${{ env.MACOS_ARCH }}-${{ needs.version.outputs.version }}.dmg
+          path: dist/fancad-macos-arm64-${{ needs.version.outputs.version }}.dmg
           if-no-files-found: error
 
   build-windows:

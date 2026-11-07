@@ -37,7 +37,7 @@
 1. 支持DWG, DXF格式；
 2. 深度集成AI助手；
 3. 支持对外提供 MCP；
-4. 支持 Windows、macOS、Linux；
+4. 支持 Windows、macOS（发布包仅 Apple Silicon / arm64）、Linux；
 5. 支持插件系统，且可以由 AI Chat 自行添加插件。
 
 ## 构建
