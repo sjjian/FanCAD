@@ -49,6 +49,7 @@ class DrawingCache {
 
   RenderScene? get scene => _scene;
   ui.Picture? get picture => _picture;
+  int get documentVersion => _documentVersion;
 
   void invalidate() {
     _scene = null;
@@ -58,8 +59,18 @@ class DrawingCache {
     _beyondCoverage = 0;
   }
 
-  void store(RenderScene scene, ui.Picture picture, int documentVersion) {
-    if (!identical(_picture, picture)) _picture?.dispose();
+  /// Replaces the recording.
+  ///
+  /// [keepPrevious] leaves the old picture alive so the renderer can fade a
+  /// newly exposed strip in instead of letting it pop. The caller owns that
+  /// picture and must dispose it.
+  void store(
+    RenderScene scene,
+    ui.Picture picture,
+    int documentVersion, {
+    bool keepPrevious = false,
+  }) {
+    if (!identical(_picture, picture) && !keepPrevious) _picture?.dispose();
     _scene = scene;
     _picture = picture;
     _documentVersion = documentVersion;
@@ -100,7 +111,19 @@ class DrawingCache {
     // camera settles the new size has to be recorded, including the strip the
     // overscan did not cover.
     final resized = scene.viewport.size != viewport.size;
-    if (placement.isTranslation && !resized) return placement;
+    if (placement.isTranslation && !resized) {
+      // A zoom is left unrounded while it is in flight, then locked once it
+      // stops. That last lock can move the camera by a fraction of a pixel;
+      // replaying a picture at a fractional offset would blur every hairline,
+      // so ask for the exact build instead.
+      final dx = placement.offset.dx;
+      final dy = placement.offset.dy;
+      final aligned =
+          (dx - dx.roundToDouble()).abs() < 1e-6 &&
+          (dy - dy.roundToDouble()).abs() < 1e-6;
+      if (!aligned) return null;
+      return placement;
+    }
     if (!interactive) return null;
     if (resized && placement.isTranslation) return placement;
     if (!placement.scale.isFinite) return null;
@@ -127,6 +150,30 @@ class DrawingCache {
     final scene = _scene;
     final picture = _picture;
     if (scene == null || picture == null) return;
+    _paintStored(canvas, scene, picture, placement, viewport, painter);
+  }
+
+  /// Paints a recording that is no longer the current one.
+  ///
+  /// Used for the short cross-fade that fills in geometry a zoom-out has just
+  /// revealed.
+  static void replayStored(
+    ui.Canvas canvas,
+    RenderScene scene,
+    ui.Picture picture,
+    ScenePlacement placement,
+    CadViewport viewport,
+    ScenePainter painter,
+  ) => _paintStored(canvas, scene, picture, placement, viewport, painter);
+
+  static void _paintStored(
+    ui.Canvas canvas,
+    RenderScene scene,
+    ui.Picture picture,
+    ScenePlacement placement,
+    CadViewport viewport,
+    ScenePainter painter,
+  ) {
     final ratio = viewport.devicePixelRatio;
     final dpr = ratio > 0 && ratio.isFinite ? ratio : 1.0;
     canvas.save();

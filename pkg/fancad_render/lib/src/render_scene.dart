@@ -72,7 +72,8 @@ class RenderScene {
     required this.culledCount,
     required this.buildTime,
     required this.coverage,
-  });
+    int? drawCalls,
+  }) : _drawCalls = drawCalls;
 
   /// A scene with a single drawing-order bucket, which is what a document
   /// without an explicit draw order produces.
@@ -88,7 +89,9 @@ class RenderScene {
     this.culledCount = 0,
     this.buildTime = Duration.zero,
     this.coverage = const Bounds2.empty(),
-  }) : passes = [
+    int? drawCalls,
+  }) : _drawCalls = drawCalls,
+       passes = [
          RenderPass(
            order: 0,
            images: images,
@@ -105,7 +108,8 @@ class RenderScene {
       segmentCount = 0,
       culledCount = 0,
       buildTime = Duration.zero,
-      coverage = const Bounds2.empty();
+      coverage = const Bounds2.empty(),
+      _drawCalls = null;
 
   final CadViewport viewport;
 
@@ -113,6 +117,9 @@ class RenderScene {
   /// the visible area. A pan that stays inside it can reuse the scene by
   /// translating it, which is what keeps panning a large drawing smooth.
   final Bounds2 coverage;
+
+  /// Number of draw calls when the caller knows it without walking [passes].
+  final int? _drawCalls;
 
   /// Drawing-order buckets, already sorted.
   final List<RenderPass> passes;
@@ -205,6 +212,8 @@ class RenderScene {
 
   /// Draw calls this scene will issue.
   int get drawCallCount {
+    final known = _drawCalls;
+    if (known != null) return known;
     var total = 0;
     for (final pass in passes) {
       total += pass.drawCallCount;

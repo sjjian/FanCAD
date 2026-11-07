@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/testing.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +30,10 @@ void main() {
 
   Future<int Function()> pumpCanvas(WidgetTester tester) async {
     var builds = 0;
+    // These cases are about the camera-baked recording; the retained world
+    // scene has its own tests and would bypass the cache they measure.
+    final renderer = CanvasRenderer(retainWorld: false);
+    addTearDown(renderer.dispose);
     await tester.pumpWidget(
       MaterialApp(
         home: SizedBox(
@@ -36,6 +42,7 @@ void main() {
           child: CadCanvas(
             document: document,
             controller: controller,
+            renderer: renderer,
             onSceneBuilt: (_) => builds++,
           ),
         ),
@@ -140,6 +147,52 @@ void main() {
 
     await tester.pump(CanvasRenderer.settleDelay);
     expect(builds(), greaterThan(before));
+  });
+
+  testWidgets('a rebuild past the coverage fades the revealed strip in', (
+    tester,
+  ) async {
+    final renderer = CanvasRenderer(retainWorld: false)
+      ..bindAppearance(palette: AciPalette.dark);
+    addTearDown(renderer.dispose);
+    var paints = 0;
+    renderer.onNeedsPaint = () => paints++;
+    final viewport = ViewportController(
+      initial: const CadViewport(
+        center: Vec2.zero(),
+        scale: 1,
+        size: Size(800, 600),
+      ),
+    );
+    addTearDown(viewport.dispose);
+
+    void draw() {
+      final recorder = ui.PictureRecorder();
+      renderer.render(
+        ui.Canvas(recorder),
+        RenderTarget(document: document, viewport: viewport.viewport),
+      );
+      recorder.endRecording().dispose();
+    }
+
+    draw();
+    // 2.5x out is past the 1.7x coverage the first scene was built for.
+    viewport.zoomBy(0.4, const Offset(400, 300));
+    await tester.pump();
+    draw();
+    await tester.pump(CanvasRenderer.settleDelay);
+    draw();
+
+    final before = paints;
+    await tester.pump(CanvasRenderer.fadeTick);
+    expect(
+      paints,
+      greaterThan(before),
+      reason: 'the fade asks for frames instead of showing the strip at once',
+    );
+    // The fade itself must not trigger another scene build.
+    await tester.pump(CanvasRenderer.fadeTick * CanvasRenderer.fadeSteps);
+    expect(paints, greaterThan(before));
   });
 
   test('the cache refuses a recording built for another document', () {

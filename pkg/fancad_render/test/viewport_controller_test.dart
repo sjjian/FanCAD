@@ -232,4 +232,24 @@ void main() {
     expect(controller.viewport.center.x, closeTo(point.x - shift, 0.2));
     expect(controller.viewport.center.y, closeTo(point.y, 0.2));
   });
+
+  test('repeated zoom notches do not slide the point under the cursor', () {
+    final controller = ViewportController(
+      initial: const CadViewport(
+        center: Vec2(100, 50),
+        scale: 0.5,
+        size: Size(800, 600),
+        devicePixelRatio: 2,
+      ),
+    );
+    addTearDown(controller.dispose);
+    const anchor = Offset(400, 300);
+    final world = controller.viewport.toWorld(anchor);
+    for (var i = 0; i < 12; i++) {
+      controller.zoomBy(1.2, anchor);
+      final screen = controller.viewport.toScreen(world);
+      expect(screen.dx, closeTo(anchor.dx, 1e-6));
+      expect(screen.dy, closeTo(anchor.dy, 1e-6));
+    }
+  });
 }

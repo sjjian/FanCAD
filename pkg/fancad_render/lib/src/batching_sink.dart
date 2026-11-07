@@ -8,6 +8,7 @@ import 'batch.dart';
 import 'device_space.dart';
 import 'drawing_font.dart';
 import 'palette.dart';
+import 'polyline_simplify.dart';
 import 'tessellation_cache.dart';
 import 'viewport.dart';
 
@@ -20,9 +21,11 @@ import 'viewport.dart';
 /// Plot and PDF go through `fancad_core`'s plotter, not this sink. The canvas
 /// is the only production caller.
 class BatchingSink implements GeometrySink {
-  /// Text below one physical pixel is drawn as a bar. Labels of two to four
-  /// pixels stay as type; only ink that would vanish into a speck is replaced.
-  static const double minimumTextPixels = 1;
+  /// Text below the logical quick-text threshold is drawn as a bar. The scene
+  /// builder already replaces its own labels with boxes at this height; this
+  /// catches the text carried by leaders and dimension graphics, which do not
+  /// pass through [textPixelHeight].
+  static const double minimumTextPixels = minimumEmittedTextPixels;
 
   BatchingSink({
     required this.viewport,
@@ -30,9 +33,12 @@ class BatchingSink implements GeometrySink {
     this.fonts = const DrawingFontMap(),
     this.lineTypes = const {},
     this.globalLineTypeScale = 1,
+    this.simplifyPixels = 0.15,
   }) : pixels = viewport.pixels;
 
   final CadViewport viewport;
+  final double simplifyPixels;
+  late final double _simplifyWorld = viewport.pixelsToWorld(simplifyPixels);
 
   /// The world-to-physical-pixel mapping every primitive is projected through.
   final PixelSpace pixels;
@@ -132,6 +138,9 @@ class BatchingSink implements GeometrySink {
   @override
   void polyline(Float64List xy, ResolvedStyle style, {bool closed = false}) {
     if (xy.length < 4) return;
+    if (simplifyPixels > 0) {
+      xy = simplifyPolyline(xy, _simplifyWorld, closed: closed);
+    }
     final clip = worldClip;
     if (clip != null) {
       _polylineClipped(xy, style, closed: closed, clip: clip);
@@ -326,11 +335,17 @@ class BatchingSink implements GeometrySink {
     }
     final key = _keyFor(style);
     final batch = fillBatches.putIfAbsent(key, () => FillBatch(key));
-    batch.addRing(_project(xy));
+    batch.addRing(_project(_simplifiedRing(xy)));
     for (final hole in holes) {
-      if (hole.length >= 6) batch.addRing(_project(hole));
+      if (hole.length >= 6) {
+        batch.addRing(_project(_simplifiedRing(hole)));
+      }
     }
   }
+
+  Float64List _simplifiedRing(Float64List ring) => simplifyPixels > 0
+      ? simplifyPolyline(ring, _simplifyWorld, closed: true)
+      : ring;
 
   @override
   void point(double x, double y, ResolvedStyle style) {
@@ -352,7 +367,7 @@ class BatchingSink implements GeometrySink {
     }
     final pixelHeight = geometry.height * pixels.scale;
     final color = _colorFor(style);
-    if (pixelHeight < minimumTextPixels) {
+    if (pixelHeight < pixels.fromLogical(minimumTextPixels)) {
       // Below a few pixels the glyphs are illegible, but the presence of text
       // is still information. Draw the block it occupies.
       final box = geometry.estimatedBounds();

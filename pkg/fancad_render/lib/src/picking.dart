@@ -212,7 +212,13 @@ class Picker {
     GeometrySink sink, {
     TessellationCache? cache,
   }) {
-    if (cache != null && context.transform.isIdentity) {
+    // A block expansion belongs to the camera that produced it, so it cannot
+    // be replayed from the camera-independent tessellation cache. A pick has
+    // no query or pixel scale, which makes the expansion camera-free.
+    final cameraBound =
+        entity.emitsBlockContents &&
+        (context.query != null || context.pixelsPerUnit > 0);
+    if (cache != null && context.transform.isIdentity && !cameraBound) {
       final bucket = TessellationCache.toleranceBucket(context.tolerance);
       final cached = cache.lookup(entity, bucket, minExtent: context.minExtent);
       if (cached != null) {
@@ -235,6 +241,8 @@ class Picker {
     double minExtent = 0,
     double Function(String text, double height)? measureWidth,
     ShxFontTable shxFonts = const ShxFontTable(),
+    double pixelsPerUnit = 0,
+    Bounds2? query,
   }) sync* {
     if (document.isEditingBlock) {
       yield LayoutSpace(
@@ -246,6 +254,8 @@ class Picker {
           minExtent: minExtent,
           measureWidth: measureWidth,
           shxFonts: shxFonts,
+          pixelsPerUnit: pixelsPerUnit,
+          query: query,
         ),
       );
       return;
@@ -259,6 +269,8 @@ class Picker {
         minExtent: minExtent,
         measureWidth: measureWidth,
         shxFonts: shxFonts,
+        pixelsPerUnit: pixelsPerUnit,
+        query: query,
       ),
     );
     final layout = document.activeLayout;
@@ -279,6 +291,8 @@ class Picker {
           minExtent: minExtent,
           measureWidth: measureWidth,
           shxFonts: shxFonts,
+          pixelsPerUnit: pixelsPerUnit,
+          query: query,
         ),
         paperClip: viewport.paperBounds,
         hiddenLayers: {

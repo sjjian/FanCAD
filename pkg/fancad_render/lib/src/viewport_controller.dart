@@ -166,10 +166,10 @@ class ViewportController extends ChangeNotifier {
   }
 
   /// Moves the camera to [next] and publishes it.
-  void _moveTo(CadViewport next) {
-    final locked = next.pixelLocked();
-    if (locked == _viewport) return;
-    _viewport = locked;
+  void _moveTo(CadViewport next, {bool lock = true}) {
+    final value = lock ? next.pixelLocked() : next;
+    if (value == _viewport) return;
+    _viewport = value;
     notifyListeners();
   }
 
@@ -206,8 +206,13 @@ class ViewportController extends ChangeNotifier {
     _moveTo(_viewport.panned(screenDelta));
   }
 
-  void zoomBy(double factor, Offset anchor) =>
-      _moveTo(_viewport.zoomed(factor, anchor));
+  void zoomBy(double factor, Offset anchor) {
+    // Interactive zoom stays on the unrounded camera. Locking a notch moved
+    // the point under the cursor by up to half a pixel, the error accumulated
+    // across notches, and rounding again when the camera stopped left a small
+    // visible shift at the end of the gesture.
+    _moveTo(_viewport.zoomed(factor, anchor), lock: false);
+  }
 
   void zoomAtCenter(double factor) => _moveTo(_viewport.zoomedAtCenter(factor));
 

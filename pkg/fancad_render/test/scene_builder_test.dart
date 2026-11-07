@@ -285,7 +285,7 @@ void main() {
       expect(scene.lineBatches, isEmpty);
     });
 
-    test('text below the legibility threshold degrades to a bar', () {
+    test('tiny text stays visible as a quick-text box', () {
       final document = CadDocument()
         ..addEntity(
           TextEntity(
@@ -295,15 +295,26 @@ void main() {
             height: 2.5,
           ),
         );
-      // 2.5 units at 0.25 pixels per unit is below one physical pixel.
+      // 2.5 units at 0.25 pixels per unit is well below one logical pixel.
       const tiny = CadViewport(center: Vec2.zero(), scale: 0.25, size: size);
       final small = newBuilder().build(document, tiny);
       expect(small.texts, isEmpty);
+      // No text layout, but the note leaves a placeholder rather than vanishing.
       expect(small.fillBatches, isNotEmpty);
 
-      // Small CAD labels remain useful above a pixel instead of becoming
-      // opaque grey bars.
-      const near = CadViewport(center: Vec2.zero(), scale: 0.5, size: size);
+      // One logical pixel is enough for type again, so the note is readable on
+      // the way back in without a second placeholder transition.
+      const borderline = CadViewport(
+        center: Vec2.zero(),
+        scale: 0.7,
+        size: size,
+      );
+      final borderlineScene = newBuilder().build(document, borderline);
+      expect(borderlineScene.texts, hasLength(1));
+      expect(borderlineScene.fillBatches, isEmpty);
+
+      // A legible CAD label remains type rather than an opaque grey bar.
+      const near = CadViewport(center: Vec2.zero(), scale: 0.8, size: size);
       final large = newBuilder().build(document, near);
       expect(large.texts, hasLength(1));
       expect(large.texts.single.text, 'REVISION B');
@@ -586,6 +597,108 @@ void main() {
       expect(scene.lineBatches, isNotEmpty);
       expect(scene.segmentCount, lessThan(10));
       expect(scene.pointBatches, isNotEmpty);
+    });
+
+    test(
+      'a block cache from one camera cannot hide another camera\'s members',
+      () {
+        final document = CadDocument();
+        document
+          ..addEntity(
+            const LineEntity(id: 1, start: Vec2(0, 0), end: Vec2(1, 0)),
+            blockName: 'TWO_END',
+          )
+          ..addEntity(
+            const LineEntity(id: 2, start: Vec2(0, 1), end: Vec2(1, 1)),
+            blockName: 'TWO_END',
+          )
+          ..addEntity(
+            const LineEntity(id: 3, start: Vec2(100, 0), end: Vec2(101, 0)),
+            blockName: 'TWO_END',
+          )
+          ..addEntity(
+            const LineEntity(id: 4, start: Vec2(100, 1), end: Vec2(101, 1)),
+            blockName: 'TWO_END',
+          )
+          ..putBlock(
+            const BlockRecord(name: 'TWO_END', entityIds: [1, 2, 3, 4]),
+          )
+          ..addEntity(
+            const InsertEntity(
+              id: 5,
+              blockName: 'TWO_END',
+              position: Vec2.zero(),
+            ),
+          );
+        final builder = newBuilder();
+        // Same size, scale and extent bucket: only the query moves. The first
+        // build sees the left end of the block, the second the right end.
+        const near = CadViewport(
+          center: Vec2(0.5, 0),
+          scale: 10,
+          size: Size(100, 100),
+        );
+        const far = CadViewport(
+          center: Vec2(100.5, 0),
+          scale: 10,
+          size: Size(100, 100),
+        );
+        builder.build(document, near);
+        final scene = builder.build(document, far);
+        final boxes = [for (final batch in scene.lineBatches) ?batch.bounds];
+        expect(
+          boxes.any((box) => box.center.dx > 0),
+          isTrue,
+          reason:
+              'the far end of the block must appear, not the cached near end',
+        );
+      },
+    );
+
+    test('a block cannot freeze its text at placeholder size', () {
+      final document = CadDocument();
+      document
+        ..addEntity(
+          const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(100, 100)),
+          blockName: 'LABELED',
+        )
+        ..addEntity(
+          const TextEntity(
+            id: 2,
+            position: Vec2.zero(),
+            content: 'A',
+            height: 12,
+          ),
+          blockName: 'LABELED',
+        )
+        ..putBlock(const BlockRecord(name: 'LABELED', entityIds: [1, 2]))
+        ..addEntity(
+          const InsertEntity(
+            id: 3,
+            blockName: 'LABELED',
+            position: Vec2.zero(),
+          ),
+        );
+      final builder = newBuilder();
+      // 12 units at 0.08 is just under one logical pixel; at 0.086 it is just
+      // over. Both cameras share the tolerance and extent buckets.
+      const below = CadViewport(
+        center: Vec2.zero(),
+        scale: 0.08,
+        size: Size(100, 100),
+      );
+      const above = CadViewport(
+        center: Vec2.zero(),
+        scale: 0.086,
+        size: Size(100, 100),
+      );
+      final small = builder.build(document, below);
+      expect(small.texts, isEmpty);
+      expect(small.fillBatches, isNotEmpty);
+
+      final large = builder.build(document, above);
+      expect(large.texts, hasLength(1));
+      expect(large.texts.single.text, 'A');
     });
 
     test('an insert cached against a miss clip still draws later', () {

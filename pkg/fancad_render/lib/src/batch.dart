@@ -24,6 +24,12 @@ class Float32Buffer {
   /// A view of the filled region. Valid until the next append.
   Float32List get view => Float32List.sublistView(_data, 0, _length);
 
+  /// A mutable view of the filled region.
+  ///
+  /// A retained batch reorders its segments into a spatial grid at build time,
+  /// so the painter can later draw one cell without copying.
+  Float32List get writable => Float32List.sublistView(_data, 0, _length);
+
   void add2(double x, double y) {
     _ensure(2);
     _data[_length++] = x;

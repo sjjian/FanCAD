@@ -123,7 +123,7 @@ void main() {
       expect(empty.pixelLocked(), empty);
     });
 
-    test('every camera the controller hands out is locked', () {
+    test('a pan and a command camera are locked; interactive zoom is not', () {
       final controller = ViewportController()..setSize(const Size(801, 601), 2);
       addTearDown(controller.dispose);
 
@@ -136,8 +136,15 @@ void main() {
       expectLocked();
       controller.panBy(const Offset(13.37, -7.91));
       expectLocked();
+      // Interactive zoom stays on the unrounded camera: rounding a notch
+      // both slides the anchor and shifts the drawing when it stops.
       controller.zoomBy(1.1731, const Offset(311.5, 207.25));
-      expectLocked();
+      final pixels = controller.viewport.pixels;
+      expect(
+        pixels.originX == pixels.originX.roundToDouble() &&
+            pixels.originY == pixels.originY.roundToDouble(),
+        isFalse,
+      );
       controller.zoomAtCenter(0.8317);
       expectLocked();
       controller.centerOn(const Vec2(0.123456, -0.987654));

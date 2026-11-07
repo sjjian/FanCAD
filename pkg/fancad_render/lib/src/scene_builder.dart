@@ -4,6 +4,7 @@ import 'package:fancad_core/fancad_core.dart';
 
 import 'batch.dart';
 import 'batching_sink.dart';
+import 'block_cache.dart';
 import 'drawing_font.dart';
 import 'line_aligner.dart';
 import 'palette.dart';
@@ -30,6 +31,8 @@ class SceneBuilder {
     ParagraphCache? paragraphs,
     DrawingFontMap? fonts,
     this.shxFonts = const ShxFontTable(),
+    this.useBlockCache = true,
+    this.simplifyPixels = 0.15,
   }) : cache = cache ?? TessellationCache(),
        paragraphs = paragraphs ?? ParagraphCache(),
        fonts = fonts ?? const DrawingFontMap();
@@ -38,6 +41,17 @@ class SceneBuilder {
   final TessellationCache cache;
   final ParagraphCache paragraphs;
   final DrawingFontMap fonts;
+
+  /// Share flattened block definitions between INSERT instances.
+  final bool useBlockCache;
+
+  /// Screen-space tolerance for polyline decimation, in logical pixels.
+  final double simplifyPixels;
+
+  BlockDisplayCache? _blockCache;
+
+  /// Diagnostics and tests can inspect the block display cache here.
+  BlockDisplayCache? get blockCache => _blockCache;
 
   /// Puts thin axis-aligned linework on the pixel grid, as the last step of
   /// every build. Kept on the builder rather than created per build so its
@@ -89,6 +103,7 @@ class SceneBuilder {
       },
       globalLineTypeScale:
           double.tryParse(document.headerVariables[r'$LTSCALE'] ?? '') ?? 1,
+      simplifyPixels: simplifyPixels,
     );
 
     double measureWidth(String text, double height) => paragraphs.measureWidth(
@@ -99,14 +114,32 @@ class SceneBuilder {
     var drawn = 0;
     var culled = 0;
 
-    for (final space in Picker.spacesUnder(
-      document,
-      visible,
-      tolerance: tolerance,
-      minExtent: minimumWorldSize,
-      measureWidth: measureWidth,
-      shxFonts: shxFonts,
-    )) {
+    if (!identical(_blockCache?.document, document) || !useBlockCache) {
+      _blockCache = useBlockCache ? BlockDisplayCache(document) : null;
+    }
+    final blocks = _blockCache;
+    final spaces =
+        Picker.spacesUnder(
+          document,
+          visible,
+          tolerance: tolerance,
+          minExtent: minimumWorldSize,
+          measureWidth: measureWidth,
+          shxFonts: shxFonts,
+          pixelsPerUnit: viewport.scale,
+          query: visible,
+        ).map(
+          (space) => LayoutSpace(
+            blockName: space.blockName,
+            query: space.query,
+            context: blocks == null
+                ? space.context
+                : space.context.withBlocks(blocks),
+            paperClip: space.paperClip,
+            hiddenLayers: space.hiddenLayers,
+          ),
+        );
+    for (final space in spaces) {
       final emitted = _emitBlock(
         document: document,
         sink: sink,
@@ -297,13 +330,30 @@ class SceneBuilder {
         continue;
       }
 
+      // A label too small to shape still leaves a quick-text box, so an
+      // overview keeps the annotation pattern instead of erasing the notes.
+      if (emitTextPlaceholder(entity, context, sink, bounds)) {
+        drawn++;
+        continue;
+      }
       final hinted = bounds.isNotEmpty
           ? context.withExtentHint(bounds)
           : context;
+      // A block reference or dimension asks its block's index for only the
+      // members inside the query, and those members choose their own text
+      // level of detail from the pixel scale. Recording that flatten under the
+      // entity's camera-independent cache key would bake the view into it:
+      // after a zoom or pan the replay would still show the members the first
+      // camera saw and hide the rest. Expand those entities for every build
+      // that has a camera. Pick and bounds passes have neither a query nor a
+      // pixel scale, so their flattening is camera-free and stays cacheable.
+      final cameraBound =
+          entity.emitsBlockContents &&
+          (context.query != null || context.pixelsPerUnit > 0);
       // Cached tessellation is in the entity's own space. A paper viewport
       // applies a transform, so replaying the cache would put model geometry
       // on the sheet at the wrong coordinates.
-      if (context.transform.isIdentity) {
+      if (context.transform.isIdentity && !cameraBound) {
         final cached = cache.lookup(
           entity,
           bucket,
