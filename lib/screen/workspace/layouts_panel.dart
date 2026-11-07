@@ -49,7 +49,7 @@ class LayoutsPanel extends ConsumerWidget {
   Widget _layoutsBody(BuildContext context, DocumentTab tab) {
     final layouts = [...tab.document.layouts]..sort(_compareLayouts);
     final active = tab.document.activeLayoutName;
-    final maximized = tab.session.maximizedLayoutName;
+    final maximized = tab.maximizedLayoutName;
 
     return Column(
       key: const Key('layouts-panel'),

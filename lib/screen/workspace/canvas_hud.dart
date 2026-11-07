@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/material.dart';
@@ -760,12 +761,24 @@ class _ZoomReadout extends StatelessWidget {
 
   Widget _label(BuildContext context) {
     final l10n = context.l10n;
-    final scene = tab.lastScene;
+    final render = tab.renderDiagnostics;
+    final frame = tab.frameTiming.stats;
+    String ms(Duration value) =>
+        (value.inMicroseconds / 1000).toStringAsFixed(1);
+    final performance = l10n.render_stats_tooltip(
+      render.drawnSegments,
+      render.lineDrawCalls,
+      render.blockCacheHits,
+      render.blockCacheMisses,
+      render.blockCacheEntries,
+      ms(frame.buildP50),
+      ms(frame.buildP95),
+      ms(frame.rasterP50),
+      ms(frame.rasterP95),
+    );
     return FanCadTextButton(
       label: '1:${(1 / tab.viewport.viewport.scale).toStringAsFixed(2)}',
-      tooltip: scene == null
-          ? l10n.zoom_extents_tooltip
-          : '${l10n.zoom_extents_tooltip}\n${l10n.draw_calls_visible(scene.drawCallCount, scene.entityCount)}',
+      tooltip: '${l10n.zoom_extents_tooltip}\n$performance',
       onPressed: () => workspace.run('view.zoomExtents'),
     );
   }

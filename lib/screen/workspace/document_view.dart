@@ -19,6 +19,7 @@ import '../command_line/dynamic_input_hud.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
 import 'attribute_edit_dialog.dart';
+import 'double_click.dart';
 import 'export_panel.dart';
 import 'text_edit_overlay.dart';
 
@@ -179,7 +180,7 @@ class _DocumentViewState extends ConsumerState<DocumentView> {
     final action = canvasDoubleClick(
       layout: tab.document.activeLayout,
       point: world,
-      isMaximized: tab.session.maximizedLayoutName != null,
+      isMaximized: tab.maximizedLayoutName != null,
     );
     if (action != null) {
       widget.workspace.run(action.id, args: action.args);

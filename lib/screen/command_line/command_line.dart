@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../models/command_line.dart';
 import '../../services/command_line.dart';
+import '../../services/providers.dart';
 import '../../services/workspace.dart';
 import '../widgets/tokens.dart';
 import '../widgets/widgets.dart';
@@ -202,7 +204,9 @@ class CommandSuggestState extends ConsumerState<CommandSuggest> {
       _clear();
       return;
     }
-    final filtered = filterTextSearchHits(textSearchHits(tab.document), query);
+    final filtered = ref
+        .read(textSearchServiceProvider)
+        .search(tab.document, query);
     // A new query starts at the first hit and does not move the canvas.
     // The same query, after the drawing changes, stays on that hit.
     final sameQuery = query == _textQuery;

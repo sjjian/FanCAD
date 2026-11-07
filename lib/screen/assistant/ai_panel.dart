@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:fancad_ai/fancad_ai.dart';
-import 'package:fancad_core/fancad_core.dart';
 import 'package:file_selector/file_selector.dart' as picker;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -2446,12 +2445,17 @@ class _ComposerState extends ConsumerState<_Composer> {
     );
   }
 
-  List<DocumentSession> get _matches {
+  List<DrawingMention> get _matches {
     final mention = _mention;
     if (mention == null) return const [];
     return filterDrawingMentions([
-      for (final id in ref.read(workspaceNotifierProvider).sessionIds)
-        ?widget.workspace.session(id),
+      for (final tab in widget.workspace.tabs)
+        if (!tab.isStartPage && !tab.isOpeningShell)
+          DrawingMention(
+            id: tab.session.id,
+            title: tab.title,
+            path: tab.filePath,
+          ),
     ], mention.query);
   }
 
@@ -2512,8 +2516,8 @@ class _ComposerState extends ConsumerState<_Composer> {
     widget.onChanged(next);
   }
 
-  void _pick(DocumentSession session) {
-    final id = session.id;
+  void _pick(DrawingMention drawing) {
+    final id = drawing.id;
     if (id.isEmpty) return;
     final controller = widget.controller;
     final mention = composerAtMentionAt(
@@ -2811,10 +2815,10 @@ class _DrawingMentionPopup extends StatelessWidget {
     required this.onPick,
   });
 
-  final List<DocumentSession> matches;
+  final List<DrawingMention> matches;
   final int highlighted;
   final ValueChanged<int> onHighlight;
-  final ValueChanged<DocumentSession> onPick;
+  final ValueChanged<DrawingMention> onPick;
 
   @override
   Widget build(BuildContext context) {
@@ -2873,7 +2877,7 @@ class _DrawingMentionRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final DocumentSession drawing;
+  final DrawingMention drawing;
   final bool isHighlighted;
   final VoidCallback onHover;
   final VoidCallback onTap;
@@ -2883,7 +2887,7 @@ class _DrawingMentionRow extends StatelessWidget {
     final tokens = context.tokens;
     final id = drawing.id;
     final title = drawing.title.isEmpty ? id : drawing.title;
-    final path = (drawing.filePath ?? '').trim();
+    final path = (drawing.path ?? '').trim();
     return MouseRegion(
       onEnter: (_) => onHover(),
       child: FanCadRow(

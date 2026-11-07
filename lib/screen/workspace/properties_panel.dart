@@ -445,7 +445,7 @@ class PropertiesPanel extends ConsumerWidget {
         return [
           _read(context, l10n.vertices, '${entity.vertexCount}'),
           _read(context, l10n.closed, entity.closed ? l10n.yes : l10n.no),
-          _read(context, l10n.length, _number(Construct.lengthOf(entity))),
+          _read(context, l10n.length, _number(EditOperations.lengthOf(entity))),
         ];
       case TextLike():
         return _textGeometryRows(context, tab, entity);
@@ -524,8 +524,8 @@ class PropertiesPanel extends ConsumerWidget {
     var area = 0.0;
     var box = const Bounds2.empty();
     for (final entity in entities) {
-      length += Construct.lengthOf(entity);
-      area += Construct.areaOf(entity).abs();
+      length += EditOperations.lengthOf(entity);
+      area += EditOperations.areaOf(entity).abs();
       box = box.union(tab.document.boundsOfEntity(entity));
     }
     final l10n = context.l10n;
