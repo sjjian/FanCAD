@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   fancad_core:
     path: ../fancad_core
+  fancad_command:
+    path: ../fancad_command
   json_annotation: ^4.9.0
   meta: ^1.16.0
   # QuickJS-NG, identical engine on every desktop platform. Scripts run on

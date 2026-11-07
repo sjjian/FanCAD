@@ -39,12 +39,12 @@ void main() {
 
     final later = expectLater(
       opens.incoming,
-      emits(['/tmp/second.dxf', '/tmp/third.fcb']),
+      emits(['/tmp/second.dxf', '/tmp/third.dwg']),
     );
     await messenger.handlePlatformMessage(
       openFilesChannelName,
       const StandardMethodCodec().encodeMethodCall(
-        const MethodCall('open', ['/tmp/second.dxf', '/tmp/third.fcb']),
+        const MethodCall('open', ['/tmp/second.dxf', '/tmp/third.dwg']),
       ),
       (_) {},
     );
