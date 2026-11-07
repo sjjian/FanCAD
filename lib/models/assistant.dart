@@ -829,21 +829,33 @@ ComposerAtMentionModel? composerAtMentionAt(String text, int cursor) {
   );
 }
 
-List<DocumentSession> filterDrawingMentions(
-  List<DocumentSession> sessions,
+/// One drawing as the assistant composer mentions it.
+///
+/// Deliberately not a `DocumentSession`: the mention picker only needs display
+/// metadata and the tab id, not the mutable drawing state.
+class DrawingMention {
+  const DrawingMention({required this.id, required this.title, this.path});
+
+  final String id;
+  final String title;
+  final String? path;
+}
+
+List<DrawingMention> filterDrawingMentions(
+  List<DrawingMention> drawings,
   String query,
 ) {
   final q = query.trim().toLowerCase();
   final matched = [
-    for (final session in sessions)
-      if (q.isEmpty || _drawingMentionHaystack(session).contains(q)) session,
+    for (final drawing in drawings)
+      if (q.isEmpty || _drawingMentionHaystack(drawing).contains(q)) drawing,
   ];
   if (matched.length <= composerMentionLimit) return matched;
   return matched.take(composerMentionLimit).toList();
 }
 
-String _drawingMentionHaystack(DocumentSession session) {
-  final title = session.title.toLowerCase();
-  final path = (session.filePath ?? '').toLowerCase();
+String _drawingMentionHaystack(DrawingMention drawing) {
+  final title = drawing.title.toLowerCase();
+  final path = (drawing.path ?? '').toLowerCase();
   return '$title $path';
 }

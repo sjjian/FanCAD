@@ -863,7 +863,7 @@ abstract class AppLocalizations {
   /// open drawing file
   ///
   /// In en, this message translates to:
-  /// **'Open a DWG, DXF or FCB file'**
+  /// **'Open a DWG or DXF file'**
   String get open_drawing_file;
 
   /// show all commands
@@ -1099,6 +1099,22 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{calls} draw calls · {visible} visible'**
   String draw_calls_visible(int calls, int visible);
+
+  /// render performance tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'{segments} segments · {calls} draw calls\nBlock cache {hits} hit / {misses} miss · {entries} entries\nUI {build} ms p50 · {build95} ms p95\nRaster {raster} ms p50 · {raster95} ms p95'**
+  String render_stats_tooltip(
+    int segments,
+    int calls,
+    int hits,
+    int misses,
+    int entries,
+    String build,
+    String build95,
+    String raster,
+    String raster95,
+  );
 
   /// restore defaults
   ///

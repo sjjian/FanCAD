@@ -435,7 +435,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get empty_github => 'FanCAD on GitHub';
 
   @override
-  String get open_drawing_file => 'Open a DWG, DXF or FCB file';
+  String get open_drawing_file => 'Open a DWG or DXF file';
 
   @override
   String get show_all_commands => 'Show all commands';
@@ -566,6 +566,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String draw_calls_visible(int calls, int visible) {
     return '$calls draw calls · $visible visible';
+  }
+
+  @override
+  String render_stats_tooltip(
+    int segments,
+    int calls,
+    int hits,
+    int misses,
+    int entries,
+    String build,
+    String build95,
+    String raster,
+    String raster95,
+  ) {
+    return '$segments segments · $calls draw calls\nBlock cache $hits hit / $misses miss · $entries entries\nUI $build ms p50 · $build95 ms p95\nRaster $raster ms p50 · $raster95 ms p95';
   }
 
   @override

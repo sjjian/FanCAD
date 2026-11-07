@@ -2119,7 +2119,7 @@ return $default(_that.autoCheck,_that.promptedVersion,_that.skippedVersion,_that
 
 class _UpdatesModel implements UpdatesModel {
   const _UpdatesModel({this.autoCheck = true, this.promptedVersion = '', this.skippedVersion = '', this.lastCheckedAt});
-
+  
 
 @override@JsonKey() final  bool autoCheck;
 @override@JsonKey() final  String promptedVersion;

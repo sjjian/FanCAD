@@ -428,7 +428,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get empty_github => 'GitHub 上的 FanCAD';
 
   @override
-  String get open_drawing_file => '打开 DWG、DXF 或 FCB 文件';
+  String get open_drawing_file => '打开 DWG 或 DXF 文件';
 
   @override
   String get show_all_commands => '显示全部命令';
@@ -555,6 +555,21 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String draw_calls_visible(int calls, int visible) {
     return '$calls 次绘制 · $visible 个可见';
+  }
+
+  @override
+  String render_stats_tooltip(
+    int segments,
+    int calls,
+    int hits,
+    int misses,
+    int entries,
+    String build,
+    String build95,
+    String raster,
+    String raster95,
+  ) {
+    return '$segments 段 · $calls 次绘制\n块缓存 $hits 命中 / $misses 未命中 · $entries 项\nUI $build ms p50 · $build95 ms p95\n光栅 $raster ms p50 · $raster95 ms p95';
   }
 
   @override

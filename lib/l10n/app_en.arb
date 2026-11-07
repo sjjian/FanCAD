@@ -609,7 +609,7 @@
   "@empty_github": {
     "description": "start screen GitHub link"
   },
-  "open_drawing_file": "Open a DWG, DXF or FCB file",
+  "open_drawing_file": "Open a DWG or DXF file",
   "@open_drawing_file": {
     "description": "open drawing file"
   },
@@ -797,7 +797,23 @@
       }
     }
   },
-  "restore_defaults": "Restore defaults",
+
+
+  "render_stats_tooltip": "{segments} segments · {calls} draw calls\nBlock cache {hits} hit / {misses} miss · {entries} entries\nUI {build} ms p50 · {build95} ms p95\nRaster {raster} ms p50 · {raster95} ms p95",
+  "@render_stats_tooltip": {
+    "description": "render performance tooltip",
+    "placeholders": {
+      "segments": {"type": "int"},
+      "calls": {"type": "int"},
+      "hits": {"type": "int"},
+      "misses": {"type": "int"},
+      "entries": {"type": "int"},
+      "build": {"type": "String"},
+      "build95": {"type": "String"},
+      "raster": {"type": "String"},
+      "raster95": {"type": "String"}
+    }
+  },  "restore_defaults": "Restore defaults",
   "@restore_defaults": {
     "description": "restore defaults"
   },
