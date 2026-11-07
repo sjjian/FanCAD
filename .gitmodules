@@ -1,3 +1,0 @@
-[submodule "pkg/fancad_core/native/third_party/libredwg"]
-	path = pkg/fancad_core/native/third_party/libredwg
-	url = https://github.com/LibreDWG/libredwg.git

@@ -8,6 +8,7 @@ environment:
 
 workspace:
   - pkg/fancad_core
+  - pkg/fancad_command
   - pkg/fancad_render
   - pkg/fancad_extension
   - pkg/fancad_widget
@@ -26,6 +27,8 @@ dependencies:
 
   fancad_core:
     path: pkg/fancad_core
+  fancad_command:
+    path: pkg/fancad_command
   fancad_render:
     path: pkg/fancad_render
   fancad_extension:
@@ -70,13 +73,6 @@ dev_dependencies:
   json_serializable: ^6.9.0
   riverpod_generator: ^2.6.5
   flutter_launcher_icons: ^0.14.4
-
-hooks:
-  user_defines:
-    fancad_core:
-      # Optional. Leave empty to compile the LibreDWG submodule in
-      # pkg/fancad_core/native/third_party/libredwg.
-      libredwg_root: ''
 
 flutter:
   uses-material-design: true

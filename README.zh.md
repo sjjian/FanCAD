@@ -43,9 +43,8 @@
 ## 构建
 
 ```bash
-git clone --recurse-submodules git@github.com:sjjian/FanCAD.git
+git clone git@github.com:sjjian/FanCAD.git
 cd FanCAD
-git submodule update --init --recursive
 flutter pub get
 flutter run -d macos
 ```

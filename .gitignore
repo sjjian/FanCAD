@@ -40,10 +40,6 @@ migrate_working_dir/
 **/build/
 /coverage/
 
-# LibreDWG hook compile outputs (rebuilt from the submodule)
-**/.fancad-built
-**/libredwg-build/
-
 # Symbolication related
 app.*.symbols
 

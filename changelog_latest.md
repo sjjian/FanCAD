@@ -1,5 +1,5 @@
 ##  Features ✨
-* Added first-class 2D REGION support. Regions can be created from an internal point or selected closed boundaries, combined with union, subtract and intersect, filleted and offset, and read from and written to DXF, DWG and FCB. Picking and snapping use the region geometry, and approximated boundaries are flagged.
+* Added first-class 2D REGION support. Regions can be created from an internal point or selected closed boundaries, combined with union, subtract and intersect, filleted and offset, and read from and written to DXF and DWG. Picking and snapping use the region geometry, and approximated boundaries are flagged.
 * Added signed in-app updates. The About tab shows the version and checks GitHub, with Gitee as a fallback; a new version downloads only after its signed manifest and SHA-256 digest are verified, then opens the DMG, the Windows installer or the Linux replacement script.
 
 ## Improvements 🛠

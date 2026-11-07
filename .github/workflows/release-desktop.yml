@@ -71,17 +71,7 @@ jobs:
         run: flutter pub get
 
       - name: Build macOS release
-        env:
-          FANCAD_REQUIRE_LIBREDWG: "1"
         run: flutter build macos --release
-
-      - name: Verify the macOS build has a DWG backend
-        run: |
-          framework="build/macos/Build/Products/Release/fancad.app/Contents/Frameworks/fancad_core.framework/Versions/A/fancad_core"
-          if ! nm -gU "$framework" | grep -q '_dwg_read_file'; then
-            echo "The macOS build has no LibreDWG backend" >&2
-            exit 1
-          fi
 
       - name: Package DMG
         env:
@@ -120,8 +110,6 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows release
-        env:
-          FANCAD_REQUIRE_LIBREDWG: "1"
         run: flutter build windows --release
 
       - name: Install Inno Setup
@@ -170,8 +158,6 @@ jobs:
         run: flutter pub get
 
       - name: Build Linux release
-        env:
-          FANCAD_REQUIRE_LIBREDWG: "1"
         run: flutter build linux --release
 
       - name: Package tarball

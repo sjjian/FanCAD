@@ -39,6 +39,7 @@ jobs:
       - name: Test the pure-Dart packages
         run: |
           dart test pkg/fancad_core
+          dart test pkg/fancad_command
           dart test pkg/fancad_ai
           dart test pkg/fancad_updater
 

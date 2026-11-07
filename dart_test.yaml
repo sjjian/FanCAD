@@ -1,6 +1,5 @@
 tags:
   # Mirrors pkg/fancad_core/dart_test.yaml so `dart test pkg/fancad_core` from
-  # the workspace root skips nativeGroup suites. `--tags native --run-skipped`
-  # fails and names FANCAD_LIBREDWG_ROOT when the backend is not linked.
+  # the workspace root skips the longer DWG round-trip suites.
   native:
-    skip: "Run with --tags native in a build that links LibreDWG"
+    skip: "Run with --tags native to exercise the DWG round trips"
