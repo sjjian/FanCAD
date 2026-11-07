@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -88,7 +89,7 @@ class EditStretchCommand extends FanCadCommand {
       for (final id in ids) {
         final entity = context.document.entity(id);
         if (entity == null) continue;
-        final stretched = Construct.stretch(entity, window, delta);
+        final stretched = EditOperations.stretch(entity, window, delta);
         if (stretched != null) {
           shapes.addAll(
             editOutline(
@@ -120,7 +121,7 @@ class EditStretchCommand extends FanCadCommand {
       for (final id in ids) {
         final entity = context.document.entity(id);
         if (entity == null) continue;
-        final stretched = Construct.stretch(entity, window, delta);
+        final stretched = EditOperations.stretch(entity, window, delta);
         if (stretched != null) transaction.modify(stretched);
       }
     });

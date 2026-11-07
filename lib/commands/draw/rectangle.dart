@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -47,7 +48,7 @@ class DrawRectangleCommand extends FanCadCommand {
     );
     context.input.setPreview(null);
 
-    final rectangle = Construct.rectangle(
+    final rectangle = EditOperations.rectangle(
       first,
       second,
       props: EntityProps(layer: context.document.currentLayer),

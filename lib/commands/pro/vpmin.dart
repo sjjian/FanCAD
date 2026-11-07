@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 
 import '../command_base.dart';
 
@@ -21,19 +21,15 @@ class LayoutVpminCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    final name = context.session.maximizedLayoutName;
+    final name = context.services.maximizedLayout(context.session);
     if (name == null) {
       return const CommandResult.failed('No viewport is maximized.');
     }
     if (!context.document.setActiveLayout(name)) {
-      context.session
-        ..maximizedLayoutName = null
-        ..maximizedViewportIndex = null;
+      context.services.setMaximizedViewport(context.session);
       return CommandResult.failed('Layout "$name" is gone.');
     }
-    context.session
-      ..maximizedLayoutName = null
-      ..maximizedViewportIndex = null;
+    context.services.setMaximizedViewport(context.session);
     context.services.invalidate();
     context.services.zoomTo(null);
     return CommandResult.ok(

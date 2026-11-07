@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -69,7 +70,7 @@ Future<RegionGeometry?> _regionGeometry(CommandContext context) async {
   final idsArg = context.args.ids('ids');
 
   if (inside != null) {
-    final loops = Construct.boundaryFromPick(
+    final loops = EditOperations.boundaryFromPick(
       _candidates(context, idsArg),
       inside,
     );
@@ -95,7 +96,7 @@ Future<RegionGeometry?> _regionGeometry(CommandContext context) async {
   );
   if (answer == null) return null;
   if (answer.isPoint) {
-    final loops = Construct.boundaryFromPick(
+    final loops = EditOperations.boundaryFromPick(
       context.document.activeEntities,
       answer.point!,
     );

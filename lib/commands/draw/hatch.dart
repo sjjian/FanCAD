@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -99,7 +100,7 @@ Future<List<HatchLoop>?> _hatchLoops(CommandContext context) async {
   final idsArg = context.args.ids('ids');
 
   if (inside != null) {
-    return Construct.boundaryFromPick(
+    return EditOperations.boundaryFromPick(
       _hatchCandidates(context, idsArg),
       inside,
     );
@@ -122,7 +123,7 @@ Future<List<HatchLoop>?> _hatchLoops(CommandContext context) async {
   );
   if (answer == null) return null;
   if (answer.isPoint) {
-    return Construct.boundaryFromPick(
+    return EditOperations.boundaryFromPick(
       context.document.activeEntities,
       answer.point!,
     );

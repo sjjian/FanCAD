@@ -37,7 +37,7 @@ Map<String, Object?> describeEntity(CadDocument document, CadEntity entity) {
       record
         ..['vertexCount'] = entity.vertexCount
         ..['closed'] = entity.closed
-        ..['length'] = Construct.lengthOf(entity);
+        ..['length'] = EditOperations.lengthOf(entity);
       // Small polylines are described exactly; large ones would swamp the
       // response, and the bounding box already says where they are.
       if (entity.vertexCount <= 32) {
@@ -64,7 +64,7 @@ Map<String, Object?> describeEntity(CadDocument document, CadEntity entity) {
     case HatchEntity(:final patternName):
       record
         ..['pattern'] = patternName
-        ..['area'] = Construct.areaOf(entity).abs();
+        ..['area'] = EditOperations.areaOf(entity).abs();
     case RegionEntity(:final components, :final approximated):
       record
         ..['area'] = entity.signedArea.abs()

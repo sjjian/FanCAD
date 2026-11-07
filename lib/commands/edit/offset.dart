@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -64,7 +65,7 @@ class EditOffsetCommand extends FanCadCommand {
       for (final id in ids) {
         final entity = context.document.entity(id);
         if (entity == null) continue;
-        final offset = Construct.offset(entity, distance, cursor);
+        final offset = EditOperations.offset(entity, distance, cursor);
         if (offset == null) continue;
         shapes.addAll(
           editOutline(
@@ -87,7 +88,7 @@ class EditOffsetCommand extends FanCadCommand {
     for (final id in ids) {
       final entity = context.document.entity(id);
       if (entity == null) continue;
-      final offset = Construct.offset(entity, distance, side);
+      final offset = EditOperations.offset(entity, distance, side);
       if (offset == null) {
         skipped.add(entity.kind.name);
         continue;

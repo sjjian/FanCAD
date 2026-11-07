@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -156,14 +157,14 @@ Future<CommandResult> _trimOrExtend(
     }
     final CadEntity? result;
     if (extend) {
-      result = Construct.extend(curve, edges, suppliedPick);
+      result = EditOperations.extend(curve, edges, suppliedPick);
     } else {
       final crossings = <Vec2>[
-        for (final edge in edges) ...Construct.crossingsAlong(curve, edge),
+        for (final edge in edges) ...EditOperations.crossingsAlong(curve, edge),
       ];
       // Without a pick point there is no way to know which side to discard,
       // so the middle of the object is the least surprising guess.
-      result = Construct.trim(
+      result = EditOperations.trim(
         curve,
         crossings,
         suppliedPick ?? curve.along(0.5),

@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -155,7 +156,7 @@ class EditChamferCommand extends FanCadCommand {
 
     final pick1 = context.args.point('pick1') ?? first.midpoint;
     final pick2 = context.args.point('pick2') ?? second.midpoint;
-    final result = Construct.chamferLines(
+    final result = EditOperations.chamferLines(
       first,
       second,
       dist1,
@@ -227,7 +228,11 @@ Future<CommandResult> _chamferPolyline(
               'All');
   final PolylineEntity? result;
   if (chamferAll) {
-    result = Construct.chamferPolyline(polyline, dist1: dist1, dist2: dist2);
+    result = EditOperations.chamferPolyline(
+      polyline,
+      dist1: dist1,
+      dist2: dist2,
+    );
   } else {
     final pick =
         context.args.point('pick1') ??
@@ -238,7 +243,7 @@ Future<CommandResult> _chamferPolyline(
             context.l10n.prompt_specify_vertex_to_bevel,
           ),
         );
-    result = Construct.chamferPolylineVertex(
+    result = EditOperations.chamferPolylineVertex(
       polyline,
       pick,
       dist1: dist1,

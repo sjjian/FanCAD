@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -53,7 +54,7 @@ class DrawCenterLineCommand extends FanCadCommand {
       return const CommandResult.cancelled();
     }
     final (first, second) = pair;
-    final line = Construct.centerLine(
+    final line = DimensionOperations.centerLine(
       first,
       second,
       props: EntityProps(layer: context.document.currentLayer),

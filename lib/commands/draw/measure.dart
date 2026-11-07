@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -85,10 +86,10 @@ class DrawMeasureCommand extends FanCadCommand {
           _ => const Vec2(0, 0),
         };
     List<Vec2> measured(double spacing) => switch (target) {
-      LineEntity() => Construct.measureLine(target, spacing, pick),
-      PolylineEntity() => Construct.measurePolyline(target, spacing, pick),
-      ArcEntity() => Construct.measureArc(target, spacing, pick),
-      CircleEntity() => Construct.measureCircle(target, spacing, pick),
+      LineEntity() => EditOperations.measureLine(target, spacing, pick),
+      PolylineEntity() => EditOperations.measurePolyline(target, spacing, pick),
+      ArcEntity() => EditOperations.measureArc(target, spacing, pick),
+      CircleEntity() => EditOperations.measureCircle(target, spacing, pick),
       _ => const <Vec2>[],
     };
     if (context.args.number('spacing') == null) {

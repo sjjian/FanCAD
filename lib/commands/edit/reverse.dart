@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -38,7 +39,7 @@ class EditReverseCommand extends FanCadCommand {
     for (final id in ids) {
       final entity = context.document.entity(id);
       if (entity == null) continue;
-      final next = Construct.reverse(entity);
+      final next = EditOperations.reverse(entity);
       if (next != null) reversed.add(next);
     }
     if (reversed.isEmpty) {

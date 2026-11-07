@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -43,7 +44,7 @@ class EditJoinCommand extends FanCadCommand {
       );
     }
 
-    final joined = Construct.joinEntities(pieces);
+    final joined = EditOperations.joinEntities(pieces);
     if (joined == null) {
       return const CommandResult.failed(
         'The selected objects do not form a single connected chain.',

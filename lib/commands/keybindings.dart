@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 

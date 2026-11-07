@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 import 'package:path/path.dart' as p;
 
 import '../command_base.dart';

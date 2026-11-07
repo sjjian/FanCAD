@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 
 /// What an extension says about itself. Taken from the comment at the top of the
 /// file, so the sidebar and `extensions.list` can show it without a second file.

@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -106,7 +107,7 @@ class DrawCircleTtrCommand extends FanCadCommand {
       ..setPreview((cursor) {
         final radius = pick1.distanceTo(cursor);
         if (radius <= 0) return const <OverlayShape>[];
-        final preview = Construct.circleTangentRadius(
+        final preview = EditOperations.circleTangentRadius(
           first,
           second,
           radius,
@@ -134,7 +135,7 @@ class DrawCircleTtrCommand extends FanCadCommand {
       return const CommandResult.failed('The radius must be positive.');
     }
 
-    final circle = Construct.circleTangentRadius(
+    final circle = EditOperations.circleTangentRadius(
       first,
       second,
       radius,

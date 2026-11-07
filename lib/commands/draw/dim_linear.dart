@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -71,7 +72,7 @@ class DrawDimLinearCommand extends FanCadCommand {
       basePoint: first.lerp(second, 0.5),
     );
     context.input.setPreview(null);
-    final entity = Construct.linearDimension(
+    final entity = DimensionOperations.linearDimension(
       first,
       second,
       dimLine,
@@ -155,7 +156,7 @@ class DrawDimAlignedCommand extends FanCadCommand {
       basePoint: first.lerp(second, 0.5),
     );
     context.input.setPreview(null);
-    final entity = Construct.alignedDimension(
+    final entity = DimensionOperations.alignedDimension(
       first,
       second,
       dimLine,

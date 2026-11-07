@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 
 import '../command_base.dart';
 
@@ -30,9 +30,7 @@ class LayoutSetCommand extends FanCadCommand {
     if (!context.document.setActiveLayout(name)) {
       return CommandResult.failed('No layout named $name');
     }
-    context.session
-      ..maximizedLayoutName = null
-      ..maximizedViewportIndex = null;
+    context.services.setMaximizedViewport(context.session);
     context.services.invalidate();
     context.services.zoomTo(null);
     return CommandResult.ok(message: 'Active layout is $name');

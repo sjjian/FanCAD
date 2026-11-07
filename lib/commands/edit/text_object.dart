@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -232,7 +233,7 @@ class EditTextObjectCommand extends FanCadCommand {
     }
     if (hasJustify &&
         (justify == null ||
-            Construct.parseTextJustify(
+            EditOperations.parseTextJustify(
                   justify,
                   currentH: TextHAlign.left,
                   currentV: TextVAlign.baseline,

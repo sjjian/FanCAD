@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 
 import '../command_base.dart';
 import 'commands.dart';
@@ -31,11 +31,13 @@ class FileSaveCommand extends FanCadCommand implements CommandKeybindings {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    var path = context.session.filePath;
+    var path = context.services.drawingPath(context.session);
     if (path == null || path.isEmpty) {
       late final String? chosen;
       try {
-        chosen = await files.pickSavePath(context.session.title);
+        chosen = await files.pickSavePath(
+          context.services.drawingTitle(context.session),
+        );
       } catch (error) {
         return CommandResult.failed('The file dialog failed: $error');
       }
@@ -89,7 +91,9 @@ class FileSaveAsCommand extends FanCadCommand implements CommandKeybindings {
     if (path == null || path.isEmpty) {
       late final String? chosen;
       try {
-        chosen = await files.pickSavePath(context.session.title);
+        chosen = await files.pickSavePath(
+          context.services.drawingTitle(context.session),
+        );
       } catch (error) {
         return CommandResult.failed('The file dialog failed: $error');
       }

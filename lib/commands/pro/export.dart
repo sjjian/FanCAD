@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' show Color;
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:image/image.dart' as img;
@@ -93,7 +94,7 @@ String plotSuggestedName(String title, String extension) {
   var stem = title.trim();
   if (stem.isEmpty) stem = 'Drawing';
   final lower = stem.toLowerCase();
-  for (final known in ['dwg', 'dxf', 'fcb', 'svg', 'pdf']) {
+  for (final known in ['dwg', 'dxf', 'svg', 'pdf']) {
     final suffix = '.$known';
     if (lower.endsWith(suffix)) {
       stem = stem.substring(0, stem.length - suffix.length);
@@ -121,7 +122,10 @@ Future<({String? path, CommandResult? stop})> resolvePlotPath(
   }
   try {
     final chosen = await saveFileDialog(
-      suggestedName: plotSuggestedName(context.session.title, extension),
+      suggestedName: plotSuggestedName(
+        context.services.drawingTitle(context.session),
+        extension,
+      ),
       extensions: [extension],
       typeLabel: typeLabel,
       uniformTypeIdentifiers: uniformTypeIdentifiers,

@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -54,7 +55,7 @@ class DrawPolygonCommand extends FanCadCommand {
       ..setMarkers([center])
       ..setPreview((cursor) {
         final radius = center.distanceTo(cursor);
-        final polygon = Construct.polygon(
+        final polygon = EditOperations.polygon(
           center: center,
           radius: radius,
           sides: sides,
@@ -81,7 +82,7 @@ class DrawPolygonCommand extends FanCadCommand {
       return const CommandResult.failed('The radius must be positive.');
     }
     return commitDraw(context, 'Polygon', [
-      Construct.polygon(
+      EditOperations.polygon(
         center: center,
         radius: radius,
         sides: sides,

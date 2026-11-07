@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -65,7 +66,7 @@ class EditJustifyTextCommand extends FanCadCommand {
         'corner code such as TL.',
       );
     }
-    if (Construct.parseTextJustify(
+    if (EditOperations.parseTextJustify(
           justify,
           currentH: TextHAlign.left,
           currentV: TextVAlign.baseline,
@@ -79,8 +80,8 @@ class EditJustifyTextCommand extends FanCadCommand {
     final committed = context.edit('Justify Text', (transaction) {
       for (final entity in targets) {
         final updated = switch (entity) {
-          TextEntity() => Construct.justifyText(entity, justify),
-          MTextEntity() => Construct.justifyMText(entity, justify),
+          TextEntity() => EditOperations.justifyText(entity, justify),
+          MTextEntity() => EditOperations.justifyMText(entity, justify),
           _ => null,
         };
         if (updated == null || updated == entity) continue;

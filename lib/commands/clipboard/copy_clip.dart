@@ -1,4 +1,5 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
+import '../../services/clipboard.dart';
 
 import '../command_base.dart';
 import 'capture.dart';
@@ -8,7 +9,7 @@ const _category = 'Modify';
 class CopyClipCommand extends FanCadCommand {
   const CopyClipCommand(this.store);
 
-  final DrawingClipboard store;
+  final ClipboardStore store;
 
   @override
   String get id => 'edit.copyClip';
@@ -36,7 +37,7 @@ class CopyClipCommand extends FanCadCommand {
 class CutClipCommand extends FanCadCommand implements CommandKeybindings {
   const CutClipCommand(this.store);
 
-  final DrawingClipboard store;
+  final ClipboardStore store;
 
   @override
   String get id => 'edit.cutClip';

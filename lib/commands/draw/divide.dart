@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -80,7 +81,7 @@ class DrawDivideCommand extends FanCadCommand {
       );
     }
 
-    final points = Construct.divide(target as Curve, segments);
+    final points = EditOperations.divide(target as Curve, segments);
     if (points.isEmpty) {
       return const CommandResult.failed('Nothing to place.');
     }

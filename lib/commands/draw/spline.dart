@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -44,8 +45,11 @@ class DrawSplineCommand extends FanCadCommand {
     final useFit = _splineUsesFit(context.args.text('method'));
     if (supplied.length >= 2) {
       final spline = useFit
-          ? Construct.splineFromFit(supplied, props: EntityProps(layer: layer))
-          : Construct.splineFromControls(
+          ? EditOperations.splineFromFit(
+              supplied,
+              props: EntityProps(layer: layer),
+            )
+          : EditOperations.splineFromControls(
               supplied,
               props: EntityProps(layer: layer),
             );
@@ -113,8 +117,8 @@ class DrawSplineCommand extends FanCadCommand {
 
     if (points.length < 2) return const CommandResult.cancelled();
     final spline = fit
-        ? Construct.splineFromFit(points, props: EntityProps(layer: layer))
-        : Construct.splineFromControls(
+        ? EditOperations.splineFromFit(points, props: EntityProps(layer: layer))
+        : EditOperations.splineFromControls(
             points,
             props: EntityProps(layer: layer),
           );
@@ -134,8 +138,8 @@ bool _splineUsesFit(String? method) =>
 
 List<OverlayShape> _splineOverlay(List<Vec2> points, {bool fit = false}) {
   final spline = fit
-      ? Construct.splineFromFit(points)
-      : Construct.splineFromControls(points);
+      ? EditOperations.splineFromFit(points)
+      : EditOperations.splineFromControls(points);
   if (spline == null) return [OverlayPolyline(List.of(points))];
   final sampled = Flatten.bspline(
     controlPoints: spline.controlPoints,

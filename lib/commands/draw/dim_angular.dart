@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -115,7 +116,7 @@ class DrawDimAngularCommand extends FanCadCommand {
     context.input
       ..setPreview(null)
       ..setMarkers(const []);
-    final entity = Construct.angularDimension(
+    final entity = DimensionOperations.angularDimension(
       vertex,
       first,
       second,
@@ -138,7 +139,12 @@ List<OverlayShape> _dimAngularOverlay(
   Vec2 second,
   Vec2 cursor,
 ) {
-  final dim = Construct.angularDimension(vertex, first, second, cursor);
+  final dim = DimensionOperations.angularDimension(
+    vertex,
+    first,
+    second,
+    cursor,
+  );
   if (dim == null) {
     return [OverlayLine(vertex, first), OverlayLine(vertex, second)];
   }
@@ -229,7 +235,7 @@ Future<CommandResult> _dimAngularFromObjects(CommandContext context) async {
   context.input
     ..setPreview(null)
     ..setMarkers(const []);
-  final entity = Construct.angularDimensionFromLines(
+  final entity = DimensionOperations.angularDimensionFromLines(
     first,
     second,
     dimLine,
@@ -272,7 +278,7 @@ Future<CommandResult> _dimAngularFromArc(
   context.input
     ..setPreview(null)
     ..setMarkers(const []);
-  final entity = Construct.angularDimensionFromArc(
+  final entity = DimensionOperations.angularDimensionFromArc(
     target,
     dimLine,
     props: EntityProps(layer: context.document.currentLayer),
@@ -291,7 +297,11 @@ List<OverlayShape> _dimAngularFromLinesOverlay(
   LineEntity second,
   Vec2 cursor,
 ) {
-  final dim = Construct.angularDimensionFromLines(first, second, cursor);
+  final dim = DimensionOperations.angularDimensionFromLines(
+    first,
+    second,
+    cursor,
+  );
   if (dim == null) return const [];
   final vertex = dim.definitionPoints[0];
   final start = (dim.definitionPoints[1] - vertex).angle;

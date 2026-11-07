@@ -1,9 +1,11 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
+import '../services/clipboard.dart';
 
 import 'clipboard/commands.dart';
 import 'draw/commands.dart';
 import 'edit/commands.dart';
 import 'file/commands.dart';
+import 'perf/commands.dart';
 import 'pro/commands.dart';
 import 'query/commands.dart';
 import 'view/commands.dart';
@@ -17,16 +19,17 @@ import 'view/commands.dart';
 Disposable registerBuiltinCommands(
   CommandRegistry registry, {
   required FileCommands fileCommands,
-  DrawingClipboard? clipboard,
+  ClipboardStore? clipboard,
 }) {
   final scope = DisposableBag(debugLabel: 'builtin-commands');
   for (final descriptor in [
     ...fileCommands.all(),
     ...DrawCommands.all(),
     ...EditCommands.all(),
-    ...ClipboardCommands(store: clipboard ?? DrawingClipboard()).all(),
+    ...ClipboardCommands(store: clipboard ?? ClipboardStore()).all(),
     ...ViewCommands.all(),
     ...QueryCommands.all(),
+    ...PerfCommands.all(),
     ...ProCommands.all(),
   ]) {
     scope.add(registry.register(descriptor));

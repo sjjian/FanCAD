@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -27,7 +28,9 @@ class QuerySessionCommand extends FanCadCommand {
   @override
   Future<CommandResult> run(CommandContext context) async {
     final hosted = context.services.describeSession(context.session);
-    final data = hosted.isNotEmpty ? hosted : _fromSession(context.session);
+    final data = hosted.isNotEmpty
+        ? hosted
+        : _fromSession(context.services, context.session);
     final count = data['selectionCount'];
     final n = count is int ? count : 0;
     final running = data['runningCommand'];
@@ -41,11 +44,14 @@ class QuerySessionCommand extends FanCadCommand {
   }
 }
 
-Map<String, Object?> _fromSession(DocumentSession session) {
-  final path = session.filePath?.trim() ?? '';
+Map<String, Object?> _fromSession(
+  CommandServices services,
+  DocumentSession session,
+) {
+  final path = services.drawingPath(session)?.trim() ?? '';
   return {
     'drawingId': session.id,
-    'title': session.title,
+    'title': services.drawingTitle(session),
     if (path.isNotEmpty) 'path': path,
     'selectionCount': session.selection.ids.length,
     'viewport': null,

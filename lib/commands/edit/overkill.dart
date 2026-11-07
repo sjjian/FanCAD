@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -47,7 +48,7 @@ class EditOverkillCommand extends FanCadCommand {
     ];
     if (ids.isEmpty) return const CommandResult.cancelled();
 
-    final plan = Construct.overkill([
+    final plan = EditOperations.overkill([
       for (final id in ids) ?context.document.entity(id),
     ]);
     if (plan.isEmpty) {

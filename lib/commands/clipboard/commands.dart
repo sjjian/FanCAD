@@ -1,4 +1,5 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
+import '../../services/clipboard.dart';
 
 import 'copy_base.dart';
 import 'copy_clip.dart';
@@ -13,7 +14,7 @@ import 'paste_orig.dart';
 class ClipboardCommands {
   const ClipboardCommands({required this.store});
 
-  final DrawingClipboard store;
+  final ClipboardStore store;
 
   List<CommandDescriptor> all() => [
     CopyClipCommand(store).toDescriptor(),

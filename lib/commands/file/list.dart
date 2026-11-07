@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -35,9 +36,9 @@ class FileListCommand extends FanCadCommand {
           for (final session in sessions)
             {
               'id': session.id,
-              'title': session.title,
-              'path': session.filePath,
-              'dirty': session.isDirty,
+              'title': context.services.drawingTitle(session),
+              'path': context.services.drawingPath(session),
+              'dirty': context.services.drawingIsDirty(session),
               'active': session.id == activeId,
               'entityCount': session.document.entityCount,
               'activeLayout': session.document.activeLayoutName,

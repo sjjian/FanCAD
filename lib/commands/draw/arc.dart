@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -51,7 +52,7 @@ class DrawArcCommand extends FanCadCommand {
     context.input
       ..setMarkers([start, via])
       ..setPreview((cursor) {
-        final arc = Construct.arcThrough(start, via, cursor);
+        final arc = EditOperations.arcThrough(start, via, cursor);
         if (arc == null) return [OverlayLine(start, cursor)];
         return [
           OverlayArc(
@@ -71,7 +72,7 @@ class DrawArcCommand extends FanCadCommand {
       ..setPreview(null)
       ..setMarkers(const []);
 
-    final arc = Construct.arcThrough(start, via, end, props: props);
+    final arc = EditOperations.arcThrough(start, via, end, props: props);
     if (arc == null) {
       // Three collinear points describe a straight line. Producing the line
       // is more useful than refusing, and it is what the user drew.

@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 
 import '../command_base.dart';
 import 'commands.dart';
@@ -34,7 +34,7 @@ class FileCloseCommand extends FanCadCommand implements CommandKeybindings {
     // decision back, rather than choosing on the user's behalf.
     final discard = await context.services.requestApproval(
       'Unsaved changes',
-      '"${context.session.title}" has unsaved changes.',
+      '"${context.services.drawingTitle(context.session)}" has unsaved changes.',
     );
     if (!discard) return const CommandResult.cancelled();
     files.closeActive(context.session, force: true);

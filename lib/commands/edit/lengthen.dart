@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -94,14 +95,14 @@ class EditLengthenCommand extends FanCadCommand {
           ),
         );
 
-    final currentLength = Construct.lengthOf(entity);
+    final currentLength = EditOperations.lengthOf(entity);
     var total = context.args.number('total');
     final delta = context.args.number('delta');
     if (total == null && delta == null) {
       context.input
         ..setMarkers([_lengthenAnchor(entity, pick)])
         ..setPreview((cursor) {
-          final preview = Construct.lengthen(
+          final preview = EditOperations.lengthen(
             entity,
             pick,
             total: _lengthenPreviewTotal(entity, pick, cursor),
@@ -120,13 +121,18 @@ class EditLengthenCommand extends FanCadCommand {
         ..setMarkers(const []);
     }
 
-    final result = Construct.lengthen(entity, pick, total: total, delta: delta);
+    final result = EditOperations.lengthen(
+      entity,
+      pick,
+      total: total,
+      delta: delta,
+    );
     if (result == null) {
       return const CommandResult.failed(
         'The resulting length must be positive.',
       );
     }
-    if ((Construct.lengthOf(result) - currentLength).abs() < 1e-12) {
+    if ((EditOperations.lengthOf(result) - currentLength).abs() < 1e-12) {
       return const CommandResult.cancelled('The length is unchanged.');
     }
 
@@ -141,7 +147,8 @@ class EditLengthenCommand extends FanCadCommand {
     context.selection.replace([targetId]);
     return CommandResult(
       status: CommandStatus.ok,
-      message: 'Lengthen: ${Construct.lengthOf(result).toStringAsFixed(4)}.',
+      message:
+          'Lengthen: ${EditOperations.lengthOf(result).toStringAsFixed(4)}.',
       transaction: committed,
     );
   }
@@ -149,7 +156,7 @@ class EditLengthenCommand extends FanCadCommand {
 
 /// The end LENGTHEN leaves in place.
 Vec2 _lengthenAnchor(Curve target, Vec2 pick) =>
-    target.along(Construct.nearerStart(target, pick) ? 1 : 0);
+    target.along(EditOperations.nearerStart(target, pick) ? 1 : 0);
 
 /// Total length implied by dragging the moving end toward [cursor].
 double _lengthenPreviewTotal(CadEntity target, Vec2 pick, Vec2 cursor) {
@@ -177,7 +184,7 @@ double _lengthenPreviewTotal(CadEntity target, Vec2 pick, Vec2 cursor) {
   final inward = fromStart
       ? target.vertexAt(1)
       : target.vertexAt(target.vertexCount - 2);
-  return Construct.lengthOf(target) -
+  return EditOperations.lengthOf(target) -
       moving.distanceTo(inward) +
       inward.distanceTo(cursor);
 }

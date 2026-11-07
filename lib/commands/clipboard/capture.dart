@@ -1,13 +1,15 @@
 import 'dart:async';
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../../l10n/l10n.dart';
 import '../../services/assistant_images.dart';
+import '../../services/clipboard.dart';
 
 Future<CommandResult> captureClipboard(
   CommandContext context,
-  DrawingClipboard store, {
+  ClipboardStore store, {
   required String verb,
   required bool cut,
   bool askBase = false,
@@ -24,8 +26,8 @@ Future<CommandResult> captureClipboard(
     context.commandPrompt(verb, context.l10n.prompt_select_objects),
   );
   if (ids.isEmpty) return const CommandResult.cancelled();
-  base ??= DrawingClip.lowerLeftOf(context.document, ids);
-  final clip = DrawingClip.extract(context.document, ids, basePoint: base);
+  base ??= ClipPayload.lowerLeftOf(context.document, ids);
+  final clip = ClipPayload.extract(context.document, ids, basePoint: base);
   if (clip == null) return const CommandResult.cancelled();
   store.clip = clip;
   // The picture clear talks to the system pasteboard. Awaiting it keeps
@@ -65,7 +67,7 @@ Future<CommandResult> captureClipboard(
 
 Future<CommandResult> pasteClipboard(
   CommandContext context,
-  DrawingClipboard store, {
+  ClipboardStore store, {
   required bool asBlock,
   required bool original,
 }) async {
@@ -133,7 +135,7 @@ Future<CommandResult> pasteClipboard(
 /// Outlines are flattened once. A large clip used to fall back to a crossing
 /// box because emit-on-every-move stuttered; translating cached polylines
 /// does not.
-void _installPastePreview(CommandContext context, DrawingClip clip) {
+void _installPastePreview(CommandContext context, ClipPayload clip) {
   final base = clip.basePoint;
   final ghost = pastePreviewShapes(clip, styles: context.document);
   context.input.setPreview((cursor) {
@@ -145,7 +147,7 @@ void _installPastePreview(CommandContext context, DrawingClip clip) {
 /// Clip geometry in source coordinates, including INSERT contents from the
 /// clip rather than the destination drawing.
 List<OverlayShape> pastePreviewShapes(
-  DrawingClip clip, {
+  ClipPayload clip, {
   StyleResolver styles = StyleResolver.passthrough,
 }) {
   final emit = EmitContext(
@@ -171,7 +173,7 @@ List<OverlayShape> _outline(EmitContext emit, CadEntity entity) {
 class _ClipBlocks implements BlockLookup {
   _ClipBlocks(this.clip);
 
-  final DrawingClip clip;
+  final ClipPayload clip;
   final Map<String, Bounds2> _bounds = {};
 
   BlockRecord? _block(String name) {

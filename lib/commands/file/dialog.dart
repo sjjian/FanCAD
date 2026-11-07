@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart' as picker;
 import 'package:flutter/services.dart';
 
-const List<String> _drawingExtensions = ['dwg', 'dxf', 'fcb'];
+const List<String> _drawingExtensions = ['dwg', 'dxf'];
 
 const MethodChannel _macDialog = MethodChannel('fancad/file_dialog');
 
@@ -30,7 +30,6 @@ Future<String?> openFileDialog() async {
         uniformTypeIdentifiers: [
           'com.autodesk.dwg',
           'com.autodesk.dxf',
-          'app.fancad.fcb',
           'public.data',
         ],
       ),
@@ -46,7 +45,6 @@ Future<String?> saveFileDialog({
   List<String> uniformTypeIdentifiers = const [
     'com.autodesk.dwg',
     'com.autodesk.dxf',
-    'app.fancad.fcb',
   ],
 }) async {
   final name = _suggestedFileName(suggestedName, extensions);

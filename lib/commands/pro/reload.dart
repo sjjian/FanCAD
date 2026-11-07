@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -40,7 +41,7 @@ class XrefReloadCommand extends FanCadCommand {
       return const CommandResult.failed('No xref was selected.');
     }
 
-    final loaded = <({BlockRecord block, CadDocument foreign})>[];
+    final loaded = <({BlockRecord block, DrawingData foreign})>[];
     for (final block in targets) {
       final path = block.xrefPath;
       if (path.isEmpty || !File(path).existsSync()) {

@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -116,7 +117,7 @@ class DrawLeaderCommand extends FanCadCommand {
               )
             : '');
     final height = context.args.number('height') ?? 2.5;
-    final created = Construct.leader(
+    final created = DimensionOperations.leader(
       points,
       props: EntityProps(layer: layer),
       annotation: annotation,

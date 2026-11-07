@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -54,7 +55,7 @@ class DrawEllipseCommand extends FanCadCommand {
     context.input
       ..setMarkers([center, axisEnd])
       ..setPreview((cursor) {
-        final ellipse = Construct.ellipse(
+        final ellipse = EditOperations.ellipse(
           center: center,
           axisEnd: axisEnd,
           otherRadius: center.distanceTo(cursor),
@@ -75,7 +76,7 @@ class DrawEllipseCommand extends FanCadCommand {
       ..setPreview(null)
       ..setMarkers(const []);
 
-    final ellipse = Construct.ellipse(
+    final ellipse = EditOperations.ellipse(
       center: center,
       axisEnd: axisEnd,
       otherRadius: otherRadius,

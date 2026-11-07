@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -93,7 +94,7 @@ class EditBreakCommand extends FanCadCommand {
       return const CommandResult.failed('A circle needs two break points.');
     }
 
-    final pieces = Construct.breakCurve(target as Curve, first, second);
+    final pieces = EditOperations.breakCurve(target as Curve, first, second);
     if (pieces == null) {
       return const CommandResult.failed(
         'The break point is at an end of the object, so nothing changed.',

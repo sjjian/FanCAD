@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -50,7 +51,7 @@ class DrawCircle3pCommand extends FanCadCommand {
     context.input
       ..setMarkers([first, second])
       ..setPreview((cursor) {
-        final circle = Construct.circleThrough(first, second, cursor);
+        final circle = EditOperations.circleThrough(first, second, cursor);
         if (circle == null) return [OverlayLine(first, second)];
         return [
           OverlayArc(center: circle.center, radius: circle.radius),
@@ -69,7 +70,7 @@ class DrawCircle3pCommand extends FanCadCommand {
       ..setPreview(null)
       ..setMarkers(const []);
 
-    final circle = Construct.circleThrough(
+    final circle = EditOperations.circleThrough(
       first,
       second,
       third,

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../../l10n/l10n.dart';
@@ -255,18 +256,18 @@ String? textJustifyKeyOf(CadEntity entity) {
 CadEntity? entityWithJustify(CadEntity entity, String justify) {
   final align = textAlignOf(entity);
   if (align == null) return null;
-  final next = Construct.parseTextJustify(
+  final next = EditOperations.parseTextJustify(
     justify,
     currentH: align.h,
     currentV: align.v,
   );
   if (next == null || (next.h == align.h && next.v == align.v)) return null;
   return switch (entity) {
-    TextEntity() => Construct.justifyText(entity, justify),
-    MTextEntity() => Construct.justifyMText(entity, justify),
-    AttribEntity() => Construct.justifyAttrib(entity, justify),
-    AttdefEntity() => Construct.justifyAttdef(entity, justify),
-    MLeaderEntity() => Construct.justifyMLeader(entity, justify),
+    TextEntity() => EditOperations.justifyText(entity, justify),
+    MTextEntity() => EditOperations.justifyMText(entity, justify),
+    AttribEntity() => EditOperations.justifyAttrib(entity, justify),
+    AttdefEntity() => EditOperations.justifyAttdef(entity, justify),
+    MLeaderEntity() => EditOperations.justifyMLeader(entity, justify),
     _ => null,
   };
 }

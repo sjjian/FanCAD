@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -36,10 +37,10 @@ class QueryAreaCommand extends FanCadCommand {
     for (final id in ids) {
       final entity = context.document.entity(id);
       if (entity == null) continue;
-      final each = Construct.areaOf(entity).abs();
+      final each = EditOperations.areaOf(entity).abs();
       if (each == 0) continue;
       area += each;
-      perimeter += Construct.lengthOf(entity);
+      perimeter += EditOperations.lengthOf(entity);
       counted++;
     }
     if (counted == 0) {

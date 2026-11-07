@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -137,7 +138,7 @@ class EditFilletCommand extends FanCadCommand {
 
     final pick1 = context.args.point('pick1') ?? first.midpoint;
     final pick2 = context.args.point('pick2') ?? second.midpoint;
-    final result = Construct.filletLines(
+    final result = EditOperations.filletLines(
       first,
       second,
       radius,
@@ -272,7 +273,7 @@ Future<CommandResult> _filletPolyline(
               'All');
   final PolylineEntity? result;
   if (filletAll) {
-    result = Construct.filletPolyline(polyline, radius);
+    result = EditOperations.filletPolyline(polyline, radius);
   } else {
     final pick =
         context.args.point('pick1') ??
@@ -283,7 +284,7 @@ Future<CommandResult> _filletPolyline(
             context.l10n.prompt_specify_vertex_to_round,
           ),
         );
-    result = Construct.filletPolylineVertex(polyline, pick, radius);
+    result = EditOperations.filletPolylineVertex(polyline, pick, radius);
   }
   if (result == null) {
     return CommandResult.failed(

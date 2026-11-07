@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 
 import '../command_base.dart';
 

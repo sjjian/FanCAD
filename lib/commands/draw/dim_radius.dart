@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -69,7 +70,7 @@ class DrawDimRadiusCommand extends FanCadCommand {
       basePoint: center,
     );
     context.input.setPreview(null);
-    final entity = Construct.radiusDimension(
+    final entity = DimensionOperations.radiusDimension(
       target,
       dimLine,
       props: EntityProps(layer: context.document.currentLayer),
@@ -156,7 +157,7 @@ class DrawDimDiameterCommand extends FanCadCommand {
       basePoint: center,
     );
     context.input.setPreview(null);
-    final entity = Construct.diameterDimension(
+    final entity = DimensionOperations.diameterDimension(
       target,
       dimLine,
       props: EntityProps(layer: context.document.currentLayer),

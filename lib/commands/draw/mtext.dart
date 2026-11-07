@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -158,7 +159,7 @@ int? _mtextAttachment(CommandContext context) {
   }
   final justify = context.args.text('justify')?.trim() ?? '';
   if (justify.isEmpty) return 1;
-  final next = Construct.parseTextJustify(
+  final next = EditOperations.parseTextJustify(
     justify,
     currentH: TextHAlign.left,
     currentV: TextVAlign.top,

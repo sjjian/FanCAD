@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 
 import '../command_base.dart';
 import 'viewport_helpers.dart';
@@ -38,13 +38,13 @@ class LayoutVpmaxCommand extends FanCadCommand {
 
   @override
   Future<CommandResult> run(CommandContext context) async {
-    if (context.session.maximizedLayoutName != null &&
+    if (context.services.maximizedLayout(context.session) != null &&
         context.document.activeLayout.isModelSpace) {
       return CommandResult.ok(
         message: 'Viewport is already maximized.',
         data: {
-          'layout': context.session.maximizedLayoutName,
-          'index': context.session.maximizedViewportIndex,
+          'layout': context.services.maximizedLayout(context.session),
+          'index': context.services.maximizedViewport(context.session),
         },
       );
     }
@@ -71,9 +71,11 @@ class LayoutVpmaxCommand extends FanCadCommand {
     if (!context.document.setActiveLayout(model.name)) {
       return const CommandResult.failed('Model space is missing.');
     }
-    context.session
-      ..maximizedLayoutName = layout.name
-      ..maximizedViewportIndex = index;
+    context.services.setMaximizedViewport(
+      context.session,
+      layout: layout.name,
+      index: index,
+    );
     context.services.invalidate();
     context.services.zoomTo(viewport.modelWindow);
     return CommandResult.ok(

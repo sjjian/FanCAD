@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -63,7 +64,11 @@ class DrawDimContinueCommand extends FanCadCommand {
       final created = <CadEntity>[];
       var current = base;
       for (final origin in supplied) {
-        final next = Construct.continueDimension(current, origin, props: layer);
+        final next = DimensionOperations.continueDimension(
+          current,
+          origin,
+          props: layer,
+        );
         if (next == null) {
           if (created.isEmpty) {
             return const CommandResult.failed(
@@ -91,7 +96,11 @@ class DrawDimContinueCommand extends FanCadCommand {
         ),
       );
       if (origin == null) break;
-      final next = Construct.continueDimension(current, origin, props: layer);
+      final next = DimensionOperations.continueDimension(
+        current,
+        origin,
+        props: layer,
+      );
       if (next == null) {
         if (created.isEmpty) {
           context.input
@@ -186,7 +195,7 @@ class DrawDimBaselineCommand extends FanCadCommand {
       final created = <CadEntity>[];
       var current = base;
       for (final origin in supplied) {
-        final next = Construct.baselineDimension(
+        final next = DimensionOperations.baselineDimension(
           current,
           origin,
           props: layer,
@@ -219,7 +228,7 @@ class DrawDimBaselineCommand extends FanCadCommand {
         ),
       );
       if (origin == null) break;
-      final next = Construct.baselineDimension(
+      final next = DimensionOperations.baselineDimension(
         current,
         origin,
         props: layer,
@@ -288,7 +297,7 @@ DimensionEntity? _continuableDimension(CadEntity? entity) {
 }
 
 List<OverlayShape> _dimContinueOverlay(DimensionEntity base, Vec2 cursor) {
-  final next = Construct.continueDimension(base, cursor);
+  final next = DimensionOperations.continueDimension(base, cursor);
   if (next == null || next.definitionPoints.length < 2) return const [];
   final first = next.definitionPoints[0];
   final second = next.definitionPoints[1];
@@ -305,7 +314,11 @@ List<OverlayShape> _dimBaselineOverlay(
   Vec2 cursor,
   double spacing,
 ) {
-  final next = Construct.baselineDimension(base, cursor, spacing: spacing);
+  final next = DimensionOperations.baselineDimension(
+    base,
+    cursor,
+    spacing: spacing,
+  );
   if (next == null || next.definitionPoints.length < 2) return const [];
   final first = next.definitionPoints[0];
   final second = next.definitionPoints[1];

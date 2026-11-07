@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -137,7 +138,7 @@ class DrawTextCommand extends FanCadCommand {
   if (const {'a', 'align', 'aligned', 'f', 'fit'}.contains(key)) {
     return null;
   }
-  return Construct.parseTextJustify(
+  return EditOperations.parseTextJustify(
     justify,
     currentH: TextHAlign.left,
     currentV: TextVAlign.baseline,

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -74,7 +75,7 @@ class DrawDonutCommand extends FanCadCommand {
     final created = <CadEntity>[];
 
     Future<void> place(Vec2 center) async {
-      final donut = Construct.donut(
+      final donut = EditOperations.donut(
         center: center,
         innerRadius: innerR,
         outerRadius: outerR,

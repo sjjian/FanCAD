@@ -1,3 +1,4 @@
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 
 import '../command_base.dart';
@@ -58,7 +59,7 @@ class DrawCenterMarkCommand extends FanCadCommand {
     for (final id in ids) {
       final entity = context.document.entity(id);
       if (entity == null) continue;
-      final marks = Construct.centerMark(
+      final marks = DimensionOperations.centerMark(
         entity,
         props: EntityProps(layer: context.document.currentLayer),
         size: size,
