@@ -37,12 +37,12 @@ extension on DwgReader {
       final raw = br.bs();
       _colorIndex = raw & 0x1ff;
       final flags = raw >> 8;
-      if ((flags & 0x80) != 0) _colorRgb = br.bl(); // true colour
       if ((flags & 0x20) != 0) {
         final encoded = br.bl();
         _alphaType = encoded >> 24;
         _alpha = encoded & 0xff;
       }
+      if ((flags & 0x80) != 0) _colorRgb = br.bl(); // true colour
       if ((flags & 0x41) == 0x41) _text(br); // colour name
       if ((flags & 0x42) == 0x42) _text(br); // colour book
     } else {

@@ -47,12 +47,15 @@ extension on DwgReader {
         read3(br.bd);
       case DwgReader._typeDimAng2ln:
         family = 2;
-        br.rd();
-        br.rd(); // def_pt 2RD
-        read3(br.bd);
-        read3(br.bd);
-        read3(br.bd);
-        read3(br.bd);
+        final defX = br.rd();
+        final defY = br.rd(); // def_pt 2RD
+        read3(br.bd); // xline1start_pt
+        read3(br.bd); // xline1end_pt
+        read3(br.bd); // xline2start_pt
+        br.bd();
+        br.bd();
+        br.bd(); // xline2end_pt, not a definition point
+        addPoint(defX, defY); // the arc point is the fourth definition point
       case DwgReader._typeDimRadius:
         family = 4;
         read3(br.bd);

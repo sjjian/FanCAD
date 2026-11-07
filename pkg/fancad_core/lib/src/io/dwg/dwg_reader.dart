@@ -787,9 +787,12 @@ final class DwgReader {
           type == _typeTolerance ||
           type == _typeLeader,
       leaderDimStyle: type == _typeLeader,
+      // R2000/R2004 ATTRIB stores its own text style handle. From R2010 the
+      // handle stream no longer carries one (the block's style applies), so
+      // reading it would consume the block handle and report a bogus style.
       wantTextStyle:
           type == _typeText ||
-          type == _typeAttrib ||
+          (type == _typeAttrib && _version < 2010) ||
           type == _typeAttdef ||
           type == _typeMtext ||
           type == _typeShape,
