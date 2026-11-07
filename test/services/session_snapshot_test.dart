@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -32,6 +32,8 @@ void main() {
       expect(data['viewport'], isA<Map<Object?, Object?>>());
       expect(data['lastCreatedIds'], contains(id));
       expect(data.containsKey('entities'), isFalse);
+      expect(data.containsKey('render'), isFalse);
+      expect(data.containsKey('frame'), isFalse);
       expect(result.message, contains('1 selected'));
       expect(result.message, contains('Running command: none'));
     },
@@ -50,7 +52,7 @@ void main() {
     () async {
       final app = Headless();
       final first = app.workspace.active!;
-      first.session.title = 'Alpha';
+      first.engine.title = 'Alpha';
       final second = app.workspace.newDocument(title: 'Beta');
       expect(app.workspace.active, same(second));
 

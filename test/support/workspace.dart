@@ -1,9 +1,10 @@
 import 'package:fancad/fancad.dart';
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Headless [WorkspaceNotifier] with built-in commands and an in-memory importer.
+/// Headless [WorkspaceNotifier] with built-in commands and drawing codecs.
 ///
 /// This is the same entry point a plugin or an AI tool call takes, so tests
 /// that go through [run] are the closest thing to a contract for "can the
@@ -19,7 +20,7 @@ class Headless {
     container = ProviderContainer(
       overrides: [
         settingsProvider.overrideWithValue(this.settings),
-        drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
+        drawingFilesProvider.overrideWithValue(const DrawingFileService()),
         if (files != null)
           workspaceFileCommandsOverrideProvider.overrideWithValue(files),
         ...overrides,

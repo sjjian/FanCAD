@@ -18,7 +18,7 @@ Future<void> pumpPanel(WidgetTester tester, Directory root) async {
     ProviderScope(
       overrides: [
         settingsProvider.overrideWithValue(SettingsStore.inMemory()),
-        drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
+        drawingFilesProvider.overrideWithValue(const DrawingFileService()),
         extensionsDirectoryProvider.overrideWithValue(root.path),
         extensionTransportProvider.overrideWithValue(LocalTransport.new),
       ],

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:fancad/fancad.dart';
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:flutter/gestures.dart';
@@ -1404,7 +1405,7 @@ void _expectViewportCenter(
 }
 
 class _PausedDrawingFiles extends DrawingFileService {
-  _PausedDrawingFiles(this._gate) : super.inMemory();
+  _PausedDrawingFiles(this._gate) : super();
 
   final Completer<void> _gate;
 

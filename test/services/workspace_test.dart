@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:fancad/fancad.dart';
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_render/fancad_render.dart';
 import 'package:fancad_test/fancad_test.dart';
@@ -160,7 +161,7 @@ void main() {
     final ws = workspace();
     final alpha = ws.newDocument(title: 'Alpha');
     final beta = ws.newDocument(title: 'Beta');
-    beta.session.filePath = '/tmp/beta.dxf';
+    beta.engine.filePath = '/tmp/beta.dxf';
 
     expect(ws.findDrawing(null), same(beta));
     expect(ws.findDrawing(''), same(beta));
@@ -305,7 +306,7 @@ void main() {
     () async {
       final ws = workspace();
       final first = ws.newDocument();
-      first.session.filePath = '/tmp/already-open.dxf';
+      first.engine.filePath = '/tmp/already-open.dxf';
       ws.newDocument();
       expect(ws.state.activeIndex, 1);
 
@@ -970,7 +971,7 @@ const _emptyDxf = '0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n';
 
 /// Holds [DrawingFileService.open] until [gate] completes.
 class _PausedDrawingFiles extends DrawingFileService {
-  _PausedDrawingFiles(this._gate) : super.inMemory();
+  _PausedDrawingFiles(this._gate) : super();
 
   final Completer<void> _gate;
   Object? throwOnOpen;

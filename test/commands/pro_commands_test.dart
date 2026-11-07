@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 
 import 'package:fancad/commands/pro/export.dart';
 import 'package:fancad/fancad.dart';
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,7 +25,7 @@ Future<int> drawLine(double x1, double y1, double x2, double y2) =>
     app.drawLine(x1, y1, x2, y2);
 
 Future<void> writeDxf(String path, CadDocument document) {
-  return DrawingFileService.inMemory().save(path, document);
+  return const DrawingFileService().save(path, document);
 }
 
 void main() {
@@ -582,13 +583,13 @@ void main() {
 
       expect(result.status, CommandStatus.ok, reason: result.message);
       expect(document.activeLayout.isModelSpace, isTrue);
-      expect(workspace.active!.session.maximizedLayoutName, 'Layout1');
-      expect(workspace.active!.session.maximizedViewportIndex, 0);
+      expect(workspace.active!.maximizedLayoutName, 'Layout1');
+      expect(workspace.active!.maximizedViewportIndex, 0);
 
       final back = await run('layout.vpmin');
       expect(back.status, CommandStatus.ok, reason: back.message);
       expect(document.activeLayoutName, 'Layout1');
-      expect(workspace.active!.session.maximizedLayoutName, isNull);
+      expect(workspace.active!.maximizedLayoutName, isNull);
     });
 
     test('vpmax refuses the model tab', () async {

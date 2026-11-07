@@ -1,5 +1,6 @@
 import 'package:fancad/commands/clipboard/capture.dart';
 import 'package:fancad/fancad.dart';
+import 'package:fancad_command/fancad_command.dart';
 import 'package:fancad_core/fancad_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -228,7 +229,7 @@ void main() {
       const InsertEntity(id: 0, blockName: 'MARK', position: Vec2(3, 1)),
     );
     build.commit();
-    final clip = DrawingClip.extract(source, [
+    final clip = ClipPayload.extract(source, [
       insertId,
     ], basePoint: const Vec2(3, 1))!;
 
@@ -254,7 +255,7 @@ void main() {
         ),
       )
       ..commit();
-    final clip = DrawingClip.extract(
+    final clip = ClipPayload.extract(
       source,
       drawn.change.added,
       basePoint: Vec2.zero(),

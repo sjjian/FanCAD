@@ -36,9 +36,9 @@ ProviderContainer workbenchContainer({SettingsStore? settings}) {
   final container = ProviderContainer(
     overrides: [
       settingsProvider.overrideWithValue(settings ?? SettingsStore.inMemory()),
-      // No cache and a stub backend, so a test run never touches the disk or
-      // requires the native library to be present.
-      drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
+      drawingFilesProvider.overrideWithValue(const DrawingFileService()),
+      // The drawing service has no state; tests that open or save a drawing
+      // use their own temporary files.
       // No startup timer in tests: the update check itself is a no-op with an
       // in-memory settings store.
       updateStartupDelayProvider.overrideWithValue(Duration.zero),

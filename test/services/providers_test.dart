@@ -55,6 +55,17 @@ void main() {
     expect(registry.find('plugins.list'), isNull);
   });
 
+  test('clipboard and text search are shared app services', () {
+    final container = containerOf(SettingsStore.inMemory());
+    final clipboard = container.read(clipboardProvider);
+    expect(clipboard.isEmpty, isTrue);
+    expect(container.read(clipboardProvider), same(clipboard));
+
+    final search = container.read(textSearchServiceProvider);
+    expect(search, isA<DrawingTextSearch>());
+    expect(container.read(textSearchServiceProvider), same(search));
+  });
+
   test('selecting the open sidebar icon collapses it, as VS Code does', () {
     final settings = SettingsStore.inMemory({
       SettingsKeys.sidebarView: 'layers',

@@ -76,7 +76,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWithValue(settings),
-          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
+          drawingFilesProvider.overrideWithValue(const DrawingFileService()),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),
@@ -151,7 +151,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWithValue(settings),
-          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
+          drawingFilesProvider.overrideWithValue(const DrawingFileService()),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),
@@ -231,7 +231,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWithValue(settings),
-          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
+          drawingFilesProvider.overrideWithValue(const DrawingFileService()),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),
@@ -292,7 +292,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWithValue(settings),
-          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
+          drawingFilesProvider.overrideWithValue(const DrawingFileService()),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),
@@ -350,7 +350,7 @@ void main() {
       ProviderScope(
         overrides: [
           settingsProvider.overrideWithValue(settings),
-          drawingFilesProvider.overrideWithValue(DrawingFileService.inMemory()),
+          drawingFilesProvider.overrideWithValue(const DrawingFileService()),
         ],
         child: MaterialApp(
           theme: FanCadTheme.dark(),

@@ -70,6 +70,60 @@ void main() {
       );
       expect('${drawn!.result}', contains('ok'));
       expect(workspace.active!.document.entityCount, 1);
+
+      final tools = await postMcpJsonRpc(
+        lock.mcpUri,
+        token: lock.token,
+        message: const JsonRpcMessage(id: 3, method: 'tools/list'),
+      );
+      final toolList = '${tools!.result}';
+      expect(toolList, contains('fancad'));
+      expect(toolList, contains('extensions'));
+      expect(toolList, contains('perf'));
+
+      final fancadHelp = await postMcpJsonRpc(
+        lock.mcpUri,
+        token: lock.token,
+        message: const JsonRpcMessage(
+          id: 4,
+          method: 'tools/call',
+          params: {
+            'name': 'fancad',
+            'arguments': {'action': 'help'},
+          },
+        ),
+      );
+      expect('${fancadHelp!.result}', isNot(contains('perf.session')));
+
+      final perfHelp = await postMcpJsonRpc(
+        lock.mcpUri,
+        token: lock.token,
+        message: const JsonRpcMessage(
+          id: 5,
+          method: 'tools/call',
+          params: {
+            'name': 'perf',
+            'arguments': {'action': 'help', 'path': 'perf'},
+          },
+        ),
+      );
+      expect('${perfHelp!.result}', contains('perf.session'));
+
+      final snapshot = await postMcpJsonRpc(
+        lock.mcpUri,
+        token: lock.token,
+        message: const JsonRpcMessage(
+          id: 6,
+          method: 'tools/call',
+          params: {
+            'name': 'perf',
+            'arguments': {'action': 'run', 'path': 'perf.session'},
+          },
+        ),
+      );
+      expect('${snapshot!.result}', contains('"supported": true'));
+      expect('${snapshot.result}', contains('"render"'));
+      expect('${snapshot.result}', contains('"frame"'));
     },
   );
 }
