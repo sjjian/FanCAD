@@ -8,29 +8,32 @@ class SavePlan {
     required this.format,
     this.fallbackPath,
     this.reason = '',
-    this.dwgVersion = 2004,
   });
 
   final String targetPath;
   final SaveFormat format;
   final String? fallbackPath;
   final String reason;
-  final int dwgVersion;
 
   bool get usedFallback => fallbackPath != null;
 }
 
-enum SaveFormat { dxf, dwg, fcb }
+enum SaveFormat { dxf, dwg }
 
 /// Chooses a writable format for a path.
 ///
-/// DWG writing depends on LibreDWG and is only trustworthy for r2000/r2004.
-/// When it is unavailable the plan falls back to DXF next to the requested
-/// file and says so, rather than silently writing nothing.
+/// When this document has objects the DWG writer cannot represent, the plan
+/// falls back to DXF next to the requested file and says so, rather than
+/// silently writing nothing.
 class SaveStrategy {
-  const SaveStrategy({this.canWriteDwg = false});
+  const SaveStrategy({
+    this.canWriteDwg = false,
+    this.dwgFallbackReason =
+        'This drawing cannot be written as DWG; saving DXF instead.',
+  });
 
   final bool canWriteDwg;
+  final String dwgFallbackReason;
 
   SavePlan plan(String path) {
     final target = path.trim();
@@ -38,30 +41,24 @@ class SaveStrategy {
     switch (extension) {
       case 'dxf':
         return SavePlan(targetPath: target, format: SaveFormat.dxf);
-      case 'fcb':
-        return SavePlan(targetPath: target, format: SaveFormat.fcb);
       case 'dwg':
         if (canWriteDwg) {
-          return SavePlan(
-            targetPath: target,
-            format: SaveFormat.dwg,
-            dwgVersion: 2004,
-          );
+          return SavePlan(targetPath: target, format: SaveFormat.dwg);
         }
         final dxf = '${_withoutExtension(target)}.dxf';
         return SavePlan(
           targetPath: dxf,
           format: SaveFormat.dxf,
           fallbackPath: dxf,
-          reason: 'This build cannot write DWG; saving DXF instead.',
+          reason: dwgFallbackReason,
         );
       default:
-        final fcb = '${_withoutExtension(target)}.fcb';
+        final dxf = '${_withoutExtension(target)}.dxf';
         return SavePlan(
-          targetPath: fcb,
-          format: SaveFormat.fcb,
-          fallbackPath: fcb,
-          reason: 'Unknown extension .$extension; saving FanCAD FCB instead.',
+          targetPath: dxf,
+          format: SaveFormat.dxf,
+          fallbackPath: dxf,
+          reason: 'Unsupported extension .$extension; saving DXF instead.',
         );
     }
   }

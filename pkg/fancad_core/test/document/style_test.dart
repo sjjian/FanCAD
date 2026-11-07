@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -89,6 +89,21 @@ void main() {
       expect(LineWeight.normalize(31), LineWeight.byDefault);
       expect(LineWeight.normalize(25), 25);
       expect(LineWeight.normalize(LineWeight.byLayer), LineWeight.byLayer);
+    });
+
+    test('DWG layer weights are table indices, not hundredths', () {
+      expect(LineWeight.fromDwgLayer(0), 0);
+      expect(LineWeight.fromDwgLayer(4), 15);
+      expect(LineWeight.fromDwgLayer(7), 25);
+      expect(LineWeight.fromDwgLayer(11), 50);
+      expect(LineWeight.fromDwgLayer(23), 211);
+      expect(LineWeight.fromDwgLayer(31), LineWeight.byDefault);
+      expect(LineWeight.toDwgLayer(25), 7);
+      expect(LineWeight.toDwgLayer(50), 11);
+      expect(LineWeight.toDwgLayer(LineWeight.byLayer), 29);
+      expect(LineWeight.toDwgLayer(LineWeight.byBlock), 30);
+      // A non-standard weight lands on the closest table entry.
+      expect(LineWeight.toDwgLayer(24), 7);
     });
 
     test('a ByLayer-as-29 entity on a Default layer is a hairline', () {
@@ -217,7 +232,7 @@ void main() {
             scale: 2,
           ),
         );
-      final dim = Construct.linearDimension(
+      final dim = DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(5, 4),
@@ -244,7 +259,7 @@ void main() {
 
     test('a missing style falls back to Standard', () {
       final document = CadDocument();
-      final dim = Construct.linearDimension(
+      final dim = DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(5, 4),
@@ -300,7 +315,7 @@ void main() {
     });
 
     test('explode uses the style for text height and decimals', () {
-      final dim = Construct.linearDimension(
+      final dim = DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(5, 4),

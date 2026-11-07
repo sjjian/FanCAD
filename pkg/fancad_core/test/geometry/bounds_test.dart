@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -85,6 +85,19 @@ void main() {
       ]),
       outline.union(const Bounds2(10, 10, 40, 20)),
     );
+  });
+
+  test('a clump of boxes cannot clip a wide outline whose centre is in it', () {
+    // The core is the clump at x = 100…300, but the drawing's own outline
+    // spans 200 units to the left of it. Trimming to the core lost that.
+    final boxes = [
+      for (var i = 0; i < 40; i++) Bounds2(100 + i * 5.0, 0, 105 + i * 5.0, 10),
+      const Bounds2(-200, -50, 600, 60),
+    ];
+    final union = Bounds2.robustUnion(boxes);
+    expect(union.minX, closeTo(-200, 1e-9));
+    expect(union.maxX, closeTo(600, 1e-9));
+    expect(union.minY, closeTo(-50, 1e-9));
   });
 
   test('an empty xy buffer cannot invent a box', () {

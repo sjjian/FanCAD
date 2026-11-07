@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -99,12 +99,12 @@ void main() {
     expect(sink.texts.single.text, '注释');
   });
 
-  test('Construct.mleader keeps the note on the same entity', () {
+  test('DimensionOperations.mleader keeps the note on the same entity', () {
     expect(
-      Construct.mleader(const [Vec2.zero(), Vec2(4, 0)], textHeight: 0),
+      DimensionOperations.mleader(const [Vec2.zero(), Vec2(4, 0)], textHeight: 0),
       isNull,
     );
-    final created = Construct.mleader(const [
+    final created = DimensionOperations.mleader(const [
       Vec2.zero(),
       Vec2(10, 4),
     ], annotation: 'QC');

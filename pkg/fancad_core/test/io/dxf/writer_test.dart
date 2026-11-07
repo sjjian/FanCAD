@@ -2,10 +2,9 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:fancad_core/src/io/dxf/reader.dart';
 import 'package:fancad_core/src/io/dxf/writer.dart';
-import 'package:fancad_core/src/io/fidelity.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
@@ -130,7 +129,7 @@ void main() {
     expect(dxf, contains('CIRCLE'));
     expect(dxf, contains('LWPOLYLINE'));
 
-    final restored = const DxfReader().readString(dxf);
+    final restored = CadDocument.fromData(const DxfReader().readString(dxf));
     final report = const FidelityAuditor().compare(original, restored);
     expect(report.isClean, isTrue, reason: report.summary);
     expect(restored.entities.whereType<PolylineEntity>().single.vertexCount, 3);
@@ -176,7 +175,7 @@ void main() {
     expect(dxf, contains('MINSERT'));
     expect(dxf, isNot(contains('\nPOINT\n')));
 
-    final restored = const DxfReader().readString(dxf);
+    final restored = CadDocument.fromData(const DxfReader().readString(dxf));
     final report = const FidelityAuditor().compare(original, restored);
     expect(report.isClean, isTrue, reason: report.summary);
 
@@ -242,7 +241,7 @@ void main() {
     expect(dxf, contains('VIEWPORT'));
     expect(dxf, contains('A3'));
 
-    final restored = const DxfReader().readString(dxf);
+    final restored = CadDocument.fromData(const DxfReader().readString(dxf));
     expect(
       restored.layouts.map((item) => item.name),
       containsAll(['Model', 'A3']),
@@ -287,7 +286,7 @@ void main() {
     expect(dxf, contains(r'C:\parts\bracket.dxf'));
     expect(dxf, contains('INSERT'));
 
-    final restored = const DxfReader().readString(dxf);
+    final restored = CadDocument.fromData(const DxfReader().readString(dxf));
     expect(restored.blocks['BRACKET']!.isXref, isTrue);
     expect(restored.blocks['BRACKET']!.xrefPath, r'C:\parts\bracket.dxf');
     expect(restored.blocks['BRACKET']!.entityIds, hasLength(1));
@@ -412,7 +411,7 @@ void main() {
       dimStyles: const [DimStyleDef(name: 'ARCH', decimalPlaces: 0)],
     )..currentDimStyle = 'ARCH';
     original.addEntity(
-      Construct.linearDimension(
+      DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(5, 4),
@@ -425,7 +424,7 @@ void main() {
     expect(dxf, contains(r'$TEXTSTYLE'));
     expect(dxf, contains('DIMENSION'));
 
-    final restored = const DxfReader().readString(dxf);
+    final restored = CadDocument.fromData(const DxfReader().readString(dxf));
     expect(restored.currentDimStyle, 'ARCH');
     final dim = restored.entities.whereType<DimensionEntity>().single;
     expect(dim.styleName, 'ARCH');
@@ -456,7 +455,7 @@ void main() {
     final dxf = const DxfWriter().writeString(original);
     expect(dxf, contains('290'));
 
-    final restored = const DxfReader().readString(dxf);
+    final restored = CadDocument.fromData(const DxfReader().readString(dxf));
     expect(restored.layers['VIEWPORT-FRAME']?.plottable, isFalse);
     expect(restored.layers['0']?.plottable, isTrue);
   });
@@ -502,7 +501,11 @@ void main() {
           id: 0,
           start: Vec2.zero(),
           end: Vec2(5, 0),
-          props: EntityProps(layer: 'THICK', lineWeight: 25),
+          props: EntityProps(
+            layer: 'THICK',
+            lineWeight: 25,
+            lineTypeScale: 2.5,
+          ),
         ),
       ],
     );
@@ -512,6 +515,57 @@ void main() {
     expect(
       restored.entities.whereType<LineEntity>().single.props.lineWeight,
       25,
+    );
+    expect(
+      restored.entities.whereType<LineEntity>().single.props.lineTypeScale,
+      closeTo(2.5, 1e-12),
+    );
+  });
+
+  test('layer true colour and transparency survive DXF', () {
+    final original = drawing(
+      layers: const [
+        LayerDef(
+          name: 'GLASS',
+          color: CadColor.rgb(0x123456),
+          transparency: 40,
+        ),
+      ],
+    );
+    final restored = rt.dxf(original);
+    final glass = restored.layers['GLASS']!;
+    expect(glass.color, CadColor.rgb(0x123456));
+    expect(glass.transparency, 40);
+  });
+
+  test('common header variables survive DXF', () {
+    final original = drawing()
+      ..setHeaderVariable(r'$LTSCALE', '2.5')
+      ..setHeaderVariable(r'$PDMODE', '34')
+      ..setHeaderVariable(r'$PDSIZE', '3')
+      ..setHeaderVariable(r'$DWGCODEPAGE', 'ANSI_936');
+    final restored = rt.dxf(original);
+    expect(restored.headerVariables[r'$LTSCALE'], '2.5');
+    expect(restored.headerVariables[r'$PDMODE'], '34');
+    expect(restored.headerVariables[r'$PDSIZE'], '3.0');
+    expect(restored.headerVariables[r'$DWGCODEPAGE'], 'ANSI_936');
+  });
+
+  test('entity transparency survives DXF', () {
+    final original = drawing(
+      entities: const [
+        LineEntity(
+          id: 0,
+          start: Vec2.zero(),
+          end: Vec2(5, 0),
+          props: EntityProps(transparency: 40),
+        ),
+      ],
+    );
+    final restored = rt.dxf(original);
+    expect(
+      restored.entities.whereType<LineEntity>().single.props.transparency,
+      40,
     );
   });
 
@@ -587,7 +641,7 @@ void main() {
     expect(dxf, contains('LTYPE'));
     expect(dxf, contains('CENTER'));
 
-    final restored = const DxfReader().readString(dxf);
+    final restored = CadDocument.fromData(const DxfReader().readString(dxf));
     final center = restored.lineTypes['CENTER'];
     expect(center, isNotNull);
     expect(center!.pattern, const [24, -6, 6, -6]);
@@ -611,7 +665,7 @@ void main() {
     expect(dxf, contains('LINE'));
     expect(dxf, isNot(contains('\nPOINT\n')));
 
-    final restored = const DxfReader().readString(dxf);
+    final restored = CadDocument.fromData(const DxfReader().readString(dxf));
     expect(restored.entities.whereType<PointEntity>(), isEmpty);
     expect(restored.entities.whereType<LineEntity>(), hasLength(1));
   });

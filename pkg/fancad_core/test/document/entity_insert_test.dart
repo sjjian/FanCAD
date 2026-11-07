@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
@@ -15,6 +15,25 @@ void main() {
     final sink = PolylineSink();
     nested.emit(const EmitContext(tolerance: 0.1, depth: 32), sink);
     expect(sink.isEmpty, isTrue);
+  });
+
+  test('a recursive block reference is cut on the active path', () {
+    final document = CadDocument()
+      ..addEntity(
+        const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(4, 0)),
+        blockName: 'A',
+      )
+      ..addEntity(
+        const InsertEntity(id: 2, blockName: 'A', position: Vec2.zero()),
+        blockName: 'A',
+      );
+    final sink = PolylineSink();
+    const InsertEntity(
+      id: 3,
+      blockName: 'A',
+      position: Vec2.zero(),
+    ).emit(EmitContext(tolerance: 0.1, blocks: document), sink);
+    expect(sink.polylines, hasLength(1));
   });
 
   test('an insert grip stays on the insertion', () {

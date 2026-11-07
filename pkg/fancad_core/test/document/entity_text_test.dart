@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
@@ -84,7 +84,7 @@ void main() {
     expect(sink.texts.single.height, closeTo(10, 1e-9));
   });
 
-  test('a STYLE fixed height wins over the entity height', () {
+  test('the entity height wins over a STYLE fixed height', () {
     final document = CadDocument()
       ..putTextStyle(const TextStyleDef(name: 'Title', height: 5));
     document.addEntity(
@@ -98,7 +98,43 @@ void main() {
     );
     final sink = PolylineSink();
     document.entities.first.emit(document.emitContext(tolerance: 0.1), sink);
+    expect(sink.texts.single.height, closeTo(99, 1e-9));
+  });
+
+  test('a STYLE fixed height is the default when the entity has none', () {
+    final document = CadDocument()
+      ..putTextStyle(const TextStyleDef(name: 'Title', height: 5));
+    document.addEntity(
+      const TextEntity(
+        id: 1,
+        position: Vec2.zero(),
+        content: 'T',
+        height: 0,
+        styleName: 'Title',
+      ),
+    );
+    final sink = PolylineSink();
+    document.entities.first.emit(document.emitContext(tolerance: 0.1), sink);
     expect(sink.texts.single.height, closeTo(5, 1e-9));
+  });
+
+  test('a scaled title-block value keeps its placed height', () {
+    // A title block scaled 6x stores its values at 16.2 while the STYLE keeps
+    // the unscaled 2.7. The value must not shrink back to the style height.
+    final document = CadDocument()
+      ..putTextStyle(const TextStyleDef(name: 'Title', height: 2.7));
+    document.addEntity(
+      const TextEntity(
+        id: 1,
+        position: Vec2.zero(),
+        content: '630*630*50',
+        height: 16.2,
+        styleName: 'Title',
+      ),
+    );
+    final sink = PolylineSink();
+    document.entities.first.emit(document.emitContext(tolerance: 0.1), sink);
+    expect(sink.texts.single.height, closeTo(16.2, 1e-9));
   });
 
   test('oblique on the style adds to the entity', () {

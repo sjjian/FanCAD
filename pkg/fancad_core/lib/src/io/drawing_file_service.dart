@@ -1,16 +1,11 @@
-import 'dart:async';
-import 'dart:io';
 import 'dart:isolate';
-import 'dart:typed_data';
 
-import '../document/document.dart';
-import 'dwg_backend.dart';
+import '../model/document/drawing_data.dart';
+import 'dwg/dwg_codec.dart';
 import 'dxf/reader.dart';
 import 'dxf/writer.dart';
-import 'fcb/reader.dart';
-import 'fcb/writer.dart';
 import 'fidelity.dart';
-import 'native/native_dwg_backend.dart';
+import 'opened_drawing.dart';
 import 'save_strategy.dart';
 
 /// The file that was actually written.
@@ -31,38 +26,27 @@ class SavedDrawing {
 /// Opens and saves drawings.
 ///
 /// This is the only entry point the rest of the application uses to get a
-/// [CadDocument] from disk. It owns the two-stage pipeline — native parse on
-/// a worker isolate, then FCB decode — so that no caller has to know which
-/// stage produced the document it received.
+/// [DrawingData] from disk. DWG and DXF are decoded directly into the document
+/// model; no caller has to know which format produced the document it
+/// received.
 class DrawingFileService {
-  /// Opens and saves drawings with the native DWG adapter.
-  DrawingFileService() : this._(NativeDwgBackend());
-
-  /// Stores DWG bytes in memory. DXF and FCB still use the real filesystem.
-  DrawingFileService.inMemory({Map<String, Uint8List>? files})
-    : this._(MemoryDwgBackend(files: files));
-
-  DrawingFileService._(this._dwgBackend);
-
-  final DwgBackend _dwgBackend;
+  /// Opens and saves drawings with the built-in codecs.
+  const DrawingFileService();
 
   /// Whether [path] looks like something this service can open.
-  ///
-  /// `.fcb` is FanCAD's own format and is always readable here, even when
-  /// the native backend cannot open DWG.
   bool canOpen(String path) {
-    final extension = _extensionOf(path.trim());
-    return extension == 'fcb' ||
-        extension == 'dxf' ||
-        (extension == 'dwg' && _dwgBackend.capabilities.canRead);
+    final target = path.trim();
+    final extension = _extensionOf(target);
+    return extension == 'dxf' ||
+        (extension == 'dwg' && const DwgCodec().canRead(target));
   }
 
   /// Opens a drawing.
   ///
-  /// The native parse runs on a worker isolate so a slow or pathological file
-  /// cannot freeze the UI. Decoding happens on the calling isolate because the
-  /// resulting document graph would cost more to copy across the isolate
-  /// boundary than it costs to build.
+  /// DWG parsing and document construction are CPU-bound, so they run on a
+  /// worker isolate: a large drawing would otherwise freeze the UI (and its
+  /// opening indicator) for seconds. The document graph is copied back, but
+  /// that copy costs far less than the parse the UI is spared.
   Future<OpenedDrawing> open(String path) async {
     final target = path.trim();
     if (!canOpen(target)) {
@@ -72,13 +56,8 @@ class DrawingFileService {
       );
     }
     final extension = _extensionOf(target);
-    if (extension == 'fcb') {
-      final bytes = await File(target).readAsBytes();
-      return decode(Uint8List.fromList(bytes));
-    }
     if (extension == 'dxf') {
-      // ASCII DXF is decoded in Dart. The native shim only understands DWG;
-      // routing `.dxf` through it would fail the moment LibreDWG is linked.
+      // ASCII DXF is decoded in Dart.
       final watch = Stopwatch()..start();
       final document = await const DxfReader().readFile(target);
       watch.stop();
@@ -88,38 +67,23 @@ class DrawingFileService {
         decodeTime: watch.elapsed,
       );
     }
-    final parseWatch = Stopwatch()..start();
-    final fcb = await _readOnWorker(target);
-    parseWatch.stop();
-
-    final decoded = _decode(fcb);
-    return OpenedDrawing(
-      document: decoded.document,
-      diagnostics: decoded.diagnostics,
-      entityCount: decoded.entityCount,
-      parseTime: parseWatch.elapsed,
-      decodeTime: decoded.elapsed,
-      bytesTransferred: fcb.lengthInBytes,
-    );
+    return _readDwgOnWorker(target);
   }
 
-  /// Saves [document] to [path], choosing a format the build can actually
+  /// Saves [document] to [path], choosing a format this build can actually
   /// write. Returns the path that was written, which may be a fallback.
-  Future<SavedDrawing> save(String path, CadDocument document) async {
+  Future<SavedDrawing> save(String path, DrawingData document) async {
     final plan = SaveStrategy(
-      canWriteDwg: _dwgBackend.capabilities.canWrite,
+      canWriteDwg: const DwgCodec().canWrite(document),
+      dwgFallbackReason:
+          'This drawing contains objects the DWG writer cannot represent; '
+          'saving DXF instead.',
     ).plan(path);
     switch (plan.format) {
       case SaveFormat.dxf:
         await const DxfWriter().writeFile(plan.targetPath, document);
-      case SaveFormat.fcb:
-        await File(plan.targetPath).writeAsBytes(encode(document));
       case SaveFormat.dwg:
-        await _dwgBackend.writeFromFcb(
-          plan.targetPath,
-          encode(document),
-          targetVersion: plan.dwgVersion,
-        );
+        await const DwgCodec().write(plan.targetPath, document);
     }
     return SavedDrawing(
       path: plan.targetPath,
@@ -129,46 +93,29 @@ class DrawingFileService {
   }
 
   /// Compares [source] to a freshly written-and-reread copy at [path].
-  Future<FidelityReport> audit(String path, CadDocument source) async {
+  Future<FidelityReport> audit(String path, DrawingData source) async {
     final outcome = await save(path, source);
     final reopened = await open(outcome.path);
     return const FidelityAuditor().compare(source, reopened.document);
   }
 
-  /// Encodes [document] as FCB, which is also FanCAD's own native file format.
-  Uint8List encode(CadDocument document) => FcbWriter().write(document);
-
-  /// Decodes an FCB buffer, for the native format and for tests.
-  OpenedDrawing decode(Uint8List fcb) {
-    final decoded = _decode(fcb);
-    return OpenedDrawing(
-      document: decoded.document,
-      diagnostics: decoded.diagnostics,
-      entityCount: decoded.entityCount,
-      decodeTime: decoded.elapsed,
-      bytesTransferred: fcb.lengthInBytes,
-    );
-  }
-
-  FcbDecodeResult _decode(Uint8List fcb) => FcbReader(fcb).decode();
-
-  Future<Uint8List> _readOnWorker(String path) async {
-    final backend = _dwgBackend;
-    // A backend that holds no isolate-local state can be recreated on the
-    // worker; anything else has to run in place.
-    if (backend is! NativeDwgBackend) {
-      return backend.readToFcb(path);
-    }
-    return Isolate.run(() async {
-      final bytes = await NativeDwgBackend().readToFcb(path);
-      return bytes;
-    }, debugName: 'fancad-dwg-read');
-  }
+  /// Runs the pure-Dart DWG read on a worker so the UI isolate stays free.
+  ///
+  /// [DwgCodec] holds no isolate-local state, so the worker constructs its
+  /// own. Everything [OpenedDrawing] carries is plain data, which makes the
+  /// result sendable without a hand-written transfer format.
+  Future<OpenedDrawing> _readDwgOnWorker(String path) => Isolate.run(
+    () => const DwgCodec().read(path),
+    debugName: 'fancad-dwg-read',
+  );
 
   String _cannotOpenMessage(String path) {
-    if (_extensionOf(path) == 'dwg' && !_dwgBackend.capabilities.canRead) {
-      return 'This build has no DWG backend (${_dwgBackend.capabilities.description}). '
-          'See pkg/fancad_core/IO.md for how to enable it.';
+    final extension = _extensionOf(path);
+    if (extension == 'fcb') {
+      return 'FCB files are no longer supported by FanCAD.';
+    }
+    if (extension == 'dwg') {
+      return 'This DWG version or layout is not supported by the Dart reader.';
     }
     return 'This file is not a drawing FanCAD can open.';
   }
@@ -184,7 +131,3 @@ class DrawingFileService {
     return name.substring(dot + 1).toLowerCase();
   }
 }
-
-/// Package tests inject a DWG adapter. This is not exported.
-DrawingFileService drawingFilesWithBackend(DwgBackend backend) =>
-    DrawingFileService._(backend);

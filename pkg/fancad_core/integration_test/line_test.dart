@@ -1,7 +1,7 @@
 @Tags(['native'])
 library;
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 import '../test/io/support/native.dart';
@@ -162,7 +162,7 @@ void main() {
         ),
         LineWeight.byLayer,
         reason:
-            'LibreDWG r2000 does not distinguish Default (31) from ByLayer (29)',
+            'the reference decoder r2000 does not distinguish Default (31) from ByLayer (29)',
       );
     });
 

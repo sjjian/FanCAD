@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 import 'support/sample_drawing.dart';

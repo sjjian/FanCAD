@@ -3,7 +3,7 @@ library;
 
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 import '../test/io/support/native.dart';
@@ -33,7 +33,7 @@ void main() {
       expect(
         leader.hasArrowHead,
         isTrue,
-        reason: 'LibreDWG rereads arrowhead_on as set even when we clear it',
+        reason: 'the reference decoder rereads arrowhead_on as set even when we clear it',
       );
     });
 

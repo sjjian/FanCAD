@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -74,8 +74,11 @@ void main() {
     'radius and diameter share a chord but only diameter crosses the centre',
     () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 10);
-      final radius = Construct.radiusDimension(circle, const Vec2(10, 0))!;
-      final diameter = Construct.diameterDimension(circle, const Vec2(10, 0))!;
+      final radius = DimensionOperations.radiusDimension(circle, const Vec2(10, 0))!;
+      final diameter = DimensionOperations.diameterDimension(
+        circle,
+        const Vec2(10, 0),
+      )!;
 
       final radiusSink = PolylineSink();
       graphics.emit(radius, context, radiusSink);
@@ -113,7 +116,7 @@ void main() {
   );
 
   test('an angular dimension draws two legs and a sector arc, not arrows', () {
-    final dim = Construct.angularDimension(
+    final dim = DimensionOperations.angularDimension(
       const Vec2.zero(),
       const Vec2(10, 0),
       const Vec2(0, 10),

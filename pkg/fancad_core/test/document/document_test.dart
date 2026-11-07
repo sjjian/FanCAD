@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -517,6 +517,39 @@ void main() {
       final sink = PolylineSink();
       document.emitBlock('NOPE', const EmitContext(tolerance: 0.1), sink);
       expect(sink.isEmpty, isTrue);
+    });
+
+    test('an emit query drops off-screen block members, not points', () {
+      final document = CadDocument();
+      document.addEntity(
+        const LineEntity(id: 0, start: Vec2.zero(), end: Vec2(4, 0)),
+        blockName: 'CELL',
+      );
+      document
+        ..addEntity(
+          const LineEntity(id: 0, start: Vec2(1e6, 0), end: Vec2(1e6 + 4, 0)),
+          blockName: 'CELL',
+        )
+        ..addEntity(
+          const PointEntity(id: 0, position: Vec2(2, 2)),
+          blockName: 'CELL',
+        );
+
+      final sink = PolylineSink();
+      document.emitBlock(
+        'CELL',
+        EmitContext(
+          tolerance: 0.1,
+          blocks: document,
+          query: const Bounds2(-10, -10, 10, 10),
+        ),
+        sink,
+      );
+      expect(sink.polylines, hasLength(1));
+      expect(sink.polylines.single, [0, 0, 4, 0]);
+      // A POINT has a zero-size box, which no window query can match; it must
+      // still be emitted or it would vanish from every scene.
+      expect(sink.points, hasLength(1));
     });
 
     test('a missing or colliding name cannot invent a rename', () {

@@ -3,7 +3,7 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 import '../test/io/support/native.dart';
@@ -41,7 +41,7 @@ void main() {
             (start - expected - math.pi * 2).abs() < 1e-6 ||
             (start - expected + math.pi * 2).abs() < 1e-6,
         isTrue,
-        reason: 'LibreDWG may wrap 5.5 to 5.5-2π; sweep must match',
+        reason: 'the reference decoder may wrap 5.5 to 5.5-2π; sweep must match',
       );
     });
 

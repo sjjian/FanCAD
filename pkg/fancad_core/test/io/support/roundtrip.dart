@@ -1,13 +1,10 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:fancad_core/src/io/dxf/reader.dart';
 import 'package:fancad_core/src/io/dxf/writer.dart';
-import 'package:fancad_core/src/io/fcb/reader.dart';
-import 'package:fancad_core/src/io/fcb/writer.dart';
-import 'package:fancad_core/src/io/native/native_dwg_backend.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
-/// Save then reopen a drawing through DWG, DXF, or FCB.
+/// Save then reopen a drawing through DWG or DXF.
 class Roundtrip {
   Roundtrip({DrawingFileService? importer})
     : importer = importer ?? DrawingFileService();
@@ -17,19 +14,13 @@ class Roundtrip {
   static const timeout = Timeout(Duration(minutes: 2));
 
   void requireDwg() {
-    final dwg = NativeDwgBackend().capabilities;
-    expect(
-      dwg.canWrite && dwg.canRead,
-      isTrue,
-      reason:
-          'Built without LibreDWG: ${dwg.description}. '
-          'Set FANCAD_LIBREDWG_ROOT and rebuild.',
-    );
+    // The pure-Dart reader is always compiled in; there is no optional
+    // backend to probe before a round trip.
   }
 
   Future<CadDocument> dwg(CadDocument source, {String name = 'round'}) async {
     final path = await writeDwg(source, name: name);
-    return (await importer.open(path)).document;
+    return CadDocument.fromData((await importer.open(path)).document);
   }
 
   /// Writes [source] and returns the temp path so callers can inspect bytes.
@@ -41,10 +32,8 @@ class Roundtrip {
   }
 
   CadDocument dxf(CadDocument source) {
-    return const DxfReader().readString(const DxfWriter().writeString(source));
-  }
-
-  CadDocument fcb(CadDocument source) {
-    return FcbReader(FcbWriter().write(source)).decode().document;
+    return CadDocument.fromData(
+      const DxfReader().readString(const DxfWriter().writeString(source)),
+    );
   }
 }

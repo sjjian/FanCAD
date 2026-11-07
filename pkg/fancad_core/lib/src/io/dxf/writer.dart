@@ -2,21 +2,90 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
-import '../../document/document.dart';
-import '../../document/entity.dart';
-import '../../document/style.dart';
+import '../../model/document/drawing_data.dart';
+import '../../model/document/layout.dart';
+import '../../model/entity/entity.dart';
+import '../../model/style.dart';
 import '../region_sat_writer.dart';
+
+/// Header variables that DXF stores as integers (group 70).
+const _headerIntVars = <String>{
+  'PDMODE',
+  'LUNITS',
+  'LUPREC',
+  'AUNITS',
+  'AUPREC',
+  'LIMCHECK',
+  'GRIDMODE',
+  'SNAPMODE',
+  'ORTHOMODE',
+  'FILLMODE',
+  'QTEXTMODE',
+  'MIRRTEXT',
+  'ATTMODE',
+  'MEASUREMENT',
+  'TILEMODE',
+  'PLIMCHECK',
+  'VISRETAIN',
+  'DISPSILH',
+  'ISOLINES',
+  'REGENMODE',
+  'BLIPMODE',
+};
+
+/// Header variables that DXF stores as doubles (group 40).
+const _headerRealVars = <String>{
+  'LTSCALE',
+  'PDSIZE',
+  'CELTSCALE',
+  'TEXTSIZE',
+  'TRACEWID',
+  'FILLETRAD',
+  'CHAMFERA',
+  'CHAMFERB',
+  'CHAMFERC',
+  'CHAMFERD',
+  'THICKNESS',
+  'ELEVATION',
+  'DIMSCALE',
+  'DIMASZ',
+  'DIMEXO',
+  'DIMDLI',
+  'DIMEXE',
+  'DIMRND',
+  'DIMDLE',
+  'DIMTP',
+  'DIMTM',
+  'DIMTXT',
+  'DIMCEN',
+  'DIMTSZ',
+  'DIMALTF',
+  'DIMLFAC',
+  'DIMTVP',
+  'DIMTFAC',
+  'DIMGAP',
+  'DIMALTRND',
+};
+
+/// Named header strings (group 1, or 3 for the codepage).
+const _headerStringVars = <String>{
+  'DWGCODEPAGE',
+  'MENU',
+  'PROJECTNAME',
+  'HYPERLINKBASE',
+  'STYLESHEET',
+};
 
 /// Writes a drawing as ASCII DXF R2000.
 ///
-/// DXF is the interchange format that does not depend on LibreDWG. A save
+/// DXF is the interchange format that does not depend on the reference decoder. A save
 /// that cannot produce DWG still produces a file AutoCAD, LibreCAD and every
 /// other tool in the ecosystem can open, which is the difference between
 /// "FanCAD drawings are trapped" and "FanCAD drawings travel".
 class DxfWriter {
   const DxfWriter();
 
-  String writeString(CadDocument document, {String acadVer = 'AC1015'}) {
+  String writeString(DrawingData document, {String acadVer = 'AC1015'}) {
     final out = StringBuffer();
     void pair(int code, Object value) {
       out.writeln(code);
@@ -35,9 +104,29 @@ class DxfWriter {
     pair(2, document.currentDimStyle);
     pair(9, r'$TEXTSTYLE');
     pair(7, document.currentTextStyle);
+    for (final name in _headerIntVars) {
+      final value = document.headerVariables['\$$name'];
+      final number = double.tryParse(value ?? '');
+      if (number == null || !number.isFinite) continue;
+      pair(9, '\$$name');
+      pair(70, number.round());
+    }
+    for (final name in _headerRealVars) {
+      final value = document.headerVariables['\$$name'];
+      final number = double.tryParse(value ?? '');
+      if (number == null || !number.isFinite) continue;
+      pair(9, '\$$name');
+      pair(40, number);
+    }
+    for (final name in _headerStringVars) {
+      final value = document.headerVariables['\$$name'];
+      if (value == null || value.isEmpty) continue;
+      pair(9, '\$$name');
+      pair(name == 'DWGCODEPAGE' ? 3 : 1, value);
+    }
     pair(0, 'ENDSEC');
 
-    // LibreDWG 0.14 wires LAYOUT through DXF 330, not the block name.
+    // the reference decoder 0.14 wires LAYOUT through DXF 330, not the block name.
     // Handles stay in this file only; the Dart document does not store them.
     final blockHandles = <String, String>{};
     var nextHandle = 0x40;
@@ -123,7 +212,7 @@ class DxfWriter {
       pair(100, 'AcDbLayout');
       pair(1, layout.name);
       // Group 2 on LAYOUT is paper_size. The associated block is 330.
-      // LibreDWG 0.14 treats a block name in group 2 as invalid DXF.
+      // the reference decoder 0.14 treats a block name in group 2 as invalid DXF.
       // 0.14 stores the first 330 as ownerhandle and a second as block_header.
       pair(330, handleOf(layout.blockName));
       pair(330, handleOf(layout.blockName));
@@ -134,13 +223,13 @@ class DxfWriter {
     return out.toString();
   }
 
-  Future<void> writeFile(String path, CadDocument document) async {
+  Future<void> writeFile(String path, DrawingData document) async {
     final file = File(path);
     await file.parent.create(recursive: true);
     await file.writeAsString(writeString(document), encoding: utf8);
   }
 
-  void _lineTypes(void Function(int, Object) pair, CadDocument document) {
+  void _lineTypes(void Function(int, Object) pair, DrawingData document) {
     pair(0, 'TABLE');
     pair(2, 'LTYPE');
     pair(70, document.lineTypes.length);
@@ -162,7 +251,7 @@ class DxfWriter {
     pair(0, 'ENDTAB');
   }
 
-  void _layers(void Function(int, Object) pair, CadDocument document) {
+  void _layers(void Function(int, Object) pair, DrawingData document) {
     pair(0, 'TABLE');
     pair(2, 'LAYER');
     pair(70, document.layers.length);
@@ -175,16 +264,26 @@ class DxfWriter {
       // unsigned index would turn every hidden layer back on at the next open.
       final index = aci.abs() == 0 ? 7 : aci.abs();
       pair(62, layer.visible ? aci : -index);
+      if (layer.color.kind == ColorKind.trueColor) {
+        pair(420, layer.color.value);
+      }
       pair(6, layer.lineType);
       if (layer.lineWeight != LineWeight.byDefault) {
         pair(370, layer.lineWeight);
       }
       if (!layer.plottable) pair(290, 0);
+      if (layer.transparency > 0) {
+        final alpha = ((1 - layer.transparency / 100) * 255).round().clamp(
+          0,
+          255,
+        );
+        pair(440, 0x02000000 | alpha);
+      }
     }
     pair(0, 'ENDTAB');
   }
 
-  void _textStyles(void Function(int, Object) pair, CadDocument document) {
+  void _textStyles(void Function(int, Object) pair, DrawingData document) {
     pair(0, 'TABLE');
     pair(2, 'STYLE');
     pair(70, document.textStyles.length);
@@ -222,7 +321,7 @@ class DxfWriter {
     pair(0, 'ENDTAB');
   }
 
-  void _dimStyles(void Function(int, Object) pair, CadDocument document) {
+  void _dimStyles(void Function(int, Object) pair, DrawingData document) {
     pair(0, 'TABLE');
     pair(2, 'DIMSTYLE');
     pair(70, document.dimStyles.length);
@@ -246,7 +345,7 @@ class DxfWriter {
 
   void _viewports(
     void Function(int, Object) pair,
-    CadDocument document,
+    DrawingData document,
     String blockName,
   ) {
     var id = 2;
@@ -288,7 +387,7 @@ class DxfWriter {
   void _entity(
     void Function(int, Object) pair,
     CadEntity entity,
-    CadDocument document, {
+    DrawingData document, {
     bool paperSpace = false,
   }) {
     switch (entity) {
@@ -318,6 +417,18 @@ class DxfWriter {
         pair(40, radius);
         pair(50, startAngle * 180 / math.pi);
         pair(51, endAngle * 180 / math.pi);
+      case WipeoutEntity():
+        // ASCII DXF has no lightweight WIPEOUT without IMAGEDEF plumbing.
+        // Keep the visible mask boundary as a closed polyline.
+        pair(0, 'LWPOLYLINE');
+        _common(pair, entity, paperSpace: paperSpace);
+        pair(90, entity.vertexCount);
+        pair(70, 1);
+        for (var i = 0; i < entity.vertexCount; i++) {
+          final p = entity.vertexAt(i);
+          pair(10, p.x);
+          pair(20, p.y);
+        }
       case PolylineEntity():
         pair(0, 'LWPOLYLINE');
         _common(pair, entity, paperSpace: paperSpace);
@@ -638,6 +749,16 @@ class DxfWriter {
     if (entity.props.lineType != 'ByLayer') pair(6, entity.props.lineType);
     if (entity.props.lineWeight != LineWeight.byLayer) {
       pair(370, entity.props.lineWeight);
+    }
+    if (entity.props.lineTypeScale != 1 && entity.props.lineTypeScale > 0) {
+      pair(48, entity.props.lineTypeScale);
+    }
+    if (entity.props.transparency > 0) {
+      final alpha = ((1 - entity.props.transparency / 100) * 255).round().clamp(
+        0,
+        255,
+      );
+      pair(440, 0x02000000 | alpha);
     }
     if (!entity.props.visible) pair(60, 1);
   }

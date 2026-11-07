@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -472,13 +472,57 @@ String _satSquare(List<Vec2> points) {
   out.writeln('loop \$-1 \$-1 \$-1 \$$co0 \$$face #');
   for (var i = 0; i < n; i++) {
     final next = co0 + ((i + 1) % n);
-    out.writeln(
-      'coedge \$-1 \$-1 \$-1 \$$next \$-1 \$-1 \$${ed0 + i} forward #',
-    );
+    out.writeln('coedge \$-1 \$-1 \$-1 \$$next \$-1 \$-1 \$${ed0 + i} false #');
   }
   for (var i = 0; i < n; i++) {
     final start = v0 + i;
     final end = v0 + ((i + 1) % n);
+    out.writeln(
+      'edge \$-1 \$-1 \$${co0 + i} \$$start \$$end \$-1 \$-1 \$${co0 + i} 0 1 #',
+    );
+  }
+  for (var i = 0; i < n; i++) {
+    out.writeln('vertex \$-1 \$-1 \$-1 \$${p0 + i} #');
+  }
+  for (var i = 0; i < n; i++) {
+    out.writeln('point \$-1 \$-1 ${points[i].x} ${points[i].y} 0 #');
+  }
+  out.writeln('End-of-ACIS-data ');
+  return out.toString();
+}
+
+String _satSquareReversed(List<Vec2> points) {
+  final n = points.length;
+  final middle =
+      '700 0 1 0 \n'
+      '8 FanCAD 8 ACIS 1.7.0 24 Thu Jan 01 00:00:00 1998 \n'
+      '18 1e-6 1e-10 \n';
+  final body = 0;
+  final lump = 1;
+  final shell = 2;
+  final face = 3;
+  final loop = 4;
+  final co0 = 5;
+  final ed0 = co0 + n;
+  final v0 = ed0 + n;
+  final p0 = v0 + n;
+  final out = StringBuffer(middle);
+  out.writeln('body \$-1 \$$lump \$-1 \$-1 #');
+  out.writeln('lump \$-1 \$-1 \$$shell \$$body #');
+  out.writeln('shell \$-1 \$-1 \$-1 \$$face \$-1 \$$lump #');
+  out.writeln(
+    'face \$-1 \$-1 \$$loop \$-1 \$$shell \$-1 \$-1 forward single #',
+  );
+  out.writeln('loop \$-1 \$-1 \$-1 \$$co0 \$$face #');
+  for (var i = 0; i < n; i++) {
+    final next = co0 + ((i + 1) % n);
+    out.writeln('coedge \$-1 \$-1 \$-1 \$$next \$-1 \$-1 \$${ed0 + i} true #');
+  }
+  for (var i = 0; i < n; i++) {
+    // Edges are stored against the loop direction; the true flags reverse
+    // them, so ignoring the flag leaves the chain open.
+    final start = v0 + ((i + 1) % n);
+    final end = v0 + i;
     out.writeln(
       'edge \$-1 \$-1 \$${co0 + i} \$$start \$$end \$-1 \$-1 \$${co0 + i} 0 1 #',
     );
@@ -502,5 +546,21 @@ void satReaderTest() {
     expect(geometry!.components, hasLength(1));
     expect(geometry.signedArea, closeTo(100, 1e-6));
     expect(geometry.bounds.width, closeTo(10, 1e-6));
+  });
+
+  test('SAT reader reverses true-flagged coedges', () {
+    final geometry = const AcisSatReader().read(
+      _satSquareReversed(const [
+        Vec2(0, 0),
+        Vec2(10, 0),
+        Vec2(10, 10),
+        Vec2(0, 10),
+      ]),
+    );
+    expect(geometry, isNotNull);
+    expect(geometry!.components, hasLength(1));
+    expect(geometry.signedArea, closeTo(100, 1e-6));
+    expect(geometry.bounds.width, closeTo(10, 1e-6));
+    expect(geometry.bounds.height, closeTo(10, 1e-6));
   });
 }

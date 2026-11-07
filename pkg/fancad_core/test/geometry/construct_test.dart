@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 
@@ -16,7 +16,7 @@ void main() {
 
   group('arcThrough', () {
     test('finds the circumscribed arc of three points', () {
-      final arc = Construct.arcThrough(
+      final arc = EditOperations.arcThrough(
         const Vec2(1, 0),
         const Vec2(0, 1),
         const Vec2(-1, 0),
@@ -31,7 +31,7 @@ void main() {
     });
 
     test('reverses the sweep when the middle point is on the other side', () {
-      final arc = Construct.arcThrough(
+      final arc = EditOperations.arcThrough(
         const Vec2(1, 0),
         const Vec2(0, -1),
         const Vec2(-1, 0),
@@ -45,7 +45,7 @@ void main() {
 
     test('returns null for collinear points', () {
       expect(
-        Construct.arcThrough(
+        EditOperations.arcThrough(
           const Vec2(0, 0),
           const Vec2(1, 1),
           const Vec2(2, 2),
@@ -53,7 +53,7 @@ void main() {
         isNull,
       );
       expect(
-        Construct.arcThrough(
+        EditOperations.arcThrough(
           const Vec2.zero(),
           const Vec2.zero(),
           const Vec2(4, 0),
@@ -65,7 +65,7 @@ void main() {
 
   group('circleThrough', () {
     test('finds the circumcircle of three points', () {
-      final circle = Construct.circleThrough(
+      final circle = EditOperations.circleThrough(
         const Vec2(1, 0),
         const Vec2(0, 1),
         const Vec2(-1, 0),
@@ -79,7 +79,7 @@ void main() {
 
     test('returns null for collinear points', () {
       expect(
-        Construct.circleThrough(
+        EditOperations.circleThrough(
           const Vec2(0, 0),
           const Vec2(1, 1),
           const Vec2(2, 2),
@@ -87,7 +87,7 @@ void main() {
         isNull,
       );
       expect(
-        Construct.circleThrough(
+        EditOperations.circleThrough(
           const Vec2.zero(),
           const Vec2(2, 0),
           const Vec2(4, 0),
@@ -95,7 +95,7 @@ void main() {
         isNull,
       );
       expect(
-        Construct.circleThrough(
+        EditOperations.circleThrough(
           const Vec2.zero(),
           const Vec2.zero(),
           const Vec2.zero(),
@@ -107,7 +107,7 @@ void main() {
 
   group('linearDimension', () {
     test('measures width when the dim line is above the origins', () {
-      final dim = Construct.linearDimension(
+      final dim = DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(10, 4),
         const Vec2(5, 8),
@@ -119,7 +119,7 @@ void main() {
     });
 
     test('measures height when the dim line is beside the origins', () {
-      final dim = Construct.linearDimension(
+      final dim = DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(10, 4),
         const Vec2(14, 2),
@@ -132,7 +132,7 @@ void main() {
 
     test('returns null when the chosen axis has no length', () {
       expect(
-        Construct.linearDimension(
+        DimensionOperations.linearDimension(
           const Vec2(3, 0),
           const Vec2(3, 8),
           const Vec2(3, 12),
@@ -143,7 +143,7 @@ void main() {
 
     test('coincident origins cannot invent a linear dim', () {
       expect(
-        Construct.linearDimension(
+        DimensionOperations.linearDimension(
           const Vec2.zero(),
           const Vec2.zero(),
           const Vec2(0, 4),
@@ -155,7 +155,7 @@ void main() {
 
   group('alignedDimension', () {
     test('measures the true distance, not a projected axis', () {
-      final dim = Construct.alignedDimension(
+      final dim = DimensionOperations.alignedDimension(
         const Vec2(0, 0),
         const Vec2(3, 4),
         const Vec2(1, 2),
@@ -168,7 +168,7 @@ void main() {
 
     test('returns null when the origins coincide', () {
       expect(
-        Construct.alignedDimension(
+        DimensionOperations.alignedDimension(
           const Vec2(2, 2),
           const Vec2(2, 2),
           const Vec2(4, 4),
@@ -180,12 +180,12 @@ void main() {
 
   group('continueDimension', () {
     test('walks a horizontal chain on the same dimension line', () {
-      final first = Construct.linearDimension(
+      final first = DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(5, 4),
       )!;
-      final next = Construct.continueDimension(first, const Vec2(18, 0));
+      final next = DimensionOperations.continueDimension(first, const Vec2(18, 0));
 
       expect(next, isNotNull);
       expect(next!.measurement, closeTo(8, 1e-9));
@@ -197,36 +197,36 @@ void main() {
     test('keeps a width chain from flipping to height', () {
       // The previous dim-line pick sits left of the new midpoint, which
       // would make a fresh DIMLINEAR read height. Continue must not.
-      final first = Construct.linearDimension(
+      final first = DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(5, 4),
       )!;
-      final next = Construct.continueDimension(first, const Vec2(24, 0));
+      final next = DimensionOperations.continueDimension(first, const Vec2(24, 0));
 
       expect(next, isNotNull);
       expect(next!.measurement, closeTo(14, 1e-9));
     });
 
     test('continues an associated dimension with the same sources', () {
-      final first = Construct.linearDimension(
+      final first = DimensionOperations.linearDimension(
         const Vec2.zero(),
         const Vec2(10, 0),
         const Vec2(5, 4),
         sourceIds: const [7],
       )!;
-      final next = Construct.continueDimension(first, const Vec2(24, 0));
+      final next = DimensionOperations.continueDimension(first, const Vec2(24, 0));
       expect(next, isNotNull);
       expect(next!.sourceIds, [7]);
     });
 
     test('continues an aligned dimension along the same offset', () {
-      final first = Construct.alignedDimension(
+      final first = DimensionOperations.alignedDimension(
         const Vec2(0, 0),
         const Vec2(3, 4),
         const Vec2(-2, 2),
       )!;
-      final next = Construct.continueDimension(first, const Vec2(6, 8));
+      final next = DimensionOperations.continueDimension(first, const Vec2(6, 8));
 
       expect(next, isNotNull);
       expect(next!.measurement, closeTo(5, 1e-9));
@@ -236,17 +236,23 @@ void main() {
 
     test('refuses a radius dimension', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final radial = Construct.radiusDimension(circle, const Vec2(8, 0))!;
-      expect(Construct.continueDimension(radial, const Vec2(12, 0)), isNull);
+      final radial = DimensionOperations.radiusDimension(circle, const Vec2(8, 0))!;
+      expect(
+        DimensionOperations.continueDimension(radial, const Vec2(12, 0)),
+        isNull,
+      );
     });
 
     test('a coincident origin cannot invent a continue dim', () {
-      final first = Construct.linearDimension(
+      final first = DimensionOperations.linearDimension(
         const Vec2.zero(),
         const Vec2(10, 0),
         const Vec2(5, 4),
       )!;
-      expect(Construct.continueDimension(first, const Vec2(10, 0)), isNull);
+      expect(
+        DimensionOperations.continueDimension(first, const Vec2(10, 0)),
+        isNull,
+      );
     });
 
     test('an empty stack cannot invent a continue dim', () {
@@ -256,18 +262,21 @@ void main() {
         textPosition: Vec2.zero(),
         measurement: 0,
       );
-      expect(Construct.continueDimension(empty, const Vec2(10, 0)), isNull);
+      expect(
+        DimensionOperations.continueDimension(empty, const Vec2(10, 0)),
+        isNull,
+      );
     });
   });
 
   group('baselineDimension', () {
     test('stacks from the first origin on a stepped dimension line', () {
-      final first = Construct.linearDimension(
+      final first = DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(5, 4),
       )!;
-      final next = Construct.baselineDimension(
+      final next = DimensionOperations.baselineDimension(
         first,
         const Vec2(18, 0),
         spacing: 8,
@@ -281,17 +290,17 @@ void main() {
     });
 
     test('each stacked dim steps farther from the origins', () {
-      final first = Construct.linearDimension(
+      final first = DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(8, 0),
         const Vec2(4, 3),
       )!;
-      final second = Construct.baselineDimension(
+      final second = DimensionOperations.baselineDimension(
         first,
         const Vec2(14, 0),
         spacing: 5,
       )!;
-      final third = Construct.baselineDimension(
+      final third = DimensionOperations.baselineDimension(
         second,
         const Vec2(20, 0),
         spacing: 5,
@@ -304,12 +313,12 @@ void main() {
     });
 
     test('stacks an aligned dimension outward along the same side', () {
-      final first = Construct.alignedDimension(
+      final first = DimensionOperations.alignedDimension(
         const Vec2(0, 0),
         const Vec2(3, 4),
         const Vec2(-2, 2),
       )!;
-      final next = Construct.baselineDimension(
+      final next = DimensionOperations.baselineDimension(
         first,
         const Vec2(6, 8),
         spacing: 4,
@@ -336,17 +345,20 @@ void main() {
 
     test('refuses a radius dimension', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final radial = Construct.radiusDimension(circle, const Vec2(8, 0))!;
-      expect(Construct.baselineDimension(radial, const Vec2(12, 0)), isNull);
+      final radial = DimensionOperations.radiusDimension(circle, const Vec2(8, 0))!;
+      expect(
+        DimensionOperations.baselineDimension(radial, const Vec2(12, 0)),
+        isNull,
+      );
     });
 
     test('a vertical linear stack steps the dimension line sideways', () {
-      final first = Construct.linearDimension(
+      final first = DimensionOperations.linearDimension(
         const Vec2.zero(),
         const Vec2(0, 10),
         const Vec2(4, 5),
       )!;
-      final next = Construct.baselineDimension(
+      final next = DimensionOperations.baselineDimension(
         first,
         const Vec2(0, 18),
         spacing: 6,
@@ -363,7 +375,7 @@ void main() {
       [
         (
           name: 'a zero spacing cannot invent a baseline dim',
-          first: Construct.linearDimension(
+          first: DimensionOperations.linearDimension(
             const Vec2.zero(),
             const Vec2(10, 0),
             const Vec2(5, 4),
@@ -373,7 +385,7 @@ void main() {
         ),
         (
           name: 'a coincident origin cannot invent a baseline dim',
-          first: Construct.linearDimension(
+          first: DimensionOperations.linearDimension(
             const Vec2.zero(),
             const Vec2(10, 0),
             const Vec2(5, 4),
@@ -395,7 +407,11 @@ void main() {
       ],
       (c) {
         expect(
-          Construct.baselineDimension(c.first, c.origin, spacing: c.spacing),
+          DimensionOperations.baselineDimension(
+            c.first,
+            c.origin,
+            spacing: c.spacing,
+          ),
           isNull,
         );
       },
@@ -405,7 +421,7 @@ void main() {
   group('radiusDimension', () {
     test('reads the radius of a circle and prefixes R', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final dim = Construct.radiusDimension(circle, const Vec2(8, 0));
+      final dim = DimensionOperations.radiusDimension(circle, const Vec2(8, 0));
 
       expect(dim, isNotNull);
       expect(dim!.measurement, closeTo(5, 1e-9));
@@ -422,16 +438,16 @@ void main() {
         startAngle: 0,
         endAngle: 1,
       );
-      expect(Construct.radiusDimension(arc, const Vec2(3, 0)), isNotNull);
+      expect(DimensionOperations.radiusDimension(arc, const Vec2(3, 0)), isNotNull);
       expect(
-        Construct.radiusDimension(line(0, 0, 10, 0), const Vec2(5, 0)),
+        DimensionOperations.radiusDimension(line(0, 0, 10, 0), const Vec2(5, 0)),
         isNull,
       );
     });
 
     test('a vanished radius cannot invent a radial dim', () {
       expect(
-        Construct.radiusDimension(
+        DimensionOperations.radiusDimension(
           const CircleEntity(id: 1, center: Vec2.zero(), radius: 0),
           const Vec2(8, 0),
         ),
@@ -441,7 +457,7 @@ void main() {
 
     test('a pick at the centre still names a radius', () {
       expect(
-        Construct.radiusDimension(
+        DimensionOperations.radiusDimension(
           const CircleEntity(id: 3, center: Vec2.zero(), radius: 5),
           const Vec2.zero(),
         ),
@@ -453,7 +469,7 @@ void main() {
   group('regenDimension', () {
     test('a linear dimension follows a moved line and keeps its offset', () {
       const source = LineEntity(id: 7, start: Vec2.zero(), end: Vec2(10, 0));
-      final dim = Construct.linearDimension(
+      final dim = DimensionOperations.linearDimension(
         source.start,
         source.end,
         const Vec2(5, 4),
@@ -462,7 +478,9 @@ void main() {
       expect(dim.measurement, closeTo(10, 1e-9));
 
       const moved = LineEntity(id: 7, start: Vec2(0, 2), end: Vec2(14, 2));
-      final next = Construct.regenDimension(dim, [moved], sourcesMoved: true)!;
+      final next = DimensionOperations.regenDimension(dim, [
+        moved,
+      ], sourcesMoved: true)!;
       expect(next.measurement, closeTo(14, 1e-9));
       expect(next.sourceIds, [7]);
       expect(next.definitionPoints[0], const Vec2(0, 2));
@@ -472,7 +490,7 @@ void main() {
 
     test('moving only the dimension keeps origins on the source', () {
       const source = LineEntity(id: 7, start: Vec2.zero(), end: Vec2(10, 0));
-      final dim = Construct.linearDimension(
+      final dim = DimensionOperations.linearDimension(
         source.start,
         source.end,
         const Vec2(5, 4),
@@ -480,7 +498,7 @@ void main() {
         sourceIds: const [7],
       )!;
       final dragged = dim.transformed(const Mat3.translation(0, 3));
-      final next = Construct.regenDimension(dragged, const [
+      final next = DimensionOperations.regenDimension(dragged, const [
         source,
       ], sourcesMoved: false)!;
       expect(next.measurement, closeTo(10, 1e-9));
@@ -491,9 +509,9 @@ void main() {
 
     test('a radius dimension rereads a stretched circle', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final dim = Construct.radiusDimension(circle, const Vec2(8, 0))!;
+      final dim = DimensionOperations.radiusDimension(circle, const Vec2(8, 0))!;
       const grown = CircleEntity(id: 1, center: Vec2.zero(), radius: 8);
-      final next = Construct.regenDimension(dim, const [grown])!;
+      final next = DimensionOperations.regenDimension(dim, const [grown])!;
       expect(next.measurement, closeTo(8, 1e-9));
       expect(next.displayText, 'R8.00');
       expect(next.sourceIds, [1]);
@@ -506,14 +524,14 @@ void main() {
         measurement: 10,
         sourceIds: [99],
       );
-      expect(Construct.regenDimension(dim, const []), same(dim));
+      expect(DimensionOperations.regenDimension(dim, const []), same(dim));
     });
   });
 
   group('diameterDimension', () {
     test('reads twice the radius and prefixes Ø', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final dim = Construct.diameterDimension(circle, const Vec2(8, 0));
+      final dim = DimensionOperations.diameterDimension(circle, const Vec2(8, 0));
 
       expect(dim, isNotNull);
       expect(dim!.measurement, closeTo(10, 1e-9));
@@ -523,7 +541,7 @@ void main() {
 
     test('a line cannot invent a diameter', () {
       expect(
-        Construct.diameterDimension(
+        DimensionOperations.diameterDimension(
           const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
           const Vec2(5, 0),
         ),
@@ -535,7 +553,7 @@ void main() {
   group('centerMark', () {
     test('crosses the centre and extends past the circumference', () {
       const circle = CircleEntity(id: 1, center: Vec2(10, 4), radius: 8);
-      final marks = Construct.centerMark(circle, size: 2);
+      final marks = DimensionOperations.centerMark(circle, size: 2);
 
       expect(marks, isNotNull);
       expect(marks, hasLength(6));
@@ -553,7 +571,7 @@ void main() {
 
     test('can draw only the centre cross', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 6);
-      final marks = Construct.centerMark(circle, size: 1.5, extend: false);
+      final marks = DimensionOperations.centerMark(circle, size: 1.5, extend: false);
 
       expect(marks, hasLength(2));
       expect(
@@ -574,8 +592,8 @@ void main() {
         startAngle: 0,
         endAngle: 2,
       );
-      expect(Construct.centerMark(arc, extend: false), hasLength(2));
-      expect(Construct.centerMark(line(0, 0, 10, 0)), isNull);
+      expect(DimensionOperations.centerMark(arc, extend: false), hasLength(2));
+      expect(DimensionOperations.centerMark(line(0, 0, 10, 0)), isNull);
     });
 
     eachCase(
@@ -597,14 +615,14 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.centerMark(c.entity, size: c.size), isNull);
+        expect(DimensionOperations.centerMark(c.entity, size: c.size), isNull);
       },
     );
   });
 
   group('centerLine', () {
     test('sits midway between two parallel lines and overshoots both', () {
-      final mark = Construct.centerLine(
+      final mark = DimensionOperations.centerLine(
         line(0, 0, 10, 0),
         line(2, 4, 12, 4),
         extension: 2,
@@ -619,7 +637,7 @@ void main() {
 
     test('refuses lines that are not parallel', () {
       expect(
-        Construct.centerLine(line(0, 0, 10, 0), line(0, 0, 0, 10)),
+        DimensionOperations.centerLine(line(0, 0, 10, 0), line(0, 0, 0, 10)),
         isNull,
       );
     });
@@ -627,7 +645,7 @@ void main() {
     test('runs through two circle centres and past both rims', () {
       const left = CircleEntity(id: 1, center: Vec2.zero(), radius: 2);
       const right = CircleEntity(id: 2, center: Vec2(10, 0), radius: 3);
-      final mark = Construct.centerLine(left, right, extension: 1);
+      final mark = DimensionOperations.centerLine(left, right, extension: 1);
 
       expect(mark, isNotNull);
       expect(mark!.start, const Vec2(-3, 0));
@@ -643,9 +661,9 @@ void main() {
         endAngle: 2,
       );
       const other = CircleEntity(id: 2, center: Vec2(6, 0), radius: 1);
-      expect(Construct.centerLine(arc, other, extension: 0), isNotNull);
+      expect(DimensionOperations.centerLine(arc, other, extension: 0), isNotNull);
       expect(
-        Construct.centerLine(
+        DimensionOperations.centerLine(
           const CircleEntity(id: 1, center: Vec2.zero(), radius: 2),
           const CircleEntity(id: 2, center: Vec2.zero(), radius: 5),
         ),
@@ -676,7 +694,7 @@ void main() {
       ],
       (c) {
         expect(
-          Construct.centerLine(c.first, c.second, extension: c.extension),
+          DimensionOperations.centerLine(c.first, c.second, extension: c.extension),
           isNull,
         );
       },
@@ -685,7 +703,7 @@ void main() {
 
   group('angularDimension', () {
     test('labels the sector that contains the dim-arc pick', () {
-      final interior = Construct.angularDimension(
+      final interior = DimensionOperations.angularDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(0, 10),
@@ -695,7 +713,7 @@ void main() {
       expect(interior!.measurement, closeTo(90, 1e-9));
       expect(interior.displayText, '90.00°');
 
-      final exterior = Construct.angularDimension(
+      final exterior = DimensionOperations.angularDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(0, 10),
@@ -707,7 +725,7 @@ void main() {
 
     test('returns null when a ray collapses onto the vertex', () {
       expect(
-        Construct.angularDimension(
+        DimensionOperations.angularDimension(
           const Vec2(0, 0),
           const Vec2(0, 0),
           const Vec2(1, 0),
@@ -721,7 +739,7 @@ void main() {
       'a coincident vertex or collapsed sweep cannot invent an angular dim',
       () {
         expect(
-          Construct.angularDimension(
+          DimensionOperations.angularDimension(
             const Vec2.zero(),
             const Vec2.zero(),
             const Vec2(10, 0),
@@ -730,7 +748,7 @@ void main() {
           isNull,
         );
         expect(
-          Construct.angularDimension(
+          DimensionOperations.angularDimension(
             const Vec2.zero(),
             const Vec2(10, 0),
             const Vec2(10, 0),
@@ -739,7 +757,7 @@ void main() {
           isNull,
         );
         expect(
-          Construct.angularDimension(
+          DimensionOperations.angularDimension(
             const Vec2.zero(),
             const Vec2(10, 0),
             const Vec2(20, 0),
@@ -758,7 +776,7 @@ void main() {
         end: Vec2(math.cos(math.pi / 6) * 10, math.sin(math.pi / 6) * 10),
       );
 
-      final acute = Construct.angularDimensionFromLines(
+      final acute = DimensionOperations.angularDimensionFromLines(
         horizontal,
         tilted,
         const Vec2(5, 1),
@@ -767,7 +785,7 @@ void main() {
       expect(acute!.measurement, closeTo(30, 1e-6));
       expect(acute.definitionPoints.first, const Vec2(0, 0));
 
-      final obtuse = Construct.angularDimensionFromLines(
+      final obtuse = DimensionOperations.angularDimensionFromLines(
         horizontal,
         tilted,
         const Vec2(-5, 1),
@@ -778,7 +796,7 @@ void main() {
 
     test('from two lines returns null when they are parallel', () {
       expect(
-        Construct.angularDimensionFromLines(
+        DimensionOperations.angularDimensionFromLines(
           line(0, 0, 10, 0),
           line(0, 1, 10, 1),
           const Vec2(5, 0.5),
@@ -790,7 +808,7 @@ void main() {
     test('a collapsed line cannot invent an angular dim', () {
       const left = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
       expect(
-        Construct.angularDimensionFromLines(
+        DimensionOperations.angularDimensionFromLines(
           const LineEntity(id: 3, start: Vec2.zero(), end: Vec2.zero()),
           left,
           const Vec2(5, 2),
@@ -807,7 +825,7 @@ void main() {
         startAngle: 0,
         endAngle: math.pi / 2,
       );
-      final interior = Construct.angularDimensionFromArc(
+      final interior = DimensionOperations.angularDimensionFromArc(
         quarter,
         const Vec2(4, 4),
       );
@@ -815,7 +833,7 @@ void main() {
       expect(interior!.measurement, closeTo(90, 1e-9));
       expect(interior.definitionPoints.first, const Vec2(0, 0));
 
-      final exterior = Construct.angularDimensionFromArc(
+      final exterior = DimensionOperations.angularDimensionFromArc(
         quarter,
         const Vec2(-4, -4),
       );
@@ -825,7 +843,7 @@ void main() {
 
     test('a vanished or closed arc cannot invent an angular dim', () {
       expect(
-        Construct.angularDimensionFromArc(
+        DimensionOperations.angularDimensionFromArc(
           const ArcEntity(
             id: 1,
             center: Vec2.zero(),
@@ -838,7 +856,7 @@ void main() {
         isNull,
       );
       expect(
-        Construct.angularDimensionFromArc(
+        DimensionOperations.angularDimensionFromArc(
           const ArcEntity(
             id: 2,
             center: Vec2.zero(),
@@ -855,7 +873,7 @@ void main() {
 
   group('explodeDimension', () {
     test('breaks a linear dimension into extensions, a dim line and text', () {
-      final dim = Construct.linearDimension(
+      final dim = DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(5, 4),
@@ -870,7 +888,7 @@ void main() {
     });
 
     test('hides text when the override is a single space', () {
-      final dim = Construct.linearDimension(
+      final dim = DimensionOperations.linearDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(5, 4),
@@ -889,7 +907,7 @@ void main() {
     });
 
     test('an aligned dimension explodes along the measured chord', () {
-      final dim = Construct.alignedDimension(
+      final dim = DimensionOperations.alignedDimension(
         const Vec2.zero(),
         const Vec2(6, 8),
         const Vec2(-2, 2),
@@ -904,7 +922,7 @@ void main() {
 
     test('a radius dimension explodes to a spoke, not extension lines', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final dim = Construct.radiusDimension(circle, const Vec2(8, 0))!;
+      final dim = DimensionOperations.radiusDimension(circle, const Vec2(8, 0))!;
       final pieces = dim.explodeAsDrawn();
 
       final lines = pieces.whereType<LineEntity>().toList();
@@ -917,7 +935,7 @@ void main() {
 
     test('a diameter explodes to opposite spokes, not a single radius', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final dim = Construct.diameterDimension(circle, const Vec2(8, 0))!;
+      final dim = DimensionOperations.diameterDimension(circle, const Vec2(8, 0))!;
       final pieces = dim.explodeAsDrawn();
 
       final lines = pieces.whereType<LineEntity>().toList();
@@ -967,7 +985,7 @@ void main() {
     });
 
     test('an angular dimension explodes to two rays and a dim arc', () {
-      final dim = Construct.angularDimension(
+      final dim = DimensionOperations.angularDimension(
         const Vec2(0, 0),
         const Vec2(10, 0),
         const Vec2(0, 10),
@@ -1001,7 +1019,7 @@ void main() {
 
   group('leader', () {
     test('stores the vertices with the first point as the arrow tip', () {
-      final created = Construct.leader(const [
+      final created = DimensionOperations.leader(const [
         Vec2(0, 0),
         Vec2(10, 5),
         Vec2(14, 5),
@@ -1017,7 +1035,7 @@ void main() {
     test(
       'adds a horizontal landing and text when the last span is slanted',
       () {
-        final created = Construct.leader(const [
+        final created = DimensionOperations.leader(const [
           Vec2(0, 0),
           Vec2(10, 8),
         ], annotation: 'NOTE');
@@ -1035,7 +1053,7 @@ void main() {
     );
 
     test('keeps an already-level last span as the landing', () {
-      final created = Construct.leader(const [
+      final created = DimensionOperations.leader(const [
         Vec2(20, 4),
         Vec2(8, 10),
         Vec2(2, 10),
@@ -1050,10 +1068,10 @@ void main() {
     });
 
     test('returns null for fewer than two distinct points', () {
-      expect(Construct.leader(const [Vec2(1, 1)]), isNull);
-      expect(Construct.leader(const [Vec2(1, 1), Vec2(1, 1)]), isNull);
+      expect(DimensionOperations.leader(const [Vec2(1, 1)]), isNull);
+      expect(DimensionOperations.leader(const [Vec2(1, 1), Vec2(1, 1)]), isNull);
       expect(
-        Construct.leader(const [Vec2.zero(), Vec2.zero(), Vec2.zero()]),
+        DimensionOperations.leader(const [Vec2.zero(), Vec2.zero(), Vec2.zero()]),
         isNull,
       );
     });
@@ -1068,7 +1086,7 @@ void main() {
       ],
       (c) {
         expect(
-          Construct.leader(
+          DimensionOperations.leader(
             const [Vec2.zero(), Vec2(10, 5)],
             annotation: 'NOTE',
             textHeight: c.height,
@@ -1079,7 +1097,7 @@ void main() {
     );
 
     test('duplicate vertices cannot invent a second landing point', () {
-      final created = Construct.leader(const [
+      final created = DimensionOperations.leader(const [
         Vec2.zero(),
         Vec2(10, 0),
         Vec2(10, 0),
@@ -1092,7 +1110,7 @@ void main() {
 
   group('circleTangentRadius', () {
     test('sits in the picked quadrant of two crossing lines', () {
-      final circle = Construct.circleTangentRadius(
+      final circle = EditOperations.circleTangentRadius(
         line(0, 10, 0, 0),
         line(0, 0, 10, 0),
         2,
@@ -1108,7 +1126,7 @@ void main() {
 
     test('refuses a non-positive radius', () {
       expect(
-        Construct.circleTangentRadius(
+        EditOperations.circleTangentRadius(
           line(0, 10, 0, 0),
           line(0, 0, 10, 0),
           0,
@@ -1118,7 +1136,7 @@ void main() {
         isNull,
       );
       expect(
-        Construct.circleTangentRadius(
+        EditOperations.circleTangentRadius(
           line(0, 10, 0, 0),
           line(0, 0, 10, 0),
           -2,
@@ -1128,7 +1146,7 @@ void main() {
         isNull,
       );
       expect(
-        Construct.circleTangentRadius(
+        EditOperations.circleTangentRadius(
           line(0, 10, 0, 0),
           line(0, 0, 10, 0),
           double.nan,
@@ -1141,7 +1159,7 @@ void main() {
 
     test('parallel lines cannot invent a tangent circle', () {
       expect(
-        Construct.circleTangentRadius(
+        EditOperations.circleTangentRadius(
           const LineEntity(id: 3, start: Vec2.zero(), end: Vec2(10, 0)),
           const LineEntity(id: 4, start: Vec2(0, 4), end: Vec2(10, 4)),
           2,
@@ -1153,7 +1171,7 @@ void main() {
     });
 
     test('finds an external tangent to a line and a circle', () {
-      final circle = Construct.circleTangentRadius(
+      final circle = EditOperations.circleTangentRadius(
         line(-10, 0, 10, 0),
         const CircleEntity(id: 2, center: Vec2(0, 5), radius: 3),
         1,
@@ -1167,7 +1185,7 @@ void main() {
     });
 
     test('a circle then a line still finds the same tangent', () {
-      final circle = Construct.circleTangentRadius(
+      final circle = EditOperations.circleTangentRadius(
         const CircleEntity(id: 1, center: Vec2(0, 5), radius: 3),
         const LineEntity(id: 2, start: Vec2(-10, 0), end: Vec2(10, 0)),
         1,
@@ -1183,7 +1201,7 @@ void main() {
     test('two circles name an external tangent centre', () {
       const left = CircleEntity(id: 1, center: Vec2.zero(), radius: 3);
       const right = CircleEntity(id: 2, center: Vec2(8, 0), radius: 3);
-      final circle = Construct.circleTangentRadius(
+      final circle = EditOperations.circleTangentRadius(
         left,
         right,
         2,
@@ -1200,7 +1218,7 @@ void main() {
 
   group('ellipse', () {
     test('stores the shorter radius as a ratio', () {
-      final ellipse = Construct.ellipse(
+      final ellipse = EditOperations.ellipse(
         center: const Vec2(0, 0),
         axisEnd: const Vec2(10, 0),
         otherRadius: 4,
@@ -1212,7 +1230,7 @@ void main() {
     });
 
     test('swaps axes when the other radius is longer', () {
-      final ellipse = Construct.ellipse(
+      final ellipse = EditOperations.ellipse(
         center: const Vec2(0, 0),
         axisEnd: const Vec2(6, 0),
         otherRadius: 10,
@@ -1225,7 +1243,7 @@ void main() {
 
     test('returns null for a degenerate axis', () {
       expect(
-        Construct.ellipse(
+        EditOperations.ellipse(
           center: const Vec2(1, 1),
           axisEnd: const Vec2(1, 1),
           otherRadius: 5,
@@ -1247,7 +1265,7 @@ void main() {
       ],
       (c) {
         expect(
-          Construct.ellipse(
+          EditOperations.ellipse(
             center: const Vec2.zero(),
             axisEnd: const Vec2(10, 0),
             otherRadius: c.otherRadius,
@@ -1260,7 +1278,7 @@ void main() {
 
   group('splineFromControls', () {
     test('four points become a cubic Bezier span', () {
-      final spline = Construct.splineFromControls(const [
+      final spline = EditOperations.splineFromControls(const [
         Vec2(0, 0),
         Vec2(1, 2),
         Vec2(3, 2),
@@ -1274,7 +1292,7 @@ void main() {
     });
 
     test('five points insert one interior knot', () {
-      final spline = Construct.splineFromControls(const [
+      final spline = EditOperations.splineFromControls(const [
         Vec2(0, 0),
         Vec2(1, 1),
         Vec2(2, 0),
@@ -1286,7 +1304,7 @@ void main() {
     });
 
     test('two points drop to a degree-1 span', () {
-      final spline = Construct.splineFromControls(const [
+      final spline = EditOperations.splineFromControls(const [
         Vec2(0, 0),
         Vec2(10, 0),
       ]);
@@ -1307,7 +1325,7 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.splineFromControls(c.points), isNull);
+        expect(EditOperations.splineFromControls(c.points), isNull);
       },
     );
   });
@@ -1315,7 +1333,7 @@ void main() {
   group('splineFromFit', () {
     test('passes through every fit point', () {
       const fits = [Vec2(0, 0), Vec2(1, 2), Vec2(3, 1), Vec2(4, 0), Vec2(6, 1)];
-      final spline = Construct.splineFromFit(fits);
+      final spline = EditOperations.splineFromFit(fits);
       expect(spline, isNotNull);
       expect(spline!.degree, 3);
       expect(spline.fitPointBuffer.length, 10);
@@ -1346,7 +1364,7 @@ void main() {
 
     test('control-point mode does not interpolate the middle click', () {
       const fits = [Vec2(0, 0), Vec2(0, 4), Vec2(4, 4), Vec2(4, 0)];
-      final pulled = Construct.splineFromControls(fits)!;
+      final pulled = EditOperations.splineFromControls(fits)!;
       final mid = Flatten.bsplineEvaluate(
         controlPoints: pulled.controlPoints,
         knots: pulled.knots,
@@ -1366,14 +1384,14 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.splineFromFit(c.points), isNull);
+        expect(EditOperations.splineFromFit(c.points), isNull);
       },
     );
   });
 
   group('donut', () {
     test('stores a wide circular polyline on the average radius', () {
-      final donut = Construct.donut(
+      final donut = EditOperations.donut(
         center: const Vec2(0, 0),
         innerRadius: 3,
         outerRadius: 5,
@@ -1394,7 +1412,7 @@ void main() {
     });
 
     test('swaps inverted radii and treats a zero inner as a disk', () {
-      final disk = Construct.donut(
+      final disk = EditOperations.donut(
         center: const Vec2(1, 1),
         innerRadius: 10,
         outerRadius: 0,
@@ -1406,7 +1424,7 @@ void main() {
 
     test('returns null when both radii vanish', () {
       expect(
-        Construct.donut(
+        EditOperations.donut(
           center: const Vec2.zero(),
           innerRadius: 0,
           outerRadius: 0,
@@ -1414,7 +1432,7 @@ void main() {
         isNull,
       );
       expect(
-        Construct.donut(
+        EditOperations.donut(
           center: const Vec2.zero(),
           innerRadius: 1e-15,
           outerRadius: -1e-15,
@@ -1437,14 +1455,14 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.rectangle(const Vec2.zero(), c.opposite), isNull);
+        expect(EditOperations.rectangle(const Vec2.zero(), c.opposite), isNull);
       },
     );
   });
 
   group('polygon', () {
     test('inscribes vertices on the circle', () {
-      final hexagon = Construct.polygon(
+      final hexagon = EditOperations.polygon(
         center: const Vec2(0, 0),
         radius: 10,
         sides: 6,
@@ -1458,7 +1476,7 @@ void main() {
     });
 
     test('circumscribes by growing the vertex radius', () {
-      final square = Construct.polygon(
+      final square = EditOperations.polygon(
         center: const Vec2(0, 0),
         radius: 10,
         sides: 4,
@@ -1471,7 +1489,7 @@ void main() {
     });
 
     test('clamps degenerate side counts to a triangle', () {
-      final polygon = Construct.polygon(
+      final polygon = EditOperations.polygon(
         center: const Vec2(0, 0),
         radius: 1,
         sides: 1,
@@ -1484,11 +1502,11 @@ void main() {
     test('offsets a line to the side of the pick point', () {
       final source = line(0, 0, 10, 0);
 
-      final above = Construct.offset(source, 2, const Vec2(5, 5));
+      final above = EditOperations.offset(source, 2, const Vec2(5, 5));
       expect(above, isA<LineEntity>());
       expect((above! as LineEntity).start.y, closeTo(2, 1e-9));
 
-      final below = Construct.offset(source, 2, const Vec2(5, -5));
+      final below = EditOperations.offset(source, 2, const Vec2(5, -5));
       expect((below! as LineEntity).start.y, closeTo(-2, 1e-9));
     });
 
@@ -1499,7 +1517,7 @@ void main() {
         majorAxis: Vec2(10, 0),
         ratio: 0.5,
       );
-      final outer = Construct.offset(source, 2, const Vec2(20, 0));
+      final outer = EditOperations.offset(source, 2, const Vec2(20, 0));
       expect(outer, isA<EllipseEntity>());
       final oval = outer! as EllipseEntity;
       expect(oval.majorLength, closeTo(12, 1e-9));
@@ -1514,7 +1532,7 @@ void main() {
         ratio: 1,
       );
       final cutter = line(-20, 0, 20, 0);
-      final hits = Construct.crossingsAlong(cutter, oval);
+      final hits = EditOperations.crossingsAlong(cutter, oval);
       expect(hits.length, 2);
       final trimmed = trimLine(cutter, hits, const Vec2(0, 0));
       expect(trimmed, isNotNull);
@@ -1522,22 +1540,22 @@ void main() {
     });
 
     test('trims and extends a spline through its flattened centreline', () {
-      final spline = Construct.splineFromControls(const [
+      final spline = EditOperations.splineFromControls(const [
         Vec2.zero(),
         Vec2(10, 0),
         Vec2(20, 0),
       ])!;
       final cutter = line(10, -5, 10, 5);
-      final hits = Construct.crossingsAlong(spline, cutter);
+      final hits = EditOperations.crossingsAlong(spline, cutter);
       expect(hits, isNotEmpty);
       final trimmed = trimSpline(spline, hits, const Vec2(2, 0));
       expect(trimmed, isNotNull);
       expect(
-        Construct.lengthOf(trimmed!),
-        lessThan(Construct.lengthOf(spline) - 1),
+        EditOperations.lengthOf(trimmed!),
+        lessThan(EditOperations.lengthOf(spline) - 1),
       );
 
-      final short = Construct.splineFromControls(const [
+      final short = EditOperations.splineFromControls(const [
         Vec2.zero(),
         Vec2(3, 0),
         Vec2(6, 0),
@@ -1546,31 +1564,34 @@ void main() {
       final grown = extendSpline(short, [wall]);
       expect(grown, isNotNull);
       expect(
-        Construct.lengthOf(grown!),
-        greaterThan(Construct.lengthOf(short)),
+        EditOperations.lengthOf(grown!),
+        greaterThan(EditOperations.lengthOf(short)),
       );
     });
 
     test('offsets a circle outwards or inwards by the pick side', () {
       const source = CircleEntity(id: 1, center: Vec2(0, 0), radius: 10);
 
-      final outer = Construct.offset(source, 2, const Vec2(20, 0));
+      final outer = EditOperations.offset(source, 2, const Vec2(20, 0));
       expect((outer! as CircleEntity).radius, closeTo(12, 1e-9));
 
-      final inner = Construct.offset(source, 2, const Vec2(1, 0));
+      final inner = EditOperations.offset(source, 2, const Vec2(1, 0));
       expect((inner! as CircleEntity).radius, closeTo(8, 1e-9));
     });
 
     test('refuses an inward circle offset that would collapse it', () {
       const source = CircleEntity(id: 1, center: Vec2(0, 0), radius: 5);
-      expect(Construct.offset(source, 5, const Vec2(0, 0)), isNull);
-      expect(Construct.offset(source, 9, const Vec2(0, 0)), isNull);
+      expect(EditOperations.offset(source, 5, const Vec2(0, 0)), isNull);
+      expect(EditOperations.offset(source, 9, const Vec2(0, 0)), isNull);
     });
 
     test('mitres a rectangle offset into another rectangle', () {
-      final source = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final source = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(10, 10),
+      )!;
 
-      final offset = Construct.offset(source, 1, const Vec2(20, 5));
+      final offset = EditOperations.offset(source, 1, const Vec2(20, 5));
       expect(offset, isA<PolylineEntity>());
       final result = offset! as PolylineEntity;
       expect(result.closed, isTrue);
@@ -1601,7 +1622,8 @@ void main() {
       );
 
       final outer =
-          Construct.offset(source, 2, const Vec2(20, 20)) as PolylineEntity;
+          EditOperations.offset(source, 2, const Vec2(20, 20))
+              as PolylineEntity;
       expect(outer.vertexAt(0).x, closeTo(12, 1e-9));
       expect(outer.vertexAt(0).y, closeTo(0, 1e-9));
       expect(outer.vertexAt(1).x, closeTo(0, 1e-9));
@@ -1609,13 +1631,13 @@ void main() {
       expect(outer.bulgeAt(0), closeTo(math.tan(math.pi / 8), 1e-9));
 
       final inner =
-          Construct.offset(source, 2, const Vec2(1, 1)) as PolylineEntity;
+          EditOperations.offset(source, 2, const Vec2(1, 1)) as PolylineEntity;
       expect(inner.vertexAt(0).x, closeTo(8, 1e-9));
       expect(inner.vertexAt(1).y, closeTo(8, 1e-9));
     });
 
     test('mitres a line into a following bulge', () {
-      final joined = Construct.joinEntities([
+      final joined = EditOperations.joinEntities([
         line(0, 0, 10, 0),
         ArcEntity(
           id: 2,
@@ -1627,7 +1649,7 @@ void main() {
       ])!;
 
       final offset =
-          Construct.offset(joined, 2, const Vec2(0, 5)) as PolylineEntity;
+          EditOperations.offset(joined, 2, const Vec2(0, 5)) as PolylineEntity;
       expect(offset.hasBulges, isTrue);
       expect(offset.vertexAt(0).y, closeTo(2, 1e-9));
       expect(offset.vertexAt(1).x, closeTo(math.sqrt(60), 1e-9));
@@ -1694,7 +1716,7 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.offset(c.entity, c.distance, c.pick), isNull);
+        expect(EditOperations.offset(c.entity, c.distance, c.pick), isNull);
       },
     );
   });
@@ -1703,13 +1725,13 @@ void main() {
     test('a line still reports the crossing used by TRIM', () {
       const line = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
       const edge = LineEntity(id: 2, start: Vec2(4, -2), end: Vec2(4, 2));
-      expect(Construct.crossingsAlong(line, edge), const [Vec2(4, 0)]);
+      expect(EditOperations.crossingsAlong(line, edge), const [Vec2(4, 0)]);
     });
 
     test('a circle target cannot invent trim points', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
       const edge = LineEntity(id: 2, start: Vec2(-10, 0), end: Vec2(10, 0));
-      expect(Construct.crossingsAlong(circle, edge), isEmpty);
+      expect(EditOperations.crossingsAlong(circle, edge), isEmpty);
     });
   });
 
@@ -1727,7 +1749,7 @@ void main() {
       ],
       (c) {
         const line = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
-        expect(Construct.crossingsWith(line, c.edge), isEmpty);
+        expect(EditOperations.crossingsWith(line, c.edge), isEmpty);
       },
     );
   });
@@ -1789,7 +1811,7 @@ void main() {
         id: 2,
         vertices: Float64List.fromList([10, 0, 1, -10, 0, 0]),
       );
-      final crossings = Construct.crossingsWith(line(0, 0, 0, 20), wall);
+      final crossings = EditOperations.crossingsWith(line(0, 0, 0, 20), wall);
 
       expect(crossings, hasLength(1));
       expect(crossings.single.y, closeTo(10, 1e-9));
@@ -1853,7 +1875,10 @@ void main() {
     });
 
     test('opens a closed polyline by dropping the picked span', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(10, 10),
+      )!;
       final trimmed = trimPolyline(square, const [
         Vec2(5, 0),
         Vec2(5, 10),
@@ -1868,7 +1893,10 @@ void main() {
     });
 
     test('returns null when a closed polyline has only one crossing', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(10, 10),
+      )!;
       expect(
         trimPolyline(square, const [Vec2(5, 0)], const Vec2(10, 5)),
         isNull,
@@ -2058,7 +2086,7 @@ void main() {
     test('refuses a closed polyline', () {
       expect(
         extendPolyline(
-          Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!,
+          EditOperations.rectangle(const Vec2(0, 0), const Vec2(10, 10))!,
           [line(20, -5, 20, 5)],
         ),
         isNull,
@@ -2185,7 +2213,7 @@ void main() {
 
   group('filletLines', () {
     test('rounds an L-corner with a quarter-circle', () {
-      final result = Construct.filletLines(
+      final result = EditOperations.filletLines(
         line(0, 10, 0, 0),
         line(0, 0, 10, 0),
         2,
@@ -2208,7 +2236,7 @@ void main() {
     });
 
     test('extends short arms to the tangent points', () {
-      final result = Construct.filletLines(
+      final result = EditOperations.filletLines(
         line(0, 10, 0, 5),
         line(5, 0, 10, 0),
         2,
@@ -2223,7 +2251,7 @@ void main() {
     });
 
     test('a zero radius trims to a sharp corner', () {
-      final result = Construct.filletLines(
+      final result = EditOperations.filletLines(
         line(0, 10, 0, 2),
         line(2, 0, 10, 0),
         0,
@@ -2238,7 +2266,7 @@ void main() {
     });
 
     test('pick points choose which quadrant of a crossing', () {
-      final result = Construct.filletLines(
+      final result = EditOperations.filletLines(
         line(-10, 0, 10, 0),
         line(0, -10, 0, 10),
         2,
@@ -2255,7 +2283,7 @@ void main() {
 
     test('returns null for parallel lines', () {
       expect(
-        Construct.filletLines(
+        EditOperations.filletLines(
           line(0, 0, 10, 0),
           line(0, 2, 10, 2),
           1,
@@ -2274,7 +2302,7 @@ void main() {
         end: Vec2(10, 0),
       );
       expect(
-        Construct.filletLines(
+        EditOperations.filletLines(
           vertical,
           horizontal,
           -2,
@@ -2284,7 +2312,7 @@ void main() {
         isNull,
       );
       expect(
-        Construct.filletLines(
+        EditOperations.filletLines(
           vertical,
           horizontal,
           double.nan,
@@ -2298,8 +2326,11 @@ void main() {
 
   group('filletPolylineVertex', () {
     test('replaces a square corner with a bulge arc', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
-      final filleted = Construct.filletPolylineVertex(
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(10, 10),
+      )!;
+      final filleted = EditOperations.filletPolylineVertex(
         square,
         const Vec2(0, 0),
         2,
@@ -2319,24 +2350,27 @@ void main() {
     });
 
     test('refuses a radius longer than the adjoining sides', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(4, 4))!;
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(4, 4),
+      )!;
       expect(
-        Construct.filletPolylineVertex(square, const Vec2(0, 0), 5),
+        EditOperations.filletPolylineVertex(square, const Vec2(0, 0), 5),
         isNull,
       );
     });
 
     test('a zero radius or lone corner cannot invent a rounded vertex', () {
-      final square = Construct.rectangle(
+      final square = EditOperations.rectangle(
         const Vec2.zero(),
         const Vec2(10, 10),
       )!;
       expect(
-        Construct.filletPolylineVertex(square, const Vec2.zero(), 0),
+        EditOperations.filletPolylineVertex(square, const Vec2.zero(), 0),
         isNull,
       );
       expect(
-        Construct.filletPolylineVertex(
+        EditOperations.filletPolylineVertex(
           PolylineEntity.fromPoints(
             id: 1,
             points: const [Vec2.zero(), Vec2(10, 0)],
@@ -2351,8 +2385,11 @@ void main() {
 
   group('filletPolyline', () {
     test('rounds every corner of a square', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
-      final filleted = Construct.filletPolyline(square, 2);
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(10, 10),
+      )!;
+      final filleted = EditOperations.filletPolyline(square, 2);
 
       expect(filleted, isNotNull);
       expect(filleted!.vertexCount, 8);
@@ -2370,7 +2407,7 @@ void main() {
         id: 1,
         points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10), Vec2(11, 10)],
       );
-      final filleted = Construct.filletPolyline(polyline, 2);
+      final filleted = EditOperations.filletPolyline(polyline, 2);
 
       expect(filleted, isNotNull);
       expect(filleted!.vertexCount, 5);
@@ -2379,8 +2416,8 @@ void main() {
 
     test('a non-finite radius cannot invent a fillet', () {
       expect(
-        Construct.filletPolyline(
-          Construct.rectangle(const Vec2.zero(), const Vec2(10, 10))!,
+        EditOperations.filletPolyline(
+          EditOperations.rectangle(const Vec2.zero(), const Vec2(10, 10))!,
           double.infinity,
         ),
         isNull,
@@ -2390,7 +2427,7 @@ void main() {
 
   group('chamferLines', () {
     test('cuts an equal bevel on an L-corner', () {
-      final result = Construct.chamferLines(
+      final result = EditOperations.chamferLines(
         line(0, 10, 0, 0),
         line(0, 0, 10, 0),
         2,
@@ -2410,7 +2447,7 @@ void main() {
     });
 
     test('allows unequal distances', () {
-      final result = Construct.chamferLines(
+      final result = EditOperations.chamferLines(
         line(0, 10, 0, 0),
         line(0, 0, 10, 0),
         3,
@@ -2425,7 +2462,7 @@ void main() {
     });
 
     test('zero distances make a sharp corner', () {
-      final result = Construct.chamferLines(
+      final result = EditOperations.chamferLines(
         line(0, 10, 0, 2),
         line(2, 0, 10, 0),
         0,
@@ -2444,7 +2481,7 @@ void main() {
       const left = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
       const right = LineEntity(id: 2, start: Vec2(0, 4), end: Vec2(10, 4));
       expect(
-        Construct.chamferLines(
+        EditOperations.chamferLines(
           left,
           right,
           2,
@@ -2464,7 +2501,7 @@ void main() {
         end: Vec2(10, 0),
       );
       expect(
-        Construct.chamferLines(
+        EditOperations.chamferLines(
           vertical,
           horizontal,
           -2,
@@ -2475,7 +2512,7 @@ void main() {
         isNull,
       );
       expect(
-        Construct.chamferLines(
+        EditOperations.chamferLines(
           vertical,
           horizontal,
           2,
@@ -2490,8 +2527,11 @@ void main() {
 
   group('chamferPolylineVertex', () {
     test('replaces a square corner with a straight cut', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
-      final chamfered = Construct.chamferPolylineVertex(
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(10, 10),
+      )!;
+      final chamfered = EditOperations.chamferPolylineVertex(
         square,
         const Vec2(0, 0),
         dist1: 2,
@@ -2507,24 +2547,35 @@ void main() {
     });
 
     test('refuses distances longer than the adjoining sides', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(4, 4))!;
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(4, 4),
+      )!;
       expect(
-        Construct.chamferPolylineVertex(square, const Vec2(0, 0), dist1: 5),
+        EditOperations.chamferPolylineVertex(
+          square,
+          const Vec2(0, 0),
+          dist1: 5,
+        ),
         isNull,
       );
     });
 
     test('a zero distance or lone corner cannot invent a bevel', () {
-      final square = Construct.rectangle(
+      final square = EditOperations.rectangle(
         const Vec2.zero(),
         const Vec2(10, 10),
       )!;
       expect(
-        Construct.chamferPolylineVertex(square, const Vec2.zero(), dist1: 0),
+        EditOperations.chamferPolylineVertex(
+          square,
+          const Vec2.zero(),
+          dist1: 0,
+        ),
         isNull,
       );
       expect(
-        Construct.chamferPolylineVertex(
+        EditOperations.chamferPolylineVertex(
           PolylineEntity.fromPoints(
             id: 1,
             points: const [Vec2.zero(), Vec2(10, 0)],
@@ -2539,8 +2590,11 @@ void main() {
 
   group('chamferPolyline', () {
     test('bevels every corner of a square', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
-      final chamfered = Construct.chamferPolyline(square, dist1: 2);
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(10, 10),
+      )!;
+      final chamfered = EditOperations.chamferPolyline(square, dist1: 2);
 
       expect(chamfered, isNotNull);
       expect(chamfered!.vertexCount, 8);
@@ -2558,7 +2612,7 @@ void main() {
         id: 1,
         points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10), Vec2(11, 10)],
       );
-      final chamfered = Construct.chamferPolyline(polyline, dist1: 2);
+      final chamfered = EditOperations.chamferPolyline(polyline, dist1: 2);
 
       expect(chamfered, isNotNull);
       expect(chamfered!.vertexCount, 5);
@@ -2567,8 +2621,8 @@ void main() {
 
     test('a non-finite distance cannot invent a chamfer', () {
       expect(
-        Construct.chamferPolyline(
-          Construct.rectangle(const Vec2.zero(), const Vec2(10, 10))!,
+        EditOperations.chamferPolyline(
+          EditOperations.rectangle(const Vec2.zero(), const Vec2(10, 10))!,
           dist1: double.infinity,
         ),
         isNull,
@@ -2636,7 +2690,10 @@ void main() {
     });
 
     test('opens a closed polyline at one point', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(10, 10),
+      )!;
       final pieces = breakPolyline(square, const Vec2(5, 0));
 
       expect(pieces, hasLength(1));
@@ -2798,7 +2855,10 @@ void main() {
         id: 1,
         points: const [Vec2(0, 0), Vec2(10, 0), Vec2(10, 10)],
       );
-      final joined = Construct.joinEntities([polyline, line(10, 10, 20, 10)]);
+      final joined = EditOperations.joinEntities([
+        polyline,
+        line(10, 10, 20, 10),
+      ]);
 
       expect(joined, isNotNull);
       expect(joined!.vertexCount, 4);
@@ -2806,7 +2866,7 @@ void main() {
     });
 
     test('reverses a piece that meets the other way around', () {
-      final joined = Construct.joinEntities([
+      final joined = EditOperations.joinEntities([
         line(0, 0, 10, 0),
         line(20, 0, 10, 0),
       ]);
@@ -2817,7 +2877,7 @@ void main() {
     });
 
     test('closes a loop without duplicating the start', () {
-      final joined = Construct.joinEntities([
+      final joined = EditOperations.joinEntities([
         line(0, 0, 10, 0),
         line(10, 0, 10, 10),
         line(10, 10, 0, 0),
@@ -2830,7 +2890,7 @@ void main() {
 
     test('refuses objects that do not form one chain', () {
       expect(
-        Construct.joinEntities([line(0, 0, 10, 0), line(50, 50, 60, 50)]),
+        EditOperations.joinEntities([line(0, 0, 10, 0), line(50, 50, 60, 50)]),
         isNull,
       );
     });
@@ -2843,7 +2903,7 @@ void main() {
         startAngle: 0,
         endAngle: math.pi / 2,
       );
-      final joined = Construct.joinEntities([line(0, 0, 10, 0), arc]);
+      final joined = EditOperations.joinEntities([line(0, 0, 10, 0), arc]);
 
       expect(joined, isNotNull);
       expect(joined!.vertexCount, 3);
@@ -2853,7 +2913,7 @@ void main() {
     });
 
     test('closes two semicircles without duplicating the start', () {
-      final joined = Construct.joinEntities([
+      final joined = EditOperations.joinEntities([
         const ArcEntity(
           id: 1,
           center: Vec2(0, 0),
@@ -2897,7 +2957,7 @@ void main() {
           name: 'a closed rectangle cannot invent a join',
           entities: [
             const LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0)),
-            Construct.rectangle(const Vec2.zero(), const Vec2(10, 10))!,
+            EditOperations.rectangle(const Vec2.zero(), const Vec2(10, 10))!,
           ],
         ),
         (
@@ -2922,12 +2982,12 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.joinEntities(c.entities), isNull);
+        expect(EditOperations.joinEntities(c.entities), isNull);
       },
     );
 
     test('a piece that meets the start is prepended, not dropped', () {
-      final prepended = Construct.joinEntities([
+      final prepended = EditOperations.joinEntities([
         const LineEntity(id: 1, start: Vec2(10, 0), end: Vec2(20, 0)),
         const LineEntity(id: 2, start: Vec2.zero(), end: Vec2(10, 0)),
       ]);
@@ -2935,7 +2995,7 @@ void main() {
       expect(prepended!.vertexAt(0), const Vec2.zero());
       expect(prepended.vertexAt(2), const Vec2(20, 0));
 
-      final reversed = Construct.joinEntities([
+      final reversed = EditOperations.joinEntities([
         const LineEntity(id: 1, start: Vec2(10, 0), end: Vec2(20, 0)),
         const LineEntity(id: 2, start: Vec2(10, 0), end: Vec2.zero()),
       ]);
@@ -2950,7 +3010,7 @@ void main() {
         vertices: Float64List.fromList([0, 0, 0, 10, 0, 0]),
         constantWidth: 2,
       );
-      final joined = Construct.joinEntities([
+      final joined = EditOperations.joinEntities([
         wide,
         const LineEntity(id: 2, start: Vec2(10, 0), end: Vec2(20, 0)),
       ]);
@@ -2963,7 +3023,7 @@ void main() {
 
   group('reverse', () {
     test('swaps the ends of a line', () {
-      final reversed = Construct.reverse(line(0, 0, 10, 5)) as LineEntity;
+      final reversed = EditOperations.reverse(line(0, 0, 10, 5)) as LineEntity;
 
       expect(reversed.start, const Vec2(10, 5));
       expect(reversed.end, const Vec2(0, 0));
@@ -2974,7 +3034,7 @@ void main() {
         id: 1,
         vertices: Float64List.fromList([0, 0, 1, 10, 0, 0, 10, 10, 0]),
       );
-      final reversed = Construct.reverse(source) as PolylineEntity;
+      final reversed = EditOperations.reverse(source) as PolylineEntity;
 
       expect(reversed.vertexAt(0), const Vec2(10, 10));
       expect(reversed.vertexAt(2), const Vec2(0, 0));
@@ -3006,7 +3066,7 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.reverse(c.entity), isNull);
+        expect(EditOperations.reverse(c.entity), isNull);
       },
     );
   });
@@ -3042,7 +3102,10 @@ void main() {
     });
 
     test('walks a closed polyline around the loop', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(10, 10),
+      )!;
 
       final points = dividePolyline(square, 8);
 
@@ -3198,7 +3261,7 @@ void main() {
 
   group('measureLine', () {
     test('spaces points from the nearer end', () {
-      final points = Construct.measureLine(
+      final points = EditOperations.measureLine(
         line(0, 0, 10, 0),
         3,
         const Vec2(0, 0),
@@ -3211,7 +3274,7 @@ void main() {
     });
 
     test('starts from the opposite end when that is nearer the pick', () {
-      final points = Construct.measureLine(
+      final points = EditOperations.measureLine(
         line(0, 0, 10, 0),
         4,
         const Vec2(10, 0),
@@ -3224,7 +3287,7 @@ void main() {
 
     test('skips a line shorter than the spacing', () {
       expect(
-        Construct.measureLine(line(0, 0, 10, 0), 10, const Vec2(0, 0)),
+        EditOperations.measureLine(line(0, 0, 10, 0), 10, const Vec2(0, 0)),
         isEmpty,
       );
     });
@@ -3247,7 +3310,7 @@ void main() {
       ],
       (c) {
         expect(
-          Construct.measureLine(
+          EditOperations.measureLine(
             line(0, 0, 10, 0),
             c.spacing,
             const Vec2.zero(),
@@ -3265,7 +3328,7 @@ void main() {
     );
 
     test('spaces points from the nearer end around the corner', () {
-      final points = Construct.measurePolyline(elbow, 6, const Vec2(0, 0));
+      final points = EditOperations.measurePolyline(elbow, 6, const Vec2(0, 0));
 
       expect(points, hasLength(3));
       expect(points[0].x, closeTo(6, 1e-9));
@@ -3275,7 +3338,11 @@ void main() {
     });
 
     test('starts from the opposite end when that is nearer the pick', () {
-      final points = Construct.measurePolyline(elbow, 6, const Vec2(10, 10));
+      final points = EditOperations.measurePolyline(
+        elbow,
+        6,
+        const Vec2(10, 10),
+      );
 
       expect(points, hasLength(3));
       expect(points[0].y, closeTo(4, 1e-9));
@@ -3284,8 +3351,15 @@ void main() {
     });
 
     test('walks a closed polyline from the start vertex', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!;
-      final points = Construct.measurePolyline(square, 15, const Vec2(0, 0));
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(10, 10),
+      )!;
+      final points = EditOperations.measurePolyline(
+        square,
+        15,
+        const Vec2(0, 0),
+      );
 
       expect(points, hasLength(2));
       expect(points[0], const Vec2(10, 5));
@@ -3305,7 +3379,7 @@ void main() {
         ]),
       );
 
-      final points = Construct.measurePolyline(
+      final points = EditOperations.measurePolyline(
         quarter,
         5 * math.pi / 2,
         const Vec2(10, 0),
@@ -3348,7 +3422,7 @@ void main() {
       ],
       (c) {
         expect(
-          Construct.measurePolyline(c.polyline, c.spacing, c.pick),
+          EditOperations.measurePolyline(c.polyline, c.spacing, c.pick),
           isEmpty,
         );
       },
@@ -3364,7 +3438,7 @@ void main() {
         startAngle: 0,
         endAngle: math.pi / 2,
       );
-      final points = Construct.measureArc(arc, 5, const Vec2(10, 0));
+      final points = EditOperations.measureArc(arc, 5, const Vec2(10, 0));
 
       expect(points, hasLength(3));
       expect(points.first.x, closeTo(10 * math.cos(0.5), 1e-9));
@@ -3411,7 +3485,7 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.measureArc(c.arc, c.spacing, c.pick), isEmpty);
+        expect(EditOperations.measureArc(c.arc, c.spacing, c.pick), isEmpty);
       },
     );
   });
@@ -3419,7 +3493,7 @@ void main() {
   group('measureCircle', () {
     test('spaces points around the circumference from the pick', () {
       const circle = CircleEntity(id: 1, center: Vec2(0, 0), radius: 5);
-      final points = Construct.measureCircle(circle, 5, const Vec2(5, 0));
+      final points = EditOperations.measureCircle(circle, 5, const Vec2(5, 0));
 
       expect(points, hasLength(6));
       expect(points.first.x, closeTo(5 * math.cos(1), 1e-9));
@@ -3448,13 +3522,20 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.measureCircle(c.circle, c.spacing, c.pick), isEmpty);
+        expect(
+          EditOperations.measureCircle(c.circle, c.spacing, c.pick),
+          isEmpty,
+        );
       },
     );
 
     test('a pick at the circle center still walks from angle zero', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 10);
-      final points = Construct.measureCircle(circle, 10, const Vec2.zero());
+      final points = EditOperations.measureCircle(
+        circle,
+        10,
+        const Vec2.zero(),
+      );
 
       expect(points, isNotEmpty);
       expect(points.first.x, closeTo(10 * math.cos(1), 1e-9));
@@ -3466,18 +3547,18 @@ void main() {
     const source = LineEntity(id: 1, start: Vec2.zero(), end: Vec2(10, 0));
 
     test('a parameter span keeps only that remnant of the line', () {
-      final mid = Construct.resizedLine(source, 0.25, 0.75);
+      final mid = EditOperations.resizedLine(source, 0.25, 0.75);
       expect(mid.start.x, closeTo(2.5, 1e-9));
       expect(mid.end.x, closeTo(7.5, 1e-9));
       expect(mid.id, source.id);
 
-      final whole = Construct.resizedLine(source, 0, 1);
+      final whole = EditOperations.resizedLine(source, 0, 1);
       expect(whole.start, source.start);
       expect(whole.end, source.end);
     });
 
     test('a collapsed parameter range cannot invent a remnant length', () {
-      final point = Construct.resizedLine(source, 0.4, 0.4);
+      final point = EditOperations.resizedLine(source, 0.4, 0.4);
       expect(point.start, point.end);
       expect(point.start.x, closeTo(4, 1e-9));
       expect(point.start.distanceTo(point.end), 0);
@@ -3575,7 +3656,7 @@ void main() {
     test('refuses a closed polyline', () {
       expect(
         lengthenPolyline(
-          Construct.rectangle(const Vec2(0, 0), const Vec2(10, 10))!,
+          EditOperations.rectangle(const Vec2(0, 0), const Vec2(10, 10))!,
           const Vec2(0, 0),
           total: 50,
         ),
@@ -3732,7 +3813,11 @@ void main() {
     const delta = Vec2(0, 4);
 
     test('moves only the endpoint inside the window', () {
-      final stretched = Construct.stretch(line(-8, 0, 0, 0), window, delta);
+      final stretched = EditOperations.stretch(
+        line(-8, 0, 0, 0),
+        window,
+        delta,
+      );
 
       expect(stretched, isA<LineEntity>());
       final result = stretched! as LineEntity;
@@ -3742,14 +3827,15 @@ void main() {
 
     test('translates a line whose both ends are captured', () {
       final stretched =
-          Construct.stretch(line(0, 0, 0.5, 0), window, delta)! as LineEntity;
+          EditOperations.stretch(line(0, 0, 0.5, 0), window, delta)!
+              as LineEntity;
 
       expect(stretched.start, const Vec2(0, 4));
       expect(stretched.end, const Vec2(0.5, 4));
     });
 
     test('ignores a line that only crosses the window', () {
-      expect(Construct.stretch(line(-8, 0, 8, 0), window, delta), isNull);
+      expect(EditOperations.stretch(line(-8, 0, 8, 0), window, delta), isNull);
     });
 
     test('moves a polyline vertex without dragging the rest', () {
@@ -3759,7 +3845,7 @@ void main() {
       );
 
       final stretched =
-          Construct.stretch(polyline, window, delta)! as PolylineEntity;
+          EditOperations.stretch(polyline, window, delta)! as PolylineEntity;
 
       expect(stretched.vertexAt(0), const Vec2(-4, 0));
       expect(stretched.vertexAt(1), const Vec2(0, 4));
@@ -3771,10 +3857,10 @@ void main() {
       const outside = CircleEntity(id: 2, center: Vec2(8, 0), radius: 5);
 
       expect(
-        (Construct.stretch(inside, window, delta)! as CircleEntity).center,
+        (EditOperations.stretch(inside, window, delta)! as CircleEntity).center,
         const Vec2(0, 4),
       );
-      expect(Construct.stretch(outside, window, delta), isNull);
+      expect(EditOperations.stretch(outside, window, delta), isNull);
     });
 
     eachCase(
@@ -3811,7 +3897,7 @@ void main() {
         ),
         (
           name: 'a window miss cannot drag a leader',
-          entity: Construct.leader(const [
+          entity: DimensionOperations.leader(const [
             Vec2(0, 0),
             Vec2(10, 5),
             Vec2(14, 5),
@@ -3876,7 +3962,7 @@ void main() {
         ),
         (
           name: 'a window miss cannot drag the whole spline',
-          entity: Construct.splineFromControls(const [
+          entity: EditOperations.splineFromControls(const [
             Vec2(0, 0),
             Vec2(4, 4),
             Vec2(8, 0),
@@ -3887,7 +3973,7 @@ void main() {
         ),
         (
           name: 'a zero delta cannot drag a spline',
-          entity: Construct.splineFromControls(const [
+          entity: EditOperations.splineFromControls(const [
             Vec2(0, 0),
             Vec2(4, 4),
             Vec2(8, 0),
@@ -3898,7 +3984,7 @@ void main() {
         ),
       ],
       (c) {
-        expect(Construct.stretch(c.entity, c.window, c.delta), isNull);
+        expect(EditOperations.stretch(c.entity, c.window, c.delta), isNull);
       },
     );
 
@@ -3911,7 +3997,11 @@ void main() {
         endAngle: math.pi / 2,
       );
       final stretched =
-          Construct.stretch(arc, const Bounds2(9, -1, 11, 1), const Vec2(0, 4))!
+          EditOperations.stretch(
+                arc,
+                const Bounds2(9, -1, 11, 1),
+                const Vec2(0, 4),
+              )!
               as ArcEntity;
 
       expect(stretched.center, const Vec2.zero());
@@ -3922,10 +4012,14 @@ void main() {
 
     test('a window stretch moves only the captured leader vertex', () {
       final leader =
-          Construct.leader(const [Vec2(0, 0), Vec2(10, 5), Vec2(14, 5)])!.single
+          DimensionOperations.leader(const [
+                Vec2(0, 0),
+                Vec2(10, 5),
+                Vec2(14, 5),
+              ])!.single
               as LeaderEntity;
       final stretched =
-          Construct.stretch(
+          EditOperations.stretch(
                 leader,
                 const Bounds2(-1, -1, 1, 1),
                 const Vec2(0, 3),
@@ -3942,7 +4036,7 @@ void main() {
         corners: [Vec2(0, 0), Vec2(4, 0), Vec2(4, 3), Vec2(0, 3)],
       );
       final stretched =
-          Construct.stretch(
+          EditOperations.stretch(
                 solid,
                 const Bounds2(-1, -1, 1, 1),
                 const Vec2(0, 2),
@@ -3967,7 +4061,7 @@ void main() {
         ],
       );
       final stretched =
-          Construct.stretch(
+          EditOperations.stretch(
                 hatch,
                 const Bounds2(-1, -1, 1, 1),
                 const Vec2(4, 0),
@@ -3989,7 +4083,7 @@ void main() {
         height: 2.5,
       );
       final stretched =
-          Construct.stretch(
+          EditOperations.stretch(
                 text,
                 const Bounds2(-1, -1, 1, 1),
                 const Vec2(4, 0),
@@ -4002,14 +4096,14 @@ void main() {
     });
 
     test('a window stretch moves only the captured spline control', () {
-      final spline = Construct.splineFromControls(const [
+      final spline = EditOperations.splineFromControls(const [
         Vec2(0, 0),
         Vec2(4, 4),
         Vec2(8, 0),
         Vec2(12, 4),
       ])!;
       final stretched =
-          Construct.stretch(
+          EditOperations.stretch(
                 spline,
                 const Bounds2(-1, -1, 1, 1),
                 const Vec2(0, 3),
@@ -4025,15 +4119,15 @@ void main() {
 
   group('measurements', () {
     test('reports the length of each supported type', () {
-      expect(Construct.lengthOf(line(0, 0, 3, 4)), closeTo(5, 1e-9));
+      expect(EditOperations.lengthOf(line(0, 0, 3, 4)), closeTo(5, 1e-9));
       expect(
-        Construct.lengthOf(
+        EditOperations.lengthOf(
           const CircleEntity(id: 1, center: Vec2.zero(), radius: 2),
         ),
         closeTo(4 * math.pi, 1e-9),
       );
       expect(
-        Construct.lengthOf(
+        EditOperations.lengthOf(
           ArcEntity(
             id: 1,
             center: const Vec2(0, 0),
@@ -4047,14 +4141,17 @@ void main() {
     });
 
     test('measures a closed polyline perimeter and area', () {
-      final square = Construct.rectangle(const Vec2(0, 0), const Vec2(4, 3))!;
+      final square = EditOperations.rectangle(
+        const Vec2(0, 0),
+        const Vec2(4, 3),
+      )!;
 
-      expect(Construct.lengthOf(square), closeTo(14, 1e-9));
-      expect(Construct.areaOf(square).abs(), closeTo(12, 1e-9));
+      expect(EditOperations.lengthOf(square), closeTo(14, 1e-9));
+      expect(EditOperations.areaOf(square).abs(), closeTo(12, 1e-9));
     });
 
     test('reports zero area for open geometry', () {
-      expect(Construct.areaOf(line(0, 0, 10, 0)), 0);
+      expect(EditOperations.areaOf(line(0, 0, 10, 0)), 0);
     });
 
     test('an open polyline cannot invent an enclosed area', () {
@@ -4062,8 +4159,8 @@ void main() {
         id: 1,
         points: const [Vec2.zero(), Vec2(10, 0), Vec2(10, 10)],
       );
-      expect(Construct.areaOf(open), 0);
-      expect(Construct.lengthOf(open), closeTo(20, 1e-9));
+      expect(EditOperations.areaOf(open), 0);
+      expect(EditOperations.lengthOf(open), closeTo(20, 1e-9));
     });
 
     test('an open or unsupported entity cannot invent an area or length', () {
@@ -4075,12 +4172,12 @@ void main() {
         position: Vec2.zero(),
       );
 
-      expect(Construct.areaOf(point), 0);
-      expect(Construct.areaOf(text), 0);
-      expect(Construct.areaOf(insert), 0);
-      expect(Construct.lengthOf(point), 0);
-      expect(Construct.lengthOf(text), 0);
-      expect(Construct.lengthOf(insert), 0);
+      expect(EditOperations.areaOf(point), 0);
+      expect(EditOperations.areaOf(text), 0);
+      expect(EditOperations.areaOf(insert), 0);
+      expect(EditOperations.lengthOf(point), 0);
+      expect(EditOperations.lengthOf(text), 0);
+      expect(EditOperations.lengthOf(insert), 0);
     });
   });
 
@@ -4098,7 +4195,7 @@ void main() {
         end: const Vec2(10, 1),
       );
 
-      expect(Construct.overkillIds([first, copy, other]), [2]);
+      expect(EditOperations.overkillIds([first, copy, other]), [2]);
     });
 
     test('flags a second circle on the same centre and radius', () {
@@ -4106,7 +4203,7 @@ void main() {
       const b = CircleEntity(id: 2, center: Vec2.zero(), radius: 3);
       const c = CircleEntity(id: 3, center: Vec2.zero(), radius: 4);
 
-      expect(Construct.overkillIds([a, b, c]), [2]);
+      expect(EditOperations.overkillIds([a, b, c]), [2]);
     });
 
     test('stretches the first line across an overlapping neighbour', () {
@@ -4121,7 +4218,7 @@ void main() {
         end: const Vec2(15, 0),
       );
 
-      final plan = Construct.overkill([first, overlap]);
+      final plan = EditOperations.overkill([first, overlap]);
 
       expect(plan.erase, [2]);
       expect(plan.replace, hasLength(1));
@@ -4143,7 +4240,7 @@ void main() {
         end: const Vec2(10, 0),
       );
 
-      final plan = Construct.overkill([first, next]);
+      final plan = EditOperations.overkill([first, next]);
 
       expect(plan.erase, [2]);
       final grown = plan.replace.single as LineEntity;
@@ -4162,7 +4259,7 @@ void main() {
         end: const Vec2(10, 0),
       );
 
-      expect(Construct.overkill([first, later]).isEmpty, isTrue);
+      expect(EditOperations.overkill([first, later]).isEmpty, isTrue);
     });
 
     test('does not merge lines that only share a colour on another layer', () {
@@ -4178,18 +4275,18 @@ void main() {
         end: const Vec2(15, 0),
       );
 
-      expect(Construct.overkill([first, other]).isEmpty, isTrue);
+      expect(EditOperations.overkill([first, other]).isEmpty, isTrue);
     });
 
     test('empty or collapsed geometry cannot invent an overkill erase', () {
-      expect(Construct.overkill(const []).isEmpty, isTrue);
-      expect(Construct.overkillIds(const []), isEmpty);
+      expect(EditOperations.overkill(const []).isEmpty, isTrue);
+      expect(EditOperations.overkillIds(const []), isEmpty);
 
       const collapsed = LineEntity(id: 1, start: Vec2.zero(), end: Vec2.zero());
-      expect(Construct.overkill([collapsed]).isEmpty, isTrue);
+      expect(EditOperations.overkill([collapsed]).isEmpty, isTrue);
 
       const point = PointEntity(id: 2, position: Vec2.zero());
-      expect(Construct.overkill([point]).isEmpty, isTrue);
+      expect(EditOperations.overkill([point]).isEmpty, isTrue);
     });
   });
 
@@ -4202,7 +4299,7 @@ void main() {
         height: 10,
       );
 
-      final justified = Construct.justifyText(text, 'right');
+      final justified = EditOperations.justifyText(text, 'right');
 
       expect(justified, isNotNull);
       expect(justified!.hAlign, TextHAlign.right);
@@ -4220,7 +4317,7 @@ void main() {
         rotation: math.pi / 2,
       );
 
-      final justified = Construct.justifyText(text, 'right');
+      final justified = EditOperations.justifyText(text, 'right');
 
       expect(justified, isNotNull);
       expect(justified!.position.x, closeTo(0, 1e-9));
@@ -4235,7 +4332,7 @@ void main() {
         height: 10,
       );
 
-      final justified = Construct.justifyMText(text, 'tr');
+      final justified = EditOperations.justifyMText(text, 'tr');
 
       expect(justified, isNotNull);
       expect(justified!.attachment, 3);
@@ -4252,7 +4349,7 @@ void main() {
         height: 10,
       );
 
-      final justified = Construct.justifyAttrib(attrib, 'right');
+      final justified = EditOperations.justifyAttrib(attrib, 'right');
 
       expect(justified, isNotNull);
       expect(justified!.hAlign, TextHAlign.right);
@@ -4270,7 +4367,7 @@ void main() {
         verify: true,
       );
 
-      final justified = Construct.justifyAttdef(def, 'right');
+      final justified = EditOperations.justifyAttdef(def, 'right');
 
       expect(justified, isNotNull);
       expect(justified!.hAlign, TextHAlign.right);
@@ -4288,7 +4385,7 @@ void main() {
         height: 10,
       );
 
-      final justified = Construct.justifyAttdef(def, 'right');
+      final justified = EditOperations.justifyAttdef(def, 'right');
 
       expect(justified, isNotNull);
       expect(justified!.position.x, closeTo(5 * 10 * 0.62, 1e-9));
@@ -4303,7 +4400,7 @@ void main() {
         attachment: 4,
       );
 
-      final justified = Construct.justifyMLeader(leader, 'tr');
+      final justified = EditOperations.justifyMLeader(leader, 'tr');
 
       expect(justified, isNotNull);
       expect(justified!.attachment, 3);
@@ -4314,13 +4411,13 @@ void main() {
     test('rejects align and unknown keywords', () {
       final text = TextEntity(id: 1, position: const Vec2.zero(), content: 'A');
 
-      expect(Construct.justifyText(text, 'align'), isNull);
-      expect(Construct.justifyText(text, 'widget'), isNull);
-      expect(Construct.justifyText(text, 'fit'), isNull);
+      expect(EditOperations.justifyText(text, 'align'), isNull);
+      expect(EditOperations.justifyText(text, 'widget'), isNull);
+      expect(EditOperations.justifyText(text, 'fit'), isNull);
     });
 
     test('centre and spaced keywords still map to the same alignment', () {
-      final parsed = Construct.parseTextJustify(
+      final parsed = EditOperations.parseTextJustify(
         'Top Left',
         currentH: TextHAlign.right,
         currentV: TextVAlign.baseline,
@@ -4329,7 +4426,7 @@ void main() {
       expect(parsed!.h, TextHAlign.left);
       expect(parsed.v, TextVAlign.top);
 
-      final centre = Construct.parseTextJustify(
+      final centre = EditOperations.parseTextJustify(
         'centre',
         currentH: TextHAlign.left,
         currentV: TextVAlign.baseline,
@@ -4349,7 +4446,7 @@ void main() {
       ],
       (c) {
         expect(
-          Construct.parseTextJustify(
+          EditOperations.parseTextJustify(
             c.keyword,
             currentH: TextHAlign.left,
             currentV: TextVAlign.baseline,
@@ -4370,7 +4467,7 @@ void main() {
       ],
       (c) {
         expect(
-          Construct.justifyMText(
+          EditOperations.justifyMText(
             const MTextEntity(id: 1, position: Vec2.zero(), content: 'A'),
             c.keyword,
           ),
@@ -4382,47 +4479,49 @@ void main() {
 }
 
 LineEntity? trimLine(LineEntity line, List<Vec2> crossings, Vec2 pick) =>
-    Construct.trim(line, crossings, pick) as LineEntity?;
+    EditOperations.trim(line, crossings, pick) as LineEntity?;
 
 PolylineEntity? trimPolyline(
   PolylineEntity polyline,
   List<Vec2> crossings,
   Vec2 pick,
-) => Construct.trim(polyline, crossings, pick) as PolylineEntity?;
+) => EditOperations.trim(polyline, crossings, pick) as PolylineEntity?;
 
 ArcEntity? trimArc(ArcEntity arc, List<Vec2> crossings, Vec2 pick) =>
-    Construct.trim(arc, crossings, pick) as ArcEntity?;
+    EditOperations.trim(arc, crossings, pick) as ArcEntity?;
 
 PolylineEntity? trimSpline(
   SplineEntity spline,
   List<Vec2> crossings,
   Vec2 pick,
-) => Construct.trim(spline, crossings, pick) as PolylineEntity?;
+) => EditOperations.trim(spline, crossings, pick) as PolylineEntity?;
 
 LineEntity? extendLine(LineEntity line, List<CadEntity> edges) =>
-    Construct.extend(line, edges) as LineEntity?;
+    EditOperations.extend(line, edges) as LineEntity?;
 
 PolylineEntity? extendPolyline(
   PolylineEntity polyline,
   List<CadEntity> edges, [
   Vec2? pick,
-]) => Construct.extend(polyline, edges, pick) as PolylineEntity?;
+]) => EditOperations.extend(polyline, edges, pick) as PolylineEntity?;
 
 ArcEntity? extendArc(ArcEntity arc, List<CadEntity> edges, [Vec2? pick]) =>
-    Construct.extend(arc, edges, pick) as ArcEntity?;
+    EditOperations.extend(arc, edges, pick) as ArcEntity?;
 
 PolylineEntity? extendSpline(
   SplineEntity spline,
   List<CadEntity> edges, [
   Vec2? pick,
-]) => Construct.extend(spline, edges, pick) as PolylineEntity?;
+]) => EditOperations.extend(spline, edges, pick) as PolylineEntity?;
 
 LineEntity? lengthenLine(
   LineEntity line,
   Vec2 pick, {
   double? delta,
   double? total,
-}) => Construct.lengthen(line, pick, delta: delta, total: total) as LineEntity?;
+}) =>
+    EditOperations.lengthen(line, pick, delta: delta, total: total)
+        as LineEntity?;
 
 PolylineEntity? lengthenPolyline(
   PolylineEntity polyline,
@@ -4430,7 +4529,7 @@ PolylineEntity? lengthenPolyline(
   double? delta,
   double? total,
 }) =>
-    Construct.lengthen(polyline, pick, delta: delta, total: total)
+    EditOperations.lengthen(polyline, pick, delta: delta, total: total)
         as PolylineEntity?;
 
 ArcEntity? lengthenArc(
@@ -4438,31 +4537,34 @@ ArcEntity? lengthenArc(
   Vec2 pick, {
   double? delta,
   double? total,
-}) => Construct.lengthen(arc, pick, delta: delta, total: total) as ArcEntity?;
+}) =>
+    EditOperations.lengthen(arc, pick, delta: delta, total: total)
+        as ArcEntity?;
 
 List<LineEntity>? breakLine(LineEntity line, Vec2 first, [Vec2? second]) =>
-    Construct.breakCurve(line, first, second)?.cast<LineEntity>();
+    EditOperations.breakCurve(line, first, second)?.cast<LineEntity>();
 
 List<PolylineEntity>? breakPolyline(
   PolylineEntity polyline,
   Vec2 first, [
   Vec2? second,
-]) => Construct.breakCurve(polyline, first, second)?.cast<PolylineEntity>();
+]) =>
+    EditOperations.breakCurve(polyline, first, second)?.cast<PolylineEntity>();
 
 List<ArcEntity>? breakArc(ArcEntity arc, Vec2 first, [Vec2? second]) =>
-    Construct.breakCurve(arc, first, second)?.cast<ArcEntity>();
+    EditOperations.breakCurve(arc, first, second)?.cast<ArcEntity>();
 
 List<ArcEntity>? breakCircle(CircleEntity circle, Vec2 first, [Vec2? second]) =>
-    Construct.breakCurve(circle, first, second)?.cast<ArcEntity>();
+    EditOperations.breakCurve(circle, first, second)?.cast<ArcEntity>();
 
 List<Vec2> divideLine(LineEntity line, int segments) =>
-    Construct.divide(line, segments);
+    EditOperations.divide(line, segments);
 
 List<Vec2> dividePolyline(PolylineEntity polyline, int segments) =>
-    Construct.divide(polyline, segments);
+    EditOperations.divide(polyline, segments);
 
 List<Vec2> divideArc(ArcEntity arc, int segments) =>
-    Construct.divide(arc, segments);
+    EditOperations.divide(arc, segments);
 
 List<Vec2> divideCircle(CircleEntity circle, int segments) =>
-    Construct.divide(circle, segments);
+    EditOperations.divide(circle, segments);

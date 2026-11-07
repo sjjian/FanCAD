@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:fancad_test/fancad_test.dart';
 import 'package:test/test.dart';
 

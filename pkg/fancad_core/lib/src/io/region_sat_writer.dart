@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
-import '../document/entity.dart';
 import '../geometry/vector.dart';
+import '../model/entity/entity.dart';
 
 /// Writes a planar REGION as ACIS SAT v1 text.
 ///

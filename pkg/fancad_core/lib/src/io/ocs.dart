@@ -1,6 +1,6 @@
-import '../document/entity.dart';
 import '../geometry/matrix.dart';
 import '../geometry/vector.dart';
+import '../model/entity/entity.dart';
 
 /// Moves an entity read with its file coordinates into WCS.
 ///
@@ -34,6 +34,7 @@ CadEntity bakeOcs(CadEntity entity, Vec3 extrusion) {
     MLeaderEntity() ||
     DimensionEntity() ||
     ImageEntity() ||
+    WipeoutEntity() ||
     RegionEntity() ||
     UnknownEntity() => entity,
   };

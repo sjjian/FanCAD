@@ -1,6 +1,8 @@
-import '../document/entity.dart';
+import 'dart:typed_data';
+
 import '../geometry/matrix.dart';
 import '../geometry/vector.dart';
+import '../model/entity/entity.dart';
 
 /// Reads the planar loops of an ACIS SAT v1 REGION.
 ///
@@ -18,9 +20,42 @@ class AcisSatReader {
   /// a `transform $-1 $-1 #` stub.
   RegionGeometry? read(String sat, {Mat3? transform, double tolerance = 1e-6}) {
     final records = _parse(_skipHeader(sat));
+    return _fromRecords(
+      records,
+      approximated: _headerApproximated(sat),
+      transform: transform,
+      tolerance: tolerance,
+    );
+  }
+
+  /// Parses an ACIS binary SAB payload without materialising SAT text first.
+  ///
+  /// The tag stream is mapped straight onto the same records [read] produces,
+  /// so loop grouping and geometry are shared.
+  RegionGeometry? readSab(
+    Uint8List sab, {
+    Mat3? transform,
+    double tolerance = 1e-6,
+  }) {
+    final parsed = _parseSab(sab);
+    if (parsed == null) return null;
+    return _fromRecords(
+      parsed.records,
+      approximated: parsed.approximated,
+      transform: transform,
+      tolerance: tolerance,
+    );
+  }
+
+  RegionGeometry? _fromRecords(
+    List<_Record> records, {
+    required bool approximated,
+    Mat3? transform,
+    double tolerance = 1e-6,
+  }) {
     if (records.isEmpty) return null;
     final loops = <RegionLoop>[];
-    final state = _ReadState()..approximated = _headerApproximated(sat);
+    final state = _ReadState()..approximated = approximated;
     final used = <int>{};
     for (var i = 0; i < records.length; i++) {
       if (records[i].kind != _Kind.loop) continue;
@@ -273,11 +308,11 @@ class AcisSatReader {
           continue;
         }
         if (record.kind == _Kind.coedge) {
-          if (c == 0x49 || c == 0x46) {
+          if (c == 0x49 || c == 0x46 || c == 0x54) {
             if (i + 1 >= text.length ||
                 _isSpace(text.codeUnitAt(i + 1)) ||
                 text.codeUnitAt(i + 1) == 0x23) {
-              record.reversed = c == 0x49;
+              record.reversed = c == 0x49 || c == 0x54;
               i++;
               continue;
             }
@@ -290,6 +325,24 @@ class AcisSatReader {
           if (text.startsWith('forward', i)) {
             record.reversed = false;
             i += 7;
+            continue;
+          }
+          // SAB->SAT1 writes the coedge orientation as true/false; older
+          // writers use the single letters T/F.
+          if (text.startsWith('true', i) &&
+              (i + 4 >= text.length ||
+                  _isSpace(text.codeUnitAt(i + 4)) ||
+                  text.codeUnitAt(i + 4) == 0x23)) {
+            record.reversed = true;
+            i += 4;
+            continue;
+          }
+          if (text.startsWith('false', i) &&
+              (i + 5 >= text.length ||
+                  _isSpace(text.codeUnitAt(i + 5)) ||
+                  text.codeUnitAt(i + 5) == 0x23)) {
+            record.reversed = false;
+            i += 5;
             continue;
           }
         }
@@ -307,6 +360,263 @@ class AcisSatReader {
 
   static bool _isSpace(int c) =>
       c == 0x20 || c == 0x09 || c == 0x0a || c == 0x0d;
+
+  /// Reads a binary SAB stream into the same records [_parse] builds from SAT.
+  ///
+  /// The tag-to-token mapping mirrors `sabToSat1`, including tag 14 as a
+  /// prefix that joins the next identifier with a hyphen (`ellipse-` + `curve`).
+  ({List<_Record> records, bool approximated})? _parseSab(Uint8List data) {
+    if (data.length < 15) return null;
+    final magic = String.fromCharCodes(Uint8List.sublistView(data, 0, 15));
+    if (!magic.startsWith('ACIS BinaryFile')) return null;
+
+    var at = 15;
+    int rc() {
+      if (at >= data.length) throw const FormatException('SAB overflow');
+      return data[at++];
+    }
+
+    int rs() {
+      final lo = rc();
+      final hi = rc();
+      return (hi << 8) | lo;
+    }
+
+    int rl() {
+      final lo = rs();
+      final hi = rs();
+      return (hi << 16) | lo;
+    }
+
+    int rll() => rl() | (rl() << 32);
+
+    final doubleBytes = ByteData(8);
+    final floatBytes = ByteData(4);
+    double rd() {
+      for (var i = 0; i < 8; i++) {
+        doubleBytes.setUint8(i, rc());
+      }
+      return doubleBytes.getFloat64(0, Endian.little);
+    }
+
+    double rlFloat() {
+      floatBytes.setUint32(0, rl(), Endian.little);
+      return floatBytes.getFloat32(0, Endian.little);
+    }
+
+    String taggedString() {
+      rc();
+      final length = rc();
+      final end = at + length;
+      if (end > data.length) {
+        throw const FormatException('SAB string overflow');
+      }
+      final value = String.fromCharCodes(Uint8List.sublistView(data, at, end));
+      at = end;
+      return value;
+    }
+
+    try {
+      rl(); // version
+      rl(); // record count
+      rl(); // entity count
+      rl(); // history flag
+      final product = taggedString();
+      taggedString(); // acis version
+      taggedString(); // date
+      rc();
+      rd();
+      rc();
+      rd();
+      rc();
+      rd();
+      final approximated = product.contains('FanCAD_APPROX');
+
+      final records = <_Record>[];
+      _Record? current;
+      var actRecord = '';
+      var prefix = '';
+
+      void addToken(String token, {String? actName}) {
+        if (current == null) {
+          current = _Record(token, _kindOf(token));
+        } else {
+          if (current!.kind == _Kind.coedge) {
+            _applyCoedgeToken(current!, token);
+          }
+        }
+        if (actName != null) actRecord = actName;
+      }
+
+      void addNumber(double value) {
+        if (current == null) {
+          addToken(value.toString());
+        } else {
+          current!.nums.add(value);
+        }
+      }
+
+      void addRef(int value) {
+        if (current == null) {
+          addToken('\$$value');
+        } else {
+          current!.refs.add(value);
+        }
+      }
+
+      void finish({required bool addEmpty}) {
+        if (prefix.isNotEmpty) {
+          addToken(prefix);
+          prefix = '';
+        }
+        if (current != null || addEmpty) {
+          records.add(current ?? _Record('', _Kind.other));
+        }
+        current = null;
+      }
+
+      while (at < data.length) {
+        final tag = rc();
+        switch (tag) {
+          case 17: // end of record
+            finish(addEmpty: true);
+            break;
+          case 13: // identifier
+          case 7: // char length
+          case 14: // subidentifier
+            final length = rc();
+            if (length == 0) {
+              finish(addEmpty: false);
+              return (records: records, approximated: approximated);
+            }
+            final end = at + length;
+            if (end > data.length) return null;
+            final value = String.fromCharCodes(
+              Uint8List.sublistView(data, at, end),
+            );
+            at = end;
+            if (tag == 14) {
+              prefix += '$value-';
+            } else {
+              final token = prefix.isEmpty ? value : '$prefix$value';
+              prefix = '';
+              addToken(token, actName: tag == 13 ? value : null);
+            }
+            break;
+          case 8:
+            final length = rs();
+            final end = at + length;
+            if (end > data.length) return null;
+            final value = String.fromCharCodes(
+              Uint8List.sublistView(data, at, end),
+            );
+            at = end;
+            final token = prefix.isEmpty ? value : '$prefix$value';
+            prefix = '';
+            addToken(token);
+            break;
+          case 9:
+          case 18:
+            final length = rl();
+            final end = at + length;
+            if (end > data.length) return null;
+            final value = String.fromCharCodes(
+              Uint8List.sublistView(data, at, end),
+            );
+            at = end;
+            final token = prefix.isEmpty ? value : '$prefix$value';
+            prefix = '';
+            addToken(token);
+            break;
+          case 10:
+          case 11:
+            if (current != null && current!.kind == _Kind.coedge) {
+              current!.reversed = tag == 10;
+            } else {
+              addToken(_booleanWord(actRecord, tag == 10));
+            }
+            break;
+          case 15:
+          case 16:
+            break;
+          case 2:
+            addNumber(_signedValue(rc(), 8).toDouble());
+            break;
+          case 3:
+            addNumber(_signedValue(rs(), 16).toDouble());
+            break;
+          case 4:
+          case 12:
+          case 21:
+            addRef(_signedValue(rl(), 32));
+            break;
+          case 5:
+            addNumber(rlFloat());
+            break;
+          case 6:
+            addNumber(rd());
+            break;
+          case 19:
+          case 20:
+            addNumber(rd());
+            addNumber(rd());
+            addNumber(rd());
+            break;
+          case 23:
+            addRef(rll());
+            break;
+          default:
+            finish(addEmpty: false);
+            return (records: records, approximated: approximated);
+        }
+        if (at >= data.length) break;
+      }
+      finish(addEmpty: false);
+      return (records: records, approximated: approximated);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  static void _applyCoedgeToken(_Record record, String token) {
+    switch (token) {
+      case 'I':
+      case 'T':
+      case 'reversed':
+      case 'true':
+        record.reversed = true;
+        break;
+      case 'F':
+      case 'forward':
+      case 'false':
+        record.reversed = false;
+        break;
+    }
+  }
+
+  static String _booleanWord(String record, bool value) {
+    switch (record) {
+      case 'edge':
+      case 'spline':
+      case 'meshsurf':
+      case 'pcurve':
+      case 'intcurve':
+      case 'face':
+        return value ? 'reversed' : 'forward';
+      case 'sphere':
+      case 'plane':
+      case 'stripc':
+      case 'torus':
+        return value ? 'reverse_v' : 'forward_v';
+      default:
+        return value ? 'true' : 'false';
+    }
+  }
+
+  static int _signedValue(int value, int bits) {
+    final sign = 1 << (bits - 1);
+    return (value & sign) != 0 ? value - (1 << bits) : value;
+  }
 
   static _Kind _kindOf(String name) {
     switch (name) {
@@ -369,3 +679,14 @@ RegionGeometry? readAcisRegion(
   double tolerance = 1e-6,
 }) =>
     const AcisSatReader().read(sat, transform: transform, tolerance: tolerance);
+
+/// Parses a binary SAB payload directly, without a SAT text intermediate.
+RegionGeometry? readAcisSabRegion(
+  Uint8List sab, {
+  Mat3? transform,
+  double tolerance = 1e-6,
+}) => const AcisSatReader().readSab(
+  sab,
+  transform: transform,
+  tolerance: tolerance,
+);

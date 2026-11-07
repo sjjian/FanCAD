@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -46,7 +46,7 @@ void main() {
 
   test('reversing a spline keeps the fit points and swaps the ends', () {
     const fits = [Vec2.zero(), Vec2(2, 3), Vec2(5, 1), Vec2(8, 0)];
-    final spline = Construct.splineFromFit(fits)!;
+    final spline = EditOperations.splineFromFit(fits)!;
     final reversed = spline.reversed();
     expect(reversed, isA<SplineEntity>());
     final next = reversed as SplineEntity;

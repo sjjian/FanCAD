@@ -1,6 +1,6 @@
 tags:
-  # nativeGroup tests. Skipped by default so a checkout without LibreDWG
-  # still has a green run. `--tags native --run-skipped` fails and names
-  # FANCAD_LIBREDWG_ROOT when the backend is not linked.
+  # Longer DWG round-trip tests. Skipped by default so the unit-test run stays
+  # fast; run them with `dart test integration_test --tags native
+  # --run-skipped`.
   native:
-    skip: "Run with --tags native in a build that links LibreDWG"
+    skip: "Run with --tags native to exercise the DWG round trips"

@@ -1,7 +1,7 @@
 @Tags(['native'])
 library;
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 import '../test/io/support/native.dart';
@@ -130,11 +130,7 @@ void main() {
       );
       final def = opened.entitiesOf('HID').whereType<AttdefEntity>().single;
       expect(def.tag, 'ID');
-      expect(
-        def.invisible,
-        isFalse,
-        reason: 'ATTDEF invisible mode is not reread from LibreDWG',
-      );
+      expect(def.invisible, isTrue);
     });
 
     test('a centred ATTDEF stays off the origin', () async {

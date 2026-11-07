@@ -2,9 +2,11 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
-import '../document/document.dart';
-import '../document/paper_viewport.dart';
 import '../geometry/bounds.dart';
+import '../model/document/block_record.dart';
+import '../model/document/drawing_data.dart';
+import '../model/document/layout.dart';
+import '../model/document/paper_viewport.dart';
 
 part 'fidelity.g.dart';
 
@@ -155,7 +157,7 @@ List<String>? _omitEmptyNotes(List<String> notes) =>
 class FidelityAuditor {
   const FidelityAuditor();
 
-  FidelityReport compare(CadDocument source, CadDocument target) {
+  FidelityReport compare(DrawingData source, DrawingData target) {
     final sourceKinds = _counts(source);
     final targetKinds = _counts(target);
     final kinds = {...sourceKinds.keys, ...targetKinds.keys};
@@ -246,7 +248,7 @@ class FidelityAuditor {
     );
   }
 
-  static Map<String, BlockRecord> _xrefs(CadDocument document) {
+  static Map<String, BlockRecord> _xrefs(DrawingData document) {
     final result = <String, BlockRecord>{};
     for (final block in document.blocks.values) {
       if (block.isXref) result[block.name.toUpperCase()] = block;
@@ -254,7 +256,7 @@ class FidelityAuditor {
     return result;
   }
 
-  static Map<String, int> _counts(CadDocument document) {
+  static Map<String, int> _counts(DrawingData document) {
     final counts = <String, int>{};
     for (final entity in document.entities) {
       counts.update(entity.kind.name, (n) => n + 1, ifAbsent: () => 1);
@@ -262,7 +264,7 @@ class FidelityAuditor {
     return counts;
   }
 
-  static Map<String, int> _spaceCounts(CadDocument document) {
+  static Map<String, int> _spaceCounts(DrawingData document) {
     final counts = <String, int>{};
     final seen = <String>{};
     for (final layout in document.layouts) {

@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
-import 'package:fancad_core/src/io/fidelity.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 /// DWG handles are not stable, so entities are aligned by kind, owner, and
@@ -336,7 +335,7 @@ List<String> snapshotsOf(CadDocument doc) {
   return out;
 }
 
-/// LibreDWG writes ByLayer as ACI 256 / linewt 29. Compare the meaning, not
+/// the reference decoder writes ByLayer as ACI 256 / linewt 29. Compare the meaning, not
 /// the sentinels the in-memory document happened to use.
 String colorKey(CadColor color) {
   if (color.kind == ColorKind.byLayer) return 'ByLayer';

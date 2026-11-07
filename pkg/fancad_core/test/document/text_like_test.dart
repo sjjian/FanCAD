@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 /// Each `with` on a [TextLike] changes its one property and nothing else.

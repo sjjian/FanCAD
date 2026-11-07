@@ -1,7 +1,7 @@
 @Tags(['native'])
 library;
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 import '../test/io/support/native.dart';
@@ -66,7 +66,7 @@ void main() {
       expect(opened.textStyles['NOTES']!.obliqueAngle, closeTo(0.15, 1e-6));
     });
 
-    test('Standard keeps the file font instead of LibreDWG txt', () async {
+    test('Standard keeps the file font instead of the style font', () async {
       final opened = await rt.dwg(
         CadDocument()
           ..putTextStyle(

@@ -3,18 +3,20 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import '../../document/document.dart';
-import '../../document/entity.dart';
-import '../../document/geometry_sink.dart';
-import '../../document/paper_viewport.dart';
-import '../../document/style.dart';
 import '../../geometry/bounds.dart';
 import '../../geometry/vector.dart';
-import '../../hatch/pattern.dart';
+import '../../model/document/block_record.dart';
+import '../../model/document/drawing_data.dart';
+import '../../model/document/layout.dart';
+import '../../model/document/paper_viewport.dart';
+import '../../model/entity/entity.dart';
+import '../../model/entity/hatch_pattern_line.dart';
+import '../../model/entity/text_alignment.dart';
+import '../../model/style.dart';
 import '../acis_sat.dart';
 import '../ocs.dart';
 
-/// Reads ASCII DXF into a [CadDocument].
+/// Reads ASCII DXF into a [DrawingData].
 ///
 /// The scan is a single pass with a one-pair pushback so repeated group
 /// codes (LWPOLYLINE vertices) survive. Entities are registered in bulk and
@@ -23,13 +25,13 @@ import '../ocs.dart';
 class DxfReader {
   const DxfReader();
 
-  Future<CadDocument> readFile(String path) async {
+  Future<DrawingData> readFile(String path) async {
     return readString(await File(path).readAsString());
   }
 
-  CadDocument readString(String text) {
+  DrawingData readString(String text) {
     final scan = _Scan(text);
-    final document = CadDocument();
+    final document = DrawingData();
     final blockEntities = <String, List<int>>{};
     final blockDefs = <String, Map<int, String>>{};
     final viewportsByBlock = <String, List<PaperViewport>>{};
@@ -146,13 +148,12 @@ class DxfReader {
         ),
       );
     }
-    document.reindex();
     _applyLayouts(document, layoutRecords, viewportsByBlock, blockHandles);
     return document;
   }
 
   static void _applyLayouts(
-    CadDocument document,
+    DrawingData document,
     List<Map<int, String>> records,
     Map<String, List<PaperViewport>> viewportsByBlock,
     Map<String, String> blockHandles,
@@ -207,6 +208,15 @@ class DxfReader {
     }
   }
 
+  static int _transparencyFromDxf(String? raw) {
+    final value = int.tryParse(raw ?? '');
+    if (value == null) return -1;
+    // 0x020000TT: TT is 0 (transparent) to 255 (opaque).
+    final alpha = value & 0xff;
+    if (alpha >= 255) return -1;
+    return ((255 - alpha) * 100 / 255).clamp(0, 90).round();
+  }
+
   static Bounds2? _plotWindow(Map<int, String> values) {
     if ((int.tryParse(values[72] ?? '') ?? -1) != 4) return null;
     final minX = double.tryParse(values[48] ?? '');
@@ -258,7 +268,7 @@ class DxfReader {
     );
   }
 
-  static void _readHeader(CadDocument document, _Scan scan) {
+  static void _readHeader(DrawingData document, _Scan scan) {
     String? name;
     while (true) {
       final pair = scan.next();
@@ -347,15 +357,19 @@ class DxfReader {
   static LayerDef _layer(Map<int, String> v) {
     final flags = int.tryParse(v[70] ?? '0') ?? 0;
     final raw = int.tryParse(v[62] ?? '7') ?? 7;
+    final rgb = int.tryParse(v[420] ?? '');
     return LayerDef(
       name: v[2] ?? '0',
-      color: CadColor.indexed(raw.abs() == 0 ? 7 : raw.abs()),
+      color: rgb != null
+          ? CadColor.rgb(rgb)
+          : CadColor.indexed(raw.abs() == 0 ? 7 : raw.abs()),
       lineType: v[6] ?? 'Continuous',
       lineWeight: int.tryParse(v[370] ?? '') ?? LineWeight.byDefault,
       visible: raw >= 0,
       frozen: flags & 1 != 0,
       locked: flags & 4 != 0,
       plottable: (int.tryParse(v[290] ?? '1') ?? 1) != 0,
+      transparency: _transparencyFromDxf(v[440]),
     );
   }
 
@@ -533,6 +547,8 @@ class DxfReader {
       lineWeight: v.containsKey(370)
           ? int.tryParse(v[370]!) ?? LineWeight.byLayer
           : LineWeight.byLayer,
+      lineTypeScale: v.containsKey(48) ? double.tryParse(v[48]!) ?? 1 : 1,
+      transparency: _transparencyFromDxf(v[440]),
       visible: (int.tryParse(v[60] ?? '0') ?? 0) == 0,
     );
     double n(int code, [double fallback = 0]) =>

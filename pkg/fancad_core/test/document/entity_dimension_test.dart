@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -145,7 +145,7 @@ void main() {
   });
 
   test('scaling an angular dimension does not scale the degrees', () {
-    final dim = Construct.angularDimension(
+    final dim = DimensionOperations.angularDimension(
       const Vec2.zero(),
       const Vec2(10, 0),
       const Vec2(0, 10),

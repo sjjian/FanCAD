@@ -128,22 +128,39 @@ class Bounds2 {
       _clusterHigh(xs, xMed, xMad),
       _clusterHigh(ys, yMed, yMad),
     );
+    // Keep a box when its centre is anywhere near the middle of the drawing.
+    // A fence of the *core* itself is too tight: a sheet can be framed by two
+    // long outlines whose centres sit at its edge, and trimming them to the
+    // cluster of small parts cropped the drawing. Fifty deviations still
+    // rejects geometry parked at the far end of the world.
+    final xFence = 50 * math.max(xMad, 1.0);
+    final yFence = 50 * math.max(yMad, 1.0);
     for (final box in finite) {
-      if (!core.containsPoint(box.center.x, box.center.y)) continue;
+      if ((box.center.x - xMed).abs() > xFence) continue;
+      if ((box.center.y - yMed).abs() > yFence) continue;
       drawn = drawn.union(box);
     }
-    if (drawn.isFinite &&
-        drawn.isNotEmpty &&
-        drawn.width <= core.width * 2 &&
-        drawn.height <= core.height * 2) {
-      return drawn;
-    }
     if (drawn.isFinite && drawn.isNotEmpty) {
+      // Keep that union, but stop one box that contains the whole drawing
+      // from framing a million-unit window — a block definition holding a
+      // unit square at one end of the world and its pair at the other. The
+      // allowance is twice the core on every side. An axis the centres share
+      // exactly has no core to measure against, so it is left alone.
+      final xAllowance = core.width * 2;
+      final yAllowance = core.height * 2;
       final clipped = Bounds2(
-        math.max(drawn.minX, core.minX),
-        math.max(drawn.minY, core.minY),
-        math.min(drawn.maxX, core.maxX),
-        math.min(drawn.maxY, core.maxY),
+        xAllowance > 0
+            ? math.max(drawn.minX, core.minX - xAllowance)
+            : drawn.minX,
+        yAllowance > 0
+            ? math.max(drawn.minY, core.minY - yAllowance)
+            : drawn.minY,
+        xAllowance > 0
+            ? math.min(drawn.maxX, core.maxX + xAllowance)
+            : drawn.maxX,
+        yAllowance > 0
+            ? math.min(drawn.maxY, core.maxY + yAllowance)
+            : drawn.maxY,
       );
       if (clipped.isFinite && clipped.isNotEmpty) return clipped;
     }

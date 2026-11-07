@@ -3,7 +3,7 @@ library;
 
 import 'dart:typed_data';
 
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_core/src/core.dart';
 import 'package:test/test.dart';
 
 import '../test/io/support/native.dart';
@@ -43,7 +43,7 @@ void main() {
       expect(
         hatch.loops.last.isOuter,
         isTrue,
-        reason: 'hatch path outermost bit is not reread from LibreDWG',
+        reason: 'hatch path outermost bit is not reread from the reference decoder',
       );
     });
 
