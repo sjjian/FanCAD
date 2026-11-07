@@ -59,18 +59,6 @@
 				<string>com.autodesk.dxf</string>
 			</array>
 		</dict>
-		<dict>
-			<key>CFBundleTypeName</key>
-			<string>FanCAD Drawing</string>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>LSHandlerRank</key>
-			<string>Owner</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>app.fancad.fcb</string>
-			</array>
-		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
@@ -105,26 +93,6 @@
 				<key>public.filename-extension</key>
 				<array>
 					<string>dxf</string>
-				</array>
-			</dict>
-		</dict>
-	</array>
-	<key>UTExportedTypeDeclarations</key>
-	<array>
-		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>app.fancad.fcb</string>
-			<key>UTTypeDescription</key>
-			<string>FanCAD Drawing</string>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.data</string>
-			</array>
-			<key>UTTypeTagSpecification</key>
-			<dict>
-				<key>public.filename-extension</key>
-				<array>
-					<string>fcb</string>
 				</array>
 			</dict>
 		</dict>

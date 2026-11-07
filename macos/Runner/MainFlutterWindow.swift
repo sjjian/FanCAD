@@ -49,7 +49,7 @@ enum FileDialogChannel {
     let channel = FlutterMethodChannel(name: "fancad/file_dialog", binaryMessenger: messenger)
     channel.setMethodCallHandler { call, result in
       let arguments = call.arguments as? [String: Any]
-      let extensions = arguments?["extensions"] as? [String] ?? ["dwg", "dxf", "fcb"]
+      let extensions = arguments?["extensions"] as? [String] ?? ["dwg", "dxf"]
       switch call.method {
       case "open":
         result(Self.open(extensions: extensions))
