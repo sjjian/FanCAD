@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 
 import 'catalog.dart';
 import 'encode.dart';
@@ -64,12 +64,14 @@ Operation operationFromCommand(
   return operation;
 }
 
-/// The two catalogs chat and MCP offer over one registry.
+/// The three catalogs chat and MCP offer over one registry.
 ///
-/// `drawing` backs the [fancadToolName] tool and `extensions` backs
-/// [extensionsToolName]. Both hosts split commands here so a command cannot
-/// end up on one tool in chat and the other over MCP.
-({OperationCatalog drawing, OperationCatalog extensions}) commandCatalogs({
+/// `drawing` backs the [fancadToolName] tool, `extensions` backs
+/// [extensionsToolName], and `perf` backs [perfToolName]. Both hosts split
+/// commands here so a command cannot end up on one tool in chat and another
+/// over MCP.
+({OperationCatalog drawing, OperationCatalog extensions, OperationCatalog perf})
+commandCatalogs({
   required CommandRegistry registry,
   required CommandExecutor execute,
 }) => (
@@ -78,7 +80,8 @@ Operation operationFromCommand(
       CommandOperationProvider(
         registry: registry,
         execute: execute,
-        include: (command) => !isExtensionCliCommand(command.id),
+        include: (command) =>
+            !isExtensionCliCommand(command.id) && !isPerfCliCommand(command.id),
       ),
     ),
   extensions: OperationCatalog()
@@ -87,6 +90,14 @@ Operation operationFromCommand(
         registry: registry,
         execute: execute,
         include: (command) => isExtensionCliCommand(command.id),
+      ),
+    ),
+  perf: OperationCatalog()
+    ..addProvider(
+      CommandOperationProvider(
+        registry: registry,
+        execute: execute,
+        include: (command) => isPerfCliCommand(command.id),
       ),
     ),
 );

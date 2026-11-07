@@ -4,6 +4,9 @@ const fancadToolName = 'fancad';
 /// Extension CLI. Management, creation, and running one saved extension share it.
 const extensionsToolName = 'extensions';
 
+/// Performance CLI. Live renderer statistics, separate from drawing commands.
+const perfToolName = 'perf';
+
 /// Wire shape so models do not nest `path` inside `args`.
 const fancadCallExample =
     '{"action":"run","path":"draw.circle","args":{"center":[0,0],"radius":10}}';
@@ -32,6 +35,16 @@ const extensionsToolDescription =
     'in the opening comment. extension.<name> runs one saved extension. '
     'Example: {"action":"run","path":"extensions.list"}.';
 
+/// Read-only renderer diagnostics. Deliberately not part of [fancadToolName].
+const perfToolDescription =
+    'Reads live render, frame and cache statistics for the open drawing. '
+    'This is operator diagnostics, not drawing data: perf.session returns the '
+    'retained scene, build time, submitted segments and draw calls, block '
+    'cache, text atlas and rolling build/raster percentiles. perf.reset clears '
+    'the frame window and can drop the display list so the next snapshot '
+    'measures a cold build. Same action/path/args/tab shape as fancad. The '
+    'drawing commands are the fancad tool, not this one.';
+
 /// A saved-extension command offered by [extensionsToolName], not by [fancadToolName].
 ///
 /// `extensions.run` is an unsaved snippet and stays off both CLIs.
@@ -42,6 +55,9 @@ bool isExtensionCliCommand(String id) =>
     id == 'extensions.delete' ||
     id == 'extensions.doc' ||
     id.startsWith('extension.');
+
+/// A renderer diagnostic offered by [perfToolName], not by [fancadToolName].
+bool isPerfCliCommand(String id) => id.startsWith('perf.');
 
 const fancadToolParameters = <String, Object?>{
   'type': 'object',
@@ -84,6 +100,9 @@ Map<String, Object?> fancadToolDefinition() => {
 /// Same argument object as [fancadToolParameters]. The description differs.
 const extensionsToolParameters = fancadToolParameters;
 
+/// Same argument object as [fancadToolParameters]. The description differs.
+const perfToolParameters = fancadToolParameters;
+
 /// MCP `inputSchema` is the parameters object plus a name/description.
 Map<String, Object?> fancadMcpTool() => {
   'name': fancadToolName,
@@ -96,4 +115,11 @@ Map<String, Object?> extensionsMcpTool() => {
   'name': extensionsToolName,
   'description': extensionsToolDescription,
   'inputSchema': extensionsToolParameters,
+};
+
+/// MCP `inputSchema` for [perfToolName].
+Map<String, Object?> perfMcpTool() => {
+  'name': perfToolName,
+  'description': perfToolDescription,
+  'inputSchema': perfToolParameters,
 };

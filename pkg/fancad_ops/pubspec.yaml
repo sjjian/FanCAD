@@ -10,6 +10,8 @@ environment:
 dependencies:
   fancad_core:
     path: ../fancad_core
+  fancad_command:
+    path: ../fancad_command
   meta: ^1.16.0
 
 dev_dependencies:

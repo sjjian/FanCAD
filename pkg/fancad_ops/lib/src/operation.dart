@@ -1,4 +1,4 @@
-import 'package:fancad_core/fancad_core.dart';
+import 'package:fancad_command/fancad_command.dart';
 import 'package:meta/meta.dart';
 
 /// A callable capability. Not a CAD verb — commands become these via a provider.
