@@ -1,9 +1,8 @@
 ##  Features ✨
-* Added first-class 2D REGION support. Regions can be created from an internal point or selected closed boundaries, combined with union, subtract and intersect, filleted and offset, and read from and written to DXF and DWG. Picking and snapping use the region geometry, and approximated boundaries are flagged.
-* Added signed in-app updates. The About tab shows the version and checks GitHub, with Gitee as a fallback; a new version downloads only after its signed manifest and SHA-256 digest are verified, then opens the DMG, the Windows installer or the Linux replacement script.
+* Replaced the native LibreDWG backend with a pure-Dart DWG engine. DWG R13–R2018 opens without a separate library, and saving writes R2000 when every object is representable, falling back to DXF with a reason otherwise.
+* Added a `perf` MCP tool that reports the retained scene, block cache, text atlas and rolling build/raster frame percentiles; `perf.reset` clears the window for a cold measurement.
 
 ## Improvements 🛠
-* Reworked canvas rendering around one RenderTarget entry point. Pan and zoom replay the existing recording, picking and snapping share the same flattened geometry, and a missed gesture end can no longer leave the canvas soft.
-* Cut the build and paint cost of large drawings with merged batch vertices, culled grid painting and text shaped once per height band; a 200,000-segment zoom frame paints in 0.27 ms instead of 1.81 ms.
-* Hid the system pointer while the overlay draws its crosshair, kept the crosshair under the pointer during pans, and dropped stale cursor and snap state when the input handler changes.
-* Fixed Chinese MTEXT wrapping so notes without spaces break between glyphs instead of running past the rectangle.
+* Reworked rendering around a retained world scene kept in drawing coordinates, with cell culling, a text atlas, shared block displays, level of detail and screen-space decimation for large drawings.
+* The zoom readout tooltip now reports drawn segments, draw calls, block-cache hits and misses, and UI/raster frame times.
+* Fixed angular dimension, attribute and colour alpha decoding to match the reference DWG dump.
