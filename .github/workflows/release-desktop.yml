@@ -48,9 +48,9 @@ jobs:
 
   build-macos:
     needs: version
-    # Apple Silicon only. macos-14 is an arm64 runner, so the app is built
-    # natively for arm64 without a cross-compile or universal merge.
-    runs-on: macos-14
+    # Apple Silicon only. macos-latest resolves to a supported arm64-capable
+    # runner; the explicit macos-14 label is not available to this repository.
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
