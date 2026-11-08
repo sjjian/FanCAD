@@ -12,6 +12,12 @@ import '../support/workspace.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // The QuickJS bridge is only published prebuilt for macOS. Linux and
+  // Windows build it as part of the app, which `flutter test` does not run.
+  final quickJsSkip = Platform.isMacOS
+      ? null
+      : 'the QuickJS bridge is not available to flutter test on this platform';
+
   ScriptRunner quickJsRunner({
     ExtensionCallHandler? onCall,
     Duration timeout = const Duration(seconds: 30),
@@ -67,7 +73,7 @@ return { created: 1 };
     final thrown = await runner.run('throw new Error("nope")');
     expect(thrown.isFailed, isTrue);
     expect(thrown.message, contains('nope'));
-  });
+  }, skip: quickJsSkip);
 
   test('each run gets its own engine and its own args', () async {
     final runner = quickJsRunner();
@@ -81,7 +87,7 @@ return { created: 1 };
     final second = await runner.run('return typeof globalThis.leak;');
     expect(second.data?['value'], 'undefined');
     expect(runner.isBusy, isFalse);
-  });
+  }, skip: quickJsSkip);
 
   test('host calls carry the run scope and return to the script', () async {
     final seen = <(String, String, Object?)>[];
@@ -104,7 +110,7 @@ return reply;
     expect(seen.single.$1, startsWith('run-'));
     expect(seen.single.$2, HostMethod.executeCommand);
     expect(seen.single.$3, 'test.echo');
-  });
+  }, skip: quickJsSkip);
 
   test(
     'a run that never finishes times out and the next run starts fresh',
@@ -118,6 +124,7 @@ return reply;
       final next = await runner.run('return 7;');
       expect(next.data?['value'], 7);
     },
+    skip: quickJsSkip,
   );
 
   group('isolate worker', () {
@@ -162,7 +169,7 @@ return reply;
         throwsA(isA<RpcException>()),
       );
     });
-  });
+  }, skip: quickJsSkip);
 
   group('one run, one undo step', () {
     late Headless app;
@@ -222,7 +229,7 @@ return 2;
       expect(result['status'], 'failed');
       expect(result['message'], contains('stopped'));
     });
-  });
+  }, skip: quickJsSkip);
 }
 
 JsEngine _quickJs({required int memoryLimit, required int stackSize}) =>
