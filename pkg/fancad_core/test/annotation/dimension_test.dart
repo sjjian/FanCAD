@@ -74,7 +74,10 @@ void main() {
     'radius and diameter share a chord but only diameter crosses the centre',
     () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 10);
-      final radius = DimensionOperations.radiusDimension(circle, const Vec2(10, 0))!;
+      final radius = DimensionOperations.radiusDimension(
+        circle,
+        const Vec2(10, 0),
+      )!;
       final diameter = DimensionOperations.diameterDimension(
         circle,
         const Vec2(10, 0),

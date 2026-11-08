@@ -185,7 +185,10 @@ void main() {
         const Vec2(10, 0),
         const Vec2(5, 4),
       )!;
-      final next = DimensionOperations.continueDimension(first, const Vec2(18, 0));
+      final next = DimensionOperations.continueDimension(
+        first,
+        const Vec2(18, 0),
+      );
 
       expect(next, isNotNull);
       expect(next!.measurement, closeTo(8, 1e-9));
@@ -202,7 +205,10 @@ void main() {
         const Vec2(10, 0),
         const Vec2(5, 4),
       )!;
-      final next = DimensionOperations.continueDimension(first, const Vec2(24, 0));
+      final next = DimensionOperations.continueDimension(
+        first,
+        const Vec2(24, 0),
+      );
 
       expect(next, isNotNull);
       expect(next!.measurement, closeTo(14, 1e-9));
@@ -215,7 +221,10 @@ void main() {
         const Vec2(5, 4),
         sourceIds: const [7],
       )!;
-      final next = DimensionOperations.continueDimension(first, const Vec2(24, 0));
+      final next = DimensionOperations.continueDimension(
+        first,
+        const Vec2(24, 0),
+      );
       expect(next, isNotNull);
       expect(next!.sourceIds, [7]);
     });
@@ -226,7 +235,10 @@ void main() {
         const Vec2(3, 4),
         const Vec2(-2, 2),
       )!;
-      final next = DimensionOperations.continueDimension(first, const Vec2(6, 8));
+      final next = DimensionOperations.continueDimension(
+        first,
+        const Vec2(6, 8),
+      );
 
       expect(next, isNotNull);
       expect(next!.measurement, closeTo(5, 1e-9));
@@ -236,7 +248,10 @@ void main() {
 
     test('refuses a radius dimension', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final radial = DimensionOperations.radiusDimension(circle, const Vec2(8, 0))!;
+      final radial = DimensionOperations.radiusDimension(
+        circle,
+        const Vec2(8, 0),
+      )!;
       expect(
         DimensionOperations.continueDimension(radial, const Vec2(12, 0)),
         isNull,
@@ -345,7 +360,10 @@ void main() {
 
     test('refuses a radius dimension', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final radial = DimensionOperations.radiusDimension(circle, const Vec2(8, 0))!;
+      final radial = DimensionOperations.radiusDimension(
+        circle,
+        const Vec2(8, 0),
+      )!;
       expect(
         DimensionOperations.baselineDimension(radial, const Vec2(12, 0)),
         isNull,
@@ -438,9 +456,15 @@ void main() {
         startAngle: 0,
         endAngle: 1,
       );
-      expect(DimensionOperations.radiusDimension(arc, const Vec2(3, 0)), isNotNull);
       expect(
-        DimensionOperations.radiusDimension(line(0, 0, 10, 0), const Vec2(5, 0)),
+        DimensionOperations.radiusDimension(arc, const Vec2(3, 0)),
+        isNotNull,
+      );
+      expect(
+        DimensionOperations.radiusDimension(
+          line(0, 0, 10, 0),
+          const Vec2(5, 0),
+        ),
         isNull,
       );
     });
@@ -509,7 +533,10 @@ void main() {
 
     test('a radius dimension rereads a stretched circle', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final dim = DimensionOperations.radiusDimension(circle, const Vec2(8, 0))!;
+      final dim = DimensionOperations.radiusDimension(
+        circle,
+        const Vec2(8, 0),
+      )!;
       const grown = CircleEntity(id: 1, center: Vec2.zero(), radius: 8);
       final next = DimensionOperations.regenDimension(dim, const [grown])!;
       expect(next.measurement, closeTo(8, 1e-9));
@@ -531,7 +558,10 @@ void main() {
   group('diameterDimension', () {
     test('reads twice the radius and prefixes Ø', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final dim = DimensionOperations.diameterDimension(circle, const Vec2(8, 0));
+      final dim = DimensionOperations.diameterDimension(
+        circle,
+        const Vec2(8, 0),
+      );
 
       expect(dim, isNotNull);
       expect(dim!.measurement, closeTo(10, 1e-9));
@@ -571,7 +601,11 @@ void main() {
 
     test('can draw only the centre cross', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 6);
-      final marks = DimensionOperations.centerMark(circle, size: 1.5, extend: false);
+      final marks = DimensionOperations.centerMark(
+        circle,
+        size: 1.5,
+        extend: false,
+      );
 
       expect(marks, hasLength(2));
       expect(
@@ -661,7 +695,10 @@ void main() {
         endAngle: 2,
       );
       const other = CircleEntity(id: 2, center: Vec2(6, 0), radius: 1);
-      expect(DimensionOperations.centerLine(arc, other, extension: 0), isNotNull);
+      expect(
+        DimensionOperations.centerLine(arc, other, extension: 0),
+        isNotNull,
+      );
       expect(
         DimensionOperations.centerLine(
           const CircleEntity(id: 1, center: Vec2.zero(), radius: 2),
@@ -694,7 +731,11 @@ void main() {
       ],
       (c) {
         expect(
-          DimensionOperations.centerLine(c.first, c.second, extension: c.extension),
+          DimensionOperations.centerLine(
+            c.first,
+            c.second,
+            extension: c.extension,
+          ),
           isNull,
         );
       },
@@ -922,7 +963,10 @@ void main() {
 
     test('a radius dimension explodes to a spoke, not extension lines', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final dim = DimensionOperations.radiusDimension(circle, const Vec2(8, 0))!;
+      final dim = DimensionOperations.radiusDimension(
+        circle,
+        const Vec2(8, 0),
+      )!;
       final pieces = dim.explodeAsDrawn();
 
       final lines = pieces.whereType<LineEntity>().toList();
@@ -935,7 +979,10 @@ void main() {
 
     test('a diameter explodes to opposite spokes, not a single radius', () {
       const circle = CircleEntity(id: 1, center: Vec2.zero(), radius: 5);
-      final dim = DimensionOperations.diameterDimension(circle, const Vec2(8, 0))!;
+      final dim = DimensionOperations.diameterDimension(
+        circle,
+        const Vec2(8, 0),
+      )!;
       final pieces = dim.explodeAsDrawn();
 
       final lines = pieces.whereType<LineEntity>().toList();
@@ -1069,9 +1116,16 @@ void main() {
 
     test('returns null for fewer than two distinct points', () {
       expect(DimensionOperations.leader(const [Vec2(1, 1)]), isNull);
-      expect(DimensionOperations.leader(const [Vec2(1, 1), Vec2(1, 1)]), isNull);
       expect(
-        DimensionOperations.leader(const [Vec2.zero(), Vec2.zero(), Vec2.zero()]),
+        DimensionOperations.leader(const [Vec2(1, 1), Vec2(1, 1)]),
+        isNull,
+      );
+      expect(
+        DimensionOperations.leader(const [
+          Vec2.zero(),
+          Vec2.zero(),
+          Vec2.zero(),
+        ]),
         isNull,
       );
     });

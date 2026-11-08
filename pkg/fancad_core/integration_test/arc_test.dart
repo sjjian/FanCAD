@@ -41,7 +41,8 @@ void main() {
             (start - expected - math.pi * 2).abs() < 1e-6 ||
             (start - expected + math.pi * 2).abs() < 1e-6,
         isTrue,
-        reason: 'the reference decoder may wrap 5.5 to 5.5-2π; sweep must match',
+        reason:
+            'the reference decoder may wrap 5.5 to 5.5-2π; sweep must match',
       );
     });
 

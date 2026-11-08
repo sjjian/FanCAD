@@ -33,7 +33,8 @@ void main() {
       expect(
         leader.hasArrowHead,
         isTrue,
-        reason: 'the reference decoder rereads arrowhead_on as set even when we clear it',
+        reason:
+            'the reference decoder rereads arrowhead_on as set even when we clear it',
       );
     });
 

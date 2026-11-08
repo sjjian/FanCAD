@@ -43,7 +43,8 @@ void main() {
       expect(
         hatch.loops.last.isOuter,
         isTrue,
-        reason: 'hatch path outermost bit is not reread from the reference decoder',
+        reason:
+            'hatch path outermost bit is not reread from the reference decoder',
       );
     });
 

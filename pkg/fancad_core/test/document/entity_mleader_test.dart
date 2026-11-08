@@ -101,7 +101,10 @@ void main() {
 
   test('DimensionOperations.mleader keeps the note on the same entity', () {
     expect(
-      DimensionOperations.mleader(const [Vec2.zero(), Vec2(4, 0)], textHeight: 0),
+      DimensionOperations.mleader(const [
+        Vec2.zero(),
+        Vec2(4, 0),
+      ], textHeight: 0),
       isNull,
     );
     final created = DimensionOperations.mleader(const [

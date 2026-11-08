@@ -431,12 +431,15 @@ void main() {
       expect(layout.lastEntity, drawing.entities.last.handle);
     });
 
-    test('emits a valid empty R2000 template the reference decoder accepts', () {
-      final bytes = const R2000Writer().writeEmptyTemplate();
-      final drawing = DwgReader.readBytes(bytes);
-      expect(drawing.version, 2000);
-      expect(drawing.entities, isEmpty);
-      expect(drawing.objectCount, greaterThan(0));
-    });
+    test(
+      'emits a valid empty R2000 template the reference decoder accepts',
+      () {
+        final bytes = const R2000Writer().writeEmptyTemplate();
+        final drawing = DwgReader.readBytes(bytes);
+        expect(drawing.version, 2000);
+        expect(drawing.entities, isEmpty);
+        expect(drawing.objectCount, greaterThan(0));
+      },
+    );
   });
 }

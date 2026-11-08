@@ -9,7 +9,8 @@ import 'package:test/test.dart';
 void main() {
   const reader = DxfReader();
 
-  CadDocument parse(String source) => CadDocument.fromData(reader.readString(source));
+  CadDocument parse(String source) =>
+      CadDocument.fromData(reader.readString(source));
 
   test('empty or junk text yields an empty drawing rather than a throw', () {
     expect(reader.readString('').entities, isEmpty);
